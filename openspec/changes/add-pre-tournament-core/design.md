@@ -2,7 +2,7 @@
 
 ## Context
 
-Business rules extracted from petrpas/hema-agent (pre_tournament package). UI structure from the approved wireframe (HEMA Squire ETL, direction B): top bar with logo and stage control (Pre / In / Post Tournament), tournament name and date on the right, horizontal phase stepper Load → Parsing → Matching on HR → Deduplication → Payments → Export, full-width sticky-header sheet, right operations rail with General rules / Columns for step / Manual edits log. Match verdicts render as ✓ / ? / ✗ badges.
+Business rules extracted from petrpas/hema-agent (pre_tournament package). UI structure from the approved wireframe (HEMA Squire ETL, direction B; source saved at `docs/wireframe-b.html` in this repo): top bar with logo and stage control (Pre / In / Post Tournament), tournament name and date on the right, horizontal phase stepper Load → Parsing → Matching on HR → Deduplication → Payments → Export, full-width sticky-header sheet, right operations rail with General rules / Columns for step / Manual edits log. Match verdicts render as ✓ / ? / ✗ badges.
 
 ## Decision 1 — Two intake paths, one phase model
 

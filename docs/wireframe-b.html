@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>HEMA Squire — wireframe B (ETL console, Matching on HR)</title>
+</head>
+<body>
+
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+<link href="https://fonts.googleapis.com/css2?family=Kalam:wght@300;400;700&display=swap" rel="stylesheet">
+<style>
+  html, body { margin:0; padding:0; background:#e7e5df; }
+  * { box-sizing:border-box; }
+</style>
+
+
+<div style="min-height:100vh; background:#e7e5df; font-family:'Kalam',cursive; color:#2b2b2b; display:flex; flex-direction:column; padding:0;">
+
+  <!-- ===== top bar ===== -->
+  <div style="display:flex; justify-content:space-between; align-items:center; padding:16px 28px; border-bottom:2px solid #2b2b2b; background:#fffdf8;">
+    <div style="display:flex; align-items:center; gap:13px;">
+      <div style="width:46px; height:46px; border:2px solid #2b2b2b; border-radius:9px; display:flex; align-items:center; justify-content:center;">
+        <svg width="28" height="28" viewBox="0 0 26 26"><line x1="4" y1="22" x2="22" y2="4" stroke="#2b2b2b" stroke-width="2.4"></line><line x1="4" y1="4" x2="22" y2="22" stroke="#2b2b2b" stroke-width="2.4"></line><line x1="2" y1="9" x2="8" y2="3" stroke="#2b2b2b" stroke-width="2"></line><line x1="18" y1="23" x2="24" y2="17" stroke="#2b2b2b" stroke-width="2"></line></svg>
+      </div>
+      <div style="font-size:24px; font-weight:700; letter-spacing:.3px;">HEMA Squire</div>
+    </div>
+    <div style="display:flex; gap:0; border:2px solid #2b2b2b; border-radius:8px; overflow:hidden;">
+      <div style="padding:9px 20px; background:#2b2b2b; color:#fffdf8; font-size:15px;">Pre Tournament</div>
+      <div style="padding:9px 20px; color:#8a877f; font-size:15px; border-left:2px solid #2b2b2b;">In Tournament</div>
+      <div style="padding:9px 20px; color:#8a877f; font-size:15px; border-left:2px solid #2b2b2b;">Post Tournament</div>
+    </div>
+    <div style="text-align:right;">
+      <div style="font-size:22px; font-weight:700;">Na Duel! 2026</div>
+      <div style="font-size:15px; color:#6b6862;">23. 5. 2026</div>
+    </div>
+  </div>
+
+  <!-- ===== phase stepper ===== -->
+  <div style="display:flex; align-items:center; padding:16px 40px; border-bottom:1.5px dashed #b9b6ad; background:#fffdf8;">
+    <div style="display:flex; flex-direction:column; align-items:center; gap:5px;"><span style="width:32px; height:32px; border:1.5px solid #2e9e5b; background:#e6f4ec; color:#2e9e5b; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:15px;">✓</span><span style="font-size:13px; color:#6b6862;">1 Load</span></div>
+    <div style="flex:1; height:2px; background:#b9b6ad; margin:0 8px; margin-bottom:20px;"></div>
+    <div style="display:flex; flex-direction:column; align-items:center; gap:5px;"><span style="width:32px; height:32px; border:1.5px solid #2e9e5b; background:#e6f4ec; color:#2e9e5b; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:15px;">✓</span><span style="font-size:13px; color:#6b6862;">2 Parsing</span></div>
+    <div style="flex:1; height:2px; background:#b9b6ad; margin:0 8px; margin-bottom:20px;"></div>
+    <div style="display:flex; flex-direction:column; align-items:center; gap:5px;"><span style="width:32px; height:32px; border:2px solid #3a6ea5; background:#3a6ea5; color:#fff; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:15px; font-weight:700;">3</span><span style="font-size:13px; color:#1f3c5c; font-weight:700;">Matching on HR</span></div>
+    <div style="flex:1; height:2px; background:#b9b6ad; margin:0 8px; margin-bottom:20px;"></div>
+    <div style="display:flex; flex-direction:column; align-items:center; gap:5px;"><span style="width:32px; height:32px; border:1.5px solid #b9b6ad; color:#8a877f; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:15px;">4</span><span style="font-size:13px; color:#8a877f;">Deduplication</span></div>
+    <div style="flex:1; height:2px; background:#b9b6ad; margin:0 8px; margin-bottom:20px;"></div>
+    <div style="display:flex; flex-direction:column; align-items:center; gap:5px;"><span style="width:32px; height:32px; border:1.5px solid #b9b6ad; color:#8a877f; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:15px;">5</span><span style="font-size:13px; color:#8a877f;">Payments</span></div>
+    <div style="flex:1; height:2px; background:#b9b6ad; margin:0 8px; margin-bottom:20px;"></div>
+    <div style="display:flex; flex-direction:column; align-items:center; gap:5px;"><span style="width:32px; height:32px; border:1.5px solid #b9b6ad; color:#8a877f; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:15px;">6</span><span style="font-size:13px; color:#8a877f;">Export</span></div>
+  </div>
+
+  <!-- ===== body: sheet + ops rail ===== -->
+  <div style="display:flex; align-items:stretch; flex:1 1 auto; min-height:0;">
+
+    <!-- sheet -->
+    <div style="flex:1 1 auto; padding:20px 24px; min-width:0; display:flex; flex-direction:column;">
+      <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:12px;">
+        <div>
+          <div style="font-size:21px; font-weight:700;">Registered fencers</div>
+          <div style="font-size:14px; color:#8a877f;">hemaratings.com · 41 matched · 4 uncertain · 3 no match · 48 rows</div>
+        </div>
+        <div style="display:flex; gap:9px;">
+          <div style="padding:7px 15px; border:2px solid #b9b6ad; border-radius:7px; font-size:14px; color:#6b6862;">filter ▾</div>
+          <div style="padding:7px 15px; border:2px solid #3a6ea5; border-radius:7px; font-size:14px; color:#1f3c5c; background:#eef3f9;">↻ re-run match</div>
+        </div>
+      </div>
+
+      <div style="border:1.5px solid #b9b6ad; border-radius:6px; overflow:auto; flex:1 1 auto; background:#fffdf8;">
+        <table style="width:100%; border-collapse:collapse; font-size:15px;">
+          <thead>
+            <tr>
+              <th style="border:1.5px solid #b9b6ad; padding:8px 11px; text-align:left; background:#f1efe8; position:sticky; top:0; width:48px;">No</th>
+              <th style="border:1.5px solid #b9b6ad; padding:8px 11px; text-align:left; background:#f1efe8; position:sticky; top:0;">Name</th>
+              <th style="border:1.5px solid #b9b6ad; padding:8px 11px; text-align:left; background:#f1efe8; position:sticky; top:0; width:60px;">Nat.</th>
+              <th style="border:1.5px solid #b9b6ad; padding:8px 11px; text-align:left; background:#f1efe8; position:sticky; top:0;">Club</th>
+              <th style="border:1.5px solid #b9b6ad; padding:8px 11px; text-align:left; background:#e9f0f7; position:sticky; top:0; width:72px;">HRID</th>
+              <th style="border:1.5px solid #b9b6ad; padding:8px 11px; text-align:left; background:#e9f0f7; position:sticky; top:0;">HR_Name</th>
+              <th style="border:1.5px solid #b9b6ad; padding:8px 11px; text-align:left; background:#e9f0f7; position:sticky; top:0; width:64px;">HR_Nat</th>
+              <th style="border:1.5px solid #b9b6ad; padding:8px 11px; text-align:left; background:#e9f0f7; position:sticky; top:0;">HR_Club</th>
+              <th style="border:1.5px solid #b9b6ad; padding:8px 11px; text-align:center; background:#e9f0f7; position:sticky; top:0; width:72px;">Match</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td style="border:1.5px solid #d8d5cc; padding:8px 11px; color:#8a877f;">1</td>
+              <td style="border:1.5px solid #d8d5cc; padding:8px 11px;">Jan Novák</td>
+              <td style="border:1.5px solid #d8d5cc; padding:8px 11px;">CZ</td>
+              <td style="border:1.5px solid #d8d5cc; padding:8px 11px;">SK Praha</td>
+              <td style="border:1.5px solid #d8d5cc; padding:8px 11px; background:#f7fafd;">10234</td>
+              <td style="border:1.5px solid #d8d5cc; padding:8px 11px; background:#f7fafd;">Jan Novak</td>
+              <td style="border:1.5px solid #d8d5cc; padding:8px 11px; background:#f7fafd;">CZ</td>
+              <td style="border:1.5px solid #d8d5cc; padding:8px 11px; background:#f7fafd;">Prague HEMA</td>
+              <td style="border:1.5px solid #d8d5cc; padding:8px 11px; text-align:center; background:#f7fafd;"><span style="display:inline-flex; width:26px; height:26px; align-items:center; justify-content:center; border:1.5px solid #2e9e5b; color:#2e9e5b; background:#e6f4ec; border-radius:5px;">✓</span></td>
+            </tr>
+            <tr>
+              <td style="border:1.5px solid #d8d5cc; padding:8px 11px; color:#8a877f;">2</td>
+              <td style="border:1.5px solid #d8d5cc; padding:8px 11px;">L. Müller</td>
+              <td style="border:1.5px solid #d8d5cc; padding:8px 11px;">DE</td>
+              <td style="border:1.5px solid #d8d5cc; padding:8px 11px;">Schwertkampf Berlin</td>
+              <td style="border:1.5px solid #d8d5cc; padding:8px 11px; background:#f7fafd;">8821</td>
+              <td style="border:1.5px solid #d8d5cc; padding:8px 11px; background:#f7fafd;">Lukas Mueller</td>
+              <td style="border:1.5px solid #d8d5cc; padding:8px 11px; background:#f7fafd;">DE</td>
+              <td style="border:1.5px solid #d8d5cc; padding:8px 11px; background:#f7fafd;">Berlin Schwert</td>
+              <td style="border:1.5px solid #d8d5cc; padding:8px 11px; text-align:center; background:#f7fafd;"><span style="display:inline-flex; width:26px; height:26px; align-items:center; justify-content:center; border:1.5px solid #d98a00; color:#b5790f; background:#fcf3e0; border-radius:5px;">?</span></td>
+            </tr>
+            <tr>
+              <td style="border:1.5px solid #d8d5cc; padding:8px 11px; color:#8a877f;">3</td>
+              <td style="border:1.5px solid #d8d5cc; padding:8px 11px;">Marie Dubois</td>
+              <td style="border:1.5px solid #d8d5cc; padding:8px 11px;">FR</td>
+              <td style="border:1.5px solid #d8d5cc; padding:8px 11px;">Cercle d'Escrime</td>
+              <td style="border:1.5px solid #d8d5cc; padding:8px 11px; background:#f7fafd; color:#b9b6ad;">—</td>
+              <td style="border:1.5px solid #d8d5cc; padding:8px 11px; background:#f7fafd; color:#b9b6ad;">—</td>
+              <td style="border:1.5px solid #d8d5cc; padding:8px 11px; background:#f7fafd; color:#b9b6ad;">—</td>
+              <td style="border:1.5px solid #d8d5cc; padding:8px 11px; background:#f7fafd; color:#b9b6ad;">—</td>
+              <td style="border:1.5px solid #d8d5cc; padding:8px 11px; text-align:center; background:#f7fafd;"><span style="display:inline-flex; width:26px; height:26px; align-items:center; justify-content:center; border:1.5px solid #c0392b; color:#c0392b; background:#fbe9e7; border-radius:5px;">✗</span></td>
+            </tr>
+            <tr>
+              <td style="border:1.5px solid #d8d5cc; padding:8px 11px; color:#8a877f;">4</td>
+              <td style="border:1.5px solid #d8d5cc; padding:8px 11px;">Petr Svoboda</td>
+              <td style="border:1.5px solid #d8d5cc; padding:8px 11px;">CZ</td>
+              <td style="border:1.5px solid #d8d5cc; padding:8px 11px;">Brno Sword</td>
+              <td style="border:1.5px solid #d8d5cc; padding:8px 11px; background:#f7fafd;">5567</td>
+              <td style="border:1.5px solid #d8d5cc; padding:8px 11px; background:#f7fafd;">Petr Svoboda</td>
+              <td style="border:1.5px solid #d8d5cc; padding:8px 11px; background:#f7fafd;">CZ</td>
+              <td style="border:1.5px solid #d8d5cc; padding:8px 11px; background:#f7fafd;">Brno Sword Club</td>
+              <td style="border:1.5px solid #d8d5cc; padding:8px 11px; text-align:center; background:#f7fafd;"><span style="display:inline-flex; width:26px; height:26px; align-items:center; justify-content:center; border:1.5px solid #2e9e5b; color:#2e9e5b; background:#e6f4ec; border-radius:5px;">✓</span></td>
+            </tr>
+            <tr>
+              <td style="border:1.5px solid #d8d5cc; padding:8px 11px; color:#8a877f;">5</td>
+              <td style="border:1.5px solid #d8d5cc; padding:8px 11px;">A. Kowalska</td>
+              <td style="border:1.5px solid #d8d5cc; padding:8px 11px;">PL</td>
+              <td style="border:1.5px solid #d8d5cc; padding:8px 11px;">Kraków HEMA</td>
+              <td style="border:1.5px solid #d8d5cc; padding:8px 11px; background:#f7fafd;">3340</td>
+              <td style="border:1.5px solid #d8d5cc; padding:8px 11px; background:#f7fafd;">Anna Kowalska</td>
+              <td style="border:1.5px solid #d8d5cc; padding:8px 11px; background:#f7fafd;">PL</td>
+              <td style="border:1.5px solid #d8d5cc; padding:8px 11px; background:#f7fafd;">Krakow HEMA</td>
+              <td style="border:1.5px solid #d8d5cc; padding:8px 11px; text-align:center; background:#f7fafd;"><span style="display:inline-flex; width:26px; height:26px; align-items:center; justify-content:center; border:1.5px solid #d98a00; color:#b5790f; background:#fcf3e0; border-radius:5px;">?</span></td>
+            </tr>
+            <tr>
+              <td style="border:1.5px solid #d8d5cc; padding:8px 11px; color:#8a877f;">6</td>
+              <td style="border:1.5px solid #d8d5cc; padding:8px 11px;">Tom Andersen</td>
+              <td style="border:1.5px solid #d8d5cc; padding:8px 11px;">DK</td>
+              <td style="border:1.5px solid #d8d5cc; padding:8px 11px;">Køge Fægtning</td>
+              <td style="border:1.5px solid #d8d5cc; padding:8px 11px; background:#f7fafd;">7012</td>
+              <td style="border:1.5px solid #d8d5cc; padding:8px 11px; background:#f7fafd;">Tom Andersen</td>
+              <td style="border:1.5px solid #d8d5cc; padding:8px 11px; background:#f7fafd;">DK</td>
+              <td style="border:1.5px solid #d8d5cc; padding:8px 11px; background:#f7fafd;">Koge Fencing</td>
+              <td style="border:1.5px solid #d8d5cc; padding:8px 11px; text-align:center; background:#f7fafd;"><span style="display:inline-flex; width:26px; height:26px; align-items:center; justify-content:center; border:1.5px solid #2e9e5b; color:#2e9e5b; background:#e6f4ec; border-radius:5px;">✓</span></td>
+            </tr>
+            <tr>
+              <td style="border:1.5px solid #d8d5cc; padding:8px 11px; color:#8a877f;">7</td>
+              <td style="border:1.5px solid #d8d5cc; padding:8px 11px;">Sofia Rossi</td>
+              <td style="border:1.5px solid #d8d5cc; padding:8px 11px;">IT</td>
+              <td style="border:1.5px solid #d8d5cc; padding:8px 11px;">Sala d'Arme Milano</td>
+              <td style="border:1.5px solid #d8d5cc; padding:8px 11px; background:#f7fafd;">9145</td>
+              <td style="border:1.5px solid #d8d5cc; padding:8px 11px; background:#f7fafd;">Sofia Rossi</td>
+              <td style="border:1.5px solid #d8d5cc; padding:8px 11px; background:#f7fafd;">IT</td>
+              <td style="border:1.5px solid #d8d5cc; padding:8px 11px; background:#f7fafd;">Milano HEMA</td>
+              <td style="border:1.5px solid #d8d5cc; padding:8px 11px; text-align:center; background:#f7fafd;"><span style="display:inline-flex; width:26px; height:26px; align-items:center; justify-content:center; border:1.5px solid #d98a00; color:#b5790f; background:#fcf3e0; border-radius:5px;">?</span></td>
+            </tr>
+            <tr>
+              <td style="border:1.5px solid #d8d5cc; padding:8px 11px; color:#8a877f;">8</td>
+              <td style="border:1.5px solid #d8d5cc; padding:8px 11px;">Erik Johansson</td>
+              <td style="border:1.5px solid #d8d5cc; padding:8px 11px;">SE</td>
+              <td style="border:1.5px solid #d8d5cc; padding:8px 11px;">Göteborg HFS</td>
+              <td style="border:1.5px solid #d8d5cc; padding:8px 11px; background:#f7fafd;">2210</td>
+              <td style="border:1.5px solid #d8d5cc; padding:8px 11px; background:#f7fafd;">Erik Johansson</td>
+              <td style="border:1.5px solid #d8d5cc; padding:8px 11px; background:#f7fafd;">SE</td>
+              <td style="border:1.5px solid #d8d5cc; padding:8px 11px; background:#f7fafd;">Gothenburg HFS</td>
+              <td style="border:1.5px solid #d8d5cc; padding:8px 11px; text-align:center; background:#f7fafd;"><span style="display:inline-flex; width:26px; height:26px; align-items:center; justify-content:center; border:1.5px solid #2e9e5b; color:#2e9e5b; background:#e6f4ec; border-radius:5px;">✓</span></td>
+            </tr>
+            <tr>
+              <td style="border:1.5px solid #d8d5cc; padding:8px 11px; color:#8a877f;">9</td>
+              <td style="border:1.5px solid #d8d5cc; padding:8px 11px;">Wojtek Zieliński</td>
+              <td style="border:1.5px solid #d8d5cc; padding:8px 11px;">PL</td>
+              <td style="border:1.5px solid #d8d5cc; padding:8px 11px;">Warszawa Longsword</td>
+              <td style="border:1.5px solid #d8d5cc; padding:8px 11px; background:#f7fafd; color:#b9b6ad;">—</td>
+              <td style="border:1.5px solid #d8d5cc; padding:8px 11px; background:#f7fafd; color:#b9b6ad;">—</td>
+              <td style="border:1.5px solid #d8d5cc; padding:8px 11px; background:#f7fafd; color:#b9b6ad;">—</td>
+              <td style="border:1.5px solid #d8d5cc; padding:8px 11px; background:#f7fafd; color:#b9b6ad;">—</td>
+              <td style="border:1.5px solid #d8d5cc; padding:8px 11px; text-align:center; background:#f7fafd;"><span style="display:inline-flex; width:26px; height:26px; align-items:center; justify-content:center; border:1.5px solid #c0392b; color:#c0392b; background:#fbe9e7; border-radius:5px;">✗</span></td>
+            </tr>
+            <tr>
+              <td style="border:1.5px solid #d8d5cc; padding:8px 11px; color:#8a877f;">10</td>
+              <td style="border:1.5px solid #d8d5cc; padding:8px 11px;">Klára Horáková</td>
+              <td style="border:1.5px solid #d8d5cc; padding:8px 11px;">CZ</td>
+              <td style="border:1.5px solid #d8d5cc; padding:8px 11px;">SK Praha</td>
+              <td style="border:1.5px solid #d8d5cc; padding:8px 11px; background:#f7fafd;">6678</td>
+              <td style="border:1.5px solid #d8d5cc; padding:8px 11px; background:#f7fafd;">Klara Horakova</td>
+              <td style="border:1.5px solid #d8d5cc; padding:8px 11px; background:#f7fafd;">CZ</td>
+              <td style="border:1.5px solid #d8d5cc; padding:8px 11px; background:#f7fafd;">Prague HEMA</td>
+              <td style="border:1.5px solid #d8d5cc; padding:8px 11px; text-align:center; background:#f7fafd;"><span style="display:inline-flex; width:26px; height:26px; align-items:center; justify-content:center; border:1.5px solid #2e9e5b; color:#2e9e5b; background:#e6f4ec; border-radius:5px;">✓</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div style="margin-top:8px; font-size:13.5px; color:#8a877f;">Showing 1–10 of 48</div>
+    </div>
+
+    <!-- ops rail -->
+    <div style="flex:none; width:300px; padding:20px 16px; border-left:2px solid #2b2b2b; background:#faf8f1; display:flex; flex-direction:column; gap:16px; overflow:auto;">
+      <div style="font-size:13px; color:#8a877f; text-transform:uppercase; letter-spacing:1px;">Operations · Matching on HR</div>
+
+      <div style="border:2px solid #2b2b2b; border-radius:7px; padding:12px 13px;">
+        <div style="font-weight:700; font-size:16px; margin-bottom:9px;">General rules</div>
+        <div style="display:flex; flex-direction:column; gap:8px; font-size:14px;">
+          <label style="display:flex; gap:8px; align-items:center;"><span style="flex:none; width:18px; height:18px; border:1.5px solid #2e9e5b; background:#e6f4ec; border-radius:4px; display:flex; align-items:center; justify-content:center; color:#2e9e5b; font-size:12px;">✓</span> Match by Name + Nat.</label>
+          <label style="display:flex; gap:8px; align-items:center;"><span style="flex:none; width:18px; height:18px; border:1.5px solid #2e9e5b; background:#e6f4ec; border-radius:4px; display:flex; align-items:center; justify-content:center; color:#2e9e5b; font-size:12px;">✓</span> Auto-accept exact club</label>
+          <label style="display:flex; gap:8px; align-items:center;"><span style="flex:none; width:18px; height:18px; border:1.5px solid #2e9e5b; background:#e6f4ec; border-radius:4px; display:flex; align-items:center; justify-content:center; color:#2e9e5b; font-size:12px;">✓</span> Skip already-matched</label>
+          <div style="display:flex; gap:8px; align-items:center; justify-content:space-between; padding-top:2px;"><span>Min. similarity</span><span style="padding:2px 10px; border:1.5px solid #b9b6ad; border-radius:5px; background:#fff;">85 %</span></div>
+        </div>
+      </div>
+
+      <div style="border:2px dashed #b9b6ad; border-radius:7px; padding:12px 13px;">
+        <div style="font-weight:700; font-size:16px; margin-bottom:9px;">Columns for step</div>
+        <div style="display:flex; flex-wrap:wrap; gap:6px;">
+          <span style="font-size:13px; padding:4px 10px; border:1.5px solid #b9b6ad; border-radius:14px; background:#eef0e9;">HRID</span>
+          <span style="font-size:13px; padding:4px 10px; border:1.5px solid #b9b6ad; border-radius:14px; background:#eef0e9;">HR_Name</span>
+          <span style="font-size:13px; padding:4px 10px; border:1.5px solid #b9b6ad; border-radius:14px; background:#eef0e9;">HR_Nat</span>
+          <span style="font-size:13px; padding:4px 10px; border:1.5px solid #b9b6ad; border-radius:14px; background:#eef0e9;">HR_Club</span>
+          <span style="font-size:13px; padding:4px 10px; border:1.5px solid #b9b6ad; border-radius:14px; background:#eef0e9;">Match</span>
+          <span style="font-size:13px; padding:4px 10px; border:1.5px dashed #b9b6ad; border-radius:14px; color:#8a877f;">+ add</span>
+        </div>
+      </div>
+
+      <div style="flex:1 1 auto;">
+        <div style="font-weight:700; font-size:16px; margin-bottom:9px;">Manual edits <span style="color:#8a877f; font-weight:400;">— replayed on re-run (4)</span></div>
+        <div style="display:flex; flex-direction:column; gap:8px; font-size:13.5px;">
+          <div style="display:flex; gap:8px; padding:8px 10px; border:1.5px solid #d8d5cc; border-radius:6px; background:#fff;"><span style="flex:none; color:#b5790f; font-weight:700;">~</span><div><div>change · #3 HRID → "not found"</div><div style="color:#8a877f; font-size:12px;">Marie Dubois · 14:02</div></div></div>
+          <div style="display:flex; gap:8px; padding:8px 10px; border:1.5px solid #d8d5cc; border-radius:6px; background:#fff;"><span style="flex:none; color:#2e9e5b; font-weight:700;">✓</span><div><div>accept · #5 match (was ?)</div><div style="color:#8a877f; font-size:12px;">A. Kowalska → 3340 · 14:05</div></div></div>
+          <div style="display:flex; gap:8px; padding:8px 10px; border:1.5px solid #d8d5cc; border-radius:6px; background:#fff;"><span style="flex:none; color:#b5790f; font-weight:700;">~</span><div><div>change · #2 HR_Club → "Berlin Schwert"</div><div style="color:#8a877f; font-size:12px;">L. Müller · 14:09</div></div></div>
+          <div style="display:flex; gap:8px; padding:8px 10px; border:1.5px solid #d8d5cc; border-radius:6px; background:#fff;"><span style="flex:none; color:#3a6ea5; font-weight:700;">+</span><div><div>add · club alias "Brno Sword" = "Brno Sword Club"</div><div style="color:#8a877f; font-size:12px;">rule · 14:11</div></div></div>
+        </div>
+        <div style="margin-top:10px; padding:8px; border:1.5px dashed #b9b6ad; border-radius:6px; text-align:center; font-size:13.5px; color:#8a877f;">+ add manual edit</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+
+
+</body></html>
