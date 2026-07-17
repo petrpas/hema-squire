@@ -3,7 +3,7 @@
 ## 1. Foundations
 - [x] 1.1 Scaffold application (backend, frontend shell per wireframe B, CI)
 - [x] 1.2 Multi-tenant data model: tournaments, fencers, registrations
-- [ ] 1.3 Localization infrastructure with complete CZ locale
+- [x] 1.3 Localization infrastructure with complete CZ locale
 - [ ] 1.4 hr-integration: fighters index download, cache, refresh, search
 
 ## 2. Accounts and registration

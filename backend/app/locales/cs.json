@@ -1,0 +1,11 @@
+{
+  "app": {
+    "title": "HEMA Squire"
+  },
+  "email": {
+    "common": {
+      "greeting": "Ahoj {name},",
+      "signature": "Tým {tournament}"
+    }
+  }
+}
