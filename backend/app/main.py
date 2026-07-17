@@ -1,5 +1,7 @@
 from fastapi import FastAPI
 
+from app.routers import auth, taxonomy_api, tournaments
+
 
 def create_app() -> FastAPI:
     app = FastAPI(title="HEMA Squire")
@@ -8,6 +10,9 @@ def create_app() -> FastAPI:
     def health() -> dict[str, str]:
         return {"status": "ok"}
 
+    app.include_router(auth.router)
+    app.include_router(tournaments.router)
+    app.include_router(taxonomy_api.router)
     return app
 
 

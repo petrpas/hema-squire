@@ -56,6 +56,7 @@ class Fencer(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     email: Mapped[str] = mapped_column(String(320), unique=True)
+    password_hash: Mapped[str | None] = mapped_column(String(200))
     display_name: Mapped[str] = mapped_column(String(200))
     hr_id: Mapped[int | None] = mapped_column(unique=True)
     nationality: Mapped[str | None] = mapped_column(String(100))

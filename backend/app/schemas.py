@@ -1,0 +1,87 @@
+import datetime
+
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
+
+from app.models import UnpaidListTreatment
+
+
+class SignupIn(BaseModel):
+    email: EmailStr
+    password: str = Field(min_length=8)
+    display_name: str = Field(min_length=1, max_length=200)
+
+
+class LoginIn(BaseModel):
+    email: EmailStr
+    password: str
+
+
+class TokenOut(BaseModel):
+    token: str
+
+
+class DisciplineIn(BaseModel):
+    code: str
+    name: str | None = None
+    capacity: int = Field(gt=0)
+    fee: int = Field(ge=0)
+    fee_early: int | None = Field(default=None, ge=0)
+
+
+class DisciplineOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    code: str
+    name: str
+    capacity: int
+    fee: int
+    fee_early: int | None
+
+
+class TournamentCreate(BaseModel):
+    slug: str = Field(pattern=r"^[a-z0-9][a-z0-9-]{1,98}$")
+    display_name: str = Field(min_length=1, max_length=200)
+    date: datetime.date
+    language: str = "cs"
+
+
+class TournamentUpdate(BaseModel):
+    display_name: str | None = Field(default=None, min_length=1, max_length=200)
+    date: datetime.date | None = None
+    language: str | None = None
+    reservation_validity_days: int | None = Field(default=None, gt=0)
+    reminder_day: int | None = Field(default=None, gt=0)
+    amount_tolerance_percent: int | None = Field(default=None, ge=0, le=100)
+    refundable_until: datetime.date | None = None
+    bank_account: str | None = None
+    unpaid_list_treatment: UnpaidListTreatment | None = None
+    early_bird_until: datetime.date | None = None
+    weapon_rental_fee: int | None = Field(default=None, ge=0)
+    weapon_rental_fee_early: int | None = Field(default=None, ge=0)
+    afterparty_fee: int | None = Field(default=None, ge=0)
+    afterparty_fee_early: int | None = Field(default=None, ge=0)
+
+
+class TournamentOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    slug: str
+    display_name: str
+    date: datetime.date
+    language: str
+    reservation_validity_days: int
+    reminder_day: int
+    amount_tolerance_percent: int
+    refundable_until: datetime.date | None
+    bank_account: str | None
+    unpaid_list_treatment: UnpaidListTreatment
+    early_bird_until: datetime.date | None
+    weapon_rental_fee: int
+    weapon_rental_fee_early: int | None
+    afterparty_fee: int
+    afterparty_fee_early: int | None
+    disciplines: list[DisciplineOut]
+
+
+class OrganizerAdd(BaseModel):
+    email: EmailStr
