@@ -1,2 +1,2 @@
 # hema-squire
-A application for HEMA tournament agenda
+An application for HEMA tournament agenda
