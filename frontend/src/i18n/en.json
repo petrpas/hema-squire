@@ -1,0 +1,29 @@
+{
+  "app": {
+    "title": "HEMA Squire"
+  },
+  "stage": {
+    "pre": "Pre Tournament",
+    "in": "In Tournament",
+    "post": "Post Tournament"
+  },
+  "phase": {
+    "load": "Load",
+    "parsing": "Parsing",
+    "matching": "Matching on HR",
+    "dedup": "Deduplication",
+    "payments": "Payments",
+    "export": "Export"
+  },
+  "rail": {
+    "generalRules": "General rules",
+    "columnsForStep": "Columns for step",
+    "manualEdits": "Manual edits log"
+  },
+  "sheet": {
+    "empty": "No fencers yet. Data will appear after registrations load or a table import."
+  },
+  "tournament": {
+    "unnamed": "New tournament"
+  }
+}

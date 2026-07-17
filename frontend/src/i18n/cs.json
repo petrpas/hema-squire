@@ -1,0 +1,29 @@
+{
+  "app": {
+    "title": "HEMA Squire"
+  },
+  "stage": {
+    "pre": "Před turnajem",
+    "in": "Turnaj",
+    "post": "Po turnaji"
+  },
+  "phase": {
+    "load": "Načtení",
+    "parsing": "Parsování",
+    "matching": "Párování na HR",
+    "dedup": "Deduplikace",
+    "payments": "Platby",
+    "export": "Export"
+  },
+  "rail": {
+    "generalRules": "Obecná pravidla",
+    "columnsForStep": "Sloupce kroku",
+    "manualEdits": "Ruční úpravy"
+  },
+  "sheet": {
+    "empty": "Zatím žádní šermíři. Data se objeví po načtení registrací nebo importu tabulky."
+  },
+  "tournament": {
+    "unnamed": "Nový turnaj"
+  }
+}
