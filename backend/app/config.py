@@ -5,7 +5,7 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="HEMA_SQUIRE_", env_file=".env")
 
     database_url: str = "sqlite:///./hema_squire.sqlite"
-    secret_key: str = "dev-secret-change-in-production"
+    secret_key: str = "dev-only-secret-change-me-in-production!"
     token_ttl_hours: int = 24 * 14
 
 

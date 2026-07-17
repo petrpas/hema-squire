@@ -28,6 +28,10 @@ The app owns canonical data (versioned JSON export). The Google Sheets export re
 
 LLM appears only on the import path (parse, fuzzy HR match, dedup classification and merge proposals). Same-hr_id merges are LLM-proposed but organizer-confirmed (owner's decision, 2026-07-17) — no merge is applied without confirmation. Native-path matching is interactive search at account creation, not LLM. The v1 self-healing HTML parser is downgraded: detect format drift, fail loudly with diagnostics; LLM-assisted repair is an operator tool, not a runtime dependency.
 
+## Decision 7 — Substitute billing and full-discipline choice (owner, 2026-07-17)
+
+Substitutes pay nothing at registration; on admission the fee — at prices frozen to the original registration time — is added and a fresh payment window opens. When part of a selection is full, the server rejects with the list of full disciplines and the fencer chooses: register the open subset, or queue the entire registration as substitute for everything selected. There is no silent split.
+
 ## Open decisions
 
 - Foreign payment channel: VS-in-message instructions (~80 % success, manual fallback) vs Wise/Revolut vs Stripe payment link (~1.5 % fee, no matching needed). Parameterize per tournament; default undecided.

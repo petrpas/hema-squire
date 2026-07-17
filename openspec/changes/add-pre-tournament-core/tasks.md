@@ -9,7 +9,7 @@
 ## 2. Accounts and registration
 - [x] 2.1 Fencer account creation with HR binding flow (HR search stubbed until 1.4)
 - [x] 2.2 Tournament administration: disciplines, capacity, pricing, parameters
-- [ ] 2.3 Registration flow: disciplines + extras, fee computation, reservation with VS
+- [x] 2.3 Registration flow: disciplines + extras, fee computation, reservation with VS
 - [ ] 2.4 Confirmation email with SPAYD QR
 - [ ] 2.5 Public participant list (paid-only visibility)
 

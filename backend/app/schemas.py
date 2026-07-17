@@ -2,7 +2,7 @@ import datetime
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
-from app.models import UnpaidListTreatment
+from app.models import RefundState, RegistrationState, UnpaidListTreatment
 
 
 class SignupIn(BaseModel):
@@ -107,3 +107,43 @@ class TournamentOut(BaseModel):
 
 class OrganizerAdd(BaseModel):
     email: EmailStr
+
+
+class RegisterIn(BaseModel):
+    disciplines: list[str] = Field(min_length=1)
+    weapon_rentals: list[str] = []
+    afterparty: bool = False
+    aftersparring: bool = False
+    accommodation: str | None = None
+    notes: str | None = None
+    wait_for_all: bool = False
+
+
+class RegistrationEntryOut(BaseModel):
+    code: str
+    is_substitute: bool
+    queue_position: int | None
+
+
+class RegistrationOut(BaseModel):
+    state: RegistrationState
+    vs: int
+    total_amount: int
+    expires_at: datetime.datetime | None
+    registered_at: datetime.datetime
+    weapon_rentals: list[str]
+    afterparty: bool
+    aftersparring: bool
+    accommodation: str | None
+    notes: str | None
+    refundable: bool | None
+    refund_state: RefundState
+    entries: list[RegistrationEntryOut]
+
+
+class AvailabilityOut(BaseModel):
+    code: str
+    capacity: int
+    taken: int
+    free: int
+    queue_length: int

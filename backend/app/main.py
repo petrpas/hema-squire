@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 
-from app.routers import accounts, auth, taxonomy_api, tournaments
+from app.routers import accounts, auth, registrations, taxonomy_api, tournaments
 
 
 def create_app() -> FastAPI:
@@ -13,6 +13,7 @@ def create_app() -> FastAPI:
     app.include_router(auth.router)
     app.include_router(accounts.router)
     app.include_router(tournaments.router)
+    app.include_router(registrations.router)
     app.include_router(taxonomy_api.router)
     return app
 
