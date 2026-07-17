@@ -8,7 +8,29 @@ from app.models import UnpaidListTreatment
 class SignupIn(BaseModel):
     email: EmailStr
     password: str = Field(min_length=8)
-    display_name: str = Field(min_length=1, max_length=200)
+    display_name: str | None = Field(default=None, min_length=1, max_length=200)
+    hr_id: int | None = None
+    club: str | None = Field(default=None, max_length=200)
+
+
+class AccountOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    email: EmailStr
+    display_name: str
+    hr_id: int | None
+    nationality: str | None
+    club: str | None
+
+
+class AccountUpdate(BaseModel):
+    email: EmailStr | None = None
+    display_name: str | None = Field(default=None, min_length=1, max_length=200)
+    club: str | None = Field(default=None, max_length=200)
+
+
+class HRBindIn(BaseModel):
+    hr_id: int
 
 
 class LoginIn(BaseModel):

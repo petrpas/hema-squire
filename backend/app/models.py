@@ -68,6 +68,21 @@ class Fencer(Base):
     registrations: Mapped[list[Registration]] = relationship(back_populates="fencer")
 
 
+class FencerProfileAudit(Base):
+    """Audit trail of fencer profile changes (spec: profile changes are audited)."""
+
+    __tablename__ = "fencer_profile_audit"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    fencer_id: Mapped[int] = mapped_column(ForeignKey("fencers.id"))
+    field: Mapped[str] = mapped_column(String(50))
+    old_value: Mapped[str | None] = mapped_column(Text)
+    new_value: Mapped[str | None] = mapped_column(Text)
+    changed_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+
+
 class Tournament(Base):
     __tablename__ = "tournaments"
 

@@ -7,7 +7,7 @@
 - [ ] 1.4 hr-integration: fighters index download, cache, refresh, search
 
 ## 2. Accounts and registration
-- [ ] 2.1 Fencer account creation with HR binding flow
+- [x] 2.1 Fencer account creation with HR binding flow (HR search stubbed until 1.4)
 - [x] 2.2 Tournament administration: disciplines, capacity, pricing, parameters
 - [ ] 2.3 Registration flow: disciplines + extras, fee computation, reservation with VS
 - [ ] 2.4 Confirmation email with SPAYD QR
