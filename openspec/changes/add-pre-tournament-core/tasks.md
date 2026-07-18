@@ -33,5 +33,5 @@
 
 ## 6. Validation
 - [x] 6.1 Determinism test: source + rules + params → identical state across reruns
-- [ ] 6.2 Payment lifecycle end-to-end test (reserve → QR → match → paid; expiry path)
+- [x] 6.2 Payment lifecycle end-to-end test (reserve → QR → match → paid; expiry path)
 - [ ] 6.3 Pilot replay on a real tournament dataset (Na Duel! archive)

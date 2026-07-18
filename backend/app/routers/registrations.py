@@ -79,6 +79,7 @@ def registration_out(session, registration: Registration) -> dict:
         "total_amount": registration.total_amount,
         "expires_at": registration.expires_at,
         "registered_at": registration.registered_at,
+        "paid_at": registration.paid_at,
         "weapon_rentals": registration.weapon_rentals,
         "afterparty": registration.afterparty,
         "aftersparring": registration.aftersparring,

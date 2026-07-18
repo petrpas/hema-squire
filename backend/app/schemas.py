@@ -135,6 +135,7 @@ class RegistrationOut(BaseModel):
     total_amount: int
     expires_at: datetime.datetime | None
     registered_at: datetime.datetime
+    paid_at: datetime.datetime | None
     weapon_rentals: list[str]
     afterparty: bool
     aftersparring: bool
