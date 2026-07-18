@@ -32,6 +32,6 @@
 - [x] 5.4 Google Sheets export with preserve/refresh semantics
 
 ## 6. Validation
-- [ ] 6.1 Determinism test: source + rules + params → identical state across reruns
+- [x] 6.1 Determinism test: source + rules + params → identical state across reruns
 - [ ] 6.2 Payment lifecycle end-to-end test (reserve → QR → match → paid; expiry path)
 - [ ] 6.3 Pilot replay on a real tournament dataset (Na Duel! archive)
