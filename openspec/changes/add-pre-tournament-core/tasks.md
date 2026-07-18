@@ -28,7 +28,7 @@
 ## 5. Import and export
 - [x] 5.1 Table import: file intake, LLM parse, problems surfacing (Google Sheet intake arrives with the 5.4 Sheets client)
 - [x] 5.2 LLM HR matching and three-band dedup with decision persistence
-- [ ] 5.3 Canonical JSON export (versioned schema)
+- [x] 5.3 Canonical JSON export (versioned schema)
 - [ ] 5.4 Google Sheets export with preserve/refresh semantics
 
 ## 6. Validation
