@@ -56,18 +56,56 @@ def send_registration_confirmation(
         vs=registration.vs,
         expires=registration.expires_at.date().isoformat() if registration.expires_at else "-",
     )
-    qr = None
-    if tournament.bank_account:
-        payment_message = f"VS{registration.vs} {tournament.display_name}"
-        qr = spayd.qr_png(
-            spayd.spayd_string(
-                tournament.bank_account,
-                registration.total_amount,
-                registration.vs,
-                payment_message,
-            )
-        )
+    qr = payment_qr(tournament, registration)
     mailer.send(build_message(fencer.email, settings.email_sender, subject, body, qr=qr))
+
+
+def payment_qr(tournament: Tournament, registration: Registration) -> bytes | None:
+    if not tournament.bank_account:
+        return None
+    payment_message = f"VS{registration.vs} {tournament.display_name}"
+    return spayd.qr_png(
+        spayd.spayd_string(
+            tournament.bank_account,
+            registration.total_amount,
+            registration.vs,
+            payment_message,
+        )
+    )
+
+
+def send_payment_reminder(
+    mailer: Mailer, tournament: Tournament, fencer: Fencer, registration: Registration
+) -> None:
+    lang = tournament.language
+    subject = t("email.reminder.subject", lang, tournament=tournament.display_name)
+    body = t(
+        "email.reminder.body",
+        lang,
+        name=fencer.display_name,
+        tournament=tournament.display_name,
+        total=registration.total_amount,
+        account=tournament.bank_account or "?",
+        vs=registration.vs,
+        expires=registration.expires_at.date().isoformat() if registration.expires_at else "-",
+    )
+    qr = payment_qr(tournament, registration)
+    mailer.send(build_message(fencer.email, settings.email_sender, subject, body, qr=qr))
+
+
+def send_reservation_expired(
+    mailer: Mailer, tournament: Tournament, fencer: Fencer, registration: Registration
+) -> None:
+    lang = tournament.language
+    subject = t("email.expired.subject", lang, tournament=tournament.display_name)
+    body = t(
+        "email.expired.body",
+        lang,
+        name=fencer.display_name,
+        tournament=tournament.display_name,
+        vs=registration.vs,
+    )
+    mailer.send(build_message(fencer.email, settings.email_sender, subject, body))
 
 
 def send_payment_received(

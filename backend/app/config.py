@@ -9,6 +9,8 @@ class Settings(BaseSettings):
     token_ttl_hours: int = 24 * 14
     email_outbox_dir: str = "./outbox"
     email_sender: str = "noreply@hemasquire.local"
+    scheduler_enabled: bool = True
+    scheduler_interval_seconds: int = 300
 
 
 settings = Settings()

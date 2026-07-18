@@ -4,7 +4,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, UploadFile
 from sqlalchemy import select
 
-from app import bank, matching
+from app import bank, matching, scheduler
 from app.auth import require_organizer
 from app.mail import Mailer, get_mailer
 from app.models import BankTransaction
@@ -61,6 +61,19 @@ def fio_poll(
     today = date.today()
     transactions = fio.fetch(tournament.fio_token, today - timedelta(days=days_back), today)
     return _ingest_and_match(session, tournament, mailer, "fio_api", transactions)
+
+
+@router.post("/process")
+def process_lifecycle(
+    tournament: TournamentDep, session: SessionDep, fencer: FencerDep, mailer: MailerDep
+) -> dict[str, int]:
+    """Run reminders and expiries for this tournament now (also runs periodically)."""
+    require_organizer(session, tournament, fencer)
+    expired = scheduler.process_expiries(session, tournament, mailer)
+    return {
+        "reminders": scheduler.process_reminders(session, tournament, mailer),
+        "expired": expired,
+    }
 
 
 @router.get("/unmatched", response_model=list[TransactionOut])

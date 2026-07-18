@@ -1,10 +1,23 @@
+import asyncio
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 
+from app.config import settings
 from app.routers import accounts, auth, payments, registrations, taxonomy_api, tournaments
+from app.scheduler import scheduler_loop
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    task = asyncio.create_task(scheduler_loop()) if settings.scheduler_enabled else None
+    yield
+    if task is not None:
+        task.cancel()
 
 
 def create_app() -> FastAPI:
-    app = FastAPI(title="HEMA Squire")
+    app = FastAPI(title="HEMA Squire", lifespan=lifespan)
 
     @app.get("/api/health")
     def health() -> dict[str, str]:

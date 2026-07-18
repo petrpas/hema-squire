@@ -15,6 +15,14 @@
       "afterparty": "Afterparty",
       "aftersparring": "After-sparring"
     },
+    "reminder": {
+      "subject": "Připomínka platby — {tournament}",
+      "body": "Ahoj {name},\n\njen připomínáme, že tvá registrace na {tournament} zatím čeká na platbu:\n\nCelkem k úhradě: {total} Kč\nÚčet: {account}\nVariabilní symbol: {vs}\nRezervace platí do: {expires}\n\nZaplatit můžeš naskenováním přiloženého QR kódu. Pokud platba do konce rezervace nedorazí, místo se automaticky uvolní.\n\nTým {tournament}"
+    },
+    "expired": {
+      "subject": "Rezervace vypršela — {tournament}",
+      "body": "Ahoj {name},\n\ntvá rezervace na {tournament} (VS {vs}) bohužel vypršela bez přijaté platby a místo bylo uvolněno.\n\nPokud máš o účast stále zájem, můžeš se zaregistrovat znovu, dokud je volná kapacita.\n\nTým {tournament}"
+    },
     "paid": {
       "subject": "Platba přijata — {tournament}",
       "body": "Ahoj {name},\n\npřijali jsme tvou platbu {total} Kč (VS {vs}) a tvoje účast na {tournament} je potvrzena. Uvidíme se na turnaji!\n\nTým {tournament}"
