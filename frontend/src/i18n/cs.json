@@ -44,12 +44,32 @@
     "hr_id": "HRID",
     "disciplines": "Disciplíny",
     "vs": "VS",
-    "state": "Stav"
+    "state": "Stav",
+    "match": "Match",
+    "weapon_rentals": "Zapůjčení",
+    "afterparty": "Afterparty",
+    "registered_at": "Registrace",
+    "notes": "Poznámky",
+    "total_amount": "Částka",
+    "expires_at": "Platí do",
+    "paid_at": "Zaplaceno"
+  },
+  "param": {
+    "early_bird_until": "Early bird do",
+    "weapon_rental_fee": "Cena zapůjčení (Kč)",
+    "afterparty_fee": "Cena afterparty (Kč)",
+    "reservation_validity_days": "Platnost rezervace (dny)",
+    "reminder_day": "Den připomínky",
+    "amount_tolerance_percent": "Tolerance částky (%)",
+    "refundable_until": "Vratné do",
+    "bank_account": "Účet (IBAN)"
   },
   "rail": {
     "operations": "Operace",
     "generalRules": "Obecná pravidla",
-    "rulesHint": "Parametry operací přibudou s jednotlivými fázemi.",
+    "rulesHint": "Tato fáze zatím nemá parametry.",
+    "parameters": "Parametry",
+    "save": "Uložit",
     "columnsForStep": "Sloupce kroku",
     "manualEdits": "Ruční úpravy",
     "noEdits": "Zatím žádné ruční úpravy."

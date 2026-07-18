@@ -48,6 +48,20 @@ export interface Tournament {
   language: string;
 }
 
+export interface TournamentDetail extends Tournament {
+  reservation_validity_days: number;
+  reminder_day: number;
+  amount_tolerance_percent: number;
+  refundable_until: string | null;
+  bank_account: string | null;
+  unpaid_list_treatment: string;
+  early_bird_until: string | null;
+  weapon_rental_fee: number;
+  weapon_rental_fee_early: number | null;
+  afterparty_fee: number;
+  afterparty_fee_early: number | null;
+}
+
 export interface SheetRow {
   id: string;
   name: string;
@@ -55,9 +69,18 @@ export interface SheetRow {
   club: string | null;
   hr_id: number | null;
   disciplines: string[];
+  substitute_for: string[];
   state: string;
   vs: number | null;
   paid: boolean;
+  registered_at: string;
+  total_amount: number;
+  expires_at: string | null;
+  paid_at: string | null;
+  weapon_rentals: string[];
+  afterparty: boolean;
+  aftersparring: boolean;
+  notes: string | null;
   [key: string]: unknown;
 }
 
@@ -84,5 +107,11 @@ export const api = {
       body: JSON.stringify({ email, password }),
     }),
   tournaments: () => request<Tournament[]>("/api/tournaments"),
+  tournament: (slug: string) => request<TournamentDetail>(`/api/tournaments/${slug}`),
+  updateTournament: (slug: string, patch: Record<string, unknown>) =>
+    request<TournamentDetail>(`/api/tournaments/${slug}`, {
+      method: "PATCH",
+      body: JSON.stringify(patch),
+    }),
   sheet: (slug: string) => request<Sheet>(`/api/tournaments/${slug}/sheet`),
 };

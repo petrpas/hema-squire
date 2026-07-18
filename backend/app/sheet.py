@@ -37,9 +37,22 @@ def base_rows(session: Session, tournament: Tournament) -> dict[str, Row]:
             "disciplines": [
                 e.discipline.code for e in registration.entries if not e.is_substitute
             ],
+            "substitute_for": [
+                e.discipline.code for e in registration.entries if e.is_substitute
+            ],
             "state": registration.state.value,
             "vs": registration.vs,
             "paid": registration.state == RegistrationState.PAID,
+            "registered_at": registration.registered_at.isoformat(),
+            "total_amount": registration.total_amount,
+            "expires_at": registration.expires_at.isoformat()
+            if registration.expires_at
+            else None,
+            "paid_at": registration.paid_at.isoformat() if registration.paid_at else None,
+            "weapon_rentals": registration.weapon_rentals,
+            "afterparty": registration.afterparty,
+            "aftersparring": registration.aftersparring,
+            "notes": registration.notes,
             "_deleted": False,
         }
     return rows

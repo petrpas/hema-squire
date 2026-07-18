@@ -328,6 +328,51 @@ button.secondary {
   width: 4rem;
 }
 
+/* phase-owned columns get the wireframe's blue tint */
+th.col-phase {
+  background: #e9f0f7;
+}
+
+td.col-phase {
+  background: #f7fafd;
+}
+
+.muted {
+  color: #8a877f;
+}
+
+.param-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.param-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  font-size: 0.8rem;
+  color: #6b6862;
+}
+
+.param-field input {
+  font: inherit;
+  padding: 0.3rem 0.45rem;
+  border: 1px solid #b9b6ad;
+  border-radius: 5px;
+  background: #fff;
+}
+
+.param-save {
+  margin-top: 0.6rem;
+  width: 100%;
+}
+
+.param-save:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
 .badge {
   display: inline-flex;
   align-items: center;

@@ -1,1 +1,1 @@
-{"root":["./src/App.tsx","./src/Console.tsx","./src/Login.tsx","./src/TournamentPicker.tsx","./src/api.ts","./src/main.tsx","./src/vite-env.d.ts","./src/i18n/index.ts"],"version":"5.9.3"}
+{"root":["./src/App.tsx","./src/Console.tsx","./src/Login.tsx","./src/ParamPanel.tsx","./src/TournamentPicker.tsx","./src/api.ts","./src/main.tsx","./src/vite-env.d.ts","./src/i18n/index.ts"],"version":"5.9.3"}

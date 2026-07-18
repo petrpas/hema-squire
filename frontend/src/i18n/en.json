@@ -44,12 +44,32 @@
     "hr_id": "HRID",
     "disciplines": "Disciplines",
     "vs": "VS",
-    "state": "State"
+    "state": "State",
+    "match": "Match",
+    "weapon_rentals": "Rentals",
+    "afterparty": "Afterparty",
+    "registered_at": "Registered",
+    "notes": "Notes",
+    "total_amount": "Amount",
+    "expires_at": "Valid until",
+    "paid_at": "Paid at"
+  },
+  "param": {
+    "early_bird_until": "Early bird until",
+    "weapon_rental_fee": "Weapon rental fee (CZK)",
+    "afterparty_fee": "Afterparty fee (CZK)",
+    "reservation_validity_days": "Reservation validity (days)",
+    "reminder_day": "Reminder day",
+    "amount_tolerance_percent": "Amount tolerance (%)",
+    "refundable_until": "Refundable until",
+    "bank_account": "Account (IBAN)"
   },
   "rail": {
     "operations": "Operations",
     "generalRules": "General rules",
-    "rulesHint": "Operation parameters arrive with each phase.",
+    "rulesHint": "This phase has no parameters yet.",
+    "parameters": "Parameters",
+    "save": "Save",
     "columnsForStep": "Columns for step",
     "manualEdits": "Manual edits",
     "noEdits": "No manual edits yet."

@@ -1,17 +1,73 @@
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { type Sheet, type Tournament, api, setToken } from "./api";
+import ParamPanel from "./ParamPanel";
+import {
+  type Sheet,
+  type SheetRow,
+  type Tournament,
+  type TournamentDetail,
+  api,
+  setToken,
+} from "./api";
 
 const STAGES = ["pre", "in", "post"] as const;
 const PHASES = ["load", "parsing", "matching", "dedup", "payments", "export"] as const;
 export type Phase = (typeof PHASES)[number];
 
-const BASE_COLUMNS = ["name", "nationality", "club", "hr_id", "disciplines", "vs", "state"];
+// A phase tab is a view of the whole fencer list plus that operation's
+// parameters (design Decision 1). Shared base columns, phase-owned columns.
+const BASE_COLUMNS = ["name", "nationality", "club"];
+
+const PHASE_COLUMNS: Record<Phase, string[]> = {
+  load: ["disciplines", "weapon_rentals", "afterparty", "registered_at"],
+  parsing: ["disciplines", "notes"],
+  matching: ["hr_id", "match"],
+  dedup: ["hr_id", "state"],
+  payments: ["vs", "total_amount", "expires_at", "paid_at", "state"],
+  export: ["hr_id", "disciplines", "state"],
+};
 
 function StateBadge({ state }: { state: string }) {
   const symbol = state === "paid" ? "✓" : state === "reserved" ? "?" : "✗";
   return <span className={`badge badge-${state}`}>{symbol}</span>;
+}
+
+function Cell({ row, column }: { row: SheetRow; column: string }) {
+  switch (column) {
+    case "state":
+      return <StateBadge state={row.state} />;
+    case "match":
+      return row.hr_id !== null ? (
+        <span className="badge badge-paid">✓</span>
+      ) : (
+        <span className="badge badge-expired">✗</span>
+      );
+    case "disciplines":
+      return (
+        <>
+          {row.disciplines.join(", ")}
+          {row.substitute_for.length > 0 && (
+            <span className="muted"> (+{row.substitute_for.join(", ")})</span>
+          )}
+        </>
+      );
+    case "weapon_rentals":
+      return <>{row.weapon_rentals.length > 0 ? row.weapon_rentals.join(", ") : "—"}</>;
+    case "afterparty":
+      return <>{row.afterparty ? "✓" : "—"}</>;
+    case "registered_at":
+      return <>{new Date(row.registered_at).toLocaleDateString("cs")}</>;
+    case "expires_at":
+    case "paid_at": {
+      const value = row[column];
+      return <>{value ? new Date(value as string).toLocaleDateString("cs") : "—"}</>;
+    }
+    default: {
+      const value = row[column];
+      return <>{value === null || value === undefined || value === "" ? "—" : String(value)}</>;
+    }
+  }
 }
 
 export default function Console({
@@ -26,6 +82,7 @@ export default function Console({
   const { t } = useTranslation();
   const [phase, setPhase] = useState<Phase>("load");
   const [sheet, setSheet] = useState<Sheet | null>(null);
+  const [detail, setDetail] = useState<TournamentDetail | null>(null);
   const [error, setError] = useState(false);
 
   const refresh = useCallback(() => {
@@ -36,12 +93,15 @@ export default function Console({
       },
       () => setError(true),
     );
+    api.tournament(tournament.slug).then(setDetail, () => {});
   }, [tournament.slug]);
 
   useEffect(refresh, [refresh]);
 
   const rows = sheet?.rows ?? [];
   const paidCount = rows.filter((row) => row.paid).length;
+  const columns = [...BASE_COLUMNS, ...PHASE_COLUMNS[phase]];
+  const phaseEdits = (sheet?.edits ?? []).filter((edit) => edit.phase === phase);
 
   return (
     <div className="app">
@@ -51,7 +111,11 @@ export default function Console({
         </button>
         <nav className="stage-control">
           {STAGES.map((stage) => (
-            <button key={stage} className={stage === "pre" ? "active" : ""} disabled={stage !== "pre"}>
+            <button
+              key={stage}
+              className={stage === "pre" ? "active" : ""}
+              disabled={stage !== "pre"}
+            >
               {t(`stage.${stage}`)}
             </button>
           ))}
@@ -62,7 +126,13 @@ export default function Console({
             {new Date(tournament.date).toLocaleDateString("cs")}
           </div>
         </div>
-        <button className="link-button" onClick={() => { setToken(null); onLogout(); }}>
+        <button
+          className="link-button"
+          onClick={() => {
+            setToken(null);
+            onLogout();
+          }}
+        >
           {t("common.logout")}
         </button>
       </header>
@@ -71,10 +141,7 @@ export default function Console({
         {PHASES.map((p, index) => (
           <div key={p} className="step-slot">
             {index > 0 && <div className="step-connector" />}
-            <button
-              className={`step ${p === phase ? "active" : ""}`}
-              onClick={() => setPhase(p)}
-            >
+            <button className={`step ${p === phase ? "active" : ""}`} onClick={() => setPhase(p)}>
               <span className="step-number">{index + 1}</span>
               <span className="step-label">{t(`phase.${p}`)}</span>
             </button>
@@ -110,8 +177,13 @@ export default function Console({
                 <thead>
                   <tr>
                     <th className="col-index">#</th>
-                    {BASE_COLUMNS.map((column) => (
-                      <th key={column}>{t(`column.${column}`)}</th>
+                    {columns.map((column) => (
+                      <th
+                        key={column}
+                        className={PHASE_COLUMNS[phase].includes(column) ? "col-phase" : ""}
+                      >
+                        {t(`column.${column}`)}
+                      </th>
                     ))}
                   </tr>
                 </thead>
@@ -119,15 +191,14 @@ export default function Console({
                   {rows.map((row, index) => (
                     <tr key={row.id}>
                       <td className="col-index">{index + 1}</td>
-                      <td>{row.name}</td>
-                      <td>{row.nationality ?? "—"}</td>
-                      <td>{row.club ?? "—"}</td>
-                      <td>{row.hr_id ?? "—"}</td>
-                      <td>{row.disciplines.join(", ")}</td>
-                      <td>{row.vs}</td>
-                      <td className="col-state">
-                        <StateBadge state={row.state} />
-                      </td>
+                      {columns.map((column) => (
+                        <td
+                          key={column}
+                          className={PHASE_COLUMNS[phase].includes(column) ? "col-phase" : ""}
+                        >
+                          <Cell row={row} column={column} />
+                        </td>
+                      ))}
                     </tr>
                   ))}
                 </tbody>
@@ -141,15 +212,12 @@ export default function Console({
             {t("rail.operations")} · {t(`phase.${phase}`)}
           </div>
 
-          <section className="rail-card">
-            <h2>{t("rail.generalRules")}</h2>
-            <p className="rail-hint">{t("rail.rulesHint")}</p>
-          </section>
+          <ParamPanel phase={phase} detail={detail} slug={tournament.slug} onSaved={refresh} />
 
           <section className="rail-card dashed">
             <h2>{t("rail.columnsForStep")}</h2>
             <div className="chips">
-              {BASE_COLUMNS.map((column) => (
+              {PHASE_COLUMNS[phase].map((column) => (
                 <span key={column} className="chip">
                   {t(`column.${column}`)}
                 </span>
@@ -160,13 +228,13 @@ export default function Console({
           <section className="rail-card plain">
             <h2>
               {t("rail.manualEdits")}{" "}
-              <span className="rail-count">({sheet?.edits.length ?? 0})</span>
+              <span className="rail-count">({phaseEdits.length})</span>
             </h2>
-            {(sheet?.edits ?? []).length === 0 ? (
+            {phaseEdits.length === 0 ? (
               <p className="rail-hint">{t("rail.noEdits")}</p>
             ) : (
               <ul className="edits-list">
-                {sheet!.edits.map((edit, index) => (
+                {phaseEdits.map((edit, index) => (
                   <li key={index} className="edit-entry">
                     <span className="edit-icon">~</span>
                     <div>
