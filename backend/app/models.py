@@ -102,6 +102,8 @@ class Tournament(Base):
         str_enum(UnpaidListTreatment), default=UnpaidListTreatment.GREYED
     )
 
+    fio_token: Mapped[str | None] = mapped_column(String(200))
+
     # billable extras; early-bird prices apply within the optional window
     early_bird_until: Mapped[date | None]
     weapon_rental_fee: Mapped[int] = mapped_column(default=0)
@@ -185,6 +187,32 @@ class Registration(Base):
     entries: Mapped[list[RegistrationDiscipline]] = relationship(
         back_populates="registration"
     )
+
+
+class BankTransaction(Base):
+    """An ingested bank transaction. Natural identity is the bank's transaction
+    id (external_id); ingestion is idempotent per tournament on that key.
+    Amounts are stored in haléře (cents) — bank amounts carry decimals."""
+
+    __tablename__ = "bank_transactions"
+    __table_args__ = (UniqueConstraint("tournament_id", "external_id"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    tournament_id: Mapped[int] = mapped_column(ForeignKey("tournaments.id"))
+    external_id: Mapped[str] = mapped_column(String(50))
+    source: Mapped[str] = mapped_column(String(10))  # "fio_api" | "csv"
+    date: Mapped[date]
+    amount_cents: Mapped[int]
+    currency: Mapped[str] = mapped_column(String(3))
+    vs: Mapped[int | None]
+    message: Mapped[str | None] = mapped_column(Text)
+    payer_name: Mapped[str | None] = mapped_column(String(200))
+    payer_account: Mapped[str | None] = mapped_column(String(50))
+    ingested_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+
+    tournament: Mapped[Tournament] = relationship()
 
 
 class RegistrationDiscipline(Base):

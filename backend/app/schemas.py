@@ -77,6 +77,7 @@ class TournamentUpdate(BaseModel):
     amount_tolerance_percent: int | None = Field(default=None, ge=0, le=100)
     refundable_until: datetime.date | None = None
     bank_account: str | None = None
+    fio_token: str | None = None
     unpaid_list_treatment: UnpaidListTreatment | None = None
     early_bird_until: datetime.date | None = None
     weapon_rental_fee: int | None = Field(default=None, ge=0)
@@ -148,6 +149,21 @@ class AvailabilityOut(BaseModel):
     taken: int
     free: int
     queue_length: int
+
+
+class TransactionOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    external_id: str
+    source: str
+    date: datetime.date
+    amount_cents: int
+    currency: str
+    vs: int | None
+    message: str | None
+    payer_name: str | None
+    payer_account: str | None
 
 
 class ParticipantOut(BaseModel):
