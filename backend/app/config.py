@@ -14,6 +14,8 @@ class Settings(BaseSettings):
     # LLM is used only on the table-import path (parse, match, dedup)
     anthropic_api_key: str = ""
     llm_model: str = "anthropic:claude-sonnet-5"
+    # service-account JSON for the Google Sheets export
+    google_credentials_path: str = ""
 
 
 settings = Settings()

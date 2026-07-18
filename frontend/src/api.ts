@@ -55,6 +55,7 @@ export interface TournamentDetail extends Tournament {
   refundable_until: string | null;
   bank_account: string | null;
   unpaid_list_treatment: string;
+  output_sheet_url: string | null;
   early_bird_until: string | null;
   weapon_rental_fee: number;
   weapon_rental_fee_early: number | null;
@@ -159,6 +160,11 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ key, accept }),
     }),
+  exportSheet: (slug: string) =>
+    request<{ worksheets: string[]; fencers: number }>(
+      `/api/tournaments/${slug}/export/sheet`,
+      { method: "POST" },
+    ),
 };
 
 export interface DedupItem {

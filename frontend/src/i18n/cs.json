@@ -31,6 +31,16 @@
     "runResult": "{{matched}} spárováno · {{unmatched}} bez profilu",
     "notConfigured": "LLM není nakonfigurováno."
   },
+  "export": {
+    "title": "Export",
+    "hint": "Google Sheet ve formátu v1 (list Fencers + listy disciplín), nebo úplný JSON zálohový export.",
+    "runSheets": "Export do Google Sheets",
+    "downloadJson": "Stáhnout JSON",
+    "done": "Hotovo · {{fencers}} šermířů exportováno.",
+    "noUrl": "Nejdřív nastav URL výstupní tabulky (parametr vlevo).",
+    "notConfigured": "Google přístup není na serveru nakonfigurován.",
+    "failed": "Export se nezdařil."
+  },
   "dedup": {
     "title": "Fronta duplicit",
     "run": "Spustit deduplikaci",
@@ -98,7 +108,8 @@
     "reminder_day": "Den připomínky",
     "amount_tolerance_percent": "Tolerance částky (%)",
     "refundable_until": "Vratné do",
-    "bank_account": "Účet (IBAN)"
+    "bank_account": "Účet (IBAN)",
+    "output_sheet_url": "URL výstupní Google tabulky"
   },
   "rail": {
     "operations": "Operace",

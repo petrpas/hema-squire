@@ -79,6 +79,7 @@ class TournamentUpdate(BaseModel):
     bank_account: str | None = None
     fio_token: str | None = None
     unpaid_list_treatment: UnpaidListTreatment | None = None
+    output_sheet_url: str | None = None
     early_bird_until: datetime.date | None = None
     weapon_rental_fee: int | None = Field(default=None, ge=0)
     weapon_rental_fee_early: int | None = Field(default=None, ge=0)
@@ -99,6 +100,7 @@ class TournamentOut(BaseModel):
     refundable_until: datetime.date | None
     bank_account: str | None
     unpaid_list_treatment: UnpaidListTreatment
+    output_sheet_url: str | None
     early_bird_until: datetime.date | None
     weapon_rental_fee: int
     weapon_rental_fee_early: int | None

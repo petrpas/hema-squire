@@ -103,6 +103,7 @@ class Tournament(Base):
     )
 
     fio_token: Mapped[str | None] = mapped_column(String(200))
+    output_sheet_url: Mapped[str | None] = mapped_column(String(300))
 
     # billable extras; early-bird prices apply within the optional window
     early_bird_until: Mapped[date | None]

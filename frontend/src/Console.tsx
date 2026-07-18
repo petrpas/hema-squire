@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 
 import DedupPanel from "./DedupPanel";
 import EditableCell from "./EditableCell";
+import ExportPanel from "./ExportPanel";
 import ImportPanel from "./ImportPanel";
 import MatchDialog from "./MatchDialog";
 import MatchPanel from "./MatchPanel";
@@ -298,6 +299,7 @@ export default function Console({
           {phase === "load" && <ImportPanel slug={tournament.slug} onImported={refresh} />}
           {phase === "matching" && <MatchPanel slug={tournament.slug} onChanged={refresh} />}
           {phase === "dedup" && <DedupPanel slug={tournament.slug} onChanged={refresh} />}
+          {phase === "export" && <ExportPanel slug={tournament.slug} />}
 
           <section className="rail-card dashed">
             <h2>{t("rail.columnsForStep")}</h2>

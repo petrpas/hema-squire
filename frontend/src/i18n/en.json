@@ -31,6 +31,16 @@
     "runResult": "{{matched}} matched · {{unmatched}} without a profile",
     "notConfigured": "LLM is not configured."
   },
+  "export": {
+    "title": "Export",
+    "hint": "Google Sheet in the v1 format (Fencers + discipline tabs), or a full JSON backup export.",
+    "runSheets": "Export to Google Sheets",
+    "downloadJson": "Download JSON",
+    "done": "Done · {{fencers}} fencers exported.",
+    "noUrl": "Set the output sheet URL first (parameter on the left).",
+    "notConfigured": "Google access is not configured on the server.",
+    "failed": "Export failed."
+  },
   "dedup": {
     "title": "Duplicate queue",
     "run": "Run deduplication",
@@ -98,7 +108,8 @@
     "reminder_day": "Reminder day",
     "amount_tolerance_percent": "Amount tolerance (%)",
     "refundable_until": "Refundable until",
-    "bank_account": "Account (IBAN)"
+    "bank_account": "Account (IBAN)",
+    "output_sheet_url": "Output Google Sheet URL"
   },
   "rail": {
     "operations": "Operations",

@@ -28,7 +28,7 @@ const PHASE_PARAMS: Record<Phase, ParamField[]> = {
     { key: "refundable_until", type: "date" },
     { key: "bank_account", type: "text" },
   ],
-  export: [],
+  export: [{ key: "output_sheet_url", type: "text" }],
 };
 
 export default function ParamPanel({

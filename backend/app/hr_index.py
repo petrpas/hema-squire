@@ -18,10 +18,17 @@ class HRProfile(BaseModel):
     club: str | None
 
 
+class HRRating(BaseModel):
+    rating: float | None
+    rank: int | None
+
+
 class HRIndex(Protocol):
     def search(self, query: str) -> list[HRProfile]: ...
 
     def get(self, hr_id: int) -> HRProfile | None: ...
+
+    def rating(self, hr_id: int, discipline_code: str) -> HRRating | None: ...
 
 
 def _fold(text: str) -> str:
@@ -43,6 +50,9 @@ class StubHRIndex:
 
     def get(self, hr_id: int) -> HRProfile | None:
         return next((p for p in self._profiles if p.hr_id == hr_id), None)
+
+    def rating(self, hr_id: int, discipline_code: str) -> HRRating | None:
+        return None  # ratings arrive with the real index (task 1.4)
 
 
 STUB_PROFILES = [
