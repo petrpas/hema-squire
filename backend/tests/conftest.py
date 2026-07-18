@@ -1,6 +1,7 @@
 import os
 
 os.environ["HEMA_SQUIRE_SCHEDULER_ENABLED"] = "false"
+os.environ["HEMA_SQUIRE_HR_AUTO_REFRESH"] = "false"
 
 import pytest
 from fastapi.testclient import TestClient
@@ -9,6 +10,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy.pool import StaticPool
 
 from app.db import Base, get_session
+from app.hr_index import get_hr_index, stub_index
 from app.main import app
 
 
@@ -24,6 +26,8 @@ def client():
             yield session
 
     app.dependency_overrides[get_session] = override_session
+    # tests run on the stub fixture dataset; hr-integration tests override this
+    app.dependency_overrides[get_hr_index] = stub_index
     try:
         with TestClient(app) as test_client:
             yield test_client

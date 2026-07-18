@@ -29,11 +29,18 @@
     "runHint": "Finds HR profiles for fencers without an ID (fuzzy, via LLM).",
     "run": "Run matching",
     "runResult": "{{matched}} matched · {{unmatched}} without a profile",
-    "notConfigured": "LLM is not configured."
+    "notConfigured": "LLM is not configured.",
+    "indexTitle": "Fighters index (HR)",
+    "indexStatus": "{{fighters}} fighters in the index.",
+    "indexRefresh": "Refresh index",
+    "indexRefreshFailed": "Refresh rejected — previous index kept (source format drift suspected)."
   },
   "export": {
     "title": "Export",
     "hint": "Google Sheet in the v1 format (Fencers + discipline tabs), or a full JSON backup export.",
+    "fetchRatings": "Fetch HR ratings",
+    "ratingsDone": "Ratings fetched · {{ratings}} values for {{fencers}} fencers.",
+    "ratingsFailed": "Ratings fetch failed (index/page format?).",
     "runSheets": "Export to Google Sheets",
     "downloadJson": "Download JSON",
     "done": "Done · {{fencers}} fencers exported.",

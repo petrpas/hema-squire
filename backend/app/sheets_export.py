@@ -11,9 +11,12 @@ HRating/HRank always refresh, every other cell is written only when blank
 import unicodedata
 from typing import Protocol
 
-from app.hr_index import HRIndex
+from app.hr_index import HRRating
 from app.models import Tournament
 from app.rules import Row
+
+# ratings lookup from the tournament's latest snapshot: (hr_id, code) -> HRRating
+Ratings = dict[tuple[int, str], HRRating]
 
 FENCERS_SHEET = "Fencers"
 FENCERS_HEADER = [
@@ -61,8 +64,8 @@ def _fencer_values(row: Row) -> dict[str, str]:
     }
 
 
-def _discipline_values(row: Row, index: HRIndex, code: str) -> dict[str, str]:
-    rating = index.rating(row["hr_id"], code) if row.get("hr_id") is not None else None
+def _discipline_values(row: Row, ratings: Ratings, code: str) -> dict[str, str]:
+    rating = ratings.get((row["hr_id"], code)) if row.get("hr_id") is not None else None
     return {
         "Name": row.get("name") or "",
         "Nat.": row.get("nationality") or "",
@@ -123,7 +126,7 @@ def export_to_sheets(
     tournament: Tournament,
     rows: list[Row],
     client: SheetsClient,
-    index: HRIndex,
+    ratings: Ratings,
 ) -> dict:
     active = [r for r in rows if not r.get("_deleted")]
 
@@ -142,7 +145,7 @@ def export_to_sheets(
         roster = [
             (
                 _identity(r.get("name") or "", str(r.get("hr_id") or "")),
-                _discipline_values(r, index, code),
+                _discipline_values(r, ratings, code),
             )
             for r in entered
             if r.get("name")

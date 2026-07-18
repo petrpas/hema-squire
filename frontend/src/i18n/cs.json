@@ -29,11 +29,18 @@
     "runHint": "Dohledá HR profily šermířů bez ID (fuzzy, přes LLM).",
     "run": "Spustit párování",
     "runResult": "{{matched}} spárováno · {{unmatched}} bez profilu",
-    "notConfigured": "LLM není nakonfigurováno."
+    "notConfigured": "LLM není nakonfigurováno.",
+    "indexTitle": "Index šermířů (HR)",
+    "indexStatus": "{{fighters}} šermířů v indexu.",
+    "indexRefresh": "Obnovit index",
+    "indexRefreshFailed": "Obnovení odmítnuto — původní index zachován (podezření na změnu formátu stránky)."
   },
   "export": {
     "title": "Export",
     "hint": "Google Sheet ve formátu v1 (list Fencers + listy disciplín), nebo úplný JSON zálohový export.",
+    "fetchRatings": "Stáhnout HR ratingy",
+    "ratingsDone": "Ratingy staženy · {{ratings}} hodnot pro {{fencers}} šermířů.",
+    "ratingsFailed": "Stažení ratingů se nezdařilo (index/formát stránky?).",
     "runSheets": "Export do Google Sheets",
     "downloadJson": "Stáhnout JSON",
     "done": "Hotovo · {{fencers}} šermířů exportováno.",

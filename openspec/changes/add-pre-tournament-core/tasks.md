@@ -4,7 +4,7 @@
 - [x] 1.1 Scaffold application (backend, frontend shell per wireframe B, CI)
 - [x] 1.2 Multi-tenant data model: tournaments, fencers, registrations
 - [x] 1.3 Localization infrastructure with complete CZ locale
-- [ ] 1.4 hr-integration: fighters index download, cache, refresh, search
+- [x] 1.4 hr-integration: fighters index download, cache, refresh, search
 
 ## 2. Accounts and registration
 - [x] 2.1 Fencer account creation with HR binding flow (HR search stubbed until 1.4)

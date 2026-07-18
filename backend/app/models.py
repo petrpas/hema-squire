@@ -104,6 +104,8 @@ class Tournament(Base):
 
     fio_token: Mapped[str | None] = mapped_column(String(200))
     output_sheet_url: Mapped[str | None] = mapped_column(String(300))
+    # discipline code -> HR category keyword, overriding the built-in default
+    hr_category_map: Mapped[dict] = mapped_column(JSON, default=dict)
 
     # billable extras; early-bird prices apply within the optional window
     early_bird_until: Mapped[date | None]
@@ -280,6 +282,64 @@ class RuleJournalEntry(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
+
+
+class HRFighter(Base):
+    """One fighter from the hemaratings.com index. Global per deployment;
+    the whole table is replaced by a successful refresh."""
+
+    __tablename__ = "hr_fighters"
+
+    hr_id: Mapped[int] = mapped_column(primary_key=True, autoincrement=False)
+    name: Mapped[str] = mapped_column(String(200))
+    name_folded: Mapped[str] = mapped_column(String(200), index=True)
+    nationality: Mapped[str | None] = mapped_column(String(100))
+    club: Mapped[str | None] = mapped_column(String(200))
+
+
+class HRIndexRefresh(Base):
+    """Log of index refresh attempts, successful and rejected — the operator's
+    diagnostics when the source format drifts."""
+
+    __tablename__ = "hr_index_refreshes"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    fetched_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+    status: Mapped[str] = mapped_column(String(10))  # ok | rejected | failed
+    fighter_count: Mapped[int | None]
+    detail: Mapped[dict] = mapped_column(JSON, default=dict)
+
+
+class HRRatingSnapshot(Base):
+    """A dated fetch of ratings for one tournament's fencers. Exports use the
+    latest snapshot (Decision 8: dated schema, latest-only UI)."""
+
+    __tablename__ = "hr_rating_snapshots"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    tournament_id: Mapped[int] = mapped_column(ForeignKey("tournaments.id"))
+    taken_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+    fencer_count: Mapped[int]
+
+    ratings: Mapped[list[HRSnapshotRating]] = relationship(back_populates="snapshot")
+
+
+class HRSnapshotRating(Base):
+    __tablename__ = "hr_snapshot_ratings"
+    __table_args__ = (UniqueConstraint("snapshot_id", "hr_id", "discipline_code"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    snapshot_id: Mapped[int] = mapped_column(ForeignKey("hr_rating_snapshots.id"))
+    hr_id: Mapped[int]
+    discipline_code: Mapped[str] = mapped_column(String(15))
+    rating: Mapped[float | None]
+    rank: Mapped[int | None]
+
+    snapshot: Mapped[HRRatingSnapshot] = relationship(back_populates="ratings")
 
 
 class ImportBatch(Base):

@@ -2,7 +2,7 @@
 
 import io
 
-from app.hr_index import HRProfile, HRRating, StubHRIndex, get_hr_index
+from app.hr_sync import get_hr_fetcher
 from app.importer import get_import_parser
 from app.main import app
 from app.sheets_export import get_sheets_client_factory
@@ -20,15 +20,35 @@ class InMemorySheets:
         self.worksheets[worksheet] = grid
 
 
-class RatedIndex(StubHRIndex):
-    """Stub index with mutable ratings, to prove HRating/HRank always refresh."""
+def fighter_page(rows: list[tuple[str, float, int]]) -> str:
+    """A minimal hemaratings fighter-details page with the given category rows."""
+    body = "".join(
+        f"<tr><td>{category}</td><td>2026-05-01</td><td>#{rank}</td><td>{rating}</td>"
+        f"<td>#{rank}</td><td>{rating}</td></tr>"
+        for category, rating, rank in rows
+    )
+    return f"<h3>Ratings</h3><table><tbody>{body}</tbody></table>"
 
-    def __init__(self, profiles: list[HRProfile]):
-        super().__init__(profiles)
-        self.ratings: dict[int, HRRating] = {}
 
-    def rating(self, hr_id, discipline_code):
-        return self.ratings.get(hr_id)
+class FakeHRFetcher:
+    """Serves per-fighter rating pages; mutable so tests can change ratings."""
+
+    def __init__(self):
+        self.pages: dict[int, str] = {}
+
+    def fighters_page(self):
+        raise AssertionError("index refresh not expected here")
+
+    def fighter_page(self, hr_id):
+        return self.pages.get(hr_id)
+
+
+def snapshot(client, organizer):
+    response = client.post(
+        "/api/tournaments/cup/ratings/snapshot", headers=organizer
+    )
+    assert response.status_code == 200, response.text
+    return response.json()
 
 
 def setup(client, auth_headers, organizer):
@@ -68,11 +88,12 @@ def setup(client, auth_headers, organizer):
     )
 
 
-def wire(sheets, index):
+def wire(sheets, fetcher=None):
     app.dependency_overrides[get_sheets_client_factory] = lambda: (
         lambda tournament: sheets
     )
-    app.dependency_overrides[get_hr_index] = lambda: index
+    if fetcher is not None:
+        app.dependency_overrides[get_hr_fetcher] = lambda: fetcher
 
 
 def export(client, organizer):
@@ -89,9 +110,10 @@ def test_export_writes_v1_format(client, auth_headers):
     organizer = auth_headers()
     setup(client, auth_headers, organizer)
     sheets = InMemorySheets()
-    index = RatedIndex([])
-    index.ratings[10234] = HRRating(rating=1250.5, rank=17)
-    wire(sheets, index)
+    fetcher = FakeHRFetcher()
+    fetcher.pages[10234] = fighter_page([("Mixed & Men's Steel Longsword", 1250.5, 17)])
+    wire(sheets, fetcher)
+    snapshot(client, organizer)
 
     body = export(client, organizer)
     assert body["worksheets"] == ["Fencers", "LS", "SA"]
@@ -118,19 +140,22 @@ def test_reexport_preserves_manual_work_and_refreshes_ratings(client, auth_heade
     organizer = auth_headers()
     setup(client, auth_headers, organizer)
     sheets = InMemorySheets()
-    index = RatedIndex([])
-    index.ratings[10234] = HRRating(rating=1250.5, rank=17)
-    wire(sheets, index)
+    fetcher = FakeHRFetcher()
+    fetcher.pages[10234] = fighter_page([("Mixed & Men's Steel Longsword", 1250.5, 17)])
+    wire(sheets, fetcher)
+    snapshot(client, organizer)
     export(client, organizer)
 
-    # downstream staff number rows and fix a club by hand; a rating changes
+    # downstream staff number rows and fix a club by hand; the rating moves
+    # on hemaratings and a fresh snapshot is taken
     fencers = sheets.worksheets["Fencers"]
     jan = grid_row(fencers, "Jan Novák")
     jan[0] = "R-01"
     jan[3] = "Praha Sword Society"
     ls = sheets.worksheets["LS"]
     grid_row(ls, "Jan Novák")[0] = "7"
-    index.ratings[10234] = HRRating(rating=1301.0, rank=12)
+    fetcher.pages[10234] = fighter_page([("Mixed & Men's Steel Longsword", 1301.0, 12)])
+    snapshot(client, organizer)
 
     export(client, organizer)
 
@@ -147,7 +172,7 @@ def test_deleted_rows_excluded_from_every_worksheet(client, auth_headers):
     organizer = auth_headers()
     setup(client, auth_headers, organizer)
     sheets = InMemorySheets()
-    wire(sheets, RatedIndex([]))
+    wire(sheets)  # no snapshot taken: HRating/HRank stay blank
     export(client, organizer)
     assert len(sheets.worksheets["SA"]) == 3
 

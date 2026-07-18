@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { api } from "./api";
+import { type HRStatus, api } from "./api";
 
 export default function MatchPanel({
   slug,
@@ -14,6 +14,29 @@ export default function MatchPanel({
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<string | null>(null);
   const [error, setError] = useState(false);
+  const [hrStatus, setHrStatus] = useState<HRStatus | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+  const [refreshError, setRefreshError] = useState(false);
+
+  const loadStatus = useCallback(() => {
+    api.hrStatus().then(setHrStatus, () => setHrStatus(null));
+  }, []);
+
+  useEffect(loadStatus, [loadStatus]);
+
+  async function refreshIndex() {
+    setRefreshing(true);
+    setRefreshError(false);
+    try {
+      await api.hrRefresh();
+      loadStatus();
+    } catch {
+      setRefreshError(true);
+      loadStatus(); // rejected refreshes still update the diagnostics line
+    } finally {
+      setRefreshing(false);
+    }
+  }
 
   async function run() {
     setBusy(true);
@@ -40,6 +63,21 @@ export default function MatchPanel({
       </button>
       {error && <p className="login-error">{t("match.notConfigured")}</p>}
       {result && <p className="rail-hint">{result}</p>}
+
+      <h2 className="rail-subhead">{t("match.indexTitle")}</h2>
+      <p className="rail-hint">
+        {hrStatus === null
+          ? t("common.loading")
+          : t("match.indexStatus", { fighters: hrStatus.fighters })}
+      </p>
+      <button
+        className="secondary param-save"
+        disabled={refreshing}
+        onClick={() => void refreshIndex()}
+      >
+        {refreshing ? t("common.loading") : t("match.indexRefresh")}
+      </button>
+      {refreshError && <p className="login-error">{t("match.indexRefreshFailed")}</p>}
     </section>
   );
 }

@@ -32,10 +32,14 @@ LLM appears only on the import path (parse, fuzzy HR match, dedup classification
 
 Substitutes pay nothing at registration; on admission the fee — at prices frozen to the original registration time — is added and a fresh payment window opens. When part of a selection is full, the server rejects with the list of full disciplines and the fencer chooses: register the open subset, or queue the entire registration as substitute for everything selected. There is no silent split.
 
+## Decision 8 — HR integration shape (owner, 2026-07-18)
+
+The fighters index lives in a DB table, global per deployment: auto-populated in the background when empty at startup, manually refreshable afterwards (spec: on demand); scheduled refresh deferred. Parser drift fails loudly — implausible parse keeps the previous index and surfaces diagnostics; v1's LLM self-healing parser is explicitly not ported (no model-generated code executing in the backend; may return as its own change). Ratings are dated per-tournament snapshots from day one, but the UI exposes only "fetch now" and exports use the latest; a snapshot picker waits for demand. The discipline → HR category mapping ships as the proven v1 keyword table with a per-tournament JSON override parameter (`hr_category_map`).
+
 ## Open decisions
 
 - Foreign payment channel: VS-in-message instructions (~80 % success, manual fallback) vs Wise/Revolut vs Stripe payment link (~1.5 % fee, no matching needed). Parameterize per tournament; default undecided.
 - Discipline taxonomy: seeded from the v1 21-code set (weapon × gender × material); organizer-defined custom codes are an open question.
 - Seeding (Seed column) deliberately deferred — out of scope of this change (owner's decision C9).
-- Discipline → HEMA Ratings category mapping: parameterizable per tournament; exact parameter shape TBD.
+- ~~Discipline → HEMA Ratings category mapping~~: resolved by Decision 8 — default keyword table + per-tournament `hr_category_map` override.
 - Reservation window defaults: 7–10 days validity, reminder around day 5, expiry at window end; exact defaults TBD.

@@ -29,6 +29,20 @@ export default function ExportPanel({ slug }: { slug: string }) {
     }
   }
 
+  async function fetchRatings() {
+    setBusy(true);
+    setError(null);
+    setMessage(null);
+    try {
+      const result = await api.ratingsSnapshot(slug);
+      setMessage(t("export.ratingsDone", { ratings: result.ratings, fencers: result.fencers }));
+    } catch {
+      setError(t("export.ratingsFailed"));
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function downloadJson() {
     const response = await fetch(`/api/tournaments/${slug}/export/json`, {
       headers: { Authorization: `Bearer ${getToken()}` },
@@ -45,6 +59,9 @@ export default function ExportPanel({ slug }: { slug: string }) {
     <section className="rail-card">
       <h2>{t("export.title")}</h2>
       <p className="rail-hint">{t("export.hint")}</p>
+      <button className="secondary param-save" disabled={busy} onClick={() => void fetchRatings()}>
+        {busy ? t("common.loading") : t("export.fetchRatings")}
+      </button>
       <button className="secondary param-save" disabled={busy} onClick={() => void runSheets()}>
         {busy ? t("common.loading") : t("export.runSheets")}
       </button>

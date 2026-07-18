@@ -165,7 +165,29 @@ export const api = {
       `/api/tournaments/${slug}/export/sheet`,
       { method: "POST" },
     ),
+  hrStatus: () => request<HRStatus>("/api/hr/status"),
+  hrRefresh: () => request<{ status: string; fighters: number }>("/api/hr/refresh", {
+    method: "POST",
+  }),
+  ratingsSnapshot: (slug: string) =>
+    request<{ status: string; fencers: number; ratings: number }>(
+      `/api/tournaments/${slug}/ratings/snapshot`,
+      { method: "POST" },
+    ),
+  ratingsLatest: (slug: string) =>
+    request<{ taken_at: string | null; ratings: number }>(
+      `/api/tournaments/${slug}/ratings`,
+    ),
 };
+
+export interface HRStatus {
+  fighters: number;
+  last_refresh: {
+    at: string;
+    status: string;
+    fighter_count: number | null;
+  } | null;
+}
 
 export interface DedupItem {
   key: string;

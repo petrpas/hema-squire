@@ -1,14 +1,21 @@
-"""Fighters-index access for HR binding.
+"""Fighters-index access for HR binding, matching, and search.
 
-The real implementation (hemaratings.com download, cache, refresh) is task 1.4;
-until it lands the app runs on StubHRIndex. The FastAPI dependency `get_hr_index`
-is the single swap point.
+The index is DB-backed (task 1.4): populated by hr_sync.refresh_fighters,
+auto-populated in the background when empty at startup, manually refreshable.
+StubHRIndex remains the fixture implementation tests override with. The
+FastAPI dependency `get_hr_index` is the single swap point.
 """
 
 import unicodedata
-from typing import Protocol
+from typing import Annotated, Protocol
 
+from fastapi import Depends
 from pydantic import BaseModel
+from sqlalchemy import func, select
+from sqlalchemy.orm import Session
+
+from app.db import get_session
+from app.models import HRFighter
 
 
 class HRProfile(BaseModel):
@@ -28,31 +35,61 @@ class HRIndex(Protocol):
 
     def get(self, hr_id: int) -> HRProfile | None: ...
 
-    def rating(self, hr_id: int, discipline_code: str) -> HRRating | None: ...
 
-
-def _fold(text: str) -> str:
+def fold(text: str) -> str:
     decomposed = unicodedata.normalize("NFKD", text.lower())
     return "".join(c for c in decomposed if not unicodedata.combining(c))
 
 
+def _profile(fighter: HRFighter) -> HRProfile:
+    return HRProfile(
+        hr_id=fighter.hr_id,
+        name=fighter.name,
+        nationality=fighter.nationality or None,
+        club=fighter.club or None,
+    )
+
+
+class DbHRIndex:
+    """Diacritics-insensitive substring search over the hr_fighters table."""
+
+    def __init__(self, session: Session):
+        self._session = session
+
+    def search(self, query: str) -> list[HRProfile]:
+        needle = fold(query.strip())
+        if len(needle) < 3:
+            return []
+        fighters = self._session.scalars(
+            select(HRFighter)
+            .where(HRFighter.name_folded.contains(needle))
+            .order_by(HRFighter.name)
+            .limit(20)
+        )
+        return [_profile(f) for f in fighters]
+
+    def get(self, hr_id: int) -> HRProfile | None:
+        fighter = self._session.get(HRFighter, hr_id)
+        return _profile(fighter) if fighter else None
+
+    def count(self) -> int:
+        return self._session.scalar(select(func.count(HRFighter.hr_id))) or 0
+
+
 class StubHRIndex:
-    """Diacritics-insensitive substring search over a fixture dataset."""
+    """Fixture implementation for tests."""
 
     def __init__(self, profiles: list[HRProfile]):
         self._profiles = profiles
 
     def search(self, query: str) -> list[HRProfile]:
-        needle = _fold(query.strip())
+        needle = fold(query.strip())
         if len(needle) < 3:
             return []
-        return [p for p in self._profiles if needle in _fold(p.name)][:20]
+        return [p for p in self._profiles if needle in fold(p.name)][:20]
 
     def get(self, hr_id: int) -> HRProfile | None:
         return next((p for p in self._profiles if p.hr_id == hr_id), None)
-
-    def rating(self, hr_id: int, discipline_code: str) -> HRRating | None:
-        return None  # ratings arrive with the real index (task 1.4)
 
 
 STUB_PROFILES = [
@@ -66,5 +103,9 @@ STUB_PROFILES = [
 _stub = StubHRIndex(STUB_PROFILES)
 
 
-def get_hr_index() -> HRIndex:
+def stub_index() -> HRIndex:
     return _stub
+
+
+def get_hr_index(session: Annotated[Session, Depends(get_session)]) -> HRIndex:
+    return DbHRIndex(session)
