@@ -396,6 +396,12 @@ td.col-phase {
   background: #fcf3e0;
 }
 
+.badge-imported {
+  border-color: #8a877f;
+  color: #8a877f;
+  background: #f1efe8;
+}
+
 .badge-expired,
 .badge-cancelled {
   border-color: #c0392b;

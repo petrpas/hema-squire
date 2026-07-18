@@ -7,6 +7,7 @@ from app.config import settings
 from app.routers import (
     accounts,
     auth,
+    import_api,
     payments,
     registrations,
     rules_api,
@@ -37,6 +38,7 @@ def create_app() -> FastAPI:
     app.include_router(registrations.router)
     app.include_router(payments.router)
     app.include_router(rules_api.router)
+    app.include_router(import_api.router)
     app.include_router(taxonomy_api.router)
     return app
 

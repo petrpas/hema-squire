@@ -281,6 +281,60 @@ class RuleJournalEntry(Base):
     )
 
 
+class ImportBatch(Base):
+    """One uploaded registration table. The newest batch is the active source
+    for imported rows; older batches remain as provenance."""
+
+    __tablename__ = "import_batches"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    tournament_id: Mapped[int] = mapped_column(ForeignKey("tournaments.id"))
+    filename: Mapped[str] = mapped_column(String(300))
+    uploaded_by: Mapped[int] = mapped_column(ForeignKey("fencers.id"))
+    uploaded_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+    row_count: Mapped[int]
+
+
+class ImportedRow(Base):
+    """A source row of an uploaded table, kept verbatim for provenance.
+
+    `key` is a content fingerprint: unchanged rows keep it across re-uploads,
+    so parse decisions and rules targeting "imp:<key>" survive."""
+
+    __tablename__ = "imported_rows"
+    __table_args__ = (UniqueConstraint("batch_id", "key"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    batch_id: Mapped[int] = mapped_column(ForeignKey("import_batches.id"))
+    tournament_id: Mapped[int] = mapped_column(ForeignKey("tournaments.id"))
+    row_number: Mapped[int]
+    key: Mapped[str] = mapped_column(String(20))
+    raw: Mapped[dict] = mapped_column(JSON)
+
+    batch: Mapped[ImportBatch] = relationship()
+
+
+class ImportDecision(Base):
+    """A materialized LLM (or organizer) output: parse, match proposal, merge
+    proposal, dedup classification. Reruns reuse decisions; only keys without
+    one invoke the LLM (spec: decision persistence and incrementality)."""
+
+    __tablename__ = "import_decisions"
+    __table_args__ = (UniqueConstraint("tournament_id", "kind", "key"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    tournament_id: Mapped[int] = mapped_column(ForeignKey("tournaments.id"))
+    kind: Mapped[str] = mapped_column(String(20))  # parse | hr_match | merge | dedup
+    key: Mapped[str] = mapped_column(String(80))
+    payload: Mapped[dict] = mapped_column(JSON)
+    source: Mapped[str] = mapped_column(String(20), default="llm")  # llm | organizer
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+
+
 class RegistrationDiscipline(Base):
     """A registration's entry into one discipline; substitutes queue by registration time."""
 

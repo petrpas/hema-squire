@@ -12,6 +12,14 @@
     "restore": "Obnovit řádek",
     "removeRule": "Odstranit pravidlo"
   },
+  "import": {
+    "title": "Import tabulky",
+    "hint": "CSV nebo XLSX s registracemi (např. export Google Formuláře).",
+    "upload": "Nahrát soubor…",
+    "failed": "Import se nezdařil.",
+    "result": "{{rows}} řádků · {{parsed}} nově zpracováno · {{reused}} beze změny · {{problems}} k prověření",
+    "notConfigured": "{{rows}} řádků nahráno, ale LLM parser není nakonfigurován."
+  },
   "match": {
     "title": "Párování na HEMA Ratings",
     "placeholder": "Hledat jméno…",
@@ -62,6 +70,7 @@
     "afterparty": "Afterparty",
     "registered_at": "Registrace",
     "notes": "Poznámky",
+    "problems": "Problémy",
     "total_amount": "Částka",
     "expires_at": "Platí do",
     "paid_at": "Zaplaceno"

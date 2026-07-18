@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import EditableCell from "./EditableCell";
+import ImportPanel from "./ImportPanel";
 import MatchDialog from "./MatchDialog";
 import ParamPanel from "./ParamPanel";
 import {
@@ -23,7 +24,7 @@ const BASE_COLUMNS = ["name", "nationality", "club"];
 
 const PHASE_COLUMNS: Record<Phase, string[]> = {
   load: ["disciplines", "weapon_rentals", "afterparty", "registered_at"],
-  parsing: ["disciplines", "notes"],
+  parsing: ["disciplines", "notes", "problems"],
   matching: ["hr_id", "match"],
   dedup: ["hr_id", "state"],
   payments: ["vs", "total_amount", "expires_at", "paid_at", "state"],
@@ -34,7 +35,8 @@ const PHASE_COLUMNS: Record<Phase, string[]> = {
 const EDITABLE_COLUMNS = new Set(["name", "nationality", "club", "notes", "hr_id"]);
 
 function StateBadge({ state }: { state: string }) {
-  const symbol = state === "paid" ? "✓" : state === "reserved" ? "?" : "✗";
+  const symbol =
+    state === "paid" ? "✓" : state === "reserved" ? "?" : state === "imported" ? "•" : "✗";
   return <span className={`badge badge-${state}`}>{symbol}</span>;
 }
 
@@ -56,7 +58,9 @@ function CellDisplay({ row, column }: { row: SheetRow; column: string }) {
     case "afterparty":
       return <>{row.afterparty ? "✓" : "—"}</>;
     case "registered_at":
-      return <>{new Date(row.registered_at).toLocaleDateString("cs")}</>;
+      return (
+        <>{row.registered_at ? new Date(row.registered_at).toLocaleDateString("cs") : "—"}</>
+      );
     case "expires_at":
     case "paid_at": {
       const value = row[column];
@@ -284,6 +288,8 @@ export default function Console({
           </div>
 
           <ParamPanel phase={phase} detail={detail} slug={tournament.slug} onSaved={refresh} />
+
+          {phase === "load" && <ImportPanel slug={tournament.slug} onImported={refresh} />}
 
           <section className="rail-card dashed">
             <h2>{t("rail.columnsForStep")}</h2>

@@ -12,6 +12,14 @@
     "restore": "Restore row",
     "removeRule": "Remove rule"
   },
+  "import": {
+    "title": "Table import",
+    "hint": "CSV or XLSX with registrations (e.g. a Google Form export).",
+    "upload": "Upload file…",
+    "failed": "Import failed.",
+    "result": "{{rows}} rows · {{parsed}} newly parsed · {{reused}} unchanged · {{problems}} to review",
+    "notConfigured": "{{rows}} rows uploaded, but the LLM parser is not configured."
+  },
   "match": {
     "title": "Matching on HEMA Ratings",
     "placeholder": "Search name…",
@@ -62,6 +70,7 @@
     "afterparty": "Afterparty",
     "registered_at": "Registered",
     "notes": "Notes",
+    "problems": "Problems",
     "total_amount": "Amount",
     "expires_at": "Valid until",
     "paid_at": "Paid at"

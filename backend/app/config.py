@@ -11,6 +11,9 @@ class Settings(BaseSettings):
     email_sender: str = "noreply@hemasquire.local"
     scheduler_enabled: bool = True
     scheduler_interval_seconds: int = 300
+    # LLM is used only on the table-import path (parse, match, dedup)
+    anthropic_api_key: str = ""
+    llm_model: str = "anthropic:claude-sonnet-5"
 
 
 settings = Settings()

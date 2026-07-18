@@ -73,8 +73,9 @@ export interface SheetRow {
   state: string;
   vs: number | null;
   paid: boolean;
-  registered_at: string;
-  total_amount: number;
+  registered_at: string | null;
+  total_amount: number | null;
+  problems: string | null;
   expires_at: string | null;
   paid_at: string | null;
   weapon_rentals: string[];
@@ -126,7 +127,29 @@ export const api = {
     request<void>(`/api/tournaments/${slug}/rules/${ruleId}`, { method: "DELETE" }),
   hrSearch: (query: string) =>
     request<HRProfile[]>(`/api/hr/search?q=${encodeURIComponent(query)}`),
+  importTable: async (slug: string, file: File): Promise<ImportResult> => {
+    const body = new FormData();
+    body.append("file", file);
+    const token = getToken();
+    const response = await fetch(`/api/tournaments/${slug}/import`, {
+      method: "POST",
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body,
+    });
+    if (!response.ok) throw new ApiError(response.status, null);
+    return response.json();
+  },
 };
+
+export interface ImportResult {
+  batch_id: number;
+  rows: number;
+  parsed: number;
+  reused: number;
+  unparsed: number;
+  problems: { row: number; problems: string }[];
+  detail?: string;
+}
 
 export interface HRProfile {
   hr_id: number;
