@@ -1,4 +1,5 @@
 import datetime
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
@@ -147,3 +148,11 @@ class AvailabilityOut(BaseModel):
     taken: int
     free: int
     queue_length: int
+
+
+class ParticipantOut(BaseModel):
+    name: str
+    club: str | None
+    nationality: str | None
+    disciplines: list[str]
+    status: Literal["confirmed", "unconfirmed"]

@@ -11,7 +11,7 @@
 - [x] 2.2 Tournament administration: disciplines, capacity, pricing, parameters
 - [x] 2.3 Registration flow: disciplines + extras, fee computation, reservation with VS
 - [x] 2.4 Confirmation email with SPAYD QR (outbox/log mail backend; real provider TBD)
-- [ ] 2.5 Public participant list (paid-only visibility)
+- [x] 2.5 Public participant list (paid-only visibility)
 
 ## 3. Payments
 - [ ] 3.1 Fio API ingestion and CSV statement import behind one idempotent interface

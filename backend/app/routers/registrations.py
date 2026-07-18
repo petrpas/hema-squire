@@ -14,9 +14,10 @@ from app.models import (
     RegistrationDiscipline,
     RegistrationState,
     Tournament,
+    UnpaidListTreatment,
 )
 from app.routers.tournaments import FencerDep, SessionDep, TournamentDep
-from app.schemas import AvailabilityOut, RegisterIn, RegistrationOut
+from app.schemas import AvailabilityOut, ParticipantOut, RegisterIn, RegistrationOut
 from app.taxonomy import WEAPONS
 
 router = APIRouter(prefix="/api/tournaments/{slug}", tags=["registrations"])
@@ -120,6 +121,46 @@ def availability(tournament: TournamentDep, session: SessionDep):
                 taken=taken,
                 free=max(discipline.capacity - taken, 0),
                 queue_length=queued or 0,
+            )
+        )
+    return result
+
+
+@router.get("/participants", response_model=list[ParticipantOut])
+def participants(tournament: TournamentDep, session: SessionDep):
+    """Public list: paid registrations as confirmed; unpaid reservations hidden
+    or greyed as unconfirmed per the tournament setting. Never as confirmed."""
+    show_unpaid = tournament.unpaid_list_treatment == UnpaidListTreatment.GREYED
+    rows = session.scalars(
+        select(Registration)
+        .where(
+            Registration.tournament_id == tournament.id,
+            (Registration.state == RegistrationState.PAID)
+            | (
+                (Registration.state == RegistrationState.RESERVED)
+                & ((Registration.expires_at.is_(None)) | (Registration.expires_at > _now()))
+            ),
+        )
+        .order_by(Registration.registered_at)
+    ).all()
+
+    result = []
+    for registration in rows:
+        active_codes = [
+            e.discipline.code for e in registration.entries if not e.is_substitute
+        ]
+        if not active_codes:
+            continue  # fully-queued substitutes are not participants
+        confirmed = registration.state == RegistrationState.PAID
+        if not confirmed and not show_unpaid:
+            continue
+        result.append(
+            ParticipantOut(
+                name=registration.fencer.display_name,
+                club=registration.fencer.club,
+                nationality=registration.fencer.nationality,
+                disciplines=active_codes,
+                status="confirmed" if confirmed else "unconfirmed",
             )
         )
     return result
