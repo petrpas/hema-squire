@@ -114,4 +114,23 @@ export const api = {
       body: JSON.stringify(patch),
     }),
   sheet: (slug: string) => request<Sheet>(`/api/tournaments/${slug}/sheet`),
+  createRule: (
+    slug: string,
+    rule: { phase: string; kind: string; target: string; payload: Record<string, unknown> },
+  ) =>
+    request<{ id: number }>(`/api/tournaments/${slug}/rules`, {
+      method: "POST",
+      body: JSON.stringify(rule),
+    }),
+  deleteRule: (slug: string, ruleId: number) =>
+    request<void>(`/api/tournaments/${slug}/rules/${ruleId}`, { method: "DELETE" }),
+  hrSearch: (query: string) =>
+    request<HRProfile[]>(`/api/hr/search?q=${encodeURIComponent(query)}`),
 };
+
+export interface HRProfile {
+  hr_id: number;
+  name: string;
+  nationality: string | null;
+  club: string | null;
+}

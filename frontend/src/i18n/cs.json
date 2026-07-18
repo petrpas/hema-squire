@@ -4,7 +4,19 @@
   },
   "common": {
     "loading": "Načítání…",
-    "logout": "Odhlásit"
+    "logout": "Odhlásit",
+    "cancel": "Zrušit"
+  },
+  "actions": {
+    "delete": "Smazat řádek (vratné)",
+    "restore": "Obnovit řádek",
+    "removeRule": "Odstranit pravidlo"
+  },
+  "match": {
+    "title": "Párování na HEMA Ratings",
+    "placeholder": "Hledat jméno…",
+    "noResults": "Žádné výsledky.",
+    "notFound": "Profil neexistuje (✗)"
   },
   "login": {
     "subtitle": "Přihlášení organizátora",

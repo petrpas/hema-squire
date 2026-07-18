@@ -4,7 +4,19 @@
   },
   "common": {
     "loading": "Loading…",
-    "logout": "Log out"
+    "logout": "Log out",
+    "cancel": "Cancel"
+  },
+  "actions": {
+    "delete": "Delete row (reversible)",
+    "restore": "Restore row",
+    "removeRule": "Remove rule"
+  },
+  "match": {
+    "title": "Matching on HEMA Ratings",
+    "placeholder": "Search name…",
+    "noResults": "No results.",
+    "notFound": "No profile exists (✗)"
   },
   "login": {
     "subtitle": "Organizer sign-in",

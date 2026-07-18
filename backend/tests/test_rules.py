@@ -74,11 +74,14 @@ def test_row_delete_and_restore(client, auth_headers):
 
     add_rule(client, organizer, "reg:2", "", "", kind="row_delete")
     sheet = get_sheet(client, organizer)
-    assert [r["id"] for r in sheet["rows"]] == ["reg:1"]
+    assert {r["id"]: r["_deleted"] for r in sheet["rows"]} == {
+        "reg:1": False,
+        "reg:2": True,
+    }
 
     add_rule(client, organizer, "reg:2", "", "", kind="row_restore")
     sheet = get_sheet(client, organizer)
-    assert [r["id"] for r in sheet["rows"]] == ["reg:1", "reg:2"]
+    assert all(not r["_deleted"] for r in sheet["rows"])
 
 
 def test_audit_shows_actor_and_before_after(client, auth_headers):

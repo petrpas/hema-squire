@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
+import EditableCell from "./EditableCell";
+import MatchDialog from "./MatchDialog";
 import ParamPanel from "./ParamPanel";
 import {
   type Sheet,
@@ -28,21 +30,18 @@ const PHASE_COLUMNS: Record<Phase, string[]> = {
   export: ["hr_id", "disciplines", "state"],
 };
 
+// Manual edits on these columns become field_edit rules.
+const EDITABLE_COLUMNS = new Set(["name", "nationality", "club", "notes", "hr_id"]);
+
 function StateBadge({ state }: { state: string }) {
   const symbol = state === "paid" ? "✓" : state === "reserved" ? "?" : "✗";
   return <span className={`badge badge-${state}`}>{symbol}</span>;
 }
 
-function Cell({ row, column }: { row: SheetRow; column: string }) {
+function CellDisplay({ row, column }: { row: SheetRow; column: string }) {
   switch (column) {
     case "state":
       return <StateBadge state={row.state} />;
-    case "match":
-      return row.hr_id !== null ? (
-        <span className="badge badge-paid">✓</span>
-      ) : (
-        <span className="badge badge-expired">✗</span>
-      );
     case "disciplines":
       return (
         <>
@@ -84,6 +83,7 @@ export default function Console({
   const [sheet, setSheet] = useState<Sheet | null>(null);
   const [detail, setDetail] = useState<TournamentDetail | null>(null);
   const [error, setError] = useState(false);
+  const [matchRow, setMatchRow] = useState<SheetRow | null>(null);
 
   const refresh = useCallback(() => {
     api.sheet(tournament.slug).then(
@@ -98,8 +98,31 @@ export default function Console({
 
   useEffect(refresh, [refresh]);
 
+  async function addRule(kind: string, target: string, payload: Record<string, unknown>) {
+    await api.createRule(tournament.slug, { phase, kind, target, payload });
+    refresh();
+  }
+
+  function saveEdit(row: SheetRow, field: string, raw: string) {
+    const value =
+      field === "hr_id" ? (raw === "" ? null : Number(raw)) : raw === "" ? null : raw;
+    void addRule("field_edit", row.id, { field, value });
+  }
+
+  async function removeRule(ruleId: number) {
+    await api.deleteRule(tournament.slug, ruleId);
+    refresh();
+  }
+
+  function resolveMatch(row: SheetRow, hrId: number | null) {
+    setMatchRow(null);
+    void addRule("match_resolution", row.id, { field: "hr_id", value: hrId });
+  }
+
   const rows = sheet?.rows ?? [];
-  const paidCount = rows.filter((row) => row.paid).length;
+  const visibleRows = rows;
+  const activeRows = rows.filter((row) => !row._deleted);
+  const paidCount = activeRows.filter((row) => row.paid).length;
   const columns = [...BASE_COLUMNS, ...PHASE_COLUMNS[phase]];
   const phaseEdits = (sheet?.edits ?? []).filter((edit) => edit.phase === phase);
 
@@ -156,9 +179,9 @@ export default function Console({
               <h1>{t("console.title")}</h1>
               <p className="sheet-stats">
                 {t("console.stats", {
-                  rows: rows.length,
+                  rows: activeRows.length,
                   paid: paidCount,
-                  reserved: rows.length - paidCount,
+                  reserved: activeRows.length - paidCount,
                 })}
               </p>
             </div>
@@ -170,7 +193,7 @@ export default function Console({
           <div className="sheet-scroll">
             {error ? (
               <p className="sheet-empty">{t("console.error")}</p>
-            ) : rows.length === 0 ? (
+            ) : visibleRows.length === 0 ? (
               <p className="sheet-empty">{t("sheet.empty")}</p>
             ) : (
               <table className="sheet-table">
@@ -185,20 +208,68 @@ export default function Console({
                         {t(`column.${column}`)}
                       </th>
                     ))}
+                    <th className="col-actions" />
                   </tr>
                 </thead>
                 <tbody>
-                  {rows.map((row, index) => (
-                    <tr key={row.id}>
+                  {visibleRows.map((row, index) => (
+                    <tr key={row.id} className={row._deleted ? "row-deleted" : ""}>
                       <td className="col-index">{index + 1}</td>
-                      {columns.map((column) => (
-                        <td
-                          key={column}
-                          className={PHASE_COLUMNS[phase].includes(column) ? "col-phase" : ""}
-                        >
-                          <Cell row={row} column={column} />
-                        </td>
-                      ))}
+                      {columns.map((column) => {
+                        const phaseOwned = PHASE_COLUMNS[phase].includes(column);
+                        const editable = EDITABLE_COLUMNS.has(column) && !row._deleted;
+                        const isMatch = column === "match";
+                        return (
+                          <td
+                            key={column}
+                            className={`${phaseOwned ? "col-phase" : ""} ${
+                              isMatch ? "col-state" : ""
+                            }`}
+                          >
+                            {isMatch ? (
+                              <button
+                                className="badge-button"
+                                title={t("match.title")}
+                                onClick={() => setMatchRow(row)}
+                                disabled={row._deleted === true}
+                              >
+                                {row.hr_id !== null ? (
+                                  <span className="badge badge-paid">✓</span>
+                                ) : (
+                                  <span className="badge badge-reserved">?</span>
+                                )}
+                              </button>
+                            ) : editable ? (
+                              <EditableCell
+                                display={<CellDisplay row={row} column={column} />}
+                                value={row[column]}
+                                onSave={(raw) => saveEdit(row, column, raw)}
+                              />
+                            ) : (
+                              <CellDisplay row={row} column={column} />
+                            )}
+                          </td>
+                        );
+                      })}
+                      <td className="col-actions">
+                        {row._deleted ? (
+                          <button
+                            className="row-action"
+                            title={t("actions.restore")}
+                            onClick={() => void addRule("row_restore", row.id, {})}
+                          >
+                            ↺
+                          </button>
+                        ) : (
+                          <button
+                            className="row-action"
+                            title={t("actions.delete")}
+                            onClick={() => void addRule("row_delete", row.id, {})}
+                          >
+                            ✕
+                          </button>
+                        )}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -237,7 +308,7 @@ export default function Console({
                 {phaseEdits.map((edit, index) => (
                   <li key={index} className="edit-entry">
                     <span className="edit-icon">~</span>
-                    <div>
+                    <div className="edit-body">
                       <div>
                         {edit.field}: {String(edit.before ?? "—")} → {String(edit.after)}
                       </div>
@@ -249,6 +320,13 @@ export default function Console({
                         })}
                       </div>
                     </div>
+                    <button
+                      className="row-action"
+                      title={t("actions.removeRule")}
+                      onClick={() => void removeRule(edit.rule_id)}
+                    >
+                      ✕
+                    </button>
                   </li>
                 ))}
               </ul>
@@ -256,6 +334,14 @@ export default function Console({
           </section>
         </aside>
       </div>
+
+      {matchRow && (
+        <MatchDialog
+          row={matchRow}
+          onResolve={(hrId) => resolveMatch(matchRow, hrId)}
+          onClose={() => setMatchRow(null)}
+        />
+      )}
     </div>
   );
 }

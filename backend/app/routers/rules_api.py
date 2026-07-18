@@ -92,7 +92,9 @@ def sheet_view(tournament: TournamentDep, session: SessionDep, fencer: FencerDep
     require_organizer(session, tournament, fencer)
     base = sheet.base_rows(session, tournament)
     rows, audit = rules.replay(base, rules.active_rules(session, tournament))
+    # Deleted rows are included with _deleted=True so the console can render
+    # them greyed with a restore action; exports are where they disappear.
     return SheetOut(
-        rows=[row for row in rows.values() if not row.get("_deleted")],
+        rows=list(rows.values()),
         edits=[AppliedChangeOut(**change.__dict__) for change in audit],
     )
