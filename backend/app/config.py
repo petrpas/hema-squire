@@ -7,6 +7,8 @@ class Settings(BaseSettings):
     database_url: str = "sqlite:///./hema_squire.sqlite"
     secret_key: str = "dev-only-secret-change-me-in-production!"
     token_ttl_hours: int = 24 * 14
+    email_outbox_dir: str = "./outbox"
+    email_sender: str = "noreply@hemasquire.local"
 
 
 settings = Settings()

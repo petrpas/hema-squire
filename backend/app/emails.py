@@ -1,0 +1,70 @@
+"""Composition of fencer-facing emails, localized to the tournament's
+communication language."""
+
+from app import spayd
+from app.config import settings
+from app.i18n import t
+from app.mail import Mailer, build_message
+from app.models import Fencer, Registration, Tournament
+
+
+def _summary_lines(registration: Registration, lang: str) -> str:
+    lines = [
+        f"  {entry.discipline.code} — {entry.discipline.name}"
+        + (f" ({t('email.confirmation.substitute', lang)})" if entry.is_substitute else "")
+        for entry in registration.entries
+    ]
+    if registration.weapon_rentals:
+        lines.append(
+            f"  {t('email.confirmation.rentals', lang)}: "
+            + ", ".join(registration.weapon_rentals)
+        )
+    if registration.afterparty:
+        lines.append(f"  {t('email.confirmation.afterparty', lang)}")
+    if registration.aftersparring:
+        lines.append(f"  {t('email.confirmation.aftersparring', lang)}")
+    return "\n".join(lines)
+
+
+def send_registration_confirmation(
+    mailer: Mailer, tournament: Tournament, fencer: Fencer, registration: Registration
+) -> None:
+    lang = tournament.language
+    queued = all(entry.is_substitute for entry in registration.entries)
+
+    if queued:
+        subject = t("email.queued.subject", lang, tournament=tournament.display_name)
+        body = t(
+            "email.queued.body",
+            lang,
+            name=fencer.display_name,
+            tournament=tournament.display_name,
+            summary=_summary_lines(registration, lang),
+        )
+        mailer.send(build_message(fencer.email, settings.email_sender, subject, body))
+        return
+
+    subject = t("email.confirmation.subject", lang, tournament=tournament.display_name)
+    body = t(
+        "email.confirmation.body",
+        lang,
+        name=fencer.display_name,
+        tournament=tournament.display_name,
+        summary=_summary_lines(registration, lang),
+        total=registration.total_amount,
+        account=tournament.bank_account or "?",
+        vs=registration.vs,
+        expires=registration.expires_at.date().isoformat() if registration.expires_at else "-",
+    )
+    qr = None
+    if tournament.bank_account:
+        payment_message = f"VS{registration.vs} {tournament.display_name}"
+        qr = spayd.qr_png(
+            spayd.spayd_string(
+                tournament.bank_account,
+                registration.total_amount,
+                registration.vs,
+                payment_message,
+            )
+        )
+    mailer.send(build_message(fencer.email, settings.email_sender, subject, body, qr=qr))

@@ -6,6 +6,18 @@
     "common": {
       "greeting": "Ahoj {name},",
       "signature": "Tým {tournament}"
+    },
+    "confirmation": {
+      "subject": "Registrace na {tournament} — pokyny k platbě",
+      "body": "Ahoj {name},\n\npřijali jsme tvou registraci na {tournament}:\n\n{summary}\n\nCelkem k úhradě: {total} Kč\nÚčet: {account}\nVariabilní symbol: {vs}\nRezervace platí do: {expires}\n\nZaplatit můžeš naskenováním přiloženého QR kódu v bankovní aplikaci. U plateb ze zahraničí uveď prosím VS{vs} ve zprávě pro příjemce.\n\nPokud platba do konce rezervace nedorazí, místo se automaticky uvolní.\n\nTým {tournament}",
+      "substitute": "náhradník",
+      "rentals": "Zapůjčení zbraně",
+      "afterparty": "Afterparty",
+      "aftersparring": "After-sparring"
+    },
+    "queued": {
+      "subject": "Zařazení do fronty náhradníků — {tournament}",
+      "body": "Ahoj {name},\n\ntvá registrace na {tournament} čeká ve frontě náhradníků:\n\n{summary}\n\nZatím nic neplatíš. Jakmile se uvolní místo a organizátor tě přijme, pošleme ti pokyny k platbě.\n\nTým {tournament}"
     }
   }
 }

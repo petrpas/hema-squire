@@ -1,10 +1,12 @@
 from datetime import UTC, datetime, timedelta
+from typing import Annotated
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import func, select
 
-from app import pricing
+from app import emails, pricing
 from app.auth import require_organizer
+from app.mail import Mailer, get_mailer
 from app.models import (
     Discipline,
     RefundState,
@@ -18,6 +20,8 @@ from app.schemas import AvailabilityOut, RegisterIn, RegistrationOut
 from app.taxonomy import WEAPONS
 
 router = APIRouter(prefix="/api/tournaments/{slug}", tags=["registrations"])
+
+MailerDep = Annotated[Mailer, Depends(get_mailer)]
 
 VS_START = 1000001
 
@@ -123,7 +127,11 @@ def availability(tournament: TournamentDep, session: SessionDep):
 
 @router.post("/register", response_model=RegistrationOut, status_code=201)
 def register(
-    data: RegisterIn, tournament: TournamentDep, session: SessionDep, fencer: FencerDep
+    data: RegisterIn,
+    tournament: TournamentDep,
+    session: SessionDep,
+    fencer: FencerDep,
+    mailer: MailerDep,
 ):
     existing = session.scalar(
         select(Registration).where(
@@ -176,6 +184,7 @@ def register(
             days=tournament.reservation_validity_days
         )
     session.commit()
+    emails.send_registration_confirmation(mailer, tournament, fencer, registration)
     return registration_out(session, registration)
 
 
@@ -223,6 +232,7 @@ def admit_substitute(
     tournament: TournamentDep,
     session: SessionDep,
     fencer: FencerDep,
+    mailer: MailerDep,
 ):
     require_organizer(session, tournament, fencer)
     registration = session.get(Registration, registration_id)
@@ -245,4 +255,6 @@ def admit_substitute(
     registration.total_amount = pricing.registration_total(registration, tournament)
     registration.expires_at = _now() + timedelta(days=tournament.reservation_validity_days)
     session.commit()
+    # Admission opens the payment window: send the payment instructions now.
+    emails.send_registration_confirmation(mailer, tournament, registration.fencer, registration)
     return registration_out(session, registration)
