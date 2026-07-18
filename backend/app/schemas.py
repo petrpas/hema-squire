@@ -1,5 +1,5 @@
 import datetime
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
@@ -175,6 +175,45 @@ class IngestAndMatchOut(BaseModel):
     matched: int
     flagged: int
     unmatched: int
+
+
+class RuleIn(BaseModel):
+    phase: str = Field(max_length=20)
+    kind: str = Field(max_length=30)
+    target: str = Field(max_length=50)
+    payload: dict
+
+
+class RulePayloadIn(BaseModel):
+    payload: dict
+
+
+class RuleOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    phase: str
+    kind: str
+    target: str
+    payload: dict
+    created_by: int
+    created_at: datetime.datetime
+
+
+class AppliedChangeOut(BaseModel):
+    rule_id: int
+    phase: str
+    target: str
+    field: str
+    before: Any
+    after: Any
+    actor: str
+    at: datetime.datetime
+
+
+class SheetOut(BaseModel):
+    rows: list[dict]
+    edits: list[AppliedChangeOut]
 
 
 class ParticipantOut(BaseModel):

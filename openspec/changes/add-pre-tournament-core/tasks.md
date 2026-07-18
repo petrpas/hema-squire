@@ -20,7 +20,7 @@
 - [ ] 3.4 Manual matching operation persisted as a rule
 
 ## 4. Console and rules engine
-- [ ] 4.1 edit-rules engine: rules, replay, removal, audit journal
+- [x] 4.1 edit-rules engine: rules, replay, removal, audit journal
 - [ ] 4.2 ETL console shell: phase stepper, sheet table, operations rail
 - [ ] 4.3 Phase views: columns, parameter panels, per-phase edits log
 - [ ] 4.4 Row operations: inline edit, reversible delete, match resolution

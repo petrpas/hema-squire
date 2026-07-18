@@ -4,7 +4,15 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
 from app.config import settings
-from app.routers import accounts, auth, payments, registrations, taxonomy_api, tournaments
+from app.routers import (
+    accounts,
+    auth,
+    payments,
+    registrations,
+    rules_api,
+    taxonomy_api,
+    tournaments,
+)
 from app.scheduler import scheduler_loop
 
 
@@ -28,6 +36,7 @@ def create_app() -> FastAPI:
     app.include_router(tournaments.router)
     app.include_router(registrations.router)
     app.include_router(payments.router)
+    app.include_router(rules_api.router)
     app.include_router(taxonomy_api.router)
     return app
 

@@ -240,6 +240,47 @@ class PaymentEvent(Base):
     )
 
 
+class Rule(Base):
+    """A persisted manual operation, replayed in creation order on every rerun.
+
+    Soft-deleted rules are excluded from replay — data-side, as if they never
+    existed. Their history lives in the append-only rule journal.
+    """
+
+    __tablename__ = "rules"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    tournament_id: Mapped[int] = mapped_column(ForeignKey("tournaments.id"))
+    phase: Mapped[str] = mapped_column(String(20))
+    kind: Mapped[str] = mapped_column(String(30))
+    target: Mapped[str] = mapped_column(String(50))
+    payload: Mapped[dict] = mapped_column(JSON)
+    created_by: Mapped[int] = mapped_column(ForeignKey("fencers.id"))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    deleted_by: Mapped[int | None] = mapped_column(ForeignKey("fencers.id"))
+
+    author: Mapped[Fencer] = relationship(foreign_keys=[created_by])
+
+
+class RuleJournalEntry(Base):
+    """Append-only meta-journal of rule lifecycle events. Never replayed."""
+
+    __tablename__ = "rule_journal"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    tournament_id: Mapped[int] = mapped_column(ForeignKey("tournaments.id"))
+    rule_id: Mapped[int] = mapped_column(ForeignKey("rules.id"))
+    action: Mapped[str] = mapped_column(String(10))  # created | updated | deleted
+    actor_id: Mapped[int] = mapped_column(ForeignKey("fencers.id"))
+    content: Mapped[dict] = mapped_column(JSON)  # rule snapshot at event time
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+
+
 class RegistrationDiscipline(Base):
     """A registration's entry into one discipline; substitutes queue by registration time."""
 
