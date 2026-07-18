@@ -24,7 +24,22 @@
     "title": "Párování na HEMA Ratings",
     "placeholder": "Hledat jméno…",
     "noResults": "Žádné výsledky.",
-    "notFound": "Profil neexistuje (✗)"
+    "notFound": "Profil neexistuje (✗)",
+    "runTitle": "LLM párování",
+    "runHint": "Dohledá HR profily šermířů bez ID (fuzzy, přes LLM).",
+    "run": "Spustit párování",
+    "runResult": "{{matched}} spárováno · {{unmatched}} bez profilu",
+    "notConfigured": "LLM není nakonfigurováno."
+  },
+  "dedup": {
+    "title": "Fronta duplicit",
+    "run": "Spustit deduplikaci",
+    "empty": "Žádné duplicity k rozhodnutí.",
+    "accept": "Sloučit",
+    "reject": "Ponechat zvlášť",
+    "sameId": "Stejné HR ID",
+    "likely": "Pravděpodobná duplicita",
+    "notConfigured": "LLM není nakonfigurováno."
   },
   "login": {
     "subtitle": "Přihlášení organizátora",

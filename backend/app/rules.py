@@ -20,30 +20,70 @@ from sqlalchemy.orm import Session
 from app.models import Fencer, Rule, RuleJournalEntry, Tournament
 
 Row = dict[str, Any]
-# A handler mutates the row and returns (field, before, after) triples for audit.
-Handler = Callable[[Row, dict], list[tuple[str, Any, Any]]]
+# A handler mutates rows in place and returns (target, field, before, after)
+# quadruples for the audit; most kinds touch only rule.target, dedup merges
+# absorb sibling rows too.
+Handler = Callable[[dict[str, Row], str, dict], list[tuple[str, str, Any, Any]]]
 
 
-def _apply_field_edit(row: Row, payload: dict) -> list[tuple[str, Any, Any]]:
+def _apply_field_edit(rows: dict[str, Row], target: str, payload: dict):
+    row = rows[target]
     field, value = payload["field"], payload["value"]
     before = row.get(field)
     row[field] = value
-    return [(field, before, value)]
+    return [(target, field, before, value)]
 
 
-def _apply_row_delete(row: Row, payload: dict) -> list[tuple[str, Any, Any]]:
+def _apply_match_resolution(rows: dict[str, Row], target: str, payload: dict):
+    """An organizer's HR verdict: sets hr_id (or its confirmed absence)."""
+    changes = _apply_field_edit(rows, target, payload)
+    row = rows[target]
+    verdict = "confirmed" if payload["value"] is not None else "none_found"
+    before = row.get("match_verdict")
+    row["match_verdict"] = verdict
+    changes.append((target, "match_verdict", before, verdict))
+    return changes
+
+
+def _apply_row_delete(rows: dict[str, Row], target: str, payload: dict):
+    row = rows[target]
     before = row.get("_deleted", False)
     row["_deleted"] = True
-    return [("_deleted", before, True)]
+    return [(target, "_deleted", before, True)]
 
 
-def _apply_row_restore(row: Row, payload: dict) -> list[tuple[str, Any, Any]]:
+def _apply_row_restore(rows: dict[str, Row], target: str, payload: dict):
+    row = rows[target]
     before = row.get("_deleted", False)
     row["_deleted"] = False
-    return [("_deleted", before, False)]
+    return [(target, "_deleted", before, False)]
 
 
-def _apply_opaque(row: Row, payload: dict) -> list[tuple[str, Any, Any]]:
+def _apply_dedup_decision(rows: dict[str, Row], target: str, payload: dict):
+    """A confirmed merge: the target row takes the merged field values, the
+    absorbed rows disappear from the table (they stay visible in the audit)."""
+    changes = []
+    survivor = rows[target]
+    for field, value in payload.get("fields", {}).items():
+        before = survivor.get(field)
+        if before != value:
+            survivor[field] = value
+            changes.append((target, field, before, value))
+    if payload.get("note"):
+        before = survivor.get("merge_note")
+        survivor["merge_note"] = payload["note"]
+        changes.append((target, "merge_note", before, payload["note"]))
+    for absorbed_id in payload.get("absorb", []):
+        absorbed = rows.get(absorbed_id)
+        if absorbed is None:
+            continue  # source row vanished; nothing to absorb
+        absorbed["_deleted"] = True
+        absorbed["_merged_into"] = target
+        changes.append((absorbed_id, "_merged_into", None, target))
+    return changes
+
+
+def _apply_opaque(rows: dict[str, Row], target: str, payload: dict):
     """Kinds consumed by domain engines (e.g. payment links), not by the sheet."""
     return []
 
@@ -52,9 +92,9 @@ HANDLERS: dict[str, Handler] = {
     "field_edit": _apply_field_edit,
     "row_delete": _apply_row_delete,
     "row_restore": _apply_row_restore,
-    "match_resolution": _apply_field_edit,
+    "match_resolution": _apply_match_resolution,
     "payment_link": _apply_opaque,
-    "dedup_decision": _apply_opaque,
+    "dedup_decision": _apply_dedup_decision,
 }
 
 
@@ -86,16 +126,15 @@ def replay(base: dict[str, Row], rules: list[Rule]) -> tuple[dict[str, Row], lis
     rows = copy.deepcopy(base)
     audit: list[AppliedChange] = []
     for rule in rules:
-        row = rows.get(rule.target)
-        if row is None:
+        if rule.target not in rows:
             continue  # target vanished from source data; rule is inert, not an error
         handler = HANDLERS[rule.kind]
-        for field, before, after in handler(row, rule.payload):
+        for target, field, before, after in handler(rows, rule.target, rule.payload):
             audit.append(
                 AppliedChange(
                     rule_id=rule.id,
                     phase=rule.phase,
-                    target=rule.target,
+                    target=target,
                     field=field,
                     before=before,
                     after=after,

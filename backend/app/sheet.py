@@ -8,7 +8,7 @@ Phase views (task 4.3) select columns over this same projection.
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
-from app import importer
+from app import hr_match, importer
 from app.models import ImportedRow, Registration, RegistrationState, Tournament
 from app.rules import Row
 
@@ -36,6 +36,7 @@ def base_rows(session: Session, tournament: Tournament) -> dict[str, Row]:
             "nationality": registration.fencer.nationality,
             "club": registration.fencer.club,
             "hr_id": registration.fencer.hr_id,
+            "match_verdict": "confirmed" if registration.fencer.hr_id else "unknown",
             "email": registration.fencer.email,
             "disciplines": [
                 e.discipline.code for e in registration.entries if not e.is_substitute
@@ -85,13 +86,37 @@ def _imported_rows(session: Session, tournament: Tournament) -> dict[str, Row]:
         disciplines = [
             importer.ParsedDiscipline(**d).code for d in record.get("disciplines", [])
         ]
+        name = record.get("name")
+        reg_name = record.get("reg_name")
+        club = record.get("club")
+        nationality = record.get("nationality") or None
+        hr_id = record.get("hr_id")
+        # fencer-provided hr_id counts as confirmed; otherwise overlay the
+        # cached LLM match proposal for the organizer to review
+        verdict = "confirmed" if hr_id is not None else "unknown"
+        if hr_id is None and name:
+            match = importer.get_decision(
+                session, tournament, "hr_match", hr_match.identity_key(name, club)
+            )
+            if match is not None:
+                if match.payload.get("hr_id") is not None:
+                    hr_id = match.payload["hr_id"]
+                    verdict = "proposed"
+                    if match.payload.get("matched_name") and match.payload["matched_name"] != name:
+                        reg_name = reg_name or name
+                        name = match.payload["matched_name"]
+                    club = match.payload.get("matched_club") or club
+                    nationality = match.payload.get("nationality") or nationality
+                else:
+                    verdict = "none_found"
         rows[row_id] = {
             "id": row_id,
-            "name": record.get("name"),
-            "reg_name": record.get("reg_name"),
-            "nationality": record.get("nationality") or None,
-            "club": record.get("club"),
-            "hr_id": record.get("hr_id"),
+            "name": name,
+            "reg_name": reg_name,
+            "nationality": nationality,
+            "club": club,
+            "hr_id": hr_id,
+            "match_verdict": verdict,
             "email": record.get("email"),
             "disciplines": disciplines,
             "substitute_for": [],
@@ -122,6 +147,7 @@ def _unparsed_row(row_id: str, row: ImportedRow) -> Row:
         "nationality": None,
         "club": None,
         "hr_id": None,
+        "match_verdict": "unknown",
         "email": None,
         "disciplines": [],
         "substitute_for": [],

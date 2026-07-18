@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
+import DedupPanel from "./DedupPanel";
 import EditableCell from "./EditableCell";
 import ImportPanel from "./ImportPanel";
 import MatchDialog from "./MatchDialog";
+import MatchPanel from "./MatchPanel";
 import ParamPanel from "./ParamPanel";
 import {
   type Sheet,
@@ -237,10 +239,14 @@ export default function Console({
                                 onClick={() => setMatchRow(row)}
                                 disabled={row._deleted === true}
                               >
-                                {row.hr_id !== null ? (
+                                {row.match_verdict === "confirmed" ? (
                                   <span className="badge badge-paid">✓</span>
-                                ) : (
+                                ) : row.match_verdict === "none_found" ? (
+                                  <span className="badge badge-expired">✗</span>
+                                ) : row.match_verdict === "proposed" ? (
                                   <span className="badge badge-reserved">?</span>
+                                ) : (
+                                  <span className="badge badge-imported">?</span>
                                 )}
                               </button>
                             ) : editable ? (
@@ -290,6 +296,8 @@ export default function Console({
           <ParamPanel phase={phase} detail={detail} slug={tournament.slug} onSaved={refresh} />
 
           {phase === "load" && <ImportPanel slug={tournament.slug} onImported={refresh} />}
+          {phase === "matching" && <MatchPanel slug={tournament.slug} onChanged={refresh} />}
+          {phase === "dedup" && <DedupPanel slug={tournament.slug} onChanged={refresh} />}
 
           <section className="rail-card dashed">
             <h2>{t("rail.columnsForStep")}</h2>

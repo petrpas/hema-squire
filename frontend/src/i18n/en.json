@@ -24,7 +24,22 @@
     "title": "Matching on HEMA Ratings",
     "placeholder": "Search name…",
     "noResults": "No results.",
-    "notFound": "No profile exists (✗)"
+    "notFound": "No profile exists (✗)",
+    "runTitle": "LLM matching",
+    "runHint": "Finds HR profiles for fencers without an ID (fuzzy, via LLM).",
+    "run": "Run matching",
+    "runResult": "{{matched}} matched · {{unmatched}} without a profile",
+    "notConfigured": "LLM is not configured."
+  },
+  "dedup": {
+    "title": "Duplicate queue",
+    "run": "Run deduplication",
+    "empty": "No duplicates to decide.",
+    "accept": "Merge",
+    "reject": "Keep separate",
+    "sameId": "Same HR ID",
+    "likely": "Likely duplicate",
+    "notConfigured": "LLM is not configured."
   },
   "login": {
     "subtitle": "Organizer sign-in",

@@ -76,6 +76,9 @@ export interface SheetRow {
   registered_at: string | null;
   total_amount: number | null;
   problems: string | null;
+  match_verdict?: "confirmed" | "proposed" | "none_found" | "unknown";
+  merge_note?: string | null;
+  _merged_into?: string;
   expires_at: string | null;
   paid_at: string | null;
   weapon_rentals: string[];
@@ -139,7 +142,32 @@ export const api = {
     if (!response.ok) throw new ApiError(response.status, null);
     return response.json();
   },
+  runMatching: (slug: string) =>
+    request<{ matched: number; unmatched: number; reused: number }>(
+      `/api/tournaments/${slug}/import/match`,
+      { method: "POST" },
+    ),
+  runDedup: (slug: string) =>
+    request<{ proposals: number; auto_merged: number; likely: number }>(
+      `/api/tournaments/${slug}/import/dedup`,
+      { method: "POST" },
+    ),
+  dedupQueue: (slug: string) =>
+    request<DedupItem[]>(`/api/tournaments/${slug}/import/dedup/queue`),
+  dedupDecide: (slug: string, key: string, accept: boolean) =>
+    request<{ status: string }>(`/api/tournaments/${slug}/import/dedup/decide`, {
+      method: "POST",
+      body: JSON.stringify({ key, accept }),
+    }),
 };
+
+export interface DedupItem {
+  key: string;
+  kind: "same_id" | "likely";
+  rows: { id: string; name: string; club: string | null; email: string | null }[];
+  fields: Record<string, unknown>;
+  note: string;
+}
 
 export interface ImportResult {
   batch_id: number;

@@ -553,6 +553,17 @@ tr.row-deleted td.col-actions {
   background: #fff;
 }
 
+.dedup-actions {
+  display: flex;
+  gap: 0.4rem;
+  margin-top: 0.35rem;
+}
+
+.dedup-actions .secondary {
+  padding: 0.15rem 0.5rem;
+  font-size: 0.8rem;
+}
+
 .badge-button {
   border: none;
   background: transparent;
