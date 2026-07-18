@@ -4,12 +4,12 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, UploadFile
 from sqlalchemy import select
 
-from app import bank, matching, scheduler
+from app import bank, matching, rules, scheduler
 from app.auth import require_organizer
 from app.mail import Mailer, get_mailer
-from app.models import BankTransaction
+from app.models import BankTransaction, Registration
 from app.routers.tournaments import FencerDep, SessionDep, TournamentDep
-from app.schemas import IngestAndMatchOut, TransactionOut
+from app.schemas import IngestAndMatchOut, LinkIn, TransactionOut
 
 router = APIRouter(prefix="/api/tournaments/{slug}/payments", tags=["payments"])
 
@@ -20,6 +20,7 @@ MailerDep = Annotated[Mailer, Depends(get_mailer)]
 def _ingest_and_match(session, tournament, mailer, source, transactions) -> IngestAndMatchOut:
     ingested = bank.ingest(session, tournament, source, transactions)
     matched = matching.match_new_transactions(session, tournament, mailer)
+    matching.apply_payment_links(session, tournament, mailer)
     return IngestAndMatchOut(
         new=ingested.new,
         duplicate=ingested.duplicate,
@@ -74,6 +75,46 @@ def process_lifecycle(
         "reminders": scheduler.process_reminders(session, tournament, mailer),
         "expired": expired,
     }
+
+
+@router.post("/link", status_code=201)
+def link_transaction(
+    data: LinkIn,
+    tournament: TournamentDep,
+    session: SessionDep,
+    fencer: FencerDep,
+    mailer: MailerDep,
+):
+    """Manually link an unmatched transaction to one or more registrations.
+    Persists as a payment_link rule: survives reruns, removable via the rules API."""
+    require_organizer(session, tournament, fencer)
+    transaction = session.get(BankTransaction, data.transaction_id)
+    if transaction is None or transaction.tournament_id != tournament.id:
+        raise HTTPException(status_code=404, detail="transaction_not_found")
+    if transaction.status == "matched":
+        raise HTTPException(status_code=409, detail="already_matched")
+    known_vs = set(
+        session.scalars(
+            select(Registration.vs).where(
+                Registration.tournament_id == tournament.id, Registration.vs.in_(data.vs)
+            )
+        )
+    )
+    unknown = [vs for vs in data.vs if vs not in known_vs]
+    if unknown:
+        raise HTTPException(status_code=404, detail={"unknown_vs": unknown})
+
+    rule = rules.create_rule(
+        session,
+        tournament,
+        fencer,
+        phase="payments",
+        kind="payment_link",
+        target=f"txn:{transaction.external_id}",
+        payload={"vs": data.vs},
+    )
+    applied = matching.apply_payment_links(session, tournament, mailer)
+    return {"rule_id": rule.id, "applied": applied}
 
 
 @router.get("/unmatched", response_model=list[TransactionOut])

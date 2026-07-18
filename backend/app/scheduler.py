@@ -90,6 +90,7 @@ def run_tournament_tick(
         )
         ingested = bank.ingest(session, tournament, "fio_api", transactions)
         matched = matching.match_new_transactions(session, tournament, mailer)
+        matching.apply_payment_links(session, tournament, mailer)
         result |= {"polled_new": ingested.new, "matched": matched.matched}
     # Expire first: a reservation past its window must not receive a reminder.
     result["expired"] = process_expiries(session, tournament, mailer)

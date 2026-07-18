@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException
 from sqlalchemy import select
 
-from app import rules, sheet
+from app import matching, rules, sheet
 from app.auth import require_organizer
 from app.models import Rule, RuleJournalEntry
 from app.routers.tournaments import FencerDep, SessionDep, TournamentDep
@@ -61,6 +61,8 @@ def delete_rule(
     require_organizer(session, tournament, fencer)
     rule = _get_rule(session, tournament, rule_id)
     rules.delete_rule(session, rule, fencer)
+    if rule.kind == "payment_link":
+        matching.unapply_payment_link(session, tournament, rule)
 
 
 @router.get("/rules/journal")

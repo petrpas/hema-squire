@@ -169,6 +169,11 @@ class TransactionOut(BaseModel):
     matched_registration_id: int | None
 
 
+class LinkIn(BaseModel):
+    transaction_id: int
+    vs: list[int] = Field(min_length=1)
+
+
 class IngestAndMatchOut(BaseModel):
     new: int
     duplicate: int
