@@ -2,6 +2,22 @@
   "app": {
     "title": "HEMA Squire"
   },
+  "common": {
+    "loading": "Načítání…",
+    "logout": "Odhlásit"
+  },
+  "login": {
+    "subtitle": "Přihlášení organizátora",
+    "email": "E-mail",
+    "password": "Heslo",
+    "submit": "Přihlásit se",
+    "invalid": "Neplatný e-mail nebo heslo.",
+    "failed": "Přihlášení se nezdařilo. Zkus to prosím znovu."
+  },
+  "picker": {
+    "title": "Vyber turnaj",
+    "empty": "Zatím žádné turnaje."
+  },
   "stage": {
     "pre": "Před turnajem",
     "in": "Turnaj",
@@ -15,13 +31,31 @@
     "payments": "Platby",
     "export": "Export"
   },
+  "console": {
+    "title": "Registrovaní šermíři",
+    "stats": "{{rows}} řádků · {{paid}} zaplaceno · {{reserved}} rezervací",
+    "refresh": "obnovit",
+    "error": "Data se nepodařilo načíst. Jsi organizátorem tohoto turnaje?"
+  },
+  "column": {
+    "name": "Jméno",
+    "nationality": "Nár.",
+    "club": "Klub",
+    "hr_id": "HRID",
+    "disciplines": "Disciplíny",
+    "vs": "VS",
+    "state": "Stav"
+  },
   "rail": {
+    "operations": "Operace",
     "generalRules": "Obecná pravidla",
+    "rulesHint": "Parametry operací přibudou s jednotlivými fázemi.",
     "columnsForStep": "Sloupce kroku",
-    "manualEdits": "Ruční úpravy"
+    "manualEdits": "Ruční úpravy",
+    "noEdits": "Zatím žádné ruční úpravy."
   },
   "sheet": {
-    "empty": "Zatím žádní šermíři. Data se objeví po načtení registrací nebo importu tabulky."
+    "empty": "Zatím žádní šermíři. Data se objeví po registracích nebo importu tabulky."
   },
   "tournament": {
     "unnamed": "Nový turnaj"

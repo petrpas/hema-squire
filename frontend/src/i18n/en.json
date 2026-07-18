@@ -2,6 +2,22 @@
   "app": {
     "title": "HEMA Squire"
   },
+  "common": {
+    "loading": "Loading…",
+    "logout": "Log out"
+  },
+  "login": {
+    "subtitle": "Organizer sign-in",
+    "email": "E-mail",
+    "password": "Password",
+    "submit": "Sign in",
+    "invalid": "Invalid e-mail or password.",
+    "failed": "Sign-in failed. Please try again."
+  },
+  "picker": {
+    "title": "Pick a tournament",
+    "empty": "No tournaments yet."
+  },
   "stage": {
     "pre": "Pre Tournament",
     "in": "In Tournament",
@@ -15,13 +31,31 @@
     "payments": "Payments",
     "export": "Export"
   },
+  "console": {
+    "title": "Registered fencers",
+    "stats": "{{rows}} rows · {{paid}} paid · {{reserved}} reserved",
+    "refresh": "refresh",
+    "error": "Could not load data. Are you an organizer of this tournament?"
+  },
+  "column": {
+    "name": "Name",
+    "nationality": "Nat.",
+    "club": "Club",
+    "hr_id": "HRID",
+    "disciplines": "Disciplines",
+    "vs": "VS",
+    "state": "State"
+  },
   "rail": {
+    "operations": "Operations",
     "generalRules": "General rules",
+    "rulesHint": "Operation parameters arrive with each phase.",
     "columnsForStep": "Columns for step",
-    "manualEdits": "Manual edits log"
+    "manualEdits": "Manual edits",
+    "noEdits": "No manual edits yet."
   },
   "sheet": {
-    "empty": "No fencers yet. Data will appear after registrations load or a table import."
+    "empty": "No fencers yet. Data will appear after registrations or a table import."
   },
   "tournament": {
     "unnamed": "New tournament"

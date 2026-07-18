@@ -21,7 +21,7 @@
 
 ## 4. Console and rules engine
 - [x] 4.1 edit-rules engine: rules, replay, removal, audit journal
-- [ ] 4.2 ETL console shell: phase stepper, sheet table, operations rail
+- [x] 4.2 ETL console shell: phase stepper, sheet table, operations rail
 - [ ] 4.3 Phase views: columns, parameter panels, per-phase edits log
 - [ ] 4.4 Row operations: inline edit, reversible delete, match resolution
 

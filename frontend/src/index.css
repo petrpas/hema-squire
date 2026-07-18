@@ -5,9 +5,108 @@
 
 body {
   font-family: system-ui, sans-serif;
-  color: #1a1a1a;
-  background: #f5f5f4;
+  color: #26221d;
+  background: #f0eeea;
 }
+
+button {
+  font: inherit;
+  cursor: pointer;
+}
+
+/* ===== login / picker ===== */
+
+.login-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.login-card {
+  background: #fffdf8;
+  border: 1px solid #d8d5cc;
+  border-radius: 10px;
+  padding: 2rem;
+  width: 22rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+
+.login-card h1 {
+  font-size: 1.4rem;
+}
+
+.login-subtitle {
+  color: #8a877f;
+  margin-top: -0.5rem;
+}
+
+.login-card label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  font-size: 0.9rem;
+  color: #6b6862;
+}
+
+.login-card input {
+  font: inherit;
+  padding: 0.5rem 0.6rem;
+  border: 1px solid #b9b6ad;
+  border-radius: 6px;
+}
+
+.login-card button[type="submit"] {
+  border: none;
+  background: #26221d;
+  color: #fffdf8;
+  padding: 0.6rem;
+  border-radius: 6px;
+}
+
+.login-card button[type="submit"]:disabled {
+  opacity: 0.6;
+}
+
+.login-error {
+  color: #c0392b;
+  font-size: 0.9rem;
+}
+
+.picker-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0;
+}
+
+.picker-list button {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.7rem 0.9rem;
+  border: 1px solid #b9b6ad;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.picker-list button:hover {
+  border-color: #26221d;
+}
+
+.link-button {
+  border: none;
+  background: transparent;
+  color: #8a877f;
+  text-decoration: underline;
+  padding: 0.2rem;
+}
+
+/* ===== console frame ===== */
 
 .app {
   display: flex;
@@ -19,79 +118,133 @@ body {
   display: flex;
   align-items: center;
   gap: 2rem;
-  padding: 0.5rem 1rem;
-  background: #26221d;
-  color: #f5f5f4;
+  padding: 0.6rem 1.5rem;
+  background: #fffdf8;
+  border-bottom: 2px solid #26221d;
+}
+
+.logo-button {
+  border: none;
+  background: transparent;
+  padding: 0;
 }
 
 .logo {
   font-weight: 700;
-  letter-spacing: 0.03em;
+  font-size: 1.25rem;
+  letter-spacing: 0.02em;
 }
 
 .stage-control {
   display: flex;
-  gap: 0.25rem;
+  border: 1.5px solid #26221d;
+  border-radius: 8px;
+  overflow: hidden;
 }
 
 .stage-control button {
   border: none;
   background: transparent;
-  color: #c9c4bc;
-  padding: 0.4rem 0.8rem;
-  border-radius: 4px;
-  cursor: pointer;
+  color: #8a877f;
+  padding: 0.45rem 1.1rem;
+}
+
+.stage-control button + button {
+  border-left: 1.5px solid #26221d;
 }
 
 .stage-control button.active {
-  background: #4a4237;
-  color: #fff;
+  background: #26221d;
+  color: #fffdf8;
+}
+
+.stage-control button:disabled {
+  cursor: default;
 }
 
 .tournament-info {
   margin-left: auto;
-  color: #c9c4bc;
+  text-align: right;
 }
+
+.tournament-name {
+  font-weight: 700;
+  font-size: 1.1rem;
+}
+
+.tournament-date {
+  color: #8a877f;
+  font-size: 0.85rem;
+}
+
+/* ===== phase stepper ===== */
 
 .stepper {
   display: flex;
-  border-bottom: 1px solid #ddd;
-  background: #fff;
+  align-items: center;
+  padding: 0.8rem 2rem;
+  background: #fffdf8;
+  border-bottom: 1.5px dashed #b9b6ad;
   overflow-x: auto;
 }
 
-.stepper button {
+.step-slot {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  border: none;
-  border-bottom: 2px solid transparent;
-  background: transparent;
-  padding: 0.7rem 1.2rem;
-  cursor: pointer;
-  white-space: nowrap;
+  flex: 1;
+  min-width: 0;
 }
 
-.stepper button.active {
-  border-bottom-color: #8b5e34;
-  font-weight: 600;
+.step-slot:first-child {
+  flex: 0;
+}
+
+.step-connector {
+  flex: 1;
+  height: 2px;
+  background: #b9b6ad;
+  margin: 0 0.5rem 1.1rem;
+  min-width: 1rem;
+}
+
+.step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  border: none;
+  background: transparent;
+  color: #8a877f;
+  white-space: nowrap;
 }
 
 .step-number {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 1.4rem;
-  height: 1.4rem;
+  width: 2rem;
+  height: 2rem;
   border-radius: 50%;
-  background: #eee;
+  border: 1.5px solid #b9b6ad;
+  font-size: 0.9rem;
+}
+
+.step.active {
+  color: #1f3c5c;
+  font-weight: 700;
+}
+
+.step.active .step-number {
+  border-color: #3a6ea5;
+  background: #3a6ea5;
+  color: #fff;
+}
+
+.step-label {
   font-size: 0.8rem;
 }
 
-.stepper button.active .step-number {
-  background: #8b5e34;
-  color: #fff;
-}
+/* ===== workspace: sheet + rail ===== */
 
 .workspace {
   display: flex;
@@ -99,44 +252,202 @@ body {
   min-height: 0;
 }
 
-.sheet {
+.sheet-area {
+  flex: 1;
+  min-width: 0;
+  padding: 1.1rem 1.4rem;
+  display: flex;
+  flex-direction: column;
+}
+
+.sheet-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 0.7rem;
+}
+
+.sheet-header h1 {
+  font-size: 1.25rem;
+}
+
+.sheet-stats {
+  color: #8a877f;
+  font-size: 0.9rem;
+}
+
+button.secondary {
+  border: 1.5px solid #3a6ea5;
+  background: #eef3f9;
+  color: #1f3c5c;
+  border-radius: 7px;
+  padding: 0.4rem 0.9rem;
+}
+
+.sheet-scroll {
   flex: 1;
   overflow: auto;
-  background: #fff;
-  margin: 0.75rem;
-  border: 1px solid #ddd;
+  background: #fffdf8;
+  border: 1px solid #b9b6ad;
   border-radius: 6px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
 }
 
 .sheet-empty {
-  color: #888;
-  max-width: 28rem;
+  color: #8a877f;
+  padding: 2rem;
   text-align: center;
-  padding: 1rem;
 }
+
+.sheet-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.92rem;
+}
+
+.sheet-table th,
+.sheet-table td {
+  border: 1px solid #d8d5cc;
+  padding: 0.45rem 0.7rem;
+  text-align: left;
+}
+
+.sheet-table th {
+  background: #f1efe8;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.col-index {
+  width: 3rem;
+  color: #8a877f;
+}
+
+.col-state {
+  text-align: center;
+  width: 4rem;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.6rem;
+  height: 1.6rem;
+  border-radius: 5px;
+  border: 1.5px solid;
+  font-size: 0.9rem;
+}
+
+.badge-paid {
+  border-color: #2e9e5b;
+  color: #2e9e5b;
+  background: #e6f4ec;
+}
+
+.badge-reserved {
+  border-color: #d98a00;
+  color: #b5790f;
+  background: #fcf3e0;
+}
+
+.badge-expired,
+.badge-cancelled {
+  border-color: #c0392b;
+  color: #c0392b;
+  background: #fbe9e7;
+}
+
+/* ===== operations rail ===== */
 
 .rail {
-  width: 260px;
-  padding: 0.75rem 0.75rem 0.75rem 0;
+  flex: none;
+  width: 300px;
+  padding: 1.1rem 1rem;
+  border-left: 2px solid #26221d;
+  background: #faf8f1;
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
-  overflow-y: auto;
+  gap: 1rem;
 }
 
-.rail section {
-  background: #fff;
-  border: 1px solid #ddd;
-  border-radius: 6px;
-  padding: 0.75rem;
-}
-
-.rail h2 {
-  font-size: 0.85rem;
+.rail-title {
+  font-size: 0.78rem;
+  color: #8a877f;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: #666;
+  letter-spacing: 0.08em;
+}
+
+.rail-card {
+  border: 1.5px solid #26221d;
+  border-radius: 7px;
+  padding: 0.8rem;
+}
+
+.rail-card.dashed {
+  border-style: dashed;
+  border-color: #b9b6ad;
+}
+
+.rail-card.plain {
+  border: none;
+  padding: 0;
+}
+
+.rail-card h2 {
+  font-size: 0.95rem;
+  margin-bottom: 0.5rem;
+}
+
+.rail-count {
+  color: #8a877f;
+  font-weight: 400;
+}
+
+.rail-hint {
+  color: #8a877f;
+  font-size: 0.85rem;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.chip {
+  font-size: 0.78rem;
+  padding: 0.2rem 0.6rem;
+  border: 1px solid #b9b6ad;
+  border-radius: 14px;
+  background: #eef0e9;
+}
+
+.edits-list {
+  list-style: none;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.edit-entry {
+  display: flex;
+  gap: 0.5rem;
+  padding: 0.5rem 0.6rem;
+  border: 1px solid #d8d5cc;
+  border-radius: 6px;
+  background: #fff;
+  font-size: 0.83rem;
+}
+
+.edit-icon {
+  color: #b5790f;
+  font-weight: 700;
+}
+
+.edit-meta {
+  color: #8a877f;
+  font-size: 0.76rem;
 }
