@@ -105,10 +105,10 @@ def test_statement_import_is_idempotent(client, auth_headers):
 
     first = import_statement(client, organizer)
     assert first.status_code == 200, first.text
-    assert first.json() == {"new": 2, "duplicate": 0}
+    assert first.json() == {"new": 2, "duplicate": 0, "matched": 0, "flagged": 0, "unmatched": 2}
 
     again = import_statement(client, organizer)
-    assert again.json() == {"new": 0, "duplicate": 2}
+    assert again.json() == {"new": 0, "duplicate": 2, "matched": 0, "flagged": 0, "unmatched": 0}
 
     listing = client.get("/api/tournaments/cup/payments/transactions", headers=organizer)
     assert len(listing.json()) == 2
@@ -147,7 +147,7 @@ def test_fio_poll_overlaps_with_csv_idempotently(client, auth_headers, stub_fio)
     polled = client.post("/api/tournaments/cup/payments/fio-poll", headers=organizer)
     assert polled.status_code == 200
     # ...44 already known from CSV; ...45 is new
-    assert polled.json() == {"new": 1, "duplicate": 1}
+    assert polled.json() == {"new": 1, "duplicate": 1, "matched": 0, "flagged": 0, "unmatched": 1}
     assert stub_fio.calls == ["secret-token"]
 
 

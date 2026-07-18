@@ -15,6 +15,10 @@
       "afterparty": "Afterparty",
       "aftersparring": "After-sparring"
     },
+    "paid": {
+      "subject": "Platba přijata — {tournament}",
+      "body": "Ahoj {name},\n\npřijali jsme tvou platbu {total} Kč (VS {vs}) a tvoje účast na {tournament} je potvrzena. Uvidíme se na turnaji!\n\nTým {tournament}"
+    },
     "queued": {
       "subject": "Zařazení do fronty náhradníků — {tournament}",
       "body": "Ahoj {name},\n\ntvá registrace na {tournament} čeká ve frontě náhradníků:\n\n{summary}\n\nZatím nic neplatíš. Jakmile se uvolní místo a organizátor tě přijme, pošleme ti pokyny k platbě.\n\nTým {tournament}"

@@ -212,7 +212,32 @@ class BankTransaction(Base):
         DateTime(timezone=True), server_default=func.now()
     )
 
+    # matching outcome; None until the matcher has processed the transaction
+    status: Mapped[str | None] = mapped_column(String(20))  # matched|unmatched|flagged
+    status_reason: Mapped[str | None] = mapped_column(String(50))
+    matched_registration_id: Mapped[int | None] = mapped_column(
+        ForeignKey("registrations.id")
+    )
+
     tournament: Mapped[Tournament] = relationship()
+    matched_registration: Mapped[Registration | None] = relationship()
+
+
+class PaymentEvent(Base):
+    """Audit trail of payment lifecycle events (matches, mismatches, reminders,
+    expiries)."""
+
+    __tablename__ = "payment_events"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    tournament_id: Mapped[int] = mapped_column(ForeignKey("tournaments.id"))
+    registration_id: Mapped[int | None] = mapped_column(ForeignKey("registrations.id"))
+    transaction_id: Mapped[int | None] = mapped_column(ForeignKey("bank_transactions.id"))
+    kind: Mapped[str] = mapped_column(String(30))
+    detail: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
 
 
 class RegistrationDiscipline(Base):

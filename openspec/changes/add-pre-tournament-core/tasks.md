@@ -15,7 +15,7 @@
 
 ## 3. Payments
 - [x] 3.1 Fio API ingestion and CSV statement import behind one idempotent interface
-- [ ] 3.2 VS matching with amount tolerance; unmatched queue
+- [x] 3.2 VS matching with amount tolerance; unmatched queue
 - [ ] 3.3 Reminder and expiry scheduler; audited events
 - [ ] 3.4 Manual matching operation persisted as a rule
 

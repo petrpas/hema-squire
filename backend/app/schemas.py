@@ -164,6 +164,17 @@ class TransactionOut(BaseModel):
     message: str | None
     payer_name: str | None
     payer_account: str | None
+    status: str | None
+    status_reason: str | None
+    matched_registration_id: int | None
+
+
+class IngestAndMatchOut(BaseModel):
+    new: int
+    duplicate: int
+    matched: int
+    flagged: int
+    unmatched: int
 
 
 class ParticipantOut(BaseModel):

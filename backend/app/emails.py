@@ -68,3 +68,19 @@ def send_registration_confirmation(
             )
         )
     mailer.send(build_message(fencer.email, settings.email_sender, subject, body, qr=qr))
+
+
+def send_payment_received(
+    mailer: Mailer, tournament: Tournament, fencer: Fencer, registration: Registration
+) -> None:
+    lang = tournament.language
+    subject = t("email.paid.subject", lang, tournament=tournament.display_name)
+    body = t(
+        "email.paid.body",
+        lang,
+        name=fencer.display_name,
+        tournament=tournament.display_name,
+        total=registration.total_amount,
+        vs=registration.vs,
+    )
+    mailer.send(build_message(fencer.email, settings.email_sender, subject, body))
