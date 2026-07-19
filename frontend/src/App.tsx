@@ -17,6 +17,7 @@ export default function App() {
   const [initialPhase, setInitialPhase] = useState<Phase>("load");
   const [view, setView] = useState<View>("home");
   const [selectedSlug, setSelectedSlug] = useState<string | null>(null);
+  const [detailReadOnly, setDetailReadOnly] = useState(false);
 
   if (!authed) {
     return <Login onLogin={() => setAuthed(true)} />;
@@ -82,6 +83,7 @@ export default function App() {
     return (
       <TournamentDetail
         slug={selectedSlug}
+        readOnly={detailReadOnly}
         onBack={onHome}
         onProfile={onProfile}
         onAdmin={onAdmin}
@@ -92,8 +94,9 @@ export default function App() {
   }
   return (
     <FencerHome
-      onOpen={(slug) => {
+      onOpen={(slug, readOnly) => {
         setSelectedSlug(slug);
+        setDetailReadOnly(readOnly ?? false);
         setView("tournament");
       }}
       onProfile={onProfile}

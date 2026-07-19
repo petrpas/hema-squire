@@ -42,6 +42,7 @@ from app.schemas import (
     OpenDisciplineOut,
     OpenTournamentOut,
     OwnerTransferIn,
+    PastTournamentOut,
     TeamAdd,
     TeamMemberOut,
     TournamentCreate,
@@ -165,6 +166,92 @@ def open_tournaments(session: SessionDep, fencer: FencerDep):
                 registration_opens_on=opens_on,
                 disciplines=disciplines,
                 my_registration_state=my_state,
+            )
+        )
+    return result
+
+
+@router.get("/mine/past", response_model=list[PastTournamentOut])
+def past_tournaments(session: SessionDep, fencer: FencerDep):
+    """Personal history for the Past tab (design D1): non-cancelled tournaments
+    before today where the caller held a non-cancelled registration or
+    organized (owner or team member), newest first. Declared ahead of
+    `/{slug}` so "mine" is never captured as a slug."""
+    today = datetime.now(UTC).date()
+
+    organizer_tournament_ids = set(
+        session.scalars(
+            select(TournamentOrganizer.tournament_id).where(
+                TournamentOrganizer.fencer_id == fencer.id
+            )
+        ).all()
+    )
+    participated_tournament_ids = set(
+        session.scalars(
+            select(Registration.tournament_id).where(
+                Registration.fencer_id == fencer.id,
+                Registration.state.in_(
+                    [RegistrationState.PAID, RegistrationState.RESERVED]
+                ),
+            )
+        ).all()
+    )
+
+    rows = session.scalars(
+        select(Tournament)
+        .where(Tournament.cancelled_at.is_(None), Tournament.date < today)
+        .options(selectinload(Tournament.disciplines))
+        .order_by(Tournament.date.desc())
+    ).all()
+
+    result = []
+    for tournament in rows:
+        if setup.setup_missing(tournament):
+            continue
+
+        organized = tournament.owner_id == fencer.id or tournament.id in organizer_tournament_ids
+        participated = tournament.id in participated_tournament_ids
+        if not organized and not participated:
+            continue
+
+        disciplines = [
+            OpenDisciplineOut(
+                code=d.code,
+                name=d.name,
+                fee=d.fee,
+                taken=taken_seats(session, d),
+                capacity=d.capacity,
+                queue_length=queue_length(session, d),
+            )
+            for d in tournament.disciplines
+        ]
+
+        my_state = "none"
+        if participated:
+            registration = session.scalar(
+                select(Registration).where(
+                    Registration.tournament_id == tournament.id,
+                    Registration.fencer_id == fencer.id,
+                )
+            )
+            if registration.state == RegistrationState.PAID:
+                my_state = "paid"
+            elif registration.state == RegistrationState.RESERVED:
+                active = any(not e.is_substitute for e in registration.entries)
+                my_state = "reserved" if active else "substitute"
+
+        result.append(
+            PastTournamentOut(
+                slug=tournament.slug,
+                display_name=tournament.display_name,
+                date=tournament.date,
+                location=tournament.location,
+                organizer_names=tournament.organizer_names,
+                registration_status="closed",
+                registration_opens_on=None,
+                disciplines=disciplines,
+                my_registration_state=my_state,
+                organized=organized,
             )
         )
     return result

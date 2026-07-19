@@ -373,6 +373,35 @@ function PaymentPanel({ slug }: { slug: string }) {
   );
 }
 
+function RegistrationSummary({ registration }: { registration: RegistrationDetail }) {
+  const { t } = useTranslation();
+  const active = registration.entries.filter((e) => !e.is_substitute);
+  const substitutes = registration.entries.filter((e) => e.is_substitute);
+
+  return (
+    <section className="rail-card">
+      <h2>{t("registration.title")}</h2>
+      <p className="chip">{t(`registration.state.${registration.state}`)}</p>
+      <ul className="detail-list">
+        {active.map((e) => (
+          <li key={e.code}>{e.code}</li>
+        ))}
+        {substitutes.map((e) => (
+          <li key={e.code} className="muted">
+            {e.code} — {t("registration.queuePosition", { position: e.queue_position })}
+          </li>
+        ))}
+        {registration.extras.map((extra) => (
+          <li key={extra.extra_item_id}>
+            {extra.name} × {extra.qty}
+          </li>
+        ))}
+      </ul>
+      <p className="form-total">{t("form.total", { total: registration.total_amount })}</p>
+    </section>
+  );
+}
+
 function RegistrationPanel({
   slug,
   detail,
@@ -468,6 +497,7 @@ function RegistrationPanel({
 
 export default function TournamentDetail({
   slug,
+  readOnly = false,
   onBack,
   onProfile,
   onAdmin,
@@ -475,6 +505,7 @@ export default function TournamentDetail({
   onLogout,
 }: {
   slug: string;
+  readOnly?: boolean;
   onBack: () => void;
   onProfile: () => void;
   onAdmin: () => void;
@@ -532,7 +563,9 @@ export default function TournamentDetail({
           <div className="setup-panel">
             <InfoHeader detail={detail} />
             <DisciplinesAndExtras detail={detail} availability={availability} />
-            {hasActive && registration ? (
+            {readOnly ? (
+              hasActive && registration && <RegistrationSummary registration={registration} />
+            ) : hasActive && registration ? (
               <RegistrationPanel
                 slug={slug}
                 detail={detail}

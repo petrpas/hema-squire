@@ -360,6 +360,10 @@ class OpenTournamentOut(BaseModel):
     my_registration_state: MyRegistrationState
 
 
+class PastTournamentOut(OpenTournamentOut):
+    organized: bool
+
+
 class TransactionOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

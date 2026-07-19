@@ -224,6 +224,10 @@ export interface OpenTournament {
   my_registration_state: MyRegistrationState;
 }
 
+export interface PastTournament extends OpenTournament {
+  organized: boolean;
+}
+
 export interface Availability {
   code: string;
   capacity: number;
@@ -468,6 +472,7 @@ export const api = {
   adminDenyPlea: (id: number) =>
     request<{ id: number; state: string }>(`/api/admin/pleas/${id}/deny`, { method: "POST" }),
   openTournaments: () => request<OpenTournament[]>("/api/tournaments/open"),
+  pastTournaments: () => request<PastTournament[]>("/api/tournaments/mine/past"),
   availability: (slug: string) =>
     request<Availability[]>(`/api/tournaments/${slug}/availability`),
   myRegistration: (slug: string) =>

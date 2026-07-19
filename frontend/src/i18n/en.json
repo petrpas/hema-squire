@@ -293,9 +293,21 @@
   },
   "home": {
     "title": "Tournaments",
-    "empty": "No tournaments are open right now.",
-    "register": "Register",
-    "manage": "Manage registration",
+    "organized": "Organizer",
+    "tabs": {
+      "announced": "Announced",
+      "open": "Open",
+      "past": "Past"
+    },
+    "empty": {
+      "open": "No tournaments are open right now.",
+      "announced": "No announced tournaments right now.",
+      "past": "You have no past tournaments."
+    },
+    "identity": {
+      "hrid": "HRID: {{id}}",
+      "noHemaratings": "no hemaratings"
+    },
     "status": {
       "open": "Registration open",
       "opensOn": "Registration opens {{date}}",
@@ -339,6 +351,7 @@
     "state": {
       "reserved": "Reserved",
       "paid": "Paid",
+      "substitute": "Substitute",
       "expired": "Reservation expired",
       "cancelled": "Cancelled"
     },

@@ -293,9 +293,21 @@
   },
   "home": {
     "title": "Turnaje",
-    "empty": "Momentálně nejsou vypsané žádné turnaje.",
-    "register": "Registrovat",
-    "manage": "Správa registrace",
+    "organized": "Organizátor",
+    "tabs": {
+      "announced": "Vyhlášené",
+      "open": "Otevřené",
+      "past": "Proběhlé"
+    },
+    "empty": {
+      "open": "Momentálně nejsou vypsané žádné turnaje.",
+      "announced": "Momentálně nejsou vyhlášené žádné turnaje.",
+      "past": "Nemáte žádné proběhlé turnaje."
+    },
+    "identity": {
+      "hrid": "HRID: {{id}}",
+      "noHemaratings": "bez hemaratings"
+    },
     "status": {
       "open": "Registrace otevřena",
       "opensOn": "Registrace od {{date}}",
@@ -339,6 +351,7 @@
     "state": {
       "reserved": "Rezervováno",
       "paid": "Zaplaceno",
+      "substitute": "Náhradník",
       "expired": "Rezervace vypršela",
       "cancelled": "Zrušeno"
     },
