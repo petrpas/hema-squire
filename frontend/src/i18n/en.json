@@ -59,12 +59,36 @@
     "notConfigured": "LLM is not configured."
   },
   "login": {
-    "subtitle": "Organizer sign-in",
+    "subtitle": "Sign-in",
     "email": "E-mail",
     "password": "Password",
     "submit": "Sign in",
     "invalid": "Invalid e-mail or password.",
-    "failed": "Sign-in failed. Please try again."
+    "failed": "Sign-in failed. Please try again.",
+    "createAccount": "Create account"
+  },
+  "signup": {
+    "subtitle": "Create your account",
+    "name": "Name",
+    "language": "Preferred language",
+    "submit": "Create account",
+    "backToLogin": "Back to sign in",
+    "hr": {
+      "find": "Find my HEMA Ratings profile",
+      "confirmed": "HEMA Ratings profile confirmed: {{name}}",
+      "clear": "Clear"
+    },
+    "errors": {
+      "emailTaken": "That e-mail is already registered.",
+      "hrBound": "That HEMA Ratings profile is already bound to another account.",
+      "hrNotFound": "That HEMA Ratings profile could not be found.",
+      "invalid": "Please check the form and try again.",
+      "failed": "Sign-up failed. Please try again."
+    }
+  },
+  "languages": {
+    "cs": "Čeština",
+    "en": "English"
   },
   "picker": {
     "title": "Pick a tournament",
@@ -274,6 +298,7 @@
       "title": "Account",
       "email": "E-mail",
       "displayName": "Full name",
+      "language": "Preferred language",
       "emailTaken": "That e-mail is already in use.",
       "saveFailed": "Save failed."
     },

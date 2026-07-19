@@ -7,9 +7,11 @@ from pydantic import (
     EmailStr,
     Field,
     field_serializer,
+    field_validator,
     model_validator,
 )
 
+from app.i18n import catalog
 from app.models import (
     ExtraCategory,
     RefundState,
@@ -26,6 +28,14 @@ class SignupIn(BaseModel):
     display_name: str | None = Field(default=None, min_length=1, max_length=200)
     hr_id: int | None = None
     club: str | None = Field(default=None, max_length=200)
+    language: str = "cs"
+
+    @field_validator("language")
+    @classmethod
+    def _known_language(cls, value: str) -> str:
+        if value not in catalog.available():
+            raise ValueError("unsupported_language")
+        return value
 
 
 class AccountOut(BaseModel):
@@ -37,6 +47,7 @@ class AccountOut(BaseModel):
     hr_id: int | None
     nationality: str | None
     club: str | None
+    language: str
     role: Role
     # computed from settings.owner_email, not stored (deployment Owner)
     is_deployment_owner: bool = False
@@ -59,6 +70,14 @@ class AccountUpdate(BaseModel):
     email: EmailStr | None = None
     display_name: str | None = Field(default=None, min_length=1, max_length=200)
     club: str | None = Field(default=None, max_length=200)
+    language: str | None = None
+
+    @field_validator("language")
+    @classmethod
+    def _known_language(cls, value: str | None) -> str | None:
+        if value is not None and value not in catalog.available():
+            raise ValueError("unsupported_language")
+        return value
 
 
 class HRBindIn(BaseModel):

@@ -2,8 +2,12 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import AccountMenu from "./AccountMenu";
+import HRSearchPicker from "./HRSearch";
 import PleaSection from "./PleaSection";
 import { ApiError, type Account, type HRProfile, type Plea, api } from "./api";
+import i18n from "./i18n";
+
+const IMPLEMENTED_LANGUAGES = Object.keys(i18n.options.resources ?? {});
 
 function AccountSection({
   account,
@@ -15,6 +19,7 @@ function AccountSection({
   const { t } = useTranslation();
   const [email, setEmail] = useState(account.email);
   const [displayName, setDisplayName] = useState(account.display_name);
+  const [language, setLanguage] = useState(account.language);
   const [dirty, setDirty] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -22,6 +27,7 @@ function AccountSection({
   useEffect(() => {
     setEmail(account.email);
     setDisplayName(account.display_name);
+    setLanguage(account.language);
     setDirty(false);
   }, [account]);
 
@@ -29,8 +35,9 @@ function AccountSection({
     setBusy(true);
     setError(null);
     try {
-      const updated = await api.updateAccount({ email, display_name: displayName });
+      const updated = await api.updateAccount({ email, display_name: displayName, language });
       onUpdated(updated);
+      void i18n.changeLanguage(updated.language);
       setDirty(false);
     } catch (err) {
       setError(
@@ -67,6 +74,22 @@ function AccountSection({
               setDirty(true);
             }}
           />
+        </label>
+        <label className="param-field">
+          <span>{t("profile.account.language")}</span>
+          <select
+            value={language}
+            onChange={(event) => {
+              setLanguage(event.target.value);
+              setDirty(true);
+            }}
+          >
+            {IMPLEMENTED_LANGUAGES.map((code) => (
+              <option key={code} value={code}>
+                {t(`languages.${code}`)}
+              </option>
+            ))}
+          </select>
         </label>
       </div>
       {error && <p className="login-error">{error}</p>}
@@ -136,27 +159,8 @@ function HRBoundSection({ account }: { account: Account }) {
 
 function HRMatchSection({ onBound }: { onBound: (account: Account) => void }) {
   const { t } = useTranslation();
-  const [nationalities, setNationalities] = useState<string[]>([]);
-  const [nationality, setNationality] = useState("");
-  const [query, setQuery] = useState("");
-  const [results, setResults] = useState<HRProfile[] | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    api.hrNationalities().then(setNationalities, () => setNationalities([]));
-  }, []);
-
-  async function search() {
-    setBusy(true);
-    setError(null);
-    try {
-      const hits = await api.hrSearch(query, nationality || null);
-      setResults(hits);
-    } finally {
-      setBusy(false);
-    }
-  }
 
   async function confirm(profile: HRProfile) {
     setBusy(true);
@@ -179,52 +183,8 @@ function HRMatchSection({ onBound }: { onBound: (account: Account) => void }) {
     <section className="rail-card">
       <h2>{t("profile.hr.title")}</h2>
       <p className="rail-hint">{t("profile.hr.unboundHint")}</p>
-      <div className="param-fields">
-        <label className="param-field">
-          <span>{t("profile.hr.nationality")}</span>
-          <select value={nationality} onChange={(event) => setNationality(event.target.value)}>
-            <option value="">{t("profile.hr.anyNationality")}</option>
-            {nationalities.map((n) => (
-              <option key={n} value={n}>
-                {n}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="param-field">
-          <span>{t("match.placeholder")}</span>
-          <input
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key === "Enter") void search();
-            }}
-          />
-        </label>
-      </div>
-      <button
-        className="secondary"
-        onClick={() => void search()}
-        disabled={busy || query.trim().length < 3}
-      >
-        {t("profile.hr.search")}
-      </button>
+      <HRSearchPicker onConfirm={(profile) => void confirm(profile)} busy={busy} />
       {error && <p className="login-error">{error}</p>}
-      {results && (
-        <ul className="match-results">
-          {results.map((profile) => (
-            <li key={profile.hr_id}>
-              <button onClick={() => void confirm(profile)} disabled={busy}>
-                <strong>{profile.name}</strong>
-                <span className="muted">
-                  {profile.club ?? "—"} · {profile.nationality ?? "—"} · #{profile.hr_id}
-                </span>
-              </button>
-            </li>
-          ))}
-          {results.length === 0 && <li className="muted match-empty">{t("match.noResults")}</li>}
-        </ul>
-      )}
     </section>
   );
 }

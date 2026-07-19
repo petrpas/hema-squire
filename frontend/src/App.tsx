@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import AdminPanel from "./AdminPanel";
 import Console, { type Phase } from "./Console";
@@ -7,7 +7,8 @@ import Login from "./Login";
 import ProfilePage from "./ProfilePage";
 import TournamentDetail from "./TournamentDetail";
 import TournamentPicker from "./TournamentPicker";
-import { type Tournament, getToken } from "./api";
+import { type Tournament, api, getToken } from "./api";
+import i18n from "./i18n";
 
 type View = "home" | "tournament" | "picker" | "console" | "admin" | "profile";
 
@@ -18,6 +19,12 @@ export default function App() {
   const [view, setView] = useState<View>("home");
   const [selectedSlug, setSelectedSlug] = useState<string | null>(null);
   const [detailReadOnly, setDetailReadOnly] = useState(false);
+
+  useEffect(() => {
+    if (authed) {
+      api.account().then((account) => void i18n.changeLanguage(account.language), () => {});
+    }
+  }, [authed]);
 
   if (!authed) {
     return <Login onLogin={() => setAuthed(true)} />;

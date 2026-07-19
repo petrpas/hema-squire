@@ -59,12 +59,36 @@
     "notConfigured": "LLM není nakonfigurováno."
   },
   "login": {
-    "subtitle": "Přihlášení organizátora",
+    "subtitle": "Přihlášení",
     "email": "E-mail",
     "password": "Heslo",
     "submit": "Přihlásit se",
     "invalid": "Neplatný e-mail nebo heslo.",
-    "failed": "Přihlášení se nezdařilo. Zkus to prosím znovu."
+    "failed": "Přihlášení se nezdařilo. Zkus to prosím znovu.",
+    "createAccount": "Vytvořit účet"
+  },
+  "signup": {
+    "subtitle": "Vytvoř si účet",
+    "name": "Jméno",
+    "language": "Preferovaný jazyk",
+    "submit": "Vytvořit účet",
+    "backToLogin": "Zpět na přihlášení",
+    "hr": {
+      "find": "Najít můj profil na HEMA Ratings",
+      "confirmed": "Profil na HEMA Ratings potvrzen: {{name}}",
+      "clear": "Zrušit výběr"
+    },
+    "errors": {
+      "emailTaken": "Tento e-mail už je zaregistrovaný.",
+      "hrBound": "Tento profil na HEMA Ratings je už spojen s jiným účtem.",
+      "hrNotFound": "Tento profil na HEMA Ratings se nepodařilo najít.",
+      "invalid": "Zkontroluj prosím formulář a zkus to znovu.",
+      "failed": "Registrace se nezdařila. Zkus to prosím znovu."
+    }
+  },
+  "languages": {
+    "cs": "Čeština",
+    "en": "English"
   },
   "picker": {
     "title": "Vyber turnaj",
@@ -274,6 +298,7 @@
       "title": "Účet",
       "email": "E-mail",
       "displayName": "Celé jméno",
+      "language": "Preferovaný jazyk",
       "emailTaken": "Tento e-mail už je použitý.",
       "saveFailed": "Uložení se nezdařilo."
     },

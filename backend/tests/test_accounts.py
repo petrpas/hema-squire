@@ -118,3 +118,49 @@ def test_profile_update_is_audited(client):
 def test_display_name_required_without_hr(client):
     response = signup(client, display_name=None)
     assert response.status_code == 422
+
+
+def test_signup_stores_chosen_language(client):
+    response = signup(client, language="en")
+    assert response.status_code == 201
+    account = client.get("/api/account", headers=headers_from(response)).json()
+    assert account["language"] == "en"
+
+
+def test_signup_defaults_language_to_cs(client):
+    response = signup(client)
+    account = client.get("/api/account", headers=headers_from(response)).json()
+    assert account["language"] == "cs"
+
+
+def test_signup_rejects_unknown_language(client):
+    response = signup(client, language="xx")
+    assert response.status_code == 422
+
+
+def test_language_change_via_account_update_is_audited(client):
+    from sqlalchemy import select
+
+    from app.db import get_session
+    from app.main import app
+    from app.models import FencerProfileAudit
+
+    response = signup(client)
+    headers = headers_from(response)
+    updated = client.patch("/api/account", json={"language": "en"}, headers=headers)
+    assert updated.status_code == 200
+    assert updated.json()["language"] == "en"
+
+    session_gen = app.dependency_overrides[get_session]()
+    session = next(session_gen)
+    entries = session.scalars(select(FencerProfileAudit)).all()
+    assert [(e.field, e.old_value, e.new_value) for e in entries] == [
+        ("language", "cs", "en")
+    ]
+
+
+def test_account_update_rejects_unknown_language(client):
+    response = signup(client)
+    headers = headers_from(response)
+    updated = client.patch("/api/account", json={"language": "xx"}, headers=headers)
+    assert updated.status_code == 422

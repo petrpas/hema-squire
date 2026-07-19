@@ -1,9 +1,4 @@
-# fencer-accounts Specification
-
-## Purpose
-Give fencers portable, globally scoped accounts bound to HEMA Ratings identities, reusable across tournaments.
-
-## Requirements
+## MODIFIED Requirements
 
 ### Requirement: Account creation with HR binding
 The system SHALL offer a self-service registration window, reachable from the login screen, with the fields: email, password, name, and preferred UI language (selected from the implemented localizations). The window SHALL include an optional HEMA Ratings step: search the fighters index by name, present candidate profiles (name, nationality, club), and record the confirmed hr_id at signup — the HR canonical name SHALL become the account display name and be visible in the form before submitting, and a confirmed profile SHALL be clearable before submit. The step SHALL be skippable; an account created without it can be bound later from the Profile page. On successful signup the account SHALL be active immediately (no email verification) and the fencer SHALL be logged in and land on Fencer Home. A duplicate email SHALL be rejected with a clear message.
@@ -25,28 +20,3 @@ The system SHALL offer a self-service registration window, reachable from the lo
 - **WHEN** a fencer declares they have no HEMA Ratings profile
 - **THEN** the account is created with an empty hr_id
 - **AND** the account can be bound to an HR profile later without losing history
-
-### Requirement: One account per HR identity
-The system SHALL prevent two accounts from binding the same hr_id.
-
-#### Scenario: hr_id already bound
-- **WHEN** account creation attempts to bind an hr_id already bound to an existing account
-- **THEN** the binding is rejected and the fencer is directed to account recovery
-
-### Requirement: Portable profile across tournaments
-Fencer accounts SHALL be global, not tournament-scoped, and reusable to register for any tournament in the deployment. Profile changes SHALL be audited.
-
-#### Scenario: Returning fencer registers for a new tournament
-- **WHEN** an existing fencer opens registration for another tournament
-- **THEN** the registration is prefilled from the account profile without re-entering identity data
-
-### Requirement: Administrative HR unbinding
-An Admin SHALL be able to unbind a wrongly linked HEMA Ratings profile from an account: the hr_id is cleared while profile fields keep their current values, and the change is recorded in the profile audit trail. The account can then be bound to the correct profile through the existing binding flow. Fencer-initiated rebinding SHALL remain rejected — the binding stays write-once from the fencer's side.
-
-#### Scenario: Admin unbinds a wrong profile
-- **WHEN** an Admin clears the hr_id of an account linked to the wrong HEMA Ratings profile
-- **THEN** the hr_id is empty, the unbinding is audited, and the fencer can bind the correct profile
-
-#### Scenario: Fencer still cannot rebind
-- **WHEN** a fencer whose account already has an hr_id attempts to bind a different profile
-- **THEN** the request is rejected as before

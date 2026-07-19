@@ -37,6 +37,7 @@ def signup(
             hr_id=profile.hr_id,
             nationality=profile.nationality,
             club=data.club if data.club is not None else profile.club,
+            language=data.language,
         )
     else:
         if data.display_name is None:
@@ -46,6 +47,7 @@ def signup(
             password_hash=hash_password(data.password),
             display_name=data.display_name,
             club=data.club,
+            language=data.language,
         )
 
     session.add(fencer)

@@ -59,6 +59,7 @@ export interface Account {
   hr_id: number | null;
   nationality: string | null;
   club: string | null;
+  language: string;
   role: Role;
   is_deployment_owner: boolean;
 }
@@ -304,6 +305,17 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ email, password }),
     }),
+  signup: (data: {
+    email: string;
+    password: string;
+    display_name: string;
+    hr_id?: number;
+    language: string;
+  }) =>
+    request<{ token: string }>("/api/auth/signup", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
   tournaments: () => request<Tournament[]>("/api/tournaments"),
   tournament: (slug: string) => request<TournamentDetail>(`/api/tournaments/${slug}`),
   createTournament: (data: { slug: string; display_name: string; date: string }) =>
@@ -420,7 +432,12 @@ export const api = {
       `/api/tournaments/${slug}/ratings`,
     ),
   account: () => request<Account>("/api/account"),
-  updateAccount: (patch: { email?: string; display_name?: string; club?: string }) =>
+  updateAccount: (patch: {
+    email?: string;
+    display_name?: string;
+    club?: string;
+    language?: string;
+  }) =>
     request<Account>("/api/account", {
       method: "PATCH",
       body: JSON.stringify(patch),

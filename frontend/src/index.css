@@ -51,11 +51,17 @@ button {
   color: #6b6862;
 }
 
-.login-card input {
+.login-card input,
+.login-card select {
   font: inherit;
   padding: 0.5rem 0.6rem;
   border: 1px solid #b9b6ad;
   border-radius: 6px;
+}
+
+.signup-hr-confirmed {
+  font-size: 0.9rem;
+  color: #6b6862;
 }
 
 .login-card button[type="submit"] {
