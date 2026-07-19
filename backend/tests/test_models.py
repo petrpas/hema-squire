@@ -49,11 +49,11 @@ def test_registration_roundtrip(session):
     assert saved.tournament.unpaid_list_treatment == UnpaidListTreatment.GREYED
 
 
-def test_hr_id_unique_across_accounts(session):
+def test_hr_id_not_unique_across_accounts(session):
+    """Claims are non-exclusive (design D3): multiple accounts may share an hr_id."""
     session.add(Fencer(email="a@example.com", display_name="A", hr_id=7))
     session.add(Fencer(email="b@example.com", display_name="B", hr_id=7))
-    with pytest.raises(IntegrityError):
-        session.commit()
+    session.commit()
 
 
 def test_vs_unique(session):

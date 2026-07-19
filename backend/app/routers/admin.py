@@ -6,7 +6,7 @@ from datetime import UTC, datetime
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.auth import current_fencer, is_deployment_owner, require_role
@@ -26,7 +26,9 @@ SessionDep = Annotated[Session, Depends(get_session)]
 FencerDep = Annotated[Fencer, Depends(current_fencer)]
 
 
-def _admin_account_out(session: Session, account: Fencer) -> AdminAccountOut:
+def _admin_account_out(
+    session: Session, account: Fencer, shared_hr_ids: set[int]
+) -> AdminAccountOut:
     out = AdminAccountOut.model_validate(account)
     out.is_deployment_owner = is_deployment_owner(account)
     out.has_pending_plea = bool(
@@ -37,14 +39,27 @@ def _admin_account_out(session: Session, account: Fencer) -> AdminAccountOut:
             )
         )
     )
+    out.hr_shared = account.hr_id in shared_hr_ids
     return out
+
+
+def _shared_hr_ids(session: Session) -> set[int]:
+    """hr_ids bound by more than one account (design D4)."""
+    rows = session.scalars(
+        select(Fencer.hr_id)
+        .where(Fencer.hr_id.isnot(None))
+        .group_by(Fencer.hr_id)
+        .having(func.count(Fencer.id) > 1)
+    )
+    return set(rows)
 
 
 @router.get("/accounts", response_model=list[AdminAccountOut])
 def list_accounts(session: SessionDep, fencer: FencerDep):
     require_role(fencer, Role.ADMIN)
     accounts = session.scalars(select(Fencer).order_by(Fencer.email)).all()
-    return [_admin_account_out(session, account) for account in accounts]
+    shared_hr_ids = _shared_hr_ids(session)
+    return [_admin_account_out(session, account, shared_hr_ids) for account in accounts]
 
 
 def _authorize_role_change(actor: Fencer, target: Fencer, new_role: Role) -> None:
@@ -69,7 +84,7 @@ def set_role(fencer_id: int, data: RoleUpdateIn, session: SessionDep, fencer: Fe
     target.role = data.role
     session.commit()
     session.refresh(target)
-    return _admin_account_out(session, target)
+    return _admin_account_out(session, target, _shared_hr_ids(session))
 
 
 @router.post("/accounts/{fencer_id}/hr-unbind", response_model=AdminAccountOut)
@@ -84,7 +99,7 @@ def hr_unbind(fencer_id: int, session: SessionDep, fencer: FencerDep):
     audit_change(session, target, "hr_id", None)
     session.commit()
     session.refresh(target)
-    return _admin_account_out(session, target)
+    return _admin_account_out(session, target, _shared_hr_ids(session))
 
 
 @router.get("/pleas", response_model=list[PleaQueueOut])

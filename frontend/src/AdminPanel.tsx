@@ -72,7 +72,17 @@ function AccountsSection({
                   </select>
                 )}
               </td>
-              <td>{account.hr_id ?? "—"}</td>
+              <td>
+                {account.hr_id ?? "—"}
+                {account.hr_shared && (
+                  <span
+                    className="badge badge-reserved hr-shared-badge"
+                    title={t("admin.accounts.hrShared")}
+                  >
+                    ⚠
+                  </span>
+                )}
+              </td>
               <td>{account.has_pending_plea ? t("admin.accounts.pleaPending") : "—"}</td>
               <td className="col-actions">
                 {account.hr_id !== null && (

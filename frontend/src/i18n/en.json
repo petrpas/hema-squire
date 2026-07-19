@@ -80,7 +80,6 @@
     },
     "errors": {
       "emailTaken": "That e-mail is already registered.",
-      "hrBound": "That HEMA Ratings profile is already bound to another account.",
       "hrNotFound": "That HEMA Ratings profile could not be found.",
       "invalid": "Please check the form and try again.",
       "failed": "Sign-up failed. Please try again."
@@ -265,6 +264,7 @@
       "displayName": "Name",
       "role": "Role",
       "hrId": "HRID",
+      "hrShared": "This HR profile is also claimed by another account.",
       "plea": "Plea",
       "owner": "Owner",
       "pleaPending": "pending",
@@ -312,7 +312,8 @@
       "nationality": "Nationality",
       "anyNationality": "Any nationality",
       "search": "Search",
-      "conflict": "That profile is already bound to another account.",
+      "claimedNotice": "Already claimed by another account. You may still confirm it if it's you.",
+      "confirmBind": "Confirm and link this profile",
       "bindFailed": "Binding failed."
     }
   },

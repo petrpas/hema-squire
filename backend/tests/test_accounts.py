@@ -60,11 +60,12 @@ def test_signup_may_adjust_club(client):
     assert account["display_name"] == "Petr Svoboda"
 
 
-def test_one_account_per_hr_identity(client):
+def test_claiming_an_already_claimed_hr_id_succeeds(client):
     assert signup(client, hr_id=10234).status_code == 201
     second = signup(client, email="other@example.com", hr_id=10234)
-    assert second.status_code == 409
-    assert second.json()["detail"] == "hr_id_already_bound"
+    assert second.status_code == 201
+    account = client.get("/api/account", headers=headers_from(second)).json()
+    assert account["hr_id"] == 10234
 
 
 def test_signup_without_hr_profile_and_bind_later(client):
@@ -84,14 +85,24 @@ def test_signup_without_hr_profile_and_bind_later(client):
     assert again.json()["detail"] == "already_bound"
 
 
-def test_late_binding_respects_uniqueness(client):
+def test_late_binding_allows_an_already_claimed_hr_id(client):
     signup(client, hr_id=3340)
     other = signup(client, email="b@example.com")
     response = client.post(
         "/api/account/hr-binding", json={"hr_id": 3340}, headers=headers_from(other)
     )
-    assert response.status_code == 409
-    assert response.json()["detail"] == "hr_id_already_bound"
+    assert response.status_code == 200
+    assert response.json()["hr_id"] == 3340
+
+
+def test_hr_search_marks_claimed_profiles(client):
+    signup(client, hr_id=10234)
+
+    hits = client.get("/api/hr/search", params={"q": "novak"}).json()
+    assert [(h["hr_id"], h["claimed"]) for h in hits] == [(10234, True)]
+
+    hits = client.get("/api/hr/search", params={"q": "mueller"}).json()
+    assert [(h["hr_id"], h["claimed"]) for h in hits] == [(8821, False)]
 
 
 def test_profile_update_is_audited(client):

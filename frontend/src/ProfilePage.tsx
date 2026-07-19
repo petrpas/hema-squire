@@ -157,23 +157,32 @@ function HRBoundSection({ account }: { account: Account }) {
   );
 }
 
-function HRMatchSection({ onBound }: { onBound: (account: Account) => void }) {
+function HRMatchSection({
+  account,
+  onBound,
+}: {
+  account: Account;
+  onBound: (account: Account) => void;
+}) {
   const { t } = useTranslation();
+  const [pending, setPending] = useState<HRProfile | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  async function confirm(profile: HRProfile) {
+  function select(profile: HRProfile) {
+    setPending(profile);
+    setError(null);
+  }
+
+  async function confirmBinding() {
+    if (!pending) return;
     setBusy(true);
     setError(null);
     try {
-      const account = await api.bindHr(profile.hr_id);
+      const account = await api.bindHr(pending.hr_id);
       onBound(account);
-    } catch (err) {
-      setError(
-        err instanceof ApiError && err.status === 409
-          ? t("profile.hr.conflict")
-          : t("profile.hr.bindFailed"),
-      );
+    } catch {
+      setError(t("profile.hr.bindFailed"));
     } finally {
       setBusy(false);
     }
@@ -182,9 +191,31 @@ function HRMatchSection({ onBound }: { onBound: (account: Account) => void }) {
   return (
     <section className="rail-card">
       <h2>{t("profile.hr.title")}</h2>
-      <p className="rail-hint">{t("profile.hr.unboundHint")}</p>
-      <HRSearchPicker onConfirm={(profile) => void confirm(profile)} busy={busy} />
-      {error && <p className="login-error">{error}</p>}
+      {pending ? (
+        <div className="signup-hr-confirmed">
+          <p>{t("signup.hr.confirmed", { name: pending.name })}</p>
+          {pending.claimed && (
+            <span className="hr-claimed-notice">{t("profile.hr.claimedNotice")}</span>
+          )}
+          {error && <p className="login-error">{error}</p>}
+          <button type="button" onClick={() => void confirmBinding()} disabled={busy}>
+            {t("profile.hr.confirmBind")}
+          </button>
+          <button
+            type="button"
+            className="link-button"
+            onClick={() => setPending(null)}
+            disabled={busy}
+          >
+            {t("common.cancel")}
+          </button>
+        </div>
+      ) : (
+        <>
+          <p className="rail-hint">{t("profile.hr.unboundHint")}</p>
+          <HRSearchPicker onConfirm={select} busy={busy} initialQuery={account.display_name} />
+        </>
+      )}
     </section>
   );
 }
@@ -233,7 +264,7 @@ export default function ProfilePage({
             {account.hr_id !== null ? (
               <HRBoundSection account={account} />
             ) : (
-              <HRMatchSection onBound={setAccount} />
+              <HRMatchSection account={account} onBound={setAccount} />
             )}
           </div>
         )}

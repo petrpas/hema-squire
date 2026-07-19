@@ -87,6 +87,7 @@ export interface AdminAccount {
   hr_id: number | null;
   is_deployment_owner: boolean;
   has_pending_plea: boolean;
+  hr_shared: boolean;
 }
 
 export interface PleaQueueItem {
@@ -544,4 +545,5 @@ export interface HRProfile {
   name: string;
   nationality: string | null;
   club: string | null;
+  claimed: boolean;
 }

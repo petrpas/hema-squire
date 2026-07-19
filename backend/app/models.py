@@ -83,7 +83,7 @@ class Fencer(Base):
     email: Mapped[str] = mapped_column(String(320), unique=True)
     password_hash: Mapped[str | None] = mapped_column(String(200))
     display_name: Mapped[str] = mapped_column(String(200))
-    hr_id: Mapped[int | None] = mapped_column(unique=True)
+    hr_id: Mapped[int | None] = mapped_column(index=True)
     nationality: Mapped[str | None] = mapped_column(String(100))
     club: Mapped[str | None] = mapped_column(String(200))
     language: Mapped[str] = mapped_column(String(10), default="cs")

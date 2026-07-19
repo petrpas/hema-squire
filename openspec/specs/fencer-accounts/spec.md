@@ -26,12 +26,20 @@ The system SHALL offer a self-service registration window, reachable from the lo
 - **THEN** the account is created with an empty hr_id
 - **AND** the account can be bound to an HR profile later without losing history
 
-### Requirement: One account per HR identity
-The system SHALL prevent two accounts from binding the same hr_id.
+### Requirement: Non-exclusive HR profile claims
+The system SHALL allow multiple accounts to claim the same HEMA Ratings profile — a claim to an already-claimed profile SHALL NOT be rejected at signup or Profile binding. Wherever HR candidate profiles are presented for claiming, profiles already claimed by another account SHALL be marked with a non-blocking notice so the fencer can recognize they may already have an account. The admin accounts list SHALL flag accounts whose hr_id is shared with at least one other account; resolution remains the existing administrative unbinding.
 
-#### Scenario: hr_id already bound
-- **WHEN** account creation attempts to bind an hr_id already bound to an existing account
-- **THEN** the binding is rejected and the fencer is directed to account recovery
+#### Scenario: Claiming an already-claimed profile succeeds
+- **WHEN** a fencer confirms an HR profile that another account has already claimed, at signup or on the Profile page
+- **THEN** the claim succeeds exactly as for an unclaimed profile
+
+#### Scenario: Fencer warned about an existing claim
+- **WHEN** HR candidate profiles are listed and one of them is already claimed by another account
+- **THEN** that candidate carries a visible notice that it is already claimed, and the fencer may still confirm it
+
+#### Scenario: Admin sees duplicate claims
+- **WHEN** an Admin opens the accounts list while two accounts share the same hr_id
+- **THEN** both accounts are flagged as sharing their HR profile, and the Admin can resolve the duplicate by unbinding the wrong account
 
 ### Requirement: Portable profile across tournaments
 Fencer accounts SHALL be global, not tournament-scoped, and reusable to register for any tournament in the deployment. Profile changes SHALL be audited.

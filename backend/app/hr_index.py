@@ -24,6 +24,9 @@ class HRProfile(BaseModel):
     name: str
     nationality: str | None
     club: str | None
+    # true when some account already binds this hr_id (design D1); filled in
+    # by the /api/hr/search endpoint, not by HRIndex itself.
+    claimed: bool = False
 
 
 class HRRating(BaseModel):

@@ -9,14 +9,16 @@ import { type HRProfile, api } from "./api";
 export default function HRSearchPicker({
   onConfirm,
   busy: externalBusy,
+  initialQuery = "",
 }: {
   onConfirm: (profile: HRProfile) => void;
   busy?: boolean;
+  initialQuery?: string;
 }) {
   const { t } = useTranslation();
   const [nationalities, setNationalities] = useState<string[]>([]);
   const [nationality, setNationality] = useState("");
-  const [query, setQuery] = useState("");
+  const [query, setQuery] = useState(initialQuery);
   const [results, setResults] = useState<HRProfile[] | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -81,6 +83,9 @@ export default function HRSearchPicker({
                 <span className="muted">
                   {profile.club ?? "—"} · {profile.nationality ?? "—"} · #{profile.hr_id}
                 </span>
+                {profile.claimed && (
+                  <span className="hr-claimed-notice">{t("profile.hr.claimedNotice")}</span>
+                )}
               </button>
             </li>
           ))}

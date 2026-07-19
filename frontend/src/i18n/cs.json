@@ -80,7 +80,6 @@
     },
     "errors": {
       "emailTaken": "Tento e-mail už je zaregistrovaný.",
-      "hrBound": "Tento profil na HEMA Ratings je už spojen s jiným účtem.",
       "hrNotFound": "Tento profil na HEMA Ratings se nepodařilo najít.",
       "invalid": "Zkontroluj prosím formulář a zkus to znovu.",
       "failed": "Registrace se nezdařila. Zkus to prosím znovu."
@@ -265,6 +264,7 @@
       "displayName": "Jméno",
       "role": "Role",
       "hrId": "HRID",
+      "hrShared": "Tento HR profil má nárokovaný i jiný účet.",
       "plea": "Žádost",
       "owner": "Owner",
       "pleaPending": "čeká",
@@ -312,7 +312,8 @@
       "nationality": "Národnost",
       "anyNationality": "Jakákoli národnost",
       "search": "Hledat",
-      "conflict": "Tento profil je už spojen s jiným účtem.",
+      "claimedNotice": "Už je spojen s jiným účtem. Pokud jsi to ty, klidně ho potvrď.",
+      "confirmBind": "Potvrdit a spojit tento profil",
       "bindFailed": "Spojení se nezdařilo."
     }
   },

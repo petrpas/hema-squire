@@ -18,8 +18,16 @@ HRIndexDep = Annotated[HRIndex, Depends(get_hr_index)]
 
 
 @router.get("/api/hr/search", response_model=list[HRProfile])
-def hr_search(q: str, hr: HRIndexDep, nationality: str | None = None):
-    return hr.search(q, nationality)
+def hr_search(q: str, session: SessionDep, hr: HRIndexDep, nationality: str | None = None):
+    results = hr.search(q, nationality)
+    claimed_ids = set(
+        session.scalars(
+            select(Fencer.hr_id).where(Fencer.hr_id.in_([p.hr_id for p in results]))
+        )
+    )
+    for profile in results:
+        profile.claimed = profile.hr_id in claimed_ids
+    return results
 
 
 @router.get("/api/hr/nationalities", response_model=list[str])
@@ -67,12 +75,11 @@ def update_account(data: AccountUpdate, session: SessionDep, fencer: FencerDep):
 
 
 def bind_profile(session: Session, fencer: Fencer, profile: HRProfile) -> None:
-    """Apply an HR profile to an account: canonical name, HR nationality, club if empty."""
-    bound_elsewhere = session.scalar(
-        select(Fencer.id).where(Fencer.hr_id == profile.hr_id, Fencer.id != fencer.id)
-    )
-    if bound_elsewhere:
-        raise HTTPException(status_code=409, detail="hr_id_already_bound")
+    """Apply an HR profile to an account: canonical name, HR nationality, club if empty.
+
+    Claims are non-exclusive (design D2): another account may already hold
+    this hr_id; that is surfaced as a warning in HR search, not enforced here.
+    """
     audit_change(session, fencer, "hr_id", profile.hr_id)  # type: ignore[arg-type]
     audit_change(session, fencer, "display_name", profile.name)
     audit_change(session, fencer, "nationality", profile.nationality)

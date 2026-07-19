@@ -261,3 +261,36 @@ def test_hr_unbind_unknown_account_404(client, auth_headers):
     admin = auth_headers(email="admin@example.com", role=Role.ADMIN)
     response = client.post("/api/admin/accounts/999999/hr-unbind", headers=admin)
     assert response.status_code == 404
+
+
+def test_admin_listing_flags_shared_hr_claims(client, auth_headers):
+    first = auth_headers(email="a@example.com", name="A", role=Role.FENCER)
+    second = auth_headers(email="b@example.com", name="B", role=Role.FENCER)
+    client.post("/api/account/hr-binding", json={"hr_id": 10234}, headers=first)
+    client.post("/api/account/hr-binding", json={"hr_id": 8821}, headers=second)
+
+    admin = auth_headers(email="admin@example.com", role=Role.ADMIN)
+    accounts = {
+        a["email"]: a for a in client.get("/api/admin/accounts", headers=admin).json()
+    }
+    assert accounts["a@example.com"]["hr_shared"] is False
+    assert accounts["b@example.com"]["hr_shared"] is False
+
+    third = auth_headers(email="c@example.com", name="C", role=Role.FENCER)
+    client.post("/api/account/hr-binding", json={"hr_id": 10234}, headers=third)
+
+    accounts = {
+        a["email"]: a for a in client.get("/api/admin/accounts", headers=admin).json()
+    }
+    assert accounts["a@example.com"]["hr_shared"] is True
+    assert accounts["c@example.com"]["hr_shared"] is True
+    assert accounts["b@example.com"]["hr_shared"] is False
+
+    account_id = accounts["c@example.com"]["id"]
+    unbound = client.post(f"/api/admin/accounts/{account_id}/hr-unbind", headers=admin)
+    assert unbound.json()["hr_shared"] is False
+
+    accounts = {
+        a["email"]: a for a in client.get("/api/admin/accounts", headers=admin).json()
+    }
+    assert accounts["a@example.com"]["hr_shared"] is False

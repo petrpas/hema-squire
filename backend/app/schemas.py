@@ -258,6 +258,7 @@ class AdminAccountOut(BaseModel):
     hr_id: int | None
     is_deployment_owner: bool = False
     has_pending_plea: bool = False
+    hr_shared: bool = False
 
 
 class RoleUpdateIn(BaseModel):

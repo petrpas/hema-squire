@@ -53,7 +53,6 @@ function SignupForm({ onSignedUp, onCancel }: { onSignedUp: () => void; onCancel
       if (err instanceof ApiError) {
         const detail = typeof err.detail === "string" ? err.detail : null;
         if (detail === "email_already_registered") setError(t("signup.errors.emailTaken"));
-        else if (detail === "hr_id_already_bound") setError(t("signup.errors.hrBound"));
         else if (detail === "hr_profile_not_found") setError(t("signup.errors.hrNotFound"));
         else if (err.status === 422) setError(t("signup.errors.invalid"));
         else setError(t("signup.errors.failed"));
@@ -115,11 +114,14 @@ function SignupForm({ onSignedUp, onCancel }: { onSignedUp: () => void; onCancel
           <button type="button" className="link-button" onClick={clearHr}>
             {t("signup.hr.clear")}
           </button>
+          {hrProfile.claimed && (
+            <span className="hr-claimed-notice">{t("profile.hr.claimedNotice")}</span>
+          )}
         </p>
       ) : showHrSearch ? (
         <section className="rail-card">
           <h2>{t("profile.hr.title")}</h2>
-          <HRSearchPicker onConfirm={confirmHr} />
+          <HRSearchPicker onConfirm={confirmHr} initialQuery={name} />
           <button
             type="button"
             className="link-button"

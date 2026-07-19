@@ -647,6 +647,7 @@ tr.row-deleted td.col-actions {
   list-style: none;
   padding: 0;
   overflow-y: auto;
+  max-height: 16rem;
   display: flex;
   flex-direction: column;
   gap: 0.4rem;
@@ -670,8 +671,37 @@ tr.row-deleted td.col-actions {
   background: #f7fafd;
 }
 
+@media (min-width: 640px) {
+  .match-results button {
+    flex-direction: row;
+    align-items: baseline;
+    gap: 0.6rem;
+    padding: 0.35rem 0.7rem;
+  }
+
+  .match-results button strong {
+    white-space: nowrap;
+  }
+
+  .match-results button .muted {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
 .match-empty {
   padding: 0.4rem;
+}
+
+.hr-claimed-notice {
+  display: block;
+  color: #b5790f;
+  font-size: 0.85rem;
+}
+
+.hr-shared-badge {
+  margin-left: 0.4rem;
 }
 
 .modal-actions {

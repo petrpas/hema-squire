@@ -27,9 +27,6 @@ def signup(
         profile = hr.get(data.hr_id)
         if profile is None:
             raise HTTPException(status_code=404, detail="hr_profile_not_found")
-        if session.scalar(select(Fencer.id).where(Fencer.hr_id == data.hr_id)):
-            # One account per HR identity; the fencer is directed to account recovery.
-            raise HTTPException(status_code=409, detail="hr_id_already_bound")
         fencer = Fencer(
             email=data.email,
             password_hash=hash_password(data.password),
