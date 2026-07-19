@@ -19,6 +19,29 @@ def test_hr_search_is_diacritics_insensitive(client):
     assert [h["hr_id"] for h in hits] == [10234]
 
 
+def test_hr_search_nationality_filter_narrows_results(client):
+    # nationality filters to CZE first; both CZE profiles are scored (D4: no
+    # score threshold once nationality narrows the space), but the actual
+    # name match ("svoboda") ranks first
+    hits = client.get(
+        "/api/hr/search", params={"q": "svoboda", "nationality": "CZE"}
+    ).json()
+    assert [h["hr_id"] for h in hits][0] == 5567
+    assert {h["hr_id"] for h in hits} == {10234, 5567}
+
+    # POL has a single profile — it's still returned even though the query
+    # doesn't match it well
+    hits = client.get(
+        "/api/hr/search", params={"q": "svoboda", "nationality": "POL"}
+    ).json()
+    assert [h["hr_id"] for h in hits] == [3340]
+
+
+def test_hr_nationalities_lists_distinct_sorted_values(client):
+    nationalities = client.get("/api/hr/nationalities").json()
+    assert nationalities == ["CZE", "DEU", "DNK", "POL"]
+
+
 def test_signup_with_hr_binding_prefills_profile(client):
     response = signup(client, display_name=None, hr_id=10234)
     assert response.status_code == 201

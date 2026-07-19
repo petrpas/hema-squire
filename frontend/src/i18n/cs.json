@@ -257,5 +257,38 @@
       "grant": "Schválit",
       "deny": "Zamítnout"
     }
+  },
+  "menu": {
+    "ariaLabel": "Nabídka účtu",
+    "profile": "Můj profil",
+    "admin": "Admin panel",
+    "toFencer": "Pro šermíře",
+    "toFencerSoon": "Připravujeme",
+    "toOrganizer": "Pro organizátory",
+    "logout": "Odhlásit"
+  },
+  "profile": {
+    "title": "Profil",
+    "loadFailed": "Profil se nepodařilo načíst.",
+    "account": {
+      "title": "Účet",
+      "email": "E-mail",
+      "displayName": "Celé jméno",
+      "emailTaken": "Tento e-mail už je použitý.",
+      "saveFailed": "Uložení se nezdařilo."
+    },
+    "role": {
+      "title": "Role"
+    },
+    "hr": {
+      "title": "HEMA Ratings",
+      "viewProfile": "Zobrazit profil na hemaratings.com",
+      "unboundHint": "Účet ještě není spojen s profilem na HEMA Ratings.",
+      "nationality": "Národnost",
+      "anyNationality": "Jakákoli národnost",
+      "search": "Hledat",
+      "conflict": "Tento profil je už spojen s jiným účtem.",
+      "bindFailed": "Spojení se nezdařilo."
+    }
   }
 }

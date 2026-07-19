@@ -6,12 +6,15 @@
 #
 # Optional environment (put it in backend/.env or export before running):
 #   HEMA_SQUIRE_OWNER_EMAIL           deployment Owner account email (all
-#                                      capabilities, incl. granting Admin —
-#                                      see --seed output for a demo value)
+#                                      capabilities, incl. granting Admin);
+#                                      defaults below to the seeded owner
+#                                      account (petr.pascenko@gmail.com)
 #   HEMA_SQUIRE_ANTHROPIC_API_KEY     enables LLM table parse / match / dedup
 #   HEMA_SQUIRE_GOOGLE_CREDENTIALS_PATH  enables the Google Sheets export
 set -euo pipefail
 cd "$(dirname "$0")"
+
+export HEMA_SQUIRE_OWNER_EMAIL="${HEMA_SQUIRE_OWNER_EMAIL:-petr.pascenko@gmail.com}"
 
 SEED=false
 [[ "${1:-}" == "--seed" ]] && SEED=true
@@ -28,6 +31,9 @@ done
 
 echo "== backend: dependencies + migrations"
 (cd backend && uv sync --quiet && uv run alembic upgrade head)
+
+echo "== backend: owner account"
+(cd backend && uv run python ../scripts/seed_owner.py)
 
 echo "== frontend: dependencies"
 (cd frontend && npm install --silent)
@@ -56,7 +62,8 @@ echo "  console    http://localhost:5173"
 echo "  API        http://localhost:8000/api/health"
 echo "  API docs   http://localhost:8000/docs"
 echo "  mail outbox backend/outbox/ (.eml files)"
-$SEED && echo "  organizer login: petr@example.com / demo-heslo-123 (see seed output for admin/fencer logins and the Owner-email note)"
+echo "  owner login: petr.pascenko@gmail.com / swordismylife (Organizer role, deployment Owner)"
+$SEED && echo "  organizer login: petr@example.com / demo-heslo-123 (see seed output for admin/fencer logins)"
 echo
 echo "Ctrl+C stops both servers."
 wait

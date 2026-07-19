@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
+import AccountMenu from "./AccountMenu";
 import DedupPanel from "./DedupPanel";
 import EditableCell from "./EditableCell";
 import ExportPanel from "./ExportPanel";
@@ -10,12 +11,12 @@ import MatchPanel from "./MatchPanel";
 import ParamPanel from "./ParamPanel";
 import SetupPanel from "./SetupPanel";
 import {
+  type Account,
   type Sheet,
   type SheetRow,
   type Tournament,
   type TournamentDetail,
   api,
-  setToken,
 } from "./api";
 
 const STAGES = ["pre", "in", "post"] as const;
@@ -85,11 +86,15 @@ export default function Console({
   initialPhase,
   onBack,
   onLogout,
+  onProfile,
+  onAdmin,
 }: {
   tournament: Tournament;
   initialPhase?: Phase;
   onBack: () => void;
   onLogout: () => void;
+  onProfile: () => void;
+  onAdmin: () => void;
 }) {
   const { t } = useTranslation();
   const [phase, setPhase] = useState<Phase>(initialPhase ?? "load");
@@ -97,6 +102,11 @@ export default function Console({
   const [detail, setDetail] = useState<TournamentDetail | null>(null);
   const [error, setError] = useState(false);
   const [matchRow, setMatchRow] = useState<SheetRow | null>(null);
+  const [account, setAccount] = useState<Account | null>(null);
+
+  useEffect(() => {
+    api.account().then(setAccount, () => setAccount(null));
+  }, []);
 
   const refresh = useCallback(() => {
     api.sheet(tournament.slug).then(
@@ -162,15 +172,13 @@ export default function Console({
             {new Date(tournament.date).toLocaleDateString("cs")}
           </div>
         </div>
-        <button
-          className="link-button"
-          onClick={() => {
-            setToken(null);
-            onLogout();
-          }}
-        >
-          {t("common.logout")}
-        </button>
+        <AccountMenu
+          account={account}
+          onProfile={onProfile}
+          onAdmin={onAdmin}
+          onOrganizer={onBack}
+          onLogout={onLogout}
+        />
       </header>
 
       <nav className="stepper">

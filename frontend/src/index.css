@@ -724,3 +724,71 @@ tr.row-deleted td.col-actions {
   border: 1px solid #b9b6ad;
   border-radius: 5px;
 }
+
+/* ===== account menu ===== */
+
+.page-menu-corner {
+  position: fixed;
+  top: 1rem;
+  right: 1.5rem;
+  z-index: 6;
+}
+
+.account-menu {
+  position: relative;
+}
+
+.account-menu-trigger {
+  width: 2.2rem;
+  height: 2.2rem;
+  border: 1.5px solid #26221d;
+  border-radius: 50%;
+  background: #fffdf8;
+  font-size: 1.1rem;
+  line-height: 1;
+}
+
+.menu-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 5;
+}
+
+.account-menu-dropdown {
+  position: absolute;
+  top: 2.6rem;
+  right: 0;
+  background: #fffdf8;
+  border: 1px solid #d8d5cc;
+  border-radius: 8px;
+  box-shadow: 0 4px 14px rgba(38, 34, 29, 0.18);
+  display: flex;
+  flex-direction: column;
+  min-width: 11rem;
+  overflow: hidden;
+  z-index: 6;
+}
+
+.account-menu-dropdown button {
+  border: none;
+  background: transparent;
+  text-align: left;
+  padding: 0.55rem 0.9rem;
+  font-size: 0.9rem;
+  border-radius: 0;
+}
+
+.account-menu-dropdown button:hover:not(:disabled) {
+  background: #eef0e9;
+}
+
+.account-menu-dropdown button:disabled {
+  color: #b9b6ad;
+  cursor: default;
+}
+
+.hr-profile-link {
+  display: inline-block;
+  text-decoration: none;
+  width: fit-content;
+}

@@ -18,8 +18,13 @@ HRIndexDep = Annotated[HRIndex, Depends(get_hr_index)]
 
 
 @router.get("/api/hr/search", response_model=list[HRProfile])
-def hr_search(q: str, hr: HRIndexDep):
-    return hr.search(q)
+def hr_search(q: str, hr: HRIndexDep, nationality: str | None = None):
+    return hr.search(q, nationality)
+
+
+@router.get("/api/hr/nationalities", response_model=list[str])
+def hr_nationalities(hr: HRIndexDep):
+    return hr.nationalities()
 
 
 def account_out(fencer: Fencer) -> AccountOut:

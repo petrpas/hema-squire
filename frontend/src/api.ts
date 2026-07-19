@@ -268,8 +268,12 @@ export const api = {
     }),
   deleteRule: (slug: string, ruleId: number) =>
     request<void>(`/api/tournaments/${slug}/rules/${ruleId}`, { method: "DELETE" }),
-  hrSearch: (query: string) =>
-    request<HRProfile[]>(`/api/hr/search?q=${encodeURIComponent(query)}`),
+  hrSearch: (query: string, nationality?: string | null) =>
+    request<HRProfile[]>(
+      `/api/hr/search?q=${encodeURIComponent(query)}` +
+        (nationality ? `&nationality=${encodeURIComponent(nationality)}` : ""),
+    ),
+  hrNationalities: () => request<string[]>("/api/hr/nationalities"),
   importTable: async (slug: string, file: File): Promise<ImportResult> => {
     const body = new FormData();
     body.append("file", file);
@@ -318,6 +322,16 @@ export const api = {
       `/api/tournaments/${slug}/ratings`,
     ),
   account: () => request<Account>("/api/account"),
+  updateAccount: (patch: { email?: string; display_name?: string; club?: string }) =>
+    request<Account>("/api/account", {
+      method: "PATCH",
+      body: JSON.stringify(patch),
+    }),
+  bindHr: (hrId: number) =>
+    request<Account>("/api/account/hr-binding", {
+      method: "POST",
+      body: JSON.stringify({ hr_id: hrId }),
+    }),
   submitPlea: (message: string | null) =>
     request<Plea>("/api/account/plea", {
       method: "POST",

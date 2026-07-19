@@ -3,44 +3,67 @@ import { useState } from "react";
 import AdminPanel from "./AdminPanel";
 import Console, { type Phase } from "./Console";
 import Login from "./Login";
+import ProfilePage from "./ProfilePage";
 import TournamentPicker from "./TournamentPicker";
 import { type Tournament, getToken } from "./api";
+
+type View = "picker" | "console" | "admin" | "profile";
 
 export default function App() {
   const [authed, setAuthed] = useState(() => getToken() !== null);
   const [tournament, setTournament] = useState<Tournament | null>(null);
   const [initialPhase, setInitialPhase] = useState<Phase>("load");
-  const [showAdmin, setShowAdmin] = useState(false);
+  const [view, setView] = useState<View>("picker");
 
   if (!authed) {
     return <Login onLogin={() => setAuthed(true)} />;
   }
-  if (showAdmin) {
-    return <AdminPanel onBack={() => setShowAdmin(false)} />;
+
+  function logout() {
+    setTournament(null);
+    setView("picker");
+    setAuthed(false);
   }
-  if (tournament === null) {
+
+  const onProfile = () => setView("profile");
+  const onAdmin = () => setView("admin");
+  const onOrganizer = () => setView("picker");
+
+  if (view === "admin") {
     return (
-      <TournamentPicker
-        onPick={(picked, phase) => {
-          setTournament(picked);
-          setInitialPhase(phase ?? "load");
-        }}
-        onLogout={() => {
-          setAuthed(false);
-        }}
-        onAdmin={() => setShowAdmin(true)}
+      <AdminPanel
+        onBack={() => setView(tournament ? "console" : "picker")}
+        onProfile={onProfile}
+        onOrganizer={onOrganizer}
+        onLogout={logout}
+      />
+    );
+  }
+  if (view === "profile") {
+    return <ProfilePage onAdmin={onAdmin} onOrganizer={onOrganizer} onLogout={logout} />;
+  }
+  if (view === "console" && tournament) {
+    return (
+      <Console
+        tournament={tournament}
+        initialPhase={initialPhase}
+        onBack={onOrganizer}
+        onProfile={onProfile}
+        onAdmin={onAdmin}
+        onLogout={logout}
       />
     );
   }
   return (
-    <Console
-      tournament={tournament}
-      initialPhase={initialPhase}
-      onBack={() => setTournament(null)}
-      onLogout={() => {
-        setTournament(null);
-        setAuthed(false);
+    <TournamentPicker
+      onPick={(picked, phase) => {
+        setTournament(picked);
+        setInitialPhase(phase ?? "load");
+        setView("console");
       }}
+      onProfile={onProfile}
+      onAdmin={onAdmin}
+      onLogout={logout}
     />
   );
 }

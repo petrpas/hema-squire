@@ -257,5 +257,38 @@
       "grant": "Grant",
       "deny": "Deny"
     }
+  },
+  "menu": {
+    "ariaLabel": "Account menu",
+    "profile": "My Profile",
+    "admin": "Admin Panel",
+    "toFencer": "To Fencer",
+    "toFencerSoon": "Coming soon",
+    "toOrganizer": "To Organizer",
+    "logout": "Log out"
+  },
+  "profile": {
+    "title": "Profile",
+    "loadFailed": "Could not load the profile.",
+    "account": {
+      "title": "Account",
+      "email": "E-mail",
+      "displayName": "Full name",
+      "emailTaken": "That e-mail is already in use.",
+      "saveFailed": "Save failed."
+    },
+    "role": {
+      "title": "Role"
+    },
+    "hr": {
+      "title": "HEMA Ratings",
+      "viewProfile": "View profile on hemaratings.com",
+      "unboundHint": "This account isn't linked to a HEMA Ratings profile yet.",
+      "nationality": "Nationality",
+      "anyNationality": "Any nationality",
+      "search": "Search",
+      "conflict": "That profile is already bound to another account.",
+      "bindFailed": "Binding failed."
+    }
   }
 }

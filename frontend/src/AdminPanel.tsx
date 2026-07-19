@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { type AdminAccount, type PleaQueueItem, type Role, api } from "./api";
+import AccountMenu from "./AccountMenu";
+import { type Account, type AdminAccount, type PleaQueueItem, type Role, api } from "./api";
 
 const ROLES: Role[] = ["fencer", "organizer", "admin"];
 
@@ -153,11 +154,22 @@ function PleaQueueSection({
   );
 }
 
-export default function AdminPanel({ onBack }: { onBack: () => void }) {
+export default function AdminPanel({
+  onBack,
+  onProfile,
+  onOrganizer,
+  onLogout,
+}: {
+  onBack: () => void;
+  onProfile: () => void;
+  onOrganizer: () => void;
+  onLogout: () => void;
+}) {
   const { t } = useTranslation();
   const [accounts, setAccounts] = useState<AdminAccount[] | null>(null);
   const [pleas, setPleas] = useState<PleaQueueItem[] | null>(null);
   const [error, setError] = useState(false);
+  const [account, setAccount] = useState<Account | null>(null);
 
   function refresh() {
     api.adminAccounts().then(setAccounts, () => setError(true));
@@ -165,9 +177,21 @@ export default function AdminPanel({ onBack }: { onBack: () => void }) {
   }
 
   useEffect(refresh, []);
+  useEffect(() => {
+    api.account().then(setAccount, () => setAccount(null));
+  }, []);
 
   return (
     <div className="login-page">
+      <div className="page-menu-corner">
+        <AccountMenu
+          account={account}
+          onProfile={onProfile}
+          onAdmin={() => {}}
+          onOrganizer={onOrganizer}
+          onLogout={onLogout}
+        />
+      </div>
       <div className="login-card wide-card">
         <h1>{t("admin.title")}</h1>
         {error ? (

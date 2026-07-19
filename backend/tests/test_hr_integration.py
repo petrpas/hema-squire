@@ -102,7 +102,7 @@ def test_refresh_populates_index_and_search_folds_diacritics(
     wire_fetcher(IndexFetcher(fighters_html(grown)))
     client.post("/api/hr/refresh", headers=organizer)
     results = client.get("/api/hr/search?q=new+fighter", headers=organizer).json()
-    assert [r["hr_id"] for r in results] == [1500]
+    assert [r["hr_id"] for r in results][0] == 1500  # best similarity match ranks first
 
     status = client.get("/api/hr/status", headers=organizer).json()
     assert status["fighters"] == 4
@@ -149,6 +149,50 @@ def test_refresh_requires_organizer(client, auth_headers, use_real_index):
     outsider = auth_headers(email="visitor@example.com", name="Visitor")
     wire_fetcher(IndexFetcher(fighters_html(FIGHTERS)))
     assert client.post("/api/hr/refresh", headers=outsider).status_code == 403
+
+
+SIMILARITY_FIGHTERS = [
+    (600, "Petr Pa&#353;&#269;enko", "Czech Republic", "Praha HEMA"),
+    (601, "Pavel Pa&#353;ek", "Czech Republic", "Ostrava HEMA"),
+    (602, "Karel Novotn&#253;", "Slovakia", "Bratislava HEMA"),
+    (603, "Petr Sokol", "Czech Republic", "Sokol Brno"),
+]
+
+
+def test_search_ranks_by_similarity_and_nationality_narrows(
+    client, auth_headers, use_real_index
+):
+    organizer = make_organizer(client, auth_headers)
+    wire_fetcher(IndexFetcher(fighters_html(SIMILARITY_FIGHTERS)))
+    client.post("/api/hr/refresh", headers=organizer)
+
+    # no nationality: token prefilter admits both "Petr"s, similarity ranks
+    # the true match ("pascenko") first
+    results = client.get("/api/hr/search?q=petr+pascenko", headers=organizer).json()
+    assert [r["hr_id"] for r in results][0] == 600
+    assert {r["hr_id"] for r in results} == {600, 603}  # Karel/Pavel share no token
+
+    # nationality narrows the candidate space; every row of that nationality
+    # is scored and returned even without a strong match (D4: no threshold)
+    results = client.get(
+        "/api/hr/search?q=pascenko&nationality=Slovakia", headers=organizer
+    ).json()
+    assert [r["hr_id"] for r in results] == [602]
+
+    results = client.get(
+        "/api/hr/search?q=pascenko&nationality=Czech Republic", headers=organizer
+    ).json()
+    assert [r["hr_id"] for r in results][0] == 600
+    assert {r["hr_id"] for r in results} == {600, 601, 603}
+
+
+def test_hr_nationalities_lists_distinct_sorted_values(client, auth_headers, use_real_index):
+    organizer = make_organizer(client, auth_headers)
+    wire_fetcher(IndexFetcher(fighters_html(SIMILARITY_FIGHTERS)))
+    client.post("/api/hr/refresh", headers=organizer)
+
+    nationalities = client.get("/api/hr/nationalities", headers=organizer).json()
+    assert nationalities == ["Czech Republic", "Slovakia"]
 
 
 def test_snapshot_respects_category_mapping_and_override(client, auth_headers):
