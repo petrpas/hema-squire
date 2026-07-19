@@ -9,8 +9,37 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
 from app import hr_match, importer
-from app.models import ImportedRow, Registration, RegistrationState, Tournament
+from app.models import (
+    ExtraCategory,
+    ImportedRow,
+    Registration,
+    RegistrationExtra,
+    RegistrationState,
+    Tournament,
+)
 from app.rules import Row
+
+
+def _extras_summary(registration: Registration) -> tuple[list[str], bool, list[str]]:
+    """Split a registration's extra-item selections into the v1 sheet's
+    fixed slots: rental names, an afterparty flag, and everything else
+    (seminar/merch) as freetext labels for the notes summary column."""
+    rentals: list[str] = []
+    afterparty = False
+    other: list[str] = []
+    for selection in registration.extra_selections:
+        label = (
+            f"{selection.item.name} x{selection.qty}"
+            if selection.qty > 1
+            else selection.item.name
+        )
+        if selection.item.category == ExtraCategory.RENTAL:
+            rentals.append(label)
+        elif selection.item.category == ExtraCategory.AFTERPARTY:
+            afterparty = True
+        else:
+            other.append(label)
+    return rentals, afterparty, other
 
 
 def base_rows(session: Session, tournament: Tournament) -> dict[str, Row]:
@@ -23,12 +52,18 @@ def base_rows(session: Session, tournament: Tournament) -> dict[str, Row]:
         .options(
             selectinload(Registration.fencer),
             selectinload(Registration.entries),
+            selectinload(Registration.extra_selections).selectinload(RegistrationExtra.item),
         )
         .order_by(Registration.registered_at)
     ).all()
 
     rows: dict[str, Row] = {}
     for registration in registrations:
+        extra_rentals, extra_afterparty, extra_other = _extras_summary(registration)
+        notes = registration.notes
+        if extra_other:
+            summary = "; ".join(extra_other)
+            notes = f"{notes} | {summary}" if notes else summary
         rows[f"reg:{registration.id}"] = {
             "id": f"reg:{registration.id}",
             "name": registration.fencer.display_name,
@@ -53,10 +88,10 @@ def base_rows(session: Session, tournament: Tournament) -> dict[str, Row]:
             if registration.expires_at
             else None,
             "paid_at": registration.paid_at.isoformat() if registration.paid_at else None,
-            "weapon_rentals": registration.weapon_rentals,
-            "afterparty": registration.afterparty,
+            "weapon_rentals": registration.weapon_rentals or extra_rentals,
+            "afterparty": registration.afterparty or extra_afterparty,
             "aftersparring": registration.aftersparring,
-            "notes": registration.notes,
+            "notes": notes,
             "problems": None,
             "_deleted": False,
         }

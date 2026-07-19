@@ -4,7 +4,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import func, select
 
-from app import emails, pricing
+from app import emails, pricing, setup
 from app.auth import require_organizer
 from app.mail import Mailer, get_mailer
 from app.models import (
@@ -12,6 +12,7 @@ from app.models import (
     RefundState,
     Registration,
     RegistrationDiscipline,
+    RegistrationExtra,
     RegistrationState,
     Tournament,
     UnpaidListTreatment,
@@ -87,6 +88,15 @@ def registration_out(session, registration: Registration) -> dict:
         "notes": registration.notes,
         "refundable": registration.refundable,
         "refund_state": registration.refund_state,
+        "extras": [
+            {
+                "extra_item_id": selection.extra_item_id,
+                "name": selection.item.name,
+                "category": selection.item.category,
+                "qty": selection.qty,
+            }
+            for selection in registration.extra_selections
+        ],
         "entries": [
             {
                 "code": entry.discipline.code,
@@ -175,6 +185,10 @@ def register(
     fencer: FencerDep,
     mailer: MailerDep,
 ):
+    reason = setup.registration_availability(tournament, _now().date())
+    if reason is not None:
+        raise HTTPException(status_code=403, detail={"reason": reason})
+
     existing = session.scalar(
         select(Registration).where(
             Registration.tournament_id == tournament.id,
@@ -192,6 +206,16 @@ def register(
     invalid_rentals = [w for w in data.weapon_rentals if w not in WEAPONS]
     if invalid_rentals:
         raise HTTPException(status_code=422, detail={"unknown_weapons": invalid_rentals})
+
+    extras_by_id = {item.id: item for item in tournament.extra_items}
+    unknown_extras = [e.extra_item_id for e in data.extras if e.extra_item_id not in extras_by_id]
+    if unknown_extras:
+        raise HTTPException(status_code=422, detail={"unknown_extras": unknown_extras})
+    over_limit = [
+        e.extra_item_id for e in data.extras if e.qty > extras_by_id[e.extra_item_id].max_qty
+    ]
+    if over_limit:
+        raise HTTPException(status_code=422, detail={"extras_over_limit": over_limit})
 
     selected = [by_code[c] for c in data.disciplines]
     full = [d.code for d in selected if taken_seats(session, d) >= d.capacity]
@@ -216,6 +240,12 @@ def register(
     for discipline in selected:
         registration.entries.append(
             RegistrationDiscipline(discipline=discipline, is_substitute=as_substitute)
+        )
+    for selection in data.extras:
+        registration.extra_selections.append(
+            RegistrationExtra(
+                extra_item_id=selection.extra_item_id, qty=selection.qty
+            )
         )
     session.add(registration)
     session.flush()

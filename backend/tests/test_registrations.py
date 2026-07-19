@@ -9,7 +9,13 @@ def setup_tournament(client, organizer, early_bird=False):
         json={"slug": "cup", "display_name": "Cup", "date": "2026-12-05"},
         headers=organizer,
     )
-    patch = {"weapon_rental_fee": 200, "afterparty_fee": 300, "refundable_until": "2026-11-01"}
+    patch = {
+        "weapon_rental_fee": 200,
+        "afterparty_fee": 300,
+        "refundable_until": "2026-11-01",
+        "location": "Brno",
+        "organizer_names": ["Cup Org"],
+    }
     if early_bird:
         patch |= {
             "early_bird_until": str(TODAY + timedelta(days=7)),

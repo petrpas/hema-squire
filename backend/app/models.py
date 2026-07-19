@@ -40,6 +40,16 @@ class RefundState(enum.StrEnum):
     REFUNDED = "refunded"
 
 
+class ExtraCategory(enum.StrEnum):
+    """Categories of billable extra items; discount scopes reference these
+    (plus the implicit "discipline" category), so they form a closed enum."""
+
+    SEMINAR = "seminar"
+    RENTAL = "rental"
+    AFTERPARTY = "afterparty"
+    MERCH = "merch"
+
+
 def str_enum(enum_cls: type[enum.StrEnum]) -> Enum:
     return Enum(
         enum_cls,
@@ -91,6 +101,12 @@ class Tournament(Base):
     display_name: Mapped[str] = mapped_column(String(200))
     date: Mapped[date]
     language: Mapped[str] = mapped_column(String(10), default="cs")
+    location: Mapped[str | None] = mapped_column(String(300))
+    # public-facing organizer names (clubs/entities); independent of the
+    # account-based console access in TournamentOrganizer
+    organizer_names: Mapped[list] = mapped_column(JSON, default=list)
+    registration_opens: Mapped[date | None]
+    registration_closes: Mapped[date | None]
 
     # payment and reservation parameters
     reservation_validity_days: Mapped[int] = mapped_column(default=10)
@@ -107,14 +123,21 @@ class Tournament(Base):
     # discipline code -> HR category keyword, overriding the built-in default
     hr_category_map: Mapped[dict] = mapped_column(JSON, default=dict)
 
-    # billable extras; early-bird prices apply within the optional window
+    # legacy billable extras; early-bird prices apply within the optional
+    # window. Kept for pre-itemized tournaments so their totals stay
+    # reproducible; tournaments with extra_items/discounts ignore these.
     early_bird_until: Mapped[date | None]
     weapon_rental_fee: Mapped[int] = mapped_column(default=0)
     weapon_rental_fee_early: Mapped[int | None]
     afterparty_fee: Mapped[int] = mapped_column(default=0)
     afterparty_fee_early: Mapped[int | None]
 
+    # ordered pricing discounts: [{name, condition, effect, scope}]; shape is
+    # validated in schemas and interpreted in pricing.py
+    discounts: Mapped[list] = mapped_column(JSON, default=list)
+
     disciplines: Mapped[list[Discipline]] = relationship(back_populates="tournament")
+    extra_items: Mapped[list[ExtraItem]] = relationship(back_populates="tournament")
     registrations: Mapped[list[Registration]] = relationship(back_populates="tournament")
     organizers: Mapped[list[TournamentOrganizer]] = relationship(back_populates="tournament")
 
@@ -133,10 +156,29 @@ class Discipline(Base):
     code: Mapped[str] = mapped_column(String(10))
     name: Mapped[str] = mapped_column(String(100))
     capacity: Mapped[int]
-    fee: Mapped[int]
+    # unit price; nullable so a Setup row can exist before pricing is decided
+    # (setup_missing gates registration until every discipline is priced)
+    fee: Mapped[int | None]
     fee_early: Mapped[int | None]
 
     tournament: Mapped[Tournament] = relationship(back_populates="disciplines")
+
+
+class ExtraItem(Base):
+    """An organizer-defined billable extra service ("afterparty saturday",
+    "t-shirt"), freely named, categorized for discount scoping."""
+
+    __tablename__ = "extra_items"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    tournament_id: Mapped[int] = mapped_column(ForeignKey("tournaments.id"))
+    name: Mapped[str] = mapped_column(String(200))
+    category: Mapped[ExtraCategory] = mapped_column(str_enum(ExtraCategory))
+    price: Mapped[int]
+    # per-registration quantity limit; 1 renders as a checkbox
+    max_qty: Mapped[int] = mapped_column(default=1)
+
+    tournament: Mapped[Tournament] = relationship(back_populates="extra_items")
 
 
 class TournamentOrganizer(Base):
@@ -178,7 +220,7 @@ class Registration(Base):
         str_enum(RefundState), default=RefundState.NOT_APPLICABLE
     )
 
-    # billable extras and free-text fields
+    # legacy billable extras (pre-itemized tournaments) and free-text fields
     weapon_rentals: Mapped[list[str]] = mapped_column(JSON, default=list)
     afterparty: Mapped[bool] = mapped_column(default=False)
     aftersparring: Mapped[bool] = mapped_column(default=False)
@@ -190,6 +232,26 @@ class Registration(Base):
     entries: Mapped[list[RegistrationDiscipline]] = relationship(
         back_populates="registration"
     )
+    extra_selections: Mapped[list[RegistrationExtra]] = relationship(
+        back_populates="registration"
+    )
+
+
+class RegistrationExtra(Base):
+    """One registration's selection of one extra item, with quantity."""
+
+    __tablename__ = "registration_extras"
+    __table_args__ = (UniqueConstraint("registration_id", "extra_item_id"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    registration_id: Mapped[int] = mapped_column(ForeignKey("registrations.id"))
+    extra_item_id: Mapped[int] = mapped_column(ForeignKey("extra_items.id"))
+    qty: Mapped[int] = mapped_column(default=1)
+
+    registration: Mapped[Registration] = relationship(
+        back_populates="extra_selections"
+    )
+    item: Mapped[ExtraItem] = relationship()
 
 
 class BankTransaction(Base):

@@ -18,12 +18,14 @@ from sqlalchemy.orm import Session, selectinload
 from app.models import (
     BankTransaction,
     Discipline,
+    ExtraItem,
     Fencer,
     ImportBatch,
     ImportDecision,
     ImportedRow,
     Registration,
     RegistrationDiscipline,
+    RegistrationExtra,
     Rule,
     Tournament,
     TournamentOrganizer,
@@ -37,6 +39,8 @@ _TOURNAMENT_FIELDS = [
     "refundable_until", "bank_account", "unpaid_list_treatment",
     "early_bird_until", "weapon_rental_fee", "weapon_rental_fee_early",
     "afterparty_fee", "afterparty_fee_early",
+    "location", "organizer_names", "discounts",
+    "registration_opens", "registration_closes",
 ]
 
 _REGISTRATION_FIELDS = [
@@ -67,7 +71,11 @@ def export_tournament(session: Session, tournament: Tournament) -> dict:
     registrations = session.scalars(
         select(Registration)
         .where(Registration.tournament_id == tournament.id)
-        .options(selectinload(Registration.fencer), selectinload(Registration.entries))
+        .options(
+            selectinload(Registration.fencer),
+            selectinload(Registration.entries),
+            selectinload(Registration.extra_selections).selectinload(RegistrationExtra.item),
+        )
         .order_by(Registration.id)
     ).all()
     transactions = session.scalars(
@@ -108,6 +116,10 @@ def export_tournament(session: Session, tournament: Tournament) -> dict:
             _record(d, ["code", "name", "capacity", "fee", "fee_early"])
             for d in tournament.disciplines
         ],
+        "extra_items": [
+            _record(i, ["name", "category", "price", "max_qty"])
+            for i in tournament.extra_items
+        ],
         "fencers": [
             _record(f, ["email", "display_name", "hr_id", "nationality", "club"])
             for f in fencers.values()
@@ -120,6 +132,14 @@ def export_tournament(session: Session, tournament: Tournament) -> dict:
                 "entries": [
                     {"code": e.discipline.code, "is_substitute": e.is_substitute}
                     for e in r.entries
+                ],
+                "extras": [
+                    {
+                        "item_name": sel.item.name,
+                        "item_category": sel.item.category.value,
+                        "qty": sel.qty,
+                    }
+                    for sel in r.extra_selections
                 ],
             }
             for r in registrations
@@ -179,6 +199,8 @@ def restore_tournament(session: Session, data: dict, actor: Fencer) -> Tournamen
             "date": _parse_date(doc["date"]),
             "refundable_until": _parse_date(doc.get("refundable_until")),
             "early_bird_until": _parse_date(doc.get("early_bird_until")),
+            "registration_opens": _parse_date(doc.get("registration_opens")),
+            "registration_closes": _parse_date(doc.get("registration_closes")),
         }
     )
     session.add(tournament)
@@ -190,6 +212,13 @@ def restore_tournament(session: Session, data: dict, actor: Fencer) -> Tournamen
         discipline = Discipline(tournament_id=tournament.id, **entry)
         session.add(discipline)
         disciplines[entry["code"]] = discipline
+
+    extra_items: dict[tuple[str, str], ExtraItem] = {}
+    for entry in data.get("extra_items", []):
+        item = ExtraItem(tournament_id=tournament.id, **entry)
+        session.add(item)
+        extra_items[(entry["name"], entry["category"])] = item
+    session.flush()
 
     fencers: dict[str, Fencer] = {}
     for entry in data.get("fencers", []):
@@ -221,6 +250,16 @@ def restore_tournament(session: Session, data: dict, actor: Fencer) -> Tournamen
                     is_substitute=item["is_substitute"],
                 )
             )
+        for extra in entry.get("extras", []):
+            key = (extra["item_name"], extra["item_category"])
+            if key in extra_items:
+                session.add(
+                    RegistrationExtra(
+                        registration_id=registration.id,
+                        extra_item_id=extra_items[key].id,
+                        qty=extra["qty"],
+                    )
+                )
         reg_map[entry["ref"]] = registration
 
     for entry in data.get("bank_transactions", []):

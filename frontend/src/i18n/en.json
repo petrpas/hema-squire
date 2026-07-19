@@ -68,7 +68,14 @@
   },
   "picker": {
     "title": "Pick a tournament",
-    "empty": "No tournaments yet."
+    "empty": "No tournaments yet.",
+    "newTournament": "New tournament",
+    "displayName": "Tournament name",
+    "date": "Date",
+    "slug": "Slug (URL)",
+    "slugTaken": "That slug is already taken. Edit it.",
+    "createFailed": "Creating the tournament failed.",
+    "create": "Create"
   },
   "stage": {
     "pre": "Pre Tournament",
@@ -76,6 +83,7 @@
     "post": "Post Tournament"
   },
   "phase": {
+    "setup": "Setup",
     "load": "Load",
     "parsing": "Parsing",
     "matching": "Matching on HR",
@@ -116,7 +124,13 @@
     "amount_tolerance_percent": "Amount tolerance (%)",
     "refundable_until": "Refundable until",
     "bank_account": "Account (IBAN)",
-    "output_sheet_url": "Output Google Sheet URL"
+    "output_sheet_url": "Output Google Sheet URL",
+    "display_name": "Tournament name",
+    "date": "Date",
+    "location": "Location",
+    "language": "Communication language",
+    "registration_opens": "Registration opens",
+    "registration_closes": "Registration closes"
   },
   "rail": {
     "operations": "Operations",
@@ -133,5 +147,58 @@
   },
   "tournament": {
     "unnamed": "New tournament"
+  },
+  "setup": {
+    "pricingWarning": "This tournament already has registrations — editing prices changes what unpaid reservations owe.",
+    "checklist": {
+      "title": "Setup status",
+      "ready": "Setup is complete — registration is possible (subject to the registration window)."
+    },
+    "missing": {
+      "location": "Location is missing",
+      "organizers": "At least one titular organizer is missing",
+      "disciplines": "At least one discipline is missing",
+      "discipline_prices": "Some discipline has no price"
+    },
+    "identity": {
+      "title": "Basic information"
+    },
+    "organizers": {
+      "title": "Titular organizers (clubs/entities)",
+      "add": "Add organizer",
+      "placeholder": "Club or entity name"
+    },
+    "disciplines": {
+      "title": "Disciplines",
+      "code": "Code",
+      "capacity": "Capacity",
+      "fee": "Fee (CZK)",
+      "add": "Add discipline"
+    },
+    "extras": {
+      "title": "Extra services",
+      "name": "Name",
+      "category": "Category",
+      "price": "Price (CZK)",
+      "maxQty": "Max quantity",
+      "add": "Add service",
+      "categories": {
+        "seminar": "Seminar",
+        "rental": "Rental",
+        "afterparty": "Afterparty",
+        "merch": "Merch"
+      }
+    },
+    "discounts": {
+      "title": "Discounts",
+      "name": "Name",
+      "condition": "Condition",
+      "conditionCount": "Discipline count",
+      "conditionEarly": "Registered before date",
+      "effect": "Effect",
+      "fixed": "Fixed amount (CZK)",
+      "percent": "Percent (%)",
+      "add": "Add discount"
+    }
   }
 }

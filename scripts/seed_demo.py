@@ -71,25 +71,59 @@ def main() -> None:
     call("POST", "/api/tournaments", token, {
         "slug": SLUG, "display_name": "Na Duel! 2026", "date": "2026-10-17",
     })
+    # itemized pricing (design D8): the demo exercises the new path — extra
+    # services across categories plus a count discount and an early-bird
+    # percent discount. Legacy fee_early / weapon_rental_fee / afterparty_fee
+    # / early_bird_until stay unset, as new-style tournaments never set them.
     call("PATCH", f"/api/tournaments/{SLUG}", token, {
         "bank_account": "CZ6508000000192000145399",
-        "early_bird_until": "2026-08-31",
-        "weapon_rental_fee": 200,
-        "afterparty_fee": 350,
+        "location": "Praha, Sportovní hala Podolí",
+        "organizer_names": ["Duelanti od sv. Rocha", "Pražský Šermířský Klub"],
+        "registration_opens": "2026-01-01",
+        "discounts": [
+            {
+                "name": "Sleva za 2 disciplíny",
+                "condition": {"kind": "discipline_count", "count": 2},
+                "effect": {"kind": "fixed", "value": 150},
+                "scope": ["discipline"],
+            },
+            {
+                "name": "Early bird",
+                "condition": {"kind": "early", "until": "2026-08-31"},
+                "effect": {"kind": "percent", "value": 10},
+                "scope": ["discipline"],
+            },
+        ],
     })
     for code, capacity, fee in [("LS", 32, 900), ("SA", 24, 800),
                                 ("SB", 16, 800), ("RD", 16, 850)]:
         call("POST", f"/api/tournaments/{SLUG}/disciplines", token,
-             {"code": code, "capacity": capacity, "fee": fee, "fee_early": fee - 100})
+             {"code": code, "capacity": capacity, "fee": fee})
+
+    extra_items = {}
+    for name, category, price, max_qty in [
+        ("Páteční seminář", "seminar", 300, 1),
+        ("Zapůjčení zbraně", "rental", 200, 2),
+        ("Afterparty sobota", "afterparty", 350, 1),
+        ("Tričko turnaje", "merch", 250, 3),
+    ]:
+        item = call("POST", f"/api/tournaments/{SLUG}/extra-items", token,
+                    {"name": name, "category": category, "price": price, "max_qty": max_qty})
+        extra_items[name] = item["id"]
+
+    def extra(name, qty=1):
+        return {"extra_item_id": extra_items[name], "qty": qty}
 
     fencers = [
-        ("jan.novak@example.com", "Jan Novák", ["LS", "SB"], True),
-        ("anna.k@example.com", "Anna Kowalska", ["SA"], False),
-        ("tom.a@example.com", "Tom Andersen", ["LS", "SA"], True),
-        ("petr.s@example.com", "Petr Svoboda", ["RD"], False),
+        ("jan.novak@example.com", "Jan Novák", ["LS", "SB"],
+         [extra("Afterparty sobota"), extra("Zapůjčení zbraně")]),
+        ("anna.k@example.com", "Anna Kowalska", ["SA"], []),
+        ("tom.a@example.com", "Tom Andersen", ["LS", "SA"],
+         [extra("Páteční seminář"), extra("Zapůjčení zbraně", 2)]),
+        ("petr.s@example.com", "Petr Svoboda", ["RD"], [extra("Tričko turnaje")]),
     ]
     jan_token = None
-    for fencer_email, fencer_name, disciplines, afterparty in fencers:
+    for fencer_email, fencer_name, disciplines, extras in fencers:
         account = call("POST", "/api/auth/signup", body={
             "email": fencer_email, "password": password, "display_name": fencer_name,
         })
@@ -97,7 +131,7 @@ def main() -> None:
             jan_token = account["token"]
         registration = call("POST", f"/api/tournaments/{SLUG}/register",
                             account["token"],
-                            {"disciplines": disciplines, "afterparty": afterparty})
+                            {"disciplines": disciplines, "extras": extras})
         print(f"registered {fencer_name}: VS {registration['vs']} "
               f"· {registration['total_amount']} CZK")
 

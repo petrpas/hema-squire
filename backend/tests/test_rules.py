@@ -4,6 +4,11 @@ def setup(client, organizer):
         json={"slug": "cup", "display_name": "Cup", "date": "2026-12-05"},
         headers=organizer,
     )
+    client.patch(
+        "/api/tournaments/cup",
+        json={"location": "Brno", "organizer_names": ["Cup Org"]},
+        headers=organizer,
+    )
     client.post(
         "/api/tournaments/cup/disciplines",
         json={"code": "LS", "capacity": 10, "fee": 1000},

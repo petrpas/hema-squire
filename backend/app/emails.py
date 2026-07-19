@@ -21,6 +21,9 @@ def _summary_lines(registration: Registration, lang: str) -> str:
         )
     if registration.afterparty:
         lines.append(f"  {t('email.confirmation.afterparty', lang)}")
+    for selection in registration.extra_selections:
+        qty_suffix = f" ×{selection.qty}" if selection.qty > 1 else ""
+        lines.append(f"  {selection.item.name}{qty_suffix}")
     if registration.aftersparring:
         lines.append(f"  {t('email.confirmation.aftersparring', lang)}")
     return "\n".join(lines)

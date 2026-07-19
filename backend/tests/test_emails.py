@@ -50,7 +50,12 @@ def _setup(client, organizer):
     )
     client.patch(
         "/api/tournaments/cup",
-        json={"bank_account": "CZ6508000000192000145399", "afterparty_fee": 300},
+        json={
+            "bank_account": "CZ6508000000192000145399",
+            "afterparty_fee": 300,
+            "location": "Brno",
+            "organizer_names": ["Cup Org"],
+        },
         headers=organizer,
     )
     client.post(

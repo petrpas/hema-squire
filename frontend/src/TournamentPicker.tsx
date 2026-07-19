@@ -1,17 +1,126 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { type Tournament, api, setToken } from "./api";
+import type { Phase } from "./Console";
+import { ApiError, type Tournament, api, setToken } from "./api";
+
+// slug = slugified display name + event year, editable before submission
+// (design D7); the server remains the validator on collision (409).
+function slugify(text: string): string {
+  return text
+    .normalize("NFKD")
+    .replace(/[̀-ͯ]/g, "") // strip combining diacritics after NFKD
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+function deriveSlug(name: string, dateValue: string): string {
+  const year = dateValue ? new Date(dateValue).getFullYear() : new Date().getFullYear();
+  const base = slugify(name);
+  return base ? `${base}-${year}` : "";
+}
+
+function NewTournamentDialog({
+  onCreated,
+  onClose,
+}: {
+  onCreated: (tournament: Tournament) => void;
+  onClose: () => void;
+}) {
+  const { t } = useTranslation();
+  const [displayName, setDisplayName] = useState("");
+  const [date, setDate] = useState("");
+  const [slug, setSlug] = useState("");
+  const [slugEdited, setSlugEdited] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    if (!slugEdited) setSlug(deriveSlug(displayName, date));
+  }, [displayName, date, slugEdited]);
+
+  async function submit(event: React.FormEvent) {
+    event.preventDefault();
+    setBusy(true);
+    setError(null);
+    try {
+      const tournament = await api.createTournament({
+        slug,
+        display_name: displayName,
+        date,
+      });
+      onCreated(tournament);
+    } catch (err) {
+      setError(
+        err instanceof ApiError && err.status === 409
+          ? t("picker.slugTaken")
+          : t("picker.createFailed"),
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="modal-backdrop" onClick={onClose}>
+      <form className="modal" onClick={(event) => event.stopPropagation()} onSubmit={submit}>
+        <h2>{t("picker.newTournament")}</h2>
+        <label>
+          {t("picker.displayName")}
+          <input
+            value={displayName}
+            onChange={(event) => setDisplayName(event.target.value)}
+            required
+            autoFocus
+          />
+        </label>
+        <label>
+          {t("picker.date")}
+          <input
+            type="date"
+            value={date}
+            onChange={(event) => setDate(event.target.value)}
+            required
+          />
+        </label>
+        <label>
+          {t("picker.slug")}
+          <input
+            value={slug}
+            onChange={(event) => {
+              setSlug(event.target.value);
+              setSlugEdited(true);
+            }}
+            pattern="[a-z0-9][a-z0-9-]{1,98}"
+            required
+          />
+        </label>
+        {error && <p className="login-error">{error}</p>}
+        <div className="modal-actions">
+          <button type="button" className="secondary" onClick={onClose}>
+            {t("common.cancel")}
+          </button>
+          <button type="submit" disabled={busy || !slug}>
+            {t("picker.create")}
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+}
 
 export default function TournamentPicker({
   onPick,
   onLogout,
 }: {
-  onPick: (tournament: Tournament) => void;
+  onPick: (tournament: Tournament, initialPhase?: Phase) => void;
   onLogout: () => void;
 }) {
   const { t } = useTranslation();
   const [tournaments, setTournaments] = useState<Tournament[] | null>(null);
+  const [creating, setCreating] = useState(false);
 
   useEffect(() => {
     api.tournaments().then(setTournaments, () => setTournaments([]));
@@ -37,6 +146,9 @@ export default function TournamentPicker({
             ))}
           </ul>
         )}
+        <button className="secondary" onClick={() => setCreating(true)}>
+          {t("picker.newTournament")}
+        </button>
         <button
           className="link-button"
           onClick={() => {
@@ -47,6 +159,15 @@ export default function TournamentPicker({
           {t("common.logout")}
         </button>
       </div>
+      {creating && (
+        <NewTournamentDialog
+          onClose={() => setCreating(false)}
+          onCreated={(tournament) => {
+            setCreating(false);
+            onPick(tournament, "setup");
+          }}
+        />
+      )}
     </div>
   );
 }

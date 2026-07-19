@@ -83,7 +83,8 @@ def setup(client, organizer, capacity=10):
         "/api/tournaments/cup",
         json={"bank_account": IBAN, "fio_token": "test-token",
               "reservation_validity_days": 10, "reminder_day": 5,
-              "amount_tolerance_percent": 5},
+              "amount_tolerance_percent": 5,
+              "location": "Brno", "organizer_names": ["Cup Org"]},
         headers=organizer,
     )
     client.post(

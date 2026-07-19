@@ -1,6 +1,6 @@
 import { useState } from "react";
 
-import Console from "./Console";
+import Console, { type Phase } from "./Console";
 import Login from "./Login";
 import TournamentPicker from "./TournamentPicker";
 import { type Tournament, getToken } from "./api";
@@ -8,6 +8,7 @@ import { type Tournament, getToken } from "./api";
 export default function App() {
   const [authed, setAuthed] = useState(() => getToken() !== null);
   const [tournament, setTournament] = useState<Tournament | null>(null);
+  const [initialPhase, setInitialPhase] = useState<Phase>("load");
 
   if (!authed) {
     return <Login onLogin={() => setAuthed(true)} />;
@@ -15,7 +16,10 @@ export default function App() {
   if (tournament === null) {
     return (
       <TournamentPicker
-        onPick={setTournament}
+        onPick={(picked, phase) => {
+          setTournament(picked);
+          setInitialPhase(phase ?? "load");
+        }}
         onLogout={() => {
           setAuthed(false);
         }}
@@ -25,6 +29,7 @@ export default function App() {
   return (
     <Console
       tournament={tournament}
+      initialPhase={initialPhase}
       onBack={() => setTournament(null)}
       onLogout={() => {
         setTournament(null);

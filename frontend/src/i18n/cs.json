@@ -68,7 +68,14 @@
   },
   "picker": {
     "title": "Vyber turnaj",
-    "empty": "Zatím žádné turnaje."
+    "empty": "Zatím žádné turnaje.",
+    "newTournament": "Nový turnaj",
+    "displayName": "Název turnaje",
+    "date": "Datum",
+    "slug": "Slug (adresa)",
+    "slugTaken": "Tento slug už je obsazený. Uprav ho.",
+    "createFailed": "Vytvoření turnaje se nezdařilo.",
+    "create": "Vytvořit"
   },
   "stage": {
     "pre": "Před turnajem",
@@ -76,6 +83,7 @@
     "post": "Po turnaji"
   },
   "phase": {
+    "setup": "Nastavení",
     "load": "Načtení",
     "parsing": "Parsování",
     "matching": "Párování na HR",
@@ -116,7 +124,13 @@
     "amount_tolerance_percent": "Tolerance částky (%)",
     "refundable_until": "Vratné do",
     "bank_account": "Účet (IBAN)",
-    "output_sheet_url": "URL výstupní Google tabulky"
+    "output_sheet_url": "URL výstupní Google tabulky",
+    "display_name": "Název turnaje",
+    "date": "Datum",
+    "location": "Místo konání",
+    "language": "Jazyk komunikace",
+    "registration_opens": "Registrace od",
+    "registration_closes": "Registrace do"
   },
   "rail": {
     "operations": "Operace",
@@ -133,5 +147,58 @@
   },
   "tournament": {
     "unnamed": "Nový turnaj"
+  },
+  "setup": {
+    "pricingWarning": "Turnaj už má registrace — úprava cen mění dlužnou částku u nezaplacených rezervací.",
+    "checklist": {
+      "title": "Stav nastavení",
+      "ready": "Nastavení je kompletní — registrace je možná (podle registračního okna)."
+    },
+    "missing": {
+      "location": "Chybí místo konání",
+      "organizers": "Chybí alespoň jeden pořadatel",
+      "disciplines": "Chybí alespoň jedna disciplína",
+      "discipline_prices": "Chybí cena u některé disciplíny"
+    },
+    "identity": {
+      "title": "Základní údaje"
+    },
+    "organizers": {
+      "title": "Pořadatelé (kluby/subjekty)",
+      "add": "Přidat pořadatele",
+      "placeholder": "Název klubu nebo subjektu"
+    },
+    "disciplines": {
+      "title": "Disciplíny",
+      "code": "Kód",
+      "capacity": "Kapacita",
+      "fee": "Cena (Kč)",
+      "add": "Přidat disciplínu"
+    },
+    "extras": {
+      "title": "Doplňkové služby",
+      "name": "Název",
+      "category": "Kategorie",
+      "price": "Cena (Kč)",
+      "maxQty": "Max. množství",
+      "add": "Přidat službu",
+      "categories": {
+        "seminar": "Seminář",
+        "rental": "Zapůjčení",
+        "afterparty": "Afterparty",
+        "merch": "Merch"
+      }
+    },
+    "discounts": {
+      "title": "Slevy",
+      "name": "Název",
+      "condition": "Podmínka",
+      "conditionCount": "Počet disciplín",
+      "conditionEarly": "Registrace do data",
+      "effect": "Efekt",
+      "fixed": "Pevná částka (Kč)",
+      "percent": "Procenta (%)",
+      "add": "Přidat slevu"
+    }
   }
 }

@@ -20,9 +20,14 @@ installs dependencies, applies migrations, starts FastAPI (with reload) and
 Vite, and stops both on Ctrl+C.
 
 With `--seed` you get the **Na Duel! 2026** demo tournament — organizer login
-`petr@example.com` / `demo-heslo-123` at <http://localhost:5173>: four in-app
-registrations (one paid via a simulated Fio statement), an imported
-Google-Form table, and problems to review in the console.
+`petr@example.com` / `demo-heslo-123` at <http://localhost:5173>: a complete
+Setup (location, titular organizers, an open registration window, itemized
+pricing with extra services across categories, a discipline-count discount,
+and an early-bird percent discount), four in-app registrations exercising
+that pricing (one paid via a simulated Fio statement), an imported
+Google-Form table, and problems to review in the console. Use the picker's
+"New tournament" button to try the creation flow and the Setup phase from
+scratch.
 
 Notes for a full-feature run:
 
@@ -39,7 +44,7 @@ Notes for a full-feature run:
 ## Tests
 
 ```bash
-cd backend && uv run pytest     # 107 tests; ruff check . for lint
+cd backend && uv run pytest     # 137 tests; ruff check . for lint
 cd frontend && npm run build    # type-check + build
 ```
 

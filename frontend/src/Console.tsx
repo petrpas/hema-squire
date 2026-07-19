@@ -8,6 +8,7 @@ import ImportPanel from "./ImportPanel";
 import MatchDialog from "./MatchDialog";
 import MatchPanel from "./MatchPanel";
 import ParamPanel from "./ParamPanel";
+import SetupPanel from "./SetupPanel";
 import {
   type Sheet,
   type SheetRow,
@@ -18,14 +19,17 @@ import {
 } from "./api";
 
 const STAGES = ["pre", "in", "post"] as const;
-const PHASES = ["load", "parsing", "matching", "dedup", "payments", "export"] as const;
+// Setup is step 0, ahead of the fencer-list phases (spec: etl-console).
+const PHASES = ["setup", "load", "parsing", "matching", "dedup", "payments", "export"] as const;
 export type Phase = (typeof PHASES)[number];
 
 // A phase tab is a view of the whole fencer list plus that operation's
 // parameters (design Decision 1). Shared base columns, phase-owned columns.
+// Setup replaces the fencer table entirely, so it owns no columns.
 const BASE_COLUMNS = ["name", "nationality", "club"];
 
 const PHASE_COLUMNS: Record<Phase, string[]> = {
+  setup: [],
   load: ["disciplines", "weapon_rentals", "afterparty", "registered_at"],
   parsing: ["disciplines", "notes", "problems"],
   matching: ["hr_id", "match"],
@@ -78,15 +82,17 @@ function CellDisplay({ row, column }: { row: SheetRow; column: string }) {
 
 export default function Console({
   tournament,
+  initialPhase,
   onBack,
   onLogout,
 }: {
   tournament: Tournament;
+  initialPhase?: Phase;
   onBack: () => void;
   onLogout: () => void;
 }) {
   const { t } = useTranslation();
-  const [phase, setPhase] = useState<Phase>("load");
+  const [phase, setPhase] = useState<Phase>(initialPhase ?? "load");
   const [sheet, setSheet] = useState<Sheet | null>(null);
   const [detail, setDetail] = useState<TournamentDetail | null>(null);
   const [error, setError] = useState(false);
@@ -180,6 +186,15 @@ export default function Console({
       </nav>
 
       <div className="workspace">
+        {phase === "setup" ? (
+          <SetupPanel
+            detail={detail}
+            slug={tournament.slug}
+            onSaved={refresh}
+            hasRegistrations={activeRows.length > 0}
+          />
+        ) : (
+          <>
         <main className="sheet-area">
           <div className="sheet-header">
             <div>
@@ -349,6 +364,8 @@ export default function Console({
             )}
           </section>
         </aside>
+          </>
+        )}
       </div>
 
       {matchRow && (

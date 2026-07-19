@@ -65,7 +65,11 @@ def setup(client, auth_headers, organizer):
         )
     client.patch(
         "/api/tournaments/cup",
-        json={"output_sheet_url": "https://sheets.example/cup"},
+        json={
+            "output_sheet_url": "https://sheets.example/cup",
+            "location": "Brno",
+            "organizer_names": ["Cup Org"],
+        },
         headers=organizer,
     )
     # one in-app registration with an HR-bound account

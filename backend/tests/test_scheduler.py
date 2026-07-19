@@ -37,7 +37,12 @@ def setup(client, organizer):
     )
     client.patch(
         "/api/tournaments/cup",
-        json={"reservation_validity_days": 10, "reminder_day": 5},
+        json={
+            "reservation_validity_days": 10,
+            "reminder_day": 5,
+            "location": "Brno",
+            "organizer_names": ["Cup Org"],
+        },
         headers=organizer,
     )
     client.post(

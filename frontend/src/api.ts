@@ -48,6 +48,44 @@ export interface Tournament {
   language: string;
 }
 
+export interface Discipline {
+  code: string;
+  name: string;
+  capacity: number;
+  fee: number | null;
+  fee_early: number | null;
+}
+
+export type ExtraCategory = "seminar" | "rental" | "afterparty" | "merch";
+
+export interface ExtraItem {
+  id: number;
+  name: string;
+  category: ExtraCategory;
+  price: number;
+  max_qty: number;
+}
+
+export type DiscountCategory = "discipline" | ExtraCategory;
+
+export interface DiscountCondition {
+  kind: "discipline_count" | "early";
+  count?: number | null;
+  until?: string | null;
+}
+
+export interface DiscountEffect {
+  kind: "fixed" | "percent";
+  value: number;
+}
+
+export interface Discount {
+  name: string;
+  condition: DiscountCondition;
+  effect: DiscountEffect;
+  scope: DiscountCategory[];
+}
+
 export interface TournamentDetail extends Tournament {
   reservation_validity_days: number;
   reminder_day: number;
@@ -61,6 +99,14 @@ export interface TournamentDetail extends Tournament {
   weapon_rental_fee_early: number | null;
   afterparty_fee: number;
   afterparty_fee_early: number | null;
+  location: string | null;
+  organizer_names: string[];
+  registration_opens: string | null;
+  registration_closes: string | null;
+  discounts: Discount[];
+  extra_items: ExtraItem[];
+  setup_missing: string[] | null;
+  disciplines: Discipline[];
 }
 
 export interface SheetRow {
@@ -113,11 +159,55 @@ export const api = {
     }),
   tournaments: () => request<Tournament[]>("/api/tournaments"),
   tournament: (slug: string) => request<TournamentDetail>(`/api/tournaments/${slug}`),
+  createTournament: (data: { slug: string; display_name: string; date: string }) =>
+    request<TournamentDetail>("/api/tournaments", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
   updateTournament: (slug: string, patch: Record<string, unknown>) =>
     request<TournamentDetail>(`/api/tournaments/${slug}`, {
       method: "PATCH",
       body: JSON.stringify(patch),
     }),
+  taxonomy: () => request<Record<string, string>>("/api/taxonomy/disciplines"),
+  addDiscipline: (
+    slug: string,
+    data: { code: string; capacity: number; fee: number | null },
+  ) =>
+    request<Discipline>(`/api/tournaments/${slug}/disciplines`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+  updateDiscipline: (
+    slug: string,
+    code: string,
+    data: { code: string; capacity: number; fee: number | null },
+  ) =>
+    request<Discipline>(`/api/tournaments/${slug}/disciplines/${code}`, {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    }),
+  deleteDiscipline: (slug: string, code: string) =>
+    request<void>(`/api/tournaments/${slug}/disciplines/${code}`, { method: "DELETE" }),
+  addExtraItem: (
+    slug: string,
+    data: { name: string; category: ExtraCategory; price: number; max_qty: number },
+  ) =>
+    request<ExtraItem>(`/api/tournaments/${slug}/extra-items`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+  updateExtraItem: (
+    slug: string,
+    id: number,
+    data: { name: string; category: ExtraCategory; price: number; max_qty: number },
+  ) =>
+    request<ExtraItem>(`/api/tournaments/${slug}/extra-items/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    }),
+  deleteExtraItem: (slug: string, id: number) =>
+    request<void>(`/api/tournaments/${slug}/extra-items/${id}`, { method: "DELETE" }),
   sheet: (slug: string) => request<Sheet>(`/api/tournaments/${slug}/sheet`),
   createRule: (
     slug: string,

@@ -252,6 +252,33 @@ button {
   min-height: 0;
 }
 
+.setup-panel {
+  flex: 1;
+  min-width: 0;
+  padding: 1.1rem 1.4rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  overflow-y: auto;
+  max-width: 60rem;
+}
+
+.setup-panel .rail-card {
+  padding: 1rem;
+}
+
+.setup-panel table.sheet-table {
+  margin-bottom: 0.6rem;
+}
+
+.setup-panel select {
+  font: inherit;
+  padding: 0.3rem 0.45rem;
+  border: 1px solid #b9b6ad;
+  border-radius: 5px;
+  background: #fff;
+}
+
 .sheet-area {
   flex: 1;
   min-width: 0;

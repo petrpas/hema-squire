@@ -63,6 +63,11 @@ def make_organizer(client, auth_headers):
         json={"slug": "cup", "display_name": "Cup", "date": "2026-12-05"},
         headers=organizer,
     )
+    client.patch(
+        "/api/tournaments/cup",
+        json={"location": "Brno", "organizer_names": ["Cup Org"]},
+        headers=organizer,
+    )
     return organizer
 
 

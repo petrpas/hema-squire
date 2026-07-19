@@ -13,6 +13,7 @@ interface ParamField {
 
 // Which tournament parameters belong to which phase view.
 const PHASE_PARAMS: Record<Phase, ParamField[]> = {
+  setup: [],
   load: [
     { key: "early_bird_until", type: "date" },
     { key: "weapon_rental_fee", type: "number" },

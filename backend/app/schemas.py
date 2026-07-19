@@ -1,9 +1,21 @@
 import datetime
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    EmailStr,
+    Field,
+    field_serializer,
+    model_validator,
+)
 
-from app.models import RefundState, RegistrationState, UnpaidListTreatment
+from app.models import (
+    ExtraCategory,
+    RefundState,
+    RegistrationState,
+    UnpaidListTreatment,
+)
 
 
 class SignupIn(BaseModel):
@@ -47,7 +59,7 @@ class DisciplineIn(BaseModel):
     code: str
     name: str | None = None
     capacity: int = Field(gt=0)
-    fee: int = Field(ge=0)
+    fee: int | None = Field(default=None, ge=0)
     fee_early: int | None = Field(default=None, ge=0)
 
 
@@ -57,8 +69,62 @@ class DisciplineOut(BaseModel):
     code: str
     name: str
     capacity: int
-    fee: int
+    fee: int | None
     fee_early: int | None
+
+
+class ExtraItemIn(BaseModel):
+    name: str = Field(min_length=1, max_length=200)
+    category: ExtraCategory
+    price: int = Field(ge=0)
+    max_qty: int = Field(default=1, ge=1)
+
+
+class ExtraItemOut(ExtraItemIn):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+
+
+# discount scopes may target the implicit discipline category or any extra category
+ScopeCategory = Literal["discipline", "seminar", "rental", "afterparty", "merch"]
+
+
+class DiscountCondition(BaseModel):
+    kind: Literal["discipline_count", "early"]
+    count: int | None = Field(default=None, ge=1)
+    until: datetime.date | None = None
+
+    @model_validator(mode="after")
+    def _kind_fields(self) -> DiscountCondition:
+        if self.kind == "discipline_count" and self.count is None:
+            raise ValueError("discipline_count condition requires count")
+        if self.kind == "early" and self.until is None:
+            raise ValueError("early condition requires until")
+        return self
+
+    # discounts land in a JSON column via model_dump(); dates must be ISO strings
+    @field_serializer("until")
+    def _until_iso(self, until: datetime.date | None) -> str | None:
+        return until.isoformat() if until else None
+
+
+class DiscountEffect(BaseModel):
+    kind: Literal["fixed", "percent"]
+    value: int = Field(ge=0)
+
+    @model_validator(mode="after")
+    def _percent_bounds(self) -> DiscountEffect:
+        if self.kind == "percent" and self.value > 100:
+            raise ValueError("percent discount cannot exceed 100")
+        return self
+
+
+class DiscountIn(BaseModel):
+    name: str = Field(min_length=1, max_length=200)
+    condition: DiscountCondition
+    effect: DiscountEffect
+    scope: list[ScopeCategory] = ["discipline"]
 
 
 class TournamentCreate(BaseModel):
@@ -72,6 +138,11 @@ class TournamentUpdate(BaseModel):
     display_name: str | None = Field(default=None, min_length=1, max_length=200)
     date: datetime.date | None = None
     language: str | None = None
+    location: str | None = Field(default=None, max_length=300)
+    organizer_names: list[str] | None = None
+    registration_opens: datetime.date | None = None
+    registration_closes: datetime.date | None = None
+    discounts: list[DiscountIn] | None = None
     reservation_validity_days: int | None = Field(default=None, gt=0)
     reminder_day: int | None = Field(default=None, gt=0)
     amount_tolerance_percent: int | None = Field(default=None, ge=0, le=100)
@@ -108,11 +179,24 @@ class TournamentOut(BaseModel):
     weapon_rental_fee_early: int | None
     afterparty_fee: int
     afterparty_fee_early: int | None
+    location: str | None
+    organizer_names: list[str]
+    registration_opens: datetime.date | None
+    registration_closes: datetime.date | None
+    discounts: list[DiscountIn]
+    extra_items: list[ExtraItemOut] = []
+    # filled by the detail endpoint from setup.setup_missing(); None elsewhere
+    setup_missing: list[str] | None = None
     disciplines: list[DisciplineOut]
 
 
 class OrganizerAdd(BaseModel):
     email: EmailStr
+
+
+class ExtraSelectionIn(BaseModel):
+    extra_item_id: int
+    qty: int = Field(default=1, ge=1)
 
 
 class RegisterIn(BaseModel):
@@ -123,12 +207,20 @@ class RegisterIn(BaseModel):
     accommodation: str | None = None
     notes: str | None = None
     wait_for_all: bool = False
+    extras: list[ExtraSelectionIn] = []
 
 
 class RegistrationEntryOut(BaseModel):
     code: str
     is_substitute: bool
     queue_position: int | None
+
+
+class RegistrationExtraOut(BaseModel):
+    extra_item_id: int
+    name: str
+    category: ExtraCategory
+    qty: int
 
 
 class RegistrationOut(BaseModel):
@@ -145,6 +237,7 @@ class RegistrationOut(BaseModel):
     notes: str | None
     refundable: bool | None
     refund_state: RefundState
+    extras: list[RegistrationExtraOut] = []
     entries: list[RegistrationEntryOut]
 
 

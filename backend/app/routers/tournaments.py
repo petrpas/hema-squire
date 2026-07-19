@@ -4,13 +4,15 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
-from app import taxonomy
+from app import setup, taxonomy
 from app.auth import current_fencer, require_organizer
 from app.db import get_session
-from app.models import Discipline, Fencer, Tournament, TournamentOrganizer
+from app.models import Discipline, ExtraItem, Fencer, Tournament, TournamentOrganizer
 from app.schemas import (
     DisciplineIn,
     DisciplineOut,
+    ExtraItemIn,
+    ExtraItemOut,
     OrganizerAdd,
     TournamentCreate,
     TournamentOut,
@@ -27,7 +29,9 @@ def get_tournament(session: SessionDep, slug: str) -> Tournament:
     tournament = session.scalar(
         select(Tournament)
         .where(Tournament.slug == slug)
-        .options(selectinload(Tournament.disciplines))
+        .options(
+            selectinload(Tournament.disciplines), selectinload(Tournament.extra_items)
+        )
     )
     if tournament is None:
         raise HTTPException(status_code=404, detail="tournament_not_found")
@@ -53,14 +57,18 @@ def create_tournament(data: TournamentCreate, session: SessionDep, fencer: Fence
 def list_tournaments(session: SessionDep):
     return session.scalars(
         select(Tournament)
-        .options(selectinload(Tournament.disciplines))
+        .options(
+            selectinload(Tournament.disciplines), selectinload(Tournament.extra_items)
+        )
         .order_by(Tournament.date)
     ).all()
 
 
 @router.get("/{slug}", response_model=TournamentOut)
 def tournament_detail(tournament: TournamentDep):
-    return tournament
+    out = TournamentOut.model_validate(tournament)
+    out.setup_missing = setup.setup_missing(tournament)
+    return out
 
 
 @router.patch("/{slug}", response_model=TournamentOut)
@@ -130,6 +138,51 @@ def delete_discipline(
     if discipline is None:
         raise HTTPException(status_code=404, detail="discipline_not_found")
     session.delete(discipline)
+    session.commit()
+
+
+@router.post("/{slug}/extra-items", response_model=ExtraItemOut, status_code=201)
+def add_extra_item(
+    data: ExtraItemIn, tournament: TournamentDep, session: SessionDep, fencer: FencerDep
+):
+    require_organizer(session, tournament, fencer)
+    item = ExtraItem(tournament=tournament, **data.model_dump())
+    session.add(item)
+    session.commit()
+    session.refresh(item)
+    return item
+
+
+@router.patch("/{slug}/extra-items/{item_id}", response_model=ExtraItemOut)
+def update_extra_item(
+    item_id: int,
+    data: ExtraItemIn,
+    tournament: TournamentDep,
+    session: SessionDep,
+    fencer: FencerDep,
+):
+    require_organizer(session, tournament, fencer)
+    item = next((i for i in tournament.extra_items if i.id == item_id), None)
+    if item is None:
+        raise HTTPException(status_code=404, detail="extra_item_not_found")
+    item.name = data.name
+    item.category = data.category
+    item.price = data.price
+    item.max_qty = data.max_qty
+    session.commit()
+    session.refresh(item)
+    return item
+
+
+@router.delete("/{slug}/extra-items/{item_id}", status_code=204)
+def delete_extra_item(
+    item_id: int, tournament: TournamentDep, session: SessionDep, fencer: FencerDep
+):
+    require_organizer(session, tournament, fencer)
+    item = next((i for i in tournament.extra_items if i.id == item_id), None)
+    if item is None:
+        raise HTTPException(status_code=404, detail="extra_item_not_found")
+    session.delete(item)
     session.commit()
 
 
