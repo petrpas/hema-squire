@@ -27,7 +27,41 @@ and an early-bird percent discount), four in-app registrations exercising
 that pricing (one paid via a simulated Fio statement), an imported
 Google-Form table, and problems to review in the console. Use the picker's
 "New tournament" button to try the creation flow and the Setup phase from
-scratch.
+scratch. The seed also creates an Admin demo account (`admin@example.com` /
+`demo-heslo-123`) — see its printed output for the full set of demo logins
+and roles.
+
+## Roles
+
+Every account holds one global role, ranked **Fencer** (default) <
+**Organizer** < **Admin**, plus a deployment **Owner** computed from
+`HEMA_SQUIRE_OWNER_EMAIL` (never stored — it applies to whichever account
+signs up with that address, even after deployment, and outranks everyone
+including Admin):
+
+- **Fencer** — every account; can register for open tournaments.
+- **Organizer** — can additionally create tournaments; granted and revoked
+  by an Admin, or self-requested through an in-app plea that an Admin
+  grants or denies.
+- **Admin** — manages people: account roles (except Admin itself, which
+  only the Owner grants), the plea queue, and admin HR-profile unbinding.
+- **Owner** — one per deployment; all capabilities, and the only one who
+  can grant or revoke Admin. Set `HEMA_SQUIRE_OWNER_EMAIL` in
+  `backend/.env` to the account's e-mail.
+
+Separately, each *tournament* has one **Tournament Owner** (its creator,
+transferable to a team member) and a team of **Tournament Organizers** the
+owner adds by e-mail — this is what grants console access to a specific
+tournament and is independent of the global role above. A deployment Admin
+does not automatically get console access to tournaments; Admins manage
+people, not tournaments.
+
+**Upgrading an existing deployment:** the migration backfills each
+tournament's `owner_id` from its earliest console team member, but grants no
+global roles — every existing account starts as a plain Fencer and loses the
+ability to create new tournaments until an Admin (or the Owner) grants it
+Organizer through the admin panel. Set `HEMA_SQUIRE_OWNER_EMAIL` first so an
+Owner account can sign in and start granting roles.
 
 Notes for a full-feature run:
 
@@ -44,7 +78,7 @@ Notes for a full-feature run:
 ## Tests
 
 ```bash
-cd backend && uv run pytest     # 137 tests; ruff check . for lint
+cd backend && uv run pytest     # 177 tests; ruff check . for lint
 cd frontend && npm run build    # type-check + build
 ```
 

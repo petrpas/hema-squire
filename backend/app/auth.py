@@ -1,4 +1,12 @@
-"""Email + password authentication and per-tournament organizer authorization."""
+"""Email + password authentication and authorization.
+
+Two independent layers:
+- the global role ladder (Role enum; rank-based capabilities, with the
+  deployment Owner computed from settings.owner_email, never stored), and
+- per-tournament console access (Tournament Owner via tournaments.owner_id,
+  team members via TournamentOrganizer). No global role grants console
+  access — Admins manage people, not tournaments.
+"""
 
 import hashlib
 import secrets
@@ -13,7 +21,7 @@ from sqlalchemy.orm import Session
 
 from app.config import settings
 from app.db import get_session
-from app.models import Fencer, Tournament, TournamentOrganizer
+from app.models import Fencer, Role, Tournament, TournamentOrganizer
 
 _bearer = HTTPBearer(auto_error=False)
 
@@ -57,12 +65,37 @@ def current_fencer(
     return fencer
 
 
-def require_organizer(session: Session, tournament: Tournament, fencer: Fencer) -> None:
-    is_organizer = session.scalar(
+def is_deployment_owner(fencer: Fencer) -> bool:
+    return bool(settings.owner_email) and fencer.email == settings.owner_email
+
+
+_RANK = {Role.FENCER: 0, Role.ORGANIZER: 1, Role.ADMIN: 2}
+
+
+def has_role(fencer: Fencer, minimum: Role) -> bool:
+    """Rank check on the global ladder; the deployment Owner outranks all."""
+    return is_deployment_owner(fencer) or _RANK[fencer.role] >= _RANK[minimum]
+
+
+def require_role(fencer: Fencer, minimum: Role) -> None:
+    if not has_role(fencer, minimum):
+        raise HTTPException(status_code=403, detail="insufficient_role")
+
+
+def require_console_access(session: Session, tournament: Tournament, fencer: Fencer) -> None:
+    """Tournament Owner or team member; no global role bypasses this."""
+    if tournament.owner_id == fencer.id:
+        return
+    member = session.scalar(
         select(TournamentOrganizer.id).where(
             TournamentOrganizer.tournament_id == tournament.id,
             TournamentOrganizer.fencer_id == fencer.id,
         )
     )
-    if is_organizer is None:
+    if member is None:
         raise HTTPException(status_code=403, detail="not_an_organizer")
+
+
+def require_tournament_owner(tournament: Tournament, fencer: Fencer) -> None:
+    if tournament.owner_id != fencer.id:
+        raise HTTPException(status_code=403, detail="not_tournament_owner")

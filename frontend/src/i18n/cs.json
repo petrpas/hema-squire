@@ -75,7 +75,13 @@
     "slug": "Slug (adresa)",
     "slugTaken": "Tento slug už je obsazený. Uprav ho.",
     "createFailed": "Vytvoření turnaje se nezdařilo.",
-    "create": "Vytvořit"
+    "create": "Vytvořit",
+    "requestOrganizer": "Požádat o roli organizátora",
+    "pleaMessagePlaceholder": "Volitelná zpráva pro adminy…",
+    "pleaSubmit": "Odeslat žádost",
+    "pleaPending": "Tvoje žádost o roli organizátora čeká na posouzení.",
+    "pleaDenied": "Předchozí žádost byla zamítnuta. Můžeš požádat znovu.",
+    "adminPanel": "Admin panel"
   },
   "stage": {
     "pre": "Před turnajem",
@@ -199,6 +205,57 @@
       "fixed": "Pevná částka (Kč)",
       "percent": "Procenta (%)",
       "add": "Přidat slevu"
+    },
+    "team": {
+      "title": "Tým",
+      "email": "E-mail",
+      "displayName": "Jméno",
+      "addPlaceholder": "Přidat člena týmu podle e-mailu",
+      "add": "Přidat",
+      "transferHint": "Předat vlastnictví členovi týmu",
+      "transferPlaceholder": "E-mail člena týmu",
+      "transfer": "Předat vlastnictví",
+      "unknownEmail": "Účet s tímto e-mailem neexistuje.",
+      "alreadyMember": "Tento účet je už v týmu.",
+      "addFailed": "Člena týmu se nepodařilo přidat.",
+      "transferNotMember": "Vlastníkem se může stát jen stávající člen týmu.",
+      "transferFailed": "Předání vlastnictví se nezdařilo."
+    },
+    "danger": {
+      "title": "Nebezpečná zóna",
+      "deleteHint": "Turnaj zatím nemá registrace — lze ho trvale smazat.",
+      "cancelHint": "Tento turnaj má registrace, proto ho nelze smazat. Můžeš ho ale zrušit: zmizí z veřejného seznamu, přestane přijímat registrace a všechna data (včetně finanční historie) zůstanou zachována.",
+      "alreadyCancelled": "Tento turnaj je zrušený. Data zůstávají zachována a konzole je i nadále dostupná.",
+      "deleteButton": "Smazat turnaj",
+      "cancelButton": "Zrušit turnaj",
+      "failed": "Akce se nezdařila. Zkus to prosím znovu."
+    }
+  },
+  "admin": {
+    "title": "Admin panel",
+    "back": "Zpět",
+    "error": "Data admin panelu se nepodařilo načíst.",
+    "accounts": {
+      "title": "Účty",
+      "email": "E-mail",
+      "displayName": "Jméno",
+      "role": "Role",
+      "hrId": "HRID",
+      "plea": "Žádost",
+      "owner": "Owner",
+      "pleaPending": "čeká",
+      "unbind": "Odpojit HR profil",
+      "roles": {
+        "fencer": "Šermíř",
+        "organizer": "Organizátor",
+        "admin": "Admin"
+      }
+    },
+    "pleas": {
+      "title": "Žádosti o roli organizátora",
+      "empty": "Žádné čekající žádosti.",
+      "grant": "Schválit",
+      "deny": "Zamítnout"
     }
   }
 }

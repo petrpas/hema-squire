@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import type { Phase } from "./Console";
-import { ApiError, type Tournament, api, setToken } from "./api";
+import { ApiError, type Account, type Plea, type Tournament, api, setToken } from "./api";
 
 // slug = slugified display name + event year, editable before submission
 // (design D7); the server remains the validator on collision (409).
@@ -111,20 +111,86 @@ function NewTournamentDialog({
   );
 }
 
+function PleaSection({ plea, onPleaChange }: { plea: Plea; onPleaChange: (plea: Plea) => void }) {
+  const { t } = useTranslation();
+  const [showForm, setShowForm] = useState(false);
+  const [message, setMessage] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  async function submit() {
+    setBusy(true);
+    try {
+      const result = await api.submitPlea(message.trim() === "" ? null : message.trim());
+      onPleaChange(result);
+      setShowForm(false);
+      setMessage("");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (plea.state === "pending") {
+    return <p className="plea-status">{t("picker.pleaPending")}</p>;
+  }
+
+  if (showForm) {
+    return (
+      <div className="plea-form">
+        <textarea
+          value={message}
+          placeholder={t("picker.pleaMessagePlaceholder")}
+          onChange={(event) => setMessage(event.target.value)}
+        />
+        <div className="modal-actions">
+          <button type="button" className="secondary" onClick={() => setShowForm(false)}>
+            {t("common.cancel")}
+          </button>
+          <button type="button" disabled={busy} onClick={() => void submit()}>
+            {t("picker.pleaSubmit")}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      {plea.state === "denied" && <p className="plea-status">{t("picker.pleaDenied")}</p>}
+      <button className="secondary" onClick={() => setShowForm(true)}>
+        {t("picker.requestOrganizer")}
+      </button>
+    </div>
+  );
+}
+
 export default function TournamentPicker({
   onPick,
   onLogout,
+  onAdmin,
 }: {
   onPick: (tournament: Tournament, initialPhase?: Phase) => void;
   onLogout: () => void;
+  onAdmin: () => void;
 }) {
   const { t } = useTranslation();
   const [tournaments, setTournaments] = useState<Tournament[] | null>(null);
   const [creating, setCreating] = useState(false);
+  const [account, setAccount] = useState<Account | null>(null);
+  const [plea, setPlea] = useState<Plea | null>(null);
 
   useEffect(() => {
     api.tournaments().then(setTournaments, () => setTournaments([]));
+    api.account().then(setAccount, () => setAccount(null));
   }, []);
+
+  const canCreate = account !== null && (account.role !== "fencer" || account.is_deployment_owner);
+  const isAdmin = account !== null && (account.role === "admin" || account.is_deployment_owner);
+
+  useEffect(() => {
+    if (account !== null && !canCreate) {
+      api.myPlea().then(setPlea, () => setPlea(null));
+    }
+  }, [account, canCreate]);
 
   return (
     <div className="login-page">
@@ -146,9 +212,18 @@ export default function TournamentPicker({
             ))}
           </ul>
         )}
-        <button className="secondary" onClick={() => setCreating(true)}>
-          {t("picker.newTournament")}
-        </button>
+        {canCreate ? (
+          <button className="secondary" onClick={() => setCreating(true)}>
+            {t("picker.newTournament")}
+          </button>
+        ) : (
+          plea && <PleaSection plea={plea} onPleaChange={setPlea} />
+        )}
+        {isAdmin && (
+          <button className="secondary" onClick={onAdmin}>
+            {t("picker.adminPanel")}
+          </button>
+        )}
         <button
           className="link-button"
           onClick={() => {

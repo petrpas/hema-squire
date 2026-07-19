@@ -4,11 +4,11 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.auth import current_fencer
+from app.auth import current_fencer, is_deployment_owner
 from app.db import get_session
 from app.hr_index import HRIndex, HRProfile, get_hr_index
-from app.models import Fencer, FencerProfileAudit
-from app.schemas import AccountOut, AccountUpdate, HRBindIn
+from app.models import Fencer, FencerProfileAudit, OrganizerRequest, RequestState
+from app.schemas import AccountOut, AccountUpdate, HRBindIn, PleaIn, PleaOut
 
 router = APIRouter(tags=["accounts"])
 
@@ -22,9 +22,15 @@ def hr_search(q: str, hr: HRIndexDep):
     return hr.search(q)
 
 
+def account_out(fencer: Fencer) -> AccountOut:
+    out = AccountOut.model_validate(fencer)
+    out.is_deployment_owner = is_deployment_owner(fencer)
+    return out
+
+
 @router.get("/api/account", response_model=AccountOut)
 def my_account(fencer: FencerDep):
-    return fencer
+    return account_out(fencer)
 
 
 def audit_change(session: Session, fencer: Fencer, field: str, new_value: str | None) -> None:
@@ -52,7 +58,7 @@ def update_account(data: AccountUpdate, session: SessionDep, fencer: FencerDep):
         audit_change(session, fencer, field, value)
     session.commit()
     session.refresh(fencer)
-    return fencer
+    return account_out(fencer)
 
 
 def bind_profile(session: Session, fencer: Fencer, profile: HRProfile) -> None:
@@ -79,4 +85,44 @@ def bind_hr_later(data: HRBindIn, session: SessionDep, fencer: FencerDep, hr: HR
     bind_profile(session, fencer, profile)
     session.commit()
     session.refresh(fencer)
-    return fencer
+    return account_out(fencer)
+
+
+def _plea_out(plea: OrganizerRequest | None) -> PleaOut:
+    if plea is None:
+        return PleaOut(state=None, message=None, created_at=None, decided_at=None)
+    return PleaOut(
+        state=plea.state,
+        message=plea.message,
+        created_at=plea.created_at,
+        decided_at=plea.decided_at,
+    )
+
+
+@router.post("/api/account/plea", response_model=PleaOut, status_code=201)
+def submit_plea(data: PleaIn, session: SessionDep, fencer: FencerDep):
+    """Request the global Organizer role; at most one pending plea per account
+    (design D4), a denied account may plead again (new row, history retained)."""
+    pending = session.scalar(
+        select(OrganizerRequest.id).where(
+            OrganizerRequest.fencer_id == fencer.id,
+            OrganizerRequest.state == RequestState.PENDING,
+        )
+    )
+    if pending:
+        raise HTTPException(status_code=409, detail="plea_pending")
+    plea = OrganizerRequest(fencer_id=fencer.id, message=data.message)
+    session.add(plea)
+    session.commit()
+    session.refresh(plea)
+    return _plea_out(plea)
+
+
+@router.get("/api/account/plea", response_model=PleaOut)
+def my_plea(session: SessionDep, fencer: FencerDep):
+    plea = session.scalar(
+        select(OrganizerRequest)
+        .where(OrganizerRequest.fencer_id == fencer.id)
+        .order_by(OrganizerRequest.id.desc())
+    )
+    return _plea_out(plea)

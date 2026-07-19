@@ -3,7 +3,7 @@ from typing import Annotated
 from fastapi import APIRouter, Body, Depends, HTTPException
 
 from app import export_json, hr_sync, rules, sheet, sheets_export
-from app.auth import require_organizer
+from app.auth import require_console_access
 from app.routers.tournaments import FencerDep, SessionDep, TournamentDep
 
 router = APIRouter(prefix="/api/tournaments", tags=["export"])
@@ -13,7 +13,7 @@ SheetsFactoryDep = Annotated[object, Depends(sheets_export.get_sheets_client_fac
 
 @router.get("/{slug}/export/json")
 def export_tournament(tournament: TournamentDep, session: SessionDep, fencer: FencerDep):
-    require_organizer(session, tournament, fencer)
+    require_console_access(session, tournament, fencer)
     return export_json.export_tournament(session, tournament)
 
 
@@ -24,7 +24,7 @@ def export_sheet(
     fencer: FencerDep,
     factory: SheetsFactoryDep,
 ):
-    require_organizer(session, tournament, fencer)
+    require_console_access(session, tournament, fencer)
     if factory is None:
         raise HTTPException(status_code=503, detail="sheets_not_configured")
     client = factory(tournament)

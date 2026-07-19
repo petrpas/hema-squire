@@ -22,6 +22,21 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.db import Base
 
 
+class Role(enum.StrEnum):
+    """Global role ladder; capabilities are rank-based (see app.auth). The
+    deployment Owner is not a role — it is computed from settings.owner_email."""
+
+    FENCER = "fencer"
+    ORGANIZER = "organizer"
+    ADMIN = "admin"
+
+
+class RequestState(enum.StrEnum):
+    PENDING = "pending"
+    GRANTED = "granted"
+    DENIED = "denied"
+
+
 class UnpaidListTreatment(enum.StrEnum):
     HIDDEN = "hidden"
     GREYED = "greyed"
@@ -71,6 +86,7 @@ class Fencer(Base):
     hr_id: Mapped[int | None] = mapped_column(unique=True)
     nationality: Mapped[str | None] = mapped_column(String(100))
     club: Mapped[str | None] = mapped_column(String(200))
+    role: Mapped[Role] = mapped_column(str_enum(Role), default=Role.FENCER)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
@@ -100,6 +116,12 @@ class Tournament(Base):
     slug: Mapped[str] = mapped_column(String(100), unique=True)
     display_name: Mapped[str] = mapped_column(String(200))
     date: Mapped[date]
+    # the single Tournament Owner (creator, until transferred); nullable only
+    # for pre-role tournaments that had no organizers to backfill from
+    owner_id: Mapped[int | None] = mapped_column(ForeignKey("fencers.id"))
+    # set when the Tournament Owner cancels; a cancelled tournament is hidden
+    # from public listings and rejects new registrations, data retained
+    cancelled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     language: Mapped[str] = mapped_column(String(10), default="cs")
     location: Mapped[str | None] = mapped_column(String(300))
     # public-facing organizer names (clubs/entities); independent of the
@@ -136,6 +158,7 @@ class Tournament(Base):
     # validated in schemas and interpreted in pricing.py
     discounts: Mapped[list] = mapped_column(JSON, default=list)
 
+    owner: Mapped[Fencer | None] = relationship(foreign_keys=[owner_id])
     disciplines: Mapped[list[Discipline]] = relationship(back_populates="tournament")
     extra_items: Mapped[list[ExtraItem]] = relationship(back_populates="tournament")
     registrations: Mapped[list[Registration]] = relationship(back_populates="tournament")
@@ -179,6 +202,27 @@ class ExtraItem(Base):
     max_qty: Mapped[int] = mapped_column(default=1)
 
     tournament: Mapped[Tournament] = relationship(back_populates="extra_items")
+
+
+class OrganizerRequest(Base):
+    """A plea for the global Organizer role. At most one pending per account;
+    decided pleas are kept as history, so re-pleading creates a new row."""
+
+    __tablename__ = "organizer_requests"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    fencer_id: Mapped[int] = mapped_column(ForeignKey("fencers.id"))
+    message: Mapped[str | None] = mapped_column(Text)
+    state: Mapped[RequestState] = mapped_column(
+        str_enum(RequestState), default=RequestState.PENDING
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+    decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    decided_by: Mapped[int | None] = mapped_column(ForeignKey("fencers.id"))
+
+    fencer: Mapped[Fencer] = relationship(foreign_keys=[fencer_id])
 
 
 class TournamentOrganizer(Base):

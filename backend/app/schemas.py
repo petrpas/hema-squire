@@ -14,6 +14,8 @@ from app.models import (
     ExtraCategory,
     RefundState,
     RegistrationState,
+    RequestState,
+    Role,
     UnpaidListTreatment,
 )
 
@@ -29,11 +31,28 @@ class SignupIn(BaseModel):
 class AccountOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
+    id: int
     email: EmailStr
     display_name: str
     hr_id: int | None
     nationality: str | None
     club: str | None
+    role: Role
+    # computed from settings.owner_email, not stored (deployment Owner)
+    is_deployment_owner: bool = False
+
+
+class PleaIn(BaseModel):
+    message: str | None = Field(default=None, max_length=1000)
+
+
+class PleaOut(BaseModel):
+    """The account's own latest plea; state is None when it has never pled."""
+
+    state: RequestState | None
+    message: str | None
+    created_at: datetime.datetime | None
+    decided_at: datetime.datetime | None
 
 
 class AccountUpdate(BaseModel):
@@ -166,6 +185,8 @@ class TournamentOut(BaseModel):
     display_name: str
     date: datetime.date
     language: str
+    owner_id: int | None
+    cancelled_at: datetime.datetime | None
     reservation_validity_days: int
     reminder_day: int
     amount_tolerance_percent: int
@@ -190,8 +211,52 @@ class TournamentOut(BaseModel):
     disciplines: list[DisciplineOut]
 
 
-class OrganizerAdd(BaseModel):
+class TeamAdd(BaseModel):
     email: EmailStr
+
+
+class TeamMemberOut(BaseModel):
+    fencer_id: int
+    email: EmailStr
+    display_name: str
+
+
+class OwnerTransferIn(BaseModel):
+    email: EmailStr
+
+
+class AdminOwnerAssignIn(BaseModel):
+    email: EmailStr
+
+
+class AdminAccountOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    email: EmailStr
+    display_name: str
+    role: Role
+    hr_id: int | None
+    is_deployment_owner: bool = False
+    has_pending_plea: bool = False
+
+
+class RoleUpdateIn(BaseModel):
+    role: Role
+
+
+class PleaQueueOut(BaseModel):
+    id: int
+    fencer_id: int
+    email: EmailStr
+    display_name: str
+    message: str | None
+    created_at: datetime.datetime
+
+
+class PleaDecisionOut(BaseModel):
+    id: int
+    state: RequestState
 
 
 class ExtraSelectionIn(BaseModel):

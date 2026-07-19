@@ -673,3 +673,54 @@ tr.row-deleted td.col-actions {
   justify-content: space-between;
   align-items: center;
 }
+
+/* ===== roles: plea, team, danger zone, admin panel ===== */
+
+.wide-card {
+  width: 46rem;
+  max-width: 92vw;
+  max-height: 88vh;
+  overflow-y: auto;
+}
+
+.plea-status {
+  color: #8a877f;
+  font-size: 0.85rem;
+}
+
+.plea-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.plea-form textarea {
+  font: inherit;
+  padding: 0.5rem 0.6rem;
+  border: 1px solid #b9b6ad;
+  border-radius: 6px;
+  min-height: 4rem;
+  resize: vertical;
+}
+
+.danger-zone {
+  border: 1.5px solid #c0392b;
+}
+
+.danger-zone h2 {
+  color: #c0392b;
+}
+
+.inline-form {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.6rem;
+}
+
+.inline-form input {
+  flex: 1;
+  font: inherit;
+  padding: 0.4rem 0.55rem;
+  border: 1px solid #b9b6ad;
+  border-radius: 5px;
+}

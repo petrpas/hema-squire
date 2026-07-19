@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException
 from sqlalchemy import select
 
 from app import matching, rules, sheet
-from app.auth import require_organizer
+from app.auth import require_console_access
 from app.models import Rule, RuleJournalEntry
 from app.routers.tournaments import FencerDep, SessionDep, TournamentDep
 from app.schemas import AppliedChangeOut, RuleIn, RuleOut, RulePayloadIn, SheetOut
@@ -17,7 +17,7 @@ def list_rules(
     fencer: FencerDep,
     phase: str | None = None,
 ):
-    require_organizer(session, tournament, fencer)
+    require_console_access(session, tournament, fencer)
     listed = rules.active_rules(session, tournament)
     if phase is not None:
         listed = [rule for rule in listed if rule.phase == phase]
@@ -28,7 +28,7 @@ def list_rules(
 def create_rule(
     data: RuleIn, tournament: TournamentDep, session: SessionDep, fencer: FencerDep
 ):
-    require_organizer(session, tournament, fencer)
+    require_console_access(session, tournament, fencer)
     return rules.create_rule(
         session, tournament, fencer, data.phase, data.kind, data.target, data.payload
     )
@@ -49,7 +49,7 @@ def update_rule(
     session: SessionDep,
     fencer: FencerDep,
 ):
-    require_organizer(session, tournament, fencer)
+    require_console_access(session, tournament, fencer)
     rule = _get_rule(session, tournament, rule_id)
     return rules.update_rule(session, rule, fencer, data.payload)
 
@@ -58,7 +58,7 @@ def update_rule(
 def delete_rule(
     rule_id: int, tournament: TournamentDep, session: SessionDep, fencer: FencerDep
 ):
-    require_organizer(session, tournament, fencer)
+    require_console_access(session, tournament, fencer)
     rule = _get_rule(session, tournament, rule_id)
     rules.delete_rule(session, rule, fencer)
     if rule.kind == "payment_link":
@@ -67,7 +67,7 @@ def delete_rule(
 
 @router.get("/rules/journal")
 def rule_journal(tournament: TournamentDep, session: SessionDep, fencer: FencerDep):
-    require_organizer(session, tournament, fencer)
+    require_console_access(session, tournament, fencer)
     entries = session.scalars(
         select(RuleJournalEntry)
         .where(RuleJournalEntry.tournament_id == tournament.id)
@@ -89,7 +89,7 @@ def rule_journal(tournament: TournamentDep, session: SessionDep, fencer: FencerD
 def sheet_view(tournament: TournamentDep, session: SessionDep, fencer: FencerDep):
     """The fencer table: base rows with all active rules replayed, plus the
     audit of applied changes (the manual-edits log)."""
-    require_organizer(session, tournament, fencer)
+    require_console_access(session, tournament, fencer)
     base = sheet.base_rows(session, tournament)
     rows, audit = rules.replay(base, rules.active_rules(session, tournament))
     # Deleted rows are included with _deleted=True so the console can render

@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile
 from pydantic import BaseModel
 
 from app import dedup, hr_match, importer, rules, sheet
-from app.auth import require_organizer
+from app.auth import require_console_access
 from app.hr_index import HRIndex, get_hr_index
 from app.routers.tournaments import FencerDep, SessionDep, TournamentDep
 
@@ -30,7 +30,7 @@ async def import_table(
     fencer: FencerDep,
     parser: ParserDep,
 ):
-    require_organizer(session, tournament, fencer)
+    require_console_access(session, tournament, fencer)
     data = await file.read()
     try:
         return importer.import_table(
@@ -48,7 +48,7 @@ def run_matching(
     matcher: MatcherDep,
     index: HRIndexDep,
 ):
-    require_organizer(session, tournament, fencer)
+    require_console_access(session, tournament, fencer)
     if matcher is None:
         raise HTTPException(status_code=503, detail="llm_not_configured")
     rows = _replayed_import_rows(session, tournament)
@@ -62,7 +62,7 @@ def run_dedup(
     fencer: FencerDep,
     llm: DedupDep,
 ):
-    require_organizer(session, tournament, fencer)
+    require_console_access(session, tournament, fencer)
     if llm is None:
         raise HTTPException(status_code=503, detail="llm_not_configured")
     rows = _replayed_import_rows(session, tournament)
@@ -71,7 +71,7 @@ def run_dedup(
 
 @router.get("/dedup/queue")
 def dedup_queue(tournament: TournamentDep, session: SessionDep, fencer: FencerDep):
-    require_organizer(session, tournament, fencer)
+    require_console_access(session, tournament, fencer)
     rows = _replayed_import_rows(session, tournament)
     return dedup.pending_queue(session, tournament, rows)
 
@@ -90,7 +90,7 @@ def dedup_decide(
     session: SessionDep,
     fencer: FencerDep,
 ):
-    require_organizer(session, tournament, fencer)
+    require_console_access(session, tournament, fencer)
     rows = _replayed_import_rows(session, tournament)
     outcome = dedup.decide(
         session, tournament, fencer, rows, data.key, data.accept, data.fields, data.note
@@ -102,7 +102,7 @@ def dedup_decide(
 
 @router.get("/status")
 def import_status(tournament: TournamentDep, session: SessionDep, fencer: FencerDep):
-    require_organizer(session, tournament, fencer)
+    require_console_access(session, tournament, fencer)
     batch = importer.latest_batch(session, tournament)
     if batch is None:
         return {"batch": None}

@@ -9,6 +9,15 @@ disciplines, four registered fencers (one paid via a simulated Fio CSV
 statement), and an imported Google-Form-style table. Without an Anthropic
 key the imported rows would stay unparsed, so their parse decisions are
 backfilled directly — the sheet then shows what a configured LLM produces.
+
+Also demonstrates the role model (add-user-roles): the tournament creator is
+granted the global Organizer role directly in the DB — the same move an
+operator makes for existing organizers when adopting roles on a live
+deployment (design: migration note), since a fresh deployment has no Admin
+account yet to grant it through the API. A second demo account is granted
+Admin the same way. The registered fencers stay plain Fencers. See the
+printed summary at the end for how to make the organizer account the
+deployment Owner via HEMA_SQUIRE_OWNER_EMAIL.
 """
 
 import io
@@ -22,7 +31,23 @@ sys.path.insert(0, str(Path.cwd()))  # run from backend/ so `app` imports
 
 BASE = "http://localhost:8000"
 ORGANIZER = ("petr@example.com", "demo-heslo-123", "Petr Organizátor")
+ADMIN_DEMO = ("admin@example.com", "demo-heslo-123", "Anna Admin")
 SLUG = "na-duel-2026"
+
+
+def _grant_role(email: str, role: str) -> None:
+    """Direct DB write, bypassing the admin API (no Admin account exists yet
+    to call it with) — see module docstring."""
+    from sqlalchemy import select
+    from sqlalchemy.orm import Session
+
+    from app.db import engine
+    from app.models import Fencer
+
+    with Session(engine) as session:
+        fencer = session.scalar(select(Fencer).where(Fencer.email == email))
+        fencer.role = role
+        session.commit()
 
 
 def call(method, path, token=None, body=None, files=None):
@@ -67,6 +92,16 @@ def main() -> None:
         token = call("POST", "/api/auth/login", body={
             "email": email, "password": password,
         })["token"]
+    _grant_role(email, "organizer")  # creation requires the global Organizer role
+
+    admin_email, admin_password, admin_name = ADMIN_DEMO
+    try:
+        call("POST", "/api/auth/signup", body={
+            "email": admin_email, "password": admin_password, "display_name": admin_name,
+        })
+    except urllib.error.HTTPError:
+        pass  # already seeded
+    _grant_role(admin_email, "admin")
 
     call("POST", "/api/tournaments", token, {
         "slug": SLUG, "display_name": "Na Duel! 2026", "date": "2026-10-17",
@@ -169,7 +204,14 @@ def main() -> None:
         _backfill_parse_decisions()
         print(f"backfilled {outcome['unparsed']} parse decisions (no LLM key set)")
 
-    print(f"\ndone — organizer login: {email} / {password}")
+    print(f"\ndone — organizer login: {email} / {password} (Organizer role, owns '{SLUG}')")
+    print(f"admin login:            {admin_email} / {admin_password} (Admin role)")
+    print("fencer logins:           jan.novak@example.com / anna.k@example.com / "
+          "tom.a@example.com / petr.s@example.com (plain Fencer role, password above)")
+    print(
+        f"\nSet HEMA_SQUIRE_OWNER_EMAIL={email} (in backend/.env) to make that account the "
+        "deployment Owner — it then outranks Admin and can itself grant/revoke Admin."
+    )
 
 
 def _backfill_parse_decisions() -> None:

@@ -1,5 +1,6 @@
 import { useState } from "react";
 
+import AdminPanel from "./AdminPanel";
 import Console, { type Phase } from "./Console";
 import Login from "./Login";
 import TournamentPicker from "./TournamentPicker";
@@ -9,9 +10,13 @@ export default function App() {
   const [authed, setAuthed] = useState(() => getToken() !== null);
   const [tournament, setTournament] = useState<Tournament | null>(null);
   const [initialPhase, setInitialPhase] = useState<Phase>("load");
+  const [showAdmin, setShowAdmin] = useState(false);
 
   if (!authed) {
     return <Login onLogin={() => setAuthed(true)} />;
+  }
+  if (showAdmin) {
+    return <AdminPanel onBack={() => setShowAdmin(false)} />;
   }
   if (tournament === null) {
     return (
@@ -23,6 +28,7 @@ export default function App() {
         onLogout={() => {
           setAuthed(false);
         }}
+        onAdmin={() => setShowAdmin(true)}
       />
     );
   }

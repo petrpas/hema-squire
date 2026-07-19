@@ -192,6 +192,7 @@ export default function Console({
             slug={tournament.slug}
             onSaved={refresh}
             hasRegistrations={activeRows.length > 0}
+            onDeleted={onBack}
           />
         ) : (
           <>

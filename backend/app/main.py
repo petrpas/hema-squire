@@ -7,6 +7,7 @@ from fastapi import FastAPI
 from app.config import settings
 from app.routers import (
     accounts,
+    admin,
     auth,
     export_api,
     hr_api,
@@ -20,6 +21,28 @@ from app.routers import (
 from app.scheduler import scheduler_loop
 
 logger = logging.getLogger(__name__)
+
+
+def _warn_when_owner_unmatched() -> None:
+    from sqlalchemy import select
+    from sqlalchemy.orm import Session
+
+    from app.db import engine
+    from app.models import Fencer
+
+    if not settings.owner_email:
+        logger.warning("HEMA_SQUIRE_OWNER_EMAIL is not set; no deployment Owner")
+        return
+    try:
+        with Session(engine) as session:
+            match = session.scalar(select(Fencer.id).where(Fencer.email == settings.owner_email))
+        if match is None:
+            logger.warning(
+                "no account matches owner email %s; Owner capabilities are dormant",
+                settings.owner_email,
+            )
+    except Exception:
+        logger.exception("owner email check failed")
 
 
 def _populate_hr_index_if_empty() -> None:
@@ -39,6 +62,7 @@ def _populate_hr_index_if_empty() -> None:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    _warn_when_owner_unmatched()
     tasks = []
     if settings.scheduler_enabled:
         tasks.append(asyncio.create_task(scheduler_loop()))
@@ -59,6 +83,7 @@ def create_app() -> FastAPI:
 
     app.include_router(auth.router)
     app.include_router(accounts.router)
+    app.include_router(admin.router)
     app.include_router(tournaments.router)
     app.include_router(registrations.router)
     app.include_router(payments.router)

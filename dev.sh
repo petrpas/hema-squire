@@ -5,6 +5,9 @@
 #   ./dev.sh --seed   also seed a demo tournament (idempotent)
 #
 # Optional environment (put it in backend/.env or export before running):
+#   HEMA_SQUIRE_OWNER_EMAIL           deployment Owner account email (all
+#                                      capabilities, incl. granting Admin —
+#                                      see --seed output for a demo value)
 #   HEMA_SQUIRE_ANTHROPIC_API_KEY     enables LLM table parse / match / dedup
 #   HEMA_SQUIRE_GOOGLE_CREDENTIALS_PATH  enables the Google Sheets export
 set -euo pipefail
@@ -53,7 +56,7 @@ echo "  console    http://localhost:5173"
 echo "  API        http://localhost:8000/api/health"
 echo "  API docs   http://localhost:8000/docs"
 echo "  mail outbox backend/outbox/ (.eml files)"
-$SEED && echo "  organizer login: petr@example.com / demo-heslo-123"
+$SEED && echo "  organizer login: petr@example.com / demo-heslo-123 (see seed output for admin/fencer logins and the Owner-email note)"
 echo
 echo "Ctrl+C stops both servers."
 wait

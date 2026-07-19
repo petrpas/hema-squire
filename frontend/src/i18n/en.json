@@ -75,7 +75,13 @@
     "slug": "Slug (URL)",
     "slugTaken": "That slug is already taken. Edit it.",
     "createFailed": "Creating the tournament failed.",
-    "create": "Create"
+    "create": "Create",
+    "requestOrganizer": "Request organizer role",
+    "pleaMessagePlaceholder": "Optional message to the admins…",
+    "pleaSubmit": "Send request",
+    "pleaPending": "Your request for the organizer role is pending review.",
+    "pleaDenied": "Your previous request was denied. You may ask again.",
+    "adminPanel": "Admin panel"
   },
   "stage": {
     "pre": "Pre Tournament",
@@ -199,6 +205,57 @@
       "fixed": "Fixed amount (CZK)",
       "percent": "Percent (%)",
       "add": "Add discount"
+    },
+    "team": {
+      "title": "Team",
+      "email": "E-mail",
+      "displayName": "Name",
+      "addPlaceholder": "Add a team member by e-mail",
+      "add": "Add",
+      "transferHint": "Transfer ownership to a team member",
+      "transferPlaceholder": "Team member's e-mail",
+      "transfer": "Transfer ownership",
+      "unknownEmail": "No account with that e-mail exists.",
+      "alreadyMember": "That account is already on the team.",
+      "addFailed": "Could not add the team member.",
+      "transferNotMember": "Only an existing team member can become the owner.",
+      "transferFailed": "Ownership transfer failed."
+    },
+    "danger": {
+      "title": "Danger zone",
+      "deleteHint": "No registrations yet — this tournament can be permanently deleted.",
+      "cancelHint": "This tournament has registrations, so it cannot be deleted. You can cancel it instead: it disappears from public listings, stops accepting registrations, and all data (including financial history) is retained.",
+      "alreadyCancelled": "This tournament is cancelled. Its data is retained and the console stays accessible.",
+      "deleteButton": "Delete tournament",
+      "cancelButton": "Cancel tournament",
+      "failed": "The action failed. Please try again."
+    }
+  },
+  "admin": {
+    "title": "Admin panel",
+    "back": "Back",
+    "error": "Could not load admin data.",
+    "accounts": {
+      "title": "Accounts",
+      "email": "E-mail",
+      "displayName": "Name",
+      "role": "Role",
+      "hrId": "HRID",
+      "plea": "Plea",
+      "owner": "Owner",
+      "pleaPending": "pending",
+      "unbind": "Unbind HR profile",
+      "roles": {
+        "fencer": "Fencer",
+        "organizer": "Organizer",
+        "admin": "Admin"
+      }
+    },
+    "pleas": {
+      "title": "Organizer role requests",
+      "empty": "No pending requests.",
+      "grant": "Grant",
+      "deny": "Deny"
     }
   }
 }

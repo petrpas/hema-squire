@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import func, select
 
 from app import emails, pricing, setup
-from app.auth import require_organizer
+from app.auth import require_console_access
 from app.mail import Mailer, get_mailer
 from app.models import (
     Discipline,
@@ -306,7 +306,7 @@ def admit_substitute(
     fencer: FencerDep,
     mailer: MailerDep,
 ):
-    require_organizer(session, tournament, fencer)
+    require_console_access(session, tournament, fencer)
     registration = session.get(Registration, registration_id)
     if registration is None or registration.tournament_id != tournament.id:
         raise HTTPException(status_code=404, detail="registration_not_found")

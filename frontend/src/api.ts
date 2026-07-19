@@ -46,6 +46,55 @@ export interface Tournament {
   display_name: string;
   date: string;
   language: string;
+  owner_id: number | null;
+  cancelled_at: string | null;
+}
+
+export type Role = "fencer" | "organizer" | "admin";
+
+export interface Account {
+  id: number;
+  email: string;
+  display_name: string;
+  hr_id: number | null;
+  nationality: string | null;
+  club: string | null;
+  role: Role;
+  is_deployment_owner: boolean;
+}
+
+export type PleaState = "pending" | "granted" | "denied" | null;
+
+export interface Plea {
+  state: PleaState;
+  message: string | null;
+  created_at: string | null;
+  decided_at: string | null;
+}
+
+export interface TeamMember {
+  fencer_id: number;
+  email: string;
+  display_name: string;
+}
+
+export interface AdminAccount {
+  id: number;
+  email: string;
+  display_name: string;
+  role: Role;
+  hr_id: number | null;
+  is_deployment_owner: boolean;
+  has_pending_plea: boolean;
+}
+
+export interface PleaQueueItem {
+  id: number;
+  fencer_id: number;
+  email: string;
+  display_name: string;
+  message: string | null;
+  created_at: string;
 }
 
 export interface Discipline {
@@ -268,6 +317,48 @@ export const api = {
     request<{ taken_at: string | null; ratings: number }>(
       `/api/tournaments/${slug}/ratings`,
     ),
+  account: () => request<Account>("/api/account"),
+  submitPlea: (message: string | null) =>
+    request<Plea>("/api/account/plea", {
+      method: "POST",
+      body: JSON.stringify({ message }),
+    }),
+  myPlea: () => request<Plea>("/api/account/plea"),
+  team: (slug: string) => request<TeamMember[]>(`/api/tournaments/${slug}/team`),
+  addTeamMember: (slug: string, email: string) =>
+    request<TeamMember>(`/api/tournaments/${slug}/team`, {
+      method: "POST",
+      body: JSON.stringify({ email }),
+    }),
+  removeTeamMember: (slug: string, fencerId: number) =>
+    request<void>(`/api/tournaments/${slug}/team/${fencerId}`, { method: "DELETE" }),
+  transferOwnership: (slug: string, email: string) =>
+    request<TournamentDetail>(`/api/tournaments/${slug}/transfer-ownership`, {
+      method: "POST",
+      body: JSON.stringify({ email }),
+    }),
+  assignOwner: (slug: string, email: string) =>
+    request<TournamentDetail>(`/api/tournaments/${slug}/assign-owner`, {
+      method: "POST",
+      body: JSON.stringify({ email }),
+    }),
+  cancelTournament: (slug: string) =>
+    request<TournamentDetail>(`/api/tournaments/${slug}/cancel`, { method: "POST" }),
+  deleteTournament: (slug: string) =>
+    request<void>(`/api/tournaments/${slug}`, { method: "DELETE" }),
+  adminAccounts: () => request<AdminAccount[]>("/api/admin/accounts"),
+  adminSetRole: (fencerId: number, role: Role) =>
+    request<AdminAccount>(`/api/admin/accounts/${fencerId}/role`, {
+      method: "PATCH",
+      body: JSON.stringify({ role }),
+    }),
+  adminHrUnbind: (fencerId: number) =>
+    request<AdminAccount>(`/api/admin/accounts/${fencerId}/hr-unbind`, { method: "POST" }),
+  adminPleas: () => request<PleaQueueItem[]>("/api/admin/pleas"),
+  adminGrantPlea: (id: number) =>
+    request<{ id: number; state: string }>(`/api/admin/pleas/${id}/grant`, { method: "POST" }),
+  adminDenyPlea: (id: number) =>
+    request<{ id: number; state: string }>(`/api/admin/pleas/${id}/deny`, { method: "POST" }),
 };
 
 export interface HRStatus {

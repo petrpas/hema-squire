@@ -39,6 +39,8 @@ def registration_availability(tournament: Tournament, today: datetime.date) -> s
     Applies only to new submissions — never to cancellation, payment
     matching, or admission of substitutes on existing registrations.
     """
+    if tournament.cancelled_at is not None:
+        return CLOSED
     if setup_missing(tournament):
         return NOT_PUBLISHED
     if tournament.registration_opens is not None and today < tournament.registration_opens:

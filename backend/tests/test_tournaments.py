@@ -194,7 +194,7 @@ def test_added_organizer_gains_access(client, auth_headers):
     helper = auth_headers(email="helper@example.com", name="Helper")
 
     response = client.post(
-        "/api/tournaments/na-duel-2026/organizers",
+        "/api/tournaments/na-duel-2026/team",
         json={"email": "helper@example.com"},
         headers=organizer,
     )

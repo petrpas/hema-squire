@@ -2,11 +2,14 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import {
+  ApiError,
+  type Account,
   type Discount,
   type DiscountCondition,
   type DiscountEffect,
   type ExtraCategory,
   type ExtraItem,
+  type TeamMember,
   type TournamentDetail,
   api,
 } from "./api";
@@ -780,6 +783,204 @@ function DiscountsSection({
   );
 }
 
+function TeamSection({ slug }: { slug: string }) {
+  const { t } = useTranslation();
+  const [team, setTeam] = useState<TeamMember[] | null>(null);
+  const [email, setEmail] = useState("");
+  const [transferEmail, setTransferEmail] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  function refreshTeam() {
+    api.team(slug).then(setTeam, () => setTeam([]));
+  }
+
+  useEffect(refreshTeam, [slug]);
+
+  async function add() {
+    setBusy(true);
+    setError(null);
+    try {
+      await api.addTeamMember(slug, email.trim());
+      setEmail("");
+      refreshTeam();
+    } catch (err) {
+      setError(
+        err instanceof ApiError && err.status === 404
+          ? t("setup.team.unknownEmail")
+          : err instanceof ApiError && err.status === 409
+            ? t("setup.team.alreadyMember")
+            : t("setup.team.addFailed"),
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function remove(fencerId: number) {
+    setBusy(true);
+    try {
+      await api.removeTeamMember(slug, fencerId);
+      refreshTeam();
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function transfer() {
+    setBusy(true);
+    setError(null);
+    try {
+      await api.transferOwnership(slug, transferEmail.trim());
+      setTransferEmail("");
+      refreshTeam();
+    } catch (err) {
+      setError(
+        err instanceof ApiError && err.status === 409
+          ? t("setup.team.transferNotMember")
+          : err instanceof ApiError && err.status === 404
+            ? t("setup.team.unknownEmail")
+            : t("setup.team.transferFailed"),
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <section className="rail-card">
+      <h2>{t("setup.team.title")}</h2>
+      {error && <p className="login-error">{error}</p>}
+      <table className="sheet-table">
+        <thead>
+          <tr>
+            <th>{t("setup.team.email")}</th>
+            <th>{t("setup.team.displayName")}</th>
+            <th className="col-actions" />
+          </tr>
+        </thead>
+        <tbody>
+          {(team ?? []).map((member) => (
+            <tr key={member.fencer_id}>
+              <td>{member.email}</td>
+              <td>{member.display_name}</td>
+              <td className="col-actions">
+                <button
+                  className="row-action"
+                  title={t("actions.delete")}
+                  disabled={busy}
+                  onClick={() => void remove(member.fencer_id)}
+                >
+                  ✕
+                </button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <p className="rail-hint">{t("setup.team.addPlaceholder")}</p>
+      <div className="inline-form">
+        <input
+          type="email"
+          value={email}
+          placeholder={t("setup.team.addPlaceholder")}
+          onChange={(event) => setEmail(event.target.value)}
+        />
+        <button className="secondary" disabled={busy || !email} onClick={() => void add()}>
+          {t("setup.team.add")}
+        </button>
+      </div>
+      <p className="rail-hint">{t("setup.team.transferHint")}</p>
+      <div className="inline-form">
+        <input
+          type="email"
+          value={transferEmail}
+          placeholder={t("setup.team.transferPlaceholder")}
+          onChange={(event) => setTransferEmail(event.target.value)}
+        />
+        <button
+          className="secondary"
+          disabled={busy || !transferEmail}
+          onClick={() => void transfer()}
+        >
+          {t("setup.team.transfer")}
+        </button>
+      </div>
+    </section>
+  );
+}
+
+function DangerZoneSection({
+  slug,
+  hasRegistrations,
+  cancelled,
+  onDeleted,
+  onCancelled,
+}: {
+  slug: string;
+  hasRegistrations: boolean;
+  cancelled: boolean;
+  onDeleted: () => void;
+  onCancelled: () => void;
+}) {
+  const { t } = useTranslation();
+  const [confirming, setConfirming] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function act() {
+    setBusy(true);
+    setError(null);
+    try {
+      if (hasRegistrations) {
+        await api.cancelTournament(slug);
+        onCancelled();
+      } else {
+        await api.deleteTournament(slug);
+        onDeleted();
+      }
+    } catch {
+      setError(t("setup.danger.failed"));
+    } finally {
+      setBusy(false);
+      setConfirming(false);
+    }
+  }
+
+  if (cancelled) {
+    return (
+      <section className="rail-card danger-zone">
+        <h2>{t("setup.danger.title")}</h2>
+        <p className="rail-hint">{t("setup.danger.alreadyCancelled")}</p>
+      </section>
+    );
+  }
+
+  return (
+    <section className="rail-card danger-zone">
+      <h2>{t("setup.danger.title")}</h2>
+      <p className="rail-hint">
+        {hasRegistrations ? t("setup.danger.cancelHint") : t("setup.danger.deleteHint")}
+      </p>
+      {error && <p className="login-error">{error}</p>}
+      {confirming ? (
+        <div className="modal-actions">
+          <button type="button" className="secondary" onClick={() => setConfirming(false)}>
+            {t("common.cancel")}
+          </button>
+          <button type="button" disabled={busy} onClick={() => void act()}>
+            {hasRegistrations ? t("setup.danger.cancelButton") : t("setup.danger.deleteButton")}
+          </button>
+        </div>
+      ) : (
+        <button className="secondary" onClick={() => setConfirming(true)}>
+          {hasRegistrations ? t("setup.danger.cancelButton") : t("setup.danger.deleteButton")}
+        </button>
+      )}
+    </section>
+  );
+}
+
 function ChecklistSection({ detail }: { detail: TournamentDetail }) {
   const { t } = useTranslation();
   const missing = detail.setup_missing ?? [];
@@ -806,14 +1007,24 @@ export default function SetupPanel({
   slug,
   onSaved,
   hasRegistrations,
+  onDeleted,
 }: {
   detail: TournamentDetail | null;
   slug: string;
   onSaved: () => void;
   hasRegistrations: boolean;
+  onDeleted: () => void;
 }) {
   const { t } = useTranslation();
+  const [account, setAccount] = useState<Account | null>(null);
+
+  useEffect(() => {
+    api.account().then(setAccount, () => setAccount(null));
+  }, []);
+
   if (detail === null) return <p>{t("common.loading")}</p>;
+
+  const isOwner = account !== null && account.id === detail.owner_id;
 
   return (
     <div className="setup-panel">
@@ -838,6 +1049,16 @@ export default function SetupPanel({
         onSaved={onSaved}
         pricingWarning={hasRegistrations}
       />
+      {isOwner && <TeamSection slug={slug} />}
+      {isOwner && (
+        <DangerZoneSection
+          slug={slug}
+          hasRegistrations={hasRegistrations}
+          cancelled={detail.cancelled_at !== null}
+          onDeleted={onDeleted}
+          onCancelled={onSaved}
+        />
+      )}
     </div>
   );
 }

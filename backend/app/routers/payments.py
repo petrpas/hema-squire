@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile
 from sqlalchemy import select
 
 from app import bank, matching, rules, scheduler
-from app.auth import require_organizer
+from app.auth import require_console_access
 from app.mail import Mailer, get_mailer
 from app.models import BankTransaction, Registration
 from app.routers.tournaments import FencerDep, SessionDep, TournamentDep
@@ -38,7 +38,7 @@ async def import_statement(
     fencer: FencerDep,
     mailer: MailerDep,
 ):
-    require_organizer(session, tournament, fencer)
+    require_console_access(session, tournament, fencer)
     content = await file.read()
     try:
         transactions = bank.parse_fio_csv(content)
@@ -56,7 +56,7 @@ def fio_poll(
     mailer: MailerDep,
     days_back: int = 14,
 ):
-    require_organizer(session, tournament, fencer)
+    require_console_access(session, tournament, fencer)
     if not tournament.fio_token:
         raise HTTPException(status_code=409, detail="fio_token_not_configured")
     today = date.today()
@@ -69,7 +69,7 @@ def process_lifecycle(
     tournament: TournamentDep, session: SessionDep, fencer: FencerDep, mailer: MailerDep
 ) -> dict[str, int]:
     """Run reminders and expiries for this tournament now (also runs periodically)."""
-    require_organizer(session, tournament, fencer)
+    require_console_access(session, tournament, fencer)
     expired = scheduler.process_expiries(session, tournament, mailer)
     return {
         "reminders": scheduler.process_reminders(session, tournament, mailer),
@@ -87,7 +87,7 @@ def link_transaction(
 ):
     """Manually link an unmatched transaction to one or more registrations.
     Persists as a payment_link rule: survives reruns, removable via the rules API."""
-    require_organizer(session, tournament, fencer)
+    require_console_access(session, tournament, fencer)
     transaction = session.get(BankTransaction, data.transaction_id)
     if transaction is None or transaction.tournament_id != tournament.id:
         raise HTTPException(status_code=404, detail="transaction_not_found")
@@ -119,7 +119,7 @@ def link_transaction(
 
 @router.get("/unmatched", response_model=list[TransactionOut])
 def unmatched_queue(tournament: TournamentDep, session: SessionDep, fencer: FencerDep):
-    require_organizer(session, tournament, fencer)
+    require_console_access(session, tournament, fencer)
     return session.scalars(
         select(BankTransaction)
         .where(
@@ -132,7 +132,7 @@ def unmatched_queue(tournament: TournamentDep, session: SessionDep, fencer: Fenc
 
 @router.get("/transactions", response_model=list[TransactionOut])
 def list_transactions(tournament: TournamentDep, session: SessionDep, fencer: FencerDep):
-    require_organizer(session, tournament, fencer)
+    require_console_access(session, tournament, fencer)
     return session.scalars(
         select(BankTransaction)
         .where(BankTransaction.tournament_id == tournament.id)
