@@ -290,5 +290,66 @@
       "conflict": "That profile is already bound to another account.",
       "bindFailed": "Binding failed."
     }
+  },
+  "home": {
+    "title": "Tournaments",
+    "empty": "No tournaments are open right now.",
+    "register": "Register",
+    "manage": "Manage registration",
+    "status": {
+      "open": "Registration open",
+      "opensOn": "Registration opens {{date}}",
+      "closed": "Registration closed"
+    }
+  },
+  "detail": {
+    "back": "Back to tournaments",
+    "disciplines": "Disciplines",
+    "extras": "Extra services",
+    "freePlaces": "{{count}} free places",
+    "queueLength": "{{count}} in the substitute queue",
+    "opensOn": "registration opens {{date}}",
+    "closesOn": "registration closes {{date}}",
+    "notYetOpen": "Registration for this tournament hasn't opened yet.",
+    "closedNotice": "Registration for this tournament is closed."
+  },
+  "form": {
+    "title": "Registration",
+    "afterparty": "Afterparty",
+    "aftersparring": "Post-tournament sparring",
+    "accommodation": "Accommodation (note)",
+    "notes": "Notes",
+    "total": "Total: {{total}} CZK",
+    "submit": "Submit registration",
+    "submitFailed": "Could not submit the registration.",
+    "fullDisciplines": "These disciplines are full: {{codes}}",
+    "dropFull": "Continue without them",
+    "joinQueue": "Join the substitute queue"
+  },
+  "payment": {
+    "title": "Payment instructions",
+    "amount": "Amount",
+    "iban": "Account (IBAN)",
+    "vs": "Variable symbol",
+    "expiresAt": "Reservation valid until",
+    "vsInMessage": "If your bank transfer has no VS field, put variable symbol {{vs}} in the payment message instead."
+  },
+  "registration": {
+    "title": "Your registration",
+    "state": {
+      "reserved": "Reserved",
+      "paid": "Paid",
+      "expired": "Reservation expired",
+      "cancelled": "Cancelled"
+    },
+    "queuePosition": "position {{position}}",
+    "fullyQueuedHint": "You're queued for every selected discipline — payment opens once you're admitted."
+  },
+  "cancel": {
+    "button": "Cancel registration",
+    "confirm": "Cancel this registration?",
+    "refundable": "The fee is refundable. Cancel this registration?",
+    "notRefundable": "The fee is no longer refundable. Cancel this registration?",
+    "confirmButton": "Yes, cancel registration"
   }
 }

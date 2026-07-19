@@ -792,3 +792,79 @@ tr.row-deleted td.col-actions {
   text-decoration: none;
   width: fit-content;
 }
+
+/* ===== fencer home + tournament detail ===== */
+
+.home-list {
+  list-style: none;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+}
+
+.home-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.home-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.home-card-header h2 {
+  font-size: 1.05rem;
+}
+
+.status-open {
+  border-color: #2f7d4f;
+  background: #e8f5ec;
+  color: #1f5a37;
+}
+
+.status-closed {
+  border-color: #b9b6ad;
+  color: #8a877f;
+}
+
+.detail-list {
+  list-style: none;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.detail-list li {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.3rem 0;
+  border-bottom: 1px solid #ece9e2;
+}
+
+.checkbox-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.85rem;
+  padding: 0.2rem 0.6rem;
+  border: 1px solid #b9b6ad;
+  border-radius: 14px;
+  background: #fff;
+}
+
+.form-total {
+  font-weight: 700;
+  font-size: 1.05rem;
+}
+
+.payment-qr {
+  width: 10rem;
+  height: 10rem;
+  align-self: flex-start;
+}

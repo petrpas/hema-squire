@@ -2,18 +2,21 @@ import { useState } from "react";
 
 import AdminPanel from "./AdminPanel";
 import Console, { type Phase } from "./Console";
+import FencerHome from "./FencerHome";
 import Login from "./Login";
 import ProfilePage from "./ProfilePage";
+import TournamentDetail from "./TournamentDetail";
 import TournamentPicker from "./TournamentPicker";
 import { type Tournament, getToken } from "./api";
 
-type View = "picker" | "console" | "admin" | "profile";
+type View = "home" | "tournament" | "picker" | "console" | "admin" | "profile";
 
 export default function App() {
   const [authed, setAuthed] = useState(() => getToken() !== null);
   const [tournament, setTournament] = useState<Tournament | null>(null);
   const [initialPhase, setInitialPhase] = useState<Phase>("load");
-  const [view, setView] = useState<View>("picker");
+  const [view, setView] = useState<View>("home");
+  const [selectedSlug, setSelectedSlug] = useState<string | null>(null);
 
   if (!authed) {
     return <Login onLogin={() => setAuthed(true)} />;
@@ -21,13 +24,15 @@ export default function App() {
 
   function logout() {
     setTournament(null);
-    setView("picker");
+    setSelectedSlug(null);
+    setView("home");
     setAuthed(false);
   }
 
   const onProfile = () => setView("profile");
   const onAdmin = () => setView("admin");
   const onOrganizer = () => setView("picker");
+  const onHome = () => setView("home");
 
   if (view === "admin") {
     return (
@@ -35,12 +40,15 @@ export default function App() {
         onBack={() => setView(tournament ? "console" : "picker")}
         onProfile={onProfile}
         onOrganizer={onOrganizer}
+        onFencer={onHome}
         onLogout={logout}
       />
     );
   }
   if (view === "profile") {
-    return <ProfilePage onAdmin={onAdmin} onOrganizer={onOrganizer} onLogout={logout} />;
+    return (
+      <ProfilePage onAdmin={onAdmin} onOrganizer={onOrganizer} onFencer={onHome} onLogout={logout} />
+    );
   }
   if (view === "console" && tournament) {
     return (
@@ -50,19 +58,47 @@ export default function App() {
         onBack={onOrganizer}
         onProfile={onProfile}
         onAdmin={onAdmin}
+        onFencer={onHome}
+        onLogout={logout}
+      />
+    );
+  }
+  if (view === "picker") {
+    return (
+      <TournamentPicker
+        onPick={(picked, phase) => {
+          setTournament(picked);
+          setInitialPhase(phase ?? "load");
+          setView("console");
+        }}
+        onProfile={onProfile}
+        onAdmin={onAdmin}
+        onFencer={onHome}
+        onLogout={logout}
+      />
+    );
+  }
+  if (view === "tournament" && selectedSlug) {
+    return (
+      <TournamentDetail
+        slug={selectedSlug}
+        onBack={onHome}
+        onProfile={onProfile}
+        onAdmin={onAdmin}
+        onOrganizer={onOrganizer}
         onLogout={logout}
       />
     );
   }
   return (
-    <TournamentPicker
-      onPick={(picked, phase) => {
-        setTournament(picked);
-        setInitialPhase(phase ?? "load");
-        setView("console");
+    <FencerHome
+      onOpen={(slug) => {
+        setSelectedSlug(slug);
+        setView("tournament");
       }}
       onProfile={onProfile}
       onAdmin={onAdmin}
+      onOrganizer={onOrganizer}
       onLogout={logout}
     />
   );

@@ -232,10 +232,12 @@ function HRMatchSection({ onBound }: { onBound: (account: Account) => void }) {
 export default function ProfilePage({
   onAdmin,
   onOrganizer,
+  onFencer,
   onLogout,
 }: {
   onAdmin: () => void;
   onOrganizer: () => void;
+  onFencer: () => void;
   onLogout: () => void;
 }) {
   const { t } = useTranslation();
@@ -253,6 +255,7 @@ export default function ProfilePage({
           account={account}
           onProfile={() => {}}
           onAdmin={onAdmin}
+          onFencer={onFencer}
           onOrganizer={onOrganizer}
           onLogout={onLogout}
         />

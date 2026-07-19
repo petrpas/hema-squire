@@ -12,6 +12,7 @@ from app.auth import (
     require_role,
     require_tournament_owner,
 )
+from app.availability import queue_length, taken_seats
 from app.db import get_session
 from app.models import (
     BankTransaction,
@@ -25,6 +26,7 @@ from app.models import (
     ImportedRow,
     PaymentEvent,
     Registration,
+    RegistrationState,
     Role,
     Rule,
     RuleJournalEntry,
@@ -37,6 +39,8 @@ from app.schemas import (
     DisciplineOut,
     ExtraItemIn,
     ExtraItemOut,
+    OpenDisciplineOut,
+    OpenTournamentOut,
     OwnerTransferIn,
     TeamAdd,
     TeamMemberOut,
@@ -93,6 +97,77 @@ def list_tournaments(session: SessionDep):
         )
         .order_by(Tournament.date)
     ).all()
+
+
+@router.get("/open", response_model=list[OpenTournamentOut])
+def open_tournaments(session: SessionDep, fencer: FencerDep):
+    """Published, non-cancelled, upcoming tournaments for the fencer-facing
+    home list (design D1) — a trimmed DTO so drafts and organizer-only
+    config never leak, with per-discipline counts and the caller's own
+    registration state folded in to avoid N+1 calls from the frontend."""
+    today = datetime.now(UTC).date()
+    rows = session.scalars(
+        select(Tournament)
+        .where(Tournament.cancelled_at.is_(None), Tournament.date >= today)
+        .options(selectinload(Tournament.disciplines))
+        .order_by(Tournament.date)
+    ).all()
+
+    result = []
+    for tournament in rows:
+        if setup.setup_missing(tournament):
+            continue
+
+        reason = setup.registration_availability(tournament, today)
+        if reason == setup.NOT_YET_OPEN:
+            status_, opens_on = "opens_on", tournament.registration_opens
+        elif reason == setup.CLOSED:
+            status_, opens_on = "closed", None
+        else:
+            status_, opens_on = "open", None
+
+        disciplines = [
+            OpenDisciplineOut(
+                code=d.code,
+                name=d.name,
+                fee=d.fee,
+                taken=taken_seats(session, d),
+                capacity=d.capacity,
+                queue_length=queue_length(session, d),
+            )
+            for d in tournament.disciplines
+        ]
+
+        registration = session.scalar(
+            select(Registration).where(
+                Registration.tournament_id == tournament.id,
+                Registration.fencer_id == fencer.id,
+            )
+        )
+        my_state = "none"
+        if registration is not None:
+            if registration.state == RegistrationState.PAID:
+                my_state = "paid"
+            elif registration.state == RegistrationState.RESERVED:
+                active = any(not e.is_substitute for e in registration.entries)
+                my_state = "reserved" if active else "substitute"
+            else:  # CANCELLED, or a scheduler-expired reservation
+                my_state = "cancelled"
+
+        result.append(
+            OpenTournamentOut(
+                slug=tournament.slug,
+                display_name=tournament.display_name,
+                date=tournament.date,
+                location=tournament.location,
+                organizer_names=tournament.organizer_names,
+                registration_status=status_,
+                registration_opens_on=opens_on,
+                disciplines=disciplines,
+                my_registration_state=my_state,
+            )
+        )
+    return result
 
 
 @router.get("/{slug}", response_model=TournamentOut)

@@ -200,6 +200,100 @@ export interface Sheet {
   edits: AppliedChange[];
 }
 
+export type RegistrationStatus = "open" | "opens_on" | "closed";
+export type MyRegistrationState = "none" | "reserved" | "paid" | "substitute" | "cancelled";
+
+export interface OpenDiscipline {
+  code: string;
+  name: string;
+  fee: number | null;
+  taken: number;
+  capacity: number;
+  queue_length: number;
+}
+
+export interface OpenTournament {
+  slug: string;
+  display_name: string;
+  date: string;
+  location: string | null;
+  organizer_names: string[];
+  registration_status: RegistrationStatus;
+  registration_opens_on: string | null;
+  disciplines: OpenDiscipline[];
+  my_registration_state: MyRegistrationState;
+}
+
+export interface Availability {
+  code: string;
+  capacity: number;
+  taken: number;
+  free: number;
+  queue_length: number;
+}
+
+export type RegistrationRowState = "reserved" | "paid" | "expired" | "cancelled";
+export type RefundState = "not_applicable" | "pending" | "refunded";
+
+export interface RegistrationEntry {
+  code: string;
+  is_substitute: boolean;
+  queue_position: number | null;
+}
+
+export interface RegistrationExtraSelection {
+  extra_item_id: number;
+  name: string;
+  category: ExtraCategory;
+  qty: number;
+}
+
+export interface RegistrationDetail {
+  state: RegistrationRowState;
+  vs: number;
+  total_amount: number;
+  expires_at: string | null;
+  registered_at: string;
+  paid_at: string | null;
+  weapon_rentals: string[];
+  afterparty: boolean;
+  aftersparring: boolean;
+  accommodation: string | null;
+  notes: string | null;
+  refundable: boolean | null;
+  refund_state: RefundState;
+  extras: RegistrationExtraSelection[];
+  entries: RegistrationEntry[];
+}
+
+export interface RegisterPayload {
+  disciplines: string[];
+  weapon_rentals?: string[];
+  afterparty?: boolean;
+  aftersparring?: boolean;
+  accommodation?: string | null;
+  notes?: string | null;
+  wait_for_all?: boolean;
+  extras?: { extra_item_id: number; qty: number }[];
+}
+
+export interface PricePreviewPayload {
+  disciplines: string[];
+  weapon_rentals?: string[];
+  afterparty?: boolean;
+  extras?: { extra_item_id: number; qty: number }[];
+}
+
+export interface PaymentInstructions {
+  amount: number;
+  iban: string;
+  vs: number;
+  message: string;
+  expires_at: string | null;
+  spayd: string;
+  qr_png_base64: string;
+}
+
 export const api = {
   login: (email: string, password: string) =>
     request<{ token: string }>("/api/auth/login", {
@@ -373,6 +467,27 @@ export const api = {
     request<{ id: number; state: string }>(`/api/admin/pleas/${id}/grant`, { method: "POST" }),
   adminDenyPlea: (id: number) =>
     request<{ id: number; state: string }>(`/api/admin/pleas/${id}/deny`, { method: "POST" }),
+  openTournaments: () => request<OpenTournament[]>("/api/tournaments/open"),
+  availability: (slug: string) =>
+    request<Availability[]>(`/api/tournaments/${slug}/availability`),
+  myRegistration: (slug: string) =>
+    request<RegistrationDetail>(`/api/tournaments/${slug}/my-registration`),
+  registerForTournament: (slug: string, data: RegisterPayload) =>
+    request<RegistrationDetail>(`/api/tournaments/${slug}/register`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+  cancelRegistration: (slug: string) =>
+    request<RegistrationDetail>(`/api/tournaments/${slug}/my-registration/cancel`, {
+      method: "POST",
+    }),
+  pricePreview: (slug: string, data: PricePreviewPayload) =>
+    request<{ total: number }>(`/api/tournaments/${slug}/price-preview`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+  paymentInstructions: (slug: string) =>
+    request<PaymentInstructions>(`/api/tournaments/${slug}/my-registration/payment`),
 };
 
 export interface HRStatus {

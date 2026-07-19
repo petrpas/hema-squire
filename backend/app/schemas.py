@@ -314,6 +314,52 @@ class AvailabilityOut(BaseModel):
     queue_length: int
 
 
+class PricePreviewIn(BaseModel):
+    disciplines: list[str] = Field(min_length=1)
+    weapon_rentals: list[str] = []
+    afterparty: bool = False
+    extras: list[ExtraSelectionIn] = []
+
+
+class PricePreviewOut(BaseModel):
+    total: int
+
+
+class PaymentInstructionsOut(BaseModel):
+    amount: int
+    iban: str
+    vs: int
+    message: str
+    expires_at: datetime.datetime | None
+    spayd: str
+    qr_png_base64: str
+
+
+class OpenDisciplineOut(BaseModel):
+    code: str
+    name: str
+    fee: int | None
+    taken: int
+    capacity: int
+    queue_length: int
+
+
+RegistrationStatus = Literal["open", "opens_on", "closed"]
+MyRegistrationState = Literal["none", "reserved", "paid", "substitute", "cancelled"]
+
+
+class OpenTournamentOut(BaseModel):
+    slug: str
+    display_name: str
+    date: datetime.date
+    location: str | None
+    organizer_names: list[str]
+    registration_status: RegistrationStatus
+    registration_opens_on: datetime.date | None = None
+    disciplines: list[OpenDisciplineOut]
+    my_registration_state: MyRegistrationState
+
+
 class TransactionOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

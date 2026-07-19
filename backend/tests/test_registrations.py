@@ -153,6 +153,161 @@ def test_cancel_frees_spot_and_admit_bills_frozen_prices(client, auth_headers):
     assert my["state"] == "reserved"
 
 
+def test_price_preview_matches_registration_total_legacy(client, auth_headers):
+    organizer = auth_headers()
+    setup_tournament(client, organizer)
+    fencer = auth_headers(email="f1@example.com", name="F1")
+
+    selection = {
+        "disciplines": ["LS", "SB"],
+        "weapon_rentals": ["LS"],
+        "afterparty": True,
+    }
+    preview = client.post(
+        "/api/tournaments/cup/price-preview", json=selection, headers=fencer
+    )
+    assert preview.status_code == 200
+    registered = register(client, fencer, **selection).json()
+    assert preview.json()["total"] == registered["total_amount"]
+
+
+def test_price_preview_matches_registration_total_itemized(client, auth_headers):
+    organizer = auth_headers()
+    setup_tournament(client, organizer)
+    item = client.post(
+        "/api/tournaments/cup/extra-items",
+        json={"name": "T-shirt", "category": "merch", "price": 250, "max_qty": 2},
+        headers=organizer,
+    ).json()
+    client.patch(
+        "/api/tournaments/cup",
+        json={
+            "discounts": [
+                {
+                    "name": "2 disciplines",
+                    "condition": {"kind": "discipline_count", "count": 2},
+                    "effect": {"kind": "fixed", "value": 100},
+                    "scope": ["discipline"],
+                }
+            ]
+        },
+        headers=organizer,
+    )
+    fencer = auth_headers(email="f1@example.com", name="F1")
+
+    selection = {
+        "disciplines": ["LS", "SB"],
+        "extras": [{"extra_item_id": item["id"], "qty": 2}],
+    }
+    preview = client.post(
+        "/api/tournaments/cup/price-preview", json=selection, headers=fencer
+    )
+    assert preview.status_code == 200
+    registered = register(client, fencer, **selection).json()
+    assert preview.json()["total"] == registered["total_amount"]
+    assert preview.json()["total"] == (800 + 500 - 100) + 2 * 250
+
+
+def test_price_preview_rejects_unknown_discipline(client, auth_headers):
+    organizer = auth_headers()
+    setup_tournament(client, organizer)
+    fencer = auth_headers(email="f1@example.com", name="F1")
+    response = client.post(
+        "/api/tournaments/cup/price-preview",
+        json={"disciplines": ["ZZ"]},
+        headers=fencer,
+    )
+    assert response.status_code == 422
+    assert response.json()["detail"] == {"unknown_disciplines": ["ZZ"]}
+
+
+def test_cancel_then_reregister_reuses_the_slot(client, auth_headers):
+    organizer = auth_headers()
+    setup_tournament(client, organizer)
+    fencer = auth_headers(email="f1@example.com", name="F1")
+    first = register(client, fencer, disciplines=["LS"]).json()
+
+    cancelled = client.post("/api/tournaments/cup/my-registration/cancel", headers=fencer)
+    assert cancelled.json()["state"] == "cancelled"
+
+    second = register(client, fencer, disciplines=["SB"])
+    assert second.status_code == 201, second.text
+    body = second.json()
+    assert body["state"] == "reserved"
+    assert body["entries"][0]["code"] == "SB"
+    assert body["vs"] != first["vs"]
+
+
+IBAN = "CZ6508000000192000145399"
+
+
+def test_payment_instructions_return_amount_iban_vs_qr(client, auth_headers):
+    organizer = auth_headers()
+    setup_tournament(client, organizer)
+    client.patch("/api/tournaments/cup", json={"bank_account": IBAN}, headers=organizer)
+    fencer = auth_headers(email="f1@example.com", name="F1")
+    registered = register(client, fencer, disciplines=["LS"]).json()
+
+    payment = client.get("/api/tournaments/cup/my-registration/payment", headers=fencer)
+    assert payment.status_code == 200
+    body = payment.json()
+    assert body["amount"] == registered["total_amount"]
+    assert body["iban"] == IBAN
+    assert body["vs"] == registered["vs"]
+    assert body["message"] == f"VS{registered['vs']} Cup"
+    assert body["expires_at"] == registered["expires_at"]
+    assert f"X-VS:{registered['vs']}" in body["spayd"]
+    assert len(body["qr_png_base64"]) > 0
+
+
+def test_payment_instructions_denied_for_other_account(client, auth_headers):
+    organizer = auth_headers()
+    setup_tournament(client, organizer)
+    client.patch("/api/tournaments/cup", json={"bank_account": IBAN}, headers=organizer)
+    fencer = auth_headers(email="f1@example.com", name="F1")
+    register(client, fencer, disciplines=["LS"])
+
+    other = auth_headers(email="f2@example.com", name="F2")
+    response = client.get("/api/tournaments/cup/my-registration/payment", headers=other)
+    assert response.status_code == 404
+
+
+def test_payment_instructions_rejected_when_already_paid(client, auth_headers):
+    organizer = auth_headers()
+    setup_tournament(client, organizer)
+    client.patch("/api/tournaments/cup", json={"bank_account": IBAN}, headers=organizer)
+    fencer = auth_headers(email="f1@example.com", name="F1")
+    register(client, fencer, disciplines=["LS"])
+
+    from sqlalchemy import select
+
+    from app.db import get_session
+    from app.main import app
+    from app.models import Registration, RegistrationState
+
+    session = next(app.dependency_overrides[get_session]())
+    registration = session.scalar(select(Registration))
+    registration.state = RegistrationState.PAID
+    session.commit()
+
+    response = client.get("/api/tournaments/cup/my-registration/payment", headers=fencer)
+    assert response.status_code == 409
+    assert response.json()["detail"] == "not_unpaid"
+
+
+def test_payment_instructions_rejected_when_fully_queued(client, auth_headers):
+    organizer = auth_headers()
+    setup_tournament(client, organizer)
+    client.patch("/api/tournaments/cup", json={"bank_account": IBAN}, headers=organizer)
+    register(client, auth_headers(email="a@example.com", name="A"), disciplines=["SB"])
+    waiting = auth_headers(email="b@example.com", name="B")
+    register(client, waiting, disciplines=["SB"], wait_for_all=True)
+
+    response = client.get("/api/tournaments/cup/my-registration/payment", headers=waiting)
+    assert response.status_code == 409
+    assert response.json()["detail"] == "no_payment_due"
+
+
 def test_admit_requires_organizer_and_capacity(client, auth_headers):
     organizer = auth_headers()
     setup_tournament(client, organizer)

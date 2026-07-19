@@ -158,11 +158,13 @@ export default function AdminPanel({
   onBack,
   onProfile,
   onOrganizer,
+  onFencer,
   onLogout,
 }: {
   onBack: () => void;
   onProfile: () => void;
   onOrganizer: () => void;
+  onFencer: () => void;
   onLogout: () => void;
 }) {
   const { t } = useTranslation();
@@ -188,6 +190,7 @@ export default function AdminPanel({
           account={account}
           onProfile={onProfile}
           onAdmin={() => {}}
+          onFencer={onFencer}
           onOrganizer={onOrganizer}
           onLogout={onLogout}
         />

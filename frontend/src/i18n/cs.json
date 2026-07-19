@@ -290,5 +290,66 @@
       "conflict": "Tento profil je už spojen s jiným účtem.",
       "bindFailed": "Spojení se nezdařilo."
     }
+  },
+  "home": {
+    "title": "Turnaje",
+    "empty": "Momentálně nejsou vypsané žádné turnaje.",
+    "register": "Registrovat",
+    "manage": "Správa registrace",
+    "status": {
+      "open": "Registrace otevřena",
+      "opensOn": "Registrace od {{date}}",
+      "closed": "Registrace uzavřena"
+    }
+  },
+  "detail": {
+    "back": "Zpět na turnaje",
+    "disciplines": "Disciplíny",
+    "extras": "Doplňkové služby",
+    "freePlaces": "volných míst: {{count}}",
+    "queueLength": "v pořadí čeká: {{count}}",
+    "opensOn": "registrace od {{date}}",
+    "closesOn": "registrace do {{date}}",
+    "notYetOpen": "Registrace na tento turnaj ještě nebyla otevřena.",
+    "closedNotice": "Registrace na tento turnaj je uzavřena."
+  },
+  "form": {
+    "title": "Registrace",
+    "afterparty": "Afterparty",
+    "aftersparring": "Sparing po turnaji",
+    "accommodation": "Ubytování (poznámka)",
+    "notes": "Poznámka",
+    "total": "Celkem: {{total}} Kč",
+    "submit": "Odeslat registraci",
+    "submitFailed": "Registraci se nepodařilo odeslat.",
+    "fullDisciplines": "Tyto disciplíny jsou plné: {{codes}}",
+    "dropFull": "Pokračovat bez nich",
+    "joinQueue": "Zařadit se do pořadí"
+  },
+  "payment": {
+    "title": "Platební instrukce",
+    "amount": "Částka",
+    "iban": "Účet (IBAN)",
+    "vs": "Variabilní symbol",
+    "expiresAt": "Rezervace platí do",
+    "vsInMessage": "Pokud tvůj platební příkaz nemá pole VS, uveď variabilní symbol {{vs}} do zprávy pro příjemce."
+  },
+  "registration": {
+    "title": "Tvoje registrace",
+    "state": {
+      "reserved": "Rezervováno",
+      "paid": "Zaplaceno",
+      "expired": "Rezervace vypršela",
+      "cancelled": "Zrušeno"
+    },
+    "queuePosition": "pořadí {{position}}",
+    "fullyQueuedHint": "Čekáš v pořadí na všechny vybrané disciplíny — platba se otevře po zařazení."
+  },
+  "cancel": {
+    "button": "Zrušit registraci",
+    "confirm": "Opravdu chceš registraci zrušit?",
+    "refundable": "Poplatek je vratný. Opravdu chceš registraci zrušit?",
+    "notRefundable": "Poplatek už není vratný. Opravdu chceš registraci zrušit?",
+    "confirmButton": "Ano, zrušit registraci"
   }
 }

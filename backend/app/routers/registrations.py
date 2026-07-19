@@ -1,14 +1,15 @@
+import base64
 from datetime import UTC, datetime, timedelta
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select
 
-from app import emails, pricing, setup
+from app import emails, pricing, setup, spayd
 from app.auth import require_console_access
+from app.availability import queue_length, taken_seats
 from app.mail import Mailer, get_mailer
 from app.models import (
-    Discipline,
     RefundState,
     Registration,
     RegistrationDiscipline,
@@ -18,7 +19,15 @@ from app.models import (
     UnpaidListTreatment,
 )
 from app.routers.tournaments import FencerDep, SessionDep, TournamentDep
-from app.schemas import AvailabilityOut, ParticipantOut, RegisterIn, RegistrationOut
+from app.schemas import (
+    AvailabilityOut,
+    ParticipantOut,
+    PaymentInstructionsOut,
+    PricePreviewIn,
+    PricePreviewOut,
+    RegisterIn,
+    RegistrationOut,
+)
 from app.taxonomy import WEAPONS
 
 router = APIRouter(prefix="/api/tournaments/{slug}", tags=["registrations"])
@@ -30,27 +39,6 @@ VS_START = 1000001
 
 def _now() -> datetime:
     return datetime.now(UTC)
-
-
-def taken_seats(session, discipline: Discipline) -> int:
-    """Capacity is consumed by paid registrations and unexpired reservations."""
-    return (
-        session.scalar(
-            select(func.count())
-            .select_from(RegistrationDiscipline)
-            .join(Registration)
-            .where(
-                RegistrationDiscipline.discipline_id == discipline.id,
-                RegistrationDiscipline.is_substitute.is_(False),
-                (Registration.state == RegistrationState.PAID)
-                | (
-                    (Registration.state == RegistrationState.RESERVED)
-                    & ((Registration.expires_at.is_(None)) | (Registration.expires_at > _now()))
-                ),
-            )
-        )
-        or 0
-    )
 
 
 def queue_position(session, entry: RegistrationDiscipline) -> int:
@@ -115,23 +103,13 @@ def availability(tournament: TournamentDep, session: SessionDep):
     result = []
     for discipline in tournament.disciplines:
         taken = taken_seats(session, discipline)
-        queued = session.scalar(
-            select(func.count())
-            .select_from(RegistrationDiscipline)
-            .join(Registration)
-            .where(
-                RegistrationDiscipline.discipline_id == discipline.id,
-                RegistrationDiscipline.is_substitute.is_(True),
-                Registration.state == RegistrationState.RESERVED,
-            )
-        )
         result.append(
             AvailabilityOut(
                 code=discipline.code,
                 capacity=discipline.capacity,
                 taken=taken,
                 free=max(discipline.capacity - taken, 0),
-                queue_length=queued or 0,
+                queue_length=queue_length(session, discipline),
             )
         )
     return result
@@ -177,28 +155,10 @@ def participants(tournament: TournamentDep, session: SessionDep):
     return result
 
 
-@router.post("/register", response_model=RegistrationOut, status_code=201)
-def register(
-    data: RegisterIn,
-    tournament: TournamentDep,
-    session: SessionDep,
-    fencer: FencerDep,
-    mailer: MailerDep,
-):
-    reason = setup.registration_availability(tournament, _now().date())
-    if reason is not None:
-        raise HTTPException(status_code=403, detail={"reason": reason})
-
-    existing = session.scalar(
-        select(Registration).where(
-            Registration.tournament_id == tournament.id,
-            Registration.fencer_id == fencer.id,
-            Registration.state != RegistrationState.CANCELLED,
-        )
-    )
-    if existing:
-        raise HTTPException(status_code=409, detail="already_registered")
-
+def _resolve_selection(tournament: Tournament, data) -> tuple[list, list[tuple]]:
+    """Validate the billable subset of RegisterIn/PricePreviewIn against the
+    tournament's disciplines/extras; shared by register() and price_preview()
+    so both reject the same selections the same way."""
     by_code = {d.code: d for d in tournament.disciplines}
     unknown = [c for c in data.disciplines if c not in by_code]
     if unknown:
@@ -218,6 +178,46 @@ def register(
         raise HTTPException(status_code=422, detail={"extras_over_limit": over_limit})
 
     selected = [by_code[c] for c in data.disciplines]
+    extras = [(extras_by_id[e.extra_item_id], e.qty) for e in data.extras]
+    return selected, extras
+
+
+@router.post("/price-preview", response_model=PricePreviewOut)
+def price_preview(data: PricePreviewIn, tournament: TournamentDep):
+    selected, extras = _resolve_selection(tournament, data)
+    total = pricing.selection_total(
+        tournament,
+        disciplines=selected,
+        extras=extras,
+        weapon_rentals=data.weapon_rentals,
+        afterparty=data.afterparty,
+        at=_now().date(),
+    )
+    return PricePreviewOut(total=total)
+
+
+@router.post("/register", response_model=RegistrationOut, status_code=201)
+def register(
+    data: RegisterIn,
+    tournament: TournamentDep,
+    session: SessionDep,
+    fencer: FencerDep,
+    mailer: MailerDep,
+):
+    reason = setup.registration_availability(tournament, _now().date())
+    if reason is not None:
+        raise HTTPException(status_code=403, detail={"reason": reason})
+
+    existing = session.scalar(
+        select(Registration).where(
+            Registration.tournament_id == tournament.id,
+            Registration.fencer_id == fencer.id,
+        )
+    )
+    if existing is not None and existing.state != RegistrationState.CANCELLED:
+        raise HTTPException(status_code=409, detail="already_registered")
+
+    selected, extras = _resolve_selection(tournament, data)
     full = [d.code for d in selected if taken_seats(session, d) >= d.capacity]
 
     if full and not data.wait_for_all:
@@ -226,17 +226,37 @@ def register(
         raise HTTPException(status_code=409, detail={"full_disciplines": full})
 
     as_substitute = bool(full)
-    registration = Registration(
-        tournament=tournament,
-        fencer=fencer,
-        registered_at=_now(),
-        vs=next_vs(session),
-        weapon_rentals=data.weapon_rentals,
-        afterparty=data.afterparty,
-        aftersparring=data.aftersparring,
-        accommodation=data.accommodation,
-        notes=data.notes,
-    )
+
+    if existing is not None:
+        # Re-registering after a cancellation: the (tournament_id, fencer_id)
+        # unique constraint forbids a second row, so the cancelled one is
+        # reused in place rather than inserting a new registration.
+        session.execute(
+            delete(RegistrationDiscipline).where(
+                RegistrationDiscipline.registration_id == existing.id
+            )
+        )
+        session.execute(
+            delete(RegistrationExtra).where(RegistrationExtra.registration_id == existing.id)
+        )
+        session.flush()
+        registration = existing
+        registration.state = RegistrationState.RESERVED
+        registration.cancelled_at = None
+        registration.refundable = None
+        registration.refund_state = RefundState.NOT_APPLICABLE
+        registration.paid_at = None
+    else:
+        registration = Registration(tournament=tournament, fencer=fencer)
+        session.add(registration)
+
+    registration.registered_at = _now()
+    registration.vs = next_vs(session)
+    registration.weapon_rentals = data.weapon_rentals
+    registration.afterparty = data.afterparty
+    registration.aftersparring = data.aftersparring
+    registration.accommodation = data.accommodation
+    registration.notes = data.notes
     for discipline in selected:
         registration.entries.append(
             RegistrationDiscipline(discipline=discipline, is_substitute=as_substitute)
@@ -247,14 +267,14 @@ def register(
                 extra_item_id=selection.extra_item_id, qty=selection.qty
             )
         )
-    session.add(registration)
     session.flush()
 
     registration.total_amount = pricing.registration_total(registration, tournament)
-    if not as_substitute:
-        registration.expires_at = registration.registered_at + timedelta(
-            days=tournament.reservation_validity_days
-        )
+    registration.expires_at = (
+        None
+        if as_substitute
+        else registration.registered_at + timedelta(days=tournament.reservation_validity_days)
+    )
     session.commit()
     emails.send_registration_confirmation(mailer, tournament, fencer, registration)
     return registration_out(session, registration)
@@ -276,6 +296,33 @@ def get_my_registration(session, tournament: Tournament, fencer) -> Registration
 @router.get("/my-registration", response_model=RegistrationOut)
 def my_registration(tournament: TournamentDep, session: SessionDep, fencer: FencerDep):
     return registration_out(session, get_my_registration(session, tournament, fencer))
+
+
+@router.get("/my-registration/payment", response_model=PaymentInstructionsOut)
+def my_registration_payment(tournament: TournamentDep, session: SessionDep, fencer: FencerDep):
+    """Same content as the confirmation email (design D3): owner-only, and
+    only for a reservation that actually owes money right now."""
+    registration = get_my_registration(session, tournament, fencer)
+    if registration.state != RegistrationState.RESERVED:
+        raise HTTPException(status_code=409, detail="not_unpaid")
+    if all(e.is_substitute for e in registration.entries):
+        raise HTTPException(status_code=409, detail="no_payment_due")
+    if not tournament.bank_account:
+        raise HTTPException(status_code=404, detail="no_bank_account")
+
+    message = f"VS{registration.vs} {tournament.display_name}"
+    spayd_string = spayd.spayd_string(
+        tournament.bank_account, registration.total_amount, registration.vs, message
+    )
+    return PaymentInstructionsOut(
+        amount=registration.total_amount,
+        iban=tournament.bank_account,
+        vs=registration.vs,
+        message=message,
+        expires_at=registration.expires_at,
+        spayd=spayd_string,
+        qr_png_base64=base64.b64encode(spayd.qr_png(spayd_string)).decode(),
+    )
 
 
 @router.post("/my-registration/cancel", response_model=RegistrationOut)

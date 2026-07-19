@@ -3,8 +3,7 @@ import { useTranslation } from "react-i18next";
 
 import AccountMenu from "./AccountMenu";
 import type { Phase } from "./Console";
-import PleaSection from "./PleaSection";
-import { ApiError, type Account, type Plea, type Tournament, api } from "./api";
+import { ApiError, type Account, type Tournament, api } from "./api";
 
 // slug = slugified display name + event year, editable before submission
 // (design D7); the server remains the validator on collision (409).
@@ -118,17 +117,18 @@ export default function TournamentPicker({
   onLogout,
   onAdmin,
   onProfile,
+  onFencer,
 }: {
   onPick: (tournament: Tournament, initialPhase?: Phase) => void;
   onLogout: () => void;
   onAdmin: () => void;
   onProfile: () => void;
+  onFencer: () => void;
 }) {
   const { t } = useTranslation();
   const [tournaments, setTournaments] = useState<Tournament[] | null>(null);
   const [creating, setCreating] = useState(false);
   const [account, setAccount] = useState<Account | null>(null);
-  const [plea, setPlea] = useState<Plea | null>(null);
 
   useEffect(() => {
     api.tournaments().then(setTournaments, () => setTournaments([]));
@@ -137,12 +137,6 @@ export default function TournamentPicker({
 
   const canCreate = account !== null && (account.role !== "fencer" || account.is_deployment_owner);
 
-  useEffect(() => {
-    if (account !== null && !canCreate) {
-      api.myPlea().then(setPlea, () => setPlea(null));
-    }
-  }, [account, canCreate]);
-
   return (
     <div className="login-page">
       <div className="page-menu-corner">
@@ -150,6 +144,7 @@ export default function TournamentPicker({
           account={account}
           onProfile={onProfile}
           onAdmin={onAdmin}
+          onFencer={onFencer}
           onOrganizer={() => {}}
           onLogout={onLogout}
         />
@@ -172,12 +167,10 @@ export default function TournamentPicker({
             ))}
           </ul>
         )}
-        {canCreate ? (
+        {canCreate && (
           <button className="secondary" onClick={() => setCreating(true)}>
             {t("picker.newTournament")}
           </button>
-        ) : (
-          plea && <PleaSection plea={plea} onPleaChange={setPlea} />
         )}
       </div>
       {creating && (

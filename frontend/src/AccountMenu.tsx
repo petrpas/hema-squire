@@ -7,12 +7,14 @@ export default function AccountMenu({
   account,
   onProfile,
   onAdmin,
+  onFencer,
   onOrganizer,
   onLogout,
 }: {
   account: Account | null;
   onProfile: () => void;
   onAdmin: () => void;
+  onFencer: () => void;
   onOrganizer: () => void;
   onLogout: () => void;
 }) {
@@ -40,9 +42,7 @@ export default function AccountMenu({
           <div className="account-menu-dropdown">
             <button onClick={() => select(onProfile)}>{t("menu.profile")}</button>
             {isAdmin && <button onClick={() => select(onAdmin)}>{t("menu.admin")}</button>}
-            <button disabled title={t("menu.toFencerSoon")}>
-              {t("menu.toFencer")}
-            </button>
+            <button onClick={() => select(onFencer)}>{t("menu.toFencer")}</button>
             <button onClick={() => select(onOrganizer)}>{t("menu.toOrganizer")}</button>
             <button
               onClick={() =>

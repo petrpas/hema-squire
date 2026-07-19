@@ -88,6 +88,7 @@ export default function Console({
   onLogout,
   onProfile,
   onAdmin,
+  onFencer,
 }: {
   tournament: Tournament;
   initialPhase?: Phase;
@@ -95,6 +96,7 @@ export default function Console({
   onLogout: () => void;
   onProfile: () => void;
   onAdmin: () => void;
+  onFencer: () => void;
 }) {
   const { t } = useTranslation();
   const [phase, setPhase] = useState<Phase>(initialPhase ?? "load");
@@ -176,6 +178,7 @@ export default function Console({
           account={account}
           onProfile={onProfile}
           onAdmin={onAdmin}
+          onFencer={onFencer}
           onOrganizer={onBack}
           onLogout={onLogout}
         />

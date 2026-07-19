@@ -15,7 +15,7 @@ Two pricing worlds exist:
 import datetime
 from decimal import ROUND_HALF_UP, Decimal
 
-from app.models import Discipline, Registration, Tournament
+from app.models import Discipline, ExtraItem, Registration, Tournament
 
 # the implicit category of discipline entries; extras carry ExtraCategory values
 DISCIPLINE_CATEGORY = "discipline"
@@ -75,24 +75,24 @@ def _apply_fixed(subtotals: dict[str, Decimal], scope: list[str], value: int) ->
             remaining -= take
 
 
-def _itemized_total(registration: Registration, tournament: Tournament) -> int:
-    at = registration.registered_at.date()
-    active = [e for e in registration.entries if not e.is_substitute]
-    if not active:
-        return 0
-
+def _itemized_selection_total(
+    tournament: Tournament,
+    disciplines: list[Discipline],
+    extras: list[tuple[ExtraItem, int]],
+    at: datetime.date,
+) -> int:
     subtotals: dict[str, Decimal] = {
-        DISCIPLINE_CATEGORY: Decimal(sum(e.discipline.fee or 0 for e in active))
+        DISCIPLINE_CATEGORY: Decimal(sum(d.fee or 0 for d in disciplines))
     }
-    for selection in registration.extra_selections:
-        category = selection.item.category.value
-        amount = Decimal(selection.item.price * selection.qty)
+    for item, qty in extras:
+        category = item.category.value
+        amount = Decimal(item.price * qty)
         subtotals[category] = subtotals.get(category, Decimal(0)) + amount
 
     applicable = [
         d
         for d in (tournament.discounts or [])
-        if _condition_met(d.get("condition", {}), discipline_count=len(active), at=at)
+        if _condition_met(d.get("condition", {}), discipline_count=len(disciplines), at=at)
     ]
     for discount in applicable:
         effect = discount.get("effect", {})
@@ -112,21 +112,42 @@ def _itemized_total(registration: Registration, tournament: Tournament) -> int:
     return int(total.quantize(Decimal("1"), rounding=ROUND_HALF_UP))
 
 
-def registration_total(registration: Registration, tournament: Tournament) -> int:
-    """Amount due now: non-substitute discipline entries plus extras.
+def selection_total(
+    tournament: Tournament,
+    *,
+    disciplines: list[Discipline],
+    extras: list[tuple[ExtraItem, int]],
+    weapon_rentals: list[str],
+    afterparty: bool,
+    at: datetime.date,
+) -> int:
+    """Amount due for a set of active (non-substitute) picks, independent of
+    whether they're persisted — the single pricing entry point shared by a
+    saved registration's total and the unsaved price preview.
 
-    Extras are billed only when at least one discipline entry is active
-    (a fully-queued substitute registration owes nothing until admission).
+    Extras are billed only when at least one discipline is active (a
+    fully-queued substitute registration owes nothing until admission).
     """
-    if uses_itemized_pricing(tournament):
-        return _itemized_total(registration, tournament)
-
-    at = registration.registered_at.date()
-    active = [e for e in registration.entries if not e.is_substitute]
-    if not active:
+    if not disciplines:
         return 0
-    total = sum(discipline_fee(tournament, e.discipline, at) for e in active)
-    total += len(registration.weapon_rentals) * weapon_rental_fee(tournament, at)
-    if registration.afterparty:
+    if uses_itemized_pricing(tournament):
+        return _itemized_selection_total(tournament, disciplines, extras, at)
+    total = sum(discipline_fee(tournament, d, at) for d in disciplines)
+    total += len(weapon_rentals) * weapon_rental_fee(tournament, at)
+    if afterparty:
         total += afterparty_fee(tournament, at)
     return total
+
+
+def registration_total(registration: Registration, tournament: Tournament) -> int:
+    """Amount due now for a persisted registration; delegates to `selection_total`."""
+    active = [e.discipline for e in registration.entries if not e.is_substitute]
+    extras = [(s.item, s.qty) for s in registration.extra_selections]
+    return selection_total(
+        tournament,
+        disciplines=active,
+        extras=extras,
+        weapon_rentals=registration.weapon_rentals,
+        afterparty=registration.afterparty,
+        at=registration.registered_at.date(),
+    )
