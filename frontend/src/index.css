@@ -196,7 +196,7 @@ button {
 }
 
 .step-slot:first-child {
-  flex: 0;
+  flex: none;
 }
 
 .step-connector {
