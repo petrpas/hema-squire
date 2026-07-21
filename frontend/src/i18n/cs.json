@@ -24,7 +24,7 @@
     "title": "Párování na HEMA Ratings",
     "placeholder": "Hledat jméno…",
     "noResults": "Žádné výsledky.",
-    "notFound": "Profil neexistuje (✗)",
+    "notFound": "Profil neexistuje",
     "runTitle": "LLM párování",
     "runHint": "Dohledá HR profily šermířů bez ID (fuzzy, přes LLM).",
     "run": "Spustit párování",
@@ -33,7 +33,13 @@
     "indexTitle": "Index šermířů (HR)",
     "indexStatus": "{{fighters}} šermířů v indexu.",
     "indexRefresh": "Obnovit index",
-    "indexRefreshFailed": "Obnovení odmítnuto — původní index zachován (podezření na změnu formátu stránky)."
+    "indexRefreshFailed": "Obnovení odmítnuto — původní index zachován (podezření na změnu formátu stránky).",
+    "verdict": {
+      "confirmed": "potvrzeno",
+      "noneFound": "bez shody",
+      "proposed": "navržená shoda",
+      "unknown": "nespárováno"
+    }
   },
   "export": {
     "title": "Export",
@@ -69,6 +75,8 @@
   },
   "signup": {
     "subtitle": "Vytvoř si účet",
+    "formTitle": "Založení účtu",
+    "formNumber": "tiskopis č. 1",
     "name": "Jméno",
     "language": "Preferovaný jazyk",
     "submit": "Vytvořit účet",
@@ -93,6 +101,7 @@
     "title": "Vyber turnaj",
     "empty": "Zatím žádné turnaje.",
     "newTournament": "Nový turnaj",
+    "formNumber": "Nový turnaj — tiskopis č. 2",
     "displayName": "Název turnaje",
     "date": "Datum",
     "slug": "Slug (adresa)",
@@ -122,9 +131,11 @@
   },
   "console": {
     "title": "Registrovaní šermíři",
-    "stats": "{{rows}} řádků · {{paid}} zaplaceno · {{reserved}} rezervací",
     "refresh": "obnovit",
-    "error": "Data se nepodařilo načíst. Jsi organizátorem tohoto turnaje?"
+    "error": "Data se nepodařilo načíst. Jsi organizátorem tohoto turnaje?",
+    "footerStats": "{{rows}} registrací · {{paid}} zaplaceno",
+    "footerNote": "Spis veden řádně.",
+    "footerRevision": "rev. {{n}}"
   },
   "column": {
     "name": "Jméno",
@@ -265,6 +276,7 @@
       "role": "Role",
       "hrId": "HRID",
       "hrShared": "Tento HR profil má nárokovaný i jiný účet.",
+      "shared": "sdíleno",
       "plea": "Žádost",
       "owner": "Owner",
       "pleaPending": "čeká",
@@ -326,9 +338,9 @@
       "past": "Proběhlé"
     },
     "empty": {
-      "open": "Momentálně nejsou vypsané žádné turnaje.",
-      "announced": "Momentálně nejsou vyhlášené žádné turnaje.",
-      "past": "Nemáte žádné proběhlé turnaje."
+      "open": "Spis je prázdný. Zatím.",
+      "announced": "Spis je prázdný. Zatím.",
+      "past": "Spis je prázdný. Zatím."
     },
     "identity": {
       "hrid": "HRID: {{id}}",
@@ -353,6 +365,7 @@
   },
   "form": {
     "title": "Registrace",
+    "formNumber": "Registrace — tiskopis č. 3",
     "afterparty": "Afterparty",
     "aftersparring": "Sparing po turnaji",
     "accommodation": "Ubytování (poznámka)",

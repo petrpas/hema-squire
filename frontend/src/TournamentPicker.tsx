@@ -68,6 +68,7 @@ function NewTournamentDialog({
     <div className="modal-backdrop" onClick={onClose}>
       <form className="modal" onClick={(event) => event.stopPropagation()} onSubmit={submit}>
         <h2>{t("picker.newTournament")}</h2>
+        <p className="tiskopis-number">{t("picker.formNumber")}</p>
         <label>
           {t("picker.displayName")}
           <input
@@ -103,7 +104,7 @@ function NewTournamentDialog({
           <button type="button" className="secondary" onClick={onClose}>
             {t("common.cancel")}
           </button>
-          <button type="submit" disabled={busy || !slug}>
+          <button type="submit" className="btn-primary" disabled={busy || !slug}>
             {t("picker.create")}
           </button>
         </div>

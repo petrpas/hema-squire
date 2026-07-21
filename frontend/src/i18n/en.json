@@ -24,7 +24,7 @@
     "title": "Matching on HEMA Ratings",
     "placeholder": "Search name…",
     "noResults": "No results.",
-    "notFound": "No profile exists (✗)",
+    "notFound": "No profile exists",
     "runTitle": "LLM matching",
     "runHint": "Finds HR profiles for fencers without an ID (fuzzy, via LLM).",
     "run": "Run matching",
@@ -33,7 +33,13 @@
     "indexTitle": "Fighters index (HR)",
     "indexStatus": "{{fighters}} fighters in the index.",
     "indexRefresh": "Refresh index",
-    "indexRefreshFailed": "Refresh rejected — previous index kept (source format drift suspected)."
+    "indexRefreshFailed": "Refresh rejected — previous index kept (source format drift suspected).",
+    "verdict": {
+      "confirmed": "confirmed",
+      "noneFound": "no match",
+      "proposed": "proposed match",
+      "unknown": "unmatched"
+    }
   },
   "export": {
     "title": "Export",
@@ -69,6 +75,8 @@
   },
   "signup": {
     "subtitle": "Create your account",
+    "formTitle": "Account creation",
+    "formNumber": "form no. 1",
     "name": "Name",
     "language": "Preferred language",
     "submit": "Create account",
@@ -93,6 +101,7 @@
     "title": "Pick a tournament",
     "empty": "No tournaments yet.",
     "newTournament": "New tournament",
+    "formNumber": "New tournament — form no. 2",
     "displayName": "Tournament name",
     "date": "Date",
     "slug": "Slug (URL)",
@@ -122,9 +131,11 @@
   },
   "console": {
     "title": "Registered fencers",
-    "stats": "{{rows}} rows · {{paid}} paid · {{reserved}} reserved",
     "refresh": "refresh",
-    "error": "Could not load data. Are you an organizer of this tournament?"
+    "error": "Could not load data. Are you an organizer of this tournament?",
+    "footerStats": "{{rows}} registered · {{paid}} paid",
+    "footerNote": "File maintained in good order.",
+    "footerRevision": "rev. {{n}}"
   },
   "column": {
     "name": "Name",
@@ -265,6 +276,7 @@
       "role": "Role",
       "hrId": "HRID",
       "hrShared": "This HR profile is also claimed by another account.",
+      "shared": "shared",
       "plea": "Plea",
       "owner": "Owner",
       "pleaPending": "pending",
@@ -326,9 +338,9 @@
       "past": "Past"
     },
     "empty": {
-      "open": "No tournaments are open right now.",
-      "announced": "No announced tournaments right now.",
-      "past": "You have no past tournaments."
+      "open": "The file is empty. For now.",
+      "announced": "The file is empty. For now.",
+      "past": "The file is empty. For now."
     },
     "identity": {
       "hrid": "HRID: {{id}}",
@@ -353,6 +365,7 @@
   },
   "form": {
     "title": "Registration",
+    "formNumber": "Registration — form no. 3",
     "afterparty": "Afterparty",
     "aftersparring": "Post-tournament sparring",
     "accommodation": "Accommodation (note)",

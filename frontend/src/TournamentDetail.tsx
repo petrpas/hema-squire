@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import AccountMenu from "./AccountMenu";
+import PaidStamp from "./PaidStamp";
 import {
   ApiError,
   type Account,
@@ -202,6 +203,7 @@ function RegistrationForm({
   return (
     <section className="rail-card">
       <h2>{t("form.title")}</h2>
+      <p className="tiskopis-number">{t("form.formNumber")}</p>
       <div className="chips">
         {detail.disciplines.map((d) => {
           const a = byCode.get(d.code);
@@ -314,7 +316,7 @@ function RegistrationForm({
             >
               {t("form.dropFull")}
             </button>
-            <button disabled={busy} onClick={() => void submit(true)}>
+            <button className="secondary" disabled={busy} onClick={() => void submit(true)}>
               {t("form.joinQueue")}
             </button>
           </div>
@@ -322,7 +324,7 @@ function RegistrationForm({
       )}
 
       <button
-        className="param-save"
+        className="btn-primary param-save"
         disabled={busy || disciplines.size === 0}
         onClick={() => void submit(false)}
       >
@@ -343,8 +345,8 @@ function PaymentPanel({ slug }: { slug: string }) {
   if (!payment) return null;
 
   return (
-    <section className="rail-card">
-      <h2>{t("payment.title")}</h2>
+    <section className="payment-slip">
+      <h2 className="payment-slip-title">{t("payment.title")}</h2>
       <img
         className="payment-qr"
         src={`data:image/png;base64,${payment.qr_png_base64}`}
@@ -353,15 +355,15 @@ function PaymentPanel({ slug }: { slug: string }) {
       <div className="param-fields">
         <div className="param-field">
           <span>{t("payment.amount")}</span>
-          <strong>{payment.amount} Kč</strong>
+          <strong className="data-value">{payment.amount} Kč</strong>
         </div>
         <div className="param-field">
           <span>{t("payment.iban")}</span>
-          <strong>{payment.iban}</strong>
+          <strong className="data-value">{payment.iban}</strong>
         </div>
         <div className="param-field">
           <span>{t("payment.vs")}</span>
-          <strong>{payment.vs}</strong>
+          <strong className="data-value">{payment.vs}</strong>
         </div>
         <div className="param-field">
           <span>{t("payment.expiresAt")}</span>
@@ -373,6 +375,14 @@ function PaymentPanel({ slug }: { slug: string }) {
   );
 }
 
+function RegistrationStateTag({ registration }: { registration: RegistrationDetail }) {
+  const { t } = useTranslation();
+  const label = t(`registration.state.${registration.state}`);
+  if (registration.state === "paid") return <PaidStamp id={registration.vs} label={label} />;
+  if (registration.state === "reserved") return <span className="tag tag-form-yellow">{label}</span>;
+  return <span className="state-text">{label}</span>;
+}
+
 function RegistrationSummary({ registration }: { registration: RegistrationDetail }) {
   const { t } = useTranslation();
   const active = registration.entries.filter((e) => !e.is_substitute);
@@ -381,7 +391,7 @@ function RegistrationSummary({ registration }: { registration: RegistrationDetai
   return (
     <section className="rail-card">
       <h2>{t("registration.title")}</h2>
-      <p className="chip">{t(`registration.state.${registration.state}`)}</p>
+      <RegistrationStateTag registration={registration} />
       <ul className="detail-list">
         {active.map((e) => (
           <li key={e.code}>{e.code}</li>
@@ -440,7 +450,7 @@ function RegistrationPanel({
   return (
     <section className="rail-card">
       <h2>{t("registration.title")}</h2>
-      <p className="chip">{t(`registration.state.${registration.state}`)}</p>
+      <RegistrationStateTag registration={registration} />
 
       <ul className="detail-list">
         {active.map((e) => (
@@ -479,7 +489,7 @@ function RegistrationPanel({
                 <button className="secondary" onClick={() => setConfirming(false)}>
                   {t("common.cancel")}
                 </button>
-                <button disabled={busy} onClick={() => void cancel()}>
+                <button className="btn-primary" disabled={busy} onClick={() => void cancel()}>
                   {t("cancel.confirmButton")}
                 </button>
               </div>

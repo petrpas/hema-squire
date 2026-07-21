@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import HRSearchPicker from "./HRSearch";
@@ -12,7 +12,16 @@ function SignupForm({ onSignedUp, onCancel }: { onSignedUp: () => void; onCancel
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
-  const [language, setLanguage] = useState(i18n.language);
+  const [language, setLanguage] = useState("en");
+
+  // The app's global i18n instance defaults to Czech; sync it to the
+  // signup window's own English default the moment the window opens, so
+  // the form actually renders in English rather than just pre-selecting
+  // it in the dropdown.
+  useEffect(() => {
+    void i18n.changeLanguage("en");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [hrProfile, setHrProfile] = useState<HRProfile | null>(null);
   const [showHrSearch, setShowHrSearch] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -68,6 +77,10 @@ function SignupForm({ onSignedUp, onCancel }: { onSignedUp: () => void; onCancel
     <form className="login-card" onSubmit={submit}>
       <h1>{t("app.title")}</h1>
       <p className="login-subtitle">{t("signup.subtitle")}</p>
+      <div className="tiskopis-row">
+        <span className="tiskopis-number">{t("signup.formTitle")}</span>
+        <span className="tiskopis-number">{t("signup.formNumber")}</span>
+      </div>
       <label>
         {t("login.email")}
         <input
@@ -121,14 +134,12 @@ function SignupForm({ onSignedUp, onCancel }: { onSignedUp: () => void; onCancel
       ) : showHrSearch ? (
         <section className="rail-card">
           <h2>{t("profile.hr.title")}</h2>
-          <HRSearchPicker onConfirm={confirmHr} initialQuery={name} />
-          <button
-            type="button"
-            className="link-button"
-            onClick={() => setShowHrSearch(false)}
-          >
-            {t("common.cancel")}
-          </button>
+          <HRSearchPicker
+            onConfirm={confirmHr}
+            onCancel={() => setShowHrSearch(false)}
+            initialQuery={name}
+            requireNationality
+          />
         </section>
       ) : (
         <button type="button" className="secondary" onClick={() => setShowHrSearch(true)}>
@@ -148,7 +159,10 @@ function SignupForm({ onSignedUp, onCancel }: { onSignedUp: () => void; onCancel
 }
 
 export default function Login({ onLogin }: { onLogin: () => void }) {
-  const { t } = useTranslation();
+  // Sign-in has no account context yet, so it always renders in English —
+  // pinned per-hook rather than via i18n.changeLanguage, so it can't leak
+  // into or be clobbered by the signup form's own language switching.
+  const { t } = useTranslation(undefined, { lng: "en" });
   const [mode, setMode] = useState<"login" | "signup">("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");

@@ -116,7 +116,7 @@ function RoleSection({ account }: { account: Account }) {
   return (
     <section className="rail-card">
       <h2>{t("profile.role.title")}</h2>
-      <p className="chip">{roleLabel}</p>
+      <p className="tag tag-file-blue">{roleLabel}</p>
       {isPlainFencer && plea && <PleaSection plea={plea} onPleaChange={setPlea} />}
     </section>
   );
@@ -146,7 +146,7 @@ function HRBoundSection({ account }: { account: Account }) {
         </div>
       </div>
       <a
-        className="secondary hr-profile-link"
+        className="hr-profile-link"
         href={`https://hemaratings.com/fighters/details/${account.hr_id}/`}
         target="_blank"
         rel="noreferrer"
@@ -198,7 +198,12 @@ function HRMatchSection({
             <span className="hr-claimed-notice">{t("profile.hr.claimedNotice")}</span>
           )}
           {error && <p className="login-error">{error}</p>}
-          <button type="button" onClick={() => void confirmBinding()} disabled={busy}>
+          <button
+            type="button"
+            className="btn-primary"
+            onClick={() => void confirmBinding()}
+            disabled={busy}
+          >
             {t("profile.hr.confirmBind")}
           </button>
           <button

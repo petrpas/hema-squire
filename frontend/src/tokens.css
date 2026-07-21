@@ -1,0 +1,38 @@
+:root {
+  /* Paper */
+  --paper: #F4F0E6; /* page background — never pure white */
+  --paper-raised: #FAF7EF; /* cards, modals, inputs */
+  --paper-shade: #EFEADC; /* row hover, highlighted section */
+
+  /* Ink */
+  --ink: #2B2A26; /* text, strong rules — never #000 */
+  --ink-soft: #55503F; /* secondary text */
+  --ink-faded: #7A7263; /* labels, metadata, row numbers */
+
+  /* Rules */
+  --hairline: #D8D1BF; /* row separators, field frames */
+  --rule-strong: var(--ink); /* 2px rule under table/document headers */
+
+  /* Stamp red — the only saturated color in the app */
+  --stamp: #A34434; /* primary actions, "Paid" stamp, errors */
+  --stamp-hover: #8C3A2C;
+  --stamp-tint: #EAD6D0; /* error message background */
+
+  /* Pastel accents (the ¼ of Anderson) — tag and status backgrounds only */
+  --seal-green: #DCE6DA; /* text always --seal-green-ink */
+  --seal-green-ink: #3D5240;
+  --file-blue: #D9E0E6;
+  --file-blue-ink: #3C4C58;
+  --form-yellow: #EAE0C8; /* "pending" state */
+  --form-yellow-ink: #6B5A2E;
+
+  /* Typography */
+  --font-ui: 'IBM Plex Sans', system-ui, sans-serif;
+  --font-data: 'IBM Plex Mono', monospace;
+  --font-doc: 'IBM Plex Serif', serif; /* document H1s ONLY */
+
+  /* Geometry */
+  --radius: 2px; /* app-wide maximum; table cells get 0 */
+  --border-w: 1px;
+  --focus: 2px solid var(--stamp);
+}

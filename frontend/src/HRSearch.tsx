@@ -8,12 +8,16 @@ import { type HRProfile, api } from "./api";
  * "confirming" a candidate means (bind immediately vs. stage for signup). */
 export default function HRSearchPicker({
   onConfirm,
+  onCancel,
   busy: externalBusy,
   initialQuery = "",
+  requireNationality = false,
 }: {
   onConfirm: (profile: HRProfile) => void;
+  onCancel?: () => void;
   busy?: boolean;
   initialQuery?: string;
+  requireNationality?: boolean;
 }) {
   const { t } = useTranslation();
   const [nationalities, setNationalities] = useState<string[]>([]);
@@ -25,6 +29,12 @@ export default function HRSearchPicker({
   useEffect(() => {
     api.hrNationalities().then(setNationalities, () => setNationalities([]));
   }, []);
+
+  useEffect(() => {
+    if (!requireNationality || nationality !== "" || nationalities.length === 0) return;
+    const czech = nationalities.find((n) => /^cz/i.test(n));
+    setNationality(czech ?? nationalities[0]);
+  }, [requireNationality, nationality, nationalities]);
 
   async function search() {
     setBusy(true);
@@ -44,7 +54,7 @@ export default function HRSearchPicker({
         <label className="param-field">
           <span>{t("profile.hr.nationality")}</span>
           <select value={nationality} onChange={(event) => setNationality(event.target.value)}>
-            <option value="">{t("profile.hr.anyNationality")}</option>
+            {!requireNationality && <option value="">{t("profile.hr.anyNationality")}</option>}
             {nationalities.map((n) => (
               <option key={n} value={n}>
                 {n}
@@ -66,14 +76,30 @@ export default function HRSearchPicker({
           />
         </label>
       </div>
-      <button
-        type="button"
-        className="secondary"
-        onClick={() => void search()}
-        disabled={disabled || query.trim().length < 3}
-      >
-        {t("profile.hr.search")}
-      </button>
+      {onCancel ? (
+        <div className="hr-search-actions">
+          <button
+            type="button"
+            className="secondary"
+            onClick={() => void search()}
+            disabled={disabled || query.trim().length < 3}
+          >
+            {t("profile.hr.search")}
+          </button>
+          <button type="button" className="secondary" onClick={onCancel}>
+            {t("common.cancel")}
+          </button>
+        </div>
+      ) : (
+        <button
+          type="button"
+          className="secondary"
+          onClick={() => void search()}
+          disabled={disabled || query.trim().length < 3}
+        >
+          {t("profile.hr.search")}
+        </button>
+      )}
       {results && (
         <ul className="match-results">
           {results.map((profile) => (

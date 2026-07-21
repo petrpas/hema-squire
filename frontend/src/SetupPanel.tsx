@@ -1,3 +1,4 @@
+import { IconCheck, IconPlus, IconX } from "@tabler/icons-react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -153,7 +154,7 @@ function OrganizersSection({
                     setDirty(true);
                   }}
                 >
-                  ✕
+                  <IconX size={16} stroke={1.5} />
                 </button>
               </td>
             </tr>
@@ -317,7 +318,7 @@ function DisciplinesSection({
                     disabled={busy}
                     onClick={() => void saveRow(d.code)}
                   >
-                    ✓
+                    <IconCheck size={16} stroke={1.5} />
                   </button>
                 )}
                 <button
@@ -326,7 +327,7 @@ function DisciplinesSection({
                   disabled={busy}
                   onClick={() => void removeRow(d.code)}
                 >
-                  ✕
+                  <IconX size={16} stroke={1.5} />
                 </button>
               </td>
             </tr>
@@ -367,7 +368,7 @@ function DisciplinesSection({
                 disabled={busy || !newCode || !newCapacity}
                 onClick={() => void addRow()}
               >
-                +
+                <IconPlus size={16} stroke={1.5} />
               </button>
             </td>
           </tr>
@@ -541,7 +542,7 @@ function ExtraItemsSection({
                       disabled={busy}
                       onClick={() => void saveRow(item.id)}
                     >
-                      ✓
+                      <IconCheck size={16} stroke={1.5} />
                     </button>
                   )}
                   <button
@@ -550,7 +551,7 @@ function ExtraItemsSection({
                     disabled={busy}
                     onClick={() => void removeRow(item.id)}
                   >
-                    ✕
+                    <IconX size={16} stroke={1.5} />
                   </button>
                 </td>
               </tr>
@@ -603,7 +604,7 @@ function ExtraItemsSection({
                 disabled={busy || !newItem.name || !newItem.price}
                 onClick={() => void addRow()}
               >
-                +
+                <IconPlus size={16} stroke={1.5} />
               </button>
             </td>
           </tr>
@@ -760,7 +761,7 @@ function DiscountsSection({
                     setDirty(true);
                   }}
                 >
-                  ✕
+                  <IconX size={16} stroke={1.5} />
                 </button>
               </td>
             </tr>
@@ -871,7 +872,7 @@ function TeamSection({ slug }: { slug: string }) {
                   disabled={busy}
                   onClick={() => void remove(member.fencer_id)}
                 >
-                  ✕
+                  <IconX size={16} stroke={1.5} />
                 </button>
               </td>
             </tr>
@@ -968,7 +969,7 @@ function DangerZoneSection({
           <button type="button" className="secondary" onClick={() => setConfirming(false)}>
             {t("common.cancel")}
           </button>
-          <button type="button" disabled={busy} onClick={() => void act()}>
+          <button type="button" className="btn-primary" disabled={busy} onClick={() => void act()}>
             {hasRegistrations ? t("setup.danger.cancelButton") : t("setup.danger.deleteButton")}
           </button>
         </div>

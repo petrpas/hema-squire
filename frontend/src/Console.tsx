@@ -1,3 +1,4 @@
+import { IconArrowBackUp, IconTrash, IconX } from "@tabler/icons-react";
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -8,6 +9,7 @@ import ExportPanel from "./ExportPanel";
 import ImportPanel from "./ImportPanel";
 import MatchDialog from "./MatchDialog";
 import MatchPanel from "./MatchPanel";
+import PaidStamp from "./PaidStamp";
 import ParamPanel from "./ParamPanel";
 import SetupPanel from "./SetupPanel";
 import {
@@ -42,16 +44,16 @@ const PHASE_COLUMNS: Record<Phase, string[]> = {
 // Manual edits on these columns become field_edit rules.
 const EDITABLE_COLUMNS = new Set(["name", "nationality", "club", "notes", "hr_id"]);
 
-function StateBadge({ state }: { state: string }) {
-  const symbol =
-    state === "paid" ? "✓" : state === "reserved" ? "?" : state === "imported" ? "•" : "✗";
-  return <span className={`badge badge-${state}`}>{symbol}</span>;
+function StateBadge({ id, state }: { id: string; state: string }) {
+  const { t } = useTranslation();
+  if (state === "paid") return <PaidStamp id={id} label={t("registration.state.paid")} />;
+  return <span className="state-text">{state}</span>;
 }
 
 function CellDisplay({ row, column }: { row: SheetRow; column: string }) {
   switch (column) {
     case "state":
-      return <StateBadge state={row.state} />;
+      return <StateBadge id={row.id} state={row.state} />;
     case "disciplines":
       return (
         <>
@@ -209,18 +211,9 @@ export default function Console({
           <>
         <main className="sheet-area">
           <div className="sheet-header">
-            <div>
-              <h1>{t("console.title")}</h1>
-              <p className="sheet-stats">
-                {t("console.stats", {
-                  rows: activeRows.length,
-                  paid: paidCount,
-                  reserved: activeRows.length - paidCount,
-                })}
-              </p>
-            </div>
+            <h1>{t("console.title")}</h1>
             <button className="secondary" onClick={refresh}>
-              ↻ {t("console.refresh")}
+              {t("console.refresh")}
             </button>
           </div>
 
@@ -268,13 +261,17 @@ export default function Console({
                                 disabled={row._deleted === true}
                               >
                                 {row.match_verdict === "confirmed" ? (
-                                  <span className="badge badge-paid">✓</span>
+                                  <span className="tag tag-seal-green">
+                                    {t("match.verdict.confirmed")}
+                                  </span>
                                 ) : row.match_verdict === "none_found" ? (
-                                  <span className="badge badge-expired">✗</span>
+                                  <span className="state-text">{t("match.verdict.noneFound")}</span>
                                 ) : row.match_verdict === "proposed" ? (
-                                  <span className="badge badge-reserved">?</span>
+                                  <span className="tag tag-form-yellow">
+                                    {t("match.verdict.proposed")}
+                                  </span>
                                 ) : (
-                                  <span className="badge badge-imported">?</span>
+                                  <span className="state-text">{t("match.verdict.unknown")}</span>
                                 )}
                               </button>
                             ) : editable ? (
@@ -296,7 +293,7 @@ export default function Console({
                             title={t("actions.restore")}
                             onClick={() => void addRule("row_restore", row.id, {})}
                           >
-                            ↺
+                            <IconArrowBackUp size={16} stroke={1.5} />
                           </button>
                         ) : (
                           <button
@@ -304,7 +301,7 @@ export default function Console({
                             title={t("actions.delete")}
                             onClick={() => void addRule("row_delete", row.id, {})}
                           >
-                            ✕
+                            <IconTrash size={16} stroke={1.5} />
                           </button>
                         )}
                       </td>
@@ -314,6 +311,20 @@ export default function Console({
               </table>
             )}
           </div>
+
+          {!error && visibleRows.length > 0 && (
+            <div className="doc-footer">
+              <span>
+                {t("console.footerStats", { rows: activeRows.length, paid: paidCount })}
+              </span>
+              <span>
+                {t("console.footerNote")}{" "}
+                <span className="doc-footer-revision">
+                  {t("console.footerRevision", { n: sheet?.edits.length ?? 0 })}
+                </span>
+              </span>
+            </div>
+          )}
         </main>
 
         <aside className="rail">
@@ -350,7 +361,6 @@ export default function Console({
               <ul className="edits-list">
                 {phaseEdits.map((edit, index) => (
                   <li key={index} className="edit-entry">
-                    <span className="edit-icon">~</span>
                     <div className="edit-body">
                       <div>
                         {edit.field}: {String(edit.before ?? "—")} → {String(edit.after)}
@@ -368,7 +378,7 @@ export default function Console({
                       title={t("actions.removeRule")}
                       onClick={() => void removeRule(edit.rule_id)}
                     >
-                      ✕
+                      <IconX size={16} stroke={1.5} />
                     </button>
                   </li>
                 ))}

@@ -1,3 +1,4 @@
+import { IconCheck, IconX } from "@tabler/icons-react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -57,7 +58,7 @@ function AccountsSection({
               <td>{account.display_name}</td>
               <td>
                 {account.is_deployment_owner ? (
-                  <span className="chip">{t("admin.accounts.owner")}</span>
+                  <span className="tag tag-file-blue">{t("admin.accounts.owner")}</span>
                 ) : (
                   <select
                     value={account.role}
@@ -76,10 +77,10 @@ function AccountsSection({
                 {account.hr_id ?? "—"}
                 {account.hr_shared && (
                   <span
-                    className="badge badge-reserved hr-shared-badge"
+                    className="tag tag-form-yellow hr-shared-badge"
                     title={t("admin.accounts.hrShared")}
                   >
-                    ⚠
+                    {t("admin.accounts.shared")}
                   </span>
                 )}
               </td>
@@ -92,7 +93,7 @@ function AccountsSection({
                     disabled={busy === account.id}
                     onClick={() => void unbind(account)}
                   >
-                    ⤬
+                    <IconX size={16} stroke={1.5} />
                   </button>
                 )}
               </td>
@@ -146,7 +147,7 @@ function PleaQueueSection({
                 disabled={busy === plea.id}
                 onClick={() => void decide(plea, true)}
               >
-                ✓
+                <IconCheck size={16} stroke={1.5} />
               </button>
               <button
                 className="row-action"
@@ -154,7 +155,7 @@ function PleaQueueSection({
                 disabled={busy === plea.id}
                 onClick={() => void decide(plea, false)}
               >
-                ✕
+                <IconX size={16} stroke={1.5} />
               </button>
             </li>
           ))}

@@ -1,3 +1,4 @@
+import { IconDots } from "@tabler/icons-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -34,7 +35,7 @@ export default function AccountMenu({
         aria-label={t("menu.ariaLabel")}
         onClick={() => setOpen((value) => !value)}
       >
-        ⋯
+        <IconDots size={18} stroke={1.5} />
       </button>
       {open && (
         <>

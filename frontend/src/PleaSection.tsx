@@ -43,7 +43,7 @@ export default function PleaSection({
           <button type="button" className="secondary" onClick={() => setShowForm(false)}>
             {t("common.cancel")}
           </button>
-          <button type="button" disabled={busy} onClick={() => void submit()}>
+          <button type="button" className="btn-primary" disabled={busy} onClick={() => void submit()}>
             {t("picker.pleaSubmit")}
           </button>
         </div>
