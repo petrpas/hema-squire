@@ -23,6 +23,8 @@ function SignupForm({ onSignedUp, onCancel }: { onSignedUp: () => void; onCancel
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   const [hrProfile, setHrProfile] = useState<HRProfile | null>(null);
+  // a candidate the fencer picked but has not yet confirmed as their own
+  const [pendingHr, setPendingHr] = useState<HRProfile | null>(null);
   const [showHrSearch, setShowHrSearch] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -35,6 +37,7 @@ function SignupForm({ onSignedUp, onCancel }: { onSignedUp: () => void; onCancel
   function confirmHr(profile: HRProfile) {
     setHrProfile(profile);
     setName(profile.name);
+    setPendingHr(null);
     setShowHrSearch(false);
   }
 
@@ -123,7 +126,7 @@ function SignupForm({ onSignedUp, onCancel }: { onSignedUp: () => void; onCancel
 
       {hrProfile ? (
         <p className="signup-hr-confirmed">
-          {t("signup.hr.confirmed", { name: hrProfile.name })}{" "}
+          {t("signup.hr.confirmed", { name: hrProfile.name, hrId: hrProfile.hr_id })}{" "}
           <button type="button" className="link-button" onClick={clearHr}>
             {t("signup.hr.clear")}
           </button>
@@ -131,13 +134,45 @@ function SignupForm({ onSignedUp, onCancel }: { onSignedUp: () => void; onCancel
             <span className="hr-claimed-notice">{t("profile.hr.claimedNotice")}</span>
           )}
         </p>
+      ) : pendingHr ? (
+        <section className="rail-card hr-confirm">
+          <h2>{t("signup.hr.confirmTitle")}</h2>
+          <p className="hr-confirm-name">{pendingHr.name}</p>
+          <p className="muted">
+            {pendingHr.club ?? "—"} · {pendingHr.nationality ?? "—"} · #{pendingHr.hr_id}
+          </p>
+          <a
+            className="hr-confirm-link"
+            href={`https://hemaratings.com/fighters/details/${pendingHr.hr_id}/`}
+            target="_blank"
+            rel="noreferrer"
+          >
+            {t("signup.hr.viewProfile")}
+          </a>
+          {pendingHr.claimed && (
+            <p className="hr-claimed-notice">{t("profile.hr.claimedNotice")}</p>
+          )}
+          <p className="rail-hint">{t("signup.hr.confirmPrompt")}</p>
+          <div className="modal-actions">
+            <button type="button" className="secondary" onClick={() => setPendingHr(null)}>
+              {t("common.cancel")}
+            </button>
+            <button
+              type="button"
+              className="btn-primary"
+              onClick={() => confirmHr(pendingHr)}
+            >
+              {t("signup.hr.confirmButton")}
+            </button>
+          </div>
+        </section>
       ) : showHrSearch ? (
         <section className="rail-card">
           <h2>{t("profile.hr.title")}</h2>
           <HRSearchPicker
-            onConfirm={confirmHr}
+            onConfirm={setPendingHr}
             onCancel={() => setShowHrSearch(false)}
-            initialQuery={name}
+            lockedQuery={name}
             requireNationality
           />
         </section>

@@ -44,10 +44,17 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 export interface Tournament {
   slug: string;
   display_name: string;
+  subtitle: string | null;
+  has_logo: boolean;
   date: string;
   language: string;
   owner_id: number | null;
   cancelled_at: string | null;
+}
+
+/** Public URL of a tournament logo (unauthenticated, so it works in <img>). */
+export function logoUrl(slug: string): string {
+  return `/api/tournaments/${slug}/logo`;
 }
 
 export type Role = "fencer" | "organizer" | "admin";
@@ -105,9 +112,35 @@ export interface Discipline {
   capacity: number;
   fee: number | null;
   fee_early: number | null;
+  schedule_when: string | null;
+  schedule_where: string | null;
+  ruleset_name: string | null;
+  ruleset_url: string | null;
+}
+
+/** Editable discipline payload (Setup add/patch). */
+export interface DisciplineInput {
+  code: string;
+  capacity: number;
+  fee: number | null;
+  schedule_when?: string | null;
+  schedule_where?: string | null;
+  ruleset_name?: string | null;
+  ruleset_url?: string | null;
 }
 
 export type ExtraCategory = "seminar" | "rental" | "afterparty" | "merch";
+
+/** Editable extra-item payload (Setup add/patch). */
+export interface ExtraItemInput {
+  name: string;
+  category: ExtraCategory;
+  price: number;
+  max_qty: number;
+  schedule_when?: string | null;
+  schedule_where?: string | null;
+  remark?: string | null;
+}
 
 export interface ExtraItem {
   id: number;
@@ -115,6 +148,9 @@ export interface ExtraItem {
   category: ExtraCategory;
   price: number;
   max_qty: number;
+  schedule_when: string | null;
+  schedule_where: string | null;
+  remark: string | null;
 }
 
 export type DiscountCategory = "discipline" | ExtraCategory;
@@ -217,6 +253,8 @@ export interface OpenDiscipline {
 export interface OpenTournament {
   slug: string;
   display_name: string;
+  subtitle: string | null;
+  has_logo: boolean;
   date: string;
   location: string | null;
   organizer_names: string[];
@@ -330,44 +368,52 @@ export const api = {
       body: JSON.stringify(patch),
     }),
   taxonomy: () => request<Record<string, string>>("/api/taxonomy/disciplines"),
-  addDiscipline: (
-    slug: string,
-    data: { code: string; capacity: number; fee: number | null },
-  ) =>
+  addDiscipline: (slug: string, data: DisciplineInput) =>
     request<Discipline>(`/api/tournaments/${slug}/disciplines`, {
       method: "POST",
       body: JSON.stringify(data),
     }),
-  updateDiscipline: (
-    slug: string,
-    code: string,
-    data: { code: string; capacity: number; fee: number | null },
-  ) =>
+  updateDiscipline: (slug: string, code: string, data: DisciplineInput) =>
     request<Discipline>(`/api/tournaments/${slug}/disciplines/${code}`, {
       method: "PATCH",
       body: JSON.stringify(data),
     }),
   deleteDiscipline: (slug: string, code: string) =>
     request<void>(`/api/tournaments/${slug}/disciplines/${code}`, { method: "DELETE" }),
-  addExtraItem: (
-    slug: string,
-    data: { name: string; category: ExtraCategory; price: number; max_qty: number },
-  ) =>
+  addExtraItem: (slug: string, data: ExtraItemInput) =>
     request<ExtraItem>(`/api/tournaments/${slug}/extra-items`, {
       method: "POST",
       body: JSON.stringify(data),
     }),
-  updateExtraItem: (
-    slug: string,
-    id: number,
-    data: { name: string; category: ExtraCategory; price: number; max_qty: number },
-  ) =>
+  updateExtraItem: (slug: string, id: number, data: ExtraItemInput) =>
     request<ExtraItem>(`/api/tournaments/${slug}/extra-items/${id}`, {
       method: "PATCH",
       body: JSON.stringify(data),
     }),
   deleteExtraItem: (slug: string, id: number) =>
     request<void>(`/api/tournaments/${slug}/extra-items/${id}`, { method: "DELETE" }),
+  uploadLogo: async (slug: string, file: File): Promise<TournamentDetail> => {
+    const body = new FormData();
+    body.append("file", file);
+    const token = getToken();
+    const response = await fetch(logoUrl(slug), {
+      method: "POST",
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body,
+    });
+    if (!response.ok) {
+      let detail: unknown = null;
+      try {
+        detail = (await response.json()).detail;
+      } catch {
+        /* non-JSON error body */
+      }
+      throw new ApiError(response.status, detail);
+    }
+    return response.json();
+  },
+  deleteLogo: (slug: string) =>
+    request<void>(logoUrl(slug), { method: "DELETE" }),
   sheet: (slug: string) => request<Sheet>(`/api/tournaments/${slug}/sheet`),
   createRule: (
     slug: string,

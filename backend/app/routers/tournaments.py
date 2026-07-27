@@ -1,7 +1,9 @@
+import io
 from datetime import UTC, datetime
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Response, UploadFile
+from PIL import Image, UnidentifiedImageError
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session, selectinload
 
@@ -159,6 +161,8 @@ def open_tournaments(session: SessionDep, fencer: FencerDep):
             OpenTournamentOut(
                 slug=tournament.slug,
                 display_name=tournament.display_name,
+                subtitle=tournament.subtitle,
+                has_logo=tournament.has_logo,
                 date=tournament.date,
                 location=tournament.location,
                 organizer_names=tournament.organizer_names,
@@ -244,6 +248,8 @@ def past_tournaments(session: SessionDep, fencer: FencerDep):
             PastTournamentOut(
                 slug=tournament.slug,
                 display_name=tournament.display_name,
+                subtitle=tournament.subtitle,
+                has_logo=tournament.has_logo,
                 date=tournament.date,
                 location=tournament.location,
                 organizer_names=tournament.organizer_names,
@@ -276,6 +282,56 @@ def update_tournament(
     return tournament
 
 
+# logo upload bounds: reject oversized inputs, then re-encode to a bounded PNG
+# so the stored blob stays small (design D1)
+LOGO_MAX_UPLOAD_BYTES = 512 * 1024
+LOGO_MAX_DIMENSION = 512
+
+
+@router.post("/{slug}/logo", response_model=TournamentOut)
+async def upload_logo(
+    tournament: TournamentDep, file: UploadFile, session: SessionDep, fencer: FencerDep
+):
+    require_console_access(session, tournament, fencer)
+    raw = await file.read()
+    if len(raw) > LOGO_MAX_UPLOAD_BYTES:
+        raise HTTPException(status_code=413, detail="logo_too_large")
+    try:
+        image = Image.open(io.BytesIO(raw))
+        image.load()
+    except (UnidentifiedImageError, OSError):
+        raise HTTPException(status_code=422, detail="logo_not_an_image")
+    image = image.convert("RGBA")
+    # downscale in place so the longest side is at most LOGO_MAX_DIMENSION
+    image.thumbnail((LOGO_MAX_DIMENSION, LOGO_MAX_DIMENSION))
+    buffer = io.BytesIO()
+    image.save(buffer, format="PNG", optimize=True)
+    tournament.logo_bytes = buffer.getvalue()
+    tournament.logo_mime = "image/png"
+    session.commit()
+    session.refresh(tournament)
+    out = TournamentOut.model_validate(tournament)
+    out.setup_missing = setup.setup_missing(tournament)
+    return out
+
+
+@router.delete("/{slug}/logo", status_code=204)
+def delete_logo(tournament: TournamentDep, session: SessionDep, fencer: FencerDep):
+    require_console_access(session, tournament, fencer)
+    tournament.logo_bytes = None
+    tournament.logo_mime = None
+    session.commit()
+
+
+@router.get("/{slug}/logo")
+def get_logo(tournament: TournamentDep):
+    # public so plain <img src> tags (which cannot send the auth header) can
+    # display it; a tournament logo is public-facing information
+    if tournament.logo_mime is None or tournament.logo_bytes is None:
+        raise HTTPException(status_code=404, detail="no_logo")
+    return Response(content=tournament.logo_bytes, media_type=tournament.logo_mime)
+
+
 @router.post("/{slug}/disciplines", response_model=DisciplineOut, status_code=201)
 def add_discipline(
     data: DisciplineIn, tournament: TournamentDep, session: SessionDep, fencer: FencerDep
@@ -292,6 +348,10 @@ def add_discipline(
         capacity=data.capacity,
         fee=data.fee,
         fee_early=data.fee_early,
+        schedule_when=data.schedule_when,
+        schedule_where=data.schedule_where,
+        ruleset_name=data.ruleset_name,
+        ruleset_url=data.ruleset_url,
     )
     session.add(discipline)
     session.commit()
@@ -317,6 +377,10 @@ def update_discipline(
     discipline.capacity = data.capacity
     discipline.fee = data.fee
     discipline.fee_early = data.fee_early
+    discipline.schedule_when = data.schedule_when
+    discipline.schedule_where = data.schedule_where
+    discipline.ruleset_name = data.ruleset_name
+    discipline.ruleset_url = data.ruleset_url
     session.commit()
     session.refresh(discipline)
     return discipline
@@ -362,6 +426,9 @@ def update_extra_item(
     item.category = data.category
     item.price = data.price
     item.max_qty = data.max_qty
+    item.schedule_when = data.schedule_when
+    item.schedule_where = data.schedule_where
+    item.remark = data.remark
     session.commit()
     session.refresh(item)
     return item

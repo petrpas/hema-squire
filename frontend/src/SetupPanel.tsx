@@ -1,5 +1,5 @@
 import { IconCheck, IconPlus, IconX } from "@tabler/icons-react";
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import {
@@ -13,14 +13,25 @@ import {
   type TeamMember,
   type TournamentDetail,
   api,
+  logoUrl,
 } from "./api";
 
 const EXTRA_CATEGORIES: ExtraCategory[] = ["seminar", "rental", "afterparty", "merch"];
+
+type DisciplineDraft = {
+  capacity: string;
+  fee: string;
+  schedule_when: string;
+  schedule_where: string;
+  ruleset_name: string;
+  ruleset_url: string;
+};
 
 // Identity fields patched as a whole, mirroring ParamPanel's save pattern
 // but for the fields that live in the Setup tab's main content, not the rail.
 const IDENTITY_FIELDS = [
   { key: "display_name", type: "text" },
+  { key: "subtitle", type: "text" },
   { key: "date", type: "date" },
   { key: "location", type: "text" },
   { key: "language", type: "text" },
@@ -41,6 +52,42 @@ function IdentitySection({
   const [values, setValues] = useState<Record<string, string>>({});
   const [dirty, setDirty] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [logoBusy, setLogoBusy] = useState(false);
+  const [logoError, setLogoError] = useState<string | null>(null);
+  // bumped on upload/remove so the <img> re-fetches past the browser cache
+  const [logoVersion, setLogoVersion] = useState(0);
+
+  async function uploadLogo(file: File) {
+    setLogoBusy(true);
+    setLogoError(null);
+    try {
+      await api.uploadLogo(slug, file);
+      setLogoVersion((v) => v + 1);
+      onSaved();
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 413) {
+        setLogoError(t("setup.identity.logoTooLarge"));
+      } else if (err instanceof ApiError && err.status === 422) {
+        setLogoError(t("setup.identity.logoNotImage"));
+      } else {
+        setLogoError(t("setup.identity.logoNotImage"));
+      }
+    } finally {
+      setLogoBusy(false);
+    }
+  }
+
+  async function removeLogo() {
+    setLogoBusy(true);
+    setLogoError(null);
+    try {
+      await api.deleteLogo(slug);
+      setLogoVersion((v) => v + 1);
+      onSaved();
+    } finally {
+      setLogoBusy(false);
+    }
+  }
 
   useEffect(() => {
     const next: Record<string, string> = {};
@@ -85,6 +132,43 @@ function IdentitySection({
             />
           </label>
         ))}
+      </div>
+      <div className="logo-control">
+        <span className="logo-control-label">{t("setup.identity.logo")}</span>
+        {detail.has_logo && (
+          <img
+            className="logo-preview"
+            src={`${logoUrl(slug)}?v=${logoVersion}`}
+            alt={t("setup.identity.logo")}
+          />
+        )}
+        <div className="logo-control-actions">
+          <label className="secondary logo-upload">
+            {t("setup.identity.logoUpload")}
+            <input
+              type="file"
+              accept="image/*"
+              disabled={logoBusy}
+              onChange={(event) => {
+                const file = event.target.files?.[0];
+                if (file) void uploadLogo(file);
+                event.target.value = "";
+              }}
+            />
+          </label>
+          {detail.has_logo && (
+            <button
+              type="button"
+              className="secondary"
+              disabled={logoBusy}
+              onClick={() => void removeLogo()}
+            >
+              {t("setup.identity.logoRemove")}
+            </button>
+          )}
+        </div>
+        <span className="rail-hint">{t("setup.identity.logoHint")}</span>
+        {logoError && <span className="login-error">{logoError}</span>}
       </div>
       <button className="secondary param-save" onClick={() => void save()} disabled={!dirty || busy}>
         {t("rail.save")}
@@ -190,7 +274,7 @@ function DisciplinesSection({
 }) {
   const { t } = useTranslation();
   const [taxonomy, setTaxonomy] = useState<Record<string, string>>({});
-  const [drafts, setDrafts] = useState<Record<string, { capacity: string; fee: string }>>({});
+  const [drafts, setDrafts] = useState<Record<string, DisciplineDraft>>({});
   const [newCode, setNewCode] = useState("");
   const [newCapacity, setNewCapacity] = useState("");
   const [newFee, setNewFee] = useState("");
@@ -201,9 +285,16 @@ function DisciplinesSection({
   }, []);
 
   useEffect(() => {
-    const next: Record<string, { capacity: string; fee: string }> = {};
+    const next: Record<string, DisciplineDraft> = {};
     for (const d of detail.disciplines) {
-      next[d.code] = { capacity: String(d.capacity), fee: d.fee === null ? "" : String(d.fee) };
+      next[d.code] = {
+        capacity: String(d.capacity),
+        fee: d.fee === null ? "" : String(d.fee),
+        schedule_when: d.schedule_when ?? "",
+        schedule_where: d.schedule_where ?? "",
+        ruleset_name: d.ruleset_name ?? "",
+        ruleset_url: d.ruleset_url ?? "",
+      };
     }
     setDrafts(next);
   }, [detail]);
@@ -214,8 +305,16 @@ function DisciplinesSection({
     if (!original || !draft) return false;
     return (
       String(original.capacity) !== draft.capacity ||
-      (original.fee === null ? "" : String(original.fee)) !== draft.fee
+      (original.fee === null ? "" : String(original.fee)) !== draft.fee ||
+      (original.schedule_when ?? "") !== draft.schedule_when ||
+      (original.schedule_where ?? "") !== draft.schedule_where ||
+      (original.ruleset_name ?? "") !== draft.ruleset_name ||
+      (original.ruleset_url ?? "") !== draft.ruleset_url
     );
+  }
+
+  function patchDraft(code: string, patch: Partial<DisciplineDraft>) {
+    setDrafts((prev) => ({ ...prev, [code]: { ...prev[code], ...patch } }));
   }
 
   async function saveRow(code: string) {
@@ -226,6 +325,10 @@ function DisciplinesSection({
         code,
         capacity: Number(draft.capacity),
         fee: draft.fee === "" ? null : Number(draft.fee),
+        schedule_when: draft.schedule_when || null,
+        schedule_where: draft.schedule_where || null,
+        ruleset_name: draft.ruleset_name || null,
+        ruleset_url: draft.ruleset_url || null,
       });
       onSaved();
     } finally {
@@ -278,59 +381,93 @@ function DisciplinesSection({
         </thead>
         <tbody>
           {detail.disciplines.map((d) => (
-            <tr key={d.code}>
-              <td>
-                {d.code} — {d.name}
-              </td>
-              <td>
-                <input
-                  className="cell-input"
-                  type="number"
-                  min={1}
-                  value={drafts[d.code]?.capacity ?? ""}
-                  onChange={(event) =>
-                    setDrafts({
-                      ...drafts,
-                      [d.code]: { ...drafts[d.code], capacity: event.target.value },
-                    })
-                  }
-                />
-              </td>
-              <td>
-                <input
-                  className="cell-input"
-                  type="number"
-                  min={0}
-                  value={drafts[d.code]?.fee ?? ""}
-                  onChange={(event) =>
-                    setDrafts({
-                      ...drafts,
-                      [d.code]: { ...drafts[d.code], fee: event.target.value },
-                    })
-                  }
-                />
-              </td>
-              <td className="col-actions">
-                {dirty(d.code) && (
+            <Fragment key={d.code}>
+              <tr>
+                <td>
+                  {d.code} — {d.name}
+                </td>
+                <td>
+                  <input
+                    className="cell-input"
+                    type="number"
+                    min={1}
+                    value={drafts[d.code]?.capacity ?? ""}
+                    onChange={(event) => patchDraft(d.code, { capacity: event.target.value })}
+                  />
+                </td>
+                <td>
+                  <input
+                    className="cell-input"
+                    type="number"
+                    min={0}
+                    value={drafts[d.code]?.fee ?? ""}
+                    onChange={(event) => patchDraft(d.code, { fee: event.target.value })}
+                  />
+                </td>
+                <td className="col-actions">
+                  {dirty(d.code) && (
+                    <button
+                      className="row-action"
+                      title={t("rail.save")}
+                      disabled={busy}
+                      onClick={() => void saveRow(d.code)}
+                    >
+                      <IconCheck size={16} stroke={1.5} />
+                    </button>
+                  )}
                   <button
                     className="row-action"
-                    title={t("rail.save")}
+                    title={t("actions.delete")}
                     disabled={busy}
-                    onClick={() => void saveRow(d.code)}
+                    onClick={() => void removeRow(d.code)}
                   >
-                    <IconCheck size={16} stroke={1.5} />
+                    <IconX size={16} stroke={1.5} />
                   </button>
-                )}
-                <button
-                  className="row-action"
-                  title={t("actions.delete")}
-                  disabled={busy}
-                  onClick={() => void removeRow(d.code)}
-                >
-                  <IconX size={16} stroke={1.5} />
-                </button>
-              </td>
-            </tr>
+                </td>
+              </tr>
+              <tr className="detail-subrow">
+                <td colSpan={4}>
+                  <div className="param-fields">
+                    <label className="param-field">
+                      <span>{t("setup.disciplines.when")}</span>
+                      <input
+                        value={drafts[d.code]?.schedule_when ?? ""}
+                        onChange={(event) =>
+                          patchDraft(d.code, { schedule_when: event.target.value })
+                        }
+                      />
+                    </label>
+                    <label className="param-field">
+                      <span>{t("setup.disciplines.where")}</span>
+                      <input
+                        value={drafts[d.code]?.schedule_where ?? ""}
+                        onChange={(event) =>
+                          patchDraft(d.code, { schedule_where: event.target.value })
+                        }
+                      />
+                    </label>
+                    <label className="param-field">
+                      <span>{t("setup.disciplines.rulesetName")}</span>
+                      <input
+                        value={drafts[d.code]?.ruleset_name ?? ""}
+                        onChange={(event) =>
+                          patchDraft(d.code, { ruleset_name: event.target.value })
+                        }
+                      />
+                    </label>
+                    <label className="param-field">
+                      <span>{t("setup.disciplines.rulesetUrl")}</span>
+                      <input
+                        value={drafts[d.code]?.ruleset_url ?? ""}
+                        onChange={(event) =>
+                          patchDraft(d.code, { ruleset_url: event.target.value })
+                        }
+                      />
+                    </label>
+                  </div>
+                </td>
+              </tr>
+            </Fragment>
           ))}
           <tr>
             <td>
@@ -412,7 +549,10 @@ function ExtraItemsSection({
       draft.name !== item.name ||
       draft.category !== item.category ||
       draft.price !== item.price ||
-      draft.max_qty !== item.max_qty
+      draft.max_qty !== item.max_qty ||
+      (draft.schedule_when ?? "") !== (item.schedule_when ?? "") ||
+      (draft.schedule_where ?? "") !== (item.schedule_where ?? "") ||
+      (draft.remark ?? "") !== (item.remark ?? "")
     );
   }
 
@@ -425,6 +565,9 @@ function ExtraItemsSection({
         category: draft.category,
         price: draft.price,
         max_qty: draft.max_qty,
+        schedule_when: draft.schedule_when || null,
+        schedule_where: draft.schedule_where || null,
+        remark: draft.remark || null,
       });
       onSaved();
     } finally {
@@ -476,7 +619,8 @@ function ExtraItemsSection({
           {detail.extra_items.map((item) => {
             const draft = drafts[item.id] ?? item;
             return (
-              <tr key={item.id}>
+              <Fragment key={item.id}>
+              <tr>
                 <td>
                   <input
                     className="cell-input"
@@ -555,6 +699,49 @@ function ExtraItemsSection({
                   </button>
                 </td>
               </tr>
+              <tr className="detail-subrow">
+                <td colSpan={5}>
+                  <div className="param-fields">
+                    <label className="param-field">
+                      <span>{t("setup.extras.when")}</span>
+                      <input
+                        value={draft.schedule_when ?? ""}
+                        onChange={(event) =>
+                          setDrafts({
+                            ...drafts,
+                            [item.id]: { ...draft, schedule_when: event.target.value },
+                          })
+                        }
+                      />
+                    </label>
+                    <label className="param-field">
+                      <span>{t("setup.extras.where")}</span>
+                      <input
+                        value={draft.schedule_where ?? ""}
+                        onChange={(event) =>
+                          setDrafts({
+                            ...drafts,
+                            [item.id]: { ...draft, schedule_where: event.target.value },
+                          })
+                        }
+                      />
+                    </label>
+                    <label className="param-field">
+                      <span>{t("setup.extras.remark")}</span>
+                      <input
+                        value={draft.remark ?? ""}
+                        onChange={(event) =>
+                          setDrafts({
+                            ...drafts,
+                            [item.id]: { ...draft, remark: event.target.value },
+                          })
+                        }
+                      />
+                    </label>
+                  </div>
+                </td>
+              </tr>
+              </Fragment>
             );
           })}
           <tr>

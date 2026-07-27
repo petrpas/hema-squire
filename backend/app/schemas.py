@@ -99,6 +99,11 @@ class DisciplineIn(BaseModel):
     capacity: int = Field(gt=0)
     fee: int | None = Field(default=None, ge=0)
     fee_early: int | None = Field(default=None, ge=0)
+    # optional schedule + ruleset reference; informational, never affect pricing
+    schedule_when: str | None = Field(default=None, max_length=200)
+    schedule_where: str | None = Field(default=None, max_length=300)
+    ruleset_name: str | None = Field(default=None, max_length=100)
+    ruleset_url: str | None = Field(default=None, max_length=500)
 
 
 class DisciplineOut(BaseModel):
@@ -109,6 +114,10 @@ class DisciplineOut(BaseModel):
     capacity: int
     fee: int | None
     fee_early: int | None
+    schedule_when: str | None
+    schedule_where: str | None
+    ruleset_name: str | None
+    ruleset_url: str | None
 
 
 class ExtraItemIn(BaseModel):
@@ -116,6 +125,10 @@ class ExtraItemIn(BaseModel):
     category: ExtraCategory
     price: int = Field(ge=0)
     max_qty: int = Field(default=1, ge=1)
+    # optional descriptive fields; informational, never affect pricing
+    schedule_when: str | None = Field(default=None, max_length=200)
+    schedule_where: str | None = Field(default=None, max_length=300)
+    remark: str | None = Field(default=None, max_length=500)
 
 
 class ExtraItemOut(ExtraItemIn):
@@ -174,6 +187,7 @@ class TournamentCreate(BaseModel):
 
 class TournamentUpdate(BaseModel):
     display_name: str | None = Field(default=None, min_length=1, max_length=200)
+    subtitle: str | None = Field(default=None, max_length=400)
     date: datetime.date | None = None
     language: str | None = None
     location: str | None = Field(default=None, max_length=300)
@@ -202,6 +216,8 @@ class TournamentOut(BaseModel):
 
     slug: str
     display_name: str
+    subtitle: str | None
+    has_logo: bool
     date: datetime.date
     language: str
     owner_id: int | None
@@ -371,6 +387,8 @@ MyRegistrationState = Literal["none", "reserved", "paid", "substitute", "cancell
 class OpenTournamentOut(BaseModel):
     slug: str
     display_name: str
+    subtitle: str | None = None
+    has_logo: bool = False
     date: datetime.date
     location: str | None
     organizer_names: list[str]

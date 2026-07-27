@@ -83,8 +83,12 @@
     "backToLogin": "Zpět na přihlášení",
     "hr": {
       "find": "Najít můj profil na HEMA Ratings",
-      "confirmed": "Profil na HEMA Ratings potvrzen: {{name}}",
-      "clear": "Zrušit výběr"
+      "confirmed": "Profil na HEMA Ratings potvrzen: {{name}} ({{hrId}})",
+      "clear": "Zrušit výběr",
+      "confirmTitle": "Potvrď svůj profil na HEMA Ratings",
+      "confirmPrompt": "Propojení naváže tento účet na profil níže. Potvrď, že je tvůj.",
+      "confirmButton": "Ano, to jsem já",
+      "viewProfile": "Zobrazit na hemaratings.com"
     },
     "errors": {
       "emailTaken": "Tento e-mail už je zaregistrovaný.",
@@ -170,7 +174,8 @@
     "location": "Místo konání",
     "language": "Jazyk komunikace",
     "registration_opens": "Registrace od",
-    "registration_closes": "Registrace do"
+    "registration_closes": "Registrace do",
+    "subtitle": "Podtitul"
   },
   "rail": {
     "operations": "Operace",
@@ -201,7 +206,14 @@
       "discipline_prices": "Chybí cena u některé disciplíny"
     },
     "identity": {
-      "title": "Základní údaje"
+      "title": "Základní údaje",
+      "subtitle": "Podtitul",
+      "logo": "Logo",
+      "logoUpload": "Nahrát logo",
+      "logoRemove": "Odebrat logo",
+      "logoHint": "PNG nebo JPG, do 512 kB",
+      "logoTooLarge": "Obrázek je příliš velký (max 512 kB).",
+      "logoNotImage": "Tento soubor není obrázek."
     },
     "organizers": {
       "title": "Pořadatelé (kluby/subjekty)",
@@ -213,7 +225,11 @@
       "code": "Kód",
       "capacity": "Kapacita",
       "fee": "Cena (Kč)",
-      "add": "Přidat disciplínu"
+      "add": "Přidat disciplínu",
+      "when": "Kdy (nepovinné)",
+      "where": "Kde (nepovinné)",
+      "rulesetName": "Pravidla (nepovinné)",
+      "rulesetUrl": "Odkaz na pravidla (nepovinné)"
     },
     "extras": {
       "title": "Doplňkové služby",
@@ -227,7 +243,10 @@
         "rental": "Zapůjčení",
         "afterparty": "Afterparty",
         "merch": "Merch"
-      }
+      },
+      "when": "Kdy (nepovinné)",
+      "where": "Kde (nepovinné)",
+      "remark": "Poznámka (nepovinné)"
     },
     "discounts": {
       "title": "Slevy",
@@ -361,7 +380,12 @@
     "opensOn": "registrace od {{date}}",
     "closesOn": "registrace do {{date}}",
     "notYetOpen": "Registrace na tento turnaj ještě nebyla otevřena.",
-    "closedNotice": "Registrace na tento turnaj je uzavřena."
+    "closedNotice": "Registrace na tento turnaj je uzavřena.",
+    "register": "Registrovat se",
+    "backToInfo": "Zpět na detail",
+    "otherActions": "Další aktivity",
+    "rulesetLabel": "Pravidla",
+    "fencersCount": "{{taken}}/{{capacity}} šermířů"
   },
   "form": {
     "title": "Registrace",
@@ -375,7 +399,13 @@
     "submitFailed": "Registraci se nepodařilo odeslat.",
     "fullDisciplines": "Tyto disciplíny jsou plné: {{codes}}",
     "dropFull": "Pokračovat bez nich",
-    "joinQueue": "Zařadit se do pořadí"
+    "joinQueue": "Zařadit se do pořadí",
+    "sections": {
+      "tournament": "Turnaj",
+      "actions": "Aktivity",
+      "gear": "Zápůjčka vybavení",
+      "merch": "Merch a ostatní"
+    }
   },
   "payment": {
     "title": "Platební instrukce",

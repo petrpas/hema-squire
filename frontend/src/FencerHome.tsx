@@ -1,8 +1,14 @@
-import { useEffect, useState } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import AccountMenu from "./AccountMenu";
-import { type Account, type OpenTournament, type PastTournament, api } from "./api";
+import {
+  type Account,
+  type OpenTournament,
+  type PastTournament,
+  api,
+  logoUrl,
+} from "./api";
 
 type Tab = "announced" | "open" | "past";
 
@@ -25,6 +31,40 @@ function StatusBadge({ tournament }: { tournament: OpenTournament }) {
   return <span className="chip status-closed">{t("home.status.closed")}</span>;
 }
 
+/** Logo + name + subtitle + responsive date/place block, shared by both cards.
+ * Every part degrades cleanly when its field is absent. */
+function CardHeading({
+  tournament,
+  badge,
+}: {
+  tournament: OpenTournament;
+  badge: ReactNode;
+}) {
+  return (
+    <div className="home-card-header">
+      {tournament.has_logo && (
+        <img className="home-card-logo" src={logoUrl(tournament.slug)} alt="" />
+      )}
+      <div className="home-card-heading">
+        <h2>{tournament.display_name}</h2>
+        {tournament.subtitle && (
+          <p className="home-card-subtitle">{tournament.subtitle}</p>
+        )}
+        <div className="home-card-meta">
+          {tournament.organizer_names.length > 0 && (
+            <span className="meta-cell">{tournament.organizer_names.join(", ")}</span>
+          )}
+          <span className="meta-cell">
+            {new Date(tournament.date).toLocaleDateString("cs")}
+          </span>
+          {tournament.location && <span className="meta-cell">{tournament.location}</span>}
+        </div>
+      </div>
+      {badge}
+    </div>
+  );
+}
+
 function TournamentCard({
   tournament,
   onOpen,
@@ -35,16 +75,7 @@ function TournamentCard({
   return (
     <li>
       <button className="rail-card home-card" onClick={() => onOpen(tournament.slug)}>
-        <div className="home-card-header">
-          <div>
-            <h2>{tournament.display_name}</h2>
-            <p className="rail-hint">
-              {tournament.organizer_names.join(", ")} · {new Date(tournament.date).toLocaleDateString("cs")}
-              {tournament.location ? ` · ${tournament.location}` : ""}
-            </p>
-          </div>
-          <StatusBadge tournament={tournament} />
-        </div>
+        <CardHeading tournament={tournament} badge={<StatusBadge tournament={tournament} />} />
         <div className="chips">
           {tournament.disciplines.map((d) => (
             <span key={d.code} className="chip">
@@ -71,20 +102,18 @@ function PastCard({
   return (
     <li>
       <button className="rail-card home-card" onClick={() => onOpen(tournament.slug, true)}>
-        <div className="home-card-header">
-          <div>
-            <h2>{tournament.display_name}</h2>
-            <p className="rail-hint">
-              {tournament.organizer_names.join(", ")} · {new Date(tournament.date).toLocaleDateString("cs")}
-              {tournament.location ? ` · ${tournament.location}` : ""}
-            </p>
-          </div>
-          {participated ? (
-            <span className="chip">{t(`registration.state.${tournament.my_registration_state}`)}</span>
-          ) : (
-            <span className="chip organizer-chip">{t("home.organized")}</span>
-          )}
-        </div>
+        <CardHeading
+          tournament={tournament}
+          badge={
+            participated ? (
+              <span className="chip">
+                {t(`registration.state.${tournament.my_registration_state}`)}
+              </span>
+            ) : (
+              <span className="chip organizer-chip">{t("home.organized")}</span>
+            )
+          }
+        />
         <div className="chips">
           {tournament.disciplines.map((d) => (
             <span key={d.code} className="chip">

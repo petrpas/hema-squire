@@ -12,6 +12,7 @@ from sqlalchemy import (
     DateTime,
     Enum,
     ForeignKey,
+    LargeBinary,
     String,
     Text,
     UniqueConstraint,
@@ -116,6 +117,14 @@ class Tournament(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     slug: Mapped[str] = mapped_column(String(100), unique=True)
     display_name: Mapped[str] = mapped_column(String(200))
+    # optional free-text subtitle; may be longer than display_name, often empty
+    subtitle: Mapped[str | None] = mapped_column(String(400))
+    # optional logo stored inline (bounded/re-encoded on upload — see the logo
+    # endpoints); kept in the DB so the deployment stays a single SQLite file.
+    # Deferred so list queries never drag the blob; presence is read from the
+    # always-loaded logo_mime via has_logo.
+    logo_bytes: Mapped[bytes | None] = mapped_column(LargeBinary, deferred=True)
+    logo_mime: Mapped[str | None] = mapped_column(String(100))
     date: Mapped[date]
     # the single Tournament Owner (creator, until transferred); nullable only
     # for pre-role tournaments that had no organizers to backfill from
@@ -159,6 +168,11 @@ class Tournament(Base):
     # validated in schemas and interpreted in pricing.py
     discounts: Mapped[list] = mapped_column(JSON, default=list)
 
+    @property
+    def has_logo(self) -> bool:
+        # reads the always-loaded mime, never the deferred blob
+        return self.logo_mime is not None
+
     owner: Mapped[Fencer | None] = relationship(foreign_keys=[owner_id])
     disciplines: Mapped[list[Discipline]] = relationship(back_populates="tournament")
     extra_items: Mapped[list[ExtraItem]] = relationship(back_populates="tournament")
@@ -184,6 +198,12 @@ class Discipline(Base):
     # (setup_missing gates registration until every discipline is priced)
     fee: Mapped[int | None]
     fee_early: Mapped[int | None]
+    # optional schedule (mainly multi-day events) and ruleset reference; purely
+    # informational, never touches pricing
+    schedule_when: Mapped[str | None] = mapped_column(String(200))
+    schedule_where: Mapped[str | None] = mapped_column(String(300))
+    ruleset_name: Mapped[str | None] = mapped_column(String(100))
+    ruleset_url: Mapped[str | None] = mapped_column(String(500))
 
     tournament: Mapped[Tournament] = relationship(back_populates="disciplines")
 
@@ -201,6 +221,11 @@ class ExtraItem(Base):
     price: Mapped[int]
     # per-registration quantity limit; 1 renders as a checkbox
     max_qty: Mapped[int] = mapped_column(default=1)
+    # optional descriptive fields shown when the item is presented
+    # informationally; never affect pricing
+    schedule_when: Mapped[str | None] = mapped_column(String(200))
+    schedule_where: Mapped[str | None] = mapped_column(String(300))
+    remark: Mapped[str | None] = mapped_column(String(500))
 
     tournament: Mapped[Tournament] = relationship(back_populates="extra_items")
 
