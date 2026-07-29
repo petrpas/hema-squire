@@ -20,7 +20,15 @@ from app.models import Discipline, ExtraItem, Registration, Tournament
 # the implicit category of discipline entries; extras carry ExtraCategory values
 DISCIPLINE_CATEGORY = "discipline"
 # canonical order in which a multi-category fixed discount consumes subtotals
-_CATEGORY_ORDER = [DISCIPLINE_CATEGORY, "seminar", "rental", "afterparty", "merch"]
+_CATEGORY_ORDER = [
+    DISCIPLINE_CATEGORY,
+    "seminar",
+    "rental",
+    "afterparty",
+    "merch",
+    "other_action",
+    "other_item",
+]
 
 
 def _early(tournament: Tournament, at: datetime.date) -> bool:

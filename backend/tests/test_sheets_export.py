@@ -68,7 +68,7 @@ def setup(client, auth_headers, organizer):
         json={
             "output_sheet_url": "https://sheets.example/cup",
             "location": "Brno",
-            "organizer_names": ["Cup Org"],
+            "organizers": [{"name": "Cup Org", "link": None}],
         },
         headers=organizer,
     )

@@ -43,8 +43,26 @@ function InfoHeader({ detail }: { detail: TournamentDetailData }) {
         <h1>{detail.display_name}</h1>
         {detail.subtitle && <p className="detail-subtitle">{detail.subtitle}</p>}
         <div className="home-card-meta">
-          {detail.organizer_names.length > 0 && (
-            <span className="meta-cell">{detail.organizer_names.join(", ")}</span>
+          {detail.organizers.length > 0 && (
+            <span className="meta-cell">
+              {detail.organizers.map((organizer, index) => (
+                <span key={index}>
+                  {index > 0 && ", "}
+                  {organizer.link ? (
+                    <a
+                      className="detail-inline-link"
+                      href={organizer.link}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      {organizer.name}
+                    </a>
+                  ) : (
+                    organizer.name
+                  )}
+                </span>
+              ))}
+            </span>
           )}
           <span className="meta-cell">
             {new Date(detail.date).toLocaleDateString("cs")}
@@ -64,14 +82,20 @@ function InfoHeader({ detail }: { detail: TournamentDetailData }) {
               })}
           </p>
         )}
+        <p className="rail-hint">
+          {detail.qualification_open
+            ? t("detail.qualificationOpen")
+            : t("detail.qualificationRequired", { criteria: detail.qualification_criteria })}
+        </p>
+        {detail.description && <p className="detail-description">{detail.description}</p>}
       </div>
     </section>
   );
 }
 
 // categories shown as informational "other actions" on the information screen;
-// gear lending (rental) and merch are deliberately omitted there
-const ACTION_CATEGORIES = ["seminar", "afterparty"] as const;
+// gear lending (rental) and merch/other_item are deliberately omitted there
+const ACTION_CATEGORIES = ["seminar", "afterparty", "other_action"] as const;
 
 /** Optional when/where/remark lines shared by discipline and action rows. */
 function ScheduleLines({
@@ -123,7 +147,7 @@ function DisciplinesInfo({
               {d.ruleset_name &&
                 (d.ruleset_url ? (
                   <a
-                    className="detail-ruleset-link"
+                    className="detail-inline-link"
                     href={d.ruleset_url}
                     target="_blank"
                     rel="noreferrer"

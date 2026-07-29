@@ -42,7 +42,10 @@ def test_setup_fields_patch_round_trip_and_detail(client, auth_headers):
 
     patch = {
         "location": "Brno, Sportovní hala",
-        "organizer_names": ["Duelanti od sv. Rocha", "Klub X"],
+        "organizers": [
+            {"name": "Duelanti od sv. Rocha", "link": "https://duelanti.example"},
+            {"name": "Klub X", "link": None},
+        ],
         "registration_opens": "2026-01-01",
         "registration_closes": "2026-09-01",
         "discounts": [
@@ -57,7 +60,10 @@ def test_setup_fields_patch_round_trip_and_detail(client, auth_headers):
     assert response.status_code == 200, response.text
     body = response.json()
     assert body["location"] == "Brno, Sportovní hala"
-    assert body["organizer_names"] == ["Duelanti od sv. Rocha", "Klub X"]
+    assert body["organizers"] == [
+        {"name": "Duelanti od sv. Rocha", "link": "https://duelanti.example"},
+        {"name": "Klub X", "link": None},
+    ]
     assert body["registration_opens"] == "2026-01-01"
     assert body["registration_closes"] == "2026-09-01"
     # scope defaults to ["discipline"] when omitted (invariant: don't normalize stored data)
@@ -109,6 +115,24 @@ def test_extra_item_crud(client, auth_headers):
     assert detail["extra_items"] == []
 
 
+def test_generic_extra_categories_persist_and_reload(client, auth_headers):
+    headers = auth_headers()
+    make_tournament(client, headers)
+
+    for category in ("other_action", "other_item"):
+        row = client.post(
+            "/api/tournaments/na-duel-2026/extra-items",
+            json={"name": category, "category": category, "price": 100, "max_qty": 1},
+            headers=headers,
+        )
+        assert row.status_code == 201, row.text
+        assert row.json()["category"] == category
+
+    reloaded = client.get("/api/tournaments/na-duel-2026", headers=headers).json()
+    categories = {i["category"] for i in reloaded["extra_items"]}
+    assert {"other_action", "other_item"} <= categories
+
+
 def test_extra_item_requires_organizer(client, auth_headers):
     organizer = auth_headers()
     make_tournament(client, organizer)
@@ -127,6 +151,113 @@ def test_create_tournament_requires_auth(client):
         json={"slug": "x-cup", "display_name": "X", "date": "2026-01-01"},
     )
     assert response.status_code == 401
+
+
+def test_qualification_requires_criteria_when_not_open(client, auth_headers):
+    headers = auth_headers()
+    make_tournament(client, headers)
+
+    rejected = client.patch(
+        "/api/tournaments/na-duel-2026",
+        json={"qualification_open": False, "qualification_criteria": ""},
+        headers=headers,
+    )
+    assert rejected.status_code == 422
+    assert rejected.json()["detail"] == "qualification_criteria_required"
+
+    accepted = client.patch(
+        "/api/tournaments/na-duel-2026",
+        json={
+            "qualification_open": False,
+            "qualification_criteria": "national championship placement",
+        },
+        headers=headers,
+    )
+    assert accepted.status_code == 200, accepted.text
+    assert accepted.json()["qualification_criteria"] == "national championship placement"
+
+    reopened = client.patch(
+        "/api/tournaments/na-duel-2026",
+        json={"qualification_open": True},
+        headers=headers,
+    )
+    assert reopened.status_code == 200, reopened.text
+    assert reopened.json()["qualification_open"] is True
+    assert reopened.json()["qualification_criteria"] is None
+
+
+def test_extra_item_action_category_forces_max_qty_one(client, auth_headers):
+    headers = auth_headers()
+    make_tournament(client, headers)
+    created = client.post(
+        "/api/tournaments/na-duel-2026/extra-items",
+        json={"name": "afterparty", "category": "afterparty", "price": 200, "max_qty": 5},
+        headers=headers,
+    )
+    assert created.status_code == 201, created.text
+    assert created.json()["max_qty"] == 1
+
+
+def test_extra_item_item_category_rejects_schedule_fields(client, auth_headers):
+    headers = auth_headers()
+    make_tournament(client, headers)
+    response = client.post(
+        "/api/tournaments/na-duel-2026/extra-items",
+        json={
+            "name": "t-shirt",
+            "category": "merch",
+            "price": 300,
+            "schedule_when": "Saturday",
+        },
+        headers=headers,
+    )
+    assert response.status_code == 422
+    assert response.json()["detail"] == "schedule_fields_not_allowed_for_item_category"
+
+
+def test_legacy_action_row_keeps_max_qty_until_resaved(client, auth_headers, engine):
+    """A pre-existing action-category row with max_qty > 1 (from before this
+    change) is left untouched on read, and only normalized to 1 on next save
+    (design D4)."""
+    from sqlalchemy import select
+    from sqlalchemy.orm import Session
+
+    from app.models import ExtraItem, Tournament
+
+    headers = auth_headers()
+    make_tournament(client, headers)
+
+    with Session(engine) as session:
+        tournament = session.scalars(
+            select(Tournament).where(Tournament.slug == "na-duel-2026")
+        ).one()
+        legacy = ExtraItem(
+            tournament_id=tournament.id,
+            name="legacy afterparty",
+            category="afterparty",
+            price=150,
+            max_qty=5,
+        )
+        session.add(legacy)
+        session.commit()
+        legacy_id = legacy.id
+
+    detail = client.get("/api/tournaments/na-duel-2026", headers=headers).json()
+    row = next(i for i in detail["extra_items"] if i["id"] == legacy_id)
+    assert row["max_qty"] == 5
+
+    updated = client.patch(
+        f"/api/tournaments/na-duel-2026/extra-items/{legacy_id}",
+        json={
+            "name": "legacy afterparty",
+            "category": "afterparty",
+            "price": 150,
+            "max_qty": 5,
+        },
+        headers=headers,
+    )
+    assert updated.status_code == 200, updated.text
+    assert updated.json()["max_qty"] == 1
 
 
 def test_creator_becomes_organizer_and_can_configure(client, auth_headers):

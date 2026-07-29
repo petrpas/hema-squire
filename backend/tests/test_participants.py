@@ -13,7 +13,7 @@ def setup_tournament(client, organizer):
     )
     client.patch(
         "/api/tournaments/cup",
-        json={"location": "Brno", "organizer_names": ["Cup Org"]},
+        json={"location": "Brno", "organizers": [{"name": "Cup Org", "link": None}]},
         headers=organizer,
     )
     client.post(

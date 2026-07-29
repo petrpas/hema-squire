@@ -23,7 +23,7 @@ def make_tournament(**kwargs) -> Tournament:
         display_name="T",
         date=date(2026, 10, 3),
         discounts=[],
-        organizer_names=[],
+        organizers=[],
     )
     return Tournament(**{**defaults, **kwargs})
 
@@ -172,6 +172,37 @@ def test_count_condition_counts_active_entries_only():
     registration = make_registration(tournament, [30, 30])
     registration.entries[1].is_substitute = True
     assert pricing.registration_total(registration, tournament) == 25
+
+
+def test_generic_categories_price_and_scope_like_their_models():
+    """other_action must total and discount-scope exactly as afterparty/seminar
+    do, and other_item exactly as merch does (design D4)."""
+
+    def total_for(action_category, item_category):
+        tournament = make_tournament(
+            discounts=[
+                {
+                    "name": "combo",
+                    "condition": {"kind": "discipline_count", "count": 1},
+                    "effect": {"kind": "percent", "value": 10},
+                    "scope": [action_category, item_category],
+                }
+            ]
+        )
+        action = ExtraItem(
+            tournament=tournament, name="action", category=action_category, price=15, max_qty=1
+        )
+        item = ExtraItem(
+            tournament=tournament, name="item", category=item_category, price=15, max_qty=1
+        )
+        tournament.extra_items = [action, item]
+        registration = make_registration(tournament, [30], extras=[(action, 1), (item, 1)])
+        return pricing.registration_total(registration, tournament)
+
+    afterparty_and_merch = total_for(ExtraCategory.AFTERPARTY, ExtraCategory.MERCH)
+    other_action_and_item = total_for(ExtraCategory.OTHER_ACTION, ExtraCategory.OTHER_ITEM)
+    # discipline 30 (out of scope) + 15×0.9 + 15×0.9 = 57
+    assert afterparty_and_merch == other_action_and_item == 57
 
 
 def test_unpriced_discipline_counts_as_zero():

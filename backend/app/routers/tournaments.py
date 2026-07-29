@@ -1,4 +1,5 @@
 import io
+import logging
 from datetime import UTC, datetime
 from typing import Annotated
 
@@ -17,6 +18,7 @@ from app.auth import (
 from app.availability import queue_length, taken_seats
 from app.db import get_session
 from app.models import (
+    ACTION_CATEGORIES,
     BankTransaction,
     Discipline,
     ExtraItem,
@@ -165,7 +167,10 @@ def open_tournaments(session: SessionDep, fencer: FencerDep):
                 has_logo=tournament.has_logo,
                 date=tournament.date,
                 location=tournament.location,
-                organizer_names=tournament.organizer_names,
+                description=tournament.description,
+                qualification_open=tournament.qualification_open,
+                qualification_criteria=tournament.qualification_criteria,
+                organizers=tournament.organizers,
                 registration_status=status_,
                 registration_opens_on=opens_on,
                 disciplines=disciplines,
@@ -252,7 +257,10 @@ def past_tournaments(session: SessionDep, fencer: FencerDep):
                 has_logo=tournament.has_logo,
                 date=tournament.date,
                 location=tournament.location,
-                organizer_names=tournament.organizer_names,
+                description=tournament.description,
+                qualification_open=tournament.qualification_open,
+                qualification_criteria=tournament.qualification_criteria,
+                organizers=tournament.organizers,
                 registration_status="closed",
                 registration_opens_on=None,
                 disciplines=disciplines,
@@ -275,16 +283,25 @@ def update_tournament(
     data: TournamentUpdate, tournament: TournamentDep, session: SessionDep, fencer: FencerDep
 ):
     require_console_access(session, tournament, fencer)
-    for field, value in data.model_dump(exclude_unset=True).items():
+    updates = data.model_dump(exclude_unset=True)
+    for field, value in updates.items():
         setattr(tournament, field, value)
+    # reopening clears any previously recorded criteria (design D7)
+    if updates.get("qualification_open") is True:
+        tournament.qualification_criteria = None
+    if not tournament.qualification_open and not (tournament.qualification_criteria or "").strip():
+        raise HTTPException(status_code=422, detail="qualification_criteria_required")
     session.commit()
     session.refresh(tournament)
     return tournament
 
 
+logger = logging.getLogger(__name__)
+
 # logo upload bounds: reject oversized inputs, then re-encode to a bounded PNG
-# so the stored blob stays small (design D1)
-LOGO_MAX_UPLOAD_BYTES = 512 * 1024
+# so the stored blob stays small (design D1). The cap only needs to bound
+# decode work since every accepted image is re-encoded to LOGO_MAX_DIMENSION.
+LOGO_MAX_UPLOAD_BYTES = 8 * 1024 * 1024
 LOGO_MAX_DIMENSION = 512
 
 
@@ -299,7 +316,8 @@ async def upload_logo(
     try:
         image = Image.open(io.BytesIO(raw))
         image.load()
-    except (UnidentifiedImageError, OSError):
+    except (UnidentifiedImageError, OSError, Image.DecompressionBombError) as exc:
+        logger.warning("logo upload could not be decoded as an image", exc_info=exc)
         raise HTTPException(status_code=422, detail="logo_not_an_image")
     image = image.convert("RGBA")
     # downscale in place so the longest side is at most LOGO_MAX_DIMENSION
@@ -398,12 +416,24 @@ def delete_discipline(
     session.commit()
 
 
+def _normalized_extra_item_fields(data: ExtraItemIn) -> dict:
+    """Enforce the action/item kind split (design D4): action categories
+    (seminar, afterparty, other_action) always store a max_qty of 1; item
+    categories (rental, merch, other_item) carry no schedule fields."""
+    fields = data.model_dump()
+    if data.category in ACTION_CATEGORIES:
+        fields["max_qty"] = 1
+    elif data.schedule_when or data.schedule_where:
+        raise HTTPException(status_code=422, detail="schedule_fields_not_allowed_for_item_category")
+    return fields
+
+
 @router.post("/{slug}/extra-items", response_model=ExtraItemOut, status_code=201)
 def add_extra_item(
     data: ExtraItemIn, tournament: TournamentDep, session: SessionDep, fencer: FencerDep
 ):
     require_console_access(session, tournament, fencer)
-    item = ExtraItem(tournament=tournament, **data.model_dump())
+    item = ExtraItem(tournament=tournament, **_normalized_extra_item_fields(data))
     session.add(item)
     session.commit()
     session.refresh(item)
@@ -422,13 +452,14 @@ def update_extra_item(
     item = next((i for i in tournament.extra_items if i.id == item_id), None)
     if item is None:
         raise HTTPException(status_code=404, detail="extra_item_not_found")
-    item.name = data.name
-    item.category = data.category
-    item.price = data.price
-    item.max_qty = data.max_qty
-    item.schedule_when = data.schedule_when
-    item.schedule_where = data.schedule_where
-    item.remark = data.remark
+    fields = _normalized_extra_item_fields(data)
+    item.name = fields["name"]
+    item.category = fields["category"]
+    item.price = fields["price"]
+    item.max_qty = fields["max_qty"]
+    item.schedule_when = fields["schedule_when"]
+    item.schedule_where = fields["schedule_where"]
+    item.remark = fields["remark"]
     session.commit()
     session.refresh(item)
     return item

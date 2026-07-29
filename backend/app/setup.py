@@ -23,7 +23,7 @@ def setup_missing(tournament: Tournament) -> list[str]:
     missing = []
     if not (tournament.location or "").strip():
         missing.append(MISSING_LOCATION)
-    if not tournament.organizer_names:
+    if not tournament.organizers:
         missing.append(MISSING_ORGANIZERS)
     if not tournament.disciplines:
         missing.append(MISSING_DISCIPLINES)

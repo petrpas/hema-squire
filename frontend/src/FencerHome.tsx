@@ -51,8 +51,26 @@ function CardHeading({
           <p className="home-card-subtitle">{tournament.subtitle}</p>
         )}
         <div className="home-card-meta">
-          {tournament.organizer_names.length > 0 && (
-            <span className="meta-cell">{tournament.organizer_names.join(", ")}</span>
+          {tournament.organizers.length > 0 && (
+            <span className="meta-cell">
+              {tournament.organizers.map((organizer, index) => (
+                <span key={index}>
+                  {index > 0 && ", "}
+                  {organizer.link ? (
+                    <a
+                      className="detail-inline-link"
+                      href={organizer.link}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      {organizer.name}
+                    </a>
+                  ) : (
+                    organizer.name
+                  )}
+                </span>
+              ))}
+            </span>
           )}
           <span className="meta-cell">
             {new Date(tournament.date).toLocaleDateString("cs")}

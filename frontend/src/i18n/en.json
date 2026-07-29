@@ -175,7 +175,8 @@
     "language": "Communication language",
     "registration_opens": "Registration opens",
     "registration_closes": "Registration closes",
-    "subtitle": "Subtitle"
+    "subtitle": "Subtitle",
+    "description": "Description"
   },
   "rail": {
     "operations": "Operations",
@@ -211,14 +212,23 @@
       "logo": "Logo",
       "logoUpload": "Upload logo",
       "logoRemove": "Remove logo",
-      "logoHint": "PNG or JPG, up to 512 KB",
-      "logoTooLarge": "That image is too large (max 512 KB).",
-      "logoNotImage": "That file is not an image."
+      "logoHint": "PNG or JPG, up to 8 MB",
+      "logoTooLarge": "That image is too large (max 8 MB).",
+      "logoUnsupportedFormat": "That file is not a supported image format.",
+      "logoNotAuthorized": "You are not authorized to upload this tournament's logo.",
+      "logoUploadFailed": "The logo upload failed (error {{status}}).",
+      "qualification": "Qualification",
+      "qualificationOpen": "Open to everyone",
+      "qualificationRequired": "Qualification required",
+      "qualificationCriteria": "Qualification criteria",
+      "qualificationCriteriaHint": "For example \"national championship placement, HR top 500\".",
+      "qualificationCriteriaRequired": "Enter the qualification criteria, or switch back to \"open to everyone\"."
     },
     "organizers": {
       "title": "Titular organizers (clubs/entities)",
       "add": "Add organizer",
-      "placeholder": "Club or entity name"
+      "placeholder": "Club or entity name",
+      "linkPlaceholder": "Link (optional)"
     },
     "disciplines": {
       "title": "Disciplines",
@@ -229,7 +239,11 @@
       "when": "When (optional)",
       "where": "Where (optional)",
       "rulesetName": "Ruleset (optional)",
-      "rulesetUrl": "Ruleset link (optional)"
+      "rulesetUrl": "Ruleset link (optional)",
+      "whenHint": "A rough time, for example \"Saturday morning\".",
+      "whereHint": "A place within the venue, for example \"Main Hall\".",
+      "rulesetNameHint": "A short ruleset name, for example \"Right of Way\".",
+      "rulesetUrlHint": "A link to the full ruleset text, if one exists."
     },
     "extras": {
       "title": "Extra services",
@@ -242,7 +256,9 @@
         "seminar": "Seminar",
         "rental": "Rental",
         "afterparty": "Afterparty",
-        "merch": "Merch"
+        "merch": "Merch",
+        "other_action": "Other action",
+        "other_item": "Other item"
       },
       "when": "When (optional)",
       "where": "Where (optional)",
@@ -385,7 +401,9 @@
     "backToInfo": "Back to details",
     "otherActions": "Other actions",
     "rulesetLabel": "Ruleset",
-    "fencersCount": "{{taken}}/{{capacity}} fencers"
+    "fencersCount": "{{taken}}/{{capacity}} fencers",
+    "qualificationOpen": "Open to everyone",
+    "qualificationRequired": "Qualification: {{criteria}}"
   },
   "form": {
     "title": "Registration",

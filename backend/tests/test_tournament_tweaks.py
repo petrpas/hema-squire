@@ -14,6 +14,12 @@ def _png_bytes(size=(40, 40), color=(10, 20, 30, 255)) -> bytes:
     return buffer.getvalue()
 
 
+def _jpeg_bytes(size=(3000, 2000), color=(200, 60, 40)) -> bytes:
+    buffer = io.BytesIO()
+    Image.new("RGB", size, color).save(buffer, format="JPEG", quality=95)
+    return buffer.getvalue()
+
+
 def test_subtitle_round_trip_and_default_absent(client, auth_headers):
     headers = auth_headers()
     created = make_tournament(client, headers)
@@ -122,10 +128,22 @@ def test_logo_upload_serve_and_delete(client, auth_headers):
     assert client.get("/api/tournaments/na-duel-2026/logo").status_code == 404
 
 
+def test_logo_upload_accepts_multi_megapixel_jpeg(client, auth_headers):
+    headers = auth_headers()
+    make_tournament(client, headers)
+    response = client.post(
+        "/api/tournaments/na-duel-2026/logo",
+        files={"file": ("photo.jpg", _jpeg_bytes(), "image/jpeg")},
+        headers=headers,
+    )
+    assert response.status_code == 200, response.text
+    assert response.json()["has_logo"] is True
+
+
 def test_logo_upload_rejects_oversized(client, auth_headers):
     headers = auth_headers()
     make_tournament(client, headers)
-    too_big = b"\x89PNG\r\n\x1a\n" + b"0" * (512 * 1024 + 1)
+    too_big = b"\x89PNG\r\n\x1a\n" + b"0" * (8 * 1024 * 1024 + 1)
     response = client.post(
         "/api/tournaments/na-duel-2026/logo",
         files={"file": ("logo.png", too_big, "image/png")},

@@ -116,7 +116,7 @@ def build_scenario(client, auth_headers):
     )
     client.patch(
         "/api/tournaments/cup",
-        json={"location": "Brno", "organizer_names": ["Cup Org"]},
+        json={"location": "Brno", "organizers": [{"name": "Cup Org", "link": None}]},
         headers=organizer,
     )
     for code in ("LS", "SA"):

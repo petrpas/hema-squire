@@ -12,7 +12,7 @@ def make_tournament(**kwargs) -> Tournament:
         display_name="T",
         date=date(2026, 10, 3),
         location="Brno",
-        organizer_names=["Duelanti od sv. Rocha"],
+        organizers=[{"name": "Duelanti od sv. Rocha", "link": None}],
     )
     tournament = Tournament(**{**defaults, **kwargs})
     if "disciplines" not in kwargs:
@@ -29,7 +29,7 @@ def test_complete_setup_has_nothing_missing():
 def test_each_mandatory_item_reported():
     assert setup_missing(make_tournament(location=None)) == ["location"]
     assert setup_missing(make_tournament(location="  ")) == ["location"]
-    assert setup_missing(make_tournament(organizer_names=[])) == ["organizers"]
+    assert setup_missing(make_tournament(organizers=[])) == ["organizers"]
     assert setup_missing(make_tournament(disciplines=[])) == ["disciplines"]
 
 
@@ -40,5 +40,5 @@ def test_unpriced_discipline_blocks():
 
 
 def test_multiple_gaps_accumulate():
-    tournament = make_tournament(location=None, organizer_names=[], disciplines=[])
+    tournament = make_tournament(location=None, organizers=[], disciplines=[])
     assert setup_missing(tournament) == ["location", "organizers", "disciplines"]

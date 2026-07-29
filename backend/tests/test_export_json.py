@@ -2,6 +2,7 @@
 
 import io
 
+from app.export_json import SCHEMA_VERSION
 from app.importer import get_import_parser
 from tests.test_import import CSV, FakeParser
 
@@ -14,7 +15,7 @@ def setup(client, organizer):
     )
     client.patch(
         "/api/tournaments/cup",
-        json={"location": "Brno", "organizer_names": ["Cup Org"]},
+        json={"location": "Brno", "organizers": [{"name": "Cup Org", "link": None}]},
         headers=organizer,
     )
     for code in ("LS", "SA"):
@@ -81,7 +82,7 @@ def test_round_trip_reconstructs_fencer_table(client, auth_headers):
     export = client.get("/api/tournaments/cup/export/json", headers=organizer)
     assert export.status_code == 200
     document = export.json()
-    assert document["schema_version"] == 1
+    assert document["schema_version"] == SCHEMA_VERSION
     assert len(document["registrations"]) == 1
     assert document["registrations"][0]["state"] == "paid"
     assert len(document["import_batches"][0]["rows"]) == 2
@@ -127,3 +128,53 @@ def test_restore_refuses_taken_slug_and_bad_version(client, auth_headers):
     assert client.post(
         "/api/tournaments/restore", json=document, headers=organizer
     ).status_code == 422
+
+
+def test_restore_accepts_v1_organizer_names(client, auth_headers):
+    """A v1 export carried `organizer_names: list[str]` on the tournament
+    document; restore normalizes it into the v2 `organizers` shape (design D5)."""
+    organizer = auth_headers()
+    v1_document = {
+        "schema_version": 1,
+        "exported_at": "2026-01-01T00:00:00+00:00",
+        "tournament": {
+            "slug": "legacy-2025",
+            "display_name": "Legacy Duel",
+            "date": "2025-05-01",
+            "language": "cs",
+            "reservation_validity_days": 10,
+            "reminder_day": 5,
+            "amount_tolerance_percent": 5,
+            "refundable_until": None,
+            "bank_account": None,
+            "unpaid_list_treatment": "greyed",
+            "early_bird_until": None,
+            "weapon_rental_fee": 0,
+            "weapon_rental_fee_early": None,
+            "afterparty_fee": 0,
+            "afterparty_fee_early": None,
+            "location": "Old Hall",
+            "organizer_names": ["Legacy Club"],
+            "discounts": [],
+            "registration_opens": None,
+            "registration_closes": None,
+        },
+        "disciplines": [],
+        "extra_items": [],
+        "fencers": [],
+        "registrations": [],
+        "bank_transactions": [],
+        "import_batches": [],
+        "decisions": [],
+        "rules": [],
+    }
+    restore = client.post("/api/tournaments/restore", json=v1_document, headers=organizer)
+    assert restore.status_code == 201, restore.text
+
+    detail = client.get("/api/tournaments/legacy-2025", headers=organizer)
+    assert detail.status_code == 200, detail.text
+    body = detail.json()
+    assert body["organizers"] == [{"name": "Legacy Club", "link": None}]
+    assert body["description"] is None
+    assert body["qualification_open"] is True
+    assert body["qualification_criteria"] is None

@@ -129,7 +129,13 @@ export interface DisciplineInput {
   ruleset_url?: string | null;
 }
 
-export type ExtraCategory = "seminar" | "rental" | "afterparty" | "merch";
+export type ExtraCategory =
+  | "seminar"
+  | "rental"
+  | "afterparty"
+  | "merch"
+  | "other_action"
+  | "other_item";
 
 /** Editable extra-item payload (Setup add/patch). */
 export interface ExtraItemInput {
@@ -173,6 +179,11 @@ export interface Discount {
   scope: DiscountCategory[];
 }
 
+export interface Organizer {
+  name: string;
+  link: string | null;
+}
+
 export interface TournamentDetail extends Tournament {
   reservation_validity_days: number;
   reminder_day: number;
@@ -187,7 +198,10 @@ export interface TournamentDetail extends Tournament {
   afterparty_fee: number;
   afterparty_fee_early: number | null;
   location: string | null;
-  organizer_names: string[];
+  description: string | null;
+  qualification_open: boolean;
+  qualification_criteria: string | null;
+  organizers: Organizer[];
   registration_opens: string | null;
   registration_closes: string | null;
   discounts: Discount[];
@@ -257,7 +271,10 @@ export interface OpenTournament {
   has_logo: boolean;
   date: string;
   location: string | null;
-  organizer_names: string[];
+  description: string | null;
+  qualification_open: boolean;
+  qualification_criteria: string | null;
+  organizers: Organizer[];
   registration_status: RegistrationStatus;
   registration_opens_on: string | null;
   disciplines: OpenDiscipline[];

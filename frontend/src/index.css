@@ -552,12 +552,14 @@ button.secondary:disabled {
   color: var(--ink-faded);
 }
 
+.form-fields,
 .param-fields {
   display: flex;
   flex-direction: column;
   gap: 0.6rem;
 }
 
+.form-field,
 .param-field {
   display: flex;
   flex-direction: column;
@@ -569,6 +571,8 @@ button.secondary:disabled {
   color: var(--ink-faded);
 }
 
+.form-field input,
+.form-field textarea,
 .param-field input {
   font: 14px var(--font-ui);
   padding: 0.4rem 0;
@@ -581,9 +585,85 @@ button.secondary:disabled {
   letter-spacing: normal;
 }
 
+.form-field textarea {
+  resize: vertical;
+  min-height: 4.5em;
+  font-family: var(--font-ui);
+}
+
+.form-field input:focus,
+.form-field textarea:focus,
 .param-field input:focus {
   outline: none;
   border-bottom: 2px solid var(--stamp);
+}
+
+.qualification-control {
+  gap: 0.4rem;
+}
+
+.qualification-option {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 14px;
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: normal;
+  color: var(--ink);
+}
+
+.qualification-option input[type="radio"] {
+  accent-color: var(--stamp);
+}
+
+.help-hint {
+  position: relative;
+  display: inline-block;
+  margin-left: 0.35em;
+}
+
+.help-hint-marker {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  padding: 0;
+  border: 1px solid var(--ink-faded);
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--ink-faded);
+  font: 10px/1 var(--font-ui);
+  font-style: italic;
+  text-transform: none;
+  letter-spacing: normal;
+  cursor: default;
+}
+
+.help-hint-box {
+  display: none;
+  position: absolute;
+  z-index: 5;
+  bottom: calc(100% + 0.3rem);
+  left: 0;
+  width: max-content;
+  max-width: 16rem;
+  padding: 0.5rem 0.6rem;
+  background: var(--paper-raised);
+  border: 1px solid var(--ink);
+  border-radius: var(--radius);
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: normal;
+  white-space: normal;
+}
+
+.help-hint-marker:hover + .help-hint-box,
+.help-hint-marker:focus + .help-hint-box {
+  display: block;
 }
 
 .param-save {
@@ -1313,6 +1393,12 @@ tr.row-deleted td.col-actions {
   font-size: 14px;
 }
 
+.detail-description {
+  color: var(--ink);
+  font-size: 14px;
+  white-space: pre-wrap;
+}
+
 /* date and place as responsive columns rather than one long line */
 .home-card-meta {
   display: flex;
@@ -1340,7 +1426,7 @@ tr.row-deleted td.col-actions {
   gap: 0.4rem;
 }
 
-.detail-ruleset-link {
+.detail-inline-link {
   color: var(--ink);
   text-decoration: underline;
   font-size: 12px;

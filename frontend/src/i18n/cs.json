@@ -175,7 +175,8 @@
     "language": "Jazyk komunikace",
     "registration_opens": "Registrace od",
     "registration_closes": "Registrace do",
-    "subtitle": "Podtitul"
+    "subtitle": "Podtitul",
+    "description": "Popis"
   },
   "rail": {
     "operations": "Operace",
@@ -211,14 +212,23 @@
       "logo": "Logo",
       "logoUpload": "Nahrát logo",
       "logoRemove": "Odebrat logo",
-      "logoHint": "PNG nebo JPG, do 512 kB",
-      "logoTooLarge": "Obrázek je příliš velký (max 512 kB).",
-      "logoNotImage": "Tento soubor není obrázek."
+      "logoHint": "PNG nebo JPG, do 8 MB",
+      "logoTooLarge": "Obrázek je příliš velký (max 8 MB).",
+      "logoUnsupportedFormat": "Tento soubor není podporovaný formát obrázku.",
+      "logoNotAuthorized": "Nemáš oprávnění nahrát logo tohoto turnaje.",
+      "logoUploadFailed": "Nahrání loga se nezdařilo (chyba {{status}}).",
+      "qualification": "Kvalifikace",
+      "qualificationOpen": "Otevřeno pro všechny",
+      "qualificationRequired": "Vyžadována kvalifikace",
+      "qualificationCriteria": "Kvalifikační kritéria",
+      "qualificationCriteriaHint": "Například \"mistrovství ČR, HR top 500\".",
+      "qualificationCriteriaRequired": "Zadej kvalifikační kritéria, nebo přepni zpět na \"otevřeno pro všechny\"."
     },
     "organizers": {
       "title": "Pořadatelé (kluby/subjekty)",
       "add": "Přidat pořadatele",
-      "placeholder": "Název klubu nebo subjektu"
+      "placeholder": "Název klubu nebo subjektu",
+      "linkPlaceholder": "Odkaz (nepovinné)"
     },
     "disciplines": {
       "title": "Disciplíny",
@@ -229,7 +239,11 @@
       "when": "Kdy (nepovinné)",
       "where": "Kde (nepovinné)",
       "rulesetName": "Pravidla (nepovinné)",
-      "rulesetUrl": "Odkaz na pravidla (nepovinné)"
+      "rulesetUrl": "Odkaz na pravidla (nepovinné)",
+      "whenHint": "Přibližný čas, například \"sobota dopoledne\".",
+      "whereHint": "Místo v rámci areálu, například \"Hlavní sál\".",
+      "rulesetNameHint": "Krátký název pravidel, například \"Right of Way\".",
+      "rulesetUrlHint": "Odkaz na úplné znění pravidel, pokud existuje."
     },
     "extras": {
       "title": "Doplňkové služby",
@@ -242,7 +256,9 @@
         "seminar": "Seminář",
         "rental": "Zapůjčení",
         "afterparty": "Afterparty",
-        "merch": "Merch"
+        "merch": "Merch",
+        "other_action": "Jiná akce",
+        "other_item": "Jiné zboží"
       },
       "when": "Kdy (nepovinné)",
       "where": "Kde (nepovinné)",
@@ -385,7 +401,9 @@
     "backToInfo": "Zpět na detail",
     "otherActions": "Další aktivity",
     "rulesetLabel": "Pravidla",
-    "fencersCount": "{{taken}}/{{capacity}} šermířů"
+    "fencersCount": "{{taken}}/{{capacity}} šermířů",
+    "qualificationOpen": "Otevřeno pro všechny",
+    "qualificationRequired": "Kvalifikace: {{criteria}}"
   },
   "form": {
     "title": "Registrace",

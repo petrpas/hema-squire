@@ -1,16 +1,4 @@
-# tournament-admin Specification
-
-## Purpose
-Define and configure tournaments in a multi-tournament deployment: disciplines, pricing, payment and reservation parameters, and organizer authorization.
-
-## Requirements
-
-### Requirement: Multiple tournaments in one deployment
-The system SHALL host multiple tournaments concurrently in a single deployment. Registrations, rules, operation parameters, pricing, and exports SHALL be tournament-scoped; fencer accounts SHALL be shared globally.
-
-#### Scenario: Two tournaments run in parallel
-- **WHEN** organizers administer two tournaments at the same time
-- **THEN** the data, rules, and parameters of one tournament are invisible to and unaffected by the other
+## MODIFIED Requirements
 
 ### Requirement: Tournament definition
 A tournament SHALL be defined by internal name, display name, an optional subtitle, an optional logo, date, communication language, location (free text), an optional description, a qualification statement, a list of titular organizers, and a set of disciplines. The subtitle is free text that MAY be longer than the display name and is frequently empty; every presentation of the tournament SHALL render correctly whether or not the subtitle is set. The logo is an optional image supplied by the organizer, stored with the tournament and served for display; the system SHALL bound its size on upload (reject oversized uploads and re-encode to a bounded image) so it stays small. The description is optional free-form plain text of arbitrary length, stored and presented verbatim with its line breaks preserved; it SHALL NOT be interpreted as markup of any kind. Titular organizers are free-text names of clubs or other entities shown publicly as the tournament's organizers, each with an optional link; they are independent of account-based console access. Each discipline SHALL have a code and human-readable name drawn from the HEMA taxonomy (weapon LS/SA/RA/RD/SB × gender Open/Women/Men × material Steel/Plastic), a capacity limit, a unit price, optional schedule fields (`when`, `where`) mainly for multi-day events, and an optional ruleset consisting of a short style name and an optional external link. In the console, a discipline SHALL be identified by its name in emphasized text, and each of its optional fields (`when`, `where`, ruleset name, ruleset link) SHALL carry a help hint stating what belongs in it. Subtitle, logo, description, qualification, disciplines (including their schedule and ruleset fields) and titular organizers SHALL be editable in the console Setup phase, disciplines and organizers as row tables with add and remove. The Setup section carrying the tournament's own identity fields SHALL NOT be given a section heading of its own.
@@ -90,6 +78,8 @@ Tournaments with no extra-service items and no discounts SHALL keep the legacy c
 - **WHEN** totals are recomputed for a tournament that has no extra-service items and no discounts
 - **THEN** the legacy per-discipline fees and fixed extras produce the same totals as before this change
 
+## ADDED Requirements
+
 ### Requirement: Tournament qualification statement
 Each tournament SHALL carry a qualification statement consisting of an openness flag and optional criteria text. The flag SHALL default to open, so a tournament that never sets it presents as open to everyone. When the organizer marks the tournament as requiring qualification, criteria text SHALL be required and SHALL be free text (for example "national championship placement, HR top 500"); the field SHALL carry a help hint offering such examples. Marking the tournament open again SHALL clear the criteria text. The statement SHALL be editable in the Setup phase between the registration dates and the logo, and SHALL be presented wherever the tournament is described. The statement is informational: it SHALL NOT restrict, block, or flag any registration.
 
@@ -131,88 +121,3 @@ A failed logo upload SHALL tell the organizer which of the distinguishable cause
 #### Scenario: Other failure not blamed on the file
 - **WHEN** the upload fails for any other reason, such as an authorization or server error
 - **THEN** the message reflects that cause and does not claim the file is not an image
-
-### Requirement: Payment and reservation parameters
-Per tournament, the organizer SHALL configure: reservation validity in days, reminder day, amount-matching tolerance in percent, refundable-until date, the bank account used in payment instructions, and the public-list treatment of unpaid registrations.
-
-#### Scenario: Parameters applied
-- **WHEN** the organizer sets reservation validity to 10 days and the reminder to day 5
-- **THEN** new reservations expire after 10 unpaid days and reminder emails go out on day 5
-
-### Requirement: Organizer authorization
-Each tournament SHALL have exactly one Tournament Owner (initially the creator) and a team of Tournament Organizers. Console access SHALL be restricted to the Tournament Owner and team members. The Tournament Owner SHALL manage the team: adding any existing account by email (no global role required) and removing members. Team membership grants full console access; ownership additionally grants team management, ownership transfer, and delete/cancel.
-
-#### Scenario: Unauthorized user
-- **WHEN** a signed-in account that is neither the Tournament Owner nor a team member opens the tournament's console
-- **THEN** access is denied
-
-#### Scenario: Owner adds a team member
-- **WHEN** the Tournament Owner adds a fencer's account to the team by email
-- **THEN** that account gains full console access to the tournament without needing any global role
-
-#### Scenario: Team member cannot manage the team
-- **WHEN** a Tournament Organizer who is not the owner attempts to add or remove team members
-- **THEN** the request is rejected with an authorization error
-
-### Requirement: In-app tournament creation
-An account holding the global Organizer role or higher SHALL be able to create a tournament from the tournament picker via a minimal dialog asking display name and date. The slug SHALL be auto-derived from name and date and be editable before submission. The creator SHALL become the tournament's Tournament Owner and land in the console's Setup phase. Accounts below the Organizer role SHALL NOT be able to create tournaments.
-
-#### Scenario: Create from picker
-- **WHEN** an account with the Organizer role submits the "New tournament" dialog with a name and date
-- **THEN** the tournament is created with the derived slug, the account becomes its Tournament Owner, and the console opens on the Setup phase
-
-#### Scenario: Slug collision
-- **WHEN** the derived slug is already taken
-- **THEN** creation is rejected with a clear error and the user can edit the slug
-
-#### Scenario: Fencer cannot create
-- **WHEN** an account with only the Fencer role attempts to create a tournament
-- **THEN** creation is rejected with an authorization error
-
-### Requirement: Tournament ownership transfer
-The Tournament Owner SHALL be able to transfer ownership to a team member; on transfer the previous owner SHALL remain on the team. A global Admin SHALL be able to assign or reassign a tournament's owner as a fallback (for example when the owner's account is gone or the tournament has no owner).
-
-#### Scenario: Owner hands over
-- **WHEN** the Tournament Owner transfers ownership to a team member
-- **THEN** that member becomes the Tournament Owner and the previous owner remains a Tournament Organizer
-
-#### Scenario: Admin fallback
-- **WHEN** a global Admin assigns a new owner to a tournament whose owner account is unavailable
-- **THEN** the designated account becomes the Tournament Owner
-
-### Requirement: Tournament deletion and cancellation
-The Tournament Owner SHALL be able to hard-delete a tournament only while it has no registrations of any state. Once registrations exist, the owner SHALL instead be able to cancel the tournament: a cancelled tournament is hidden from public listings, rejects new registrations, and retains all data including financial history; its console remains accessible.
-
-#### Scenario: Delete while empty
-- **WHEN** the Tournament Owner deletes a tournament with no registrations
-- **THEN** the tournament and its configuration are removed
-
-#### Scenario: Delete blocked by registrations
-- **WHEN** the Tournament Owner attempts to hard-delete a tournament that has registrations
-- **THEN** deletion is rejected and cancellation is offered instead
-
-#### Scenario: Cancelled tournament
-- **WHEN** the Tournament Owner cancels a tournament with registrations
-- **THEN** the tournament disappears from public listings, new registrations are rejected, and the console and all existing data remain accessible
-
-### Requirement: Registration window
-A tournament SHALL have optional registration-opens and registration-closes dates. Registration SHALL be unavailable before the opens date (when set) and after the closes date (when set); with no closes date, registration stays available until the tournament date. With no opens date, registration is available as soon as setup is complete.
-
-#### Scenario: Before opening
-- **WHEN** a fencer visits registration before the registration-opens date
-- **THEN** registration is unavailable and the opening date is shown
-
-#### Scenario: No close date set
-- **WHEN** no registration-closes date is set
-- **THEN** registration remains available through the tournament date
-
-### Requirement: Setup completeness
-Mandatory setup SHALL comprise: display name, date, location, at least one titular organizer, and at least one discipline with a unit price. The Setup phase SHALL show a completeness checklist naming each missing item. A tournament with incomplete mandatory setup SHALL NOT accept registrations.
-
-#### Scenario: Checklist shows gaps
-- **WHEN** the organizer opens Setup for a tournament without location and without discipline prices
-- **THEN** the checklist lists location and the missing unit prices as blocking registration
-
-#### Scenario: Setup completed
-- **WHEN** the last mandatory item is filled
-- **THEN** the checklist reports the tournament ready and registration becomes available (subject to the registration window)

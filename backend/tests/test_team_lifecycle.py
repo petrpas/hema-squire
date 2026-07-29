@@ -216,7 +216,7 @@ def test_delete_blocked_by_registrations(client, auth_headers):
     slug = make_tournament(client, owner)
     client.patch(
         f"/api/tournaments/{slug}",
-        json={"location": "Brno", "organizer_names": ["Cup Org"]},
+        json={"location": "Brno", "organizers": [{"name": "Cup Org", "link": None}]},
         headers=owner,
     )
     add_priced_discipline(client, owner, slug)
@@ -233,7 +233,7 @@ def test_cancel_hides_from_public_list_but_keeps_console(client, auth_headers):
     slug = make_tournament(client, owner)
     client.patch(
         f"/api/tournaments/{slug}",
-        json={"location": "Brno", "organizer_names": ["Cup Org"]},
+        json={"location": "Brno", "organizers": [{"name": "Cup Org", "link": None}]},
         headers=owner,
     )
     add_priced_discipline(client, owner, slug)
@@ -260,7 +260,7 @@ def test_cancelled_tournament_rejects_new_registrations_as_closed(client, auth_h
     slug = make_tournament(client, owner)
     client.patch(
         f"/api/tournaments/{slug}",
-        json={"location": "Brno", "organizer_names": ["Cup Org"]},
+        json={"location": "Brno", "organizers": [{"name": "Cup Org", "link": None}]},
         headers=owner,
     )
     add_priced_discipline(client, owner, slug)

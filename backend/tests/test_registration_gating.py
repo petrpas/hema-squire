@@ -47,7 +47,7 @@ def test_incomplete_setup_rejects_registration(client, auth_headers):
 def test_missing_discipline_price_rejects_registration(client, auth_headers):
     organizer = auth_headers()
     slug = make_tournament(
-        client, organizer, location="Brno", organizer_names=["Cup Org"]
+        client, organizer, location="Brno", organizers=[{"name": "Cup Org", "link": None}]
     )
     client.post(
         f"/api/tournaments/{slug}/disciplines",
@@ -66,7 +66,7 @@ def test_before_opening_date_rejects_registration(client, auth_headers):
         client,
         organizer,
         location="Brno",
-        organizer_names=["Cup Org"],
+        organizers=[{"name": "Cup Org", "link": None}],
         registration_opens=str(TODAY + timedelta(days=1)),
     )
     add_priced_discipline(client, organizer, slug)
@@ -82,7 +82,7 @@ def test_after_closing_date_rejects_registration(client, auth_headers):
         client,
         organizer,
         location="Brno",
-        organizer_names=["Cup Org"],
+        organizers=[{"name": "Cup Org", "link": None}],
         registration_closes=str(TODAY - timedelta(days=1)),
     )
     add_priced_discipline(client, organizer, slug)
@@ -98,7 +98,7 @@ def test_within_window_and_complete_setup_accepts_registration(client, auth_head
         client,
         organizer,
         location="Brno",
-        organizer_names=["Cup Org"],
+        organizers=[{"name": "Cup Org", "link": None}],
         registration_opens=str(TODAY - timedelta(days=1)),
         registration_closes=str(TODAY + timedelta(days=1)),
     )
@@ -111,7 +111,7 @@ def test_within_window_and_complete_setup_accepts_registration(client, auth_head
 def test_no_close_date_stays_open_through_tournament_date(client, auth_headers):
     organizer = auth_headers()
     slug = make_tournament(
-        client, organizer, location="Brno", organizer_names=["Cup Org"]
+        client, organizer, location="Brno", organizers=[{"name": "Cup Org", "link": None}]
     )
     add_priced_discipline(client, organizer, slug)
     fencer = auth_headers(email="f1@example.com", name="F1")
@@ -127,7 +127,7 @@ def test_gate_does_not_block_cancellation_or_admission_on_incomplete_setup(
     on that existing registration (gate applies only to new submissions)."""
     organizer = auth_headers()
     slug = make_tournament(
-        client, organizer, location="Brno", organizer_names=["Cup Org"]
+        client, organizer, location="Brno", organizers=[{"name": "Cup Org", "link": None}]
     )
     client.post(
         f"/api/tournaments/{slug}/disciplines",
@@ -142,7 +142,7 @@ def test_gate_does_not_block_cancellation_or_admission_on_incomplete_setup(
     assert waiting_body["entries"][0]["is_substitute"] is True
 
     # organizer clears the titular organizers, making setup incomplete again
-    client.patch(f"/api/tournaments/{slug}", json={"organizer_names": []}, headers=organizer)
+    client.patch(f"/api/tournaments/{slug}", json={"organizers": []}, headers=organizer)
 
     cancelled = client.post(f"/api/tournaments/{slug}/my-registration/cancel", headers=fencer)
     assert cancelled.status_code == 200
@@ -166,7 +166,7 @@ def test_gate_does_not_block_cancellation_or_admission_on_incomplete_setup(
 def test_unknown_extra_item_rejected(client, auth_headers):
     organizer = auth_headers()
     slug = make_tournament(
-        client, organizer, location="Brno", organizer_names=["Cup Org"]
+        client, organizer, location="Brno", organizers=[{"name": "Cup Org", "link": None}]
     )
     add_priced_discipline(client, organizer, slug)
     fencer = auth_headers(email="f1@example.com", name="F1")
@@ -178,7 +178,7 @@ def test_unknown_extra_item_rejected(client, auth_headers):
 def test_extra_quantity_over_limit_rejected(client, auth_headers):
     organizer = auth_headers()
     slug = make_tournament(
-        client, organizer, location="Brno", organizer_names=["Cup Org"]
+        client, organizer, location="Brno", organizers=[{"name": "Cup Org", "link": None}]
     )
     add_priced_discipline(client, organizer, slug)
     item = client.post(
@@ -197,7 +197,7 @@ def test_extra_quantity_over_limit_rejected(client, auth_headers):
 def test_extras_selection_billed_and_itemized_in_output(client, auth_headers):
     organizer = auth_headers()
     slug = make_tournament(
-        client, organizer, location="Brno", organizer_names=["Cup Org"]
+        client, organizer, location="Brno", organizers=[{"name": "Cup Org", "link": None}]
     )
     add_priced_discipline(client, organizer, slug)
     item = client.post(

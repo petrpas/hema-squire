@@ -14,7 +14,7 @@ def setup_tournament(client, organizer, early_bird=False):
         "afterparty_fee": 300,
         "refundable_until": "2026-11-01",
         "location": "Brno",
-        "organizer_names": ["Cup Org"],
+        "organizers": [{"name": "Cup Org", "link": None}],
     }
     if early_bird:
         patch |= {

@@ -31,7 +31,7 @@ from app.models import (
     TournamentOrganizer,
 )
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 
 _TOURNAMENT_FIELDS = [
     "slug", "display_name", "date", "language",
@@ -39,7 +39,8 @@ _TOURNAMENT_FIELDS = [
     "refundable_until", "bank_account", "unpaid_list_treatment",
     "early_bird_until", "weapon_rental_fee", "weapon_rental_fee_early",
     "afterparty_fee", "afterparty_fee_early",
-    "location", "organizer_names", "discounts",
+    "location", "description", "qualification_open", "qualification_criteria",
+    "organizers", "discounts",
     "registration_opens", "registration_closes",
 ]
 
@@ -187,9 +188,17 @@ def _parse_date(value: str | None) -> datetime.date | None:
 
 
 def restore_tournament(session: Session, data: dict, actor: Fencer) -> Tournament:
-    if data.get("schema_version") != SCHEMA_VERSION:
+    version = data.get("schema_version")
+    if version not in (1, SCHEMA_VERSION):
         raise HTTPException(status_code=422, detail="unsupported_schema_version")
-    doc = data["tournament"]
+    doc = dict(data["tournament"])
+    if version == 1:
+        # v1 carried organizer_names: list[str]; normalize to the v2 shape
+        names = doc.pop("organizer_names", [])
+        doc["organizers"] = [{"name": name, "link": None} for name in names]
+        doc.setdefault("description", None)
+        doc.setdefault("qualification_open", True)
+        doc.setdefault("qualification_criteria", None)
     if session.scalar(select(Tournament).where(Tournament.slug == doc["slug"])):
         raise HTTPException(status_code=409, detail="slug_taken")
 

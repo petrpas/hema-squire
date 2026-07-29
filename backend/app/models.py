@@ -58,12 +58,25 @@ class RefundState(enum.StrEnum):
 
 class ExtraCategory(enum.StrEnum):
     """Categories of billable extra items; discount scopes reference these
-    (plus the implicit "discipline" category), so they form a closed enum."""
+    (plus the implicit "discipline" category), so they form a closed enum.
+
+    Divides into "action" categories (SEMINAR, AFTERPARTY, OTHER_ACTION —
+    happen at a time and place) and "item" categories (RENTAL, MERCH,
+    OTHER_ITEM — goods); see ACTION_CATEGORIES below."""
 
     SEMINAR = "seminar"
     RENTAL = "rental"
     AFTERPARTY = "afterparty"
     MERCH = "merch"
+    OTHER_ACTION = "other_action"
+    OTHER_ITEM = "other_item"
+
+
+# action categories offer `when`/`where` and no quantity limit (stored as 1);
+# item categories offer a quantity limit and no `when`/`where` (design D4)
+ACTION_CATEGORIES = frozenset(
+    {ExtraCategory.SEMINAR, ExtraCategory.AFTERPARTY, ExtraCategory.OTHER_ACTION}
+)
 
 
 def str_enum(enum_cls: type[enum.StrEnum]) -> Enum:
@@ -134,9 +147,17 @@ class Tournament(Base):
     cancelled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     language: Mapped[str] = mapped_column(String(10), default="cs")
     location: Mapped[str | None] = mapped_column(String(300))
-    # public-facing organizer names (clubs/entities); independent of the
-    # account-based console access in TournamentOrganizer
-    organizer_names: Mapped[list] = mapped_column(JSON, default=list)
+    # optional free-form plain text, presented with line breaks preserved;
+    # never interpreted as markup
+    description: Mapped[str | None] = mapped_column(Text)
+    # informational only; never gates registration (design D7)
+    qualification_open: Mapped[bool] = mapped_column(default=True)
+    qualification_criteria: Mapped[str | None] = mapped_column(Text)
+    # public-facing titular organizers (clubs/entities), each {"name", "link"};
+    # independent of the account-based console access in TournamentOrganizer.
+    # Entries may still be bare strings from a partially-migrated or
+    # restored-from-old-export deployment; read via organizers_list().
+    organizers: Mapped[list] = mapped_column(JSON, default=list)
     registration_opens: Mapped[date | None]
     registration_closes: Mapped[date | None]
 
@@ -177,7 +198,11 @@ class Tournament(Base):
     disciplines: Mapped[list[Discipline]] = relationship(back_populates="tournament")
     extra_items: Mapped[list[ExtraItem]] = relationship(back_populates="tournament")
     registrations: Mapped[list[Registration]] = relationship(back_populates="tournament")
-    organizers: Mapped[list[TournamentOrganizer]] = relationship(back_populates="tournament")
+    # account-based console access rows (exposed via the /team API); distinct
+    # from `organizers`, the public-facing titular-organizer name+link list
+    console_organizers: Mapped[list[TournamentOrganizer]] = relationship(
+        back_populates="tournament"
+    )
 
 
 class Discipline(Base):
@@ -259,7 +284,7 @@ class TournamentOrganizer(Base):
     tournament_id: Mapped[int] = mapped_column(ForeignKey("tournaments.id"))
     fencer_id: Mapped[int] = mapped_column(ForeignKey("fencers.id"))
 
-    tournament: Mapped[Tournament] = relationship(back_populates="organizers")
+    tournament: Mapped[Tournament] = relationship(back_populates="console_organizers")
     fencer: Mapped[Fencer] = relationship()
 
 
