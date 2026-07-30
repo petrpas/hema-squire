@@ -1,9 +1,9 @@
 """Composition of fencer-facing emails, localized to the tournament's
 communication language."""
 
-from app import spayd
+from app import pricing, spayd
 from app.config import settings
-from app.i18n import t
+from app.i18n import format_money, t
 from app.mail import Mailer, build_message
 from app.models import Fencer, Registration, Tournament
 
@@ -23,10 +23,35 @@ def _summary_lines(registration: Registration, lang: str) -> str:
         lines.append(f"  {t('email.confirmation.afterparty', lang)}")
     for selection in registration.extra_selections:
         qty_suffix = f" ×{selection.qty}" if selection.qty > 1 else ""
-        lines.append(f"  {selection.item.name}{qty_suffix}")
+        # the option answer belongs beside its item, labelled as the organizer
+        # named it ("size: M"), so the fencer can check what they ordered
+        option = ""
+        if selection.option_value:
+            label = selection.item.option_label or t("email.confirmation.option", lang)
+            option = f" ({label}: {selection.option_value})"
+        lines.append(f"  {selection.item.name}{qty_suffix}{option}")
     if registration.aftersparring:
         lines.append(f"  {t('email.confirmation.aftersparring', lang)}")
     return "\n".join(lines)
+
+
+def _eur_note(tournament: Tournament, lang: str) -> str:
+    """The sentence pointing at the second, EUR-denominated QR; empty for a
+    tournament that takes only its primary currency."""
+    if not tournament.shows_eur:
+        return ""
+    return t("email.confirmation.eur_note", lang)
+
+
+def _total_text(tournament: Tournament, registration: Registration) -> str:
+    """The amount due, with the EUR equivalent appended when the tournament
+    takes EUR — one string so every email body has a single {total} slot."""
+    lang = tournament.language
+    primary = format_money(registration.total_amount, tournament.primary_currency, lang)
+    eur = pricing.to_eur(registration.total_amount, tournament)
+    if eur is None:
+        return primary
+    return f"{primary} ({format_money(eur, 'EUR', lang)})"
 
 
 def send_registration_confirmation(
@@ -54,27 +79,55 @@ def send_registration_confirmation(
         name=fencer.display_name,
         tournament=tournament.display_name,
         summary=_summary_lines(registration, lang),
-        total=registration.total_amount,
+        total=_total_text(tournament, registration),
+        eur_note=_eur_note(tournament, lang),
         account=tournament.bank_account or "?",
         vs=registration.vs,
         expires=registration.expires_at.date().isoformat() if registration.expires_at else "-",
     )
-    qr = payment_qr(tournament, registration)
-    mailer.send(build_message(fencer.email, settings.email_sender, subject, body, qr=qr))
-
-
-def payment_qr(tournament: Tournament, registration: Registration) -> bytes | None:
-    if not tournament.bank_account:
-        return None
-    payment_message = f"VS{registration.vs} {tournament.display_name}"
-    return spayd.qr_png(
-        spayd.spayd_string(
-            tournament.bank_account,
-            registration.total_amount,
-            registration.vs,
-            payment_message,
+    qr, qr_eur = payment_qrs(tournament, registration)
+    mailer.send(
+        build_message(
+            fencer.email, settings.email_sender, subject, body, qr=qr, qr_eur=qr_eur
         )
     )
+
+
+def payment_message(tournament: Tournament, registration: Registration) -> str:
+    return f"VS{registration.vs} {tournament.display_name}"
+
+
+def payment_spayd(tournament: Tournament, registration: Registration) -> tuple[str, str | None]:
+    """The primary SPAYD string and, for a tournament that also takes EUR, a
+    second one denominated in EUR against the same IBAN (design D4)."""
+    message = payment_message(tournament, registration)
+    primary = spayd.spayd_string(
+        tournament.bank_account,
+        registration.total_amount,
+        registration.vs,
+        message,
+        currency=str(tournament.primary_currency),
+    )
+    eur_amount = pricing.to_eur(registration.total_amount, tournament)
+    if eur_amount is None:
+        return primary, None
+    eur = spayd.spayd_string(
+        tournament.bank_account,
+        eur_amount,
+        registration.vs,
+        message,
+        currency="EUR",
+    )
+    return primary, eur
+
+
+def payment_qrs(
+    tournament: Tournament, registration: Registration
+) -> tuple[bytes | None, bytes | None]:
+    if not tournament.bank_account:
+        return None, None
+    primary, eur = payment_spayd(tournament, registration)
+    return spayd.qr_png(primary), (spayd.qr_png(eur) if eur else None)
 
 
 def send_payment_reminder(
@@ -87,13 +140,18 @@ def send_payment_reminder(
         lang,
         name=fencer.display_name,
         tournament=tournament.display_name,
-        total=registration.total_amount,
+        total=_total_text(tournament, registration),
+        eur_note=_eur_note(tournament, lang),
         account=tournament.bank_account or "?",
         vs=registration.vs,
         expires=registration.expires_at.date().isoformat() if registration.expires_at else "-",
     )
-    qr = payment_qr(tournament, registration)
-    mailer.send(build_message(fencer.email, settings.email_sender, subject, body, qr=qr))
+    qr, qr_eur = payment_qrs(tournament, registration)
+    mailer.send(
+        build_message(
+            fencer.email, settings.email_sender, subject, body, qr=qr, qr_eur=qr_eur
+        )
+    )
 
 
 def send_reservation_expired(
@@ -121,7 +179,7 @@ def send_payment_received(
         lang,
         name=fencer.display_name,
         tournament=tournament.display_name,
-        total=registration.total_amount,
+        total=format_money(registration.total_amount, tournament.primary_currency, lang),
         vs=registration.vs,
     )
     mailer.send(build_message(fencer.email, settings.email_sender, subject, body))

@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import {
   ApiError,
   type Account,
+  type Currency,
   type Discount,
   type DiscountCondition,
   type DiscountEffect,
@@ -17,6 +18,14 @@ import {
   logoUrl,
 } from "./api";
 import HelpHint from "./HelpHint";
+
+const CURRENCIES: Currency[] = ["CZK", "EUR"];
+
+/** Option choices are typed as one comma-separated line; the backend trims and
+ *  deduplicates, so this only has to split. */
+function splitChoices(value: string): string[] {
+  return value.split(",").map((choice) => choice.trim()).filter(Boolean);
+}
 
 const EXTRA_CATEGORIES: ExtraCategory[] = [
   "seminar",
@@ -54,6 +63,12 @@ const IDENTITY_FIELDS = [
   { key: "language", type: "text" },
   { key: "registration_opens", type: "date" },
   { key: "registration_closes", type: "date" },
+  // shown only on the registration form, unlike description
+  {
+    key: "registration_instructions",
+    type: "textarea",
+    hint: "setup.identity.registrationInstructionsHint",
+  },
 ] as const;
 
 function IdentitySection({
@@ -157,7 +172,10 @@ function IdentitySection({
         {IDENTITY_FIELDS.map((field) =>
           field.type === "textarea" ? (
             <label key={field.key} className="form-field">
-              <span>{t(`param.${field.key}`)}</span>
+              <span>
+                {t(`param.${field.key}`)}
+                {"hint" in field && <HelpHint text={t(field.hint)} />}
+              </span>
               <textarea
                 value={values[field.key] ?? ""}
                 onChange={(event) => {
@@ -261,6 +279,133 @@ function IdentitySection({
         <span className="rail-hint">{t("setup.identity.logoHint")}</span>
         {logoError && <span className="login-error">{logoError}</span>}
       </div>
+      <button className="secondary param-save" onClick={() => void save()} disabled={!dirty || busy}>
+        {t("rail.save")}
+      </button>
+    </section>
+  );
+}
+
+// a rate outside this band is almost certainly the inverse or a typo; warn,
+// never block — the organizer may know something we do not (design risk note)
+const PLAUSIBLE_RATE = { min: 0.5, max: 1000 };
+
+function CurrencySection({
+  detail,
+  slug,
+  onSaved,
+}: {
+  detail: TournamentDetail;
+  slug: string;
+  onSaved: () => void;
+}) {
+  const { t } = useTranslation();
+  const [currency, setCurrency] = useState<Currency>("CZK");
+  const [eurPayments, setEurPayments] = useState(false);
+  const [rate, setRate] = useState("");
+  const [dirty, setDirty] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setCurrency(detail.primary_currency);
+    setEurPayments(detail.eur_payments_enabled);
+    setRate(detail.eur_rate ?? "");
+    setError(null);
+    setDirty(false);
+  }, [detail]);
+
+  // an EUR-priced tournament has nothing to convert to
+  const offersEurChoice = currency !== "EUR";
+  const rateNumber = Number(rate);
+  const implausible =
+    offersEurChoice &&
+    eurPayments &&
+    rate !== "" &&
+    Number.isFinite(rateNumber) &&
+    (rateNumber < PLAUSIBLE_RATE.min || rateNumber > PLAUSIBLE_RATE.max);
+
+  async function save() {
+    setBusy(true);
+    setError(null);
+    try {
+      await api.updateTournament(slug, {
+        primary_currency: currency,
+        eur_payments_enabled: offersEurChoice ? eurPayments : true,
+        eur_rate: offersEurChoice && eurPayments && rate !== "" ? rate : null,
+      });
+      setDirty(false);
+      onSaved();
+    } catch (err) {
+      if (err instanceof ApiError && err.detail === "eur_rate_required") {
+        setError(t("setup.currency.rateRequired"));
+      } else {
+        throw err;
+      }
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <section className="rail-card">
+      <h2>{t("setup.currency.title")}</h2>
+      <div className="form-fields">
+        <label className="form-field">
+          <span>{t("setup.currency.primary")}</span>
+          <select
+            value={currency}
+            onChange={(event) => {
+              setCurrency(event.target.value as Currency);
+              setDirty(true);
+            }}
+          >
+            {CURRENCIES.map((code) => (
+              <option key={code} value={code}>
+                {code}
+              </option>
+            ))}
+          </select>
+        </label>
+        {offersEurChoice && (
+          <>
+            <label className="checkbox-chip">
+              <input
+                type="checkbox"
+                checked={eurPayments}
+                onChange={(event) => {
+                  setEurPayments(event.target.checked);
+                  setDirty(true);
+                }}
+              />
+              {t("setup.currency.eurPayments")}
+            </label>
+            {eurPayments && (
+              <label className="form-field">
+                <span>
+                  {t("setup.currency.rate")}
+                  <HelpHint text={t("setup.currency.rateHint")} />
+                </span>
+                <input
+                  type="number"
+                  min={0}
+                  step="0.01"
+                  value={rate}
+                  onChange={(event) => {
+                    setRate(event.target.value);
+                    setDirty(true);
+                  }}
+                />
+              </label>
+            )}
+          </>
+        )}
+      </div>
+      {implausible && <p className="login-error">{t("setup.currency.rateWarning")}</p>}
+      {offersEurChoice && eurPayments && (
+        <p className="rail-hint">{t("setup.currency.rateNote")}</p>
+      )}
+      {error && <p className="login-error">{error}</p>}
       <button className="secondary param-save" onClick={() => void save()} disabled={!dirty || busy}>
         {t("rail.save")}
       </button>
@@ -478,7 +623,7 @@ function DisciplinesSection({
           <tr>
             <th>{t("setup.disciplines.code")}</th>
             <th>{t("setup.disciplines.capacity")}</th>
-            <th>{t("setup.disciplines.fee")}</th>
+            <th>{t("setup.disciplines.fee", { currency: detail.primary_currency })}</th>
             <th className="col-actions" />
           </tr>
         </thead>
@@ -669,7 +814,9 @@ function ExtraItemsSection({
       draft.max_qty !== item.max_qty ||
       (draft.schedule_when ?? "") !== (item.schedule_when ?? "") ||
       (draft.schedule_where ?? "") !== (item.schedule_where ?? "") ||
-      (draft.remark ?? "") !== (item.remark ?? "")
+      (draft.remark ?? "") !== (item.remark ?? "") ||
+      (draft.option_label ?? "") !== (item.option_label ?? "") ||
+      draft.option_choices.join(",") !== item.option_choices.join(",")
     );
   }
 
@@ -685,6 +832,9 @@ function ExtraItemsSection({
         schedule_when: draft.schedule_when || null,
         schedule_where: draft.schedule_where || null,
         remark: draft.remark || null,
+        option_label: draft.option_label || null,
+        // an option-less item must not carry leftover choices
+        option_choices: draft.option_label ? draft.option_choices : [],
       });
       onSaved();
     } finally {
@@ -727,7 +877,7 @@ function ExtraItemsSection({
           <tr>
             <th>{t("setup.extras.name")}</th>
             <th>{t("setup.extras.category")}</th>
-            <th>{t("setup.extras.price")}</th>
+            <th>{t("setup.extras.price", { currency: detail.primary_currency })}</th>
             <th>{t("setup.extras.maxQty")}</th>
             <th className="col-actions" />
           </tr>
@@ -866,6 +1016,41 @@ function ExtraItemsSection({
                         }
                       />
                     </label>
+                    <label className="param-field">
+                      <span>
+                        {t("setup.extras.optionLabel")}
+                        <HelpHint text={t("setup.extras.optionLabelHint")} />
+                      </span>
+                      <input
+                        value={draft.option_label ?? ""}
+                        onChange={(event) =>
+                          setDrafts({
+                            ...drafts,
+                            [item.id]: { ...draft, option_label: event.target.value },
+                          })
+                        }
+                      />
+                    </label>
+                    {draft.option_label && (
+                      <label className="param-field">
+                        <span>
+                          {t("setup.extras.optionChoices")}
+                          <HelpHint text={t("setup.extras.optionChoicesHint")} />
+                        </span>
+                        <input
+                          value={draft.option_choices.join(", ")}
+                          onChange={(event) =>
+                            setDrafts({
+                              ...drafts,
+                              [item.id]: {
+                                ...draft,
+                                option_choices: splitChoices(event.target.value),
+                              },
+                            })
+                          }
+                        />
+                      </label>
+                    )}
                   </div>
                 </td>
               </tr>
@@ -1060,7 +1245,9 @@ function DiscountsSection({
                       updateEffect(index, { kind: event.target.value as DiscountEffect["kind"] })
                     }
                   >
-                    <option value="fixed">{t("setup.discounts.fixed")}</option>
+                    <option value="fixed">
+                      {t("setup.discounts.fixed", { currency: detail.primary_currency })}
+                    </option>
                     <option value="percent">{t("setup.discounts.percent")}</option>
                   </select>
                   <input
@@ -1353,6 +1540,7 @@ export default function SetupPanel({
     <div className="setup-panel">
       <ChecklistSection detail={detail} />
       <IdentitySection detail={detail} slug={slug} onSaved={onSaved} />
+      <CurrencySection detail={detail} slug={slug} onSaved={onSaved} />
       <OrganizersSection detail={detail} slug={slug} onSaved={onSaved} />
       <DisciplinesSection
         detail={detail}

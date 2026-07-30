@@ -95,7 +95,10 @@ export default function ParamPanel({
       <div className="param-fields">
         {fields.map((field) => (
           <label key={field.key} className="param-field">
-            <span>{t(`param.${field.key}`)}</span>
+            {/* fee labels name the tournament's currency rather than baking it in */}
+            <span>
+              {t(`param.${field.key}`, { currency: detail?.primary_currency ?? "CZK" })}
+            </span>
             <input
               type={field.type}
               value={values[field.key] ?? ""}

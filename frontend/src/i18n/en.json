@@ -161,8 +161,8 @@
   },
   "param": {
     "early_bird_until": "Early bird until",
-    "weapon_rental_fee": "Weapon rental fee (CZK)",
-    "afterparty_fee": "Afterparty fee (CZK)",
+    "weapon_rental_fee": "Weapon rental fee ({{currency}})",
+    "afterparty_fee": "Afterparty fee ({{currency}})",
     "reservation_validity_days": "Reservation validity (days)",
     "reminder_day": "Reminder day",
     "amount_tolerance_percent": "Amount tolerance (%)",
@@ -176,7 +176,8 @@
     "registration_opens": "Registration opens",
     "registration_closes": "Registration closes",
     "subtitle": "Subtitle",
-    "description": "Description"
+    "description": "Description",
+    "registration_instructions": "Registration instructions"
   },
   "rail": {
     "operations": "Operations",
@@ -204,7 +205,8 @@
       "location": "Location is missing",
       "organizers": "At least one titular organizer is missing",
       "disciplines": "At least one discipline is missing",
-      "discipline_prices": "Some discipline has no price"
+      "discipline_prices": "Some discipline has no price",
+      "eur_rate": "Exchange rate for EUR payments is missing"
     },
     "identity": {
       "title": "Basic information",
@@ -222,7 +224,9 @@
       "qualificationRequired": "Qualification required",
       "qualificationCriteria": "Qualification criteria",
       "qualificationCriteriaHint": "For example \"national championship placement, HR top 500\".",
-      "qualificationCriteriaRequired": "Enter the qualification criteria, or switch back to \"open to everyone\"."
+      "qualificationCriteriaRequired": "Enter the qualification criteria, or switch back to \"open to everyone\".",
+      "registrationInstructions": "Registration instructions",
+      "registrationInstructionsHint": "Shown only on the registration form — the place for payment or registration notes that do not belong on the public page."
     },
     "organizers": {
       "title": "Titular organizers (clubs/entities)",
@@ -234,7 +238,7 @@
       "title": "Disciplines",
       "code": "Code",
       "capacity": "Capacity",
-      "fee": "Fee (CZK)",
+      "fee": "Fee ({{currency}})",
       "add": "Add discipline",
       "when": "When (optional)",
       "where": "Where (optional)",
@@ -249,7 +253,7 @@
       "title": "Extra services",
       "name": "Name",
       "category": "Category",
-      "price": "Price (CZK)",
+      "price": "Price ({{currency}})",
       "maxQty": "Max quantity",
       "add": "Add service",
       "categories": {
@@ -262,7 +266,11 @@
       },
       "when": "When (optional)",
       "where": "Where (optional)",
-      "remark": "Remark (optional)"
+      "remark": "Remark (optional)",
+      "optionLabel": "Option",
+      "optionChoices": "Choices",
+      "optionLabelHint": "Name of one thing the fencer picks when selecting this item, for example \"size\". Leave empty for no option.",
+      "optionChoicesHint": "Comma-separated allowed answers, for example \"S, M, L, XL\". Leave empty for free text."
     },
     "discounts": {
       "title": "Discounts",
@@ -271,7 +279,7 @@
       "conditionCount": "Discipline count",
       "conditionEarly": "Registered before date",
       "effect": "Effect",
-      "fixed": "Fixed amount (CZK)",
+      "fixed": "Fixed amount ({{currency}})",
       "percent": "Percent (%)",
       "add": "Add discount"
     },
@@ -298,6 +306,16 @@
       "deleteButton": "Delete tournament",
       "cancelButton": "Cancel tournament",
       "failed": "The action failed. Please try again."
+    },
+    "currency": {
+      "title": "Currency",
+      "primary": "Primary currency",
+      "eurPayments": "Also accept EUR payments",
+      "rate": "Exchange rate (1 EUR = ?)",
+      "rateHint": "How many units of the primary currency one euro is worth — for example 25.5 CZK per EUR.",
+      "rateWarning": "That rate looks implausible. Check the direction: primary-currency units per 1 EUR.",
+      "rateNote": "Changing the rate also changes the EUR figures shown on existing unpaid reservations.",
+      "rateRequired": "Set an exchange rate to accept EUR payments."
     }
   },
   "admin": {
@@ -412,18 +430,23 @@
     "aftersparring": "Post-tournament sparring",
     "accommodation": "Accommodation (note)",
     "notes": "Notes",
-    "total": "Total: {{total}} CZK",
+    "total": "Total: {{amount}}",
     "submit": "Submit registration",
     "submitFailed": "Could not submit the registration.",
-    "fullDisciplines": "These disciplines are full: {{codes}}",
-    "dropFull": "Continue without them",
-    "joinQueue": "Join the substitute queue",
     "sections": {
       "tournament": "Tournament",
-      "actions": "Actions",
-      "gear": "Gear lending",
-      "merch": "Merch and other"
-    }
+      "programme": "Optional programme",
+      "items": "Optional items",
+      "other": "Other"
+    },
+    "remarks": "Remarks",
+    "quantity": "Number of pieces",
+    "full": "full {{taken}}/{{capacity}} — you will be registered as a substitute",
+    "freePlaces": "{{free}} of {{capacity}} places free",
+    "chooseOption": "choose",
+    "optionRequired": "Choose {{label}} for {{item}}.",
+    "nowFull": "These disciplines filled up in the meantime: {{codes}}. Check your selection and submit again.",
+    "weaponRental": "Weapon rental — {{weapon}}"
   },
   "payment": {
     "title": "Payment instructions",
@@ -431,7 +454,10 @@
     "iban": "Account (IBAN)",
     "vs": "Variable symbol",
     "expiresAt": "Reservation valid until",
-    "vsInMessage": "If your bank transfer has no VS field, put variable symbol {{vs}} in the payment message instead."
+    "vsInMessage": "If your bank transfer has no VS field, put variable symbol {{vs}} in the payment message instead.",
+    "eurAmount": "Amount in EUR",
+    "eurTitle": "Pay in EUR",
+    "eurHint": "The EUR code pays the same registration against the same account."
   },
   "registration": {
     "title": "Your registration",

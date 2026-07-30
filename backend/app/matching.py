@@ -1,18 +1,25 @@
 """Automatic payment matching: strictly VS-first, amount within the
-tournament's tolerance. Never by payer name or amount alone."""
+tournament's tolerance. Never by payer name or amount alone.
+
+A transaction in a foreign currency is converted into the tournament's primary
+currency before the tolerance comparison — comparing the raw numbers would read
+a correct 68.63 EUR transfer against a 1750 CZK total as 96 % short (design D5).
+"""
 
 import re
 from datetime import UTC, datetime
+from decimal import Decimal
 
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app import emails
+from app import emails, pricing
 from app import rules as rules_engine
 from app.mail import Mailer
 from app.models import (
     BankTransaction,
+    Currency,
     PaymentEvent,
     Registration,
     RegistrationState,
@@ -57,6 +64,23 @@ def _finish(transaction: BankTransaction, status: str, reason: str | None = None
     transaction.status_reason = reason
 
 
+def paid_cents_in_primary(
+    transaction: BankTransaction, tournament: Tournament
+) -> int | None:
+    """The transaction's amount in primary-currency cents, or None when the two
+    currencies are not commensurable — an unset transaction currency is trusted
+    as the primary one (that is what pre-multi-currency ingestion recorded)."""
+    currency = (transaction.currency or str(tournament.primary_currency)).upper()
+    if currency == str(tournament.primary_currency):
+        return transaction.amount_cents
+    if currency == Currency.EUR:
+        converted = pricing.from_eur_cents(transaction.amount_cents, tournament)
+        if converted is None:
+            return None
+        return int((converted * Decimal(100)).to_integral_value())
+    return None
+
+
 def match_new_transactions(
     session: Session, tournament: Tournament, mailer: Mailer
 ) -> MatchResult:
@@ -98,13 +122,27 @@ def match_new_transactions(
             result.flagged += 1
             continue
 
+        paid_cents = paid_cents_in_primary(transaction, tournament)
+        if paid_cents is None:
+            # a currency the tournament has no rate for: flag it as such rather
+            # than pretending the amounts are comparable
+            _finish(transaction, "flagged", "currency_unconvertible")
+            _event(
+                session, transaction, "currency_unconvertible",
+                f"VS {vs}: {transaction.amount_cents} cents in {transaction.currency}, "
+                f"tournament prices in {tournament.primary_currency}",
+                registration,
+            )
+            result.flagged += 1
+            continue
+
         due_cents = registration.total_amount * 100
         tolerance = due_cents * tournament.amount_tolerance_percent / 100
-        if abs(transaction.amount_cents - due_cents) > tolerance:
+        if abs(paid_cents - due_cents) > tolerance:
             _finish(transaction, "flagged", "amount_out_of_tolerance")
             _event(
                 session, transaction, "amount_mismatch",
-                f"VS {vs}: paid {transaction.amount_cents} of {due_cents} cents",
+                f"VS {vs}: paid {paid_cents} of {due_cents} cents",
                 registration,
             )
             result.flagged += 1
@@ -114,10 +152,11 @@ def match_new_transactions(
         registration.paid_at = datetime.now(UTC)
         transaction.matched_registration_id = registration.id
         _finish(transaction, "matched", "auto_vs")
-        _event(
-            session, transaction, "payment_matched",
-            f"VS {vs}: {transaction.amount_cents} cents", registration,
-        )
+        # the audit records what arrived and, when converted, what it counted as
+        detail = f"VS {vs}: {transaction.amount_cents} cents"
+        if paid_cents != transaction.amount_cents:
+            detail += f" {transaction.currency} = {paid_cents} cents primary"
+        _event(session, transaction, "payment_matched", detail, registration)
         result.matched += 1
         session.flush()
         emails.send_payment_received(mailer, tournament, registration.fencer, registration)

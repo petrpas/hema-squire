@@ -10,6 +10,7 @@ from app.auth import require_console_access
 from app.availability import queue_length, taken_seats
 from app.mail import Mailer, get_mailer
 from app.models import (
+    ExtraItem,
     RefundState,
     Registration,
     RegistrationDiscipline,
@@ -82,6 +83,8 @@ def registration_out(session, registration: Registration) -> dict:
                 "name": selection.item.name,
                 "category": selection.item.category,
                 "qty": selection.qty,
+                "option_label": selection.item.option_label,
+                "option_value": selection.option_value,
             }
             for selection in registration.extra_selections
         ],
@@ -182,6 +185,36 @@ def _resolve_selection(tournament: Tournament, data) -> tuple[list, list[tuple]]
     return selected, extras
 
 
+def _validate_options(selections, extras_by_id: dict[int, ExtraItem]) -> None:
+    """An item that declares an option must be answered, and one that declares
+    none must not be. A half-filled t-shirt row is a support ticket, so the
+    answer is required at submit time rather than defaulted.
+
+    Enforced on registration only, never on the price preview: options do not
+    affect price, and refusing to price an unanswered row would make the running
+    total read zero while the fencer is still filling the form in."""
+    missing: list[int] = []
+    invalid: list[int] = []
+    unexpected: list[int] = []
+    for selection in selections:
+        item = extras_by_id[selection.extra_item_id]
+        value = (selection.option_value or "").strip()
+        if not item.takes_option:
+            if value:
+                unexpected.append(item.id)
+            continue
+        if not value:
+            missing.append(item.id)
+        elif item.option_choices and value not in item.option_choices:
+            invalid.append(item.id)
+    if missing:
+        raise HTTPException(status_code=422, detail={"option_required": missing})
+    if invalid:
+        raise HTTPException(status_code=422, detail={"option_not_a_choice": invalid})
+    if unexpected:
+        raise HTTPException(status_code=422, detail={"option_not_accepted": unexpected})
+
+
 @router.post("/price-preview", response_model=PricePreviewOut)
 def price_preview(data: PricePreviewIn, tournament: TournamentDep):
     selected, extras = _resolve_selection(tournament, data)
@@ -193,7 +226,11 @@ def price_preview(data: PricePreviewIn, tournament: TournamentDep):
         afterparty=data.afterparty,
         at=_now().date(),
     )
-    return PricePreviewOut(total=total)
+    return PricePreviewOut(
+        total=total,
+        currency=tournament.primary_currency,
+        eur_total=pricing.to_eur(total, tournament),
+    )
 
 
 @router.post("/register", response_model=RegistrationOut, status_code=201)
@@ -218,6 +255,7 @@ def register(
         raise HTTPException(status_code=409, detail="already_registered")
 
     selected, extras = _resolve_selection(tournament, data)
+    _validate_options(data.extras, {item.id: item for item in tournament.extra_items})
     full = [d.code for d in selected if taken_seats(session, d) >= d.capacity]
 
     if full and not data.wait_for_all:
@@ -262,9 +300,12 @@ def register(
             RegistrationDiscipline(discipline=discipline, is_substitute=as_substitute)
         )
     for selection in data.extras:
+        value = (selection.option_value or "").strip()
         registration.extra_selections.append(
             RegistrationExtra(
-                extra_item_id=selection.extra_item_id, qty=selection.qty
+                extra_item_id=selection.extra_item_id,
+                qty=selection.qty,
+                option_value=value or None,
             )
         )
     session.flush()
@@ -310,18 +351,24 @@ def my_registration_payment(tournament: TournamentDep, session: SessionDep, fenc
     if not tournament.bank_account:
         raise HTTPException(status_code=404, detail="no_bank_account")
 
-    message = f"VS{registration.vs} {tournament.display_name}"
-    spayd_string = spayd.spayd_string(
-        tournament.bank_account, registration.total_amount, registration.vs, message
-    )
+    # built by the same helpers the confirmation email uses, so the two can
+    # never drift apart
+    message = emails.payment_message(tournament, registration)
+    primary, eur = emails.payment_spayd(tournament, registration)
     return PaymentInstructionsOut(
         amount=registration.total_amount,
+        currency=tournament.primary_currency,
         iban=tournament.bank_account,
         vs=registration.vs,
         message=message,
         expires_at=registration.expires_at,
-        spayd=spayd_string,
-        qr_png_base64=base64.b64encode(spayd.qr_png(spayd_string)).decode(),
+        spayd=primary,
+        qr_png_base64=base64.b64encode(spayd.qr_png(primary)).decode(),
+        eur_amount=pricing.to_eur(registration.total_amount, tournament),
+        eur_spayd=eur,
+        eur_qr_png_base64=(
+            base64.b64encode(spayd.qr_png(eur)).decode() if eur else None
+        ),
     )
 
 

@@ -1,11 +1,12 @@
 """Core multi-tenant data model.
 
-Money amounts are whole CZK stored as integers. Fencer accounts are global;
-everything else is tournament-scoped.
+Money amounts are whole units of the tournament's primary currency, stored as
+integers. Fencer accounts are global; everything else is tournament-scoped.
 """
 
 import enum
 from datetime import date, datetime
+from decimal import Decimal
 
 from sqlalchemy import (
     JSON,
@@ -13,6 +14,7 @@ from sqlalchemy import (
     Enum,
     ForeignKey,
     LargeBinary,
+    Numeric,
     String,
     Text,
     UniqueConstraint,
@@ -41,6 +43,16 @@ class RequestState(enum.StrEnum):
 class UnpaidListTreatment(enum.StrEnum):
     HIDDEN = "hidden"
     GREYED = "greyed"
+
+
+class Currency(enum.StrEnum):
+    """A tournament's primary currency — the unit every configured price and
+    computed total is expressed in. Closed enum so widening it stays a code
+    change; EUR is singled out because it is the one currency the system can
+    also *convert to* (see Tournament.eur_rate)."""
+
+    CZK = "CZK"
+    EUR = "EUR"
 
 
 class RegistrationState(enum.StrEnum):
@@ -153,6 +165,9 @@ class Tournament(Base):
     # informational only; never gates registration (design D7)
     qualification_open: Mapped[bool] = mapped_column(default=True)
     qualification_criteria: Mapped[str | None] = mapped_column(Text)
+    # optional plain text shown only on the registration form — the place for
+    # registration/payment notes that do not belong on the public info screen
+    registration_instructions: Mapped[str | None] = mapped_column(Text)
     # public-facing titular organizers (clubs/entities), each {"name", "link"};
     # independent of the account-based console access in TournamentOrganizer.
     # Entries may still be bare strings from a partially-migrated or
@@ -170,6 +185,16 @@ class Tournament(Base):
     unpaid_list_treatment: Mapped[UnpaidListTreatment] = mapped_column(
         str_enum(UnpaidListTreatment), default=UnpaidListTreatment.GREYED
     )
+
+    # currency: every configured price and every computed total is in whole
+    # units of primary_currency. eur_rate is primary units per 1 EUR and exists
+    # only to *present* and *match* EUR amounts — no EUR figure is ever stored
+    # on a registration (design D1/D3).
+    primary_currency: Mapped[Currency] = mapped_column(
+        str_enum(Currency), default=Currency.CZK
+    )
+    eur_payments_enabled: Mapped[bool] = mapped_column(default=False)
+    eur_rate: Mapped[Decimal | None] = mapped_column(Numeric(12, 4))
 
     fio_token: Mapped[str | None] = mapped_column(String(200))
     output_sheet_url: Mapped[str | None] = mapped_column(String(300))
@@ -193,6 +218,19 @@ class Tournament(Base):
     def has_logo(self) -> bool:
         # reads the always-loaded mime, never the deferred blob
         return self.logo_mime is not None
+
+    @property
+    def shows_eur(self) -> bool:
+        """Whether a second, EUR-denominated figure applies. False for an
+        EUR-priced tournament (its primary figure already is the EUR one) and
+        false without a usable rate — the single condition every EUR
+        presentation and conversion path consults (design D2)."""
+        return (
+            self.eur_payments_enabled
+            and self.primary_currency != Currency.EUR
+            and self.eur_rate is not None
+            and self.eur_rate > 0
+        )
 
     owner: Mapped[Fencer | None] = relationship(foreign_keys=[owner_id])
     disciplines: Mapped[list[Discipline]] = relationship(back_populates="tournament")
@@ -251,6 +289,15 @@ class ExtraItem(Base):
     schedule_when: Mapped[str | None] = mapped_column(String(200))
     schedule_where: Mapped[str | None] = mapped_column(String(300))
     remark: Mapped[str | None] = mapped_column(String(500))
+    # optional single option the fencer answers when selecting this item (e.g.
+    # label "size"). With choices the answer must be one of them; without, it is
+    # free text. No label means the item takes no option. Never affects pricing.
+    option_label: Mapped[str | None] = mapped_column(String(50))
+    option_choices: Mapped[list] = mapped_column(JSON, default=list)
+
+    @property
+    def takes_option(self) -> bool:
+        return bool(self.option_label)
 
     tournament: Mapped[Tournament] = relationship(back_populates="extra_items")
 
@@ -333,7 +380,8 @@ class Registration(Base):
 
 
 class RegistrationExtra(Base):
-    """One registration's selection of one extra item, with quantity."""
+    """One registration's selection of one extra item, with quantity and the
+    answer to the item's option when it declares one."""
 
     __tablename__ = "registration_extras"
     __table_args__ = (UniqueConstraint("registration_id", "extra_item_id"),)
@@ -342,6 +390,9 @@ class RegistrationExtra(Base):
     registration_id: Mapped[int] = mapped_column(ForeignKey("registrations.id"))
     extra_item_id: Mapped[int] = mapped_column(ForeignKey("extra_items.id"))
     qty: Mapped[int] = mapped_column(default=1)
+    # answer to the item's option; null for items that declare none, and also
+    # for selections stored before their item gained an option label
+    option_value: Mapped[str | None] = mapped_column(String(100))
 
     registration: Mapped[Registration] = relationship(
         back_populates="extra_selections"

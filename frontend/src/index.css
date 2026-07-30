@@ -1241,8 +1241,13 @@ tr.row-deleted td.col-actions {
   max-width: 44rem;
 }
 
+/* element-qualified so .login-card's `label` rule cannot stack it into a
+   full-width small-caps block */
+label.checkbox-chip,
 .checkbox-chip {
   display: inline-flex;
+  /* .login-card label sets column; the chip is always a single row */
+  flex-direction: row;
   align-items: center;
   gap: 0.4rem;
   font-size: 12px;
@@ -1251,6 +1256,18 @@ tr.row-deleted td.col-actions {
   border-radius: var(--radius);
   background: var(--paper-raised);
   color: var(--ink);
+  text-transform: none;
+  letter-spacing: normal;
+  font-weight: 400;
+  align-self: start;
+}
+
+.checkbox-chip > input[type="checkbox"] {
+  margin: 0;
+  padding: 0;
+  border: revert;
+  border-bottom: revert;
+  width: auto;
 }
 
 .form-total {
@@ -1442,6 +1459,116 @@ tr.row-deleted td.col-actions {
   font-size: 11px;
   font-weight: 500;
   color: var(--ink-faded);
+}
+
+/* registration checklist: one grid row per offered thing, price right-aligned
+   on a shared column, optional detail lines indented underneath (design D7) */
+.checklist {
+  display: flex;
+  flex-direction: column;
+}
+
+/* the rows live inside .login-card, whose `label` rule would otherwise stack
+   them into small-caps columns — hence the element-qualified selector and the
+   explicit typography reset */
+label.checklist-row {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  column-gap: 0.6rem;
+  align-items: baseline;
+  padding: 0.45rem 0;
+  border-bottom: var(--border-w) solid var(--hairline);
+  font-size: 13px;
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: normal;
+  color: var(--ink);
+}
+
+label.checklist-row > input[type="checkbox"] {
+  margin: 0;
+  padding: 0;
+  align-self: center;
+  border: revert;
+  border-bottom: revert;
+  width: auto;
+}
+
+.checklist-name {
+  color: var(--ink);
+}
+
+.checklist-price {
+  font-family: var(--font-data);
+  white-space: nowrap;
+  color: var(--ink);
+}
+
+/* full-width block under a row: schedule/remark lines, capacity notice, and
+   the quantity/option controls a selected row reveals */
+.checklist-detail {
+  grid-column: 2 / -1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin-top: 0.3rem;
+  font-size: 12px;
+  color: var(--ink-faded);
+}
+
+.checklist-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.9rem;
+  margin-top: 0.15rem;
+}
+
+.checklist-control {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-weight: 500;
+  color: var(--ink-faded);
+}
+
+.checklist-control input,
+.checklist-control select {
+  font: 13px var(--font-ui);
+  padding: 0.2rem 0;
+  width: auto;
+  border: none;
+  border-bottom: var(--border-w) solid var(--ink);
+  border-radius: 0;
+  background: transparent;
+  color: var(--ink);
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+.checklist-control input:focus,
+.checklist-control select:focus {
+  outline: none;
+  border-bottom: 2px solid var(--stamp);
+}
+
+.checklist-control input[type="number"] {
+  width: 4rem;
+}
+
+/* capacity notice on a full discipline — stamp red, no icon */
+.checklist-full {
+  color: var(--stamp);
+}
+
+/* the tournament's own instructions above the form, line breaks preserved */
+.registration-instructions {
+  white-space: pre-wrap;
+  font-size: 13px;
+  color: var(--ink-soft);
 }
 
 /* signup HR ownership confirmation */

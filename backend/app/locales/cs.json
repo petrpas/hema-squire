@@ -9,15 +9,17 @@
     },
     "confirmation": {
       "subject": "Registrace na {tournament} — pokyny k platbě",
-      "body": "Ahoj {name},\n\npřijali jsme tvou registraci na {tournament}:\n\n{summary}\n\nCelkem k úhradě: {total} Kč\nÚčet: {account}\nVariabilní symbol: {vs}\nRezervace platí do: {expires}\n\nZaplatit můžeš naskenováním přiloženého QR kódu v bankovní aplikaci. U plateb ze zahraničí uveď prosím VS{vs} ve zprávě pro příjemce.\n\nPokud platba do konce rezervace nedorazí, místo se automaticky uvolní.\n\nTým {tournament}",
+      "body": "Ahoj {name},\n\npřijali jsme tvou registraci na {tournament}:\n\n{summary}\n\nCelkem k úhradě: {total}\nÚčet: {account}\nVariabilní symbol: {vs}\nRezervace platí do: {expires}\n\nZaplatit můžeš naskenováním přiloženého QR kódu v bankovní aplikaci. U plateb ze zahraničí uveď prosím VS{vs} ve zprávě pro příjemce.{eur_note}\n\nPokud platba do konce rezervace nedorazí, místo se automaticky uvolní.\n\nTým {tournament}",
       "substitute": "náhradník",
       "rentals": "Zapůjčení zbraně",
       "afterparty": "Afterparty",
-      "aftersparring": "After-sparring"
+      "aftersparring": "After-sparring",
+      "option": "volba",
+      "eur_note": "\n\nPlatit můžeš i v eurech — použij přiložený QR kód označený EUR."
     },
     "reminder": {
       "subject": "Připomínka platby — {tournament}",
-      "body": "Ahoj {name},\n\njen připomínáme, že tvá registrace na {tournament} zatím čeká na platbu:\n\nCelkem k úhradě: {total} Kč\nÚčet: {account}\nVariabilní symbol: {vs}\nRezervace platí do: {expires}\n\nZaplatit můžeš naskenováním přiloženého QR kódu. Pokud platba do konce rezervace nedorazí, místo se automaticky uvolní.\n\nTým {tournament}"
+      "body": "Ahoj {name},\n\njen připomínáme, že tvá registrace na {tournament} zatím čeká na platbu:\n\nCelkem k úhradě: {total}\nÚčet: {account}\nVariabilní symbol: {vs}\nRezervace platí do: {expires}\n\nZaplatit můžeš naskenováním přiloženého QR kódu.{eur_note}\n\nPokud platba do konce rezervace nedorazí, místo se automaticky uvolní.\n\nTým {tournament}"
     },
     "expired": {
       "subject": "Rezervace vypršela — {tournament}",
@@ -25,7 +27,7 @@
     },
     "paid": {
       "subject": "Platba přijata — {tournament}",
-      "body": "Ahoj {name},\n\npřijali jsme tvou platbu {total} Kč (VS {vs}) a tvoje účast na {tournament} je potvrzena. Uvidíme se na turnaji!\n\nTým {tournament}"
+      "body": "Ahoj {name},\n\npřijali jsme tvou platbu {total} (VS {vs}) a tvoje účast na {tournament} je potvrzena. Uvidíme se na turnaji!\n\nTým {tournament}"
     },
     "queued": {
       "subject": "Zařazení do fronty náhradníků — {tournament}",

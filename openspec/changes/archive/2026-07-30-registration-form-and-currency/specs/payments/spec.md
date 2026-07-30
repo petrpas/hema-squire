@@ -1,23 +1,4 @@
-# payments Specification
-
-## Purpose
-Match bank payments to reservations by variable symbol, with idempotent ingestion, amount tolerance, manual matching rules, reminders, and foreign-transfer handling.
-
-## Requirements
-
-### Requirement: Payment identity via variable symbol
-Each reservation SHALL receive a unique numeric VS. Transaction matching SHALL be performed exclusively by VS — or by the VS quoted in the payment message for transfers that cannot carry a VS field — never by payer name or amount alone.
-
-#### Scenario: Third party pays for a fencer
-- **WHEN** a transaction from a different sender carries a registration's VS
-- **THEN** it matches that registration regardless of the sender's name
-
-### Requirement: Bank transaction ingestion
-The system SHALL ingest transactions via the Fio bank REST API on a schedule and via manual statement import (CSV). Ingestion SHALL be idempotent: each transaction is processed at most once.
-
-#### Scenario: Overlapping statement re-import
-- **WHEN** the organizer imports a statement overlapping already-ingested transactions
-- **THEN** no transaction is matched or counted twice
+## MODIFIED Requirements
 
 ### Requirement: Amount tolerance
 A VS-matched transaction SHALL be compared against the amount due in the tournament's primary currency. When the transaction's currency differs from the primary currency, its amount SHALL first be converted into the primary currency at the tournament's stored exchange rate; a transaction in a currency for which no rate is configured SHALL be flagged with a distinct currency reason rather than compared as if the amounts were commensurable. The converted transaction SHALL be accepted as full payment when it is within the tournament's configured tolerance (default ±5 %) of the amount due, absorbing both conversion noise and the spread between the organizer's configured rate and the payer's bank's rate. Outside tolerance, the transaction SHALL be flagged for manual resolution rather than silently accepted or ignored.
@@ -37,20 +18,6 @@ A VS-matched transaction SHALL be compared against the amount due in the tournam
 #### Scenario: Amount far off
 - **WHEN** a payment with a correct VS arrives 40 % below the amount due
 - **THEN** the transaction is flagged for the organizer instead of confirming the registration
-
-### Requirement: Automatic matching outcome
-WHEN a transaction matches a reservation within tolerance, the system SHALL mark the registration paid, confirm its capacity, send a payment confirmation email, update the public participant list, and record the match in the audit trail. Transactions with an unknown or missing VS SHALL enter an unmatched queue.
-
-#### Scenario: Clean match
-- **WHEN** a scheduled Fio poll ingests a transaction with a known VS and a valid amount
-- **THEN** the reservation becomes paid and the fencer appears on the public list without organizer action
-
-### Requirement: Manual matching
-The organizer SHALL be able to link an unmatched transaction to one or more registrations in the Payments phase. The link SHALL persist as a rule (surviving reruns and re-ingestion) and SHALL support one payer covering multiple registrations.
-
-#### Scenario: One transfer covers two fencers
-- **WHEN** the organizer links a single transaction to two registrations
-- **THEN** both registrations are marked paid and the link is recorded as a removable rule
 
 ### Requirement: Reminders and expiry notices
 The system SHALL send an automatic reminder email, including the payment QR, on the tournament's configured reminder day of an unpaid reservation, and a notification when a reservation expires. Reminder emails SHALL carry the same payment content as the original confirmation, including the EUR amount and EUR QR when the tournament has EUR payments enabled on a non-EUR primary currency. Both events SHALL be audited.

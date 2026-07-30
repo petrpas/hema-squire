@@ -20,6 +20,7 @@ from app.db import get_session
 from app.models import (
     ACTION_CATEGORIES,
     BankTransaction,
+    Currency,
     Discipline,
     ExtraItem,
     Fencer,
@@ -170,6 +171,7 @@ def open_tournaments(session: SessionDep, fencer: FencerDep):
                 description=tournament.description,
                 qualification_open=tournament.qualification_open,
                 qualification_criteria=tournament.qualification_criteria,
+                primary_currency=tournament.primary_currency,
                 organizers=tournament.organizers,
                 registration_status=status_,
                 registration_opens_on=opens_on,
@@ -260,6 +262,7 @@ def past_tournaments(session: SessionDep, fencer: FencerDep):
                 description=tournament.description,
                 qualification_open=tournament.qualification_open,
                 qualification_criteria=tournament.qualification_criteria,
+                primary_currency=tournament.primary_currency,
                 organizers=tournament.organizers,
                 registration_status="closed",
                 registration_opens_on=None,
@@ -278,6 +281,26 @@ def tournament_detail(tournament: TournamentDep):
     return out
 
 
+def _apply_currency_invariants(tournament: Tournament) -> None:
+    """Reconcile the three currency fields after a patch has been merged, so the
+    stored combination is always one of the two meaningful ones: a single-currency
+    tournament, or a non-EUR tournament with a positive rate (design D1).
+
+    Runs on the merged state rather than the payload because enabling EUR
+    payments in one request and setting the rate in another must still be
+    caught."""
+    if tournament.primary_currency == Currency.EUR:
+        # an EUR-priced tournament's primary figure already is the EUR one
+        tournament.eur_payments_enabled = True
+        tournament.eur_rate = None
+        return
+    if not tournament.eur_payments_enabled:
+        tournament.eur_rate = None
+        return
+    if tournament.eur_rate is None or tournament.eur_rate <= 0:
+        raise HTTPException(status_code=422, detail="eur_rate_required")
+
+
 @router.patch("/{slug}", response_model=TournamentOut)
 def update_tournament(
     data: TournamentUpdate, tournament: TournamentDep, session: SessionDep, fencer: FencerDep
@@ -291,6 +314,7 @@ def update_tournament(
         tournament.qualification_criteria = None
     if not tournament.qualification_open and not (tournament.qualification_criteria or "").strip():
         raise HTTPException(status_code=422, detail="qualification_criteria_required")
+    _apply_currency_invariants(tournament)
     session.commit()
     session.refresh(tournament)
     return tournament
@@ -460,6 +484,8 @@ def update_extra_item(
     item.schedule_when = fields["schedule_when"]
     item.schedule_where = fields["schedule_where"]
     item.remark = fields["remark"]
+    item.option_label = fields["option_label"]
+    item.option_choices = fields["option_choices"]
     session.commit()
     session.refresh(item)
     return item

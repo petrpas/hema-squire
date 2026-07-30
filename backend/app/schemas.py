@@ -1,4 +1,5 @@
 import datetime
+import decimal
 from typing import Any, Literal
 
 from pydantic import (
@@ -13,6 +14,7 @@ from pydantic import (
 
 from app.i18n import catalog
 from app.models import (
+    Currency,
     ExtraCategory,
     RefundState,
     RegistrationState,
@@ -20,6 +22,9 @@ from app.models import (
     Role,
     UnpaidListTreatment,
 )
+
+# an option answer is a size, a shirt cut, a meal choice — never prose
+OPTION_VALUE_MAX_LENGTH = 100
 
 
 class SignupIn(BaseModel):
@@ -129,6 +134,26 @@ class ExtraItemIn(BaseModel):
     schedule_when: str | None = Field(default=None, max_length=200)
     schedule_where: str | None = Field(default=None, max_length=300)
     remark: str | None = Field(default=None, max_length=500)
+    # optional single option the fencer answers on selection; choices empty
+    # means free text. Never affects pricing.
+    option_label: str | None = Field(default=None, max_length=50)
+    option_choices: list[str] = []
+
+    @model_validator(mode="after")
+    def _option_shape(self) -> ExtraItemIn:
+        label = (self.option_label or "").strip()
+        self.option_label = label or None
+        seen: list[str] = []
+        for choice in self.option_choices:
+            trimmed = choice.strip()
+            if trimmed and trimmed not in seen:
+                if len(trimmed) > OPTION_VALUE_MAX_LENGTH:
+                    raise ValueError("option choice too long")
+                seen.append(trimmed)
+        self.option_choices = seen
+        if self.option_choices and self.option_label is None:
+            raise ValueError("option choices require an option label")
+        return self
 
 
 class ExtraItemOut(ExtraItemIn):
@@ -214,6 +239,11 @@ class TournamentUpdate(BaseModel):
     description: str | None = None
     qualification_open: bool | None = None
     qualification_criteria: str | None = None
+    registration_instructions: str | None = None
+    primary_currency: Currency | None = None
+    eur_payments_enabled: bool | None = None
+    # primary-currency units per 1 EUR; a non-positive rate is meaningless
+    eur_rate: decimal.Decimal | None = Field(default=None, gt=0)
     organizers: list[OrganizerIn] | None = None
     registration_opens: datetime.date | None = None
     registration_closes: datetime.date | None = None
@@ -262,6 +292,10 @@ class TournamentOut(BaseModel):
     description: str | None
     qualification_open: bool
     qualification_criteria: str | None
+    registration_instructions: str | None
+    primary_currency: Currency
+    eur_payments_enabled: bool
+    eur_rate: decimal.Decimal | None
     organizers: list[OrganizerOut]
     registration_opens: datetime.date | None
     registration_closes: datetime.date | None
@@ -329,6 +363,9 @@ class PleaDecisionOut(BaseModel):
 class ExtraSelectionIn(BaseModel):
     extra_item_id: int
     qty: int = Field(default=1, ge=1)
+    # answer to the item's option; presence is validated against the item at
+    # registration time (the schema cannot see which item this points at)
+    option_value: str | None = Field(default=None, max_length=OPTION_VALUE_MAX_LENGTH)
 
 
 class RegisterIn(BaseModel):
@@ -353,6 +390,8 @@ class RegistrationExtraOut(BaseModel):
     name: str
     category: ExtraCategory
     qty: int
+    option_label: str | None = None
+    option_value: str | None = None
 
 
 class RegistrationOut(BaseModel):
@@ -390,16 +429,24 @@ class PricePreviewIn(BaseModel):
 
 class PricePreviewOut(BaseModel):
     total: int
+    currency: Currency = Currency.CZK
+    # the EUR equivalent, omitted when no EUR figure applies
+    eur_total: decimal.Decimal | None = None
 
 
 class PaymentInstructionsOut(BaseModel):
     amount: int
+    currency: Currency = Currency.CZK
     iban: str
     vs: int
     message: str
     expires_at: datetime.datetime | None
     spayd: str
     qr_png_base64: str
+    # the EUR pair is absent, not empty, when the tournament takes no EUR
+    eur_amount: decimal.Decimal | None = None
+    eur_spayd: str | None = None
+    eur_qr_png_base64: str | None = None
 
 
 class OpenDisciplineOut(BaseModel):
@@ -425,6 +472,7 @@ class OpenTournamentOut(BaseModel):
     description: str | None = None
     qualification_open: bool = True
     qualification_criteria: str | None = None
+    primary_currency: Currency = Currency.CZK
     organizers: list[OrganizerOut]
     registration_status: RegistrationStatus
     registration_opens_on: datetime.date | None = None

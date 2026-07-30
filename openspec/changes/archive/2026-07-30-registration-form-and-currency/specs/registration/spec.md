@@ -1,25 +1,4 @@
-# registration Specification
-
-## Purpose
-Handle in-app registration: reservations with per-reservation payment windows, QR payment confirmation emails, capacity and substitute queues, the public participant list, and cancellation policy.
-
-## Requirements
-
-### Requirement: In-app registration
-An authenticated fencer SHALL register for a tournament by selecting disciplines and any of the tournament's configured extra services, each with a quantity up to the item's per-registration limit and an option value where the item declares an option label, plus the non-billable fields: after-sparring, accommodation note, and free-text remarks. For legacy tournaments without configured extra services, the fixed weapon-rental and afterparty options SHALL remain accepted as before and SHALL be presented as rows in the same checklist. The system SHALL record the registration time, compute the total from the tournament's itemized pricing and discounts, and create a reservation with a unique VS. The confirmation email and exports SHALL list the selected items with their quantities and option values. Registration is exposed through the API and through the fencer-facing tournament detail page (fencer-home capability).
-
-#### Scenario: Successful registration
-- **WHEN** a fencer submits a registration with two disciplines, weapon rental quantity 1, and "afterparty saturday"
-- **THEN** a reservation is created with a unique VS and a total computed from the tournament's items and discounts
-- **AND** a confirmation email itemizing the selection with payment instructions is sent
-
-#### Scenario: Quantity above the item limit
-- **WHEN** a fencer submits an extra-service quantity above the item's per-registration limit
-- **THEN** the registration is rejected with a validation error
-
-#### Scenario: Non-billable fields retained
-- **WHEN** a fencer fills after-sparring, an accommodation note, and remarks
-- **THEN** all three are stored on the registration and none of them changes the computed total
+## ADDED Requirements
 
 ### Requirement: Registration form as a priced checklist
 The registration form SHALL present everything a tournament offers as a single ordered checklist of sections. Each row SHALL carry a selection control, the item's name, and its price aligned in a shared column, with the item's optional `when`, `where`, and `remark` text as indented lines beneath it. A row whose per-registration limit is 1 SHALL be a checkbox alone; a row allowing more SHALL offer a quantity, defaulting to 1 when selected.
@@ -64,8 +43,6 @@ When a discipline has no free place, its row SHALL state that it is full, with t
 ### Requirement: Extra-service option answered per selection
 When a selected extra service declares an option label, the registration SHALL carry exactly one option value for that selection. The value MUST be one of the item's configured choices when choices exist, and MUST be non-empty trimmed text within the length limit when they do not. Selecting an item that declares an option without supplying a value SHALL be rejected with a validation error. Supplying a value for an item that declares no option SHALL be rejected. The stored option value SHALL appear in the registration summary, the confirmation email, and the exports beside its item.
 
-Option validation SHALL apply to registration submission only. The price preview SHALL NOT require an option value, since options never affect price and refusing to price an unanswered row would misreport the running total while the form is still being filled in.
-
 #### Scenario: Preset choice selected
 - **WHEN** a fencer selects a t-shirt with quantity 2 and size M
 - **THEN** the registration records two t-shirts with option value M, and the summary, email, and export show the size beside the item
@@ -81,10 +58,6 @@ Option validation SHALL apply to registration submission only. The price preview
 #### Scenario: Option supplied for an option-less item rejected
 - **WHEN** a submitted selection carries an option value for an item that declares no option label
 - **THEN** the registration is rejected with a validation error
-
-#### Scenario: Preview prices an unanswered option
-- **WHEN** a price preview is requested for an item that declares an option label with no value supplied
-- **THEN** the preview returns the full total for that selection instead of an error
 
 #### Scenario: Pre-existing selections tolerate a newly added option
 - **WHEN** an organizer adds an option label to an item that already has selections recorded without one
@@ -105,16 +78,34 @@ Every amount presented to a fencer — row prices, the running total, the regist
 - **WHEN** a tournament's primary currency is EUR
 - **THEN** amounts are presented in EUR once, with no second currency figure
 
-### Requirement: Reservation lifecycle
-A reservation SHALL be valid for the tournament's configured number of days from registration. There SHALL be no global payment deadline — each reservation carries its own window. An unpaid reservation SHALL expire automatically at the end of its window, freeing any capacity it held. A paid reservation SHALL become a confirmed registration.
+## MODIFIED Requirements
 
-#### Scenario: Reservation expires unpaid
-- **WHEN** the validity window passes with no matched payment
-- **THEN** the reservation expires automatically, its discipline capacity is freed, and the fencer is notified
+### Requirement: In-app registration
+An authenticated fencer SHALL register for a tournament by selecting disciplines and any of the tournament's configured extra services, each with a quantity up to the item's per-registration limit and an option value where the item declares an option label, plus the non-billable fields: after-sparring, accommodation note, and free-text remarks. For legacy tournaments without configured extra services, the fixed weapon-rental and afterparty options SHALL remain accepted as before and SHALL be presented as rows in the same checklist. The system SHALL record the registration time, compute the total from the tournament's itemized pricing and discounts, and create a reservation with a unique VS. The confirmation email and exports SHALL list the selected items with their quantities and option values. Registration is exposed through the API and through the fencer-facing tournament detail page (fencer-home capability).
 
-#### Scenario: Payment arrives in time
-- **WHEN** a matching payment is ingested before expiry
-- **THEN** the reservation becomes a confirmed registration
+#### Scenario: Successful registration
+- **WHEN** a fencer submits a registration with two disciplines, weapon rental quantity 1, and "afterparty saturday"
+- **THEN** a reservation is created with a unique VS and a total computed from the tournament's items and discounts
+- **AND** a confirmation email itemizing the selection with payment instructions is sent
+
+#### Scenario: Quantity above the item limit
+- **WHEN** a fencer submits an extra-service quantity above the item's per-registration limit
+- **THEN** the registration is rejected with a validation error
+
+#### Scenario: Non-billable fields retained
+- **WHEN** a fencer fills after-sparring, an accommodation note, and remarks
+- **THEN** all three are stored on the registration and none of them changes the computed total
+
+### Requirement: Price preview
+The system SHALL compute the total price for a hypothetical selection (disciplines and extra services with quantities and option values) for a tournament without creating a registration, using the same pricing engine — itemized pricing with discounts, or the legacy fee fields for legacy tournaments — that applies at registration time, evaluated as of the current date. The preview SHALL return the total in the tournament's primary currency, and its EUR equivalent when EUR payments are enabled on a non-EUR tournament.
+
+#### Scenario: Preview matches registration
+- **WHEN** a price preview is requested for a selection and the same selection is then submitted as a registration at the same date
+- **THEN** the previewed total equals the registration's computed total
+
+#### Scenario: Preview carries the EUR equivalent
+- **WHEN** a price preview is requested on a CZK tournament with EUR payments enabled
+- **THEN** the response carries the CZK total and its EUR equivalent at the tournament's stored rate
 
 ### Requirement: Confirmation email with QR payment
 On registration the system SHALL send a localized confirmation email containing the registration summary — items with quantities and option values — the total amount with its currency, the bank account, the VS, and an SPAYD-format QR code encoding amount, currency, account, VS, and message. When the tournament has EUR payments enabled and its primary currency is not EUR, the email SHALL additionally carry the EUR amount and a second QR code denominated in EUR against the same account.
@@ -130,49 +121,6 @@ On registration the system SHALL send a localized confirmation email containing 
 #### Scenario: No EUR block without EUR payments
 - **WHEN** a tournament has EUR payments disabled
 - **THEN** the email carries exactly one amount and one QR code
-
-### Requirement: Capacity and substitutes
-Discipline capacity SHALL be consumed by confirmed registrations and by reservations within their validity window. When a discipline is full, further registrations SHALL join a substitute queue in registration order. When a spot frees through expiry or cancellation, the organizer SHALL be able to admit substitutes from the queue.
-
-#### Scenario: Discipline full
-- **WHEN** a fencer registers for a discipline at capacity
-- **THEN** the registration enters the substitute queue and the fencer is informed of their position
-
-### Requirement: Public participant list
-The public participant list SHALL show confirmed (paid) registrations only. Unpaid reservations SHALL be either hidden or shown greyed as unconfirmed, according to the tournament setting; the default for a new tournament is greyed.
-
-#### Scenario: Unpaid fencer not presented as confirmed
-- **WHEN** a visitor views the public participant list
-- **THEN** unpaid reservations never appear as confirmed participants
-
-### Requirement: Registration availability
-The system SHALL accept a registration only when the tournament's mandatory setup is complete and the current date is within the registration window: on or after the registration-opens date when set, and on or before the registration-closes date when set (otherwise up to the tournament date). When registration is unavailable, the rejection SHALL carry a distinct reason — not yet published, not yet open, or closed — so clients can present it (with the opening date where applicable).
-
-#### Scenario: Setup incomplete
-- **WHEN** a fencer attempts to register for a tournament whose mandatory setup is incomplete
-- **THEN** the registration is rejected with the not-yet-published reason
-
-#### Scenario: After close
-- **WHEN** a fencer attempts to register after the registration-closes date
-- **THEN** the registration is rejected with the closed reason
-
-### Requirement: Cancellation and refund policy
-A fencer SHALL be able to cancel a registration. A cancellation before the tournament's refundable-until date SHALL be marked refundable; after that date the fee is not refundable and the freed spot is offered to substitutes. Refund execution is manual; the system SHALL track refund state on the registration.
-
-#### Scenario: Cancellation after the refundable date
-- **WHEN** a paid fencer cancels after the refundable-until date
-- **THEN** the registration is cancelled without refund and the spot is offered to the substitute queue
-
-### Requirement: Price preview
-The system SHALL compute the total price for a hypothetical selection (disciplines and extra services with quantities and option values) for a tournament without creating a registration, using the same pricing engine — itemized pricing with discounts, or the legacy fee fields for legacy tournaments — that applies at registration time, evaluated as of the current date. The preview SHALL return the total in the tournament's primary currency, and its EUR equivalent when EUR payments are enabled on a non-EUR tournament.
-
-#### Scenario: Preview matches registration
-- **WHEN** a price preview is requested for a selection and the same selection is then submitted as a registration at the same date
-- **THEN** the previewed total equals the registration's computed total
-
-#### Scenario: Preview carries the EUR equivalent
-- **WHEN** a price preview is requested on a CZK tournament with EUR payments enabled
-- **THEN** the response carries the CZK total and its EUR equivalent at the tournament's stored rate
 
 ### Requirement: In-app payment instructions retrieval
 The system SHALL provide, to the owning account only, the payment data for its unpaid reservation: total amount with its currency, bank account (IBAN), variable symbol, payment message, reservation expiry, and the SPAYD QR code — plus the EUR amount and a EUR-denominated QR code when the tournament has EUR payments enabled and its primary currency is not EUR. The content SHALL be identical to the confirmation email's. The EUR fields SHALL be absent, not empty, when they do not apply.
