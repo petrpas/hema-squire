@@ -7,7 +7,7 @@ a correct 68.63 EUR transfer against a 1750 CZK total as 96 % short (design D5).
 """
 
 import re
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 
 from pydantic import BaseModel
@@ -16,6 +16,7 @@ from sqlalchemy.orm import Session
 
 from app import emails, pricing
 from app import rules as rules_engine
+from app.availability import taken_seats
 from app.mail import Mailer
 from app.models import (
     BankTransaction,
@@ -81,6 +82,29 @@ def paid_cents_in_primary(
     return None
 
 
+def within_expiry_grace(registration: Registration, tournament: Tournament) -> bool:
+    if registration.expires_at is None:
+        return False
+    # SQLite drops tzinfo on round-trip even for a DateTime(timezone=True)
+    # column; every stored instant is UTC (see `_now()` conventions app-wide)
+    expires_at = registration.expires_at
+    if expires_at.tzinfo is None:
+        expires_at = expires_at.replace(tzinfo=UTC)
+    deadline = expires_at + timedelta(hours=tournament.expiry_grace_hours)
+    return datetime.now(UTC) <= deadline
+
+
+def seats_free(session: Session, registration: Registration) -> bool:
+    """Every seated (non-substitute) discipline on the registration still has a
+    free place — the gate that stops grace reinstatement from displacing a
+    fencer who has been waiting in the substitute queue."""
+    return all(
+        taken_seats(session, entry.discipline) < entry.discipline.capacity
+        for entry in registration.entries
+        if not entry.is_substitute
+    )
+
+
 def match_new_transactions(
     session: Session, tournament: Tournament, mailer: Mailer
 ) -> MatchResult:
@@ -113,7 +137,34 @@ def match_new_transactions(
             result.unmatched += 1
             continue
 
-        if registration.state != RegistrationState.RESERVED:
+        reinstated = False
+        if registration.state == RegistrationState.EXPIRED:
+            in_grace = within_expiry_grace(registration, tournament)
+            if in_grace and seats_free(session, registration):
+                registration.state = RegistrationState.RESERVED
+                reinstated = True
+                _event(
+                    session, transaction, "reinstated_in_grace",
+                    f"VS {vs}: reinstated within {tournament.expiry_grace_hours}h grace",
+                    registration,
+                )
+                # falls through to the normal tolerance comparison below; the
+                # fencer is told once, combining reinstatement and payment,
+                # only once the payment below is actually accepted
+            else:
+                reason = "expired_outside_grace" if not in_grace else "expired_seat_taken"
+                _finish(transaction, "flagged", reason)
+                _event(
+                    session, transaction, "match_conflict",
+                    f"VS {vs}: registration expired ({reason})", registration,
+                )
+                result.flagged += 1
+                session.flush()
+                emails.send_payment_after_expiry(
+                    mailer, tournament, registration.fencer, registration
+                )
+                continue
+        elif registration.state != RegistrationState.RESERVED:
             _finish(transaction, "flagged", f"registration_{registration.state.value}")
             _event(
                 session, transaction, "match_conflict",
@@ -136,7 +187,7 @@ def match_new_transactions(
             result.flagged += 1
             continue
 
-        due_cents = registration.total_amount * 100
+        due_cents = registration.outstanding_cents
         tolerance = due_cents * tournament.amount_tolerance_percent / 100
         if abs(paid_cents - due_cents) > tolerance:
             _finish(transaction, "flagged", "amount_out_of_tolerance")
@@ -150,6 +201,7 @@ def match_new_transactions(
 
         registration.state = RegistrationState.PAID
         registration.paid_at = datetime.now(UTC)
+        registration.amount_paid_cents += paid_cents
         transaction.matched_registration_id = registration.id
         _finish(transaction, "matched", "auto_vs")
         # the audit records what arrived and, when converted, what it counted as
@@ -159,7 +211,10 @@ def match_new_transactions(
         _event(session, transaction, "payment_matched", detail, registration)
         result.matched += 1
         session.flush()
-        emails.send_payment_received(mailer, tournament, registration.fencer, registration)
+        if reinstated:
+            emails.send_reservation_reinstated(mailer, tournament, registration.fencer, registration)
+        else:
+            emails.send_payment_received(mailer, tournament, registration.fencer, registration)
 
     session.commit()
     return result
@@ -195,15 +250,17 @@ def apply_payment_links(session: Session, tournament: Tournament, mailer: Mailer
             for vs in rule.payload.get("vs", [])
         ]
         registrations = [r for r in registrations if r is not None]
+        credited = paid_cents_in_primary(transaction, tournament)
         for registration in registrations:
             if registration.state != RegistrationState.RESERVED:
                 continue
             registration.state = RegistrationState.PAID
             registration.paid_at = datetime.now(UTC)
-            _event(
-                session, transaction, "payment_matched",
-                f"manual link (rule {rule.id}): VS {registration.vs}", registration,
-            )
+            detail = f"manual link (rule {rule.id}): VS {registration.vs}"
+            if credited is not None:
+                registration.amount_paid_cents += credited
+                detail += f" = {credited} cents primary"
+            _event(session, transaction, "payment_matched", detail, registration)
             session.flush()
             emails.send_payment_received(
                 mailer, tournament, registration.fencer, registration
@@ -228,6 +285,8 @@ def unapply_payment_link(session: Session, tournament: Tournament, rule) -> None
         transaction.status = "unmatched"
         transaction.status_reason = "manual_unlink"
         transaction.matched_registration_id = None
+    # the exact amount this link credited, so reverting removes exactly that
+    credited = paid_cents_in_primary(transaction, tournament) if transaction is not None else None
 
     still_linked = {
         vs
@@ -254,6 +313,8 @@ def unapply_payment_link(session: Session, tournament: Tournament, rule) -> None
             continue
         registration.state = RegistrationState.RESERVED
         registration.paid_at = None
+        if credited is not None:
+            registration.amount_paid_cents -= credited
         session.add(
             PaymentEvent(
                 tournament_id=tournament.id,

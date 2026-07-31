@@ -28,6 +28,8 @@ const PHASE_PARAMS: Record<Phase, ParamField[]> = {
     { key: "amount_tolerance_percent", type: "number" },
     { key: "refundable_until", type: "date" },
     { key: "bank_account", type: "text" },
+    { key: "expiry_grace_hours", type: "number" },
+    { key: "amendments_close", type: "date" },
   ],
   export: [{ key: "output_sheet_url", type: "text" }],
 };

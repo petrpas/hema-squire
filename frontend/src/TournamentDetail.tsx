@@ -34,6 +34,16 @@ function registrationStatus(detail: TournamentDetailData): RegistrationStatus {
   return "open";
 }
 
+/** Amendment is closed by every reason registration is, plus its own,
+ * earlier `amendments_close` boundary when set (mirrors
+ * setup.amendment_availability on the backend). */
+function amendmentOpen(detail: TournamentDetailData): boolean {
+  if (registrationStatus(detail) !== "open") return false;
+  if (!detail.amendments_close) return true;
+  const today = new Date().toISOString().slice(0, 10);
+  return today <= detail.amendments_close;
+}
+
 function InfoHeader({ detail }: { detail: TournamentDetailData }) {
   const { t } = useTranslation();
   return (
@@ -277,27 +287,57 @@ function ItemControls({
 function RegistrationForm({
   detail,
   availability,
+  initial,
   onRegistered,
 }: {
   detail: TournamentDetailData;
   availability: Availability[];
+  /** The current registration, when amending; absent for a fresh one. */
+  initial?: RegistrationDetail;
   onRegistered: (registration: RegistrationDetail) => void;
 }) {
   const { t } = useTranslation();
-  const [disciplines, setDisciplines] = useState<Set<string>>(new Set());
-  const [extraQty, setExtraQty] = useState<Record<number, number>>({});
-  const [extraOption, setExtraOption] = useState<Record<number, string>>({});
-  const [legacyQty, setLegacyQty] = useState<Record<string, number>>({});
-  const [afterparty, setAfterparty] = useState(false);
-  const [aftersparring, setAftersparring] = useState(false);
-  const [accommodation, setAccommodation] = useState("");
-  const [notes, setNotes] = useState("");
-  const [total, setTotal] = useState(0);
+  const amending = initial !== undefined;
+  const [disciplines, setDisciplines] = useState<Set<string>>(
+    () => new Set(initial?.entries.map((e) => e.code) ?? []),
+  );
+  const [extraQty, setExtraQty] = useState<Record<number, number>>(() => {
+    const map: Record<number, number> = {};
+    for (const extra of initial?.extras ?? []) map[extra.extra_item_id] = extra.qty;
+    return map;
+  });
+  const [extraOption, setExtraOption] = useState<Record<number, string>>(() => {
+    const map: Record<number, string> = {};
+    for (const extra of initial?.extras ?? []) {
+      if (extra.option_value) map[extra.extra_item_id] = extra.option_value;
+    }
+    return map;
+  });
+  const [legacyQty, setLegacyQty] = useState<Record<string, number>>(() => {
+    const map: Record<string, number> = {};
+    for (const weapon of initial?.weapon_rentals ?? []) map[weapon] = (map[weapon] ?? 0) + 1;
+    return map;
+  });
+  const [afterparty, setAfterparty] = useState(initial?.afterparty ?? false);
+  const [aftersparring, setAftersparring] = useState(initial?.aftersparring ?? false);
+  const [accommodation, setAccommodation] = useState(initial?.accommodation ?? "");
+  const [notes, setNotes] = useState(initial?.notes ?? "");
+  const [total, setTotal] = useState(initial?.total_amount ?? 0);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const byCode = new Map(availability.map((a) => [a.code, a]));
   const legacy = detail.extra_items.length === 0;
+
+  // an already-held (non-substitute) discipline still counts itself as taken
+  // in `availability` — amending frees it before re-claiming it, so it must
+  // not read as full just because this registration already occupies it
+  function freePlaces(code: string): number {
+    const a = byCode.get(code);
+    const free = a ? a.free : 999999;
+    const alreadyHeld = initial?.entries.some((e) => e.code === code && !e.is_substitute);
+    return alreadyHeld ? free + 1 : free;
+  }
 
   function weaponRentals(): string[] {
     return Object.entries(legacyQty).flatMap(([code, qty]) => Array(qty).fill(code));
@@ -359,7 +399,7 @@ function RegistrationForm({
   // a full discipline is registered for as a substitute, chosen on its own row
   const selectedFull = detail.disciplines
     .filter((d) => disciplines.has(d.code))
-    .filter((d) => (byCode.get(d.code)?.free ?? d.capacity) <= 0)
+    .filter((d) => freePlaces(d.code) <= 0)
     .map((d) => d.code);
 
   /** Rows whose option is declared but unanswered block submission. */
@@ -409,7 +449,7 @@ function RegistrationForm({
     setBusy(true);
     setError(null);
     try {
-      const registration = await api.registerForTournament(detail.slug, {
+      const payload = {
         disciplines: [...disciplines],
         weapon_rentals: weaponRentals(),
         afterparty,
@@ -419,7 +459,10 @@ function RegistrationForm({
         // full rows were chosen knowingly, so substitute placement is accepted
         wait_for_all: selectedFull.length > 0,
         extras: extrasPayload(),
-      });
+      };
+      const registration = amending
+        ? await api.amendRegistration(detail.slug, payload)
+        : await api.registerForTournament(detail.slug, payload);
       onRegistered(registration);
     } catch (err) {
       // a discipline can fill between page load and submit; the row-level
@@ -439,7 +482,7 @@ function RegistrationForm({
 
   return (
     <section className="rail-card">
-      <h2>{t("form.title")}</h2>
+      <h2>{amending ? t("form.amendTitle") : t("form.title")}</h2>
       <p className="tiskopis-number">{t("form.formNumber")}</p>
       <h1>{detail.display_name}</h1>
       {detail.subtitle && <p className="detail-subtitle">{detail.subtitle}</p>}
@@ -452,7 +495,7 @@ function RegistrationForm({
         {detail.disciplines.map((d) => {
           const a = byCode.get(d.code);
           const taken = a ? a.taken : 0;
-          const free = a ? a.free : d.capacity;
+          const free = freePlaces(d.code);
           return (
             <ChecklistRow
               key={d.code}
@@ -567,7 +610,7 @@ function RegistrationForm({
         disabled={busy || disciplines.size === 0}
         onClick={() => void submit()}
       >
-        {t("form.submit")}
+        {amending ? t("form.amendSubmit") : t("form.submit")}
       </button>
     </section>
   );
@@ -677,6 +720,13 @@ function RegistrationLines({
           amount: formatMoneyWithEur(registration.total_amount, detail),
         })}
       </p>
+      {Number(registration.outstanding_amount) !== 0 && (
+        <p className="rail-hint">
+          {t("registration.outstanding", {
+            amount: formatMoney(registration.outstanding_amount, detail.primary_currency),
+          })}
+        </p>
+      )}
     </>
   );
 }
@@ -702,11 +752,15 @@ function RegistrationPanel({
   slug,
   detail,
   registration,
+  canAmend,
+  onAmend,
   onCancelled,
 }: {
   slug: string;
   detail: TournamentDetailData;
   registration: RegistrationDetail;
+  canAmend: boolean;
+  onAmend: () => void;
   onCancelled: () => void;
 }) {
   const { t } = useTranslation();
@@ -743,6 +797,12 @@ function RegistrationPanel({
       {registration.state === "reserved" && !fullyQueued && <PaymentPanel slug={slug} />}
       {registration.state === "reserved" && fullyQueued && (
         <p className="rail-hint">{t("registration.fullyQueuedHint")}</p>
+      )}
+
+      {canAmend && (
+        <button className="secondary" onClick={onAmend}>
+          {t("registration.amend")}
+        </button>
       )}
 
       {registration.state !== "cancelled" && (
@@ -799,9 +859,9 @@ export default function TournamentDetail({
   const [registration, setRegistration] = useState<RegistrationDetail | null>(null);
   const [registrationChecked, setRegistrationChecked] = useState(false);
   const [account, setAccount] = useState<Account | null>(null);
-  // the detail page is split into an information screen and a separate register
-  // screen; information is always the landing view
-  const [screen, setScreen] = useState<"information" | "register">("information");
+  // the detail page is split into an information screen and a separate
+  // register/amend screen; information is always the landing view
+  const [screen, setScreen] = useState<"information" | "register" | "amend">("information");
 
   function refresh() {
     api.tournament(slug).then(setDetail, () => setDetail(null));
@@ -835,7 +895,15 @@ export default function TournamentDetail({
     detail !== null &&
     registrationStatus(detail) === "open" &&
     hasOpenSlot;
+  const canAmend =
+    !readOnly &&
+    detail !== null &&
+    registration !== null &&
+    (registration.state === "reserved" || registration.state === "paid") &&
+    amendmentOpen(detail);
   const onRegisterScreen = screen === "register" && canRegister;
+  const onAmendScreen = screen === "amend" && canAmend;
+  const showingForm = onRegisterScreen || onAmendScreen;
 
   return (
     <div className="login-page">
@@ -852,17 +920,18 @@ export default function TournamentDetail({
       <div className="login-card wide-card">
         <button
           className="link-button"
-          onClick={() => (onRegisterScreen ? setScreen("information") : onBack())}
+          onClick={() => (showingForm ? setScreen("information") : onBack())}
         >
-          {onRegisterScreen ? t("detail.backToInfo") : t("detail.back")}
+          {showingForm ? t("detail.backToInfo") : t("detail.back")}
         </button>
         {detail === null || !registrationChecked ? (
           <p>{t("common.loading")}</p>
-        ) : onRegisterScreen ? (
+        ) : showingForm ? (
           <div className="setup-panel">
             <RegistrationForm
               detail={detail}
               availability={availability}
+              initial={onAmendScreen ? (registration ?? undefined) : undefined}
               onRegistered={(r) => {
                 setRegistration(r);
                 setScreen("information");
@@ -883,6 +952,8 @@ export default function TournamentDetail({
                 slug={slug}
                 detail={detail}
                 registration={registration}
+                canAmend={canAmend}
+                onAmend={() => setScreen("amend")}
                 onCancelled={refresh}
               />
             ) : canRegister ? (

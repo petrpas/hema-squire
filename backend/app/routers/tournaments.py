@@ -314,6 +314,13 @@ def update_tournament(
         tournament.qualification_criteria = None
     if not tournament.qualification_open and not (tournament.qualification_criteria or "").strip():
         raise HTTPException(status_code=422, detail="qualification_criteria_required")
+    if (
+        tournament.amendments_close is not None
+        and tournament.registration_closes is not None
+        and tournament.amendments_close > tournament.registration_closes
+    ):
+        # a later value would never be reached (registration itself closes first)
+        raise HTTPException(status_code=422, detail="amendments_close_after_registration_closes")
     _apply_currency_invariants(tournament)
     session.commit()
     session.refresh(tournament)

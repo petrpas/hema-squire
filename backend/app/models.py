@@ -175,6 +175,9 @@ class Tournament(Base):
     organizers: Mapped[list] = mapped_column(JSON, default=list)
     registration_opens: Mapped[date | None]
     registration_closes: Mapped[date | None]
+    # freezes the roster for amendments independently of registration close;
+    # unset means "same window as registration" (setup.amendment_availability)
+    amendments_close: Mapped[date | None]
 
     # payment and reservation parameters
     reservation_validity_days: Mapped[int] = mapped_column(default=10)
@@ -182,6 +185,10 @@ class Tournament(Base):
     amount_tolerance_percent: Mapped[int] = mapped_column(default=5)
     refundable_until: Mapped[date | None]
     bank_account: Mapped[str | None] = mapped_column(String(50))
+    # how long after expiry a VS-matched payment may still reinstate a
+    # reservation, subject to capacity (matching.py); 0 disables automatic
+    # reinstatement and routes every post-expiry payment to organizer action
+    expiry_grace_hours: Mapped[int] = mapped_column(default=48)
     unpaid_list_treatment: Mapped[UnpaidListTreatment] = mapped_column(
         str_enum(UnpaidListTreatment), default=UnpaidListTreatment.GREYED
     )
@@ -361,6 +368,15 @@ class Registration(Base):
     refund_state: Mapped[RefundState] = mapped_column(
         str_enum(RefundState), default=RefundState.NOT_APPLICABLE
     )
+    # sum of payments credited to this registration, in the tournament's
+    # primary currency in cents, at the rate applied when each was matched
+    # (matching.paid_cents_in_primary) — the one stored money figure; the
+    # balance is always derived (see outstanding_cents), never stored
+    amount_paid_cents: Mapped[int] = mapped_column(default=0)
+
+    @property
+    def outstanding_cents(self) -> int:
+        return self.total_amount * 100 - self.amount_paid_cents
 
     # legacy billable extras (pre-itemized tournaments) and free-text fields
     weapon_rentals: Mapped[list[str]] = mapped_column(JSON, default=list)
@@ -436,7 +452,10 @@ class BankTransaction(Base):
 
 class PaymentEvent(Base):
     """Audit trail of payment lifecycle events (matches, mismatches, reminders,
-    expiries)."""
+    expiries, reinstatements, amendments). `kind` is a free string rather than
+    an enum; besides the events already named above it also takes
+    `reinstated_in_grace`, `reinstated_by_organizer`, `marked_for_refund`, and
+    `registration_amended`."""
 
     __tablename__ = "payment_events"
 

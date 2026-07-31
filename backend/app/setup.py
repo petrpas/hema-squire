@@ -58,3 +58,16 @@ def registration_availability(tournament: Tournament, today: datetime.date) -> s
     if today > closes:
         return CLOSED
     return None
+
+
+def amendment_availability(tournament: Tournament, today: datetime.date) -> str | None:
+    """None when an amendment submission may proceed; otherwise the reason it
+    is rejected. Amendment is closed by every reason registration is, plus its
+    own `amendments_close` boundary when set — unset means "same window as
+    registration" (Decision 4), which this reduces to exactly."""
+    reason = registration_availability(tournament, today)
+    if reason is not None:
+        return reason
+    if tournament.amendments_close is not None and today > tournament.amendments_close:
+        return CLOSED
+    return None

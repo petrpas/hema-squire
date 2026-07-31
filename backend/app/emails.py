@@ -1,6 +1,8 @@
 """Composition of fencer-facing emails, localized to the tournament's
 communication language."""
 
+from decimal import ROUND_HALF_UP, Decimal
+
 from app import pricing, spayd
 from app.config import settings
 from app.i18n import format_money, t
@@ -97,18 +99,24 @@ def payment_message(tournament: Tournament, registration: Registration) -> str:
     return f"VS{registration.vs} {tournament.display_name}"
 
 
-def payment_spayd(tournament: Tournament, registration: Registration) -> tuple[str, str | None]:
+def payment_spayd(
+    tournament: Tournament, registration: Registration, amount: int | Decimal | None = None
+) -> tuple[str, str | None]:
     """The primary SPAYD string and, for a tournament that also takes EUR, a
-    second one denominated in EUR against the same IBAN (design D4)."""
+    second one denominated in EUR against the same IBAN (design D4).
+
+    `amount` overrides the registration's total — the same VS, but for the
+    outstanding difference rather than the full amount (a surcharge due)."""
+    due = registration.total_amount if amount is None else amount
     message = payment_message(tournament, registration)
     primary = spayd.spayd_string(
         tournament.bank_account,
-        registration.total_amount,
+        due,
         registration.vs,
         message,
         currency=str(tournament.primary_currency),
     )
-    eur_amount = pricing.to_eur(registration.total_amount, tournament)
+    eur_amount = pricing.to_eur(due, tournament)
     if eur_amount is None:
         return primary, None
     eur = spayd.spayd_string(
@@ -122,11 +130,11 @@ def payment_spayd(tournament: Tournament, registration: Registration) -> tuple[s
 
 
 def payment_qrs(
-    tournament: Tournament, registration: Registration
+    tournament: Tournament, registration: Registration, amount: int | Decimal | None = None
 ) -> tuple[bytes | None, bytes | None]:
     if not tournament.bank_account:
         return None, None
-    primary, eur = payment_spayd(tournament, registration)
+    primary, eur = payment_spayd(tournament, registration, amount)
     return spayd.qr_png(primary), (spayd.qr_png(eur) if eur else None)
 
 
@@ -180,6 +188,113 @@ def send_payment_received(
         name=fencer.display_name,
         tournament=tournament.display_name,
         total=format_money(registration.total_amount, tournament.primary_currency, lang),
+        vs=registration.vs,
+    )
+    mailer.send(build_message(fencer.email, settings.email_sender, subject, body))
+
+
+def send_amendment_confirmation(
+    mailer: Mailer, tournament: Tournament, fencer: Fencer, registration: Registration
+) -> None:
+    """Same content as the initial confirmation — the updated summary, the
+    recomputed amount, and a QR against the unchanged VS — reissued because a
+    reserved amendment leaves `vs` and `expires_at` untouched (Decision 3)."""
+    lang = tournament.language
+    queued = all(entry.is_substitute for entry in registration.entries)
+
+    if queued:
+        subject = t("email.amendment.queuedSubject", lang, tournament=tournament.display_name)
+        body = t(
+            "email.amendment.queuedBody",
+            lang,
+            name=fencer.display_name,
+            tournament=tournament.display_name,
+            summary=_summary_lines(registration, lang),
+        )
+        mailer.send(build_message(fencer.email, settings.email_sender, subject, body))
+        return
+
+    subject = t("email.amendment.subject", lang, tournament=tournament.display_name)
+    body = t(
+        "email.amendment.body",
+        lang,
+        name=fencer.display_name,
+        tournament=tournament.display_name,
+        summary=_summary_lines(registration, lang),
+        total=_total_text(tournament, registration),
+        eur_note=_eur_note(tournament, lang),
+        account=tournament.bank_account or "?",
+        vs=registration.vs,
+        expires=registration.expires_at.date().isoformat() if registration.expires_at else "-",
+    )
+    qr, qr_eur = payment_qrs(tournament, registration)
+    mailer.send(
+        build_message(
+            fencer.email, settings.email_sender, subject, body, qr=qr, qr_eur=qr_eur
+        )
+    )
+
+
+def send_surcharge_due(
+    mailer: Mailer, tournament: Tournament, fencer: Fencer, registration: Registration
+) -> None:
+    """A paid registration amended upward: payment instructions for exactly
+    the difference, against the same VS the fencer already paid once."""
+    lang = tournament.language
+    outstanding = (Decimal(registration.outstanding_cents) / 100).quantize(
+        Decimal("0.01"), rounding=ROUND_HALF_UP
+    )
+    subject = t("email.surcharge.subject", lang, tournament=tournament.display_name)
+    body = t(
+        "email.surcharge.body",
+        lang,
+        name=fencer.display_name,
+        tournament=tournament.display_name,
+        amount=format_money(outstanding, tournament.primary_currency, lang),
+        account=tournament.bank_account or "?",
+        vs=registration.vs,
+    )
+    qr, qr_eur = payment_qrs(tournament, registration, amount=outstanding)
+    mailer.send(
+        build_message(
+            fencer.email, settings.email_sender, subject, body, qr=qr, qr_eur=qr_eur
+        )
+    )
+
+
+def send_reservation_reinstated(
+    mailer: Mailer, tournament: Tournament, fencer: Fencer, registration: Registration
+) -> None:
+    """A payment accepted within (or, by organizer action, outside) the expiry
+    grace period: one message combining the reinstatement and the payment,
+    consistent with the registration already showing as paid by the time this
+    is sent (matching.match_new_transactions, routers/payments.reinstate)."""
+    lang = tournament.language
+    subject = t("email.reinstated.subject", lang, tournament=tournament.display_name)
+    body = t(
+        "email.reinstated.body",
+        lang,
+        name=fencer.display_name,
+        tournament=tournament.display_name,
+        total=format_money(registration.total_amount, tournament.primary_currency, lang),
+        vs=registration.vs,
+    )
+    mailer.send(build_message(fencer.email, settings.email_sender, subject, body))
+
+
+def send_payment_after_expiry(
+    mailer: Mailer, tournament: Tournament, fencer: Fencer, registration: Registration
+) -> None:
+    """A payment that could not be reinstated automatically — outside grace,
+    or the seat is gone. States plainly that it arrived and that the organizer
+    will follow up; it must not promise a seat that may no longer exist."""
+    lang = tournament.language
+    subject = t("email.afterExpiry.subject", lang, tournament=tournament.display_name)
+    body = t(
+        "email.afterExpiry.body",
+        lang,
+        name=fencer.display_name,
+        tournament=tournament.display_name,
         vs=registration.vs,
     )
     mailer.send(build_message(fencer.email, settings.email_sender, subject, body))

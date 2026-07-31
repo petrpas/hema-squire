@@ -1,13 +1,13 @@
-from datetime import date, timedelta
+from datetime import UTC, date, datetime, timedelta
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile
 from sqlalchemy import select
 
-from app import bank, matching, rules, scheduler
+from app import bank, emails, matching, rules, scheduler
 from app.auth import require_console_access
 from app.mail import Mailer, get_mailer
-from app.models import BankTransaction, Registration
+from app.models import BankTransaction, PaymentEvent, RefundState, Registration, RegistrationState
 from app.routers.tournaments import FencerDep, SessionDep, TournamentDep
 from app.schemas import IngestAndMatchOut, LinkIn, TransactionOut
 
@@ -117,10 +117,22 @@ def link_transaction(
     return {"rule_id": rule.id, "applied": applied}
 
 
+def _transaction_out(session, tournament, transaction: BankTransaction) -> TransactionOut:
+    out = TransactionOut.model_validate(transaction)
+    if transaction.status == "flagged":
+        registration = _flagged_registration(session, tournament, transaction)
+        out.reinstate_available = (
+            registration is not None
+            and registration.state == RegistrationState.EXPIRED
+            and matching.seats_free(session, registration)
+        )
+    return out
+
+
 @router.get("/unmatched", response_model=list[TransactionOut])
 def unmatched_queue(tournament: TournamentDep, session: SessionDep, fencer: FencerDep):
     require_console_access(session, tournament, fencer)
-    return session.scalars(
+    transactions = session.scalars(
         select(BankTransaction)
         .where(
             BankTransaction.tournament_id == tournament.id,
@@ -128,13 +140,106 @@ def unmatched_queue(tournament: TournamentDep, session: SessionDep, fencer: Fenc
         )
         .order_by(BankTransaction.date, BankTransaction.id)
     ).all()
+    return [_transaction_out(session, tournament, transaction) for transaction in transactions]
 
 
 @router.get("/transactions", response_model=list[TransactionOut])
 def list_transactions(tournament: TournamentDep, session: SessionDep, fencer: FencerDep):
     require_console_access(session, tournament, fencer)
-    return session.scalars(
+    transactions = session.scalars(
         select(BankTransaction)
         .where(BankTransaction.tournament_id == tournament.id)
         .order_by(BankTransaction.date, BankTransaction.id)
     ).all()
+    return [_transaction_out(session, tournament, transaction) for transaction in transactions]
+
+
+def _flagged_transaction(session, tournament, transaction_id: int) -> BankTransaction:
+    transaction = session.get(BankTransaction, transaction_id)
+    if transaction is None or transaction.tournament_id != tournament.id:
+        raise HTTPException(status_code=404, detail="transaction_not_found")
+    if transaction.status != "flagged":
+        raise HTTPException(status_code=409, detail="not_flagged")
+    return transaction
+
+
+def _flagged_registration(session, tournament, transaction: BankTransaction) -> Registration | None:
+    vs = matching.effective_vs(transaction)
+    if vs is None:
+        return None
+    return session.scalar(
+        select(Registration).where(
+            Registration.tournament_id == tournament.id, Registration.vs == vs
+        )
+    )
+
+
+@router.post("/transactions/{transaction_id}/reinstate", response_model=TransactionOut)
+def reinstate_transaction(
+    transaction_id: int,
+    tournament: TournamentDep,
+    session: SessionDep,
+    fencer: FencerDep,
+    mailer: MailerDep,
+):
+    """Applies the same effect as automatic grace reinstatement, but as an
+    explicit organizer action outside the grace window (or when it was
+    refused for capacity): the accepted amount is credited unconditionally,
+    since the organizer has already reviewed and decided to accept it."""
+    require_console_access(session, tournament, fencer)
+    transaction = _flagged_transaction(session, tournament, transaction_id)
+    registration = _flagged_registration(session, tournament, transaction)
+    if registration is None or registration.state != RegistrationState.EXPIRED:
+        raise HTTPException(status_code=409, detail="not_reinstatable")
+    if not matching.seats_free(session, registration):
+        raise HTTPException(status_code=409, detail="capacity_unavailable")
+
+    registration.state = RegistrationState.PAID
+    registration.paid_at = datetime.now(UTC)
+    credited = matching.paid_cents_in_primary(transaction, tournament)
+    if credited is not None:
+        registration.amount_paid_cents += credited
+    transaction.matched_registration_id = registration.id
+    transaction.status = "matched"
+    transaction.status_reason = "reinstated_by_organizer"
+    session.add(
+        PaymentEvent(
+            tournament_id=tournament.id,
+            registration_id=registration.id,
+            transaction_id=transaction.id,
+            kind="reinstated_by_organizer",
+            detail=f"VS {registration.vs}: reinstated by organizer",
+        )
+    )
+    session.commit()
+    emails.send_reservation_reinstated(mailer, tournament, registration.fencer, registration)
+    return transaction
+
+
+@router.post("/transactions/{transaction_id}/mark-for-refund", response_model=TransactionOut)
+def mark_transaction_for_refund(
+    transaction_id: int,
+    tournament: TournamentDep,
+    session: SessionDep,
+    fencer: FencerDep,
+):
+    require_console_access(session, tournament, fencer)
+    transaction = _flagged_transaction(session, tournament, transaction_id)
+    registration = _flagged_registration(session, tournament, transaction)
+    credited = matching.paid_cents_in_primary(transaction, tournament)
+    if registration is not None and credited is not None:
+        registration.amount_paid_cents += credited
+        registration.refund_state = RefundState.PENDING
+    transaction.status = "resolved"
+    transaction.status_reason = "marked_for_refund"
+    session.add(
+        PaymentEvent(
+            tournament_id=tournament.id,
+            registration_id=registration.id if registration else None,
+            transaction_id=transaction.id,
+            kind="marked_for_refund",
+            detail=f"transaction {transaction.id}: marked for refund",
+        )
+    )
+    session.commit()
+    return transaction

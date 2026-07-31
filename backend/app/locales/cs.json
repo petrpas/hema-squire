@@ -32,6 +32,24 @@
     "queued": {
       "subject": "Zařazení do fronty náhradníků — {tournament}",
       "body": "Ahoj {name},\n\ntvá registrace na {tournament} čeká ve frontě náhradníků:\n\n{summary}\n\nZatím nic neplatíš. Jakmile se uvolní místo a organizátor tě přijme, pošleme ti pokyny k platbě.\n\nTým {tournament}"
+    },
+    "amendment": {
+      "subject": "Úprava registrace na {tournament} — pokyny k platbě",
+      "body": "Ahoj {name},\n\nupravili jsme tvou registraci na {tournament}:\n\n{summary}\n\nCelkem k úhradě: {total}\nÚčet: {account}\nVariabilní symbol: {vs}\nRezervace platí do: {expires}\n\nZaplatit můžeš naskenováním přiloženého QR kódu v bankovní aplikaci.{eur_note}\n\nPokud platba do konce rezervace nedorazí, místo se automaticky uvolní.\n\nTým {tournament}",
+      "queuedSubject": "Úprava registrace — {tournament}",
+      "queuedBody": "Ahoj {name},\n\nupravili jsme tvou registraci na {tournament}, která čeká ve frontě náhradníků:\n\n{summary}\n\nZatím nic neplatíš. Jakmile se uvolní místo a organizátor tě přijme, pošleme ti pokyny k platbě.\n\nTým {tournament}"
+    },
+    "surcharge": {
+      "subject": "Doplatek k registraci — {tournament}",
+      "body": "Ahoj {name},\n\npo úpravě tvé registrace na {tournament} vznikl doplatek {amount}.\n\nÚčet: {account}\nVariabilní symbol: {vs}\n\nZaplatit můžeš naskenováním přiloženého QR kódu — je vystavený přesně na doplatek.\n\nTým {tournament}"
+    },
+    "reinstated": {
+      "subject": "Rezervace obnovena, platba přijata — {tournament}",
+      "body": "Ahoj {name},\n\ntvá platba {total} (VS {vs}) dorazila po vypršení rezervace, ale místo bylo ještě volné — rezervaci jsme obnovili a platbu přijali. Tvoje účast na {tournament} je potvrzena. Uvidíme se na turnaji!\n\nTým {tournament}"
+    },
+    "afterExpiry": {
+      "subject": "Platba přijata po vypršení rezervace — {tournament}",
+      "body": "Ahoj {name},\n\ndorazila tvá platba (VS {vs}) k registraci na {tournament}, jejíž rezervace mezitím vypršela. Místo už jsme automaticky nepotvrdili — ozve se ti organizátor a domluví další postup.\n\nTým {tournament}"
     }
   }
 }

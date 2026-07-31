@@ -1,5 +1,6 @@
 import base64
 from datetime import UTC, datetime, timedelta
+from decimal import ROUND_HALF_UP, Decimal
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -11,6 +12,7 @@ from app.availability import queue_length, taken_seats
 from app.mail import Mailer, get_mailer
 from app.models import (
     ExtraItem,
+    PaymentEvent,
     RefundState,
     Registration,
     RegistrationDiscipline,
@@ -62,11 +64,20 @@ def next_vs(session) -> int:
     return (highest or VS_START - 1) + 1
 
 
+def _outstanding_amount(registration: Registration) -> Decimal:
+    """`outstanding_cents` in the tournament's primary currency, at the same
+    two-decimal precision as a converted EUR figure."""
+    return (Decimal(registration.outstanding_cents) / 100).quantize(
+        Decimal("0.01"), rounding=ROUND_HALF_UP
+    )
+
+
 def registration_out(session, registration: Registration) -> dict:
     return {
         "state": registration.state,
         "vs": registration.vs,
         "total_amount": registration.total_amount,
+        "outstanding_amount": _outstanding_amount(registration),
         "expires_at": registration.expires_at,
         "registered_at": registration.registered_at,
         "paid_at": registration.paid_at,
@@ -251,7 +262,8 @@ def register(
             Registration.fencer_id == fencer.id,
         )
     )
-    if existing is not None and existing.state != RegistrationState.CANCELLED:
+    reusable_states = (RegistrationState.CANCELLED, RegistrationState.EXPIRED)
+    if existing is not None and existing.state not in reusable_states:
         raise HTTPException(status_code=409, detail="already_registered")
 
     selected, extras = _resolve_selection(tournament, data)
@@ -266,9 +278,10 @@ def register(
     as_substitute = bool(full)
 
     if existing is not None:
-        # Re-registering after a cancellation: the (tournament_id, fencer_id)
-        # unique constraint forbids a second row, so the cancelled one is
-        # reused in place rather than inserting a new registration.
+        # Re-registering after a cancellation or an expiry: the
+        # (tournament_id, fencer_id) unique constraint forbids a second row, so
+        # the existing one is reused in place rather than inserting a new
+        # registration.
         session.execute(
             delete(RegistrationDiscipline).where(
                 RegistrationDiscipline.registration_id == existing.id
@@ -284,11 +297,18 @@ def register(
         registration.refundable = None
         registration.refund_state = RefundState.NOT_APPLICABLE
         registration.paid_at = None
+        # a new cycle starts from a clean balance; any payment credited to the
+        # previous cycle was already flagged for refund by the matcher rather
+        # than carried forward
+        registration.amount_paid_cents = 0
     else:
         registration = Registration(tournament=tournament, fencer=fencer)
         session.add(registration)
 
     registration.registered_at = _now()
+    # a fresh VS every cycle, deliberately not reused: the previous cycle's VS
+    # may still be quoted on a payment in flight, and reusing it would credit
+    # an old instruction against a new selection at a new price
     registration.vs = next_vs(session)
     registration.weapon_rentals = data.weapon_rentals
     registration.afterparty = data.afterparty
@@ -337,6 +357,94 @@ def get_my_registration(session, tournament: Tournament, fencer) -> Registration
 @router.get("/my-registration", response_model=RegistrationOut)
 def my_registration(tournament: TournamentDep, session: SessionDep, fencer: FencerDep):
     return registration_out(session, get_my_registration(session, tournament, fencer))
+
+
+@router.post("/my-registration/amend", response_model=RegistrationOut)
+def amend_registration(
+    data: RegisterIn,
+    tournament: TournamentDep,
+    session: SessionDep,
+    fencer: FencerDep,
+    mailer: MailerDep,
+):
+    reason = setup.amendment_availability(tournament, _now().date())
+    if reason is not None:
+        raise HTTPException(status_code=403, detail={"reason": reason})
+
+    registration = get_my_registration(session, tournament, fencer)
+    if registration.state not in (RegistrationState.RESERVED, RegistrationState.PAID):
+        # expired or cancelled registrations return through re-registration
+        # instead, a different operation with a different VS (Decision 3)
+        raise HTTPException(status_code=409, detail="amend_not_allowed")
+
+    selected, extras = _resolve_selection(tournament, data)
+    _validate_options(data.extras, {item.id: item for item in tournament.extra_items})
+
+    was_paid = registration.state == RegistrationState.PAID
+    previous_total = registration.total_amount
+
+    # drop the current selection before checking capacity, so the fencer's own
+    # existing seats are not counted as taken against themselves
+    session.execute(
+        delete(RegistrationDiscipline).where(
+            RegistrationDiscipline.registration_id == registration.id
+        )
+    )
+    session.execute(
+        delete(RegistrationExtra).where(RegistrationExtra.registration_id == registration.id)
+    )
+    session.flush()
+
+    # unlike register(), amendment never rejects for fullness: a discipline
+    # that is full joins as a substitute placement in place, and every other
+    # selected discipline is unaffected by it (design Decision 3 — rejecting
+    # the whole submission would discard the parts that were fine)
+    full = {d.code for d in selected if taken_seats(session, d) >= d.capacity}
+
+    registration.weapon_rentals = data.weapon_rentals
+    registration.afterparty = data.afterparty
+    registration.aftersparring = data.aftersparring
+    registration.accommodation = data.accommodation
+    registration.notes = data.notes
+    for discipline in selected:
+        registration.entries.append(
+            RegistrationDiscipline(
+                discipline=discipline, is_substitute=discipline.code in full
+            )
+        )
+    for selection in data.extras:
+        value = (selection.option_value or "").strip()
+        registration.extra_selections.append(
+            RegistrationExtra(
+                extra_item_id=selection.extra_item_id,
+                qty=selection.qty,
+                option_value=value or None,
+            )
+        )
+    session.flush()
+
+    # vs and expires_at are read-only through this path: amending must not
+    # renew the hold or reissue the QR (Decision 3, the load-bearing guarantee)
+    registration.total_amount = pricing.registration_total(registration, tournament)
+    if was_paid and registration.outstanding_cents < 0:
+        registration.refund_state = RefundState.PENDING
+
+    session.add(
+        PaymentEvent(
+            tournament_id=tournament.id,
+            registration_id=registration.id,
+            kind="registration_amended",
+            detail=f"VS {registration.vs}: {previous_total} -> {registration.total_amount}",
+        )
+    )
+    session.commit()
+
+    if was_paid:
+        if registration.outstanding_cents > 0:
+            emails.send_surcharge_due(mailer, tournament, fencer, registration)
+    else:
+        emails.send_amendment_confirmation(mailer, tournament, fencer, registration)
+    return registration_out(session, registration)
 
 
 @router.get("/my-registration/payment", response_model=PaymentInstructionsOut)

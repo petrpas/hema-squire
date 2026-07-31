@@ -168,6 +168,8 @@
     "amount_tolerance_percent": "Tolerance částky (%)",
     "refundable_until": "Vratné do",
     "bank_account": "Účet (IBAN)",
+    "expiry_grace_hours": "Tolerance po vypršení (hodiny)",
+    "amendments_close": "Úpravy registrace do",
     "output_sheet_url": "URL výstupní Google tabulky",
     "display_name": "Název turnaje",
     "date": "Datum",
@@ -446,7 +448,9 @@
     "chooseOption": "vyber",
     "optionRequired": "Vyber {{label}} u položky {{item}}.",
     "nowFull": "Tyto disciplíny se mezitím zaplnily: {{codes}}. Zkontroluj výběr a odešli znovu.",
-    "weaponRental": "Zapůjčení zbraně — {{weapon}}"
+    "weaponRental": "Zapůjčení zbraně — {{weapon}}",
+    "amendTitle": "Úprava registrace",
+    "amendSubmit": "Uložit úpravu"
   },
   "payment": {
     "title": "Platební instrukce",
@@ -469,7 +473,9 @@
       "cancelled": "Zrušeno"
     },
     "queuePosition": "pořadí {{position}}",
-    "fullyQueuedHint": "Čekáš v pořadí na všechny vybrané disciplíny — platba se otevře po zařazení."
+    "fullyQueuedHint": "Čekáš v pořadí na všechny vybrané disciplíny — platba se otevře po zařazení.",
+    "amend": "Upravit registraci",
+    "outstanding": "Zbývá doplatit: {{amount}}"
   },
   "cancel": {
     "button": "Zrušit registraci",
@@ -477,5 +483,25 @@
     "refundable": "Poplatek je vratný. Opravdu chceš registraci zrušit?",
     "notRefundable": "Poplatek už není vratný. Opravdu chceš registraci zrušit?",
     "confirmButton": "Ano, zrušit registraci"
+  },
+  "payments": {
+    "flagged": {
+      "title": "Nevyřešené platby",
+      "empty": "Žádné nevyřešené platby.",
+      "vs": "VS",
+      "amount": "Částka",
+      "reason": "Důvod",
+      "reinstate": "Obnovit rezervaci",
+      "markForRefund": "Označit k vrácení",
+      "actionFailed": "Akci se nepodařilo provést.",
+      "reasons": {
+        "expired_outside_grace": "rezervace vypršela, mimo toleranci",
+        "expired_seat_taken": "rezervace vypršela, místo mezitím obsazeno",
+        "amount_out_of_tolerance": "částka mimo toleranci",
+        "currency_unconvertible": "měnu nelze převést",
+        "registration_paid": "registrace už je zaplacená",
+        "registration_cancelled": "registrace zrušena"
+      }
+    }
   }
 }

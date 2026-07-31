@@ -247,12 +247,18 @@ class TournamentUpdate(BaseModel):
     organizers: list[OrganizerIn] | None = None
     registration_opens: datetime.date | None = None
     registration_closes: datetime.date | None = None
+    # unset means "same window as registration"; when both this and
+    # registration_closes are set, this must not fall after it (router-checked)
+    amendments_close: datetime.date | None = None
     discounts: list[DiscountIn] | None = None
     reservation_validity_days: int | None = Field(default=None, gt=0)
     reminder_day: int | None = Field(default=None, gt=0)
     amount_tolerance_percent: int | None = Field(default=None, ge=0, le=100)
     refundable_until: datetime.date | None = None
     bank_account: str | None = None
+    # hours after expiry a VS-matched payment may still reinstate a
+    # reservation, subject to capacity; 0 disables automatic reinstatement
+    expiry_grace_hours: int | None = Field(default=None, ge=0)
     fio_token: str | None = None
     unpaid_list_treatment: UnpaidListTreatment | None = None
     output_sheet_url: str | None = None
@@ -280,6 +286,7 @@ class TournamentOut(BaseModel):
     amount_tolerance_percent: int
     refundable_until: datetime.date | None
     bank_account: str | None
+    expiry_grace_hours: int
     unpaid_list_treatment: UnpaidListTreatment
     output_sheet_url: str | None
     hr_category_map: dict[str, str]
@@ -299,6 +306,7 @@ class TournamentOut(BaseModel):
     organizers: list[OrganizerOut]
     registration_opens: datetime.date | None
     registration_closes: datetime.date | None
+    amendments_close: datetime.date | None
     discounts: list[DiscountIn]
     extra_items: list[ExtraItemOut] = []
     # filled by the detail endpoint from setup.setup_missing(); None elsewhere
@@ -398,6 +406,9 @@ class RegistrationOut(BaseModel):
     state: RegistrationState
     vs: int
     total_amount: int
+    # total_amount less what has been credited so far; the single figure the
+    # fencer needs, never a total and a payment history to subtract by hand
+    outstanding_amount: decimal.Decimal
     expires_at: datetime.datetime | None
     registered_at: datetime.datetime
     paid_at: datetime.datetime | None
@@ -505,6 +516,9 @@ class TransactionOut(BaseModel):
     status: str | None
     status_reason: str | None
     matched_registration_id: int | None
+    # only meaningful for a flagged transaction; whether reinstate is offered
+    # (capacity re-checked at read time — see routers.payments._transaction_out)
+    reinstate_available: bool = False
 
 
 class LinkIn(BaseModel):

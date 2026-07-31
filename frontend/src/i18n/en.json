@@ -168,6 +168,8 @@
     "amount_tolerance_percent": "Amount tolerance (%)",
     "refundable_until": "Refundable until",
     "bank_account": "Account (IBAN)",
+    "expiry_grace_hours": "Grace period after expiry (hours)",
+    "amendments_close": "Amendments close",
     "output_sheet_url": "Output Google Sheet URL",
     "display_name": "Tournament name",
     "date": "Date",
@@ -446,7 +448,9 @@
     "chooseOption": "choose",
     "optionRequired": "Choose {{label}} for {{item}}.",
     "nowFull": "These disciplines filled up in the meantime: {{codes}}. Check your selection and submit again.",
-    "weaponRental": "Weapon rental — {{weapon}}"
+    "weaponRental": "Weapon rental — {{weapon}}",
+    "amendTitle": "Amend registration",
+    "amendSubmit": "Save amendment"
   },
   "payment": {
     "title": "Payment instructions",
@@ -469,7 +473,9 @@
       "cancelled": "Cancelled"
     },
     "queuePosition": "position {{position}}",
-    "fullyQueuedHint": "You're queued for every selected discipline — payment opens once you're admitted."
+    "fullyQueuedHint": "You're queued for every selected discipline — payment opens once you're admitted.",
+    "amend": "Amend registration",
+    "outstanding": "Outstanding: {{amount}}"
   },
   "cancel": {
     "button": "Cancel registration",
@@ -477,5 +483,25 @@
     "refundable": "The fee is refundable. Cancel this registration?",
     "notRefundable": "The fee is no longer refundable. Cancel this registration?",
     "confirmButton": "Yes, cancel registration"
+  },
+  "payments": {
+    "flagged": {
+      "title": "Unresolved payments",
+      "empty": "No unresolved payments.",
+      "vs": "VS",
+      "amount": "Amount",
+      "reason": "Reason",
+      "reinstate": "Reinstate reservation",
+      "markForRefund": "Mark for refund",
+      "actionFailed": "The action failed.",
+      "reasons": {
+        "expired_outside_grace": "reservation expired, outside grace",
+        "expired_seat_taken": "reservation expired, seat since taken",
+        "amount_out_of_tolerance": "amount out of tolerance",
+        "currency_unconvertible": "currency not convertible",
+        "registration_paid": "registration already paid",
+        "registration_cancelled": "registration cancelled"
+      }
+    }
   }
 }

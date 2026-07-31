@@ -199,6 +199,7 @@ export interface TournamentDetail extends Tournament {
   amount_tolerance_percent: number;
   refundable_until: string | null;
   bank_account: string | null;
+  expiry_grace_hours: number;
   unpaid_list_treatment: string;
   output_sheet_url: string | null;
   early_bird_until: string | null;
@@ -218,6 +219,8 @@ export interface TournamentDetail extends Tournament {
   organizers: Organizer[];
   registration_opens: string | null;
   registration_closes: string | null;
+  /** Unset means "same window as registration" (Decision 4). */
+  amendments_close: string | null;
   discounts: Discount[];
   extra_items: ExtraItem[];
   setup_missing: string[] | null;
@@ -330,6 +333,8 @@ export interface RegistrationDetail {
   state: RegistrationRowState;
   vs: number;
   total_amount: number;
+  /** total_amount less what has been credited so far; a decimal string. */
+  outstanding_amount: string;
   expires_at: string | null;
   registered_at: string;
   paid_at: string | null;
@@ -373,6 +378,27 @@ export interface PricePreview {
   currency: Currency;
   /** EUR equivalent; null unless the tournament takes EUR alongside its own. */
   eur_total: string | null;
+}
+
+export type TransactionStatus = "unmatched" | "flagged" | "matched" | "resolved";
+
+export interface Transaction {
+  id: number;
+  external_id: string;
+  source: string;
+  date: string;
+  amount_cents: number;
+  currency: string;
+  vs: number | null;
+  message: string | null;
+  payer_name: string | null;
+  payer_account: string | null;
+  status: TransactionStatus | null;
+  status_reason: string | null;
+  matched_registration_id: number | null;
+  /** Only meaningful for a flagged transaction: whether the reinstate action
+   *  is currently offered (the backend has re-checked capacity). */
+  reinstate_available: boolean;
 }
 
 export interface PaymentInstructions {
@@ -602,6 +628,11 @@ export const api = {
     request<RegistrationDetail>(`/api/tournaments/${slug}/my-registration/cancel`, {
       method: "POST",
     }),
+  amendRegistration: (slug: string, data: RegisterPayload) =>
+    request<RegistrationDetail>(`/api/tournaments/${slug}/my-registration/amend`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
   pricePreview: (slug: string, data: PricePreviewPayload) =>
     request<PricePreview>(`/api/tournaments/${slug}/price-preview`, {
       method: "POST",
@@ -609,6 +640,18 @@ export const api = {
     }),
   paymentInstructions: (slug: string) =>
     request<PaymentInstructions>(`/api/tournaments/${slug}/my-registration/payment`),
+  unmatchedTransactions: (slug: string) =>
+    request<Transaction[]>(`/api/tournaments/${slug}/payments/unmatched`),
+  reinstateTransaction: (slug: string, transactionId: number) =>
+    request<Transaction>(
+      `/api/tournaments/${slug}/payments/transactions/${transactionId}/reinstate`,
+      { method: "POST" },
+    ),
+  markTransactionForRefund: (slug: string, transactionId: number) =>
+    request<Transaction>(
+      `/api/tournaments/${slug}/payments/transactions/${transactionId}/mark-for-refund`,
+      { method: "POST" },
+    ),
 };
 
 export interface HRStatus {
