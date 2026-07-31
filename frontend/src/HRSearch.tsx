@@ -11,20 +11,27 @@ export default function HRSearchPicker({
   onCancel,
   busy: externalBusy,
   initialQuery = "",
+  lockedQuery,
   requireNationality = false,
 }: {
   onConfirm: (profile: HRProfile) => void;
   onCancel?: () => void;
   busy?: boolean;
   initialQuery?: string;
+  // when set, the picker searches by this externally-owned string and hides its
+  // own query input (signup reuses the form's name field — no second name line)
+  lockedQuery?: string;
   requireNationality?: boolean;
 }) {
   const { t } = useTranslation();
   const [nationalities, setNationalities] = useState<string[]>([]);
   const [nationality, setNationality] = useState("");
-  const [query, setQuery] = useState(initialQuery);
+  const [internalQuery, setInternalQuery] = useState(initialQuery);
   const [results, setResults] = useState<HRProfile[] | null>(null);
   const [busy, setBusy] = useState(false);
+
+  const locked = lockedQuery !== undefined;
+  const query = locked ? lockedQuery : internalQuery;
 
   useEffect(() => {
     api.hrNationalities().then(setNationalities, () => setNationalities([]));
@@ -62,19 +69,21 @@ export default function HRSearchPicker({
             ))}
           </select>
         </label>
-        <label className="param-field">
-          <span>{t("match.placeholder")}</span>
-          <input
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key === "Enter") {
-                event.preventDefault();
-                void search();
-              }
-            }}
-          />
-        </label>
+        {!locked && (
+          <label className="param-field">
+            <span>{t("match.placeholder")}</span>
+            <input
+              value={internalQuery}
+              onChange={(event) => setInternalQuery(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  event.preventDefault();
+                  void search();
+                }
+              }}
+            />
+          </label>
+        )}
       </div>
       {onCancel ? (
         <div className="hr-search-actions">

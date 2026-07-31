@@ -69,36 +69,38 @@ function NewTournamentDialog({
       <form className="modal" onClick={(event) => event.stopPropagation()} onSubmit={submit}>
         <h2>{t("picker.newTournament")}</h2>
         <p className="tiskopis-number">{t("picker.formNumber")}</p>
-        <label>
-          {t("picker.displayName")}
-          <input
-            value={displayName}
-            onChange={(event) => setDisplayName(event.target.value)}
-            required
-            autoFocus
-          />
-        </label>
-        <label>
-          {t("picker.date")}
-          <input
-            type="date"
-            value={date}
-            onChange={(event) => setDate(event.target.value)}
-            required
-          />
-        </label>
-        <label>
-          {t("picker.slug")}
-          <input
-            value={slug}
-            onChange={(event) => {
-              setSlug(event.target.value);
-              setSlugEdited(true);
-            }}
-            pattern="[a-z0-9][a-z0-9-]{1,98}"
-            required
-          />
-        </label>
+        <div className="form-fields">
+          <label className="form-field">
+            <span>{t("picker.displayName")}</span>
+            <input
+              value={displayName}
+              onChange={(event) => setDisplayName(event.target.value)}
+              required
+              autoFocus
+            />
+          </label>
+          <label className="form-field">
+            <span>{t("picker.date")}</span>
+            <input
+              type="date"
+              value={date}
+              onChange={(event) => setDate(event.target.value)}
+              required
+            />
+          </label>
+          <label className="form-field">
+            <span>{t("picker.slug")}</span>
+            <input
+              value={slug}
+              onChange={(event) => {
+                setSlug(event.target.value);
+                setSlugEdited(true);
+              }}
+              pattern="[a-z0-9][a-z0-9-]{1,98}"
+              required
+            />
+          </label>
+        </div>
         {error && <p className="login-error">{error}</p>}
         <div className="modal-actions">
           <button type="button" className="secondary" onClick={onClose}>

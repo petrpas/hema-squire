@@ -54,7 +54,7 @@ def _setup(client, organizer):
             "bank_account": "CZ6508000000192000145399",
             "afterparty_fee": 300,
             "location": "Brno",
-            "organizer_names": ["Cup Org"],
+            "organizers": [{"name": "Cup Org", "link": None}],
         },
         headers=organizer,
     )

@@ -1,0 +1,27 @@
+1. create a new tournament form
+  - the layout is broken, the edit fields are aligned left with zero horizontal space
+  - copy the style of the form from tournament settings - label in small caps above the edit field
+  - make sure the color scheme is taken from global colors
+2. tournament settings
+  - after selection of a logo file i got msg "Tento soubor není obrázek." even for correct jpeg
+  - "Základní údaje" remove title of this section 
+  - disciplines:
+    - name of the discipline in bold
+    - for optional fields add floating help:
+      - Kdy (nepovinné): např.: sobota ráno, neděle odpoledne apod.
+      - Kde (nepovinné): např. pokud se liší od hlavního místa turnaje
+      - Pravidla (nepovinné): název pravidlového systému např.: právo útoku
+      - Odkaz na pravidla (nepovinné): odkaz na publikovaná pravidla
+  - doplňkové služby: 
+    - Where, When only for Afterparty and Seminar, not for Merch or Gear Lending
+    - remove maximal count from afterparty or seminar, set as 1 in data by default
+    - Add Other Action with same behavior as Afterparty and Seminar 
+    - Add Other Item with same behavior as Merch 
+  - organizers:   
+    - add optional field link to any organizer
+  - tournament description:
+    - add blob field description that allows the organizer to write the description of the tournament   
+    - ?? is there a markdown editing component that can be reused? if not keep it just edit field
+  - tournament qualification 
+    - add optional field between dates and logo with options
+      - "open to everyone" and qualification criteria (with the floating hint e.g.: national championship, HR top 500 etc.)   

@@ -99,6 +99,11 @@ class DisciplineIn(BaseModel):
     capacity: int = Field(gt=0)
     fee: int | None = Field(default=None, ge=0)
     fee_early: int | None = Field(default=None, ge=0)
+    # optional schedule + ruleset reference; informational, never affect pricing
+    schedule_when: str | None = Field(default=None, max_length=200)
+    schedule_where: str | None = Field(default=None, max_length=300)
+    ruleset_name: str | None = Field(default=None, max_length=100)
+    ruleset_url: str | None = Field(default=None, max_length=500)
 
 
 class DisciplineOut(BaseModel):
@@ -109,6 +114,10 @@ class DisciplineOut(BaseModel):
     capacity: int
     fee: int | None
     fee_early: int | None
+    schedule_when: str | None
+    schedule_where: str | None
+    ruleset_name: str | None
+    ruleset_url: str | None
 
 
 class ExtraItemIn(BaseModel):
@@ -116,6 +125,10 @@ class ExtraItemIn(BaseModel):
     category: ExtraCategory
     price: int = Field(ge=0)
     max_qty: int = Field(default=1, ge=1)
+    # optional descriptive fields; informational, never affect pricing
+    schedule_when: str | None = Field(default=None, max_length=200)
+    schedule_where: str | None = Field(default=None, max_length=300)
+    remark: str | None = Field(default=None, max_length=500)
 
 
 class ExtraItemOut(ExtraItemIn):
@@ -125,7 +138,9 @@ class ExtraItemOut(ExtraItemIn):
 
 
 # discount scopes may target the implicit discipline category or any extra category
-ScopeCategory = Literal["discipline", "seminar", "rental", "afterparty", "merch"]
+ScopeCategory = Literal[
+    "discipline", "seminar", "rental", "afterparty", "merch", "other_action", "other_item"
+]
 
 
 class DiscountCondition(BaseModel):
@@ -165,6 +180,24 @@ class DiscountIn(BaseModel):
     scope: list[ScopeCategory] = ["discipline"]
 
 
+class OrganizerIn(BaseModel):
+    name: str = Field(min_length=1, max_length=200)
+    link: str | None = Field(default=None, max_length=500)
+
+
+class OrganizerOut(BaseModel):
+    name: str
+    link: str | None = None
+
+
+def _tolerant_organizers(value: Any) -> Any:
+    """Normalize bare-string organizer entries left by a partially-migrated
+    or restored-from-old-export deployment into name+link dicts."""
+    if not isinstance(value, list):
+        return value
+    return [{"name": entry, "link": None} if isinstance(entry, str) else entry for entry in value]
+
+
 class TournamentCreate(BaseModel):
     slug: str = Field(pattern=r"^[a-z0-9][a-z0-9-]{1,98}$")
     display_name: str = Field(min_length=1, max_length=200)
@@ -174,10 +207,14 @@ class TournamentCreate(BaseModel):
 
 class TournamentUpdate(BaseModel):
     display_name: str | None = Field(default=None, min_length=1, max_length=200)
+    subtitle: str | None = Field(default=None, max_length=400)
     date: datetime.date | None = None
     language: str | None = None
     location: str | None = Field(default=None, max_length=300)
-    organizer_names: list[str] | None = None
+    description: str | None = None
+    qualification_open: bool | None = None
+    qualification_criteria: str | None = None
+    organizers: list[OrganizerIn] | None = None
     registration_opens: datetime.date | None = None
     registration_closes: datetime.date | None = None
     discounts: list[DiscountIn] | None = None
@@ -202,6 +239,8 @@ class TournamentOut(BaseModel):
 
     slug: str
     display_name: str
+    subtitle: str | None
+    has_logo: bool
     date: datetime.date
     language: str
     owner_id: int | None
@@ -220,7 +259,10 @@ class TournamentOut(BaseModel):
     afterparty_fee: int
     afterparty_fee_early: int | None
     location: str | None
-    organizer_names: list[str]
+    description: str | None
+    qualification_open: bool
+    qualification_criteria: str | None
+    organizers: list[OrganizerOut]
     registration_opens: datetime.date | None
     registration_closes: datetime.date | None
     discounts: list[DiscountIn]
@@ -228,6 +270,11 @@ class TournamentOut(BaseModel):
     # filled by the detail endpoint from setup.setup_missing(); None elsewhere
     setup_missing: list[str] | None = None
     disciplines: list[DisciplineOut]
+
+    @field_validator("organizers", mode="before")
+    @classmethod
+    def _normalize_organizers(cls, value: Any) -> Any:
+        return _tolerant_organizers(value)
 
 
 class TeamAdd(BaseModel):
@@ -371,13 +418,23 @@ MyRegistrationState = Literal["none", "reserved", "paid", "substitute", "cancell
 class OpenTournamentOut(BaseModel):
     slug: str
     display_name: str
+    subtitle: str | None = None
+    has_logo: bool = False
     date: datetime.date
     location: str | None
-    organizer_names: list[str]
+    description: str | None = None
+    qualification_open: bool = True
+    qualification_criteria: str | None = None
+    organizers: list[OrganizerOut]
     registration_status: RegistrationStatus
     registration_opens_on: datetime.date | None = None
     disciplines: list[OpenDisciplineOut]
     my_registration_state: MyRegistrationState
+
+    @field_validator("organizers", mode="before")
+    @classmethod
+    def _normalize_organizers(cls, value: Any) -> Any:
+        return _tolerant_organizers(value)
 
 
 class PastTournamentOut(OpenTournamentOut):

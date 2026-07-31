@@ -552,12 +552,14 @@ button.secondary:disabled {
   color: var(--ink-faded);
 }
 
+.form-fields,
 .param-fields {
   display: flex;
   flex-direction: column;
   gap: 0.6rem;
 }
 
+.form-field,
 .param-field {
   display: flex;
   flex-direction: column;
@@ -569,6 +571,8 @@ button.secondary:disabled {
   color: var(--ink-faded);
 }
 
+.form-field input,
+.form-field textarea,
 .param-field input {
   font: 14px var(--font-ui);
   padding: 0.4rem 0;
@@ -581,9 +585,85 @@ button.secondary:disabled {
   letter-spacing: normal;
 }
 
+.form-field textarea {
+  resize: vertical;
+  min-height: 4.5em;
+  font-family: var(--font-ui);
+}
+
+.form-field input:focus,
+.form-field textarea:focus,
 .param-field input:focus {
   outline: none;
   border-bottom: 2px solid var(--stamp);
+}
+
+.qualification-control {
+  gap: 0.4rem;
+}
+
+.qualification-option {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 14px;
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: normal;
+  color: var(--ink);
+}
+
+.qualification-option input[type="radio"] {
+  accent-color: var(--stamp);
+}
+
+.help-hint {
+  position: relative;
+  display: inline-block;
+  margin-left: 0.35em;
+}
+
+.help-hint-marker {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  padding: 0;
+  border: 1px solid var(--ink-faded);
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--ink-faded);
+  font: 10px/1 var(--font-ui);
+  font-style: italic;
+  text-transform: none;
+  letter-spacing: normal;
+  cursor: default;
+}
+
+.help-hint-box {
+  display: none;
+  position: absolute;
+  z-index: 5;
+  bottom: calc(100% + 0.3rem);
+  left: 0;
+  width: max-content;
+  max-width: 16rem;
+  padding: 0.5rem 0.6rem;
+  background: var(--paper-raised);
+  border: 1px solid var(--ink);
+  border-radius: var(--radius);
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: normal;
+  white-space: normal;
+}
+
+.help-hint-marker:hover + .help-hint-box,
+.help-hint-marker:focus + .help-hint-box {
+  display: block;
 }
 
 .param-save {
@@ -1054,7 +1134,7 @@ tr.row-deleted td.col-actions {
   background: none;
   font: inherit;
   color: inherit;
-  padding: 1rem 0.2rem;
+  padding: 1rem 1em;
   border-bottom: var(--border-w) solid var(--hairline);
   border-radius: 0;
   transition: background-color 120ms;
@@ -1272,4 +1352,177 @@ tr.row-deleted td.col-actions {
 .loading-text {
   color: var(--ink-faded);
   font-size: 13px;
+}
+
+/* --- tournament-layout-tweaks: logo, subtitle, responsive meta, split detail --- */
+
+.home-card-logo,
+.detail-logo {
+  flex: none;
+  object-fit: contain;
+  border: var(--border-w) solid var(--hairline);
+  border-radius: var(--radius);
+  background: var(--paper-raised);
+}
+
+.home-card-logo {
+  width: 44px;
+  height: 44px;
+}
+
+.detail-logo {
+  width: 64px;
+  height: 64px;
+}
+
+.home-card-heading {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.home-card-subtitle,
+.detail-subtitle {
+  color: var(--ink-soft);
+  font-size: 13px;
+}
+
+.detail-subtitle {
+  font-size: 14px;
+}
+
+.detail-description {
+  color: var(--ink);
+  font-size: 14px;
+  white-space: pre-wrap;
+}
+
+/* date and place as responsive columns rather than one long line */
+.home-card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.2rem 1.25rem;
+  font-size: 12px;
+  color: var(--ink-faded);
+}
+
+.home-card-meta .meta-cell {
+  white-space: nowrap;
+}
+
+.detail-info-header {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+}
+
+.detail-info-heading {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.detail-inline-link {
+  color: var(--ink);
+  text-decoration: underline;
+  font-size: 12px;
+}
+
+/* register-screen section headings */
+.register-section {
+  margin-top: 0.9rem;
+  padding-bottom: 0.25rem;
+  border-bottom: var(--border-w) solid var(--hairline);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--ink-faded);
+}
+
+/* signup HR ownership confirmation */
+.hr-confirm {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.hr-confirm-name {
+  font-family: var(--font-doc);
+  font-weight: 500;
+  font-size: 15px;
+}
+
+.hr-confirm-link {
+  color: var(--ink);
+  text-decoration: underline;
+  font-size: 12px;
+}
+
+/* setup logo control */
+.logo-control {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.logo-control-label {
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-size: 10.5px;
+  font-weight: 500;
+  color: var(--ink-faded);
+}
+
+.logo-preview {
+  width: 96px;
+  height: 96px;
+  object-fit: contain;
+  border: var(--border-w) solid var(--hairline);
+  border-radius: var(--radius);
+  background: var(--paper-raised);
+}
+
+.logo-control-actions {
+  display: flex;
+  gap: 0.6rem;
+  align-items: center;
+}
+
+.logo-upload {
+  border: var(--border-w) solid var(--ink);
+  background: transparent;
+  color: var(--ink);
+  border-radius: var(--radius);
+  padding: 0.45rem 0.9rem;
+  text-transform: uppercase;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 120ms;
+}
+
+.logo-upload:hover {
+  background: var(--paper-shade);
+}
+
+.logo-upload input[type="file"] {
+  display: none;
+}
+
+/* setup optional sub-row (discipline schedule/ruleset, extra when/where/remark) */
+.detail-subrow > td {
+  background: var(--paper);
+  padding: 0.5rem 0.75rem 0.75rem;
+  border-bottom: var(--border-w) solid var(--hairline);
+}
+
+.detail-subrow .param-fields {
+  gap: 0.75rem 1.25rem;
 }

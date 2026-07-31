@@ -83,8 +83,12 @@
     "backToLogin": "Back to sign in",
     "hr": {
       "find": "Find my HEMA Ratings profile",
-      "confirmed": "HEMA Ratings profile confirmed: {{name}}",
-      "clear": "Clear"
+      "confirmed": "HEMA Ratings profile confirmed: {{name}} ({{hrId}})",
+      "clear": "Clear",
+      "confirmTitle": "Confirm your HEMA Ratings profile",
+      "confirmPrompt": "Linking binds this account to the profile below. Confirm it is yours.",
+      "confirmButton": "Yes, this is me",
+      "viewProfile": "View on hemaratings.com"
     },
     "errors": {
       "emailTaken": "That e-mail is already registered.",
@@ -170,7 +174,9 @@
     "location": "Location",
     "language": "Communication language",
     "registration_opens": "Registration opens",
-    "registration_closes": "Registration closes"
+    "registration_closes": "Registration closes",
+    "subtitle": "Subtitle",
+    "description": "Description"
   },
   "rail": {
     "operations": "Operations",
@@ -201,19 +207,43 @@
       "discipline_prices": "Some discipline has no price"
     },
     "identity": {
-      "title": "Basic information"
+      "title": "Basic information",
+      "subtitle": "Subtitle",
+      "logo": "Logo",
+      "logoUpload": "Upload logo",
+      "logoRemove": "Remove logo",
+      "logoHint": "PNG or JPG, up to 8 MB",
+      "logoTooLarge": "That image is too large (max 8 MB).",
+      "logoUnsupportedFormat": "That file is not a supported image format.",
+      "logoNotAuthorized": "You are not authorized to upload this tournament's logo.",
+      "logoUploadFailed": "The logo upload failed (error {{status}}).",
+      "qualification": "Qualification",
+      "qualificationOpen": "Open to everyone",
+      "qualificationRequired": "Qualification required",
+      "qualificationCriteria": "Qualification criteria",
+      "qualificationCriteriaHint": "For example \"national championship placement, HR top 500\".",
+      "qualificationCriteriaRequired": "Enter the qualification criteria, or switch back to \"open to everyone\"."
     },
     "organizers": {
       "title": "Titular organizers (clubs/entities)",
       "add": "Add organizer",
-      "placeholder": "Club or entity name"
+      "placeholder": "Club or entity name",
+      "linkPlaceholder": "Link (optional)"
     },
     "disciplines": {
       "title": "Disciplines",
       "code": "Code",
       "capacity": "Capacity",
       "fee": "Fee (CZK)",
-      "add": "Add discipline"
+      "add": "Add discipline",
+      "when": "When (optional)",
+      "where": "Where (optional)",
+      "rulesetName": "Ruleset (optional)",
+      "rulesetUrl": "Ruleset link (optional)",
+      "whenHint": "A rough time, for example \"Saturday morning\".",
+      "whereHint": "A place within the venue, for example \"Main Hall\".",
+      "rulesetNameHint": "A short ruleset name, for example \"Right of Way\".",
+      "rulesetUrlHint": "A link to the full ruleset text, if one exists."
     },
     "extras": {
       "title": "Extra services",
@@ -226,8 +256,13 @@
         "seminar": "Seminar",
         "rental": "Rental",
         "afterparty": "Afterparty",
-        "merch": "Merch"
-      }
+        "merch": "Merch",
+        "other_action": "Other action",
+        "other_item": "Other item"
+      },
+      "when": "When (optional)",
+      "where": "Where (optional)",
+      "remark": "Remark (optional)"
     },
     "discounts": {
       "title": "Discounts",
@@ -361,7 +396,14 @@
     "opensOn": "registration opens {{date}}",
     "closesOn": "registration closes {{date}}",
     "notYetOpen": "Registration for this tournament hasn't opened yet.",
-    "closedNotice": "Registration for this tournament is closed."
+    "closedNotice": "Registration for this tournament is closed.",
+    "register": "Register",
+    "backToInfo": "Back to details",
+    "otherActions": "Other actions",
+    "rulesetLabel": "Ruleset",
+    "fencersCount": "{{taken}}/{{capacity}} fencers",
+    "qualificationOpen": "Open to everyone",
+    "qualificationRequired": "Qualification: {{criteria}}"
   },
   "form": {
     "title": "Registration",
@@ -375,7 +417,13 @@
     "submitFailed": "Could not submit the registration.",
     "fullDisciplines": "These disciplines are full: {{codes}}",
     "dropFull": "Continue without them",
-    "joinQueue": "Join the substitute queue"
+    "joinQueue": "Join the substitute queue",
+    "sections": {
+      "tournament": "Tournament",
+      "actions": "Actions",
+      "gear": "Gear lending",
+      "merch": "Merch and other"
+    }
   },
   "payment": {
     "title": "Payment instructions",

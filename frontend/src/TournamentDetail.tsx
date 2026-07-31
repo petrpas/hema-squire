@@ -11,6 +11,7 @@ import {
   type RegistrationDetail,
   type TournamentDetail as TournamentDetailData,
   api,
+  logoUrl,
 } from "./api";
 
 const LEGACY_WEAPONS: Record<string, string> = {
@@ -34,30 +35,88 @@ function registrationStatus(detail: TournamentDetailData): RegistrationStatus {
 function InfoHeader({ detail }: { detail: TournamentDetailData }) {
   const { t } = useTranslation();
   return (
-    <section className="rail-card">
-      <h1>{detail.display_name}</h1>
-      <p className="rail-hint">
-        {detail.organizer_names.join(", ")} · {new Date(detail.date).toLocaleDateString("cs")}
-        {detail.location ? ` · ${detail.location}` : ""}
-      </p>
-      {(detail.registration_opens || detail.registration_closes) && (
-        <p className="rail-hint">
-          {detail.registration_opens &&
-            t("detail.opensOn", {
-              date: new Date(detail.registration_opens).toLocaleDateString("cs"),
-            })}
-          {detail.registration_opens && detail.registration_closes && " · "}
-          {detail.registration_closes &&
-            t("detail.closesOn", {
-              date: new Date(detail.registration_closes).toLocaleDateString("cs"),
-            })}
-        </p>
+    <section className="rail-card detail-info-header">
+      {detail.has_logo && (
+        <img className="detail-logo" src={logoUrl(detail.slug)} alt="" />
       )}
+      <div className="detail-info-heading">
+        <h1>{detail.display_name}</h1>
+        {detail.subtitle && <p className="detail-subtitle">{detail.subtitle}</p>}
+        <div className="home-card-meta">
+          {detail.organizers.length > 0 && (
+            <span className="meta-cell">
+              {detail.organizers.map((organizer, index) => (
+                <span key={index}>
+                  {index > 0 && ", "}
+                  {organizer.link ? (
+                    <a
+                      className="detail-inline-link"
+                      href={organizer.link}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      {organizer.name}
+                    </a>
+                  ) : (
+                    organizer.name
+                  )}
+                </span>
+              ))}
+            </span>
+          )}
+          <span className="meta-cell">
+            {new Date(detail.date).toLocaleDateString("cs")}
+          </span>
+          {detail.location && <span className="meta-cell">{detail.location}</span>}
+        </div>
+        {(detail.registration_opens || detail.registration_closes) && (
+          <p className="rail-hint">
+            {detail.registration_opens &&
+              t("detail.opensOn", {
+                date: new Date(detail.registration_opens).toLocaleDateString("cs"),
+              })}
+            {detail.registration_opens && detail.registration_closes && " · "}
+            {detail.registration_closes &&
+              t("detail.closesOn", {
+                date: new Date(detail.registration_closes).toLocaleDateString("cs"),
+              })}
+          </p>
+        )}
+        <p className="rail-hint">
+          {detail.qualification_open
+            ? t("detail.qualificationOpen")
+            : t("detail.qualificationRequired", { criteria: detail.qualification_criteria })}
+        </p>
+        {detail.description && <p className="detail-description">{detail.description}</p>}
+      </div>
     </section>
   );
 }
 
-function DisciplinesAndExtras({
+// categories shown as informational "other actions" on the information screen;
+// gear lending (rental) and merch/other_item are deliberately omitted there
+const ACTION_CATEGORIES = ["seminar", "afterparty", "other_action"] as const;
+
+/** Optional when/where/remark lines shared by discipline and action rows. */
+function ScheduleLines({
+  when,
+  where,
+  remark,
+}: {
+  when?: string | null;
+  where?: string | null;
+  remark?: string | null;
+}) {
+  const parts = [when, where].filter(Boolean).join(" · ");
+  return (
+    <>
+      {parts && <span className="muted">{parts}</span>}
+      {remark && <span className="muted">{remark}</span>}
+    </>
+  );
+}
+
+function DisciplinesInfo({
   detail,
   availability,
 }: {
@@ -72,6 +131,7 @@ function DisciplinesAndExtras({
       <ul className="detail-list">
         {detail.disciplines.map((d) => {
           const a = byCode.get(d.code);
+          const taken = a ? a.taken : 0;
           const free = a ? a.free : d.capacity;
           return (
             <li key={d.code}>
@@ -79,30 +139,55 @@ function DisciplinesAndExtras({
                 {d.code} — {d.name}
               </strong>
               <span className="muted">
-                {d.fee ?? "—"} Kč ·{" "}
-                {free > 0
-                  ? t("detail.freePlaces", { count: free })
-                  : t("detail.queueLength", { count: a?.queue_length ?? 0 })}
+                {d.fee ?? "—"} Kč · {t("detail.fencersCount", { taken, capacity: d.capacity })}
+                {free <= 0 &&
+                  ` · ${t("detail.queueLength", { count: a?.queue_length ?? 0 })}`}
               </span>
+              <ScheduleLines when={d.schedule_when} where={d.schedule_where} />
+              {d.ruleset_name &&
+                (d.ruleset_url ? (
+                  <a
+                    className="detail-inline-link"
+                    href={d.ruleset_url}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    {t("detail.rulesetLabel")}: {d.ruleset_name}
+                  </a>
+                ) : (
+                  <span className="muted">
+                    {t("detail.rulesetLabel")}: {d.ruleset_name}
+                  </span>
+                ))}
             </li>
           );
         })}
       </ul>
-      {detail.extra_items.length > 0 && (
-        <>
-          <h2>{t("detail.extras")}</h2>
-          <ul className="detail-list">
-            {detail.extra_items.map((item) => (
-              <li key={item.id}>
-                <strong>{item.name}</strong>
-                <span className="muted">
-                  {item.price} Kč · {t(`setup.extras.categories.${item.category}`)}
-                </span>
-              </li>
-            ))}
-          </ul>
-        </>
-      )}
+    </section>
+  );
+}
+
+function OtherActionsInfo({ detail }: { detail: TournamentDetailData }) {
+  const { t } = useTranslation();
+  const actions = detail.extra_items.filter((item) =>
+    ACTION_CATEGORIES.includes(item.category as (typeof ACTION_CATEGORIES)[number]),
+  );
+  if (actions.length === 0) return null;
+  return (
+    <section className="rail-card">
+      <h2>{t("detail.otherActions")}</h2>
+      <ul className="detail-list">
+        {actions.map((item) => (
+          <li key={item.id}>
+            <strong>{item.name}</strong>
+            <ScheduleLines
+              when={item.schedule_when}
+              where={item.schedule_where}
+              remark={item.remark}
+            />
+          </li>
+        ))}
+      </ul>
     </section>
   );
 }
@@ -170,6 +255,35 @@ function RegistrationForm({
     });
   }
 
+  // purchasable extras grouped into the register-screen sections
+  const actionItems = detail.extra_items.filter(
+    (i) => i.category === "seminar" || i.category === "afterparty",
+  );
+  const gearItems = detail.extra_items.filter((i) => i.category === "rental");
+  const merchItems = detail.extra_items.filter((i) => i.category === "merch");
+
+  function qtyField(item: (typeof detail.extra_items)[number]) {
+    return (
+      <label key={item.id} className="param-field">
+        <span>
+          {item.name} ({item.price} Kč)
+        </span>
+        <input
+          type="number"
+          min={0}
+          max={item.max_qty}
+          value={extraQty[item.id] ?? 0}
+          onChange={(event) =>
+            setExtraQty({
+              ...extraQty,
+              [item.id]: Math.max(0, Math.min(item.max_qty, Number(event.target.value))),
+            })
+          }
+        />
+      </label>
+    );
+  }
+
   async function submit(waitForAll: boolean) {
     setBusy(true);
     setError(null);
@@ -204,6 +318,7 @@ function RegistrationForm({
     <section className="rail-card">
       <h2>{t("form.title")}</h2>
       <p className="tiskopis-number">{t("form.formNumber")}</p>
+      <h3 className="register-section">{t("form.sections.tournament")}</h3>
       <div className="chips">
         {detail.disciplines.map((d) => {
           const a = byCode.get(d.code);
@@ -221,49 +336,10 @@ function RegistrationForm({
         })}
       </div>
 
-      {!legacy && detail.extra_items.length > 0 && (
-        <div className="param-fields">
-          {detail.extra_items.map((item) => (
-            <label key={item.id} className="param-field">
-              <span>
-                {item.name} ({item.price} Kč)
-              </span>
-              <input
-                type="number"
-                min={0}
-                max={item.max_qty}
-                value={extraQty[item.id] ?? 0}
-                onChange={(event) =>
-                  setExtraQty({
-                    ...extraQty,
-                    [item.id]: Math.max(0, Math.min(item.max_qty, Number(event.target.value))),
-                  })
-                }
-              />
-            </label>
-          ))}
-        </div>
-      )}
-
-      {legacy && (
-        <div className="param-fields">
-          {Object.entries(LEGACY_WEAPONS).map(([code, name]) => (
-            <label key={code} className="param-field">
-              <span>{name}</span>
-              <input
-                type="number"
-                min={0}
-                max={4}
-                value={legacyQty[code] ?? 0}
-                onChange={(event) =>
-                  setLegacyQty({
-                    ...legacyQty,
-                    [code]: Math.max(0, Math.min(4, Number(event.target.value))),
-                  })
-                }
-              />
-            </label>
-          ))}
+      <h3 className="register-section">{t("form.sections.actions")}</h3>
+      <div className="param-fields">
+        {actionItems.map(qtyField)}
+        {legacy && (
           <label className="checkbox-chip">
             <input
               type="checkbox"
@@ -272,10 +348,7 @@ function RegistrationForm({
             />
             {t("form.afterparty")}
           </label>
-        </div>
-      )}
-
-      <div className="param-fields">
+        )}
         <label className="checkbox-chip">
           <input
             type="checkbox"
@@ -284,6 +357,38 @@ function RegistrationForm({
           />
           {t("form.aftersparring")}
         </label>
+      </div>
+
+      {(gearItems.length > 0 || legacy) && (
+        <>
+          <h3 className="register-section">{t("form.sections.gear")}</h3>
+          <div className="param-fields">
+            {gearItems.map(qtyField)}
+            {legacy &&
+              Object.entries(LEGACY_WEAPONS).map(([code, name]) => (
+                <label key={code} className="param-field">
+                  <span>{name}</span>
+                  <input
+                    type="number"
+                    min={0}
+                    max={4}
+                    value={legacyQty[code] ?? 0}
+                    onChange={(event) =>
+                      setLegacyQty({
+                        ...legacyQty,
+                        [code]: Math.max(0, Math.min(4, Number(event.target.value))),
+                      })
+                    }
+                  />
+                </label>
+              ))}
+          </div>
+        </>
+      )}
+
+      <h3 className="register-section">{t("form.sections.merch")}</h3>
+      <div className="param-fields">
+        {merchItems.map(qtyField)}
         <label className="param-field">
           <span>{t("form.accommodation")}</span>
           <input value={accommodation} onChange={(event) => setAccommodation(event.target.value)} />
@@ -528,6 +633,9 @@ export default function TournamentDetail({
   const [registration, setRegistration] = useState<RegistrationDetail | null>(null);
   const [registrationChecked, setRegistrationChecked] = useState(false);
   const [account, setAccount] = useState<Account | null>(null);
+  // the detail page is split into an information screen and a separate register
+  // screen; information is always the landing view
+  const [screen, setScreen] = useState<"information" | "register">("information");
 
   function refresh() {
     api.tournament(slug).then(setDetail, () => setDetail(null));
@@ -550,6 +658,18 @@ export default function TournamentDetail({
   }, []);
 
   const hasActive = registration !== null && registration.state !== "cancelled";
+  // register is offered only when open and at least one discipline or item has
+  // an open slot (extra items carry no capacity, so their presence counts)
+  const hasOpenSlot =
+    detail !== null &&
+    (availability.some((a) => a.free > 0) || detail.extra_items.length > 0);
+  const canRegister =
+    !readOnly &&
+    !hasActive &&
+    detail !== null &&
+    registrationStatus(detail) === "open" &&
+    hasOpenSlot;
+  const onRegisterScreen = screen === "register" && canRegister;
 
   return (
     <div className="login-page">
@@ -564,15 +684,30 @@ export default function TournamentDetail({
         />
       </div>
       <div className="login-card wide-card">
-        <button className="link-button" onClick={onBack}>
-          {t("detail.back")}
+        <button
+          className="link-button"
+          onClick={() => (onRegisterScreen ? setScreen("information") : onBack())}
+        >
+          {onRegisterScreen ? t("detail.backToInfo") : t("detail.back")}
         </button>
         {detail === null || !registrationChecked ? (
           <p>{t("common.loading")}</p>
+        ) : onRegisterScreen ? (
+          <div className="setup-panel">
+            <RegistrationForm
+              detail={detail}
+              availability={availability}
+              onRegistered={(r) => {
+                setRegistration(r);
+                setScreen("information");
+              }}
+            />
+          </div>
         ) : (
           <div className="setup-panel">
             <InfoHeader detail={detail} />
-            <DisciplinesAndExtras detail={detail} availability={availability} />
+            <DisciplinesInfo detail={detail} availability={availability} />
+            <OtherActionsInfo detail={detail} />
             {readOnly ? (
               hasActive && registration && <RegistrationSummary registration={registration} />
             ) : hasActive && registration ? (
@@ -582,12 +717,10 @@ export default function TournamentDetail({
                 registration={registration}
                 onCancelled={refresh}
               />
-            ) : registrationStatus(detail) === "open" ? (
-              <RegistrationForm
-                detail={detail}
-                availability={availability}
-                onRegistered={(r) => setRegistration(r)}
-              />
+            ) : canRegister ? (
+              <button className="btn-primary param-save" onClick={() => setScreen("register")}>
+                {t("detail.register")}
+              </button>
             ) : (
               <section className="rail-card dashed">
                 <p className="rail-hint">

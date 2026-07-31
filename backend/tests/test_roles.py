@@ -56,7 +56,7 @@ def test_admin_retains_fencer_capabilities(client, auth_headers):
     create_tournament(client, organizer)
     client.patch(
         "/api/tournaments/cup",
-        json={"location": "Praha", "organizer_names": ["Rocha"]},
+        json={"location": "Praha", "organizers": [{"name": "Rocha", "link": None}]},
         headers=organizer,
     )
     client.post(
