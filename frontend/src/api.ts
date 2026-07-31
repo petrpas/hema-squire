@@ -57,6 +57,9 @@ export function logoUrl(slug: string): string {
   return `/api/tournaments/${slug}/logo`;
 }
 
+/** A tournament's primary currency; amounts are whole units of it. */
+export type Currency = "CZK" | "EUR";
+
 export type Role = "fencer" | "organizer" | "admin";
 
 export interface Account {
@@ -146,6 +149,10 @@ export interface ExtraItemInput {
   schedule_when?: string | null;
   schedule_where?: string | null;
   remark?: string | null;
+  /** Label of the single option the fencer answers on selection ("size"). */
+  option_label?: string | null;
+  /** Allowed answers; empty means the option is free text. */
+  option_choices?: string[];
 }
 
 export interface ExtraItem {
@@ -157,6 +164,8 @@ export interface ExtraItem {
   schedule_when: string | null;
   schedule_where: string | null;
   remark: string | null;
+  option_label: string | null;
+  option_choices: string[];
 }
 
 export type DiscountCategory = "discipline" | ExtraCategory;
@@ -190,6 +199,7 @@ export interface TournamentDetail extends Tournament {
   amount_tolerance_percent: number;
   refundable_until: string | null;
   bank_account: string | null;
+  expiry_grace_hours: number;
   unpaid_list_treatment: string;
   output_sheet_url: string | null;
   early_bird_until: string | null;
@@ -201,9 +211,16 @@ export interface TournamentDetail extends Tournament {
   description: string | null;
   qualification_open: boolean;
   qualification_criteria: string | null;
+  registration_instructions: string | null;
+  primary_currency: Currency;
+  eur_payments_enabled: boolean;
+  /** Primary-currency units per 1 EUR; null unless EUR payments are on. */
+  eur_rate: string | null;
   organizers: Organizer[];
   registration_opens: string | null;
   registration_closes: string | null;
+  /** Unset means "same window as registration" (Decision 4). */
+  amendments_close: string | null;
   discounts: Discount[];
   extra_items: ExtraItem[];
   setup_missing: string[] | null;
@@ -274,6 +291,7 @@ export interface OpenTournament {
   description: string | null;
   qualification_open: boolean;
   qualification_criteria: string | null;
+  primary_currency: Currency;
   organizers: Organizer[];
   registration_status: RegistrationStatus;
   registration_opens_on: string | null;
@@ -307,12 +325,16 @@ export interface RegistrationExtraSelection {
   name: string;
   category: ExtraCategory;
   qty: number;
+  option_label: string | null;
+  option_value: string | null;
 }
 
 export interface RegistrationDetail {
   state: RegistrationRowState;
   vs: number;
   total_amount: number;
+  /** total_amount less what has been credited so far; a decimal string. */
+  outstanding_amount: string;
   expires_at: string | null;
   registered_at: string;
   paid_at: string | null;
@@ -327,6 +349,12 @@ export interface RegistrationDetail {
   entries: RegistrationEntry[];
 }
 
+export interface ExtraSelectionPayload {
+  extra_item_id: number;
+  qty: number;
+  option_value?: string | null;
+}
+
 export interface RegisterPayload {
   disciplines: string[];
   weapon_rentals?: string[];
@@ -335,24 +363,57 @@ export interface RegisterPayload {
   accommodation?: string | null;
   notes?: string | null;
   wait_for_all?: boolean;
-  extras?: { extra_item_id: number; qty: number }[];
+  extras?: ExtraSelectionPayload[];
 }
 
 export interface PricePreviewPayload {
   disciplines: string[];
   weapon_rentals?: string[];
   afterparty?: boolean;
-  extras?: { extra_item_id: number; qty: number }[];
+  extras?: ExtraSelectionPayload[];
+}
+
+export interface PricePreview {
+  total: number;
+  currency: Currency;
+  /** EUR equivalent; null unless the tournament takes EUR alongside its own. */
+  eur_total: string | null;
+}
+
+export type TransactionStatus = "unmatched" | "flagged" | "matched" | "resolved";
+
+export interface Transaction {
+  id: number;
+  external_id: string;
+  source: string;
+  date: string;
+  amount_cents: number;
+  currency: string;
+  vs: number | null;
+  message: string | null;
+  payer_name: string | null;
+  payer_account: string | null;
+  status: TransactionStatus | null;
+  status_reason: string | null;
+  matched_registration_id: number | null;
+  /** Only meaningful for a flagged transaction: whether the reinstate action
+   *  is currently offered (the backend has re-checked capacity). */
+  reinstate_available: boolean;
 }
 
 export interface PaymentInstructions {
   amount: number;
+  currency: Currency;
   iban: string;
   vs: number;
   message: string;
   expires_at: string | null;
   spayd: string;
   qr_png_base64: string;
+  /** The EUR trio is absent unless the tournament takes EUR as a second option. */
+  eur_amount: string | null;
+  eur_spayd: string | null;
+  eur_qr_png_base64: string | null;
 }
 
 export const api = {
@@ -567,13 +628,30 @@ export const api = {
     request<RegistrationDetail>(`/api/tournaments/${slug}/my-registration/cancel`, {
       method: "POST",
     }),
+  amendRegistration: (slug: string, data: RegisterPayload) =>
+    request<RegistrationDetail>(`/api/tournaments/${slug}/my-registration/amend`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
   pricePreview: (slug: string, data: PricePreviewPayload) =>
-    request<{ total: number }>(`/api/tournaments/${slug}/price-preview`, {
+    request<PricePreview>(`/api/tournaments/${slug}/price-preview`, {
       method: "POST",
       body: JSON.stringify(data),
     }),
   paymentInstructions: (slug: string) =>
     request<PaymentInstructions>(`/api/tournaments/${slug}/my-registration/payment`),
+  unmatchedTransactions: (slug: string) =>
+    request<Transaction[]>(`/api/tournaments/${slug}/payments/unmatched`),
+  reinstateTransaction: (slug: string, transactionId: number) =>
+    request<Transaction>(
+      `/api/tournaments/${slug}/payments/transactions/${transactionId}/reinstate`,
+      { method: "POST" },
+    ),
+  markTransactionForRefund: (slug: string, transactionId: number) =>
+    request<Transaction>(
+      `/api/tournaments/${slug}/payments/transactions/${transactionId}/mark-for-refund`,
+      { method: "POST" },
+    ),
 };
 
 export interface HRStatus {

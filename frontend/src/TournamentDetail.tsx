@@ -7,12 +7,14 @@ import {
   ApiError,
   type Account,
   type Availability,
+  type ExtraItem,
   type PaymentInstructions,
   type RegistrationDetail,
   type TournamentDetail as TournamentDetailData,
   api,
   logoUrl,
 } from "./api";
+import { formatMoney, formatMoneyWithEur } from "./money";
 
 const LEGACY_WEAPONS: Record<string, string> = {
   LS: "Longsword",
@@ -30,6 +32,16 @@ function registrationStatus(detail: TournamentDetailData): RegistrationStatus {
   const closes = detail.registration_closes ?? detail.date;
   if (today > closes) return "closed";
   return "open";
+}
+
+/** Amendment is closed by every reason registration is, plus its own,
+ * earlier `amendments_close` boundary when set (mirrors
+ * setup.amendment_availability on the backend). */
+function amendmentOpen(detail: TournamentDetailData): boolean {
+  if (registrationStatus(detail) !== "open") return false;
+  if (!detail.amendments_close) return true;
+  const today = new Date().toISOString().slice(0, 10);
+  return today <= detail.amendments_close;
 }
 
 function InfoHeader({ detail }: { detail: TournamentDetailData }) {
@@ -93,8 +105,10 @@ function InfoHeader({ detail }: { detail: TournamentDetailData }) {
   );
 }
 
-// categories shown as informational "other actions" on the information screen;
-// gear lending (rental) and merch/other_item are deliberately omitted there
+// the time-and-place ("action") categories, mirroring the backend's
+// ACTION_CATEGORIES: shown as informational "other actions" on the information
+// screen — where gear lending and merch are deliberately omitted — and grouped
+// as the optional programme on the register screen
 const ACTION_CATEGORIES = ["seminar", "afterparty", "other_action"] as const;
 
 /** Optional when/where/remark lines shared by discipline and action rows. */
@@ -139,7 +153,8 @@ function DisciplinesInfo({
                 {d.code} — {d.name}
               </strong>
               <span className="muted">
-                {d.fee ?? "—"} Kč · {t("detail.fencersCount", { taken, capacity: d.capacity })}
+                {d.fee === null ? "—" : formatMoneyWithEur(d.fee, detail)} ·{" "}
+                {t("detail.fencersCount", { taken, capacity: d.capacity })}
                 {free <= 0 &&
                   ` · ${t("detail.queueLength", { count: a?.queue_length ?? 0 })}`}
               </span>
@@ -192,30 +207,137 @@ function OtherActionsInfo({ detail }: { detail: TournamentDetailData }) {
   );
 }
 
+/** One checkbox row of the registration checklist: name, price, and whatever
+ *  detail lines and controls the row carries. */
+function ChecklistRow({
+  name,
+  price,
+  checked,
+  onToggle,
+  children,
+}: {
+  name: string;
+  price: string;
+  checked: boolean;
+  onToggle: () => void;
+  children?: React.ReactNode;
+}) {
+  return (
+    <label className="checklist-row">
+      <input type="checkbox" checked={checked} onChange={onToggle} />
+      <span className="checklist-name">{name}</span>
+      <span className="checklist-price">{price}</span>
+      {children && <span className="checklist-detail">{children}</span>}
+    </label>
+  );
+}
+
+/** The quantity and option controls a selected purchasable row reveals. */
+function ItemControls({
+  item,
+  qty,
+  optionValue,
+  onQty,
+  onOption,
+}: {
+  item: ExtraItem;
+  qty: number;
+  optionValue: string;
+  onQty: (qty: number) => void;
+  onOption: (value: string) => void;
+}) {
+  const { t } = useTranslation();
+  return (
+    <span className="checklist-controls">
+      {item.max_qty > 1 && (
+        <span className="checklist-control">
+          {t("form.quantity")}
+          <input
+            type="number"
+            min={1}
+            max={item.max_qty}
+            value={qty}
+            onChange={(event) =>
+              onQty(Math.max(1, Math.min(item.max_qty, Number(event.target.value))))
+            }
+          />
+        </span>
+      )}
+      {item.option_label && (
+        <span className="checklist-control">
+          {item.option_label}
+          {item.option_choices.length > 0 ? (
+            <select value={optionValue} onChange={(event) => onOption(event.target.value)}>
+              <option value="">{t("form.chooseOption")}</option>
+              {item.option_choices.map((choice) => (
+                <option key={choice} value={choice}>
+                  {choice}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <input value={optionValue} onChange={(event) => onOption(event.target.value)} />
+          )}
+        </span>
+      )}
+    </span>
+  );
+}
+
 function RegistrationForm({
   detail,
   availability,
+  initial,
   onRegistered,
 }: {
   detail: TournamentDetailData;
   availability: Availability[];
+  /** The current registration, when amending; absent for a fresh one. */
+  initial?: RegistrationDetail;
   onRegistered: (registration: RegistrationDetail) => void;
 }) {
   const { t } = useTranslation();
-  const [disciplines, setDisciplines] = useState<Set<string>>(new Set());
-  const [extraQty, setExtraQty] = useState<Record<number, number>>({});
-  const [legacyQty, setLegacyQty] = useState<Record<string, number>>({});
-  const [afterparty, setAfterparty] = useState(false);
-  const [aftersparring, setAftersparring] = useState(false);
-  const [accommodation, setAccommodation] = useState("");
-  const [notes, setNotes] = useState("");
-  const [total, setTotal] = useState(0);
+  const amending = initial !== undefined;
+  const [disciplines, setDisciplines] = useState<Set<string>>(
+    () => new Set(initial?.entries.map((e) => e.code) ?? []),
+  );
+  const [extraQty, setExtraQty] = useState<Record<number, number>>(() => {
+    const map: Record<number, number> = {};
+    for (const extra of initial?.extras ?? []) map[extra.extra_item_id] = extra.qty;
+    return map;
+  });
+  const [extraOption, setExtraOption] = useState<Record<number, string>>(() => {
+    const map: Record<number, string> = {};
+    for (const extra of initial?.extras ?? []) {
+      if (extra.option_value) map[extra.extra_item_id] = extra.option_value;
+    }
+    return map;
+  });
+  const [legacyQty, setLegacyQty] = useState<Record<string, number>>(() => {
+    const map: Record<string, number> = {};
+    for (const weapon of initial?.weapon_rentals ?? []) map[weapon] = (map[weapon] ?? 0) + 1;
+    return map;
+  });
+  const [afterparty, setAfterparty] = useState(initial?.afterparty ?? false);
+  const [aftersparring, setAftersparring] = useState(initial?.aftersparring ?? false);
+  const [accommodation, setAccommodation] = useState(initial?.accommodation ?? "");
+  const [notes, setNotes] = useState(initial?.notes ?? "");
+  const [total, setTotal] = useState(initial?.total_amount ?? 0);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [fullDisciplines, setFullDisciplines] = useState<string[] | null>(null);
 
   const byCode = new Map(availability.map((a) => [a.code, a]));
   const legacy = detail.extra_items.length === 0;
+
+  // an already-held (non-substitute) discipline still counts itself as taken
+  // in `availability` — amending frees it before re-claiming it, so it must
+  // not read as full just because this registration already occupies it
+  function freePlaces(code: string): number {
+    const a = byCode.get(code);
+    const free = a ? a.free : 999999;
+    const alreadyHeld = initial?.entries.some((e) => e.code === code && !e.is_substitute);
+    return alreadyHeld ? free + 1 : free;
+  }
 
   function weaponRentals(): string[] {
     return Object.entries(legacyQty).flatMap(([code, qty]) => Array(qty).fill(code));
@@ -224,7 +346,14 @@ function RegistrationForm({
   function extrasPayload() {
     return Object.entries(extraQty)
       .filter(([, qty]) => qty > 0)
-      .map(([id, qty]) => ({ extra_item_id: Number(id), qty }));
+      .map(([id, qty]) => {
+        const value = (extraOption[Number(id)] ?? "").trim();
+        return {
+          extra_item_id: Number(id),
+          qty,
+          ...(value === "" ? {} : { option_value: value }),
+        };
+      });
   }
 
   useEffect(() => {
@@ -255,56 +384,93 @@ function RegistrationForm({
     });
   }
 
-  // purchasable extras grouped into the register-screen sections
-  const actionItems = detail.extra_items.filter(
-    (i) => i.category === "seminar" || i.category === "afterparty",
-  );
-  const gearItems = detail.extra_items.filter((i) => i.category === "rental");
-  const merchItems = detail.extra_items.filter((i) => i.category === "merch");
+  function toggleItem(item: ExtraItem) {
+    setExtraQty((prev) => ({ ...prev, [item.id]: prev[item.id] > 0 ? 0 : 1 }));
+  }
 
-  function qtyField(item: (typeof detail.extra_items)[number]) {
+  // sections follow the action/item category split, so membership is data
+  const programmeItems = detail.extra_items.filter((i) =>
+    ACTION_CATEGORIES.includes(i.category as (typeof ACTION_CATEGORIES)[number]),
+  );
+  const optionalItems = detail.extra_items.filter(
+    (i) => !ACTION_CATEGORIES.includes(i.category as (typeof ACTION_CATEGORIES)[number]),
+  );
+
+  // a full discipline is registered for as a substitute, chosen on its own row
+  const selectedFull = detail.disciplines
+    .filter((d) => disciplines.has(d.code))
+    .filter((d) => freePlaces(d.code) <= 0)
+    .map((d) => d.code);
+
+  /** Rows whose option is declared but unanswered block submission. */
+  const unanswered = optionalItems
+    .concat(programmeItems)
+    .filter((item) => (extraQty[item.id] ?? 0) > 0 && item.option_label)
+    .find((item) => (extraOption[item.id] ?? "").trim() === "");
+
+  function itemRow(item: ExtraItem) {
+    const qty = extraQty[item.id] ?? 0;
     return (
-      <label key={item.id} className="param-field">
-        <span>
-          {item.name} ({item.price} Kč)
-        </span>
-        <input
-          type="number"
-          min={0}
-          max={item.max_qty}
-          value={extraQty[item.id] ?? 0}
-          onChange={(event) =>
-            setExtraQty({
-              ...extraQty,
-              [item.id]: Math.max(0, Math.min(item.max_qty, Number(event.target.value))),
-            })
-          }
+      <ChecklistRow
+        key={item.id}
+        name={item.name}
+        price={formatMoney(item.price, detail.primary_currency)}
+        checked={qty > 0}
+        onToggle={() => toggleItem(item)}
+      >
+        <ScheduleLines
+          when={item.schedule_when}
+          where={item.schedule_where}
+          remark={item.remark}
         />
-      </label>
+        {qty > 0 && (
+          <ItemControls
+            item={item}
+            qty={qty}
+            optionValue={extraOption[item.id] ?? ""}
+            onQty={(next) => setExtraQty({ ...extraQty, [item.id]: next })}
+            onOption={(value) => setExtraOption({ ...extraOption, [item.id]: value })}
+          />
+        )}
+      </ChecklistRow>
     );
   }
 
-  async function submit(waitForAll: boolean) {
+  async function submit() {
+    if (unanswered) {
+      setError(
+        t("form.optionRequired", {
+          label: unanswered.option_label,
+          item: unanswered.name,
+        }),
+      );
+      return;
+    }
     setBusy(true);
     setError(null);
     try {
-      const registration = await api.registerForTournament(detail.slug, {
+      const payload = {
         disciplines: [...disciplines],
         weapon_rentals: weaponRentals(),
         afterparty,
         aftersparring,
         accommodation: accommodation.trim() === "" ? null : accommodation,
         notes: notes.trim() === "" ? null : notes,
-        wait_for_all: waitForAll,
+        // full rows were chosen knowingly, so substitute placement is accepted
+        wait_for_all: selectedFull.length > 0,
         extras: extrasPayload(),
-      });
-      setFullDisciplines(null);
+      };
+      const registration = amending
+        ? await api.amendRegistration(detail.slug, payload)
+        : await api.registerForTournament(detail.slug, payload);
       onRegistered(registration);
     } catch (err) {
+      // a discipline can fill between page load and submit; the row-level
+      // choice is gone by then, so the fencer re-checks their selection
       if (err instanceof ApiError && err.status === 409) {
         const detailBody = err.detail as { full_disciplines?: string[] } | null;
         if (detailBody?.full_disciplines) {
-          setFullDisciplines(detailBody.full_disciplines);
+          setError(t("form.nowFull", { codes: detailBody.full_disciplines.join(", ") }));
           return;
         }
       }
@@ -316,39 +482,109 @@ function RegistrationForm({
 
   return (
     <section className="rail-card">
-      <h2>{t("form.title")}</h2>
+      <h2>{amending ? t("form.amendTitle") : t("form.title")}</h2>
       <p className="tiskopis-number">{t("form.formNumber")}</p>
+      <h1>{detail.display_name}</h1>
+      {detail.subtitle && <p className="detail-subtitle">{detail.subtitle}</p>}
+      {detail.registration_instructions && (
+        <p className="registration-instructions">{detail.registration_instructions}</p>
+      )}
+
       <h3 className="register-section">{t("form.sections.tournament")}</h3>
-      <div className="chips">
+      <div className="checklist">
         {detail.disciplines.map((d) => {
           const a = byCode.get(d.code);
-          const free = a ? a.free : d.capacity;
+          const taken = a ? a.taken : 0;
+          const free = freePlaces(d.code);
           return (
-            <label key={d.code} className="checkbox-chip">
-              <input
-                type="checkbox"
-                checked={disciplines.has(d.code)}
-                onChange={() => toggleDiscipline(d.code)}
-              />
-              {d.code} ({d.fee ?? "—"} Kč, {free > 0 ? t("detail.freePlaces", { count: free }) : t("detail.queueLength", { count: a?.queue_length ?? 0 })})
-            </label>
+            <ChecklistRow
+              key={d.code}
+              name={`${d.code} — ${d.name}`}
+              price={d.fee === null ? "—" : formatMoney(d.fee, detail.primary_currency)}
+              checked={disciplines.has(d.code)}
+              onToggle={() => toggleDiscipline(d.code)}
+            >
+              <ScheduleLines when={d.schedule_when} where={d.schedule_where} />
+              {free <= 0 ? (
+                <span className="checklist-full">
+                  {t("form.full", { taken, capacity: d.capacity })}
+                </span>
+              ) : (
+                <span>{t("form.freePlaces", { free, capacity: d.capacity })}</span>
+              )}
+            </ChecklistRow>
           );
         })}
       </div>
 
-      <h3 className="register-section">{t("form.sections.actions")}</h3>
-      <div className="param-fields">
-        {actionItems.map(qtyField)}
-        {legacy && (
-          <label className="checkbox-chip">
-            <input
-              type="checkbox"
-              checked={afterparty}
-              onChange={(event) => setAfterparty(event.target.checked)}
-            />
-            {t("form.afterparty")}
-          </label>
-        )}
+      {(programmeItems.length > 0 || legacy) && (
+        <>
+          <h3 className="register-section">{t("form.sections.programme")}</h3>
+          <div className="checklist">
+            {programmeItems.map(itemRow)}
+            {legacy && (
+              <ChecklistRow
+                name={t("form.afterparty")}
+                price={formatMoney(detail.afterparty_fee, detail.primary_currency)}
+                checked={afterparty}
+                onToggle={() => setAfterparty(!afterparty)}
+              />
+            )}
+          </div>
+        </>
+      )}
+
+      {(optionalItems.length > 0 || legacy) && (
+        <>
+          <h3 className="register-section">{t("form.sections.items")}</h3>
+          <div className="checklist">
+            {optionalItems.map(itemRow)}
+            {legacy &&
+              Object.entries(LEGACY_WEAPONS).map(([code, name]) => {
+                const qty = legacyQty[code] ?? 0;
+                return (
+                  <ChecklistRow
+                    key={code}
+                    name={t("form.weaponRental", { weapon: name })}
+                    price={formatMoney(detail.weapon_rental_fee, detail.primary_currency)}
+                    checked={qty > 0}
+                    onToggle={() =>
+                      setLegacyQty({ ...legacyQty, [code]: qty > 0 ? 0 : 1 })
+                    }
+                  >
+                    {qty > 0 && (
+                      <span className="checklist-controls">
+                        <span className="checklist-control">
+                          {t("form.quantity")}
+                          <input
+                            type="number"
+                            min={1}
+                            max={4}
+                            value={qty}
+                            onChange={(event) =>
+                              setLegacyQty({
+                                ...legacyQty,
+                                [code]: Math.max(1, Math.min(4, Number(event.target.value))),
+                              })
+                            }
+                          />
+                        </span>
+                      </span>
+                    )}
+                  </ChecklistRow>
+                );
+              })}
+          </div>
+        </>
+      )}
+
+      <p className="form-total">
+        {t("form.total", { amount: formatMoneyWithEur(total, detail) })}
+      </p>
+
+      {/* non-billable answers: nothing here changes the total */}
+      <h3 className="register-section">{t("form.sections.other")}</h3>
+      <div className="form-fields">
         <label className="checkbox-chip">
           <input
             type="checkbox"
@@ -357,83 +593,24 @@ function RegistrationForm({
           />
           {t("form.aftersparring")}
         </label>
-      </div>
-
-      {(gearItems.length > 0 || legacy) && (
-        <>
-          <h3 className="register-section">{t("form.sections.gear")}</h3>
-          <div className="param-fields">
-            {gearItems.map(qtyField)}
-            {legacy &&
-              Object.entries(LEGACY_WEAPONS).map(([code, name]) => (
-                <label key={code} className="param-field">
-                  <span>{name}</span>
-                  <input
-                    type="number"
-                    min={0}
-                    max={4}
-                    value={legacyQty[code] ?? 0}
-                    onChange={(event) =>
-                      setLegacyQty({
-                        ...legacyQty,
-                        [code]: Math.max(0, Math.min(4, Number(event.target.value))),
-                      })
-                    }
-                  />
-                </label>
-              ))}
-          </div>
-        </>
-      )}
-
-      <h3 className="register-section">{t("form.sections.merch")}</h3>
-      <div className="param-fields">
-        {merchItems.map(qtyField)}
-        <label className="param-field">
+        <label className="form-field">
           <span>{t("form.accommodation")}</span>
           <input value={accommodation} onChange={(event) => setAccommodation(event.target.value)} />
         </label>
-        <label className="param-field">
-          <span>{t("form.notes")}</span>
-          <input value={notes} onChange={(event) => setNotes(event.target.value)} />
+        <label className="form-field">
+          <span>{t("form.remarks")}</span>
+          <textarea value={notes} onChange={(event) => setNotes(event.target.value)} />
         </label>
       </div>
 
-      <p className="form-total">{t("form.total", { total })}</p>
-
       {error && <p className="login-error">{error}</p>}
-
-      {fullDisciplines && (
-        <div className="rail-card dashed">
-          <p>{t("form.fullDisciplines", { codes: fullDisciplines.join(", ") })}</p>
-          <div className="modal-actions">
-            <button
-              className="secondary"
-              disabled={busy}
-              onClick={() => {
-                setDisciplines((prev) => {
-                  const next = new Set(prev);
-                  for (const code of fullDisciplines) next.delete(code);
-                  return next;
-                });
-                setFullDisciplines(null);
-              }}
-            >
-              {t("form.dropFull")}
-            </button>
-            <button className="secondary" disabled={busy} onClick={() => void submit(true)}>
-              {t("form.joinQueue")}
-            </button>
-          </div>
-        </div>
-      )}
 
       <button
         className="btn-primary param-save"
         disabled={busy || disciplines.size === 0}
-        onClick={() => void submit(false)}
+        onClick={() => void submit()}
       >
-        {t("form.submit")}
+        {amending ? t("form.amendSubmit") : t("form.submit")}
       </button>
     </section>
   );
@@ -460,7 +637,9 @@ function PaymentPanel({ slug }: { slug: string }) {
       <div className="param-fields">
         <div className="param-field">
           <span>{t("payment.amount")}</span>
-          <strong className="data-value">{payment.amount} Kč</strong>
+          <strong className="data-value">
+            {formatMoney(payment.amount, payment.currency)}
+          </strong>
         </div>
         <div className="param-field">
           <span>{t("payment.iban")}</span>
@@ -476,6 +655,23 @@ function PaymentPanel({ slug }: { slug: string }) {
         </div>
       </div>
       <p className="rail-hint">{t("payment.vsInMessage", { vs: payment.vs })}</p>
+
+      {/* the same registration, payable in EUR against the same account */}
+      {payment.eur_amount && payment.eur_qr_png_base64 && (
+        <>
+          <h3 className="register-section">{t("payment.eurTitle")}</h3>
+          <img
+            className="payment-qr"
+            src={`data:image/png;base64,${payment.eur_qr_png_base64}`}
+            alt={t("payment.eurTitle")}
+          />
+          <div className="param-field">
+            <span>{t("payment.eurAmount")}</span>
+            <strong className="data-value">{formatMoney(payment.eur_amount, "EUR")}</strong>
+          </div>
+          <p className="rail-hint">{t("payment.eurHint")}</p>
+        </>
+      )}
     </section>
   );
 }
@@ -488,15 +684,21 @@ function RegistrationStateTag({ registration }: { registration: RegistrationDeta
   return <span className="state-text">{label}</span>;
 }
 
-function RegistrationSummary({ registration }: { registration: RegistrationDetail }) {
+/** What a registration holds and what it owes — shared by the read-only summary
+ *  and the owner's panel, so the two can never disagree. */
+function RegistrationLines({
+  registration,
+  detail,
+}: {
+  registration: RegistrationDetail;
+  detail: TournamentDetailData;
+}) {
   const { t } = useTranslation();
   const active = registration.entries.filter((e) => !e.is_substitute);
   const substitutes = registration.entries.filter((e) => e.is_substitute);
 
   return (
-    <section className="rail-card">
-      <h2>{t("registration.title")}</h2>
-      <RegistrationStateTag registration={registration} />
+    <>
       <ul className="detail-list">
         {active.map((e) => (
           <li key={e.code}>{e.code}</li>
@@ -509,10 +711,39 @@ function RegistrationSummary({ registration }: { registration: RegistrationDetai
         {registration.extras.map((extra) => (
           <li key={extra.extra_item_id}>
             {extra.name} × {extra.qty}
+            {extra.option_value && ` (${extra.option_label}: ${extra.option_value})`}
           </li>
         ))}
       </ul>
-      <p className="form-total">{t("form.total", { total: registration.total_amount })}</p>
+      <p className="form-total">
+        {t("form.total", {
+          amount: formatMoneyWithEur(registration.total_amount, detail),
+        })}
+      </p>
+      {Number(registration.outstanding_amount) !== 0 && (
+        <p className="rail-hint">
+          {t("registration.outstanding", {
+            amount: formatMoney(registration.outstanding_amount, detail.primary_currency),
+          })}
+        </p>
+      )}
+    </>
+  );
+}
+
+function RegistrationSummary({
+  registration,
+  detail,
+}: {
+  registration: RegistrationDetail;
+  detail: TournamentDetailData;
+}) {
+  const { t } = useTranslation();
+  return (
+    <section className="rail-card">
+      <h2>{t("registration.title")}</h2>
+      <RegistrationStateTag registration={registration} />
+      <RegistrationLines registration={registration} detail={detail} />
     </section>
   );
 }
@@ -521,11 +752,15 @@ function RegistrationPanel({
   slug,
   detail,
   registration,
+  canAmend,
+  onAmend,
   onCancelled,
 }: {
   slug: string;
   detail: TournamentDetailData;
   registration: RegistrationDetail;
+  canAmend: boolean;
+  onAmend: () => void;
   onCancelled: () => void;
 }) {
   const { t } = useTranslation();
@@ -557,26 +792,17 @@ function RegistrationPanel({
       <h2>{t("registration.title")}</h2>
       <RegistrationStateTag registration={registration} />
 
-      <ul className="detail-list">
-        {active.map((e) => (
-          <li key={e.code}>{e.code}</li>
-        ))}
-        {substitutes.map((e) => (
-          <li key={e.code} className="muted">
-            {e.code} — {t("registration.queuePosition", { position: e.queue_position })}
-          </li>
-        ))}
-        {registration.extras.map((extra) => (
-          <li key={extra.extra_item_id}>
-            {extra.name} × {extra.qty}
-          </li>
-        ))}
-      </ul>
-      <p className="form-total">{t("form.total", { total: registration.total_amount })}</p>
+      <RegistrationLines registration={registration} detail={detail} />
 
       {registration.state === "reserved" && !fullyQueued && <PaymentPanel slug={slug} />}
       {registration.state === "reserved" && fullyQueued && (
         <p className="rail-hint">{t("registration.fullyQueuedHint")}</p>
+      )}
+
+      {canAmend && (
+        <button className="secondary" onClick={onAmend}>
+          {t("registration.amend")}
+        </button>
       )}
 
       {registration.state !== "cancelled" && (
@@ -633,9 +859,9 @@ export default function TournamentDetail({
   const [registration, setRegistration] = useState<RegistrationDetail | null>(null);
   const [registrationChecked, setRegistrationChecked] = useState(false);
   const [account, setAccount] = useState<Account | null>(null);
-  // the detail page is split into an information screen and a separate register
-  // screen; information is always the landing view
-  const [screen, setScreen] = useState<"information" | "register">("information");
+  // the detail page is split into an information screen and a separate
+  // register/amend screen; information is always the landing view
+  const [screen, setScreen] = useState<"information" | "register" | "amend">("information");
 
   function refresh() {
     api.tournament(slug).then(setDetail, () => setDetail(null));
@@ -669,7 +895,15 @@ export default function TournamentDetail({
     detail !== null &&
     registrationStatus(detail) === "open" &&
     hasOpenSlot;
+  const canAmend =
+    !readOnly &&
+    detail !== null &&
+    registration !== null &&
+    (registration.state === "reserved" || registration.state === "paid") &&
+    amendmentOpen(detail);
   const onRegisterScreen = screen === "register" && canRegister;
+  const onAmendScreen = screen === "amend" && canAmend;
+  const showingForm = onRegisterScreen || onAmendScreen;
 
   return (
     <div className="login-page">
@@ -686,17 +920,18 @@ export default function TournamentDetail({
       <div className="login-card wide-card">
         <button
           className="link-button"
-          onClick={() => (onRegisterScreen ? setScreen("information") : onBack())}
+          onClick={() => (showingForm ? setScreen("information") : onBack())}
         >
-          {onRegisterScreen ? t("detail.backToInfo") : t("detail.back")}
+          {showingForm ? t("detail.backToInfo") : t("detail.back")}
         </button>
         {detail === null || !registrationChecked ? (
           <p>{t("common.loading")}</p>
-        ) : onRegisterScreen ? (
+        ) : showingForm ? (
           <div className="setup-panel">
             <RegistrationForm
               detail={detail}
               availability={availability}
+              initial={onAmendScreen ? (registration ?? undefined) : undefined}
               onRegistered={(r) => {
                 setRegistration(r);
                 setScreen("information");
@@ -709,12 +944,16 @@ export default function TournamentDetail({
             <DisciplinesInfo detail={detail} availability={availability} />
             <OtherActionsInfo detail={detail} />
             {readOnly ? (
-              hasActive && registration && <RegistrationSummary registration={registration} />
+              hasActive && registration && (
+                <RegistrationSummary registration={registration} detail={detail} />
+              )
             ) : hasActive && registration ? (
               <RegistrationPanel
                 slug={slug}
                 detail={detail}
                 registration={registration}
+                canAmend={canAmend}
+                onAmend={() => setScreen("amend")}
                 onCancelled={refresh}
               />
             ) : canRegister ? (

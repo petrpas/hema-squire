@@ -213,5 +213,13 @@ def test_extras_selection_billed_and_itemized_in_output(client, auth_headers):
     body = response.json()
     assert body["total_amount"] == 800 + 2 * 200
     assert body["extras"] == [
-        {"extra_item_id": item["id"], "name": "weapon rental", "category": "rental", "qty": 2}
+        {
+            "extra_item_id": item["id"],
+            "name": "weapon rental",
+            "category": "rental",
+            "qty": 2,
+            # the item declares no option, so the selection carries none
+            "option_label": None,
+            "option_value": None,
+        }
     ]

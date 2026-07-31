@@ -10,12 +10,19 @@ Two pricing worlds exist:
 - Legacy (everything else): per-discipline fees plus the fixed
   weapon-rental/afterparty parameters, with per-item early-bird variants.
   Kept verbatim so historical totals and the pilot replay stay reproducible.
+
+Totals are whole units of the tournament's primary currency. EUR figures are
+*derived* here and never stored on a registration — the primary-currency total
+is what is owed, and the EUR amount is recomputed from the tournament's current
+rate every time it is shown or matched (design D3).
 """
 
 import datetime
 from decimal import ROUND_HALF_UP, Decimal
 
 from app.models import Discipline, ExtraItem, Registration, Tournament
+
+_CENTS = Decimal("0.01")
 
 # the implicit category of discipline entries; extras carry ExtraCategory values
 DISCIPLINE_CATEGORY = "discipline"
@@ -145,6 +152,25 @@ def selection_total(
     if afterparty:
         total += afterparty_fee(tournament, at)
     return total
+
+
+def to_eur(amount: int, tournament: Tournament) -> Decimal | None:
+    """The EUR equivalent of a primary-currency amount, or None when no EUR
+    figure applies (EUR payments off, no rate, or the tournament already prices
+    in EUR). One decision point, so no caller repeats the condition."""
+    if not tournament.shows_eur:
+        return None
+    return (Decimal(amount) / tournament.eur_rate).quantize(_CENTS, rounding=ROUND_HALF_UP)
+
+
+def from_eur_cents(cents: int, tournament: Tournament) -> Decimal | None:
+    """A EUR amount in cents expressed in the primary currency — the inverse of
+    `to_eur`, used to compare an incoming EUR transfer against the amount due."""
+    if not tournament.shows_eur:
+        return None
+    return (Decimal(cents) / Decimal(100) * tournament.eur_rate).quantize(
+        _CENTS, rounding=ROUND_HALF_UP
+    )
 
 
 def registration_total(registration: Registration, tournament: Tournament) -> int:

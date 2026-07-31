@@ -106,12 +106,20 @@ def test_far_off_amount_flagged_not_accepted(client, auth_headers, mailbox):
 
 
 def test_vs_in_message_matches_sepa_style(client, auth_headers, mailbox):
+    """A foreign transfer carries its VS in the message and its amount in EUR;
+    the tournament prices in CZK and takes EUR at a configured rate, so the
+    amount is converted before the tolerance check (1000 CZK / 25.5 = 39.22)."""
     organizer = auth_headers()
     setup(client, organizer)
+    client.patch(
+        "/api/tournaments/cup",
+        json={"eur_payments_enabled": True, "eur_rate": "25.5"},
+        headers=organizer,
+    )
     fencer, vs = enroll(client, auth_headers)
 
     result = import_rows(
-        client, organizer, [f"1;01.08.2026;1 000,00;EUR;;;;platba VS{vs} Cup;MUELLER;DE99"]
+        client, organizer, [f"1;01.08.2026;39,22;EUR;;;;platba VS{vs} Cup;MUELLER;DE99"]
     )
     assert result["matched"] == 1
     state = client.get("/api/tournaments/cup/my-registration", headers=fencer).json()["state"]

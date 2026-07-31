@@ -22,7 +22,9 @@ def mailbox():
 
 
 def test_spayd_string_format():
-    result = spayd_string("CZ6508000000192000145399", 1300, 1000001, "VS1000001 Na Duel!")
+    result = spayd_string(
+        "CZ6508000000192000145399", 1300, 1000001, "VS1000001 Na Duel!", "CZK"
+    )
     assert result == (
         "SPD*1.0*ACC:CZ6508000000192000145399*AM:1300.00*CC:CZK"
         "*X-VS:1000001*MSG:VS1000001 Na Duel!"
@@ -30,7 +32,7 @@ def test_spayd_string_format():
 
 
 def test_spayd_sanitizes_message():
-    result = spayd_string("CZ65 0800 0000 1920 0014 5399", 100, 7, "a*b\nc" + "x" * 100)
+    result = spayd_string("CZ65 0800 0000 1920 0014 5399", 100, 7, "a*b\nc" + "x" * 100, "CZK")
     assert "ACC:CZ6508000000192000145399" in result
     msg = result.split("MSG:")[1]
     assert "*" not in msg and "\n" not in msg

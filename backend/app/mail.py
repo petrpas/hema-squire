@@ -30,7 +30,12 @@ class OutboxMailer:
 
 
 def build_message(
-    to: str, sender: str, subject: str, body: str, qr: bytes | None = None
+    to: str,
+    sender: str,
+    subject: str,
+    body: str,
+    qr: bytes | None = None,
+    qr_eur: bytes | None = None,
 ) -> EmailMessage:
     message = EmailMessage()
     message["From"] = sender
@@ -39,6 +44,12 @@ def build_message(
     message.set_content(body)
     if qr is not None:
         message.add_attachment(qr, maintype="image", subtype="png", filename="platba-qr.png")
+    # a tournament that also takes EUR sends two QRs; the filenames distinguish
+    # them so a payer picks the currency deliberately
+    if qr_eur is not None:
+        message.add_attachment(
+            qr_eur, maintype="image", subtype="png", filename="platba-qr-eur.png"
+        )
     return message
 
 

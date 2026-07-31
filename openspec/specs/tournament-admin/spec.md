@@ -47,6 +47,21 @@ A tournament SHALL be defined by internal name, display name, an optional subtit
 - **WHEN** the organizer writes a multi-paragraph description in Setup and saves
 - **THEN** the description is stored as plain text and presented with its paragraph breaks intact, with no markup interpreted and no HTML rendered from its content
 
+### Requirement: Registration instructions
+A tournament SHALL have an optional multiline free-text `registration instructions` field, editable in the Setup phase and distinct from the public description. It SHALL be presented only on the registration form, with line breaks preserved and no markup interpretation. It SHALL NOT be part of mandatory setup, and its absence SHALL NOT change any other presentation.
+
+#### Scenario: Instructions shown on the form only
+- **WHEN** the organizer fills registration instructions and a fencer opens the tournament
+- **THEN** the instructions appear on the registration form and do not appear on the information screen
+
+#### Scenario: Instructions absent
+- **WHEN** a tournament has no registration instructions
+- **THEN** the registration form renders correctly with no instructions block
+
+#### Scenario: Line breaks preserved
+- **WHEN** the instructions contain several paragraphs
+- **THEN** they render with their line breaks and no markup is interpreted
+
 ### Requirement: Pricing configuration
 The system SHALL compute registration totals from categorized billable items and an ordered discount list.
 
@@ -89,6 +104,56 @@ Tournaments with no extra-service items and no discounts SHALL keep the legacy c
 #### Scenario: Legacy tournament unaffected
 - **WHEN** totals are recomputed for a tournament that has no extra-service items and no discounts
 - **THEN** the legacy per-discipline fees and fixed extras produce the same totals as before this change
+
+### Requirement: Tournament currency
+A tournament SHALL have a primary currency drawn from a closed enumeration, initially `CZK` and `EUR`, defaulting to `CZK`. Every price the organizer configures — discipline unit prices, extra-service prices, fixed discount amounts, legacy fee parameters — and every computed total SHALL be expressed in whole units of that primary currency.
+
+When the primary currency is not `EUR`, the organizer MAY enable EUR payments. Enabling them SHALL require an exchange rate expressed as primary-currency units per 1 EUR, which MUST be greater than zero. Disabling EUR payments SHALL clear the stored rate. When the primary currency is `EUR`, EUR payments SHALL be treated as enabled and no exchange rate SHALL be stored.
+
+The Setup UI SHALL state the rate's direction explicitly and SHALL warn — without blocking the save — when the entered rate falls outside a plausible range.
+
+#### Scenario: Czech tournament enables EUR payments
+- **WHEN** the organizer sets the primary currency to CZK, enables EUR payments, and enters 25.5
+- **THEN** the tournament stores CZK as its primary currency with EUR payments enabled at 25.5 CZK per EUR
+
+#### Scenario: EUR payments without a rate rejected
+- **WHEN** the organizer enables EUR payments on a CZK tournament and leaves the exchange rate empty
+- **THEN** the save is rejected with a field-level validation error and no change is stored
+
+#### Scenario: Non-positive rate rejected
+- **WHEN** the organizer submits an exchange rate of 0 or a negative number
+- **THEN** the save is rejected with a field-level validation error
+
+#### Scenario: EUR-priced tournament stores no rate
+- **WHEN** the organizer sets the primary currency to EUR
+- **THEN** EUR payments are enabled, no exchange rate is stored, and no second currency figure is presented anywhere
+
+#### Scenario: Disabling EUR payments clears the rate
+- **WHEN** the organizer turns EUR payments off on a tournament that had a rate
+- **THEN** the rate is cleared and EUR figures stop being presented
+
+#### Scenario: Implausible rate warns but saves
+- **WHEN** the organizer enters an exchange rate far outside the plausible range
+- **THEN** Setup shows a warning naming the expected direction and the save still succeeds
+
+#### Scenario: Existing tournaments unchanged
+- **WHEN** a tournament created before this change is loaded
+- **THEN** its primary currency is CZK with EUR payments disabled, and its prices and totals are identical to before
+
+### Requirement: Extra-service option field
+An extra service MAY declare a single option: an option label (for example "size") and an optional list of preset choices. A label with choices SHALL be answered by picking one of the choices; a label without choices SHALL be answered with free text. An extra service with no option label SHALL take no option. Options SHALL be purely descriptive and SHALL NOT affect price computation.
+
+#### Scenario: Option with preset choices configured
+- **WHEN** the organizer defines "t-shirt" (category `merch`, 300, limit 5) with option label "size" and choices S, M, L, XL
+- **THEN** registration offers that item with a choice of those four sizes
+
+#### Scenario: Free-text option configured
+- **WHEN** the organizer defines an option label with no choices
+- **THEN** registration offers that item with a free-text field for the option
+
+#### Scenario: Option does not change the total
+- **WHEN** totals are computed for a selection with an option answered and for the same selection without the option
+- **THEN** both totals are identical
 
 ### Requirement: Tournament qualification statement
 Each tournament SHALL carry a qualification statement consisting of an openness flag and optional criteria text. The flag SHALL default to open, so a tournament that never sets it presents as open to everyone. When the organizer marks the tournament as requiring qualification, criteria text SHALL be required and SHALL be free text (for example "national championship placement, HR top 500"); the field SHALL carry a help hint offering such examples. Marking the tournament open again SHALL clear the criteria text. The statement SHALL be editable in the Setup phase between the registration dates and the logo, and SHALL be presented wherever the tournament is described. The statement is informational: it SHALL NOT restrict, block, or flag any registration.
@@ -133,11 +198,21 @@ A failed logo upload SHALL tell the organizer which of the distinguishable cause
 - **THEN** the message reflects that cause and does not claim the file is not an image
 
 ### Requirement: Payment and reservation parameters
-Per tournament, the organizer SHALL configure: reservation validity in days, reminder day, amount-matching tolerance in percent, refundable-until date, the bank account used in payment instructions, and the public-list treatment of unpaid registrations.
+Per tournament, the organizer SHALL configure: reservation validity in days, reminder day, amount-matching tolerance in percent, refundable-until date, the bank account used in payment instructions, the public-list treatment of unpaid registrations, and the expiry grace period in hours.
+
+The expiry grace period SHALL define how long after a reservation expires a payment carrying its VS may still reinstate it, subject to capacity. It SHALL default to 48 hours for a new tournament and SHALL accept zero, which disables automatic reinstatement and routes every post-expiry payment to explicit organizer action.
 
 #### Scenario: Parameters applied
 - **WHEN** the organizer sets reservation validity to 10 days and the reminder to day 5
 - **THEN** new reservations expire after 10 unpaid days and reminder emails go out on day 5
+
+#### Scenario: Grace period default
+- **WHEN** the organizer creates a tournament without touching the grace period
+- **THEN** it is 48 hours, and a payment arriving within 48 hours of expiry can reinstate the reservation
+
+#### Scenario: Grace period disabled
+- **WHEN** the organizer sets the expiry grace period to zero
+- **THEN** no payment reinstates a reservation automatically and every post-expiry payment is flagged for organizer action
 
 ### Requirement: Organizer authorization
 Each tournament SHALL have exactly one Tournament Owner (initially the creator) and a team of Tournament Organizers. Console access SHALL be restricted to the Tournament Owner and team members. The Tournament Owner SHALL manage the team: adding any existing account by email (no global role required) and removing members. Team membership grants full console access; ownership additionally grants team management, ownership transfer, and delete/cancel.
@@ -198,6 +273,8 @@ The Tournament Owner SHALL be able to hard-delete a tournament only while it has
 ### Requirement: Registration window
 A tournament SHALL have optional registration-opens and registration-closes dates. Registration SHALL be unavailable before the opens date (when set) and after the closes date (when set); with no closes date, registration stays available until the tournament date. With no opens date, registration is available as soon as setup is complete.
 
+A tournament SHALL additionally have an optional amendments-close date, after which fencers may no longer amend their registrations even while registration itself remains open. With no amendments-close date set, amendment SHALL be available on exactly the same window as registration. When both are set, the amendments-close date MUST NOT fall after the registration-closes date, and the combination SHALL be rejected with a clear message — a later value would never be reached.
+
 #### Scenario: Before opening
 - **WHEN** a fencer visits registration before the registration-opens date
 - **THEN** registration is unavailable and the opening date is shown
@@ -206,12 +283,28 @@ A tournament SHALL have optional registration-opens and registration-closes date
 - **WHEN** no registration-closes date is set
 - **THEN** registration remains available through the tournament date
 
+#### Scenario: Amendments close before registration
+- **WHEN** the organizer sets an amendments-close date two weeks before the registration-closes date
+- **THEN** fencers may still register in those two weeks but may no longer amend an existing registration
+
+#### Scenario: Amendments follow registration by default
+- **WHEN** no amendments-close date is set
+- **THEN** amendment is available exactly while registration is available
+
+#### Scenario: Amendments-close after registration-close rejected
+- **WHEN** the organizer sets an amendments-close date later than the registration-closes date
+- **THEN** the update is rejected with a message naming the conflict
+
 ### Requirement: Setup completeness
-Mandatory setup SHALL comprise: display name, date, location, at least one titular organizer, and at least one discipline with a unit price. The Setup phase SHALL show a completeness checklist naming each missing item. A tournament with incomplete mandatory setup SHALL NOT accept registrations.
+Mandatory setup SHALL comprise: display name, date, location, at least one titular organizer, at least one discipline with a unit price, and — whenever EUR payments are enabled on a tournament whose primary currency is not EUR — a positive exchange rate. The Setup phase SHALL show a completeness checklist naming each missing item. A tournament with incomplete mandatory setup SHALL NOT accept registrations.
 
 #### Scenario: Checklist shows gaps
 - **WHEN** the organizer opens Setup for a tournament without location and without discipline prices
 - **THEN** the checklist lists location and the missing unit prices as blocking registration
+
+#### Scenario: Missing exchange rate blocks registration
+- **WHEN** a CZK tournament has EUR payments enabled with no exchange rate
+- **THEN** the checklist lists the missing exchange rate and registration is unavailable
 
 #### Scenario: Setup completed
 - **WHEN** the last mandatory item is filled

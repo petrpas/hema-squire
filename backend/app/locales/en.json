@@ -1,5 +1,25 @@
 {
   "app": {
     "title": "HEMA Squire"
+  },
+  "email": {
+    "amendment": {
+      "subject": "Registration amendment for {tournament} — payment instructions",
+      "body": "Hi {name},\n\nwe've updated your registration for {tournament}:\n\n{summary}\n\nTotal due: {total}\nAccount: {account}\nVariable symbol: {vs}\nReservation valid until: {expires}\n\nYou can pay by scanning the attached QR code in your banking app.{eur_note}\n\nIf payment does not arrive before the reservation expires, the place is released automatically.\n\n{tournament} team",
+      "queuedSubject": "Registration amendment — {tournament}",
+      "queuedBody": "Hi {name},\n\nwe've updated your registration for {tournament}, which is waiting in the substitute queue:\n\n{summary}\n\nYou owe nothing yet. Once a place frees up and the organizer admits you, we'll send payment instructions.\n\n{tournament} team"
+    },
+    "surcharge": {
+      "subject": "Surcharge due — {tournament}",
+      "body": "Hi {name},\n\nafter the amendment to your registration for {tournament}, a surcharge of {amount} is due.\n\nAccount: {account}\nVariable symbol: {vs}\n\nYou can pay by scanning the attached QR code — it's made out for exactly the surcharge.\n\n{tournament} team"
+    },
+    "reinstated": {
+      "subject": "Reservation reinstated, payment received — {tournament}",
+      "body": "Hi {name},\n\nyour payment of {total} (VS {vs}) arrived after your reservation had expired, but the place was still free — we've reinstated the reservation and accepted the payment. Your place at {tournament} is confirmed. See you at the tournament!\n\n{tournament} team"
+    },
+    "afterExpiry": {
+      "subject": "Payment received after reservation expiry — {tournament}",
+      "body": "Hi {name},\n\nyour payment (VS {vs}) arrived for your registration at {tournament}, but the reservation had already expired in the meantime. We haven't confirmed the place automatically — the organizer will follow up to sort out next steps.\n\n{tournament} team"
+    }
   }
 }

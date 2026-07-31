@@ -97,6 +97,9 @@ def parse_fio_json(payload: dict) -> list[IncomingTransaction]:
                 external_id=str(_fio_value(row, "external_id")),
                 date=datetime.date.fromisoformat(str(_fio_value(row, "date"))[:10]),
                 amount_cents=int(round(Decimal(str(_fio_value(row, "amount"))) * 100)),
+                # Fio omits the currency on domestic statements, which are
+                # always CZK by definition of the format — not an app-level
+                # assumption about what a tournament prices in
                 currency=str(_fio_value(row, "currency") or "CZK"),
                 vs=int(vs_raw) if vs_raw not in (None, "") else None,
                 message=_fio_value(row, "message"),
@@ -155,7 +158,7 @@ def parse_fio_csv(content: bytes) -> list[IncomingTransaction]:
                 external_id=record["external_id"],
                 date=_parse_date(record["date"]),
                 amount_cents=_parse_amount_cents(record["amount"]),
-                currency=record["currency"] or "CZK",
+                currency=record["currency"] or "CZK",  # see parse_fio_json
                 vs=int(record["vs"]) if record["vs"] else None,
                 message=record["message"] or None,
                 payer_name=record["payer_name"] or None,

@@ -28,6 +28,8 @@ const PHASE_PARAMS: Record<Phase, ParamField[]> = {
     { key: "amount_tolerance_percent", type: "number" },
     { key: "refundable_until", type: "date" },
     { key: "bank_account", type: "text" },
+    { key: "expiry_grace_hours", type: "number" },
+    { key: "amendments_close", type: "date" },
   ],
   export: [{ key: "output_sheet_url", type: "text" }],
 };
@@ -95,7 +97,10 @@ export default function ParamPanel({
       <div className="param-fields">
         {fields.map((field) => (
           <label key={field.key} className="param-field">
-            <span>{t(`param.${field.key}`)}</span>
+            {/* fee labels name the tournament's currency rather than baking it in */}
+            <span>
+              {t(`param.${field.key}`, { currency: detail?.primary_currency ?? "CZK" })}
+            </span>
             <input
               type={field.type}
               value={values[field.key] ?? ""}

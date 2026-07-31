@@ -9,6 +9,7 @@ Password hashes never leave the deployment.
 """
 
 import datetime
+import decimal
 from typing import Any
 
 from fastapi import HTTPException
@@ -31,7 +32,7 @@ from app.models import (
     TournamentOrganizer,
 )
 
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
 
 _TOURNAMENT_FIELDS = [
     "slug", "display_name", "date", "language",
@@ -40,9 +41,20 @@ _TOURNAMENT_FIELDS = [
     "early_bird_until", "weapon_rental_fee", "weapon_rental_fee_early",
     "afterparty_fee", "afterparty_fee_early",
     "location", "description", "qualification_open", "qualification_criteria",
+    "registration_instructions",
+    "primary_currency", "eur_payments_enabled", "eur_rate",
     "organizers", "discounts",
     "registration_opens", "registration_closes",
 ]
+
+# v3 additions, defaulted when restoring an older file so a v1/v2 export lands
+# as the CZK, EUR-off, option-less tournament it was
+_V3_TOURNAMENT_DEFAULTS = {
+    "registration_instructions": None,
+    "primary_currency": "CZK",
+    "eur_payments_enabled": False,
+    "eur_rate": None,
+}
 
 _REGISTRATION_FIELDS = [
     "registered_at", "state", "vs", "total_amount", "expires_at", "reminded_at",
@@ -61,6 +73,9 @@ def _plain(value: Any) -> Any:
         return value.isoformat()
     if hasattr(value, "value"):  # StrEnum
         return value.value
+    # exchange rates are Decimal; a string keeps the exact value through JSON
+    if isinstance(value, decimal.Decimal):
+        return str(value)
     return value
 
 
@@ -118,7 +133,13 @@ def export_tournament(session: Session, tournament: Tournament) -> dict:
             for d in tournament.disciplines
         ],
         "extra_items": [
-            _record(i, ["name", "category", "price", "max_qty"])
+            _record(
+                i,
+                [
+                    "name", "category", "price", "max_qty",
+                    "option_label", "option_choices",
+                ],
+            )
             for i in tournament.extra_items
         ],
         "fencers": [
@@ -139,6 +160,7 @@ def export_tournament(session: Session, tournament: Tournament) -> dict:
                         "item_name": sel.item.name,
                         "item_category": sel.item.category.value,
                         "qty": sel.qty,
+                        "option_value": sel.option_value,
                     }
                     for sel in r.extra_selections
                 ],
@@ -189,7 +211,7 @@ def _parse_date(value: str | None) -> datetime.date | None:
 
 def restore_tournament(session: Session, data: dict, actor: Fencer) -> Tournament:
     version = data.get("schema_version")
-    if version not in (1, SCHEMA_VERSION):
+    if version not in (1, 2, SCHEMA_VERSION):
         raise HTTPException(status_code=422, detail="unsupported_schema_version")
     doc = dict(data["tournament"])
     if version == 1:
@@ -199,6 +221,9 @@ def restore_tournament(session: Session, data: dict, actor: Fencer) -> Tournamen
         doc.setdefault("description", None)
         doc.setdefault("qualification_open", True)
         doc.setdefault("qualification_criteria", None)
+    if version < SCHEMA_VERSION:
+        for field, default in _V3_TOURNAMENT_DEFAULTS.items():
+            doc.setdefault(field, default)
     if session.scalar(select(Tournament).where(Tournament.slug == doc["slug"])):
         raise HTTPException(status_code=409, detail="slug_taken")
 
@@ -224,7 +249,13 @@ def restore_tournament(session: Session, data: dict, actor: Fencer) -> Tournamen
 
     extra_items: dict[tuple[str, str], ExtraItem] = {}
     for entry in data.get("extra_items", []):
-        item = ExtraItem(tournament_id=tournament.id, **entry)
+        # option fields arrived in v3; an older file's items declare no option
+        fields = {
+            "option_label": None,
+            "option_choices": [],
+            **entry,
+        }
+        item = ExtraItem(tournament_id=tournament.id, **fields)
         session.add(item)
         extra_items[(entry["name"], entry["category"])] = item
     session.flush()
@@ -267,6 +298,7 @@ def restore_tournament(session: Session, data: dict, actor: Fencer) -> Tournamen
                         registration_id=registration.id,
                         extra_item_id=extra_items[key].id,
                         qty=extra["qty"],
+                        option_value=extra.get("option_value"),
                     )
                 )
         reg_map[entry["ref"]] = registration

@@ -161,13 +161,15 @@
   },
   "param": {
     "early_bird_until": "Early bird do",
-    "weapon_rental_fee": "Cena zapůjčení (Kč)",
-    "afterparty_fee": "Cena afterparty (Kč)",
+    "weapon_rental_fee": "Cena zapůjčení ({{currency}})",
+    "afterparty_fee": "Cena afterparty ({{currency}})",
     "reservation_validity_days": "Platnost rezervace (dny)",
     "reminder_day": "Den připomínky",
     "amount_tolerance_percent": "Tolerance částky (%)",
     "refundable_until": "Vratné do",
     "bank_account": "Účet (IBAN)",
+    "expiry_grace_hours": "Tolerance po vypršení (hodiny)",
+    "amendments_close": "Úpravy registrace do",
     "output_sheet_url": "URL výstupní Google tabulky",
     "display_name": "Název turnaje",
     "date": "Datum",
@@ -176,7 +178,8 @@
     "registration_opens": "Registrace od",
     "registration_closes": "Registrace do",
     "subtitle": "Podtitul",
-    "description": "Popis"
+    "description": "Popis",
+    "registration_instructions": "Pokyny k registraci"
   },
   "rail": {
     "operations": "Operace",
@@ -204,7 +207,8 @@
       "location": "Chybí místo konání",
       "organizers": "Chybí alespoň jeden pořadatel",
       "disciplines": "Chybí alespoň jedna disciplína",
-      "discipline_prices": "Chybí cena u některé disciplíny"
+      "discipline_prices": "Chybí cena u některé disciplíny",
+      "eur_rate": "Chybí kurz pro platby v eurech"
     },
     "identity": {
       "title": "Základní údaje",
@@ -222,7 +226,9 @@
       "qualificationRequired": "Vyžadována kvalifikace",
       "qualificationCriteria": "Kvalifikační kritéria",
       "qualificationCriteriaHint": "Například \"mistrovství ČR, HR top 500\".",
-      "qualificationCriteriaRequired": "Zadej kvalifikační kritéria, nebo přepni zpět na \"otevřeno pro všechny\"."
+      "qualificationCriteriaRequired": "Zadej kvalifikační kritéria, nebo přepni zpět na \"otevřeno pro všechny\".",
+      "registrationInstructions": "Pokyny k registraci",
+      "registrationInstructionsHint": "Zobrazí se jen v registračním formuláři — místo pro poznámky k platbě nebo registraci, které nepatří na veřejnou stránku."
     },
     "organizers": {
       "title": "Pořadatelé (kluby/subjekty)",
@@ -234,7 +240,7 @@
       "title": "Disciplíny",
       "code": "Kód",
       "capacity": "Kapacita",
-      "fee": "Cena (Kč)",
+      "fee": "Cena ({{currency}})",
       "add": "Přidat disciplínu",
       "when": "Kdy (nepovinné)",
       "where": "Kde (nepovinné)",
@@ -249,7 +255,7 @@
       "title": "Doplňkové služby",
       "name": "Název",
       "category": "Kategorie",
-      "price": "Cena (Kč)",
+      "price": "Cena ({{currency}})",
       "maxQty": "Max. množství",
       "add": "Přidat službu",
       "categories": {
@@ -262,7 +268,11 @@
       },
       "when": "Kdy (nepovinné)",
       "where": "Kde (nepovinné)",
-      "remark": "Poznámka (nepovinné)"
+      "remark": "Poznámka (nepovinné)",
+      "optionLabel": "Volba",
+      "optionChoices": "Možnosti",
+      "optionLabelHint": "Název jedné volby, kterou fencer u položky vybírá, například „velikost“. Prázdné = bez volby.",
+      "optionChoicesHint": "Povolené odpovědi oddělené čárkou, například „S, M, L, XL“. Prázdné = volný text."
     },
     "discounts": {
       "title": "Slevy",
@@ -271,7 +281,7 @@
       "conditionCount": "Počet disciplín",
       "conditionEarly": "Registrace do data",
       "effect": "Efekt",
-      "fixed": "Pevná částka (Kč)",
+      "fixed": "Pevná částka ({{currency}})",
       "percent": "Procenta (%)",
       "add": "Přidat slevu"
     },
@@ -298,6 +308,16 @@
       "deleteButton": "Smazat turnaj",
       "cancelButton": "Zrušit turnaj",
       "failed": "Akce se nezdařila. Zkus to prosím znovu."
+    },
+    "currency": {
+      "title": "Měna",
+      "primary": "Hlavní měna",
+      "eurPayments": "Přijímat i platby v eurech",
+      "rate": "Kurz (1 EUR = ?)",
+      "rateHint": "Kolik jednotek hlavní měny je jedno euro — například 25,5 Kč za euro.",
+      "rateWarning": "Kurz vypadá nepravděpodobně. Zkontroluj směr: jednotek hlavní měny za 1 EUR.",
+      "rateNote": "Změna kurzu změní i částky v eurech u existujících nezaplacených rezervací.",
+      "rateRequired": "Pro platby v eurech nastav kurz."
     }
   },
   "admin": {
@@ -412,18 +432,25 @@
     "aftersparring": "Sparing po turnaji",
     "accommodation": "Ubytování (poznámka)",
     "notes": "Poznámka",
-    "total": "Celkem: {{total}} Kč",
+    "total": "Celkem: {{amount}}",
     "submit": "Odeslat registraci",
     "submitFailed": "Registraci se nepodařilo odeslat.",
-    "fullDisciplines": "Tyto disciplíny jsou plné: {{codes}}",
-    "dropFull": "Pokračovat bez nich",
-    "joinQueue": "Zařadit se do pořadí",
     "sections": {
       "tournament": "Turnaj",
-      "actions": "Aktivity",
-      "gear": "Zápůjčka vybavení",
-      "merch": "Merch a ostatní"
-    }
+      "programme": "Volitelný program",
+      "items": "Volitelné položky",
+      "other": "Ostatní"
+    },
+    "remarks": "Poznámky",
+    "quantity": "Počet kusů",
+    "full": "zaplněno {{taken}}/{{capacity}} — budeš registrován jako náhradník",
+    "freePlaces": "volných míst {{free}} z {{capacity}}",
+    "chooseOption": "vyber",
+    "optionRequired": "Vyber {{label}} u položky {{item}}.",
+    "nowFull": "Tyto disciplíny se mezitím zaplnily: {{codes}}. Zkontroluj výběr a odešli znovu.",
+    "weaponRental": "Zapůjčení zbraně — {{weapon}}",
+    "amendTitle": "Úprava registrace",
+    "amendSubmit": "Uložit úpravu"
   },
   "payment": {
     "title": "Platební instrukce",
@@ -431,7 +458,10 @@
     "iban": "Účet (IBAN)",
     "vs": "Variabilní symbol",
     "expiresAt": "Rezervace platí do",
-    "vsInMessage": "Pokud tvůj platební příkaz nemá pole VS, uveď variabilní symbol {{vs}} do zprávy pro příjemce."
+    "vsInMessage": "Pokud tvůj platební příkaz nemá pole VS, uveď variabilní symbol {{vs}} do zprávy pro příjemce.",
+    "eurAmount": "Částka v EUR",
+    "eurTitle": "Platba v eurech",
+    "eurHint": "QR kód v eurech platí tutéž registraci na stejný účet."
   },
   "registration": {
     "title": "Tvoje registrace",
@@ -443,7 +473,9 @@
       "cancelled": "Zrušeno"
     },
     "queuePosition": "pořadí {{position}}",
-    "fullyQueuedHint": "Čekáš v pořadí na všechny vybrané disciplíny — platba se otevře po zařazení."
+    "fullyQueuedHint": "Čekáš v pořadí na všechny vybrané disciplíny — platba se otevře po zařazení.",
+    "amend": "Upravit registraci",
+    "outstanding": "Zbývá doplatit: {{amount}}"
   },
   "cancel": {
     "button": "Zrušit registraci",
@@ -451,5 +483,25 @@
     "refundable": "Poplatek je vratný. Opravdu chceš registraci zrušit?",
     "notRefundable": "Poplatek už není vratný. Opravdu chceš registraci zrušit?",
     "confirmButton": "Ano, zrušit registraci"
+  },
+  "payments": {
+    "flagged": {
+      "title": "Nevyřešené platby",
+      "empty": "Žádné nevyřešené platby.",
+      "vs": "VS",
+      "amount": "Částka",
+      "reason": "Důvod",
+      "reinstate": "Obnovit rezervaci",
+      "markForRefund": "Označit k vrácení",
+      "actionFailed": "Akci se nepodařilo provést.",
+      "reasons": {
+        "expired_outside_grace": "rezervace vypršela, mimo toleranci",
+        "expired_seat_taken": "rezervace vypršela, místo mezitím obsazeno",
+        "amount_out_of_tolerance": "částka mimo toleranci",
+        "currency_unconvertible": "měnu nelze převést",
+        "registration_paid": "registrace už je zaplacená",
+        "registration_cancelled": "registrace zrušena"
+      }
+    }
   }
 }

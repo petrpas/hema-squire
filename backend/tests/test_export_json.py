@@ -1,6 +1,7 @@
 """Canonical JSON export: versioned schema and round-trip fidelity."""
 
 import io
+from decimal import Decimal
 
 from app.export_json import SCHEMA_VERSION
 from app.importer import get_import_parser
@@ -46,6 +47,30 @@ def normalized_sheet(client, headers, slug):
         for e in sheet["edits"]
     )
     return rows, edits
+
+
+def fresh_deployment(client, auth_headers):
+    """Point the app at an empty database and return (headers, client) for it —
+    the only way to restore a document beside its original, since VS is unique
+    across the deployment."""
+    from sqlalchemy import create_engine
+    from sqlalchemy.orm import Session
+    from sqlalchemy.pool import StaticPool
+
+    from app.db import Base, get_session
+    from app.main import app
+
+    fresh = create_engine(
+        "sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool
+    )
+    Base.metadata.create_all(fresh)
+
+    def fresh_session():
+        with Session(fresh) as session:
+            yield session
+
+    app.dependency_overrides[get_session] = fresh_session
+    return auth_headers(), client
 
 
 def test_round_trip_reconstructs_fencer_table(client, auth_headers):
@@ -178,3 +203,114 @@ def test_restore_accepts_v1_organizer_names(client, auth_headers):
     assert body["description"] is None
     assert body["qualification_open"] is True
     assert body["qualification_criteria"] is None
+    # v3 fields default to the pre-currency behavior
+    assert body["primary_currency"] == "CZK"
+    assert body["eur_payments_enabled"] is False
+    assert body["eur_rate"] is None
+    assert body["registration_instructions"] is None
+
+
+def test_restore_accepts_a_v2_document_without_currency_fields(client, auth_headers):
+    """A v2 export predates the currency and option columns; it must restore as
+    a CZK, EUR-off tournament whose items declare no option."""
+    organizer = auth_headers()
+    setup(client, organizer)
+    client.post(
+        "/api/tournaments/cup/extra-items",
+        json={"name": "t-shirt", "category": "merch", "price": 300, "max_qty": 5},
+        headers=organizer,
+    )
+    document = client.get("/api/tournaments/cup/export/json", headers=organizer).json()
+
+    # strip the v3 additions and re-stamp the document as v2
+    document["schema_version"] = 2
+    document["tournament"]["slug"] = "cup-v2"
+    for field in (
+        "primary_currency",
+        "eur_payments_enabled",
+        "eur_rate",
+        "registration_instructions",
+    ):
+        document["tournament"].pop(field)
+    for item in document["extra_items"]:
+        item.pop("option_label")
+        item.pop("option_choices")
+    for registration in document["registrations"]:
+        for extra in registration["extras"]:
+            extra.pop("option_value")
+
+    restore = client.post("/api/tournaments/restore", json=document, headers=organizer)
+    assert restore.status_code == 201, restore.text
+
+    body = client.get("/api/tournaments/cup-v2", headers=organizer).json()
+    assert body["primary_currency"] == "CZK"
+    assert body["eur_payments_enabled"] is False
+    assert body["eur_rate"] is None
+    assert body["registration_instructions"] is None
+    assert body["extra_items"][0]["option_label"] is None
+    assert body["extra_items"][0]["option_choices"] == []
+
+
+def test_v3_currency_and_option_fields_round_trip(client, auth_headers):
+    organizer = auth_headers()
+    setup(client, organizer)
+    client.patch(
+        "/api/tournaments/cup",
+        json={
+            "eur_payments_enabled": True,
+            "eur_rate": "25.5",
+            "registration_instructions": "Plať do 10 dnů.",
+        },
+        headers=organizer,
+    )
+    item = client.post(
+        "/api/tournaments/cup/extra-items",
+        json={
+            "name": "t-shirt",
+            "category": "merch",
+            "price": 300,
+            "max_qty": 5,
+            "option_label": "size",
+            "option_choices": ["S", "M"],
+        },
+        headers=organizer,
+    ).json()
+    fencer = auth_headers(email="jan@example.com", name="Jan Novak")
+    client.post(
+        "/api/tournaments/cup/register",
+        json={
+            "disciplines": ["LS"],
+            "extras": [{"extra_item_id": item["id"], "qty": 2, "option_value": "M"}],
+        },
+        headers=fencer,
+    )
+
+    document = client.get("/api/tournaments/cup/export/json", headers=organizer).json()
+    assert document["schema_version"] == SCHEMA_VERSION
+    assert document["tournament"]["primary_currency"] == "CZK"
+    assert document["tournament"]["eur_payments_enabled"] is True
+    assert document["tournament"]["eur_rate"] == "25.5000"
+    assert document["extra_items"][0]["option_choices"] == ["S", "M"]
+    assert document["registrations"][0]["extras"][0]["option_value"] == "M"
+
+    # restore into an empty deployment: VS is globally unique, so a copy cannot
+    # land beside its original
+    new_organizer, restore_client = fresh_deployment(client, auth_headers)
+    restore = restore_client.post(
+        "/api/tournaments/restore", json=document, headers=new_organizer
+    )
+    assert restore.status_code == 201, restore.text
+
+    body = restore_client.get("/api/tournaments/cup", headers=new_organizer).json()
+    assert body["eur_payments_enabled"] is True
+    assert Decimal(body["eur_rate"]) == Decimal("25.5")
+    assert body["registration_instructions"] == "Plať do 10 dnů."
+    assert body["extra_items"][0]["option_label"] == "size"
+    assert body["extra_items"][0]["option_choices"] == ["S", "M"]
+
+    # re-exporting the restored deployment proves the selection's option value
+    # survived the round trip, not just the item's definition
+    again = restore_client.get(
+        "/api/tournaments/cup/export/json", headers=new_organizer
+    ).json()
+    assert again["registrations"][0]["extras"][0]["option_value"] == "M"

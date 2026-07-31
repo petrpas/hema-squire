@@ -45,3 +45,23 @@ class Catalog:
 
 catalog = Catalog()
 t = catalog.translate
+
+# the unit written after an amount, per currency code; adding a currency means
+# extending this table, never editing a locale file (design D2)
+CURRENCY_UNITS = {"CZK": "Kč", "EUR": "€"}
+# locales that write the decimal comma; everything else keeps the point
+_DECIMAL_COMMA_LOCALES = {"cs"}
+
+
+def format_money(amount: object, currency: str, locale: str | None = None) -> str:
+    """An amount with its currency unit, for email and document text. Locale
+    messages interpolate the result, so no message value carries a unit.
+
+    Whole amounts print without decimals; a converted amount keeps its two,
+    with the separator the locale actually uses — a Czech reader must not be
+    shown "76.08 €"."""
+    unit = CURRENCY_UNITS.get(str(currency), str(currency))
+    text = f"{amount}"
+    if (locale or DEFAULT_LOCALE) in _DECIMAL_COMMA_LOCALES:
+        text = text.replace(".", ",")
+    return f"{text} {unit}"
