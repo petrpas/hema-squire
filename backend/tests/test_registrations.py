@@ -51,13 +51,13 @@ def test_registration_computes_total_and_assigns_vs(client, auth_headers):
     assert response.status_code == 201
     body = response.json()
     assert body["total_amount"] == 800 + 500 + 200 + 300
-    assert body["vs"] == 1000001
+    assert body["vs"] == 2601001
     assert body["state"] == "reserved"
     assert body["expires_at"] is not None
     assert all(not e["is_substitute"] for e in body["entries"])
 
     second = auth_headers(email="f2@example.com", name="F2")
-    assert register(client, second).json()["vs"] == 1000002
+    assert register(client, second).json()["vs"] == 2601002
 
 
 def test_early_bird_prices_apply(client, auth_headers):
@@ -323,7 +323,7 @@ def test_admit_requires_organizer_and_capacity(client, auth_headers):
     from app.models import Registration
 
     session = next(app.dependency_overrides[get_session]())
-    waiting_id = session.scalar(select(Registration.id).where(Registration.vs == 1000002))
+    waiting_id = session.scalar(select(Registration.id).where(Registration.vs == 2601002))
 
     denied = client.post(
         f"/api/tournaments/cup/registrations/{waiting_id}/admit/SB", headers=first

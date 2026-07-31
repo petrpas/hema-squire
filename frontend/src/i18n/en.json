@@ -230,6 +230,15 @@
       "registrationInstructions": "Registration instructions",
       "registrationInstructionsHint": "Shown only on the registration form — the place for payment or registration notes that do not belong on the public page."
     },
+    "vsSeries": {
+      "title": "Variable symbol series",
+      "series": "Series",
+      "seriesHint": "The two digits that, with the year, form the prefix of every variable symbol this tournament issues.",
+      "prefix": "Variable symbols for this tournament start with {{prefix}}.",
+      "frozenHint": "The series is fixed once the tournament has its first registration, so already-issued variable symbols keep their prefix.",
+      "taken": "That series is already used by another tournament this year.",
+      "frozen": "The series can no longer be changed — this tournament already has a registration."
+    },
     "organizers": {
       "title": "Titular organizers (clubs/entities)",
       "add": "Add organizer",
@@ -502,6 +511,7 @@
         "registration_paid": "registration already paid",
         "registration_cancelled": "registration cancelled"
       }
-    }
+    },
+    "setAside": "{{count}} belonged to another tournament on this account — nothing to do, its own console will match it."
   }
 }

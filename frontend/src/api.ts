@@ -225,6 +225,12 @@ export interface TournamentDetail extends Tournament {
   extra_items: ExtraItem[];
   setup_missing: string[] | null;
   disciplines: Discipline[];
+  vs_year: number;
+  vs_series: number;
+  /** YYNN every variable symbol this tournament issues starts with. */
+  vs_prefix: number;
+  /** False once the tournament has a first registration (design Decision 2). */
+  vs_series_editable: boolean;
 }
 
 export interface SheetRow {

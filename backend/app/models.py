@@ -138,6 +138,7 @@ class FencerProfileAudit(Base):
 
 class Tournament(Base):
     __tablename__ = "tournaments"
+    __table_args__ = (UniqueConstraint("vs_year", "vs_series"),)
 
     id: Mapped[int] = mapped_column(primary_key=True)
     slug: Mapped[str] = mapped_column(String(100), unique=True)
@@ -193,6 +194,14 @@ class Tournament(Base):
         str_enum(UnpaidListTreatment), default=UnpaidListTreatment.GREYED
     )
 
+    # variable-symbol series: the YY and NN of every VS this tournament issues
+    # (design Decision 1). The prefix is documentation only — matching never
+    # parses it to pick a tournament, it only resolves the whole VS value
+    # (design Decision 4). vs_next_seq is the next `nnn` to allocate.
+    vs_year: Mapped[int]
+    vs_series: Mapped[int]
+    vs_next_seq: Mapped[int] = mapped_column(default=1)
+
     # currency: every configured price and every computed total is in whole
     # units of primary_currency. eur_rate is primary units per 1 EUR and exists
     # only to *present* and *match* EUR amounts — no EUR figure is ever stored
@@ -225,6 +234,11 @@ class Tournament(Base):
     def has_logo(self) -> bool:
         # reads the always-loaded mime, never the deferred blob
         return self.logo_mime is not None
+
+    @property
+    def vs_prefix(self) -> int:
+        """The YYNN an issued variable symbol starts with; display only."""
+        return (self.vs_year % 100) * 100 + self.vs_series
 
     @property
     def shows_eur(self) -> bool:
@@ -358,6 +372,9 @@ class Registration(Base):
     state: Mapped[RegistrationState] = mapped_column(
         str_enum(RegistrationState), default=RegistrationState.RESERVED
     )
+    # unique across the whole deployment, not just this tournament (design
+    # Decision 4); the backstop that turns a counter race into a retry
+    # instead of two registrations sharing one VS
     vs: Mapped[int | None] = mapped_column(unique=True)
     total_amount: Mapped[int] = mapped_column(default=0)
     expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

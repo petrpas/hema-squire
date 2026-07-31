@@ -26,7 +26,13 @@ def session():
 
 
 def make_tournament(**kwargs) -> Tournament:
-    defaults = dict(slug="na-duel-2026", display_name="Na Duel!", date=date(2026, 10, 3))
+    defaults = dict(
+        slug="na-duel-2026",
+        display_name="Na Duel!",
+        date=date(2026, 10, 3),
+        vs_year=2026,
+        vs_series=1,
+    )
     return Tournament(**{**defaults, **kwargs})
 
 
@@ -77,7 +83,7 @@ def test_one_registration_per_fencer_per_tournament(session):
 
 def test_discipline_code_unique_per_tournament_only(session):
     first = make_tournament()
-    second = make_tournament(slug="jindra-cup-2026", display_name="Jindra Cup")
+    second = make_tournament(slug="jindra-cup-2026", display_name="Jindra Cup", vs_series=2)
     session.add(Discipline(tournament=first, code="LS", name="Longsword", capacity=32, fee=800))
     session.add(Discipline(tournament=second, code="LS", name="Longsword", capacity=16, fee=500))
     session.commit()

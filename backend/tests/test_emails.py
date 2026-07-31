@@ -83,7 +83,7 @@ def test_confirmation_email_localized_with_qr(client, auth_headers, mailbox):
     assert message["To"] == "jan@example.com"
     assert "pokyny k platbě" in message["Subject"]
     body = message.get_body(("plain",)).get_content()
-    assert "Variabilní symbol: 1000001" in body
+    assert "Variabilní symbol: 2601001" in body
     assert "1100 Kč" in body
     assert "CZ6508000000192000145399" in body
 
@@ -130,7 +130,7 @@ def test_admission_sends_payment_email(client, auth_headers, mailbox):
     from app.models import Registration
 
     session = next(app.dependency_overrides[get_session]())
-    waiting_id = session.scalar(select(Registration.id).where(Registration.vs == 1000002))
+    waiting_id = session.scalar(select(Registration.id).where(Registration.vs == 2601002))
 
     admitted = client.post(
         f"/api/tournaments/cup/registrations/{waiting_id}/admit/LS", headers=organizer
@@ -140,5 +140,5 @@ def test_admission_sends_payment_email(client, auth_headers, mailbox):
     payment_message = mailbox.sent[-1]
     assert payment_message["To"] == "b@example.com"
     assert "pokyny k platbě" in payment_message["Subject"]
-    assert "Variabilní symbol: 1000002" in payment_message.get_body(("plain",)).get_content()
+    assert "Variabilní symbol: 2601002" in payment_message.get_body(("plain",)).get_content()
     assert len(list(payment_message.iter_attachments())) == 1

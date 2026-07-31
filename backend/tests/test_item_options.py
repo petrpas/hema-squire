@@ -238,7 +238,7 @@ def session():
 def test_option_value_does_not_change_the_total(session):
     """The same selection totals identically with and without an answer."""
     tournament = Tournament(
-        slug="t", display_name="T", date=datetime.date(2026, 10, 3)
+        slug="t", display_name="T", date=datetime.date(2026, 10, 3), vs_year=2026, vs_series=1
     )
     longsword = Discipline(
         tournament=tournament, code="LS", name="LS", capacity=32, fee=800

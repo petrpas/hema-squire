@@ -31,8 +31,9 @@ from app.models import (
     Tournament,
     TournamentOrganizer,
 )
+from app.routers.tournaments import _lowest_free_series
 
-SCHEMA_VERSION = 3
+SCHEMA_VERSION = 4
 
 _TOURNAMENT_FIELDS = [
     "slug", "display_name", "date", "language",
@@ -45,6 +46,7 @@ _TOURNAMENT_FIELDS = [
     "primary_currency", "eur_payments_enabled", "eur_rate",
     "organizers", "discounts",
     "registration_opens", "registration_closes",
+    "vs_year", "vs_series", "vs_next_seq",
 ]
 
 # v3 additions, defaulted when restoring an older file so a v1/v2 export lands
@@ -211,7 +213,7 @@ def _parse_date(value: str | None) -> datetime.date | None:
 
 def restore_tournament(session: Session, data: dict, actor: Fencer) -> Tournament:
     version = data.get("schema_version")
-    if version not in (1, 2, SCHEMA_VERSION):
+    if version not in (1, 2, 3, SCHEMA_VERSION):
         raise HTTPException(status_code=422, detail="unsupported_schema_version")
     doc = dict(data["tournament"])
     if version == 1:
@@ -221,11 +223,21 @@ def restore_tournament(session: Session, data: dict, actor: Fencer) -> Tournamen
         doc.setdefault("description", None)
         doc.setdefault("qualification_open", True)
         doc.setdefault("qualification_criteria", None)
-    if version < SCHEMA_VERSION:
+    if version < 4:
         for field, default in _V3_TOURNAMENT_DEFAULTS.items():
             doc.setdefault(field, default)
     if session.scalar(select(Tournament).where(Tournament.slug == doc["slug"])):
         raise HTTPException(status_code=409, detail="slug_taken")
+
+    if version < 4:
+        # a pre-v4 export predates the series entirely; its registrations
+        # carry only legacy sequential VS, so a fresh series consumes none of
+        # their range — same reasoning as the migration's backfill (design
+        # Decision 7)
+        restore_year = _parse_date(doc["date"]).year
+        doc["vs_year"] = restore_year
+        doc["vs_series"] = _lowest_free_series(session, restore_year)
+        doc["vs_next_seq"] = 1
 
     tournament = Tournament(
         **{

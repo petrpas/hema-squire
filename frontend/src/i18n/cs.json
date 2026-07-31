@@ -230,6 +230,15 @@
       "registrationInstructions": "Pokyny k registraci",
       "registrationInstructionsHint": "Zobrazí se jen v registračním formuláři — místo pro poznámky k platbě nebo registraci, které nepatří na veřejnou stránku."
     },
+    "vsSeries": {
+      "title": "Řada variabilního symbolu",
+      "series": "Řada",
+      "seriesHint": "Dvojčíslí, které spolu s rokem tvoří předčíslí každého variabilního symbolu vydaného tímto turnajem.",
+      "prefix": "Variabilní symboly tohoto turnaje začínají na {{prefix}}.",
+      "frozenHint": "Řada je pevná od první registrace na turnaj, aby si už vydané variabilní symboly zachovaly své předčíslí.",
+      "taken": "Tuto řadu už v tomto roce používá jiný turnaj.",
+      "frozen": "Řadu už nelze změnit — turnaj už má registraci."
+    },
     "organizers": {
       "title": "Pořadatelé (kluby/subjekty)",
       "add": "Přidat pořadatele",
@@ -502,6 +511,7 @@
         "registration_paid": "registrace už je zaplacená",
         "registration_cancelled": "registrace zrušena"
       }
-    }
+    },
+    "setAside": "{{count}} patřilo jinému turnaji na tomto účtu — není třeba nic dělat, spáruje je jeho vlastní konzole."
   }
 }

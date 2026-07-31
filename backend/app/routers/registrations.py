@@ -4,7 +4,8 @@ from decimal import ROUND_HALF_UP, Decimal
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import delete, func, select
+from sqlalchemy import delete, func, select, update
+from sqlalchemy.exc import IntegrityError
 
 from app import emails, pricing, setup, spayd
 from app.auth import require_console_access
@@ -37,6 +38,9 @@ router = APIRouter(prefix="/api/tournaments/{slug}", tags=["registrations"])
 
 MailerDep = Annotated[Mailer, Depends(get_mailer)]
 
+# marks where the legacy sequential range began; no longer allocated from,
+# kept only so the gap between it and the structured range (design proposal
+# "Risk of collision") stays documented in code
 VS_START = 1000001
 
 
@@ -59,9 +63,28 @@ def queue_position(session, entry: RegistrationDiscipline) -> int:
     return (earlier or 0) + 1
 
 
-def next_vs(session) -> int:
-    highest = session.scalar(select(func.max(Registration.vs)))
-    return (highest or VS_START - 1) + 1
+def next_vs(session, tournament: Tournament) -> int:
+    """Allocates the next structured VS for `tournament`: YYNNnnn from its
+    series prefix and an atomically incremented per-tournament sequence
+    (design Decision 3). The counter bump is committed on its own here,
+    independent of whatever the caller does next, so a later rollback of the
+    registration insert (a retry after a `Registration.vs` collision) cannot
+    also undo the bump and hand out the same number twice."""
+    seq = (
+        session.execute(
+            update(Tournament)
+            .where(Tournament.id == tournament.id)
+            .values(vs_next_seq=Tournament.vs_next_seq + 1)
+            .returning(Tournament.vs_next_seq)
+        ).scalar_one()
+        - 1
+    )
+    session.commit()
+    if seq > 999:
+        raise HTTPException(
+            status_code=409, detail=f"vs_sequence_exhausted: {tournament.slug}"
+        )
+    return tournament.vs_prefix * 1000 + seq
 
 
 def _outstanding_amount(registration: Registration) -> Decimal:
@@ -277,58 +300,73 @@ def register(
 
     as_substitute = bool(full)
 
-    if existing is not None:
-        # Re-registering after a cancellation or an expiry: the
-        # (tournament_id, fencer_id) unique constraint forbids a second row, so
-        # the existing one is reused in place rather than inserting a new
-        # registration.
-        session.execute(
-            delete(RegistrationDiscipline).where(
-                RegistrationDiscipline.registration_id == existing.id
-            )
-        )
-        session.execute(
-            delete(RegistrationExtra).where(RegistrationExtra.registration_id == existing.id)
-        )
-        session.flush()
-        registration = existing
-        registration.state = RegistrationState.RESERVED
-        registration.cancelled_at = None
-        registration.refundable = None
-        registration.refund_state = RefundState.NOT_APPLICABLE
-        registration.paid_at = None
-        # a new cycle starts from a clean balance; any payment credited to the
-        # previous cycle was already flagged for refund by the matcher rather
-        # than carried forward
-        registration.amount_paid_cents = 0
-    else:
-        registration = Registration(tournament=tournament, fencer=fencer)
-        session.add(registration)
+    # `next_vs` durably commits its own counter bump, so a rollback below
+    # (retrying after a `Registration.vs` collision) cannot also undo the
+    # allocation and hand out the same number twice. Each attempt therefore
+    # starts from a session with nothing else pending (design Decision 3).
+    for attempt in range(3):
+        vs = next_vs(session, tournament)
 
-    registration.registered_at = _now()
-    # a fresh VS every cycle, deliberately not reused: the previous cycle's VS
-    # may still be quoted on a payment in flight, and reusing it would credit
-    # an old instruction against a new selection at a new price
-    registration.vs = next_vs(session)
-    registration.weapon_rentals = data.weapon_rentals
-    registration.afterparty = data.afterparty
-    registration.aftersparring = data.aftersparring
-    registration.accommodation = data.accommodation
-    registration.notes = data.notes
-    for discipline in selected:
-        registration.entries.append(
-            RegistrationDiscipline(discipline=discipline, is_substitute=as_substitute)
-        )
-    for selection in data.extras:
-        value = (selection.option_value or "").strip()
-        registration.extra_selections.append(
-            RegistrationExtra(
-                extra_item_id=selection.extra_item_id,
-                qty=selection.qty,
-                option_value=value or None,
+        if existing is not None:
+            # Re-registering after a cancellation or an expiry: the
+            # (tournament_id, fencer_id) unique constraint forbids a second
+            # row, so the existing one is reused in place rather than
+            # inserting a new registration.
+            session.execute(
+                delete(RegistrationDiscipline).where(
+                    RegistrationDiscipline.registration_id == existing.id
+                )
             )
-        )
-    session.flush()
+            session.execute(
+                delete(RegistrationExtra).where(
+                    RegistrationExtra.registration_id == existing.id
+                )
+            )
+            registration = existing
+            registration.state = RegistrationState.RESERVED
+            registration.cancelled_at = None
+            registration.refundable = None
+            registration.refund_state = RefundState.NOT_APPLICABLE
+            registration.paid_at = None
+            # a new cycle starts from a clean balance; any payment credited to
+            # the previous cycle was already flagged for refund by the
+            # matcher rather than carried forward
+            registration.amount_paid_cents = 0
+        else:
+            registration = Registration(tournament=tournament, fencer=fencer)
+            session.add(registration)
+
+        registration.registered_at = _now()
+        # a fresh VS every cycle, deliberately not reused: the previous
+        # cycle's VS may still be quoted on a payment in flight, and reusing
+        # it would credit an old instruction against a new selection at a new
+        # price
+        registration.vs = vs
+        registration.weapon_rentals = data.weapon_rentals
+        registration.afterparty = data.afterparty
+        registration.aftersparring = data.aftersparring
+        registration.accommodation = data.accommodation
+        registration.notes = data.notes
+        for discipline in selected:
+            registration.entries.append(
+                RegistrationDiscipline(discipline=discipline, is_substitute=as_substitute)
+            )
+        for selection in data.extras:
+            value = (selection.option_value or "").strip()
+            registration.extra_selections.append(
+                RegistrationExtra(
+                    extra_item_id=selection.extra_item_id,
+                    qty=selection.qty,
+                    option_value=value or None,
+                )
+            )
+        try:
+            session.flush()
+            break
+        except IntegrityError:
+            session.rollback()
+    else:
+        raise HTTPException(status_code=409, detail="vs_allocation_failed")
 
     registration.total_amount = pricing.registration_total(registration, tournament)
     registration.expires_at = (

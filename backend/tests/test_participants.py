@@ -47,7 +47,7 @@ def test_greyed_default_shows_unpaid_as_unconfirmed(client, auth_headers):
     organizer = auth_headers()
     setup_tournament(client, organizer)
     register(client, auth_headers(email="a@example.com", name="Adéla"))
-    mark_paid(1000001)
+    mark_paid(2601001)
     register(client, auth_headers(email="b@example.com", name="Boris"))
 
     listing = client.get("/api/tournaments/cup/participants").json()
@@ -64,7 +64,7 @@ def test_hidden_setting_omits_unpaid(client, auth_headers):
         "/api/tournaments/cup", json={"unpaid_list_treatment": "hidden"}, headers=organizer
     )
     register(client, auth_headers(email="a@example.com", name="Adéla"))
-    mark_paid(1000001)
+    mark_paid(2601001)
     register(client, auth_headers(email="b@example.com", name="Boris"))
 
     listing = client.get("/api/tournaments/cup/participants").json()
@@ -94,7 +94,7 @@ def test_substitute_entry_not_shown_in_disciplines(client, auth_headers):
     organizer = auth_headers()
     setup_tournament(client, organizer)
     register(client, auth_headers(email="a@example.com", name="Adéla"), disciplines=("SB",))
-    mark_paid(1000001)
+    mark_paid(2601001)
 
     listing = client.get("/api/tournaments/cup/participants").json()
     assert listing[0]["disciplines"] == ["SB"]

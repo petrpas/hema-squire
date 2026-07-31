@@ -27,6 +27,7 @@ def _ingest_and_match(session, tournament, mailer, source, transactions) -> Inge
         matched=matched.matched,
         flagged=matched.flagged,
         unmatched=matched.unmatched,
+        set_aside=matched.set_aside,
     )
 
 

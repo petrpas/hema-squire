@@ -286,6 +286,87 @@ function IdentitySection({
   );
 }
 
+function VsSeriesSection({
+  detail,
+  slug,
+  onSaved,
+}: {
+  detail: TournamentDetail;
+  slug: string;
+  onSaved: () => void;
+}) {
+  const { t } = useTranslation();
+  const [series, setSeries] = useState("");
+  const [dirty, setDirty] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setSeries(String(detail.vs_series));
+    setError(null);
+    setDirty(false);
+  }, [detail]);
+
+  async function save() {
+    setBusy(true);
+    setError(null);
+    try {
+      await api.updateTournament(slug, { vs_series: Number(series) });
+      setDirty(false);
+      onSaved();
+    } catch (err) {
+      if (
+        err instanceof ApiError &&
+        typeof err.detail === "string" &&
+        err.detail.startsWith("vs_series_taken")
+      ) {
+        setError(t("setup.vsSeries.taken"));
+      } else if (err instanceof ApiError && err.detail === "vs_series_frozen") {
+        setError(t("setup.vsSeries.frozen"));
+      } else {
+        throw err;
+      }
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <section className="rail-card">
+      <h2>{t("setup.vsSeries.title")}</h2>
+      {detail.vs_series_editable ? (
+        <div className="form-fields">
+          <label className="form-field">
+            <span>
+              {t("setup.vsSeries.series")}
+              <HelpHint text={t("setup.vsSeries.seriesHint")} />
+            </span>
+            <input
+              type="number"
+              min={1}
+              max={99}
+              value={series}
+              onChange={(event) => {
+                setSeries(event.target.value);
+                setDirty(true);
+              }}
+            />
+          </label>
+        </div>
+      ) : (
+        <p className="rail-hint">{t("setup.vsSeries.frozenHint")}</p>
+      )}
+      <p className="rail-hint">{t("setup.vsSeries.prefix", { prefix: detail.vs_prefix })}</p>
+      {error && <p className="login-error">{error}</p>}
+      {detail.vs_series_editable && (
+        <button className="secondary param-save" onClick={() => void save()} disabled={!dirty || busy}>
+          {t("rail.save")}
+        </button>
+      )}
+    </section>
+  );
+}
+
 // a rate outside this band is almost certainly the inverse or a typo; warn,
 // never block — the organizer may know something we do not (design risk note)
 const PLAUSIBLE_RATE = { min: 0.5, max: 1000 };
@@ -1540,6 +1621,7 @@ export default function SetupPanel({
     <div className="setup-panel">
       <ChecklistSection detail={detail} />
       <IdentitySection detail={detail} slug={slug} onSaved={onSaved} />
+      <VsSeriesSection detail={detail} slug={slug} onSaved={onSaved} />
       <CurrencySection detail={detail} slug={slug} onSaved={onSaved} />
       <OrganizersSection detail={detail} slug={slug} onSaved={onSaved} />
       <DisciplinesSection

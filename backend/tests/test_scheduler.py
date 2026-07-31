@@ -81,7 +81,7 @@ def test_reminder_on_reminder_day_once(client, auth_headers, mailbox):
 
     assert process(client, organizer) == {"reminders": 0, "expired": 0}
 
-    age_registration(1000001, days=6)
+    age_registration(2601001, days=6)
     assert process(client, organizer) == {"reminders": 1, "expired": 0}
     assert "Připomínka platby" in mailbox.sent[-1]["Subject"]
     assert len(list(mailbox.sent[-1].iter_attachments())) == 0  # no bank account set -> no QR
@@ -101,7 +101,7 @@ def test_expiry_frees_capacity_and_notifies(client, auth_headers, mailbox):
     fencer = enroll(client, auth_headers)
     mailbox.sent.clear()
 
-    age_registration(1000001, days=11)  # past the 10-day window
+    age_registration(2601001, days=11)  # past the 10-day window
     result = process(client, organizer)
     assert result == {"reminders": 0, "expired": 1}
     assert "Rezervace vypršela" in mailbox.sent[-1]["Subject"]
@@ -125,7 +125,7 @@ def test_paid_registrations_never_reminded_or_expired(client, auth_headers, mail
     mailbox.sent.clear()
 
     session = db_session()
-    registration = session.scalar(select(Registration).where(Registration.vs == 1000001))
+    registration = session.scalar(select(Registration).where(Registration.vs == 2601001))
     from app.models import RegistrationState
 
     registration.registered_at = datetime.now(UTC) - timedelta(days=20)
@@ -150,7 +150,7 @@ def test_queued_substitutes_untouched_by_lifecycle(client, auth_headers, mailbox
     mailbox.sent.clear()
 
     session = db_session()
-    queued = session.scalar(select(Registration).where(Registration.vs == 1000002))
+    queued = session.scalar(select(Registration).where(Registration.vs == 2601002))
     queued.registered_at = datetime.now(UTC) - timedelta(days=30)
     session.commit()
 

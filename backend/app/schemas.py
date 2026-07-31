@@ -268,6 +268,9 @@ class TournamentUpdate(BaseModel):
     weapon_rental_fee_early: int | None = Field(default=None, ge=0)
     afterparty_fee: int | None = Field(default=None, ge=0)
     afterparty_fee_early: int | None = Field(default=None, ge=0)
+    # editable only until the tournament's first registration (design
+    # Decision 2); rejected otherwise, and rejected on collision
+    vs_series: int | None = Field(default=None, ge=1, le=99)
 
 
 class TournamentOut(BaseModel):
@@ -312,6 +315,13 @@ class TournamentOut(BaseModel):
     # filled by the detail endpoint from setup.setup_missing(); None elsewhere
     setup_missing: list[str] | None = None
     disciplines: list[DisciplineOut]
+    vs_year: int
+    vs_series: int
+    # YYNN every variable symbol this tournament issues starts with
+    vs_prefix: int
+    # False once the tournament has a first registration (design Decision 2);
+    # filled explicitly by endpoints that know the answer, True elsewhere
+    vs_series_editable: bool = True
 
     @field_validator("organizers", mode="before")
     @classmethod
@@ -532,6 +542,9 @@ class IngestAndMatchOut(BaseModel):
     matched: int
     flagged: int
     unmatched: int
+    # belonged to a sibling tournament on the same bank account; recorded, not
+    # queued here (design Decision 5) — distinct from matched/flagged/unmatched
+    set_aside: int
 
 
 class RuleIn(BaseModel):

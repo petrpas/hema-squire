@@ -35,6 +35,9 @@ class MatchResult(BaseModel):
     matched: int = 0
     flagged: int = 0
     unmatched: int = 0
+    # transactions whose VS resolved to a different tournament's registration
+    # (design Decision 5) — recorded as belonging elsewhere, not queued here
+    set_aside: int = 0
 
 
 def effective_vs(transaction: BankTransaction) -> int | None:
@@ -126,15 +129,24 @@ def match_new_transactions(
             result.unmatched += 1
             continue
 
+        # global lookup by whole value: the prefix is documentation, never
+        # routing (design Decision 4) — a mistyped digit must land on nothing
+        # rather than on a stranger's registration
         registration = session.scalar(
-            select(Registration).where(
-                Registration.tournament_id == tournament.id, Registration.vs == vs
-            )
+            select(Registration).where(Registration.vs == vs)
         )
         if registration is None:
             _finish(transaction, "unmatched", "unknown_vs")
             _event(session, transaction, "unknown_vs", f"VS {vs}")
             result.unmatched += 1
+            continue
+
+        if registration.tournament_id != tournament.id:
+            # belongs to a sibling tournament on the same bank account (design
+            # Decision 5): recorded and left alone, not this console's problem
+            # to solve — no payment, no email, no registration-affecting event
+            _finish(transaction, "other_tournament", "belongs_to_other_tournament")
+            result.set_aside += 1
             continue
 
         reinstated = False

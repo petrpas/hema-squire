@@ -65,7 +65,13 @@ def session():
 
 
 def make_tournament(**kwargs) -> Tournament:
-    defaults = dict(slug="na-duel-2026", display_name="Na Duel!", date=datetime.date(2026, 10, 3))
+    defaults = dict(
+        slug="na-duel-2026",
+        display_name="Na Duel!",
+        date=datetime.date(2026, 10, 3),
+        vs_year=2026,
+        vs_series=1,
+    )
     return Tournament(**{**defaults, **kwargs})
 
 

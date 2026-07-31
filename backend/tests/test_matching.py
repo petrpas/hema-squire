@@ -97,7 +97,9 @@ def test_far_off_amount_flagged_not_accepted(client, auth_headers, mailbox):
     fencer, vs = enroll(client, auth_headers)
 
     result = import_rows(client, organizer, [f"1;01.08.2026;600,00;CZK;{vs};;;;;"])
-    assert result == {"new": 1, "duplicate": 0, "matched": 0, "flagged": 1, "unmatched": 0}
+    assert result == {
+        "new": 1, "duplicate": 0, "matched": 0, "flagged": 1, "unmatched": 0, "set_aside": 0
+    }
     state = client.get("/api/tournaments/cup/my-registration", headers=fencer).json()["state"]
     assert state == "reserved"
 
@@ -166,5 +168,7 @@ def test_reimport_does_not_rematch(client, auth_headers, mailbox):
     import_rows(client, organizer, row)
     emails_after_first = len(mailbox.sent)
     result = import_rows(client, organizer, row)
-    assert result == {"new": 0, "duplicate": 1, "matched": 0, "flagged": 0, "unmatched": 0}
+    assert result == {
+        "new": 0, "duplicate": 1, "matched": 0, "flagged": 0, "unmatched": 0, "set_aside": 0
+    }
     assert len(mailbox.sent) == emails_after_first

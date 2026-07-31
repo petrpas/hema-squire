@@ -24,6 +24,8 @@ def make_tournament(**kwargs) -> Tournament:
         date=date(2026, 10, 3),
         discounts=[],
         organizers=[],
+        vs_year=2026,
+        vs_series=1,
     )
     return Tournament(**{**defaults, **kwargs})
 

@@ -77,14 +77,46 @@ def get_tournament(session: SessionDep, slug: str) -> Tournament:
 TournamentDep = Annotated[Tournament, Depends(get_tournament)]
 
 
+def _lowest_free_series(session: Session, year: int) -> int:
+    """The lowest 1..99 not already taken by another tournament in `year`
+    (design Decision 2); a year needing a hundredth is refused outright."""
+    taken = set(
+        session.scalars(
+            select(Tournament.vs_series).where(Tournament.vs_year == year)
+        ).all()
+    )
+    for series in range(1, 100):
+        if series not in taken:
+            return series
+    raise HTTPException(status_code=422, detail=f"vs_series_exhausted_for_year_{year}")
+
+
+def _has_registrations(session: Session, tournament: Tournament) -> bool:
+    return (
+        session.scalar(
+            select(Registration.id)
+            .where(Registration.tournament_id == tournament.id)
+            .limit(1)
+        )
+        is not None
+    )
+
+
 @router.post("", response_model=TournamentOut, status_code=201)
 def create_tournament(data: TournamentCreate, session: SessionDep, fencer: FencerDep):
     require_role(fencer, Role.ORGANIZER)
     if session.scalar(select(Tournament.id).where(Tournament.slug == data.slug)):
         raise HTTPException(status_code=409, detail="slug_taken")
+    # the VS year comes from the tournament date, not today (design Decision 1)
+    vs_year = data.date.year
     # the creator becomes the Tournament Owner; ownership implies console
     # access, so no team row is added
-    tournament = Tournament(**data.model_dump(), owner=fencer)
+    tournament = Tournament(
+        **data.model_dump(),
+        owner=fencer,
+        vs_year=vs_year,
+        vs_series=_lowest_free_series(session, vs_year),
+    )
     session.add(tournament)
     session.commit()
     session.refresh(tournament)
@@ -275,9 +307,10 @@ def past_tournaments(session: SessionDep, fencer: FencerDep):
 
 
 @router.get("/{slug}", response_model=TournamentOut)
-def tournament_detail(tournament: TournamentDep):
+def tournament_detail(tournament: TournamentDep, session: SessionDep):
     out = TournamentOut.model_validate(tournament)
     out.setup_missing = setup.setup_missing(tournament)
+    out.vs_series_editable = not _has_registrations(session, tournament)
     return out
 
 
@@ -307,6 +340,33 @@ def update_tournament(
 ):
     require_console_access(session, tournament, fencer)
     updates = data.model_dump(exclude_unset=True)
+    requested_series = updates.pop("vs_series", None)
+    has_registrations = _has_registrations(session, tournament)
+    # the series is frozen from the first registration on: no explicit change,
+    # and a date change never renumbers it (design Decision 2)
+    if requested_series is not None:
+        if has_registrations:
+            raise HTTPException(status_code=409, detail="vs_series_frozen")
+        if requested_series != tournament.vs_series:
+            collision = session.scalar(
+                select(Tournament.id).where(
+                    Tournament.vs_year == tournament.vs_year,
+                    Tournament.vs_series == requested_series,
+                    Tournament.id != tournament.id,
+                )
+            )
+            if collision is not None:
+                raise HTTPException(
+                    status_code=409,
+                    detail=f"vs_series_taken: year {tournament.vs_year} series {requested_series}",
+                )
+            tournament.vs_series = requested_series
+    elif not has_registrations and "date" in updates:
+        new_year = updates["date"].year
+        if new_year != tournament.vs_year:
+            tournament.vs_year = new_year
+            tournament.vs_series = _lowest_free_series(session, new_year)
+
     for field, value in updates.items():
         setattr(tournament, field, value)
     # reopening clears any previously recorded criteria (design D7)
@@ -324,7 +384,9 @@ def update_tournament(
     _apply_currency_invariants(tournament)
     session.commit()
     session.refresh(tournament)
-    return tournament
+    out = TournamentOut.model_validate(tournament)
+    out.vs_series_editable = not _has_registrations(session, tournament)
+    return out
 
 
 logger = logging.getLogger(__name__)

@@ -343,7 +343,9 @@ def test_payment_inside_grace_with_free_seat_reinstates_and_pays(client, auth_he
 
     fio.transactions = [transfer(initial["vs"], 1000)]
     poll = client.post("/api/tournaments/cup/payments/fio-poll", headers=organizer).json()
-    assert poll == {"new": 1, "duplicate": 0, "matched": 1, "flagged": 0, "unmatched": 0}
+    assert poll == {
+        "new": 1, "duplicate": 0, "matched": 1, "flagged": 0, "unmatched": 0, "set_aside": 0
+    }
 
     registration = client.get(
         "/api/tournaments/cup/my-registration", headers=fencer

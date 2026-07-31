@@ -14,6 +14,8 @@ def make_tournament(**kwargs) -> Tournament:
         date=date(2026, 10, 3),
         location="Brno",
         organizers=[{"name": "Duelanti od sv. Rocha", "link": None}],
+        vs_year=2026,
+        vs_series=1,
     )
     tournament = Tournament(**{**defaults, **kwargs})
     if "disciplines" not in kwargs:
