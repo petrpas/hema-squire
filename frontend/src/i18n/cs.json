@@ -346,6 +346,14 @@
       "legacyFixedFeesBlockEur": "Turnaj používá staré pevné poplatky za zapůjčení zbraně nebo afterparty, které nemají eurový protějšek — přejdi na položkové doplňkové služby, aby šlo zapnout eura."
     }
   },
+  "preview": {
+    "heading": "náhled: co vidí šermíři",
+    "tabs": {
+      "face": "turnaj",
+      "form": "přihláška"
+    },
+    "cannotSubmit": "toto je náhled a nelze jej odeslat"
+  },
   "admin": {
     "title": "Admin panel",
     "back": "Zpět",

@@ -302,6 +302,7 @@ button.secondary:disabled {
 
 .stage-control {
   display: flex;
+  flex-shrink: 0;
   border: var(--border-w) solid var(--ink);
   border-radius: var(--radius);
   overflow: hidden;
@@ -453,6 +454,51 @@ button.secondary:disabled {
   border-radius: var(--radius);
   background: var(--paper-raised);
   color: var(--ink);
+}
+
+.setup-split {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+}
+
+.setup-preview {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  padding: 1.2rem 1.4rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  overflow-y: auto;
+  border-left: var(--border-w) solid var(--hairline);
+}
+
+.setup-preview-heading {
+  font-size: 10.5px;
+  color: var(--ink-faded);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-weight: 500;
+}
+
+@media (max-width: 1300px) {
+  .setup-split {
+    flex-direction: column;
+    overflow-y: auto;
+  }
+
+  .setup-panel,
+  .setup-preview {
+    max-width: none;
+    overflow-y: visible;
+  }
+
+  .setup-preview {
+    border-left: none;
+    border-top: var(--border-w) solid var(--hairline);
+  }
 }
 
 .sheet-area {

@@ -346,6 +346,14 @@
       "legacyFixedFeesBlockEur": "This tournament uses the legacy fixed weapon-rental/afterparty fees, which have no EUR counterpart — switch to itemized extra services to enable EUR."
     }
   },
+  "preview": {
+    "heading": "preview: what fencers see",
+    "tabs": {
+      "face": "tournament",
+      "form": "registration form"
+    },
+    "cannotSubmit": "this is a preview and cannot be submitted"
+  },
   "admin": {
     "title": "Admin panel",
     "back": "Back",

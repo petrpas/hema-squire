@@ -20,6 +20,7 @@ import {
 } from "./api";
 import HelpHint from "./HelpHint";
 import { showsEur } from "./money";
+import SetupPreview from "./SetupPreview";
 
 const CURRENCY_MODES: CurrencyMode[] = ["local", "local_eur", "eur"];
 // the only local (non-EUR) currency today (design Decision 6); a picker
@@ -1841,40 +1842,43 @@ export default function SetupPanel({
   const isOwner = account !== null && account.id === detail.owner_id;
 
   return (
-    <div className="setup-panel">
-      <ChecklistSection detail={detail} />
-      <IdentitySection detail={detail} slug={slug} onSaved={onSaved} />
-      <VsSeriesSection detail={detail} slug={slug} onSaved={onSaved} />
-      <CurrencySection detail={detail} slug={slug} onSaved={onSaved} />
-      <OrganizersSection detail={detail} slug={slug} onSaved={onSaved} />
-      <DisciplinesSection
-        detail={detail}
-        slug={slug}
-        onSaved={onSaved}
-        pricingWarning={hasRegistrations}
-      />
-      <ExtraItemsSection
-        detail={detail}
-        slug={slug}
-        onSaved={onSaved}
-        pricingWarning={hasRegistrations}
-      />
-      <DiscountsSection
-        detail={detail}
-        slug={slug}
-        onSaved={onSaved}
-        pricingWarning={hasRegistrations}
-      />
-      {isOwner && <TeamSection slug={slug} />}
-      {isOwner && (
-        <DangerZoneSection
+    <div className="setup-split">
+      <div className="setup-panel">
+        <ChecklistSection detail={detail} />
+        <IdentitySection detail={detail} slug={slug} onSaved={onSaved} />
+        <VsSeriesSection detail={detail} slug={slug} onSaved={onSaved} />
+        <CurrencySection detail={detail} slug={slug} onSaved={onSaved} />
+        <OrganizersSection detail={detail} slug={slug} onSaved={onSaved} />
+        <DisciplinesSection
+          detail={detail}
           slug={slug}
-          hasRegistrations={hasRegistrations}
-          cancelled={detail.cancelled_at !== null}
-          onDeleted={onDeleted}
-          onCancelled={onSaved}
+          onSaved={onSaved}
+          pricingWarning={hasRegistrations}
         />
-      )}
+        <ExtraItemsSection
+          detail={detail}
+          slug={slug}
+          onSaved={onSaved}
+          pricingWarning={hasRegistrations}
+        />
+        <DiscountsSection
+          detail={detail}
+          slug={slug}
+          onSaved={onSaved}
+          pricingWarning={hasRegistrations}
+        />
+        {isOwner && <TeamSection slug={slug} />}
+        {isOwner && (
+          <DangerZoneSection
+            slug={slug}
+            hasRegistrations={hasRegistrations}
+            cancelled={detail.cancelled_at !== null}
+            onDeleted={onDeleted}
+            onCancelled={onSaved}
+          />
+        )}
+      </div>
+      <SetupPreview detail={detail} slug={slug} />
     </div>
   );
 }
