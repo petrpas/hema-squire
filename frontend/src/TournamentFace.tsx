@@ -11,6 +11,7 @@ import {
   logoUrl,
 } from "./api";
 import { formatMoney, formatMoneyWithEur } from "./money";
+import Prose from "./Prose";
 
 export const LEGACY_WEAPONS: Record<string, string> = {
   LS: "Longsword",
@@ -95,7 +96,7 @@ export function InfoHeader({ detail }: { detail: TournamentDetailData }) {
             ? t("detail.qualificationOpen")
             : t("detail.qualificationRequired", { criteria: detail.qualification_criteria })}
         </p>
-        {detail.description && <p className="detail-description">{detail.description}</p>}
+        <Prose source={detail.description} className="detail-description" />
       </div>
     </section>
   );
@@ -529,9 +530,7 @@ export function RegistrationForm({
       <p className="tiskopis-number">{t("form.formNumber")}</p>
       <h1>{detail.display_name}</h1>
       {detail.subtitle && <p className="detail-subtitle">{detail.subtitle}</p>}
-      {detail.registration_instructions && (
-        <p className="registration-instructions">{detail.registration_instructions}</p>
-      )}
+      <Prose source={detail.registration_instructions} className="registration-instructions" />
 
       <h3 className="register-section">{t("form.sections.tournament")}</h3>
       <div className="checklist">

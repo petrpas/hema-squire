@@ -637,6 +637,21 @@ button.secondary:disabled {
   font-family: var(--font-ui);
 }
 
+/* markdown-authored fields (description, registration instructions) — the
+   monospace face lines up the markup the organizer types (D7) */
+.form-field textarea.markdown-input {
+  font-family: var(--font-data);
+  min-height: 8em;
+}
+
+.markdown-hint {
+  font-size: 10.5px;
+  text-transform: none;
+  letter-spacing: normal;
+  font-weight: 400;
+  color: var(--ink-faded);
+}
+
 .form-field input:focus,
 .form-field textarea:focus,
 .param-field input:focus {
@@ -1459,7 +1474,87 @@ label.checkbox-chip,
 .detail-description {
   color: var(--ink);
   font-size: 14px;
-  white-space: pre-wrap;
+}
+
+/* organizer-authored markdown, rendered by Prose (frontend/src/Prose.tsx) */
+.prose > :first-child {
+  margin-top: 0;
+}
+
+.prose > :last-child {
+  margin-bottom: 0;
+}
+
+.prose p,
+.prose ul,
+.prose ol,
+.prose blockquote,
+.prose pre,
+.prose hr {
+  margin: 0.6em 0;
+}
+
+.prose h3,
+.prose h4 {
+  margin: 0.8em 0 0.3em;
+}
+
+.prose h3 {
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--ink);
+}
+
+.prose h4 {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--ink-soft);
+}
+
+.prose ul,
+.prose ol {
+  padding-left: 1.4em;
+}
+
+.prose a {
+  color: var(--ink);
+  text-decoration: underline;
+}
+
+.prose a:hover {
+  color: var(--stamp);
+}
+
+.prose blockquote {
+  border-left: var(--border-w) solid var(--hairline);
+  padding-left: 0.8em;
+  color: var(--ink-soft);
+}
+
+.prose code,
+.prose pre {
+  font-family: var(--font-data);
+  background: var(--paper-shade);
+  border-radius: var(--radius);
+}
+
+.prose code {
+  padding: 0.1em 0.3em;
+}
+
+.prose pre {
+  padding: 0.6em 0.8em;
+  overflow-x: auto;
+}
+
+.prose pre code {
+  padding: 0;
+  background: none;
+}
+
+.prose hr {
+  border: none;
+  border-top: var(--border-w) solid var(--hairline);
 }
 
 /* date and place as responsive columns rather than one long line */
@@ -1610,9 +1705,8 @@ label.checklist-row > input[type="checkbox"] {
   color: var(--stamp);
 }
 
-/* the tournament's own instructions above the form, line breaks preserved */
+/* the tournament's own instructions above the form */
 .registration-instructions {
-  white-space: pre-wrap;
   font-size: 13px;
   color: var(--ink-soft);
 }

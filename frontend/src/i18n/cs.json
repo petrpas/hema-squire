@@ -239,7 +239,8 @@
       "qualificationCriteriaHint": "Například \"mistrovství ČR\", \"jen HR top 500\" apod.",
       "qualificationCriteriaRequired": "Zadej kvalifikační kritéria, nebo přepni zpět na \"otevřeno pro všechny\".",
       "registrationInstructions": "Pokyny k registraci",
-      "registrationInstructionsHint": "Zobrazí se jen v registračním formuláři — místo pro poznámky k platbě nebo registraci, které nepatří na veřejnou stránku."
+      "registrationInstructionsHint": "Zobrazí se jen v registračním formuláři — místo pro poznámky k platbě nebo registraci, které nepatří na veřejnou stránku.",
+      "markdownHint": "podporuje markdown: **tučně**, *kurzíva*, nadpisy # a ##, odrážky -, číslovaný seznam 1., [odkazy](url), > citace, --- vodorovná čára"
     },
     "vsSeries": {
       "title": "Řada variabilního symbolu",

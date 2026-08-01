@@ -128,7 +128,7 @@ type DisciplineDraft = {
 const IDENTITY_FIELDS = [
   { key: "display_name", type: "text" },
   { key: "subtitle", type: "text" },
-  { key: "description", type: "textarea" },
+  { key: "description", type: "textarea", markdown: true },
   { key: "date", type: "date" },
   { key: "location", type: "text" },
   { key: "language", type: "text" },
@@ -139,6 +139,7 @@ const IDENTITY_FIELDS = [
     key: "registration_instructions",
     type: "textarea",
     hint: "setup.identity.registrationInstructionsHint",
+    markdown: true,
   },
 ] as const;
 
@@ -248,12 +249,16 @@ function IdentitySection({
                 {"hint" in field && <HelpHint text={t(field.hint)} />}
               </span>
               <textarea
+                className={"markdown" in field && field.markdown ? "markdown-input" : undefined}
                 value={values[field.key] ?? ""}
                 onChange={(event) => {
                   setValues({ ...values, [field.key]: event.target.value });
                   setDirty(true);
                 }}
               />
+              {"markdown" in field && field.markdown && (
+                <span className="markdown-hint">{t("setup.identity.markdownHint")}</span>
+              )}
             </label>
           ) : (
             <label key={field.key} className="form-field">

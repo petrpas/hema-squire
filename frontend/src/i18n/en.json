@@ -239,7 +239,8 @@
       "qualificationCriteriaHint": "For example \"national championship placement\", \"HR top 500\" etc.",
       "qualificationCriteriaRequired": "Enter the qualification criteria, or switch back to \"open to everyone\".",
       "registrationInstructions": "Registration instructions",
-      "registrationInstructionsHint": "Shown only on the registration form — the place for payment or registration notes that do not belong on the public page."
+      "registrationInstructionsHint": "Shown only on the registration form — the place for payment or registration notes that do not belong on the public page.",
+      "markdownHint": "supports markdown: **strong**, *emphasis*, # and ## headings, - lists, 1. numbered lists, [links](url), > quotes, --- rule"
     },
     "vsSeries": {
       "title": "Variable symbol series",
