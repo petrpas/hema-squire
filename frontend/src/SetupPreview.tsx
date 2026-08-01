@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 
 import { type Availability, type TournamentDetail as TournamentDetailData, api } from "./api";
 import {
+  DiscountList,
   DisciplinesInfo,
   InfoHeader,
   OtherActionsInfo,
@@ -41,6 +42,7 @@ export default function SetupPreview({
         <>
           <InfoHeader detail={detail} />
           <DisciplinesInfo detail={detail} availability={availability} />
+          <DiscountList detail={detail} />
           <OtherActionsInfo detail={detail} />
         </>
       ) : (

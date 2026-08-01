@@ -208,6 +208,149 @@ def test_price_preview_matches_registration_total_itemized(client, auth_headers)
     assert preview.json()["total"] == (800 + 500 - 100) + 2 * 250
 
 
+def test_price_preview_breakdown_lists_applied_and_unapplied(client, auth_headers):
+    organizer = auth_headers()
+    setup_tournament(client, organizer)
+    client.patch(
+        "/api/tournaments/cup",
+        json={
+            "discounts": [
+                {
+                    "name": "2 disciplines",
+                    "condition": {"kind": "discipline_count", "count": 2},
+                    "effect": {"kind": "fixed", "value": 100},
+                    "scope": ["discipline"],
+                },
+                {
+                    "name": "3 disciplines",
+                    "condition": {"kind": "discipline_count", "count": 3},
+                    "effect": {"kind": "fixed", "value": 200},
+                    "scope": ["discipline"],
+                },
+            ]
+        },
+        headers=organizer,
+    )
+    fencer = auth_headers(email="f1@example.com", name="F1")
+
+    preview = client.post(
+        "/api/tournaments/cup/price-preview",
+        json={"disciplines": ["LS", "SB"]},
+        headers=fencer,
+    )
+    assert preview.status_code == 200
+    discounts = preview.json()["discounts"]
+    assert [d["name"] for d in discounts] == ["2 disciplines", "3 disciplines"]
+    assert discounts[0]["applied"] is True
+    assert discounts[0]["deducted"] == 100
+    assert discounts[1]["applied"] is False
+    assert discounts[1]["deducted"] is None
+
+
+def test_price_preview_fixed_discount_reported_in_both_currencies(client, auth_headers):
+    organizer = auth_headers()
+    setup_tournament(client, organizer)
+    # legacy fixed weapon-rental/afterparty fees carry no EUR column and
+    # block EUR mode (design Decision 9); clear them before enabling it
+    client.patch(
+        "/api/tournaments/cup",
+        json={"weapon_rental_fee": 0, "afterparty_fee": 0, "eur_payments_enabled": True},
+        headers=organizer,
+    )
+    client.patch(
+        "/api/tournaments/cup/disciplines/LS",
+        json={"code": "LS", "capacity": 2, "fee": 800, "fee_early": 600, "fee_eur": 32},
+        headers=organizer,
+    )
+    client.patch(
+        "/api/tournaments/cup/disciplines/SB",
+        json={"code": "SB", "capacity": 1, "fee": 500, "fee_eur": 20},
+        headers=organizer,
+    )
+    client.patch(
+        "/api/tournaments/cup",
+        json={
+            "discounts": [
+                {
+                    "name": "2 disciplines",
+                    "condition": {"kind": "discipline_count", "count": 2},
+                    "effect": {"kind": "fixed", "value": 100, "value_eur": 4},
+                    "scope": ["discipline"],
+                }
+            ]
+        },
+        headers=organizer,
+    )
+    fencer = auth_headers(email="f1@example.com", name="F1")
+
+    preview = client.post(
+        "/api/tournaments/cup/price-preview",
+        json={"disciplines": ["LS", "SB"]},
+        headers=fencer,
+    )
+    assert preview.status_code == 200
+    entry = preview.json()["discounts"][0]
+    assert entry["applied"] is True
+    assert entry["deducted"] == 100
+    assert entry["deducted_eur"] == 4
+
+
+def test_price_preview_percentage_discount_carries_no_eur_value(client, auth_headers):
+    organizer = auth_headers()
+    setup_tournament(client, organizer)
+    client.patch(
+        "/api/tournaments/cup",
+        json={"weapon_rental_fee": 0, "afterparty_fee": 0, "eur_payments_enabled": True},
+        headers=organizer,
+    )
+    client.patch(
+        "/api/tournaments/cup/disciplines/LS",
+        json={"code": "LS", "capacity": 2, "fee": 800, "fee_early": 600, "fee_eur": 32},
+        headers=organizer,
+    )
+    client.patch(
+        "/api/tournaments/cup",
+        json={
+            "discounts": [
+                {
+                    "name": "10 percent off",
+                    "condition": {"kind": "discipline_count", "count": 1},
+                    "effect": {"kind": "percent", "value": 10},
+                    "scope": ["discipline"],
+                }
+            ]
+        },
+        headers=organizer,
+    )
+    fencer = auth_headers(email="f1@example.com", name="F1")
+
+    preview = client.post(
+        "/api/tournaments/cup/price-preview",
+        json={"disciplines": ["LS"]},
+        headers=fencer,
+    )
+    assert preview.status_code == 200
+    entry = preview.json()["discounts"][0]
+    assert entry["effect"]["kind"] == "percent"
+    assert entry["applied"] is True
+    assert entry["deducted"] == 80  # 800 * 0.10
+    assert entry["deducted_eur"] is None
+
+
+def test_price_preview_empty_breakdown_when_no_discounts_configured(client, auth_headers):
+    organizer = auth_headers()
+    setup_tournament(client, organizer)
+    fencer = auth_headers(email="f1@example.com", name="F1")
+
+    preview = client.post(
+        "/api/tournaments/cup/price-preview",
+        json={"disciplines": ["LS"]},
+        headers=fencer,
+    )
+    assert preview.status_code == 200
+    assert preview.json()["discounts"] == []
+
+
 def test_price_preview_rejects_unknown_discipline(client, auth_headers):
     organizer = auth_headers()
     setup_tournament(client, organizer)

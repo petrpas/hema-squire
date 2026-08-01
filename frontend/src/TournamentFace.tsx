@@ -4,6 +4,9 @@ import { useTranslation } from "react-i18next";
 import {
   ApiError,
   type Availability,
+  type Discount,
+  type DiscountBreakdown,
+  type DiscountCondition,
   type ExtraItem,
   type RegistrationDetail,
   type TournamentDetail as TournamentDetailData,
@@ -254,6 +257,84 @@ export function OtherActionsInfo({ detail }: { detail: TournamentDetailData }) {
   );
 }
 
+type Translate = ReturnType<typeof useTranslation>["t"];
+
+/** A discount's condition as localized text, from its `kind` and parameter —
+ *  the sibling of the marker on the register screen, spelled out here because
+ *  the information screen carries no selection to make the terms evident. */
+function discountCondition(t: Translate, condition: DiscountCondition): string {
+  if (condition.kind === "discipline_count") {
+    return t("discounts.conditionDisciplineCount", { count: condition.count ?? 0 });
+  }
+  return t("discounts.conditionEarly", {
+    date: condition.until ? new Date(condition.until).toLocaleDateString("cs") : "",
+  });
+}
+
+/** A discount's row value: the organizer's configured figure, not the
+ *  realized deduction (design Decision 4) — the same promise on both faces. */
+function discountValue(t: Translate, discount: Discount, detail: TournamentDetailData): string {
+  if (discount.effect.kind === "percent") {
+    return t("discounts.percentValue", { value: discount.effect.value });
+  }
+  return t("discounts.amountValue", {
+    amount: formatMoneyWithEur(discount.effect.value, discount.effect.value_eur, detail),
+  });
+}
+
+/** The tournament's configured discounts (design Decision 5 — one component,
+ *  two renderings). Given a `breakdown` (the register form's live price
+ *  preview) each row leads with a disabled checkbox stating whether the
+ *  current selection activates it. Without one (the information screen)
+ *  rows carry no marker and spell out their condition instead. Renders
+ *  nothing when the tournament configures no discounts (design Decision 8). */
+export function DiscountList({
+  detail,
+  breakdown,
+}: {
+  detail: TournamentDetailData;
+  breakdown?: DiscountBreakdown[];
+}) {
+  const { t } = useTranslation();
+  if (detail.discounts.length === 0) return null;
+
+  if (breakdown) {
+    // inline within the register form's own rail-card, matching its other
+    // sections (Tournament/programme/items) rather than nesting a card
+    return (
+      <>
+        <h3 className="register-section">{t("discounts.title")}</h3>
+        <div className="checklist">
+          {detail.discounts.map((discount, index) => (
+            <label key={index} className="checklist-row discount-row">
+              <input type="checkbox" disabled checked={breakdown[index]?.applied ?? false} />
+              <span className="checklist-name">{discount.name}</span>
+              <span className="checklist-price">{discountValue(t, discount, detail)}</span>
+            </label>
+          ))}
+        </div>
+      </>
+    );
+  }
+
+  return (
+    <section className="rail-card">
+      <h2>{t("discounts.title")}</h2>
+      <ul className="detail-list">
+        {detail.discounts.map((discount, index) => (
+          <li key={index}>
+            <div className="detail-row">
+              <strong>{discount.name}</strong>
+              <span>{discountValue(t, discount, detail)}</span>
+            </div>
+            <div className="detail-extra">{discountCondition(t, discount.condition)}</div>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
 /** One checkbox row of the registration checklist: name, price, and whatever
  *  detail lines and controls the row carries. */
 export function ChecklistRow({
@@ -377,6 +458,7 @@ export function RegistrationForm({
   const [notes, setNotes] = useState(initial?.notes ?? "");
   const [total, setTotal] = useState(initial?.total_amount ?? 0);
   const [eurTotal, setEurTotal] = useState<number | null>(initial?.total_eur ?? null);
+  const [discounts, setDiscounts] = useState<DiscountBreakdown[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -440,6 +522,7 @@ export function RegistrationForm({
     if (disciplines.size === 0) {
       setTotal(0);
       setEurTotal(null);
+      setDiscounts([]);
       return;
     }
     const handle = setTimeout(() => {
@@ -454,10 +537,12 @@ export function RegistrationForm({
           (result) => {
             setTotal(result.total);
             setEurTotal(result.eur_total);
+            setDiscounts(result.discounts);
           },
           () => {
             setTotal(0);
             setEurTotal(null);
+            setDiscounts([]);
           },
         );
     }, 300);
@@ -669,6 +754,8 @@ export function RegistrationForm({
           </div>
         </>
       )}
+
+      <DiscountList detail={detail} breakdown={discounts} />
 
       <p className="form-total">
         {t("form.total", { amount: formatMoneyWithEur(total, eurTotal, detail) })}

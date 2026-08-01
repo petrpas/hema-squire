@@ -52,6 +52,29 @@ class Totals(NamedTuple):
     eur: int | None
 
 
+class DiscountOutcome(NamedTuple):
+    """One configured discount's result against a priced selection, within a
+    single currency pass. `deducted` is 0 for a discount that did not apply."""
+
+    name: str
+    effect: dict
+    applied: bool
+    deducted: int
+
+
+class DiscountBreakdown(NamedTuple):
+    """One configured discount's result across both currency passes of a
+    selection (design Decision 3): a fixed effect carries both `deducted` and
+    `deducted_eur`; a percentage effect, being currency-neutral, carries only
+    `deducted`. Both are None when the discount did not apply."""
+
+    name: str
+    effect: dict
+    applied: bool
+    deducted: int | None
+    deducted_eur: int | None
+
+
 def _early(tournament: Tournament, at: datetime.date) -> bool:
     return tournament.early_bird_until is not None and at <= tournament.early_bird_until
 
@@ -98,9 +121,11 @@ def _condition_met(
     return False
 
 
-def _apply_fixed(subtotals: dict[str, Decimal], scope: list[str], value: int) -> None:
+def _apply_fixed(subtotals: dict[str, Decimal], scope: list[str], value: int) -> int:
     """Subtract up to `value` from the scoped subtotals, floored at zero,
-    consuming categories in canonical order so the result is deterministic."""
+    consuming categories in canonical order so the result is deterministic.
+    Returns the amount actually deducted, which is `value` unless the scoped
+    subtotals floor it first."""
     remaining = Decimal(value)
     for category in _CATEGORY_ORDER:
         if category not in scope or remaining <= 0:
@@ -109,15 +134,19 @@ def _apply_fixed(subtotals: dict[str, Decimal], scope: list[str], value: int) ->
         if take > 0:
             subtotals[category] -= take
             remaining -= take
+    return value - int(remaining)
 
 
-def _itemized_selection_total(
+def _itemized_selection_breakdown(
     tournament: Tournament,
     disciplines: list[Discipline],
     extras: list[tuple[ExtraItem, int]],
     at: datetime.date,
     which: PriceColumn,
-) -> int:
+) -> tuple[int, list[DiscountOutcome]]:
+    """The total together with one `DiscountOutcome` per configured discount,
+    in configured order — inactive discounts included, so a caller can report
+    on the whole list, not just what applied."""
     subtotals: dict[str, Decimal] = {
         DISCIPLINE_CATEGORY: Decimal(sum(discipline_fee(tournament, d, at, which) for d in disciplines))
     }
@@ -127,28 +156,58 @@ def _itemized_selection_total(
         amount = Decimal(price * qty)
         subtotals[category] = subtotals.get(category, Decimal(0)) + amount
 
-    applicable = [
-        d
-        for d in (tournament.discounts or [])
-        if _condition_met(d.get("condition", {}), discipline_count=len(disciplines), at=at)
+    discounts = tournament.discounts or []
+    met = [
+        _condition_met(d.get("condition", {}), discipline_count=len(disciplines), at=at)
+        for d in discounts
     ]
-    for discount in applicable:
+    deducted: list[int] = [0] * len(discounts)
+
+    for i, discount in enumerate(discounts):
+        if not met[i]:
+            continue
         effect = discount.get("effect", {})
         if effect.get("kind") == "fixed":
             scope = discount.get("scope") or [DISCIPLINE_CATEGORY]
             value = (effect.get("value_eur") if which == "eur" else effect.get("value")) or 0
-            _apply_fixed(subtotals, scope, value)
-    for discount in applicable:
+            deducted[i] = _apply_fixed(subtotals, scope, value)
+    for i, discount in enumerate(discounts):
+        if not met[i]:
+            continue
         effect = discount.get("effect", {})
         if effect.get("kind") == "percent":
             scope = discount.get("scope") or [DISCIPLINE_CATEGORY]
             factor = (Decimal(100) - Decimal(effect.get("value", 0))) / Decimal(100)
+            before = sum((subtotals[c] for c in scope if c in subtotals), Decimal(0))
             for category in scope:
                 if category in subtotals:
                     subtotals[category] *= factor
+            after = sum((subtotals[c] for c in scope if c in subtotals), Decimal(0))
+            deducted[i] = int((before - after).quantize(Decimal("1"), rounding=ROUND_HALF_UP))
+
+    outcomes = [
+        DiscountOutcome(
+            name=discount.get("name", ""),
+            effect=discount.get("effect", {}),
+            applied=met[i],
+            deducted=deducted[i],
+        )
+        for i, discount in enumerate(discounts)
+    ]
 
     total = sum(subtotals.values(), Decimal(0))
-    return int(total.quantize(Decimal("1"), rounding=ROUND_HALF_UP))
+    return int(total.quantize(Decimal("1"), rounding=ROUND_HALF_UP)), outcomes
+
+
+def _itemized_selection_total(
+    tournament: Tournament,
+    disciplines: list[Discipline],
+    extras: list[tuple[ExtraItem, int]],
+    at: datetime.date,
+    which: PriceColumn,
+) -> int:
+    total, _ = _itemized_selection_breakdown(tournament, disciplines, extras, at, which)
+    return total
 
 
 def selection_total(
@@ -215,6 +274,43 @@ def selection_totals(
             which="eur",
         )
     return Totals(local=local, eur=eur)
+
+
+def selection_discounts(
+    tournament: Tournament,
+    *,
+    disciplines: list[Discipline],
+    extras: list[tuple[ExtraItem, int]],
+    at: datetime.date,
+) -> list[DiscountBreakdown]:
+    """The per-discount breakdown for a selection, in configured order,
+    reporting exactly what `selection_totals` applied rather than a separate
+    evaluation. A fixed effect's deduction is read from its own currency's
+    pass — local always, EUR only when the tournament shows one (design
+    Decision 3); a percentage effect carries one currency-neutral figure,
+    read from the local pass, since its condition can never differ between
+    currencies. Empty for a legacy tournament or one with no discounts."""
+    if not tournament.discounts:
+        return []
+    _, local_outcomes = _itemized_selection_breakdown(tournament, disciplines, extras, at, "local")
+    eur_outcomes: list[DiscountOutcome] | None = None
+    if tournament.shows_eur:
+        _, eur_outcomes = _itemized_selection_breakdown(tournament, disciplines, extras, at, "eur")
+
+    breakdown = []
+    for i, outcome in enumerate(local_outcomes):
+        is_fixed = outcome.effect.get("kind") == "fixed"
+        deducted_eur = eur_outcomes[i].deducted if outcome.applied and is_fixed and eur_outcomes else None
+        breakdown.append(
+            DiscountBreakdown(
+                name=outcome.name,
+                effect=outcome.effect,
+                applied=outcome.applied,
+                deducted=outcome.deducted if outcome.applied else None,
+                deducted_eur=deducted_eur,
+            )
+        )
+    return breakdown
 
 
 def registration_total(registration: Registration, tournament: Tournament) -> Totals:

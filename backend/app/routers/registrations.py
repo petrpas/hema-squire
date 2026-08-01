@@ -25,6 +25,7 @@ from app.models import (
 from app.routers.tournaments import FencerDep, SessionDep, TournamentDep
 from app.schemas import (
     AvailabilityOut,
+    DiscountBreakdownOut,
     ParticipantOut,
     PaymentInstructionsOut,
     PricePreviewIn,
@@ -253,18 +254,30 @@ def _validate_options(selections, extras_by_id: dict[int, ExtraItem]) -> None:
 @router.post("/price-preview", response_model=PricePreviewOut)
 def price_preview(data: PricePreviewIn, tournament: TournamentDep):
     selected, extras = _resolve_selection(tournament, data)
+    at = _now().date()
     totals = pricing.selection_totals(
         tournament,
         disciplines=selected,
         extras=extras,
         weapon_rentals=data.weapon_rentals,
         afterparty=data.afterparty,
-        at=_now().date(),
+        at=at,
     )
+    discounts = pricing.selection_discounts(tournament, disciplines=selected, extras=extras, at=at)
     return PricePreviewOut(
         total=totals.local,
         currency=tournament.local_currency,
         eur_total=totals.eur,
+        discounts=[
+            DiscountBreakdownOut(
+                name=d.name,
+                effect=d.effect,
+                applied=d.applied,
+                deducted=d.deducted,
+                deducted_eur=d.deducted_eur,
+            )
+            for d in discounts
+        ],
     )
 
 

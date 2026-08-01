@@ -13,6 +13,7 @@ import {
 } from "./api";
 import { formatMoney, formatMoneyWithEur } from "./money";
 import {
+  DiscountList,
   DisciplinesInfo,
   InfoHeader,
   OtherActionsInfo,
@@ -365,6 +366,7 @@ export default function TournamentDetail({
           <div className="setup-panel">
             <InfoHeader detail={detail} />
             <DisciplinesInfo detail={detail} availability={availability} />
+            <DiscountList detail={detail} />
             <OtherActionsInfo detail={detail} />
             {readOnly ? (
               hasActive && registration && (

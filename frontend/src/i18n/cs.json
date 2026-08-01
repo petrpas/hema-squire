@@ -508,6 +508,13 @@
     "amendTitle": "Úprava registrace",
     "amendSubmit": "Uložit úpravu"
   },
+  "discounts": {
+    "title": "Slevy",
+    "conditionDisciplineCount": "při registraci na {{count}} disciplín",
+    "conditionEarly": "při registraci do {{date}}",
+    "percentValue": "−{{value}} %",
+    "amountValue": "−{{amount}}"
+  },
   "payment": {
     "title": "Platební instrukce",
     "amount": "Částka",

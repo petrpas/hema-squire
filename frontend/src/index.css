@@ -1719,6 +1719,18 @@ label.checklist-row > input[type="checkbox"] {
   width: auto;
 }
 
+/* a discount row's marker states a consequence of the selection above it —
+   not itself a control (design Decision 6) — so the disabled checkbox reads
+   as fact rather than a greyed-out, unavailable one */
+.discount-row {
+  cursor: default;
+}
+
+.discount-row input[type="checkbox"]:disabled {
+  opacity: 1;
+  cursor: default;
+}
+
 .checklist-name {
   color: var(--ink);
 }

@@ -285,3 +285,91 @@ def test_no_eur_total_when_tournament_does_not_price_in_eur():
     totals = pricing.registration_total(registration, tournament)
     assert totals.local == 50
     assert totals.eur is None
+
+
+# --- per-discount breakdown -------------------------------------------------
+
+
+def test_breakdown_lists_applied_and_unapplied_in_configured_order():
+    tournament = make_tournament(
+        discounts=[count_discount(2, 10), count_discount(3, 20)]
+    )
+    breakdown = pricing.selection_discounts(
+        tournament, disciplines=[Discipline(fee=30), Discipline(fee=30)], extras=[], at=REGISTERED_AT.date()
+    )
+    assert [d.applied for d in breakdown] == [True, False]
+    assert [d.name for d in breakdown] == ["2 disciplines", "3 disciplines"]
+    assert breakdown[0].deducted == 10
+    assert breakdown[1].deducted is None
+
+
+def test_breakdown_reports_floored_fixed_deduction_as_taken():
+    tournament = make_tournament(discounts=[count_discount(1, 100)])
+    breakdown = pricing.selection_discounts(
+        tournament, disciplines=[Discipline(fee=30)], extras=[], at=REGISTERED_AT.date()
+    )
+    assert breakdown[0].applied is True
+    assert breakdown[0].deducted == 30
+
+
+def test_breakdown_reports_percent_deduction_realized():
+    tournament = make_tournament(discounts=[early_percent("2026-06-01", 15)])
+    breakdown = pricing.selection_discounts(
+        tournament, disciplines=[Discipline(fee=60)], extras=[], at=REGISTERED_AT.date()
+    )
+    assert breakdown[0].applied is True
+    assert breakdown[0].deducted == 9  # 60 * 0.15
+
+
+def test_breakdown_per_currency_deductions_read_from_their_own_pass():
+    tournament = make_tournament(
+        local_currency="CZK",
+        eur_payments_enabled=True,
+        discounts=[
+            {
+                "name": "combo",
+                "condition": {"kind": "discipline_count", "count": 2},
+                "effect": {"kind": "fixed", "value": 200, "value_eur": 8},
+                "scope": ["discipline"],
+            }
+        ],
+    )
+    disciplines = [Discipline(fee=800, fee_eur=32), Discipline(fee=700, fee_eur=28)]
+    breakdown = pricing.selection_discounts(
+        tournament, disciplines=disciplines, extras=[], at=REGISTERED_AT.date()
+    )
+    assert breakdown[0].applied is True
+    assert breakdown[0].deducted == 200
+    assert breakdown[0].deducted_eur == 8
+
+
+def test_breakdown_percent_deduction_carries_no_eur_figure():
+    tournament = make_tournament(
+        local_currency="CZK",
+        eur_payments_enabled=True,
+        discounts=[early_percent("2026-06-01", 10)],
+    )
+    disciplines = [Discipline(fee=100, fee_eur=4)]
+    breakdown = pricing.selection_discounts(
+        tournament, disciplines=disciplines, extras=[], at=REGISTERED_AT.date()
+    )
+    assert breakdown[0].applied is True
+    assert breakdown[0].deducted == 10
+    assert breakdown[0].deducted_eur is None
+
+
+def test_breakdown_early_bird_applicability_judged_by_at_date():
+    tournament = make_tournament(discounts=[early_percent("2026-04-30", 15)])
+    breakdown = pricing.selection_discounts(
+        tournament, disciplines=[Discipline(fee=60)], extras=[], at=REGISTERED_AT.date()
+    )
+    assert breakdown[0].applied is False
+    assert breakdown[0].deducted is None
+
+
+def test_breakdown_empty_for_legacy_tournament():
+    tournament = make_tournament()
+    breakdown = pricing.selection_discounts(
+        tournament, disciplines=[Discipline(fee=30)], extras=[], at=REGISTERED_AT.date()
+    )
+    assert breakdown == []

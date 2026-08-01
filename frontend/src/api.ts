@@ -402,12 +402,27 @@ export interface PricePreviewPayload {
   extras?: ExtraSelectionPayload[];
 }
 
+export interface DiscountBreakdown {
+  name: string;
+  effect: DiscountEffect;
+  applied: boolean;
+  /** What the discount deducted, read from the same computation as the
+   *  total beside it — per currency for a fixed effect, local-only (design
+   *  Decision 3) for a currency-neutral percentage effect; both null when
+   *  the discount did not apply. */
+  deducted: number | null;
+  deducted_eur: number | null;
+}
+
 export interface PricePreview {
   total: number;
   currency: Currency;
   /** The stored EUR total, independently summed; null unless the tournament
    *  takes EUR alongside its local currency. */
   eur_total: number | null;
+  /** One entry per discount the tournament configures, in configured order;
+   *  empty for a tournament that configures none. */
+  discounts: DiscountBreakdown[];
 }
 
 export type TransactionStatus = "unmatched" | "flagged" | "matched" | "resolved";

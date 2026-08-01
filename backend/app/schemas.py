@@ -500,12 +500,27 @@ class PricePreviewIn(BaseModel):
     extras: list[ExtraSelectionIn] = []
 
 
+class DiscountBreakdownOut(BaseModel):
+    name: str
+    effect: DiscountEffect
+    applied: bool
+    # what the discount deducted, read from the computation that produced the
+    # total alongside it — per currency for a fixed effect, local-only (design
+    # Decision 3) for a currency-neutral percentage effect; both None when the
+    # discount did not apply
+    deducted: int | None = None
+    deducted_eur: int | None = None
+
+
 class PricePreviewOut(BaseModel):
     total: int
     currency: Currency = Currency.CZK
     # the stored EUR total, independently summed from EUR prices — omitted
     # (not derived) when the tournament does not price in EUR
     eur_total: int | None = None
+    # one entry per discount the tournament configures, in configured order,
+    # empty for a tournament that configures none
+    discounts: list[DiscountBreakdownOut] = []
 
 
 class PaymentInstructionsOut(BaseModel):

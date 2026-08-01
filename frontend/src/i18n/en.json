@@ -508,6 +508,13 @@
     "amendTitle": "Amend registration",
     "amendSubmit": "Save amendment"
   },
+  "discounts": {
+    "title": "Discounts",
+    "conditionDisciplineCount": "when registered for {{count}} disciplines",
+    "conditionEarly": "when registered by {{date}}",
+    "percentValue": "−{{value}} %",
+    "amountValue": "−{{amount}}"
+  },
   "payment": {
     "title": "Payment instructions",
     "amount": "Amount",
