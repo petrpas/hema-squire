@@ -27,6 +27,7 @@ def _ingest_and_match(session, tournament, mailer, source, transactions) -> Inge
         matched=matched.matched,
         flagged=matched.flagged,
         unmatched=matched.unmatched,
+        partial=matched.partial,
         set_aside=matched.set_aside,
     )
 
@@ -127,6 +128,8 @@ def _transaction_out(session, tournament, transaction: BankTransaction) -> Trans
             and registration.state == RegistrationState.EXPIRED
             and matching.seats_free(session, registration)
         )
+    if transaction.status == "unmatched":
+        out.candidate_vs = matching.detect_candidates(session, transaction)
     return out
 
 

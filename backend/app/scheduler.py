@@ -52,7 +52,13 @@ def process_reminders(session: Session, tournament: Tournament, mailer: Mailer) 
 
 
 def process_expiries(session: Session, tournament: Tournament, mailer: Mailer) -> int:
-    """Expire unpaid reservations past their window, freeing capacity."""
+    """Expire unpaid reservations past their window, freeing capacity.
+
+    A partial payment does not extend the window (design harden-payment-
+    matching Decision 3) — a reservation holding one expires on schedule like
+    any other, but distinctly: a separate audit event and a branched notice,
+    since the organizer is left holding money for a reservation that no
+    longer exists."""
     overdue = session.scalars(
         select(Registration).where(
             Registration.tournament_id == tournament.id,
@@ -63,15 +69,21 @@ def process_expiries(session: Session, tournament: Tournament, mailer: Mailer) -
     ).all()
     for registration in overdue:
         registration.state = RegistrationState.EXPIRED
+        holding_payment = (
+            registration.amount_paid_cents > 0 or (registration.amount_paid_eur_cents or 0) > 0
+        )
         session.add(
             PaymentEvent(
                 tournament_id=tournament.id,
                 registration_id=registration.id,
-                kind="reservation_expired",
+                kind="expired_holding_payment" if holding_payment else "reservation_expired",
                 detail=f"VS {registration.vs}",
             )
         )
-        emails.send_reservation_expired(mailer, tournament, registration.fencer, registration)
+        emails.send_reservation_expired(
+            mailer, tournament, registration.fencer, registration,
+            holding_payment=holding_payment,
+        )
     session.commit()
     return len(overdue)
 

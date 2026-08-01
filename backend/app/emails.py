@@ -2,12 +2,13 @@
 communication language."""
 
 from decimal import ROUND_HALF_UP, Decimal
+from typing import Literal
 
 from app import spayd
 from app.config import settings
 from app.i18n import format_money, t
 from app.mail import Mailer, build_message
-from app.models import Fencer, Registration, Tournament
+from app.models import Currency, Fencer, Registration, Tournament
 
 
 def _summary_lines(registration: Registration, lang: str) -> str:
@@ -181,17 +182,38 @@ def send_payment_reminder(
 
 
 def send_reservation_expired(
-    mailer: Mailer, tournament: Tournament, fencer: Fencer, registration: Registration
+    mailer: Mailer,
+    tournament: Tournament,
+    fencer: Fencer,
+    registration: Registration,
+    *,
+    holding_payment: bool = False,
 ) -> None:
+    """`holding_payment` branches the notice for a reservation that expired
+    while carrying a partial payment (design harden-payment-matching
+    Decision 3): it states the organizer holds the money and will be in
+    contact, and never implies the money is lost or promises a seat."""
     lang = tournament.language
-    subject = t("email.expired.subject", lang, tournament=tournament.display_name)
-    body = t(
-        "email.expired.body",
-        lang,
-        name=fencer.display_name,
-        tournament=tournament.display_name,
-        vs=registration.vs,
-    )
+    if holding_payment:
+        subject = t(
+            "email.expiredHoldingPayment.subject", lang, tournament=tournament.display_name
+        )
+        body = t(
+            "email.expiredHoldingPayment.body",
+            lang,
+            name=fencer.display_name,
+            tournament=tournament.display_name,
+            vs=registration.vs,
+        )
+    else:
+        subject = t("email.expired.subject", lang, tournament=tournament.display_name)
+        body = t(
+            "email.expired.body",
+            lang,
+            name=fencer.display_name,
+            tournament=tournament.display_name,
+            vs=registration.vs,
+        )
     mailer.send(build_message(fencer.email, settings.email_sender, subject, body))
 
 
@@ -206,6 +228,38 @@ def send_payment_received(
         name=fencer.display_name,
         tournament=tournament.display_name,
         total=_total_text(tournament, registration),
+        vs=registration.vs,
+    )
+    mailer.send(build_message(fencer.email, settings.email_sender, subject, body))
+
+
+def send_partial_payment_received(
+    mailer: Mailer,
+    tournament: Tournament,
+    fencer: Fencer,
+    registration: Registration,
+    which: Literal["local", "eur"],
+) -> None:
+    """The registration stays reserved; the fencer is told what is still
+    outstanding in the currency this payment credited, rather than being left
+    to work the difference out themselves (design harden-payment-matching
+    Decision 3)."""
+    lang = tournament.language
+    if which == "local":
+        outstanding = Decimal(registration.outstanding_cents) / 100
+        currency = tournament.local_currency
+    else:
+        outstanding = Decimal(registration.outstanding_eur_cents) / 100
+        currency = Currency.EUR
+    outstanding = outstanding.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+
+    subject = t("email.partial.subject", lang, tournament=tournament.display_name)
+    body = t(
+        "email.partial.body",
+        lang,
+        name=fencer.display_name,
+        tournament=tournament.display_name,
+        outstanding=format_money(outstanding, currency, lang),
         vs=registration.vs,
     )
     mailer.send(build_message(fencer.email, settings.email_sender, subject, body))

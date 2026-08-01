@@ -389,6 +389,18 @@ def update_tournament(
     ):
         # a later value would never be reached (registration itself closes first)
         raise HTTPException(status_code=422, detail="amendments_close_after_registration_closes")
+    if tournament.reminder_day >= tournament.reservation_validity_days:
+        # expiry runs before reminders (scheduler.run_tournament_tick): a
+        # reservation would always be expired before its reminder was due,
+        # and no reminder would ever be sent (design harden-payment-matching
+        # Decision 8) — checked on every edit, whichever field changed
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                f"reminder_day_not_before_validity: reminder_day={tournament.reminder_day} "
+                f"reservation_validity_days={tournament.reservation_validity_days}"
+            ),
+        )
     _apply_currency_invariants(tournament)
     session.commit()
     session.refresh(tournament)

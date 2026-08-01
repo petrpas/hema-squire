@@ -281,6 +281,42 @@ def test_creator_becomes_organizer_and_can_configure(client, auth_headers):
     assert response.json()["reservation_validity_days"] == 10
 
 
+def test_reminder_day_at_or_after_validity_rejected(client, auth_headers):
+    """Expiry runs before reminders, so a reminder day at or beyond the
+    validity period would never fire (design harden-payment-matching
+    Decision 8)."""
+    headers = auth_headers()
+    make_tournament(client, headers)
+
+    response = client.patch(
+        "/api/tournaments/na-duel-2026",
+        json={"reservation_validity_days": 10, "reminder_day": 10},
+        headers=headers,
+    )
+    assert response.status_code == 422
+    assert "reminder_day" in response.json()["detail"]
+    assert "reservation_validity_days" in response.json()["detail"]
+
+
+def test_reminder_day_shortened_validity_rejected(client, auth_headers):
+    """The same check fires from either side of the edit: shortening the
+    validity below an existing, previously-valid reminder day."""
+    headers = auth_headers()
+    make_tournament(client, headers)
+    assert client.patch(
+        "/api/tournaments/na-duel-2026",
+        json={"reservation_validity_days": 10, "reminder_day": 7},
+        headers=headers,
+    ).status_code == 200
+
+    response = client.patch(
+        "/api/tournaments/na-duel-2026",
+        json={"reservation_validity_days": 5},
+        headers=headers,
+    )
+    assert response.status_code == 422
+
+
 def test_non_organizer_cannot_administer(client, auth_headers):
     organizer = auth_headers()
     make_tournament(client, organizer)

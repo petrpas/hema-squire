@@ -619,17 +619,19 @@ def test_eur_transaction_on_czk_only_tournament_is_flagged_not_accepted(
     assert state == "reserved"
 
 
-def test_eur_payment_far_off_still_flags_on_amount(client, auth_headers, mailbox):
+def test_eur_payment_far_off_credited_as_partial(client, auth_headers, mailbox):
+    """A shortfall beyond tolerance is credited as a partial payment rather
+    than flagged (design harden-payment-matching Decision 1)."""
     headers = auth_headers()
     publish_with_eur(client, headers)
     fencer, vs = enroll(client, auth_headers)
 
     result = _import_rows(client, headers, [f"1;01.08.2026;40,00;EUR;{vs};;;;MUELLER;DE99"])
-    assert result["flagged"] == 1
+    assert result["partial"] == 1
     queue = client.get(
         "/api/tournaments/na-duel-2026/payments/unmatched", headers=headers
     ).json()
-    assert queue[0]["status_reason"] == "amount_out_of_tolerance"
+    assert queue == []
 
 
 def test_eur_rate_change_does_not_affect_matching(client, auth_headers, mailbox):

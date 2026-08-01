@@ -27,6 +27,13 @@ class IncomingTransaction(BaseModel):
     message: str | None = None
     payer_name: str | None = None
     payer_account: str | None = None
+    # additional text-bearing Fio fields that carry SEPA references on some
+    # routings (design harden-payment-matching Decision 4); deliberately not
+    # payer_name/payer_account, which are structured identifiers, not text
+    user_identification: str | None = None
+    comment: str | None = None
+    specification: str | None = None
+    specific_symbol: str | None = None
 
 
 class IngestResult(BaseModel):
@@ -77,6 +84,10 @@ _FIO_COLUMNS = {
     "message": "column16",  # zpráva pro příjemce
     "payer_name": "column10",
     "payer_account": "column2",
+    "user_identification": "column7",
+    "comment": "column25",
+    "specification": "column18",
+    "specific_symbol": "column6",
 }
 
 
@@ -105,6 +116,10 @@ def parse_fio_json(payload: dict) -> list[IncomingTransaction]:
                 message=_fio_value(row, "message"),
                 payer_name=_fio_value(row, "payer_name"),
                 payer_account=_fio_value(row, "payer_account"),
+                user_identification=_fio_value(row, "user_identification"),
+                comment=_fio_value(row, "comment"),
+                specification=_fio_value(row, "specification"),
+                specific_symbol=_fio_value(row, "specific_symbol"),
             )
         )
     return result
@@ -121,6 +136,10 @@ _CSV_FIELDS = {
     "Zpráva pro příjemce": "message",
     "Název protiúčtu": "payer_name",
     "Protiúčet": "payer_account",
+    "Uživatelská identifikace": "user_identification",
+    "Komentář": "comment",
+    "Upřesnění": "specification",
+    "SS": "specific_symbol",
 }
 
 
@@ -163,6 +182,10 @@ def parse_fio_csv(content: bytes) -> list[IncomingTransaction]:
                 message=record["message"] or None,
                 payer_name=record["payer_name"] or None,
                 payer_account=record["payer_account"] or None,
+                user_identification=record["user_identification"] or None,
+                comment=record["comment"] or None,
+                specification=record["specification"] or None,
+                specific_symbol=record["specific_symbol"] or None,
             )
         )
     return result

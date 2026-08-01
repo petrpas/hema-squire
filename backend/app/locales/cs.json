@@ -50,6 +50,14 @@
     "afterExpiry": {
       "subject": "Platba přijata po vypršení rezervace — {tournament}",
       "body": "Ahoj {name},\n\ndorazila tvá platba (VS {vs}) k registraci na {tournament}, jejíž rezervace mezitím vypršela. Místo už jsme automaticky nepotvrdili — ozve se ti organizátor a domluví další postup.\n\nTým {tournament}"
+    },
+    "partial": {
+      "subject": "Přijali jsme částečnou platbu — {tournament}",
+      "body": "Ahoj {name},\n\npřijali jsme platbu k tvé registraci na {tournament} (VS {vs}), zatím ale nepokrývá celou částku. Zbývá doplatit {outstanding} — jakmile dorazí, tvoje místo bude potvrzeno.\n\nTým {tournament}"
+    },
+    "expiredHoldingPayment": {
+      "subject": "Rezervace vypršela, platbu držíme — {tournament}",
+      "body": "Ahoj {name},\n\ntvá rezervace na {tournament} (VS {vs}) vypršela, aniž by dorazila celá částka. Částečnou platbu, kterou jsi už poslal/a, si necháváme — ozve se ti organizátor a domluví další postup.\n\nTým {tournament}"
     }
   }
 }

@@ -577,12 +577,22 @@ class TransactionOut(BaseModel):
     message: str | None
     payer_name: str | None
     payer_account: str | None
+    user_identification: str | None
+    comment: str | None
+    specification: str | None
+    specific_symbol: str | None
     status: str | None
     status_reason: str | None
     matched_registration_id: int | None
+    # when the matcher last considered this transaction (design Decision 2)
+    last_evaluated_at: datetime.datetime | None
     # only meaningful for a flagged transaction; whether reinstate is offered
     # (capacity re-checked at read time — see routers.payments._transaction_out)
     reinstate_available: bool = False
+    # detected VS values that resolve to an issued registration; pre-fills
+    # the manual link dialog for an unmatched transaction (design Decisions
+    # 5 and 6) — filled by routers.payments._transaction_out
+    candidate_vs: list[int] = []
 
 
 class LinkIn(BaseModel):
@@ -596,6 +606,8 @@ class IngestAndMatchOut(BaseModel):
     matched: int
     flagged: int
     unmatched: int
+    # credited but short of the amount due; left reserved (design Decision 1)
+    partial: int = 0
     # belonged to a sibling tournament on the same bank account; recorded, not
     # queued here (design Decision 5) — distinct from matched/flagged/unmatched
     set_aside: int

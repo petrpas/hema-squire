@@ -485,19 +485,47 @@ class BankTransaction(Base):
     message: Mapped[str | None] = mapped_column(Text)
     payer_name: Mapped[str | None] = mapped_column(String(200))
     payer_account: Mapped[str | None] = mapped_column(String(50))
+    # additional Fio text fields that may carry a SEPA reference (design
+    # harden-payment-matching Decision 4); NULL on every historical row, which
+    # the VS scan treats as absent. Deliberately not payer_name/payer_account,
+    # which searchable_text below excludes.
+    user_identification: Mapped[str | None] = mapped_column(Text)
+    comment: Mapped[str | None] = mapped_column(Text)
+    specification: Mapped[str | None] = mapped_column(Text)
+    specific_symbol: Mapped[str | None] = mapped_column(String(50))
     ingested_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
 
     # matching outcome; None until the matcher has processed the transaction
-    status: Mapped[str | None] = mapped_column(String(20))  # matched|unmatched|flagged
+    status: Mapped[str | None] = mapped_column(String(20))  # matched|unmatched|flagged|partial
     status_reason: Mapped[str | None] = mapped_column(String(50))
     matched_registration_id: Mapped[int | None] = mapped_column(
         ForeignKey("registrations.id")
     )
+    # when the matcher last considered this transaction — set on every pass
+    # that examines it (new or re-evaluated flagged), so a row leaving the
+    # queue between passes is explicable (design Decision 2)
+    last_evaluated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     tournament: Mapped[Tournament] = relationship()
     matched_registration: Mapped[Registration | None] = relationship()
+
+    @property
+    def searchable_text(self) -> str:
+        """Every text-bearing field the VS scan may search, concatenated.
+        Deliberately excludes payer_name and payer_account: both are
+        structured identifiers (an account number is a long digit string),
+        and scanning them for a bare numeric VS is a false-positive generator
+        with no upside (design Decision 4)."""
+        parts = [
+            self.message,
+            self.user_identification,
+            self.comment,
+            self.specification,
+            self.specific_symbol,
+        ]
+        return " ".join(part for part in parts if part)
 
 
 class PaymentEvent(Base):

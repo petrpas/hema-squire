@@ -20,6 +20,14 @@
     "afterExpiry": {
       "subject": "Payment received after reservation expiry — {tournament}",
       "body": "Hi {name},\n\nyour payment (VS {vs}) arrived for your registration at {tournament}, but the reservation had already expired in the meantime. We haven't confirmed the place automatically — the organizer will follow up to sort out next steps.\n\n{tournament} team"
+    },
+    "partial": {
+      "subject": "Partial payment received — {tournament}",
+      "body": "Hi {name},\n\nwe've received a payment toward your registration for {tournament} (VS {vs}), but it doesn't yet cover the full amount. {outstanding} is still outstanding — once it arrives, your place will be confirmed.\n\n{tournament} team"
+    },
+    "expiredHoldingPayment": {
+      "subject": "Reservation expired, payment held — {tournament}",
+      "body": "Hi {name},\n\nyour reservation for {tournament} (VS {vs}) has expired without the full amount arriving. We are holding the partial payment you already sent — the organizer will be in contact about it.\n\n{tournament} team"
     }
   }
 }
