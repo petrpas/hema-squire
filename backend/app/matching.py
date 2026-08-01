@@ -1,20 +1,22 @@
 """Automatic payment matching: strictly VS-first, amount within the
 tournament's tolerance. Never by payer name or amount alone.
 
-A transaction in a foreign currency is converted into the tournament's primary
-currency before the tolerance comparison — comparing the raw numbers would read
-a correct 68.63 EUR transfer against a 1750 CZK total as 96 % short (design D5).
+A transaction is compared against the total denominated in its own currency —
+the local total for a local-currency transaction, the EUR total for a EUR one
+on a tournament that prices in EUR as a second currency. No conversion ever
+happens; a transaction in a currency the tournament does not price in is
+flagged as not accepted rather than converted and compared (design D4).
 """
 
 import re
 from datetime import UTC, datetime, timedelta
-from decimal import Decimal
+from typing import Literal
 
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app import emails, pricing
+from app import emails
 from app import rules as rules_engine
 from app.availability import taken_seats
 from app.mail import Mailer
@@ -29,6 +31,8 @@ from app.models import (
 
 # SEPA and other transfers without a VS field carry it in the message text.
 VS_IN_MESSAGE = re.compile(r"\bVS[:\s]*(\d{1,10})\b", re.IGNORECASE)
+
+MatchCurrency = Literal["local", "eur"]
 
 
 class MatchResult(BaseModel):
@@ -68,20 +72,17 @@ def _finish(transaction: BankTransaction, status: str, reason: str | None = None
     transaction.status_reason = reason
 
 
-def paid_cents_in_primary(
-    transaction: BankTransaction, tournament: Tournament
-) -> int | None:
-    """The transaction's amount in primary-currency cents, or None when the two
-    currencies are not commensurable — an unset transaction currency is trusted
-    as the primary one (that is what pre-multi-currency ingestion recorded)."""
-    currency = (transaction.currency or str(tournament.primary_currency)).upper()
-    if currency == str(tournament.primary_currency):
-        return transaction.amount_cents
-    if currency == Currency.EUR:
-        converted = pricing.from_eur_cents(transaction.amount_cents, tournament)
-        if converted is None:
-            return None
-        return int((converted * Decimal(100)).to_integral_value())
+def match_currency(transaction: BankTransaction, tournament: Tournament) -> MatchCurrency | None:
+    """Which stored total a transaction should be compared against, purely by
+    currency identity — never by conversion (design Decision 4). An unset
+    transaction currency is trusted as the tournament's local one, matching
+    what pre-multi-currency ingestion recorded. None means the tournament
+    does not accept that currency at all."""
+    currency = (transaction.currency or str(tournament.local_currency)).upper()
+    if currency == str(tournament.local_currency):
+        return "local"
+    if currency == Currency.EUR and tournament.shows_eur:
+        return "eur"
     return None
 
 
@@ -185,27 +186,35 @@ def match_new_transactions(
             result.flagged += 1
             continue
 
-        paid_cents = paid_cents_in_primary(transaction, tournament)
-        if paid_cents is None:
-            # a currency the tournament has no rate for: flag it as such rather
-            # than pretending the amounts are comparable
-            _finish(transaction, "flagged", "currency_unconvertible")
+        which = match_currency(transaction, tournament)
+        due_cents = None
+        if which == "local":
+            due_cents = registration.outstanding_cents
+        elif which == "eur":
+            due_cents = registration.outstanding_eur_cents
+
+        if which is None or due_cents is None:
+            # either a currency the tournament does not price in, or (rarely)
+            # a registration created before EUR pricing applied to it — either
+            # way there is nothing to compare the transaction against
+            _finish(transaction, "flagged", "currency_not_accepted")
             _event(
-                session, transaction, "currency_unconvertible",
+                session, transaction, "currency_not_accepted",
                 f"VS {vs}: {transaction.amount_cents} cents in {transaction.currency}, "
-                f"tournament prices in {tournament.primary_currency}",
+                f"tournament accepts {tournament.local_currency}"
+                + (" and EUR" if tournament.shows_eur else ""),
                 registration,
             )
             result.flagged += 1
             continue
 
-        due_cents = registration.outstanding_cents
+        paid_cents = transaction.amount_cents
         tolerance = due_cents * tournament.amount_tolerance_percent / 100
         if abs(paid_cents - due_cents) > tolerance:
             _finish(transaction, "flagged", "amount_out_of_tolerance")
             _event(
                 session, transaction, "amount_mismatch",
-                f"VS {vs}: paid {paid_cents} of {due_cents} cents",
+                f"VS {vs}: paid {paid_cents} of {due_cents} cents ({which})",
                 registration,
             )
             result.flagged += 1
@@ -213,14 +222,18 @@ def match_new_transactions(
 
         registration.state = RegistrationState.PAID
         registration.paid_at = datetime.now(UTC)
-        registration.amount_paid_cents += paid_cents
+        if which == "local":
+            registration.amount_paid_cents += paid_cents
+        else:
+            registration.amount_paid_eur_cents += paid_cents
         transaction.matched_registration_id = registration.id
         _finish(transaction, "matched", "auto_vs")
-        # the audit records what arrived and, when converted, what it counted as
-        detail = f"VS {vs}: {transaction.amount_cents} cents"
-        if paid_cents != transaction.amount_cents:
-            detail += f" {transaction.currency} = {paid_cents} cents primary"
-        _event(session, transaction, "payment_matched", detail, registration)
+        # the audit records the amount and the currency it was credited in
+        currency_code = tournament.local_currency if which == "local" else Currency.EUR
+        _event(
+            session, transaction, "payment_matched",
+            f"VS {vs}: {paid_cents} cents {currency_code}", registration,
+        )
         result.matched += 1
         session.flush()
         if reinstated:
@@ -262,16 +275,19 @@ def apply_payment_links(session: Session, tournament: Tournament, mailer: Mailer
             for vs in rule.payload.get("vs", [])
         ]
         registrations = [r for r in registrations if r is not None]
-        credited = paid_cents_in_primary(transaction, tournament)
+        which = match_currency(transaction, tournament)
         for registration in registrations:
             if registration.state != RegistrationState.RESERVED:
                 continue
             registration.state = RegistrationState.PAID
             registration.paid_at = datetime.now(UTC)
             detail = f"manual link (rule {rule.id}): VS {registration.vs}"
-            if credited is not None:
-                registration.amount_paid_cents += credited
-                detail += f" = {credited} cents primary"
+            if which == "local":
+                registration.amount_paid_cents += transaction.amount_cents
+                detail += f" = {transaction.amount_cents} cents {tournament.local_currency}"
+            elif which == "eur":
+                registration.amount_paid_eur_cents += transaction.amount_cents
+                detail += f" = {transaction.amount_cents} cents EUR"
             _event(session, transaction, "payment_matched", detail, registration)
             session.flush()
             emails.send_payment_received(
@@ -297,8 +313,9 @@ def unapply_payment_link(session: Session, tournament: Tournament, rule) -> None
         transaction.status = "unmatched"
         transaction.status_reason = "manual_unlink"
         transaction.matched_registration_id = None
-    # the exact amount this link credited, so reverting removes exactly that
-    credited = paid_cents_in_primary(transaction, tournament) if transaction is not None else None
+    # the exact amount and currency this link credited, so reverting removes
+    # exactly that from exactly that currency's counter
+    which = match_currency(transaction, tournament) if transaction is not None else None
 
     still_linked = {
         vs
@@ -325,8 +342,10 @@ def unapply_payment_link(session: Session, tournament: Tournament, rule) -> None
             continue
         registration.state = RegistrationState.RESERVED
         registration.paid_at = None
-        if credited is not None:
-            registration.amount_paid_cents -= credited
+        if which == "local":
+            registration.amount_paid_cents -= transaction.amount_cents
+        elif which == "eur":
+            registration.amount_paid_eur_cents -= transaction.amount_cents
         session.add(
             PaymentEvent(
                 tournament_id=tournament.id,

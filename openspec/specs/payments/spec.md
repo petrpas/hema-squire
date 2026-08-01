@@ -64,33 +64,57 @@ The system SHALL ingest transactions via the Fio bank REST API on a schedule and
 - **THEN** no transaction is matched or counted twice
 
 ### Requirement: Amount tolerance
-A VS-matched transaction SHALL be compared against the amount due in the tournament's primary currency. The amount due SHALL be the registration's current total less the amount already credited to it, so that a registration amended upward after payment is owed the difference and one amended downward carries an overpayment rather than appearing settled. When the transaction's currency differs from the primary currency, its amount SHALL first be converted into the primary currency at the tournament's stored exchange rate; a transaction in a currency for which no rate is configured SHALL be flagged with a distinct currency reason rather than compared as if the amounts were commensurable. The converted transaction SHALL be accepted as full payment when it is within the tournament's configured tolerance (default ±5 %) of the amount due, absorbing both conversion noise and the spread between the organizer's configured rate and the payer's bank's rate. Outside tolerance, the transaction SHALL be flagged for manual resolution rather than silently accepted or ignored.
+A VS-matched transaction SHALL be compared against the amount due **denominated in the transaction's own currency**. Where the transaction's currency is the tournament's local currency, it SHALL be compared against the registration's local total; where it is EUR and the tournament prices in EUR as a second currency, it SHALL be compared against the registration's EUR total. The amount due in a currency SHALL be that currency's total less the amount already credited to the registration in that same currency, so that a registration amended upward after payment is owed the difference and one amended downward carries an overpayment rather than appearing settled.
 
-The amount credited to a registration SHALL be recorded in the primary currency at the rate applied when the payment was matched, and reverting a manual payment link SHALL remove exactly the amount that link credited.
+**No conversion SHALL occur at any point in the payment path,** and no exchange ratio SHALL be consulted. A transaction in a currency the tournament does not price in SHALL be flagged with a distinct not-accepted reason and SHALL NOT be compared numerically against a total in another currency.
 
-#### Scenario: Foreign-currency payment slightly short
-- **WHEN** a payment converted from another currency arrives 3 % below the amount due with the correct VS
+A transaction SHALL be accepted as full payment when the amount still due in its currency falls within the tournament's configured tolerance (default ±5 %) of zero. That tolerance absorbs bank fees and payer rounding; it is no longer required to absorb any difference between an organizer's recorded ratio and a payer's bank's rate, because neither reaches the comparison. Outside tolerance, the transaction SHALL be flagged for manual resolution rather than silently accepted or ignored.
+
+Amounts credited to a registration SHALL be recorded per currency, and SHALL NOT be summed across currencies — doing so would require an exchange ratio the payment path does not use. A registration SHALL be settled when the amount credited in **either** currency covers that currency's total within tolerance. A registration part-paid in each of two currencies SHALL be flagged for the organizer rather than aggregated. Reverting a manual payment link SHALL remove exactly the amount that link credited, from the currency it credited.
+
+#### Scenario: Local-currency payment matched against the local total
+- **WHEN** a CZK transaction carrying a registration's VS arrives against a registration whose local total is 1500 Kč
+- **THEN** it is compared against 1500 and no exchange ratio is consulted
+
+#### Scenario: EUR payment matched against the stored EUR total
+- **WHEN** a 60 € transaction carrying the VS of a registration whose EUR total is 60 € arrives on a CZK + EUR tournament
+- **THEN** it is compared against the stored EUR total, matches exactly, and the registration is marked paid
+
+#### Scenario: Payment slightly short after bank fees
+- **WHEN** a payment arrives 3 % below the amount due in its own currency with the correct VS
 - **THEN** the registration is marked paid
 
-#### Scenario: EUR payment matched against a CZK total
-- **WHEN** a CZK tournament with EUR payments enabled at 25.5 receives a 68.63 EUR transaction carrying the VS of a reservation owing 1750 CZK
-- **THEN** the amount is converted at the stored rate, falls within tolerance, and the registration is marked paid
+#### Scenario: Unpriced currency flagged as not accepted
+- **WHEN** a VS-matched transaction arrives in a currency the tournament does not price in
+- **THEN** the transaction is flagged with a not-accepted reason and is not compared against any total
 
-#### Scenario: Unconvertible currency flagged with its own reason
-- **WHEN** a VS-matched transaction arrives in a currency for which the tournament has no configured rate
-- **THEN** the transaction is flagged with a currency reason and is not compared numerically against the primary-currency total
+#### Scenario: EUR payment to a tournament pricing only locally
+- **WHEN** a EUR transaction arrives against a CZK-only tournament
+- **THEN** it is flagged as not accepted rather than converted and compared
 
 #### Scenario: Amount far off
-- **WHEN** a payment with a correct VS arrives 40 % below the amount due
+- **WHEN** a payment with a correct VS arrives 40 % below the amount due in its currency
 - **THEN** the transaction is flagged for the organizer instead of confirming the registration
 
-#### Scenario: Credited amount recorded on the match
+#### Scenario: Ratio change does not affect reconciliation
+- **WHEN** the organizer changes the recorded exchange ratio and a payment then arrives for an existing reservation
+- **THEN** the comparison is unaffected, because the ratio is not read by matching
+
+#### Scenario: Credited amount recorded in its own currency
 - **WHEN** a transaction is matched to a registration
-- **THEN** the amount credited to that registration increases by the transaction's amount in the primary currency, and the audit entry records both what arrived and what it counted as
+- **THEN** the amount credited in that transaction's currency increases by the transaction's amount, the other currency's credited amount is unchanged, and the audit entry records the amount and its currency
+
+#### Scenario: Credits not summed across currencies
+- **WHEN** a registration owing 1500 Kč or 60 € receives 750 Kč and then 30 €
+- **THEN** neither currency's credit covers its own total, the payments are not combined, and the registration is flagged for the organizer
+
+#### Scenario: Either currency settles the registration
+- **WHEN** a registration owing 1500 Kč or 60 € is credited 60 €
+- **THEN** it is marked paid, and no local-currency balance is treated as outstanding
 
 #### Scenario: Reverted link removes its credit
 - **WHEN** the organizer removes a manual payment link that had credited a registration
-- **THEN** the amount credited to that registration returns to what it was before the link was applied
+- **THEN** the amount credited in that link's currency returns to what it was before the link was applied
 
 ### Requirement: Payments arriving after expiry
 A VS-matched payment SHALL NOT be left permanently unresolved because the reservation it names is no longer reserved. Every such transaction SHALL reach one of three outcomes: reinstated and paid, resolved by an explicit organizer action, or routed to refund.
@@ -150,7 +174,7 @@ The organizer SHALL be able to link an unmatched transaction to one or more regi
 - **THEN** both registrations are marked paid and the link is recorded as a removable rule
 
 ### Requirement: Reminders and expiry notices
-The system SHALL send an automatic reminder email, including the payment QR, on the tournament's configured reminder day of an unpaid reservation, and a notification when a reservation expires. Reminder emails SHALL carry the same payment content as the original confirmation, including the EUR amount and EUR QR when the tournament has EUR payments enabled on a non-EUR primary currency. Both events SHALL be audited.
+The system SHALL send an automatic reminder email, including the payment QR, on the tournament's configured reminder day of an unpaid reservation, and a notification when a reservation expires. Reminder emails SHALL carry the same payment content as the original confirmation, including the EUR amount and EUR QR when the tournament has EUR payments enabled on a non-EUR local currency. Both events SHALL be audited.
 
 #### Scenario: Reminder sent
 - **WHEN** a reservation reaches the configured reminder day unpaid

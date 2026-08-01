@@ -104,6 +104,10 @@ class DisciplineIn(BaseModel):
     capacity: int = Field(gt=0)
     fee: int | None = Field(default=None, ge=0)
     fee_early: int | None = Field(default=None, ge=0)
+    # EUR prices, filled only in local + EUR mode; authoritative, never
+    # computed from fee/fee_early (design Decision 1)
+    fee_eur: int | None = Field(default=None, ge=0)
+    fee_early_eur: int | None = Field(default=None, ge=0)
     # optional schedule + ruleset reference; informational, never affect pricing
     schedule_when: str | None = Field(default=None, max_length=200)
     schedule_where: str | None = Field(default=None, max_length=300)
@@ -119,6 +123,8 @@ class DisciplineOut(BaseModel):
     capacity: int
     fee: int | None
     fee_early: int | None
+    fee_eur: int | None
+    fee_early_eur: int | None
     schedule_when: str | None
     schedule_where: str | None
     ruleset_name: str | None
@@ -129,6 +135,9 @@ class ExtraItemIn(BaseModel):
     name: str = Field(min_length=1, max_length=200)
     category: ExtraCategory
     price: int = Field(ge=0)
+    # EUR price, filled only in local + EUR mode; authoritative, never
+    # computed from `price` (design Decision 1)
+    price_eur: int | None = Field(default=None, ge=0)
     max_qty: int = Field(default=1, ge=1)
     # optional descriptive fields; informational, never affect pricing
     schedule_when: str | None = Field(default=None, max_length=200)
@@ -190,11 +199,17 @@ class DiscountCondition(BaseModel):
 class DiscountEffect(BaseModel):
     kind: Literal["fixed", "percent"]
     value: int = Field(ge=0)
+    # the EUR amount of a fixed discount — a price decision like any other
+    # (design Decision 1), filled only in local + EUR mode. A percentage
+    # effect is currency-neutral and carries no second value.
+    value_eur: int | None = Field(default=None, ge=0)
 
     @model_validator(mode="after")
     def _percent_bounds(self) -> DiscountEffect:
         if self.kind == "percent" and self.value > 100:
             raise ValueError("percent discount cannot exceed 100")
+        if self.kind == "percent" and self.value_eur is not None:
+            raise ValueError("percent discount cannot carry a EUR amount")
         return self
 
 
@@ -240,9 +255,10 @@ class TournamentUpdate(BaseModel):
     qualification_open: bool | None = None
     qualification_criteria: str | None = None
     registration_instructions: str | None = None
-    primary_currency: Currency | None = None
+    local_currency: Currency | None = None
     eur_payments_enabled: bool | None = None
-    # primary-currency units per 1 EUR; a non-positive rate is meaningless
+    # local-currency units per 1 EUR; a Setup convenience for recalculate-
+    # missing only (design Decision 3) — a non-positive rate is meaningless
     eur_rate: decimal.Decimal | None = Field(default=None, gt=0)
     organizers: list[OrganizerIn] | None = None
     registration_opens: datetime.date | None = None
@@ -271,6 +287,30 @@ class TournamentUpdate(BaseModel):
     # editable only until the tournament's first registration (design
     # Decision 2); rejected otherwise, and rejected on collision
     vs_series: int | None = Field(default=None, ge=1, le=99)
+
+    # a rate is a Setup convenience the organizer reads back, not a computed
+    # figure; two decimal places is what an organizer actually types
+    @field_validator("eur_rate")
+    @classmethod
+    def _quantize_rate(cls, value: decimal.Decimal | None) -> decimal.Decimal | None:
+        if value is None:
+            return None
+        return value.quantize(decimal.Decimal("0.01"), rounding=decimal.ROUND_HALF_UP)
+
+
+# the three currency modes a tournament can be in (design Decision 2):
+# "local" — a single local currency; "local_eur" — local plus EUR as an
+# accepted second currency; "eur" — the local currency is EUR itself, so
+# there is no second currency, regardless of eur_payments_enabled
+CurrencyMode = Literal["local", "local_eur", "eur"]
+
+
+def currency_mode(local_currency: Currency, eur_payments_enabled: bool) -> CurrencyMode:
+    if local_currency == Currency.EUR:
+        return "eur"
+    if eur_payments_enabled:
+        return "local_eur"
+    return "local"
 
 
 class TournamentOut(BaseModel):
@@ -303,7 +343,7 @@ class TournamentOut(BaseModel):
     qualification_open: bool
     qualification_criteria: str | None
     registration_instructions: str | None
-    primary_currency: Currency
+    local_currency: Currency
     eur_payments_enabled: bool
     eur_rate: decimal.Decimal | None
     organizers: list[OrganizerOut]
@@ -314,6 +354,9 @@ class TournamentOut(BaseModel):
     extra_items: list[ExtraItemOut] = []
     # filled by the detail endpoint from setup.setup_missing(); None elsewhere
     setup_missing: list[str] | None = None
+    # derived from local_currency + eur_payments_enabled; a convenience for
+    # the frontend rather than a stored fact (design Decision 2)
+    currency_mode: CurrencyMode = "local"
     disciplines: list[DisciplineOut]
     vs_year: int
     vs_series: int
@@ -327,6 +370,11 @@ class TournamentOut(BaseModel):
     @classmethod
     def _normalize_organizers(cls, value: Any) -> Any:
         return _tolerant_organizers(value)
+
+    @model_validator(mode="after")
+    def _derive_currency_mode(self) -> TournamentOut:
+        self.currency_mode = currency_mode(self.local_currency, self.eur_payments_enabled)
+        return self
 
 
 class TeamAdd(BaseModel):
@@ -419,6 +467,10 @@ class RegistrationOut(BaseModel):
     # total_amount less what has been credited so far; the single figure the
     # fencer needs, never a total and a payment history to subtract by hand
     outstanding_amount: decimal.Decimal
+    # the EUR pair, absent (not zero) when the tournament does not price in
+    # EUR — both are stored figures, never derived from the local ones
+    total_eur: int | None = None
+    outstanding_eur_amount: decimal.Decimal | None = None
     expires_at: datetime.datetime | None
     registered_at: datetime.datetime
     paid_at: datetime.datetime | None
@@ -451,8 +503,9 @@ class PricePreviewIn(BaseModel):
 class PricePreviewOut(BaseModel):
     total: int
     currency: Currency = Currency.CZK
-    # the EUR equivalent, omitted when no EUR figure applies
-    eur_total: decimal.Decimal | None = None
+    # the stored EUR total, independently summed from EUR prices — omitted
+    # (not derived) when the tournament does not price in EUR
+    eur_total: int | None = None
 
 
 class PaymentInstructionsOut(BaseModel):
@@ -465,7 +518,7 @@ class PaymentInstructionsOut(BaseModel):
     spayd: str
     qr_png_base64: str
     # the EUR pair is absent, not empty, when the tournament takes no EUR
-    eur_amount: decimal.Decimal | None = None
+    eur_amount: int | None = None
     eur_spayd: str | None = None
     eur_qr_png_base64: str | None = None
 
@@ -474,6 +527,7 @@ class OpenDisciplineOut(BaseModel):
     code: str
     name: str
     fee: int | None
+    fee_eur: int | None = None
     taken: int
     capacity: int
     queue_length: int
@@ -493,7 +547,7 @@ class OpenTournamentOut(BaseModel):
     description: str | None = None
     qualification_open: bool = True
     qualification_criteria: str | None = None
-    primary_currency: Currency = Currency.CZK
+    local_currency: Currency = Currency.CZK
     organizers: list[OrganizerOut]
     registration_status: RegistrationStatus
     registration_opens_on: datetime.date | None = None

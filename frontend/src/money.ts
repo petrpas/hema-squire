@@ -16,28 +16,28 @@ export function formatMoney(amount: number | string, currency: Currency): string
   return `${grouped} ${CURRENCY_SYMBOLS[currency]}`;
 }
 
-/** Whether a second, EUR-denominated figure applies to this tournament. */
+/** Whether EUR is an accepted second currency alongside the local one. False
+ *  for an EUR-priced tournament — its local figure already is the EUR one.
+ *  Does not depend on eur_rate, which is a Setup convenience only. */
 export function showsEur(
-  tournament: Pick<TournamentDetail, "primary_currency" | "eur_payments_enabled" | "eur_rate">,
+  tournament: Pick<TournamentDetail, "local_currency" | "eur_payments_enabled">,
 ): boolean {
-  return (
-    tournament.eur_payments_enabled &&
-    tournament.primary_currency !== "EUR" &&
-    Number(tournament.eur_rate) > 0
-  );
+  return tournament.eur_payments_enabled && tournament.local_currency !== "EUR";
 }
 
 /**
- * An amount in the tournament's currency, with the EUR equivalent in
- * parentheses when the tournament takes EUR alongside it. The single decision
- * point for "is there a EUR figure here", so no call site repeats the condition.
+ * A stored local-currency amount with the stored EUR amount in parentheses
+ * when the tournament takes EUR alongside it. Neither figure is ever computed
+ * from the other — both are passed in as already-stored amounts. The single
+ * decision point for "is there a EUR figure here", so no call site repeats
+ * the condition.
  */
 export function formatMoneyWithEur(
-  amount: number,
-  tournament: Pick<TournamentDetail, "primary_currency" | "eur_payments_enabled" | "eur_rate">,
+  localAmount: number | string,
+  eurAmount: number | string | null | undefined,
+  tournament: Pick<TournamentDetail, "local_currency" | "eur_payments_enabled">,
 ): string {
-  const primary = formatMoney(amount, tournament.primary_currency);
-  if (!showsEur(tournament)) return primary;
-  const eur = amount / Number(tournament.eur_rate);
-  return `${primary} (${formatMoney(eur.toFixed(2), "EUR")})`;
+  const primary = formatMoney(localAmount, tournament.local_currency);
+  if (!showsEur(tournament) || eurAmount === null || eurAmount === undefined) return primary;
+  return `${primary} (${formatMoney(eurAmount, "EUR")})`;
 }

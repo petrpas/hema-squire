@@ -197,9 +197,11 @@ def reinstate_transaction(
 
     registration.state = RegistrationState.PAID
     registration.paid_at = datetime.now(UTC)
-    credited = matching.paid_cents_in_primary(transaction, tournament)
-    if credited is not None:
-        registration.amount_paid_cents += credited
+    which = matching.match_currency(transaction, tournament)
+    if which == "local":
+        registration.amount_paid_cents += transaction.amount_cents
+    elif which == "eur":
+        registration.amount_paid_eur_cents += transaction.amount_cents
     transaction.matched_registration_id = registration.id
     transaction.status = "matched"
     transaction.status_reason = "reinstated_by_organizer"
@@ -227,9 +229,12 @@ def mark_transaction_for_refund(
     require_console_access(session, tournament, fencer)
     transaction = _flagged_transaction(session, tournament, transaction_id)
     registration = _flagged_registration(session, tournament, transaction)
-    credited = matching.paid_cents_in_primary(transaction, tournament)
-    if registration is not None and credited is not None:
-        registration.amount_paid_cents += credited
+    which = matching.match_currency(transaction, tournament)
+    if registration is not None and which is not None:
+        if which == "local":
+            registration.amount_paid_cents += transaction.amount_cents
+        else:
+            registration.amount_paid_eur_cents += transaction.amount_cents
         registration.refund_state = RefundState.PENDING
     transaction.status = "resolved"
     transaction.status_reason = "marked_for_refund"

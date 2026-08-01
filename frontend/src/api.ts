@@ -57,8 +57,11 @@ export function logoUrl(slug: string): string {
   return `/api/tournaments/${slug}/logo`;
 }
 
-/** A tournament's primary currency; amounts are whole units of it. */
+/** A tournament's local currency; amounts are whole units of it. */
 export type Currency = "CZK" | "EUR";
+
+/** The three currency modes a tournament can be in (design Decision 2). */
+export type CurrencyMode = "local" | "local_eur" | "eur";
 
 export type Role = "fencer" | "organizer" | "admin";
 
@@ -115,6 +118,10 @@ export interface Discipline {
   capacity: number;
   fee: number | null;
   fee_early: number | null;
+  /** EUR prices, authoritative and independent of fee/fee_early — filled
+   *  only in local + EUR mode, never computed from the local price. */
+  fee_eur: number | null;
+  fee_early_eur: number | null;
   schedule_when: string | null;
   schedule_where: string | null;
   ruleset_name: string | null;
@@ -126,6 +133,7 @@ export interface DisciplineInput {
   code: string;
   capacity: number;
   fee: number | null;
+  fee_eur?: number | null;
   schedule_when?: string | null;
   schedule_where?: string | null;
   ruleset_name?: string | null;
@@ -145,6 +153,9 @@ export interface ExtraItemInput {
   name: string;
   category: ExtraCategory;
   price: number;
+  /** EUR price, authoritative and independent of `price` — filled only in
+   *  local + EUR mode. */
+  price_eur?: number | null;
   max_qty: number;
   schedule_when?: string | null;
   schedule_where?: string | null;
@@ -160,6 +171,7 @@ export interface ExtraItem {
   name: string;
   category: ExtraCategory;
   price: number;
+  price_eur: number | null;
   max_qty: number;
   schedule_when: string | null;
   schedule_where: string | null;
@@ -179,6 +191,9 @@ export interface DiscountCondition {
 export interface DiscountEffect {
   kind: "fixed" | "percent";
   value: number;
+  /** The EUR amount of a fixed discount — a price decision like any other,
+   *  filled only in local + EUR mode. Percent effects carry no second value. */
+  value_eur?: number | null;
 }
 
 export interface Discount {
@@ -212,9 +227,10 @@ export interface TournamentDetail extends Tournament {
   qualification_open: boolean;
   qualification_criteria: string | null;
   registration_instructions: string | null;
-  primary_currency: Currency;
+  local_currency: Currency;
   eur_payments_enabled: boolean;
-  /** Primary-currency units per 1 EUR; null unless EUR payments are on. */
+  /** Local-currency units per 1 EUR; a Setup convenience for recalculate-
+   *  missing only, never required and never read outside Setup. */
   eur_rate: string | null;
   organizers: Organizer[];
   registration_opens: string | null;
@@ -224,6 +240,8 @@ export interface TournamentDetail extends Tournament {
   discounts: Discount[];
   extra_items: ExtraItem[];
   setup_missing: string[] | null;
+  /** Derived from local_currency + eur_payments_enabled (design Decision 2). */
+  currency_mode: CurrencyMode;
   disciplines: Discipline[];
   vs_year: number;
   vs_series: number;
@@ -282,6 +300,7 @@ export interface OpenDiscipline {
   code: string;
   name: string;
   fee: number | null;
+  fee_eur: number | null;
   taken: number;
   capacity: number;
   queue_length: number;
@@ -297,7 +316,7 @@ export interface OpenTournament {
   description: string | null;
   qualification_open: boolean;
   qualification_criteria: string | null;
-  primary_currency: Currency;
+  local_currency: Currency;
   organizers: Organizer[];
   registration_status: RegistrationStatus;
   registration_opens_on: string | null;
@@ -341,6 +360,10 @@ export interface RegistrationDetail {
   total_amount: number;
   /** total_amount less what has been credited so far; a decimal string. */
   outstanding_amount: string;
+  /** The stored EUR pair, absent (not derived) when the tournament does not
+   *  price in EUR. */
+  total_eur: number | null;
+  outstanding_eur_amount: string | null;
   expires_at: string | null;
   registered_at: string;
   paid_at: string | null;
@@ -382,8 +405,9 @@ export interface PricePreviewPayload {
 export interface PricePreview {
   total: number;
   currency: Currency;
-  /** EUR equivalent; null unless the tournament takes EUR alongside its own. */
-  eur_total: string | null;
+  /** The stored EUR total, independently summed; null unless the tournament
+   *  takes EUR alongside its local currency. */
+  eur_total: number | null;
 }
 
 export type TransactionStatus = "unmatched" | "flagged" | "matched" | "resolved";
@@ -417,7 +441,7 @@ export interface PaymentInstructions {
   spayd: string;
   qr_png_base64: string;
   /** The EUR trio is absent unless the tournament takes EUR as a second option. */
-  eur_amount: string | null;
+  eur_amount: number | null;
   eur_spayd: string | null;
   eur_qr_png_base64: string | null;
 }

@@ -91,19 +91,29 @@ Option validation SHALL apply to registration submission only. The price preview
 - **THEN** those selections remain valid and render with no option value
 
 ### Requirement: Amounts presented in the tournament's currency
-Every amount presented to a fencer — row prices, the running total, the registration total, and payment instructions — SHALL be rendered from the amount together with the tournament's primary currency. When the tournament has EUR payments enabled and its primary currency is not EUR, each presented total SHALL additionally show the EUR equivalent, converted at the tournament's stored rate and rounded half-up to two decimals. No EUR figure SHALL be presented when EUR payments are disabled or when the primary currency is already EUR. No user-facing string SHALL contain a hardcoded currency unit.
+Every amount presented to a fencer — row prices, the running total, the registration total, and payment instructions — SHALL be rendered from a stored price or a stored total together with the currency it is denominated in. When the tournament prices in EUR as a second currency, each presented figure SHALL additionally show the EUR figure, taken from the EUR price or the EUR total. No presented amount SHALL be produced by converting another amount at an exchange ratio. No EUR figure SHALL be presented when the tournament does not price in EUR, and no second figure SHALL be presented when the local currency is already EUR. No user-facing string SHALL contain a hardcoded currency unit.
 
-#### Scenario: EUR equivalent shown alongside the primary total
-- **WHEN** a CZK tournament with EUR payments enabled at 25.5 presents a total of 1750
-- **THEN** the total is presented as 1750 CZK with the EUR equivalent 68.63 beside it
+A registration SHALL store a total per configured currency, computed when the registration is created. A subsequent change to any configured price or to the recorded exchange ratio SHALL NOT alter a stored total.
 
-#### Scenario: No EUR figure without EUR payments
-- **WHEN** a CZK tournament has EUR payments disabled
+#### Scenario: Both figures shown from stored prices
+- **WHEN** a CZK + EUR tournament presents a registration totalling 1500 Kč and 60 €
+- **THEN** both figures are presented from the stored totals and neither is computed from the other
+
+#### Scenario: No EUR figure in single-currency mode
+- **WHEN** a tournament prices in CZK only
 - **THEN** every amount is presented in CZK only
 
 #### Scenario: EUR-priced tournament shows one figure
-- **WHEN** a tournament's primary currency is EUR
+- **WHEN** a tournament's local currency is EUR
 - **THEN** amounts are presented in EUR once, with no second currency figure
+
+#### Scenario: Ratio change moves nothing
+- **WHEN** the organizer changes the recorded exchange ratio after a reservation exists
+- **THEN** that reservation's presented totals in both currencies are unchanged
+
+#### Scenario: Price change does not move an existing registration
+- **WHEN** the organizer raises a discipline price after a reservation exists
+- **THEN** that reservation's stored totals are unchanged in both currencies
 
 ### Requirement: Reservation lifecycle
 A reservation SHALL be valid for the tournament's configured number of days from registration. There SHALL be no global payment deadline — each reservation carries its own window. An unpaid reservation SHALL expire automatically at the end of its window, freeing any capacity it held. A paid reservation SHALL become a confirmed registration.
@@ -168,36 +178,42 @@ Adding a discipline that is at capacity SHALL place that discipline in the subst
 - **THEN** the amendment is rejected and the fencer is directed to register again
 
 ### Requirement: Outstanding balance on a registration
-A registration SHALL record the total amount credited to it, expressed in the tournament's primary currency. The amount still owed SHALL be derived from that record against the registration's current total rather than tracked as a second stored figure, so that a recomputed total is immediately reflected in what is owed. A payment recorded in a currency other than the primary one SHALL be recorded at the rate applied when it was matched, so that a later change to the tournament's exchange rate does not restate what a registration has already paid.
+A registration SHALL record the amount credited to it **per currency** — local and, when the tournament prices in EUR, EUR — never converted between them and never summed across them. The amount still owed in a currency SHALL be derived from that currency's own credited amount against the registration's total in that same currency, rather than tracked as a second stored figure, so that a recomputed total is immediately reflected in what is owed. A registration is settled when either currency's credited amount covers that currency's own total within tolerance; a registration part-paid in each currency SHALL be flagged for the organizer rather than aggregated.
 
-A fencer viewing their registration SHALL be shown the outstanding amount when it is non-zero, rather than being left to compute the difference from a total and a payment history.
+A fencer viewing their registration SHALL be shown the outstanding amount in each configured currency when it is non-zero, rather than being left to compute the difference from a total and a payment history.
 
 #### Scenario: Balance follows a recomputed total
 - **WHEN** a paid registration's total is raised by an amendment
-- **THEN** the outstanding amount equals the new total less what was credited, with no separate figure to reconcile
+- **THEN** the outstanding amount in that currency equals the new total less what was credited in it, with no separate figure to reconcile
 
 #### Scenario: Credited amount survives a rate change
-- **WHEN** a foreign-currency payment is credited and the tournament's exchange rate is later edited
-- **THEN** the amount credited to that registration is unchanged
+- **WHEN** a EUR payment is credited and the tournament's recorded exchange ratio is later edited
+- **THEN** the amount credited to that registration in EUR is unchanged, because no conversion is ever performed and the ratio is not read by matching
 
 #### Scenario: Outstanding amount presented to the fencer
 - **WHEN** a fencer whose registration carries an outstanding surcharge views it
 - **THEN** the outstanding amount is presented with its currency alongside the total
 
 ### Requirement: Confirmation email with QR payment
-On registration the system SHALL send a localized confirmation email containing the registration summary — items with quantities and option values — the total amount with its currency, the bank account, the VS, and an SPAYD-format QR code encoding amount, currency, account, VS, and message. When the tournament has EUR payments enabled and its primary currency is not EUR, the email SHALL additionally carry the EUR amount and a second QR code denominated in EUR against the same account.
+On registration the system SHALL send a localized confirmation email containing the registration summary — items with quantities and option values — the total amount with its currency, the bank account, the VS, and an SPAYD-format QR code encoding amount, currency, account, VS, and message. When the tournament prices in EUR as a second currency, the email SHALL additionally carry the EUR total and a second QR code denominated in EUR against the same account.
+
+Each QR code SHALL encode the stored total of its own currency, with the SPAYD currency field taken from that currency. No amount in either QR code SHALL be produced by conversion.
 
 #### Scenario: QR payment
 - **WHEN** the fencer scans the QR code from the confirmation email in a banking app
 - **THEN** the prefilled payment carries the exact amount, currency, account, and VS needed for automatic matching
 
-#### Scenario: EUR QR included
-- **WHEN** a CZK tournament has EUR payments enabled and a reservation is created
-- **THEN** the email carries both the CZK amount with its QR and the EUR amount with a QR denominated in EUR
+#### Scenario: EUR QR carries the stored EUR total
+- **WHEN** a CZK + EUR tournament confirms a reservation totalling 1500 Kč and 60 €
+- **THEN** the email carries a CZK QR for 1500 and a EUR QR for 60, each with its own currency in the SPAYD currency field
 
-#### Scenario: No EUR block without EUR payments
-- **WHEN** a tournament has EUR payments disabled
+#### Scenario: No EUR block in single-currency mode
+- **WHEN** a tournament prices in one currency
 - **THEN** the email carries exactly one amount and one QR code
+
+#### Scenario: Emailed amounts stable against configuration changes
+- **WHEN** the organizer changes prices or the recorded ratio after a confirmation email was sent
+- **THEN** the reminder and the in-app instructions for that reservation state the same amounts and carry the same QR codes as the original confirmation
 
 ### Requirement: Capacity and substitutes
 Discipline capacity SHALL be consumed by confirmed registrations and by reservations within their validity window. When a discipline is full, further registrations SHALL join a substitute queue in registration order. When a spot frees through expiry or cancellation, the organizer SHALL be able to admit substitutes from the queue.
@@ -232,33 +248,41 @@ A fencer SHALL be able to cancel a registration. A cancellation before the tourn
 - **THEN** the registration is cancelled without refund and the spot is offered to the substitute queue
 
 ### Requirement: Price preview
-The system SHALL compute the total price for a hypothetical selection (disciplines and extra services with quantities and option values) for a tournament without creating a registration, using the same pricing engine — itemized pricing with discounts, or the legacy fee fields for legacy tournaments — that applies at registration time, evaluated as of the current date. The preview SHALL return the total in the tournament's primary currency, and its EUR equivalent when EUR payments are enabled on a non-EUR tournament.
+The system SHALL compute the total price for a hypothetical selection (disciplines and extra services with quantities and option values) for a tournament without creating a registration, using the same pricing engine — itemized pricing with discounts, or the legacy fee fields for legacy tournaments — that applies at registration time, evaluated as of the current date. The preview SHALL return a total per configured currency, each summed from that currency's prices by the same computation the registration will use.
 
 #### Scenario: Preview matches registration
 - **WHEN** a price preview is requested for a selection and the same selection is then submitted as a registration at the same date
-- **THEN** the previewed total equals the registration's computed total
+- **THEN** the previewed totals equal the registration's computed totals in every configured currency
 
-#### Scenario: Preview carries the EUR equivalent
-- **WHEN** a price preview is requested on a CZK tournament with EUR payments enabled
-- **THEN** the response carries the CZK total and its EUR equivalent at the tournament's stored rate
+#### Scenario: Preview carries both totals
+- **WHEN** a price preview is requested on a CZK + EUR tournament
+- **THEN** the response carries the CZK total and the EUR total, each summed from its own prices
+
+#### Scenario: Preview in single-currency mode
+- **WHEN** a price preview is requested on a tournament pricing in one currency
+- **THEN** the response carries exactly one total
 
 ### Requirement: In-app payment instructions retrieval
-The system SHALL provide, to the owning account only, the payment data for its unpaid reservation: total amount with its currency, bank account (IBAN), variable symbol, payment message, reservation expiry, and the SPAYD QR code — plus the EUR amount and a EUR-denominated QR code when the tournament has EUR payments enabled and its primary currency is not EUR. The content SHALL be identical to the confirmation email's. The EUR fields SHALL be absent, not empty, when they do not apply.
+The system SHALL provide, to the owning account only, the payment data for its unpaid reservation: total amount with its currency, bank account (IBAN), variable symbol, payment message, reservation expiry, and the SPAYD QR code — plus the EUR total and a EUR-denominated QR code when the tournament prices in EUR as a second currency. Every amount SHALL be a stored total and every QR code SHALL encode the stored total of its own currency. The content SHALL be identical to the confirmation email's. The EUR fields SHALL be absent, not empty, when they do not apply.
 
 #### Scenario: Owner retrieves payment data
 - **WHEN** the fencer who holds an unpaid reservation requests its payment instructions
 - **THEN** the amount with its currency, IBAN, VS, message, expiry, and QR code are returned
 
 #### Scenario: EUR pair present only when applicable
-- **WHEN** payment instructions are requested on a CZK tournament with EUR payments enabled and again on one with them disabled
-- **THEN** the first response carries the EUR amount and EUR QR and the second omits both fields entirely
+- **WHEN** payment instructions are requested on a CZK + EUR tournament and again on a CZK-only one
+- **THEN** the first response carries the EUR total and EUR QR and the second omits both fields entirely
+
+#### Scenario: Instructions match the original email after a configuration change
+- **WHEN** prices or the recorded ratio change and the fencer then retrieves their payment instructions
+- **THEN** the amounts and QR codes returned are the ones from their confirmation email
 
 #### Scenario: Other accounts denied
 - **WHEN** a different account requests those payment instructions
 - **THEN** the request is rejected
 
 ### Requirement: Fencer-facing tournament list
-The system SHALL expose a tournament list for fencers containing only published (setup-complete), non-cancelled tournaments, each with its public information — including its subtitle and a reference to its logo when set, and its primary currency — its per-discipline registered numbers (seats taken per capacity, counting confirmed registrations and unexpired reservations), the registration availability status (open, not yet open with the opening date, or closed), and whether the requesting account has an active registration. The subtitle and logo reference SHALL be omitted (null/absent) when not set, and their absence SHALL NOT change the rest of the payload.
+The system SHALL expose a tournament list for fencers containing only published (setup-complete), non-cancelled tournaments, each with its public information — including its subtitle and a reference to its logo when set, and its local currency — its per-discipline registered numbers (seats taken per capacity, counting confirmed registrations and unexpired reservations), the registration availability status (open, not yet open with the opening date, or closed), and whether the requesting account has an active registration. The subtitle and logo reference SHALL be omitted (null/absent) when not set, and their absence SHALL NOT change the rest of the payload.
 
 #### Scenario: Counts and own status included
 - **WHEN** a logged-in fencer requests the fencer-facing tournament list
@@ -270,7 +294,7 @@ The system SHALL expose a tournament list for fencers containing only published 
 
 #### Scenario: Currency carried
 - **WHEN** a fencer requests the list
-- **THEN** each entry carries the tournament's primary currency so amounts render without a hardcoded unit
+- **THEN** each entry carries the tournament's local currency so amounts render without a hardcoded unit
 
 #### Scenario: Unpublished excluded
 - **WHEN** a tournament's mandatory setup is incomplete or it is cancelled

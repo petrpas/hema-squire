@@ -108,20 +108,26 @@ def test_far_off_amount_flagged_not_accepted(client, auth_headers, mailbox):
 
 
 def test_vs_in_message_matches_sepa_style(client, auth_headers, mailbox):
-    """A foreign transfer carries its VS in the message and its amount in EUR;
-    the tournament prices in CZK and takes EUR at a configured rate, so the
-    amount is converted before the tolerance check (1000 CZK / 25.5 = 39.22)."""
+    """A foreign transfer carries its VS in the message and its amount in the
+    tournament's stored EUR total. The tournament prices in CZK and EUR
+    independently; no conversion happens anywhere in the payment path, so the
+    transfer is compared straight against the stored EUR total (39)."""
     organizer = auth_headers()
     setup(client, organizer)
     client.patch(
         "/api/tournaments/cup",
-        json={"eur_payments_enabled": True, "eur_rate": "25.5"},
+        json={"eur_payments_enabled": True},
+        headers=organizer,
+    )
+    client.patch(
+        "/api/tournaments/cup/disciplines/LS",
+        json={"code": "LS", "capacity": 10, "fee": 1000, "fee_eur": 39},
         headers=organizer,
     )
     fencer, vs = enroll(client, auth_headers)
 
     result = import_rows(
-        client, organizer, [f"1;01.08.2026;39,22;EUR;;;;platba VS{vs} Cup;MUELLER;DE99"]
+        client, organizer, [f"1;01.08.2026;39,00;EUR;;;;platba VS{vs} Cup;MUELLER;DE99"]
     )
     assert result["matched"] == 1
     state = client.get("/api/tournaments/cup/my-registration", headers=fencer).json()["state"]
@@ -157,6 +163,77 @@ def test_second_payment_for_paid_registration_flagged(client, auth_headers, mail
 
     queue = client.get("/api/tournaments/cup/payments/unmatched", headers=organizer).json()
     assert queue[0]["status_reason"] == "registration_paid"
+
+
+def setup_with_eur(client, organizer, fee=1000, fee_eur=40):
+    setup(client, organizer)
+    client.patch(
+        "/api/tournaments/cup",
+        json={"eur_payments_enabled": True},
+        headers=organizer,
+    )
+    client.patch(
+        "/api/tournaments/cup/disciplines/LS",
+        json={"code": "LS", "capacity": 10, "fee": fee, "fee_eur": fee_eur},
+        headers=organizer,
+    )
+
+
+def test_either_currency_settles_the_registration(client, auth_headers, mailbox):
+    """A registration owing 1000 Kč or 40 € is settled by a EUR credit alone
+    (design Decision 5) — no local-currency balance is treated as outstanding."""
+    organizer = auth_headers()
+    setup_with_eur(client, organizer)
+    fencer, vs = enroll(client, auth_headers)
+
+    result = import_rows(client, organizer, [f"1;01.08.2026;40,00;EUR;{vs};;;;MUELLER;DE99"])
+    assert result["matched"] == 1
+    state = client.get("/api/tournaments/cup/my-registration", headers=fencer).json()["state"]
+    assert state == "paid"
+
+
+def test_credits_not_summed_across_currencies(client, auth_headers, mailbox):
+    """Neither currency's credit covers its own total, and the two are never
+    combined into one balance — the registration stays flagged in both
+    currencies rather than reading as settled (design Decision 5)."""
+    organizer = auth_headers()
+    setup_with_eur(client, organizer)
+    fencer, vs = enroll(client, auth_headers)
+
+    czk_result = import_rows(client, organizer, [f"1;01.08.2026;400,00;CZK;{vs};;;;;"])
+    eur_result = import_rows(client, organizer, [f"2;01.08.2026;15,00;EUR;{vs};;;;MUELLER;DE99"])
+    assert czk_result["flagged"] == 1
+    assert eur_result["flagged"] == 1
+
+    state = client.get("/api/tournaments/cup/my-registration", headers=fencer).json()["state"]
+    assert state == "reserved"
+    queue = client.get("/api/tournaments/cup/payments/unmatched", headers=organizer).json()
+    reasons = {t["external_id"]: t["status_reason"] for t in queue}
+    assert reasons == {"1": "amount_out_of_tolerance", "2": "amount_out_of_tolerance"}
+
+
+def test_manual_link_credits_the_transactions_own_currency(client, auth_headers, mailbox):
+    organizer = auth_headers()
+    setup_with_eur(client, organizer)
+    fencer, vs = enroll(client, auth_headers)
+
+    csv = make_csv([f"1;01.08.2026;40,00;EUR;;;;;MUELLER;DE99"])
+    client.post(
+        "/api/tournaments/cup/payments/import-statement",
+        files={"file": ("v.csv", io.BytesIO(csv), "text/csv")},
+        headers=organizer,
+    )
+    transaction_id = client.get(
+        "/api/tournaments/cup/payments/unmatched", headers=organizer
+    ).json()[0]["id"]
+    client.post(
+        "/api/tournaments/cup/payments/link",
+        json={"transaction_id": transaction_id, "vs": [vs]},
+        headers=organizer,
+    )
+
+    state = client.get("/api/tournaments/cup/my-registration", headers=fencer).json()["state"]
+    assert state == "paid"
 
 
 def test_reimport_does_not_rematch(client, auth_headers, mailbox):

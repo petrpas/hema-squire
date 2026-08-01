@@ -529,24 +529,35 @@ def test_amount_paid_cents_credited_on_match_and_reverted_by_unapply(client, aut
 
 
 def test_foreign_currency_credit_unchanged_by_later_rate_edit(client, auth_headers, fio):
+    """A EUR payment is credited to its own counter, matched against the
+    stored EUR total with no conversion — so a later rate edit cannot move it
+    (design Decision 3/4)."""
     organizer = auth_headers()
     setup_tournament(
         client, organizer, capacity=10,
         eur_payments_enabled=True, eur_rate="25.5",
     )
+    client.patch(
+        "/api/tournaments/cup/disciplines/LS",
+        json={"code": "LS", "capacity": 10, "fee": 1000, "fee_eur": 40},
+        headers=organizer,
+    )
     fencer = auth_headers(email="f1@example.com", name="F1")
     initial = register(client, fencer).json()
     assert initial["total_amount"] == 1000
+    assert initial["total_eur"] == 40
 
-    fio.transactions = [transfer(initial["vs"], 40, currency="EUR")]  # 40 EUR ~ 1020 CZK
+    fio.transactions = [transfer(initial["vs"], 40, currency="EUR")]
     poll = client.post("/api/tournaments/cup/payments/fio-poll", headers=organizer).json()
     assert poll["matched"] == 1
 
-    credited_before = registration_by_vs(initial["vs"]).amount_paid_cents
-    assert credited_before == 40 * 25.5 * 100
+    registration = registration_by_vs(initial["vs"])
+    assert registration.amount_paid_cents == 0
+    assert registration.amount_paid_eur_cents == 4000
+    credited_before = registration.amount_paid_eur_cents
 
     client.patch("/api/tournaments/cup", json={"eur_rate": "30"}, headers=organizer)
-    assert registration_by_vs(initial["vs"]).amount_paid_cents == credited_before
+    assert registration_by_vs(initial["vs"]).amount_paid_eur_cents == credited_before
 
 
 # --- 9.11 Tournament parameter validation -------------------------------------

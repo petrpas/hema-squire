@@ -169,6 +169,7 @@ def open_tournaments(session: SessionDep, fencer: FencerDep):
                 code=d.code,
                 name=d.name,
                 fee=d.fee,
+                fee_eur=d.fee_eur,
                 taken=taken_seats(session, d),
                 capacity=d.capacity,
                 queue_length=queue_length(session, d),
@@ -203,7 +204,7 @@ def open_tournaments(session: SessionDep, fencer: FencerDep):
                 description=tournament.description,
                 qualification_open=tournament.qualification_open,
                 qualification_criteria=tournament.qualification_criteria,
-                primary_currency=tournament.primary_currency,
+                local_currency=tournament.local_currency,
                 organizers=tournament.organizers,
                 registration_status=status_,
                 registration_opens_on=opens_on,
@@ -262,6 +263,7 @@ def past_tournaments(session: SessionDep, fencer: FencerDep):
                 code=d.code,
                 name=d.name,
                 fee=d.fee,
+                fee_eur=d.fee_eur,
                 taken=taken_seats(session, d),
                 capacity=d.capacity,
                 queue_length=queue_length(session, d),
@@ -294,7 +296,7 @@ def past_tournaments(session: SessionDep, fencer: FencerDep):
                 description=tournament.description,
                 qualification_open=tournament.qualification_open,
                 qualification_criteria=tournament.qualification_criteria,
-                primary_currency=tournament.primary_currency,
+                local_currency=tournament.local_currency,
                 organizers=tournament.organizers,
                 registration_status="closed",
                 registration_opens_on=None,
@@ -315,23 +317,29 @@ def tournament_detail(tournament: TournamentDep, session: SessionDep):
 
 
 def _apply_currency_invariants(tournament: Tournament) -> None:
-    """Reconcile the three currency fields after a patch has been merged, so the
-    stored combination is always one of the two meaningful ones: a single-currency
-    tournament, or a non-EUR tournament with a positive rate (design D1).
+    """Reconcile the currency fields after a patch has been merged, so the
+    stored combination is always one of the three meaningful modes (design
+    Decision 2). Runs on the merged state rather than the payload because
+    enabling EUR payments in one request and switching local_currency in
+    another must still be caught.
 
-    Runs on the merged state rather than the payload because enabling EUR
-    payments in one request and setting the rate in another must still be
-    caught."""
-    if tournament.primary_currency == Currency.EUR:
-        # an EUR-priced tournament's primary figure already is the EUR one
+    eur_rate is a Setup convenience only and is never required to enable EUR
+    (design Decision 3) — pydantic already rejects a non-positive one.
+    A tournament still pricing through the legacy fixed weapon-rental/
+    afterparty parameters cannot enable EUR, because those parameters carry
+    no EUR column (design Decision 9)."""
+    if tournament.local_currency == Currency.EUR:
+        # an EUR-priced tournament's local figure already is the EUR one
+        if setup.uses_legacy_fixed_fees(tournament):
+            raise HTTPException(status_code=422, detail="legacy_fixed_fees_block_eur")
         tournament.eur_payments_enabled = True
         tournament.eur_rate = None
         return
     if not tournament.eur_payments_enabled:
         tournament.eur_rate = None
         return
-    if tournament.eur_rate is None or tournament.eur_rate <= 0:
-        raise HTTPException(status_code=422, detail="eur_rate_required")
+    if setup.uses_legacy_fixed_fees(tournament):
+        raise HTTPException(status_code=422, detail="legacy_fixed_fees_block_eur")
 
 
 @router.patch("/{slug}", response_model=TournamentOut)
@@ -459,6 +467,8 @@ def add_discipline(
         capacity=data.capacity,
         fee=data.fee,
         fee_early=data.fee_early,
+        fee_eur=data.fee_eur,
+        fee_early_eur=data.fee_early_eur,
         schedule_when=data.schedule_when,
         schedule_where=data.schedule_where,
         ruleset_name=data.ruleset_name,
@@ -488,6 +498,8 @@ def update_discipline(
     discipline.capacity = data.capacity
     discipline.fee = data.fee
     discipline.fee_early = data.fee_early
+    discipline.fee_eur = data.fee_eur
+    discipline.fee_early_eur = data.fee_early_eur
     discipline.schedule_when = data.schedule_when
     discipline.schedule_where = data.schedule_where
     discipline.ruleset_name = data.ruleset_name
@@ -549,6 +561,7 @@ def update_extra_item(
     item.name = fields["name"]
     item.category = fields["category"]
     item.price = fields["price"]
+    item.price_eur = fields["price_eur"]
     item.max_qty = fields["max_qty"]
     item.schedule_when = fields["schedule_when"]
     item.schedule_where = fields["schedule_where"]

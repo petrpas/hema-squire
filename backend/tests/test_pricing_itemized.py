@@ -83,8 +83,8 @@ def test_count_discount_applies_only_at_matching_count():
     tournament = make_tournament(discounts=[count_discount(2, 10)])
     two = make_registration(tournament, [30, 30])
     one = make_registration(tournament, [30])
-    assert pricing.registration_total(two, tournament) == 50
-    assert pricing.registration_total(one, tournament) == 30
+    assert pricing.registration_total(two, tournament).local == 50
+    assert pricing.registration_total(one, tournament).local == 30
 
 
 def test_spec_scenario_fixed_then_percent_rounds_half_up():
@@ -93,13 +93,13 @@ def test_spec_scenario_fixed_then_percent_rounds_half_up():
         discounts=[count_discount(2, 10), early_percent("2026-06-01", 15)]
     )
     registration = make_registration(tournament, [30, 30])
-    assert pricing.registration_total(registration, tournament) == 43
+    assert pricing.registration_total(registration, tournament).local == 43
 
 
 def test_early_condition_expires():
     tournament = make_tournament(discounts=[early_percent("2026-04-30", 15)])
     registration = make_registration(tournament, [30, 30])  # registered 2026-05-01
-    assert pricing.registration_total(registration, tournament) == 60
+    assert pricing.registration_total(registration, tournament).local == 60
 
 
 def test_extra_quantity_billed():
@@ -107,7 +107,7 @@ def test_extra_quantity_billed():
     item = rental_item(tournament)
     tournament.extra_items = [item]
     registration = make_registration(tournament, [30], extras=[(item, 2)])
-    assert pricing.registration_total(registration, tournament) == 34
+    assert pricing.registration_total(registration, tournament).local == 34
 
 
 def test_percent_scope_leaves_other_categories_untouched():
@@ -122,7 +122,7 @@ def test_percent_scope_leaves_other_categories_untouched():
     tournament.extra_items = [shirt]
     tournament.discounts = [early_percent("2026-06-01", 50, scope=("discipline",))]
     registration = make_registration(tournament, [30, 30], extras=[(shirt, 1)])
-    assert pricing.registration_total(registration, tournament) == 40  # 60/2 + 10
+    assert pricing.registration_total(registration, tournament).local == 40  # 60/2 + 10
 
 
 def test_fixed_discount_floors_at_zero_within_scope():
@@ -131,7 +131,7 @@ def test_fixed_discount_floors_at_zero_within_scope():
     tournament.extra_items = [item]
     registration = make_registration(tournament, [30], extras=[(item, 1)])
     # discipline subtotal 30 floors at 0; rental 5 is outside the scope
-    assert pricing.registration_total(registration, tournament) == 5
+    assert pricing.registration_total(registration, tournament).local == 5
 
 
 def test_fixed_multi_scope_consumes_categories_in_canonical_order():
@@ -148,7 +148,7 @@ def test_fixed_multi_scope_consumes_categories_in_canonical_order():
     ]
     registration = make_registration(tournament, [30], extras=[(item, 1)])
     # 32 eats all 30 discipline, then 2 of 5 rental → 3
-    assert pricing.registration_total(registration, tournament) == 3
+    assert pricing.registration_total(registration, tournament).local == 3
 
 
 def test_percent_discounts_stack_sequentially():
@@ -159,21 +159,21 @@ def test_percent_discounts_stack_sequentially():
         ]
     )
     registration = make_registration(tournament, [100])
-    assert pricing.registration_total(registration, tournament) == 45  # 100×0.9×0.5
+    assert pricing.registration_total(registration, tournament).local == 45  # 100×0.9×0.5
 
 
 def test_fully_queued_substitute_owes_nothing():
     tournament = make_tournament(discounts=[count_discount(1, 5)])
     registration = make_registration(tournament, [30])
     registration.entries[0].is_substitute = True
-    assert pricing.registration_total(registration, tournament) == 0
+    assert pricing.registration_total(registration, tournament).local == 0
 
 
 def test_count_condition_counts_active_entries_only():
     tournament = make_tournament(discounts=[count_discount(1, 5)])
     registration = make_registration(tournament, [30, 30])
     registration.entries[1].is_substitute = True
-    assert pricing.registration_total(registration, tournament) == 25
+    assert pricing.registration_total(registration, tournament).local == 25
 
 
 def test_generic_categories_price_and_scope_like_their_models():
@@ -199,7 +199,7 @@ def test_generic_categories_price_and_scope_like_their_models():
         )
         tournament.extra_items = [action, item]
         registration = make_registration(tournament, [30], extras=[(action, 1), (item, 1)])
-        return pricing.registration_total(registration, tournament)
+        return pricing.registration_total(registration, tournament).local
 
     afterparty_and_merch = total_for(ExtraCategory.AFTERPARTY, ExtraCategory.MERCH)
     other_action_and_item = total_for(ExtraCategory.OTHER_ACTION, ExtraCategory.OTHER_ITEM)
@@ -210,7 +210,7 @@ def test_generic_categories_price_and_scope_like_their_models():
 def test_unpriced_discipline_counts_as_zero():
     tournament = make_tournament(discounts=[count_discount(2, 10)])
     registration = make_registration(tournament, [30, None])
-    assert pricing.registration_total(registration, tournament) == 20
+    assert pricing.registration_total(registration, tournament).local == 20
 
 
 def test_legacy_path_unchanged_without_items_or_discounts():
@@ -226,6 +226,62 @@ def test_legacy_path_unchanged_without_items_or_discounts():
     registration.weapon_rentals = ["LS", "SA"]
     registration.afterparty = True
     # early window active: 700 + 2×80 + 250
-    assert pricing.registration_total(registration, tournament) == 1110
+    assert pricing.registration_total(registration, tournament).local == 1110
     tournament.early_bird_until = None
-    assert pricing.registration_total(registration, tournament) == 1250
+    assert pricing.registration_total(registration, tournament).local == 1250
+
+
+# --- 8.3 each currency totals independently, including fixed discounts -----
+
+
+def test_eur_fixed_discount_and_percent_apply_per_currency():
+    """A fixed discount carries an independent EUR amount; a percent effect
+    is currency-neutral and applies identically to both totals (design
+    Decision 1)."""
+    tournament = make_tournament(
+        local_currency="CZK",
+        eur_payments_enabled=True,
+        discounts=[
+            {
+                "name": "combo",
+                "condition": {"kind": "discipline_count", "count": 2},
+                "effect": {"kind": "fixed", "value": 200, "value_eur": 8},
+                "scope": ["discipline"],
+            },
+            {
+                "name": "early",
+                "condition": {"kind": "discipline_count", "count": 2},
+                "effect": {"kind": "percent", "value": 10},
+                "scope": ["discipline"],
+            },
+        ],
+    )
+    registration = make_registration(tournament, [800, 700])
+    registration.entries[0].discipline.fee_eur = 32
+    registration.entries[1].discipline.fee_eur = 28
+
+    totals = pricing.registration_total(registration, tournament)
+    # local: (1500 - 200) × 0.9 = 1170; eur: (60 - 8) × 0.9 = 46.8 -> 47
+    assert totals.local == 1170
+    assert totals.eur == 47
+
+
+def test_eur_extra_item_price_is_independent_of_local():
+    tournament = make_tournament(local_currency="CZK", eur_payments_enabled=True)
+    item = rental_item(tournament, price=100)
+    item.price_eur = 3
+    tournament.extra_items = [item]
+    registration = make_registration(tournament, [800], extras=[(item, 2)])
+    registration.entries[0].discipline.fee_eur = 32
+
+    totals = pricing.registration_total(registration, tournament)
+    assert totals.local == 1000  # 800 + 2×100
+    assert totals.eur == 38  # 32 + 2×3
+
+
+def test_no_eur_total_when_tournament_does_not_price_in_eur():
+    tournament = make_tournament(discounts=[count_discount(2, 10)])
+    registration = make_registration(tournament, [30, 30])
+    totals = pricing.registration_total(registration, tournament)
+    assert totals.local == 50
+    assert totals.eur is None

@@ -2,7 +2,7 @@
 
 The ACC field requires IBAN format; organizers must configure the tournament
 bank account as IBAN. The currency travels in CC, so the same account can be
-offered both in the tournament's primary currency and in EUR (design D4).
+offered both in the tournament's local currency and in EUR (design D4).
 """
 
 import io
@@ -24,8 +24,7 @@ def spayd_string(
     """`currency` is required on purpose: a payment string that guesses its
     currency is how a EUR payer ends up sending the CZK amount."""
     msg = _MSG_FORBIDDEN.sub(" ", message).strip()[:60]
-    # AM takes two decimals; formatting from Decimal keeps a converted EUR
-    # amount like 68.63 intact instead of truncating it to whole units
+    # AM takes two decimals even though every stored price is a whole unit
     am = f"{Decimal(amount):.2f}"
     return (
         f"SPD*1.0*ACC:{account_iban.replace(' ', '')}"

@@ -5,7 +5,7 @@ registrations."""
 
 import datetime
 
-from app.models import Currency, Tournament
+from app.models import Tournament
 
 # distinct 4xx reasons a registration submission can be rejected with
 NOT_PUBLISHED = "not_published"
@@ -17,7 +17,23 @@ MISSING_LOCATION = "location"
 MISSING_ORGANIZERS = "organizers"
 MISSING_DISCIPLINES = "disciplines"
 MISSING_DISCIPLINE_PRICES = "discipline_prices"
-MISSING_EUR_RATE = "eur_rate"
+MISSING_EXTRA_ITEM_PRICES = "extra_item_prices"
+MISSING_DISCOUNT_PRICES = "discount_prices"
+# a tournament still pricing through the legacy fixed weapon-rental/
+# afterparty parameters cannot enable EUR — those parameters are
+# single-currency and gain no EUR counterpart (design Decision 9)
+MISSING_LEGACY_BLOCKS_EUR = "legacy_fixed_fees_block_eur"
+
+
+def uses_legacy_fixed_fees(tournament: Tournament) -> bool:
+    """Whether pricing still depends on the fixed weapon-rental/afterparty
+    parameters — incompatible with EUR because they carry no EUR column."""
+    return (
+        bool(tournament.weapon_rental_fee)
+        or tournament.weapon_rental_fee_early is not None
+        or bool(tournament.afterparty_fee)
+        or tournament.afterparty_fee_early is not None
+    )
 
 
 def setup_missing(tournament: Tournament) -> list[str]:
@@ -28,16 +44,29 @@ def setup_missing(tournament: Tournament) -> list[str]:
         missing.append(MISSING_ORGANIZERS)
     if not tournament.disciplines:
         missing.append(MISSING_DISCIPLINES)
-    elif any(d.fee is None for d in tournament.disciplines):
-        missing.append(MISSING_DISCIPLINE_PRICES)
-    # a tournament that promises EUR payments without a rate would quote a EUR
-    # amount it cannot compute, so it must not take registrations
-    if (
-        tournament.eur_payments_enabled
-        and tournament.primary_currency != Currency.EUR
-        and not (tournament.eur_rate and tournament.eur_rate > 0)
-    ):
-        missing.append(MISSING_EUR_RATE)
+    else:
+        incomplete = any(d.fee is None for d in tournament.disciplines)
+        if tournament.shows_eur:
+            incomplete = incomplete or any(
+                d.fee_eur is None for d in tournament.disciplines
+            )
+        if incomplete:
+            missing.append(MISSING_DISCIPLINE_PRICES)
+
+    # completeness follows from the form: a rendered price field left empty is
+    # incomplete, whether it belongs to an extra item or a fixed discount
+    # (design Decision 2) — no separate EUR-completeness rule
+    if tournament.shows_eur:
+        if any(item.price_eur is None for item in tournament.extra_items):
+            missing.append(MISSING_EXTRA_ITEM_PRICES)
+        if any(
+            (discount.get("effect") or {}).get("kind") == "fixed"
+            and (discount.get("effect") or {}).get("value_eur") is None
+            for discount in (tournament.discounts or [])
+        ):
+            missing.append(MISSING_DISCOUNT_PRICES)
+        if uses_legacy_fixed_fees(tournament):
+            missing.append(MISSING_LEGACY_BLOCKS_EUR)
     return missing
 
 

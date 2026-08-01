@@ -99,7 +99,7 @@ export default function ParamPanel({
           <label key={field.key} className="param-field">
             {/* fee labels name the tournament's currency rather than baking it in */}
             <span>
-              {t(`param.${field.key}`, { currency: detail?.primary_currency ?? "CZK" })}
+              {t(`param.${field.key}`, { currency: detail?.local_currency ?? "CZK" })}
             </span>
             <input
               type={field.type}

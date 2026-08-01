@@ -1,9 +1,8 @@
 """Unit tests for the setup-completeness helper."""
 
 from datetime import date
-from decimal import Decimal
 
-from app.models import Currency, Discipline, Tournament
+from app.models import Currency, Discipline, ExtraCategory, ExtraItem, Tournament
 from app.setup import setup_missing
 
 
@@ -47,20 +46,89 @@ def test_multiple_gaps_accumulate():
     assert setup_missing(tournament) == ["location", "organizers", "disciplines"]
 
 
-def test_eur_payments_without_a_rate_blocks():
+def test_eur_payments_without_a_rate_is_fine():
+    """eur_rate is a Setup convenience only; completeness never requires it."""
     tournament = make_tournament(eur_payments_enabled=True)
-    assert setup_missing(tournament) == ["eur_rate"]
-
-
-def test_eur_payments_with_a_rate_is_complete():
-    tournament = make_tournament(eur_payments_enabled=True, eur_rate=Decimal("25.5"))
+    tournament.disciplines[0].fee_eur = 32
     assert setup_missing(tournament) == []
 
 
-def test_eur_priced_tournament_needs_no_rate():
+def test_eur_enabled_with_missing_eur_price_blocks():
+    tournament = make_tournament(eur_payments_enabled=True)
+    assert setup_missing(tournament) == ["discipline_prices"]
+
+
+def test_eur_priced_tournament_needs_no_second_price():
+    tournament = make_tournament(local_currency=Currency.EUR, eur_payments_enabled=True)
+    assert setup_missing(tournament) == []
+
+
+def test_eur_enabled_extra_item_missing_eur_price_blocks():
+    tournament = make_tournament(eur_payments_enabled=True)
+    tournament.disciplines[0].fee_eur = 32
+    tournament.extra_items = [
+        ExtraItem(
+            tournament=tournament, name="t-shirt", category=ExtraCategory.MERCH, price=300
+        )
+    ]
+    assert setup_missing(tournament) == ["extra_item_prices"]
+
+
+def test_eur_enabled_extra_item_with_eur_price_is_complete():
+    tournament = make_tournament(eur_payments_enabled=True)
+    tournament.disciplines[0].fee_eur = 32
+    tournament.extra_items = [
+        ExtraItem(
+            tournament=tournament,
+            name="t-shirt",
+            category=ExtraCategory.MERCH,
+            price=300,
+            price_eur=12,
+        )
+    ]
+    assert setup_missing(tournament) == []
+
+
+def test_eur_enabled_fixed_discount_missing_eur_amount_blocks():
     tournament = make_tournament(
-        primary_currency=Currency.EUR, eur_payments_enabled=True, eur_rate=None
+        eur_payments_enabled=True,
+        discounts=[
+            {
+                "name": "early",
+                "condition": {"kind": "discipline_count", "count": 1},
+                "effect": {"kind": "fixed", "value": 200},
+                "scope": ["discipline"],
+            }
+        ],
     )
+    tournament.disciplines[0].fee_eur = 32
+    assert setup_missing(tournament) == ["discount_prices"]
+
+
+def test_eur_enabled_percent_discount_needs_no_eur_amount():
+    tournament = make_tournament(
+        eur_payments_enabled=True,
+        discounts=[
+            {
+                "name": "early",
+                "condition": {"kind": "discipline_count", "count": 1},
+                "effect": {"kind": "percent", "value": 15},
+                "scope": ["discipline"],
+            }
+        ],
+    )
+    tournament.disciplines[0].fee_eur = 32
+    assert setup_missing(tournament) == []
+
+
+def test_legacy_fixed_fees_block_eur():
+    tournament = make_tournament(eur_payments_enabled=True, weapon_rental_fee=50)
+    tournament.disciplines[0].fee_eur = 32
+    assert setup_missing(tournament) == ["legacy_fixed_fees_block_eur"]
+
+
+def test_legacy_fixed_fees_do_not_block_single_currency():
+    tournament = make_tournament(weapon_rental_fee=50)
     assert setup_missing(tournament) == []
 
 

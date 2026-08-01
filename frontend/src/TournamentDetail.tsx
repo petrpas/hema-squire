@@ -153,7 +153,7 @@ function DisciplinesInfo({
                 {d.code} — {d.name}
               </strong>
               <span className="muted">
-                {d.fee === null ? "—" : formatMoneyWithEur(d.fee, detail)} ·{" "}
+                {d.fee === null ? "—" : formatMoneyWithEur(d.fee, d.fee_eur, detail)} ·{" "}
                 {t("detail.fencersCount", { taken, capacity: d.capacity })}
                 {free <= 0 &&
                   ` · ${t("detail.queueLength", { count: a?.queue_length ?? 0 })}`}
@@ -323,6 +323,7 @@ function RegistrationForm({
   const [accommodation, setAccommodation] = useState(initial?.accommodation ?? "");
   const [notes, setNotes] = useState(initial?.notes ?? "");
   const [total, setTotal] = useState(initial?.total_amount ?? 0);
+  const [eurTotal, setEurTotal] = useState<number | null>(initial?.total_eur ?? null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -359,6 +360,7 @@ function RegistrationForm({
   useEffect(() => {
     if (disciplines.size === 0) {
       setTotal(0);
+      setEurTotal(null);
       return;
     }
     const handle = setTimeout(() => {
@@ -369,7 +371,16 @@ function RegistrationForm({
           afterparty,
           extras: extrasPayload(),
         })
-        .then((result) => setTotal(result.total), () => setTotal(0));
+        .then(
+          (result) => {
+            setTotal(result.total);
+            setEurTotal(result.eur_total);
+          },
+          () => {
+            setTotal(0);
+            setEurTotal(null);
+          },
+        );
     }, 300);
     return () => clearTimeout(handle);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -414,7 +425,7 @@ function RegistrationForm({
       <ChecklistRow
         key={item.id}
         name={item.name}
-        price={formatMoney(item.price, detail.primary_currency)}
+        price={formatMoneyWithEur(item.price, item.price_eur, detail)}
         checked={qty > 0}
         onToggle={() => toggleItem(item)}
       >
@@ -500,7 +511,7 @@ function RegistrationForm({
             <ChecklistRow
               key={d.code}
               name={`${d.code} — ${d.name}`}
-              price={d.fee === null ? "—" : formatMoney(d.fee, detail.primary_currency)}
+              price={d.fee === null ? "—" : formatMoneyWithEur(d.fee, d.fee_eur, detail)}
               checked={disciplines.has(d.code)}
               onToggle={() => toggleDiscipline(d.code)}
             >
@@ -525,7 +536,7 @@ function RegistrationForm({
             {legacy && (
               <ChecklistRow
                 name={t("form.afterparty")}
-                price={formatMoney(detail.afterparty_fee, detail.primary_currency)}
+                price={formatMoney(detail.afterparty_fee, detail.local_currency)}
                 checked={afterparty}
                 onToggle={() => setAfterparty(!afterparty)}
               />
@@ -546,7 +557,7 @@ function RegistrationForm({
                   <ChecklistRow
                     key={code}
                     name={t("form.weaponRental", { weapon: name })}
-                    price={formatMoney(detail.weapon_rental_fee, detail.primary_currency)}
+                    price={formatMoney(detail.weapon_rental_fee, detail.local_currency)}
                     checked={qty > 0}
                     onToggle={() =>
                       setLegacyQty({ ...legacyQty, [code]: qty > 0 ? 0 : 1 })
@@ -579,7 +590,7 @@ function RegistrationForm({
       )}
 
       <p className="form-total">
-        {t("form.total", { amount: formatMoneyWithEur(total, detail) })}
+        {t("form.total", { amount: formatMoneyWithEur(total, eurTotal, detail) })}
       </p>
 
       {/* non-billable answers: nothing here changes the total */}
@@ -657,7 +668,7 @@ function PaymentPanel({ slug }: { slug: string }) {
       <p className="rail-hint">{t("payment.vsInMessage", { vs: payment.vs })}</p>
 
       {/* the same registration, payable in EUR against the same account */}
-      {payment.eur_amount && payment.eur_qr_png_base64 && (
+      {payment.eur_amount !== null && payment.eur_qr_png_base64 && (
         <>
           <h3 className="register-section">{t("payment.eurTitle")}</h3>
           <img
@@ -717,13 +728,18 @@ function RegistrationLines({
       </ul>
       <p className="form-total">
         {t("form.total", {
-          amount: formatMoneyWithEur(registration.total_amount, detail),
+          amount: formatMoneyWithEur(registration.total_amount, registration.total_eur, detail),
         })}
       </p>
-      {Number(registration.outstanding_amount) !== 0 && (
+      {(Number(registration.outstanding_amount) !== 0 ||
+        Number(registration.outstanding_eur_amount ?? 0) !== 0) && (
         <p className="rail-hint">
           {t("registration.outstanding", {
-            amount: formatMoney(registration.outstanding_amount, detail.primary_currency),
+            amount: formatMoneyWithEur(
+              registration.outstanding_amount,
+              registration.outstanding_eur_amount,
+              detail,
+            ),
           })}
         </p>
       )}

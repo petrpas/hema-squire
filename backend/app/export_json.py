@@ -33,7 +33,7 @@ from app.models import (
 )
 from app.routers.tournaments import _lowest_free_series
 
-SCHEMA_VERSION = 4
+SCHEMA_VERSION = 5
 
 _TOURNAMENT_FIELDS = [
     "slug", "display_name", "date", "language",
@@ -43,7 +43,7 @@ _TOURNAMENT_FIELDS = [
     "afterparty_fee", "afterparty_fee_early",
     "location", "description", "qualification_open", "qualification_criteria",
     "registration_instructions",
-    "primary_currency", "eur_payments_enabled", "eur_rate",
+    "local_currency", "eur_payments_enabled", "eur_rate",
     "organizers", "discounts",
     "registration_opens", "registration_closes",
     "vs_year", "vs_series", "vs_next_seq",
@@ -53,14 +53,14 @@ _TOURNAMENT_FIELDS = [
 # as the CZK, EUR-off, option-less tournament it was
 _V3_TOURNAMENT_DEFAULTS = {
     "registration_instructions": None,
-    "primary_currency": "CZK",
+    "local_currency": "CZK",
     "eur_payments_enabled": False,
     "eur_rate": None,
 }
 
 _REGISTRATION_FIELDS = [
-    "registered_at", "state", "vs", "total_amount", "expires_at", "reminded_at",
-    "paid_at", "cancelled_at", "refundable", "refund_state",
+    "registered_at", "state", "vs", "total_amount", "total_eur", "expires_at",
+    "reminded_at", "paid_at", "cancelled_at", "refundable", "refund_state",
     "weapon_rentals", "afterparty", "aftersparring", "accommodation", "notes",
 ]
 
@@ -131,14 +131,14 @@ def export_tournament(session: Session, tournament: Tournament) -> dict:
         "exported_at": datetime.datetime.now(datetime.UTC).isoformat(),
         "tournament": _record(tournament, _TOURNAMENT_FIELDS),
         "disciplines": [
-            _record(d, ["code", "name", "capacity", "fee", "fee_early"])
+            _record(d, ["code", "name", "capacity", "fee", "fee_early", "fee_eur", "fee_early_eur"])
             for d in tournament.disciplines
         ],
         "extra_items": [
             _record(
                 i,
                 [
-                    "name", "category", "price", "max_qty",
+                    "name", "category", "price", "price_eur", "max_qty",
                     "option_label", "option_choices",
                 ],
             )
@@ -213,7 +213,7 @@ def _parse_date(value: str | None) -> datetime.date | None:
 
 def restore_tournament(session: Session, data: dict, actor: Fencer) -> Tournament:
     version = data.get("schema_version")
-    if version not in (1, 2, 3, SCHEMA_VERSION):
+    if version not in (1, 2, 3, 4, SCHEMA_VERSION):
         raise HTTPException(status_code=422, detail="unsupported_schema_version")
     doc = dict(data["tournament"])
     if version == 1:
@@ -226,6 +226,10 @@ def restore_tournament(session: Session, data: dict, actor: Fencer) -> Tournamen
     if version < 4:
         for field, default in _V3_TOURNAMENT_DEFAULTS.items():
             doc.setdefault(field, default)
+    if version < 5 and "primary_currency" in doc:
+        # the field was renamed local_currency in v5; a v2-v4 export still
+        # carries the old key (design Decision 2)
+        doc["local_currency"] = doc.pop("primary_currency")
     if session.scalar(select(Tournament).where(Tournament.slug == doc["slug"])):
         raise HTTPException(status_code=409, detail="slug_taken")
 
@@ -283,6 +287,9 @@ def restore_tournament(session: Session, data: dict, actor: Fencer) -> Tournamen
 
     reg_map: dict[int, Registration] = {}
     for entry in data.get("registrations", []):
+        # total_eur arrived in v5; an older file's registrations priced in
+        # local currency only
+        entry = {"total_eur": None, **entry}
         payload = {k: entry[k] for k in _REGISTRATION_FIELDS}
         for field in ("registered_at", "expires_at", "reminded_at", "paid_at",
                       "cancelled_at"):

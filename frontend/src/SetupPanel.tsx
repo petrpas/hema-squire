@@ -6,6 +6,7 @@ import {
   ApiError,
   type Account,
   type Currency,
+  type CurrencyMode,
   type Discount,
   type DiscountCondition,
   type DiscountEffect,
@@ -18,8 +19,76 @@ import {
   logoUrl,
 } from "./api";
 import HelpHint from "./HelpHint";
+import { showsEur } from "./money";
 
-const CURRENCIES: Currency[] = ["CZK", "EUR"];
+const CURRENCY_MODES: CurrencyMode[] = ["local", "local_eur", "eur"];
+// the only local (non-EUR) currency today (design Decision 6); a picker
+// among several local currencies is future scope
+const LOCAL_CURRENCY: Currency = "CZK";
+
+/** Fills empty EUR/local price pairs from filled ones at `rate`, rounded
+ * half-up to whole units, in either direction — never overwriting a typed
+ * value (design Decision 3). The one place `eur_rate` touches money. */
+function recalculateMissing(local: string, eur: string, rate: number): [string, string] {
+  if (!Number.isFinite(rate) || rate <= 0) return [local, eur];
+  if (eur === "" && local !== "" && Number.isFinite(Number(local))) {
+    return [local, String(Math.round(Number(local) / rate))];
+  }
+  if (local === "" && eur !== "" && Number.isFinite(Number(eur))) {
+    return [String(Math.round(Number(eur) * rate)), eur];
+  }
+  return [local, eur];
+}
+
+/** Guards a save action behind the price-change confirmation when the
+ * tournament already has registrations (design Decision 7): existing
+ * registrations keep their quoted amount, amending fencers are repriced,
+ * new registrations use the new price. */
+function usePriceChangeGuard(pricingWarning: boolean) {
+  const [pendingAction, setPendingAction] = useState<(() => void) | null>(null);
+  function guard(action: () => void) {
+    if (pricingWarning) setPendingAction(() => action);
+    else action();
+  }
+  function confirm() {
+    const action = pendingAction;
+    setPendingAction(null);
+    action?.();
+  }
+  function cancel() {
+    setPendingAction(null);
+  }
+  return { guard, confirming: pendingAction !== null, confirm, cancel };
+}
+
+function PriceChangeWarning({
+  onConfirm,
+  onCancel,
+}: {
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  const { t } = useTranslation();
+  return (
+    <div className="rail-card dashed">
+      <p>{t("setup.priceChangeWarning.title")}</p>
+      <ul className="detail-list">
+        <li>{t("setup.priceChangeWarning.existing")}</li>
+        <li>{t("setup.priceChangeWarning.amending")}</li>
+        <li>{t("setup.priceChangeWarning.new")}</li>
+      </ul>
+      <p className="rail-hint">{t("setup.priceChangeWarning.badPractice")}</p>
+      <div className="modal-actions">
+        <button type="button" className="secondary" onClick={onCancel}>
+          {t("common.cancel")}
+        </button>
+        <button type="button" className="btn-primary" onClick={onConfirm}>
+          {t("setup.priceChangeWarning.proceed")}
+        </button>
+      </div>
+    </div>
+  );
+}
 
 /** Option choices are typed as one comma-separated line; the backend trims and
  *  deduplicates, so this only has to split. */
@@ -46,6 +115,7 @@ function isActionCategory(category: ExtraCategory): boolean {
 type DisciplineDraft = {
   capacity: string;
   fee: string;
+  fee_eur: string;
   schedule_when: string;
   schedule_where: string;
   ruleset_name: string;
@@ -381,27 +451,22 @@ function CurrencySection({
   onSaved: () => void;
 }) {
   const { t } = useTranslation();
-  const [currency, setCurrency] = useState<Currency>("CZK");
-  const [eurPayments, setEurPayments] = useState(false);
+  const [mode, setMode] = useState<CurrencyMode>("local");
   const [rate, setRate] = useState("");
   const [dirty, setDirty] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    setCurrency(detail.primary_currency);
-    setEurPayments(detail.eur_payments_enabled);
+    setMode(detail.currency_mode);
     setRate(detail.eur_rate ?? "");
     setError(null);
     setDirty(false);
   }, [detail]);
 
-  // an EUR-priced tournament has nothing to convert to
-  const offersEurChoice = currency !== "EUR";
   const rateNumber = Number(rate);
   const implausible =
-    offersEurChoice &&
-    eurPayments &&
+    mode === "local_eur" &&
     rate !== "" &&
     Number.isFinite(rateNumber) &&
     (rateNumber < PLAUSIBLE_RATE.min || rateNumber > PLAUSIBLE_RATE.max);
@@ -411,15 +476,15 @@ function CurrencySection({
     setError(null);
     try {
       await api.updateTournament(slug, {
-        primary_currency: currency,
-        eur_payments_enabled: offersEurChoice ? eurPayments : true,
-        eur_rate: offersEurChoice && eurPayments && rate !== "" ? rate : null,
+        local_currency: mode === "eur" ? "EUR" : LOCAL_CURRENCY,
+        eur_payments_enabled: mode !== "local",
+        eur_rate: mode === "local_eur" && rate !== "" ? rate : null,
       });
       setDirty(false);
       onSaved();
     } catch (err) {
-      if (err instanceof ApiError && err.detail === "eur_rate_required") {
-        setError(t("setup.currency.rateRequired"));
+      if (err instanceof ApiError && err.detail === "legacy_fixed_fees_block_eur") {
+        setError(t("setup.currency.legacyFixedFeesBlockEur"));
       } else {
         throw err;
       }
@@ -432,60 +497,43 @@ function CurrencySection({
     <section className="rail-card">
       <h2>{t("setup.currency.title")}</h2>
       <div className="form-fields">
-        <label className="form-field">
-          <span>{t("setup.currency.primary")}</span>
-          <select
-            value={currency}
-            onChange={(event) => {
-              setCurrency(event.target.value as Currency);
-              setDirty(true);
-            }}
-          >
-            {CURRENCIES.map((code) => (
-              <option key={code} value={code}>
-                {code}
-              </option>
-            ))}
-          </select>
-        </label>
-        {offersEurChoice && (
-          <>
-            <label className="checkbox-chip">
+        <div className="qualification-control">
+          {CURRENCY_MODES.map((m) => (
+            <label key={m} className="qualification-option">
               <input
-                type="checkbox"
-                checked={eurPayments}
-                onChange={(event) => {
-                  setEurPayments(event.target.checked);
+                type="radio"
+                name={`${slug}-currency-mode`}
+                checked={mode === m}
+                onChange={() => {
+                  setMode(m);
                   setDirty(true);
                 }}
               />
-              {t("setup.currency.eurPayments")}
+              {t(`setup.currency.mode.${m}`)}
             </label>
-            {eurPayments && (
-              <label className="form-field">
-                <span>
-                  {t("setup.currency.rate")}
-                  <HelpHint text={t("setup.currency.rateHint")} />
-                </span>
-                <input
-                  type="number"
-                  min={0}
-                  step="0.01"
-                  value={rate}
-                  onChange={(event) => {
-                    setRate(event.target.value);
-                    setDirty(true);
-                  }}
-                />
-              </label>
-            )}
-          </>
+          ))}
+        </div>
+        {mode === "local_eur" && (
+          <label className="form-field">
+            <span>
+              {t("setup.currency.rate")}
+              <HelpHint text={t("setup.currency.rateHint")} />
+            </span>
+            <input
+              type="number"
+              min={0}
+              step="0.01"
+              value={rate}
+              onChange={(event) => {
+                setRate(event.target.value);
+                setDirty(true);
+              }}
+            />
+          </label>
         )}
       </div>
       {implausible && <p className="login-error">{t("setup.currency.rateWarning")}</p>}
-      {offersEurChoice && eurPayments && (
-        <p className="rail-hint">{t("setup.currency.rateNote")}</p>
-      )}
+      {mode === "local_eur" && <p className="rail-hint">{t("setup.currency.rateNote")}</p>}
       {error && <p className="login-error">{error}</p>}
       <button className="secondary param-save" onClick={() => void save()} disabled={!dirty || busy}>
         {t("rail.save")}
@@ -607,7 +655,11 @@ function DisciplinesSection({
   const [newCode, setNewCode] = useState("");
   const [newCapacity, setNewCapacity] = useState("");
   const [newFee, setNewFee] = useState("");
+  const [newFeeEur, setNewFeeEur] = useState("");
   const [busy, setBusy] = useState(false);
+  const { guard, confirming, confirm, cancel } = usePriceChangeGuard(pricingWarning);
+  const eur = showsEur(detail);
+  const rate = Number(detail.eur_rate);
 
   useEffect(() => {
     api.taxonomy().then(setTaxonomy, () => setTaxonomy({}));
@@ -619,6 +671,7 @@ function DisciplinesSection({
       next[d.code] = {
         capacity: String(d.capacity),
         fee: d.fee === null ? "" : String(d.fee),
+        fee_eur: d.fee_eur === null ? "" : String(d.fee_eur),
         schedule_when: d.schedule_when ?? "",
         schedule_where: d.schedule_where ?? "",
         ruleset_name: d.ruleset_name ?? "",
@@ -635,6 +688,7 @@ function DisciplinesSection({
     return (
       String(original.capacity) !== draft.capacity ||
       (original.fee === null ? "" : String(original.fee)) !== draft.fee ||
+      (original.fee_eur === null ? "" : String(original.fee_eur)) !== draft.fee_eur ||
       (original.schedule_when ?? "") !== draft.schedule_when ||
       (original.schedule_where ?? "") !== draft.schedule_where ||
       (original.ruleset_name ?? "") !== draft.ruleset_name ||
@@ -646,6 +700,13 @@ function DisciplinesSection({
     setDrafts((prev) => ({ ...prev, [code]: { ...prev[code], ...patch } }));
   }
 
+  function recalculateRow(code: string) {
+    const draft = drafts[code];
+    if (!draft) return;
+    const [fee, fee_eur] = recalculateMissing(draft.fee, draft.fee_eur, rate);
+    patchDraft(code, { fee, fee_eur });
+  }
+
   async function saveRow(code: string) {
     const draft = drafts[code];
     setBusy(true);
@@ -654,6 +715,7 @@ function DisciplinesSection({
         code,
         capacity: Number(draft.capacity),
         fee: draft.fee === "" ? null : Number(draft.fee),
+        fee_eur: draft.fee_eur === "" ? null : Number(draft.fee_eur),
         schedule_when: draft.schedule_when || null,
         schedule_where: draft.schedule_where || null,
         ruleset_name: draft.ruleset_name || null,
@@ -682,10 +744,12 @@ function DisciplinesSection({
         code: newCode,
         capacity: Number(newCapacity),
         fee: newFee === "" ? null : Number(newFee),
+        fee_eur: newFeeEur === "" ? null : Number(newFeeEur),
       });
       setNewCode("");
       setNewCapacity("");
       setNewFee("");
+      setNewFeeEur("");
       onSaved();
     } finally {
       setBusy(false);
@@ -699,12 +763,14 @@ function DisciplinesSection({
     <section className="rail-card">
       <h2>{t("setup.disciplines.title")}</h2>
       {pricingWarning && <p className="login-error">{t("setup.pricingWarning")}</p>}
+      {confirming && <PriceChangeWarning onConfirm={confirm} onCancel={cancel} />}
       <table className="sheet-table">
         <thead>
           <tr>
             <th>{t("setup.disciplines.code")}</th>
             <th>{t("setup.disciplines.capacity")}</th>
-            <th>{t("setup.disciplines.fee", { currency: detail.primary_currency })}</th>
+            <th>{t("setup.disciplines.fee", { currency: detail.local_currency })}</th>
+            {eur && <th>{t("setup.disciplines.feeEur")}</th>}
             <th className="col-actions" />
           </tr>
         </thead>
@@ -735,13 +801,24 @@ function DisciplinesSection({
                     onChange={(event) => patchDraft(d.code, { fee: event.target.value })}
                   />
                 </td>
+                {eur && (
+                  <td>
+                    <input
+                      className="cell-input"
+                      type="number"
+                      min={0}
+                      value={drafts[d.code]?.fee_eur ?? ""}
+                      onChange={(event) => patchDraft(d.code, { fee_eur: event.target.value })}
+                    />
+                  </td>
+                )}
                 <td className="col-actions">
                   {dirty(d.code) && (
                     <button
                       className="row-action"
                       title={t("rail.save")}
                       disabled={busy}
-                      onClick={() => void saveRow(d.code)}
+                      onClick={() => guard(() => void saveRow(d.code))}
                     >
                       <IconCheck size={16} stroke={1.5} />
                     </button>
@@ -757,7 +834,7 @@ function DisciplinesSection({
                 </td>
               </tr>
               <tr className="detail-subrow">
-                <td colSpan={4}>
+                <td colSpan={eur ? 5 : 4}>
                   <div className="param-fields">
                     <label className="param-field">
                       <span>
@@ -841,6 +918,17 @@ function DisciplinesSection({
                 onChange={(event) => setNewFee(event.target.value)}
               />
             </td>
+            {eur && (
+              <td>
+                <input
+                  className="cell-input"
+                  type="number"
+                  min={0}
+                  value={newFeeEur}
+                  onChange={(event) => setNewFeeEur(event.target.value)}
+                />
+              </td>
+            )}
             <td className="col-actions">
               <button
                 className="row-action"
@@ -854,6 +942,17 @@ function DisciplinesSection({
           </tr>
         </tbody>
       </table>
+      {eur && (
+        <button
+          className="secondary param-save"
+          disabled={!Number.isFinite(rate) || rate <= 0}
+          onClick={() => {
+            for (const d of detail.disciplines) recalculateRow(d.code);
+          }}
+        >
+          {t("setup.recalculateMissing")}
+        </button>
+      )}
     </section>
   );
 }
@@ -875,9 +974,13 @@ function ExtraItemsSection({
     name: "",
     category: "rental" as ExtraCategory,
     price: "",
+    price_eur: "",
     max_qty: "1",
   });
   const [busy, setBusy] = useState(false);
+  const { guard, confirming, confirm, cancel } = usePriceChangeGuard(pricingWarning);
+  const eur = showsEur(detail);
+  const rate = Number(detail.eur_rate);
 
   useEffect(() => {
     const next: Record<number, ExtraItem> = {};
@@ -892,6 +995,7 @@ function ExtraItemsSection({
       draft.name !== item.name ||
       draft.category !== item.category ||
       draft.price !== item.price ||
+      draft.price_eur !== item.price_eur ||
       draft.max_qty !== item.max_qty ||
       (draft.schedule_when ?? "") !== (item.schedule_when ?? "") ||
       (draft.schedule_where ?? "") !== (item.schedule_where ?? "") ||
@@ -899,6 +1003,24 @@ function ExtraItemsSection({
       (draft.option_label ?? "") !== (item.option_label ?? "") ||
       draft.option_choices.join(",") !== item.option_choices.join(",")
     );
+  }
+
+  function recalculateRow(id: number) {
+    const draft = drafts[id];
+    if (!draft) return;
+    const [price, price_eur] = recalculateMissing(
+      String(draft.price),
+      draft.price_eur === null ? "" : String(draft.price_eur),
+      rate,
+    );
+    setDrafts((prev) => ({
+      ...prev,
+      [id]: {
+        ...prev[id],
+        price: Number(price),
+        price_eur: price_eur === "" ? null : Number(price_eur),
+      },
+    }));
   }
 
   async function saveRow(id: number) {
@@ -909,6 +1031,7 @@ function ExtraItemsSection({
         name: draft.name,
         category: draft.category,
         price: draft.price,
+        price_eur: draft.price_eur,
         max_qty: draft.max_qty,
         schedule_when: draft.schedule_when || null,
         schedule_where: draft.schedule_where || null,
@@ -940,9 +1063,10 @@ function ExtraItemsSection({
         name: newItem.name,
         category: newItem.category,
         price: Number(newItem.price),
+        price_eur: newItem.price_eur === "" ? null : Number(newItem.price_eur),
         max_qty: Number(newItem.max_qty) || 1,
       });
-      setNewItem({ name: "", category: "rental", price: "", max_qty: "1" });
+      setNewItem({ name: "", category: "rental", price: "", price_eur: "", max_qty: "1" });
       onSaved();
     } finally {
       setBusy(false);
@@ -953,12 +1077,14 @@ function ExtraItemsSection({
     <section className="rail-card">
       <h2>{t("setup.extras.title")}</h2>
       {pricingWarning && <p className="login-error">{t("setup.pricingWarning")}</p>}
+      {confirming && <PriceChangeWarning onConfirm={confirm} onCancel={cancel} />}
       <table className="sheet-table">
         <thead>
           <tr>
             <th>{t("setup.extras.name")}</th>
             <th>{t("setup.extras.category")}</th>
-            <th>{t("setup.extras.price", { currency: detail.primary_currency })}</th>
+            <th>{t("setup.extras.price", { currency: detail.local_currency })}</th>
+            {eur && <th>{t("setup.extras.priceEur")}</th>}
             <th>{t("setup.extras.maxQty")}</th>
             <th className="col-actions" />
           </tr>
@@ -1017,6 +1143,26 @@ function ExtraItemsSection({
                     }
                   />
                 </td>
+                {eur && (
+                  <td>
+                    <input
+                      className="cell-input"
+                      type="number"
+                      min={0}
+                      value={draft.price_eur ?? ""}
+                      onChange={(event) =>
+                        setDrafts({
+                          ...drafts,
+                          [item.id]: {
+                            ...draft,
+                            price_eur:
+                              event.target.value === "" ? null : Number(event.target.value),
+                          },
+                        })
+                      }
+                    />
+                  </td>
+                )}
                 <td>
                   {!isActionCategory(draft.category) && (
                     <input
@@ -1039,7 +1185,7 @@ function ExtraItemsSection({
                       className="row-action"
                       title={t("rail.save")}
                       disabled={busy}
-                      onClick={() => void saveRow(item.id)}
+                      onClick={() => guard(() => void saveRow(item.id))}
                     >
                       <IconCheck size={16} stroke={1.5} />
                     </button>
@@ -1055,7 +1201,7 @@ function ExtraItemsSection({
                 </td>
               </tr>
               <tr className="detail-subrow">
-                <td colSpan={5}>
+                <td colSpan={eur ? 6 : 5}>
                   <div className="param-fields">
                     {isActionCategory(draft.category) && (
                       <>
@@ -1174,6 +1320,17 @@ function ExtraItemsSection({
                 onChange={(event) => setNewItem({ ...newItem, price: event.target.value })}
               />
             </td>
+            {eur && (
+              <td>
+                <input
+                  className="cell-input"
+                  type="number"
+                  min={0}
+                  value={newItem.price_eur}
+                  onChange={(event) => setNewItem({ ...newItem, price_eur: event.target.value })}
+                />
+              </td>
+            )}
             <td>
               {!isActionCategory(newItem.category) && (
                 <input
@@ -1198,6 +1355,17 @@ function ExtraItemsSection({
           </tr>
         </tbody>
       </table>
+      {eur && (
+        <button
+          className="secondary param-save"
+          disabled={!Number.isFinite(rate) || rate <= 0}
+          onClick={() => {
+            for (const item of detail.extra_items) recalculateRow(item.id);
+          }}
+        >
+          {t("setup.recalculateMissing")}
+        </button>
+      )}
     </section>
   );
 }
@@ -1226,6 +1394,9 @@ function DiscountsSection({
   const [drafts, setDrafts] = useState<Discount[]>(detail.discounts);
   const [dirty, setDirty] = useState(false);
   const [busy, setBusy] = useState(false);
+  const { guard, confirming, confirm, cancel } = usePriceChangeGuard(pricingWarning);
+  const eur = showsEur(detail);
+  const rate = Number(detail.eur_rate);
 
   useEffect(() => {
     setDrafts(detail.discounts);
@@ -1247,6 +1418,26 @@ function DiscountsSection({
     update(index, { effect: { ...drafts[index].effect, ...patch } });
   }
 
+  function recalculateAll() {
+    setDrafts((prev) =>
+      prev.map((discount) => {
+        if (discount.effect.kind !== "fixed") return discount;
+        const [value, valueEur] = recalculateMissing(
+          String(discount.effect.value),
+          discount.effect.value_eur === null || discount.effect.value_eur === undefined
+            ? ""
+            : String(discount.effect.value_eur),
+          rate,
+        );
+        return {
+          ...discount,
+          effect: { ...discount.effect, value: Number(value), value_eur: valueEur === "" ? null : Number(valueEur) },
+        };
+      }),
+    );
+    setDirty(true);
+  }
+
   async function save() {
     setBusy(true);
     try {
@@ -1262,6 +1453,7 @@ function DiscountsSection({
     <section className="rail-card">
       <h2>{t("setup.discounts.title")}</h2>
       {pricingWarning && <p className="login-error">{t("setup.pricingWarning")}</p>}
+      {confirming && <PriceChangeWarning onConfirm={confirm} onCancel={cancel} />}
       <table className="sheet-table">
         <thead>
           <tr>
@@ -1322,12 +1514,15 @@ function DiscountsSection({
                 <div className="param-fields">
                   <select
                     value={discount.effect.kind}
-                    onChange={(event) =>
-                      updateEffect(index, { kind: event.target.value as DiscountEffect["kind"] })
-                    }
+                    onChange={(event) => {
+                      const kind = event.target.value as DiscountEffect["kind"];
+                      // a percent effect is currency-neutral and carries no
+                      // second value (design Decision 1)
+                      updateEffect(index, { kind, value_eur: kind === "fixed" ? discount.effect.value_eur : null });
+                    }}
                   >
                     <option value="fixed">
-                      {t("setup.discounts.fixed", { currency: detail.primary_currency })}
+                      {t("setup.discounts.fixed", { currency: detail.local_currency })}
                     </option>
                     <option value="percent">{t("setup.discounts.percent")}</option>
                   </select>
@@ -1340,6 +1535,21 @@ function DiscountsSection({
                       updateEffect(index, { value: Number(event.target.value) })
                     }
                   />
+                  {eur && discount.effect.kind === "fixed" && (
+                    <input
+                      className="cell-input"
+                      type="number"
+                      min={0}
+                      placeholder={t("setup.discounts.fixedEur")}
+                      value={discount.effect.value_eur ?? ""}
+                      onChange={(event) =>
+                        updateEffect(index, {
+                          value_eur:
+                            event.target.value === "" ? null : Number(event.target.value),
+                        })
+                      }
+                    />
+                  )}
                 </div>
               </td>
               <td className="col-actions">
@@ -1367,7 +1577,20 @@ function DiscountsSection({
       >
         + {t("setup.discounts.add")}
       </button>
-      <button className="secondary param-save" onClick={() => void save()} disabled={!dirty || busy}>
+      {eur && (
+        <button
+          className="secondary param-save"
+          disabled={!Number.isFinite(rate) || rate <= 0}
+          onClick={recalculateAll}
+        >
+          {t("setup.recalculateMissing")}
+        </button>
+      )}
+      <button
+        className="secondary param-save"
+        onClick={() => guard(() => void save())}
+        disabled={!dirty || busy}
+      >
         {t("rail.save")}
       </button>
     </section>

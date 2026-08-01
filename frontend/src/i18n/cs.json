@@ -199,6 +199,7 @@
   },
   "setup": {
     "pricingWarning": "Turnaj už má registrace — úprava cen mění dlužnou částku u nezaplacených rezervací.",
+    "recalculateMissing": "Doplnit chybějící ceny",
     "checklist": {
       "title": "Stav nastavení",
       "ready": "Nastavení je kompletní — registrace je možná (podle registračního okna)."
@@ -208,7 +209,17 @@
       "organizers": "Chybí alespoň jeden pořadatel",
       "disciplines": "Chybí alespoň jedna disciplína",
       "discipline_prices": "Chybí cena u některé disciplíny",
-      "eur_rate": "Chybí kurz pro platby v eurech"
+      "extra_item_prices": "Chybí eurová cena u některé doplňkové služby",
+      "discount_prices": "Chybí eurová částka u některé pevné slevy",
+      "legacy_fixed_fees_block_eur": "Turnaj používá staré pevné poplatky za zapůjčení zbraně nebo afterparty, které nemají eurový protějšek — přejdi na položkové doplňkové služby, aby šlo zapnout eura"
+    },
+    "priceChangeWarning": {
+      "title": "Změna cen na turnaji s otevřenou registrací",
+      "existing": "už registrovaní fenceři si podrží částku, na kterou byli zaregistrováni",
+      "amending": "fencer, který svou registraci později upraví, dostane přepočet podle nových cen",
+      "new": "nové registrace se počítají podle nových cen",
+      "badPractice": "Měnit ceny během registrace není dobrý zvyk. Pokračovat?",
+      "proceed": "Pokračovat"
     },
     "identity": {
       "title": "Základní údaje",
@@ -225,7 +236,7 @@
       "qualificationOpen": "Otevřeno pro všechny",
       "qualificationRequired": "Vyžadována kvalifikace",
       "qualificationCriteria": "Kvalifikační kritéria",
-      "qualificationCriteriaHint": "Například \"mistrovství ČR, HR top 500\".",
+      "qualificationCriteriaHint": "Například \"mistrovství ČR\", \"jen HR top 500\" apod.",
       "qualificationCriteriaRequired": "Zadej kvalifikační kritéria, nebo přepni zpět na \"otevřeno pro všechny\".",
       "registrationInstructions": "Pokyny k registraci",
       "registrationInstructionsHint": "Zobrazí se jen v registračním formuláři — místo pro poznámky k platbě nebo registraci, které nepatří na veřejnou stránku."
@@ -250,6 +261,7 @@
       "code": "Kód",
       "capacity": "Kapacita",
       "fee": "Cena ({{currency}})",
+      "feeEur": "Cena (EUR)",
       "add": "Přidat disciplínu",
       "when": "Kdy (nepovinné)",
       "where": "Kde (nepovinné)",
@@ -265,6 +277,7 @@
       "name": "Název",
       "category": "Kategorie",
       "price": "Cena ({{currency}})",
+      "priceEur": "Cena (EUR)",
       "maxQty": "Max. množství",
       "add": "Přidat službu",
       "categories": {
@@ -291,11 +304,12 @@
       "conditionEarly": "Registrace do data",
       "effect": "Efekt",
       "fixed": "Pevná částka ({{currency}})",
+      "fixedEur": "Pevná částka (EUR)",
       "percent": "Procenta (%)",
       "add": "Přidat slevu"
     },
     "team": {
-      "title": "Tým",
+      "title": "Organizační tým",
       "email": "E-mail",
       "displayName": "Jméno",
       "addPlaceholder": "Přidat člena týmu podle e-mailu",
@@ -320,13 +334,16 @@
     },
     "currency": {
       "title": "Měna",
-      "primary": "Hlavní měna",
-      "eurPayments": "Přijímat i platby v eurech",
+      "mode": {
+        "local": "Jen Kč",
+        "local_eur": "Kč + EUR",
+        "eur": "Jen EUR"
+      },
       "rate": "Kurz (1 EUR = ?)",
-      "rateHint": "Kolik jednotek hlavní měny je jedno euro — například 25,5 Kč za euro.",
-      "rateWarning": "Kurz vypadá nepravděpodobně. Zkontroluj směr: jednotek hlavní měny za 1 EUR.",
-      "rateNote": "Změna kurzu změní i částky v eurech u existujících nezaplacených rezervací.",
-      "rateRequired": "Pro platby v eurech nastav kurz."
+      "rateHint": "Kolik jednotek místní měny je jedno euro — například 25,5 Kč za euro. Používá se jen pro tlačítko \"Doplnit chybějící ceny\".",
+      "rateWarning": "Kurz vypadá nepravděpodobně. Zkontroluj směr: jednotek místní měny za 1 EUR.",
+      "rateNote": "Kurz slouží jen jako pomůcka pro doplnění chybějících cen — uložené ceny, součty ani platební údaje se změnou kurzu nezmění.",
+      "legacyFixedFeesBlockEur": "Turnaj používá staré pevné poplatky za zapůjčení zbraně nebo afterparty, které nemají eurový protějšek — přejdi na položkové doplňkové služby, aby šlo zapnout eura."
     }
   },
   "admin": {

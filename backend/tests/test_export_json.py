@@ -204,7 +204,7 @@ def test_restore_accepts_v1_organizer_names(client, auth_headers):
     assert body["qualification_open"] is True
     assert body["qualification_criteria"] is None
     # v3 fields default to the pre-currency behavior
-    assert body["primary_currency"] == "CZK"
+    assert body["local_currency"] == "CZK"
     assert body["eur_payments_enabled"] is False
     assert body["eur_rate"] is None
     assert body["registration_instructions"] is None
@@ -226,7 +226,7 @@ def test_restore_accepts_a_v2_document_without_currency_fields(client, auth_head
     document["schema_version"] = 2
     document["tournament"]["slug"] = "cup-v2"
     for field in (
-        "primary_currency",
+        "local_currency",
         "eur_payments_enabled",
         "eur_rate",
         "registration_instructions",
@@ -243,7 +243,7 @@ def test_restore_accepts_a_v2_document_without_currency_fields(client, auth_head
     assert restore.status_code == 201, restore.text
 
     body = client.get("/api/tournaments/cup-v2", headers=organizer).json()
-    assert body["primary_currency"] == "CZK"
+    assert body["local_currency"] == "CZK"
     assert body["eur_payments_enabled"] is False
     assert body["eur_rate"] is None
     assert body["registration_instructions"] is None
@@ -263,12 +263,19 @@ def test_v3_currency_and_option_fields_round_trip(client, auth_headers):
         },
         headers=organizer,
     )
+    for code in ("LS", "SA"):
+        client.patch(
+            f"/api/tournaments/cup/disciplines/{code}",
+            json={"code": code, "capacity": 10, "fee": 1000, "fee_eur": 40},
+            headers=organizer,
+        )
     item = client.post(
         "/api/tournaments/cup/extra-items",
         json={
             "name": "t-shirt",
             "category": "merch",
             "price": 300,
+            "price_eur": 12,
             "max_qty": 5,
             "option_label": "size",
             "option_choices": ["S", "M"],
@@ -287,11 +294,14 @@ def test_v3_currency_and_option_fields_round_trip(client, auth_headers):
 
     document = client.get("/api/tournaments/cup/export/json", headers=organizer).json()
     assert document["schema_version"] == SCHEMA_VERSION
-    assert document["tournament"]["primary_currency"] == "CZK"
+    assert document["tournament"]["local_currency"] == "CZK"
     assert document["tournament"]["eur_payments_enabled"] is True
-    assert document["tournament"]["eur_rate"] == "25.5000"
+    assert document["tournament"]["eur_rate"] == "25.50"
     assert document["extra_items"][0]["option_choices"] == ["S", "M"]
+    assert document["extra_items"][0]["price_eur"] == 12
     assert document["registrations"][0]["extras"][0]["option_value"] == "M"
+    assert document["registrations"][0]["total_amount"] == 1600  # 1000 + 2×300
+    assert document["registrations"][0]["total_eur"] == 64  # 40 + 2×12
 
     # restore into an empty deployment: VS is globally unique, so a copy cannot
     # land beside its original
@@ -307,6 +317,8 @@ def test_v3_currency_and_option_fields_round_trip(client, auth_headers):
     assert body["registration_instructions"] == "Plať do 10 dnů."
     assert body["extra_items"][0]["option_label"] == "size"
     assert body["extra_items"][0]["option_choices"] == ["S", "M"]
+    assert body["extra_items"][0]["price_eur"] == 12
+    assert body["disciplines"][0]["fee_eur"] == 40
 
     # re-exporting the restored deployment proves the selection's option value
     # survived the round trip, not just the item's definition

@@ -1,7 +1,9 @@
 """Core multi-tenant data model.
 
-Money amounts are whole units of the tournament's primary currency, stored as
-integers. Fencer accounts are global; everything else is tournament-scoped.
+Money amounts are whole units of the tournament's local currency, stored as
+integers. A tournament that also accepts EUR stores a second, independent
+whole-unit EUR figure alongside each local one — never derived from it.
+Fencer accounts are global; everything else is tournament-scoped.
 """
 
 import enum
@@ -46,10 +48,11 @@ class UnpaidListTreatment(enum.StrEnum):
 
 
 class Currency(enum.StrEnum):
-    """A tournament's primary currency — the unit every configured price and
+    """A tournament's local currency — the unit every configured price and
     computed total is expressed in. Closed enum so widening it stays a code
-    change; EUR is singled out because it is the one currency the system can
-    also *convert to* (see Tournament.eur_rate)."""
+    change; EUR is singled out because it is the one currency a tournament may
+    additionally price and accept alongside its local currency (see
+    Tournament.eur_payments_enabled) — never derived from it."""
 
     CZK = "CZK"
     EUR = "EUR"
@@ -203,14 +206,21 @@ class Tournament(Base):
     vs_next_seq: Mapped[int] = mapped_column(default=1)
 
     # currency: every configured price and every computed total is in whole
-    # units of primary_currency. eur_rate is primary units per 1 EUR and exists
-    # only to *present* and *match* EUR amounts — no EUR figure is ever stored
-    # on a registration (design D1/D3).
-    primary_currency: Mapped[Currency] = mapped_column(
+    # units of local_currency. When eur_payments_enabled and local_currency is
+    # not already EUR, every priced thing additionally carries an independent,
+    # organizer-typed EUR price (Discipline.fee_eur etc.) — never derived from
+    # the local one. eur_rate is a Setup convenience only: local-currency units
+    # per 1 EUR, read by exactly one thing, the recalculate-missing action that
+    # fills empty price fields from filled ones. It is read by no pricing,
+    # matching, email, or QR path — see pricing.selection_total and
+    # matching.match_new_transactions, neither of which consults it.
+    local_currency: Mapped[Currency] = mapped_column(
         str_enum(Currency), default=Currency.CZK
     )
     eur_payments_enabled: Mapped[bool] = mapped_column(default=False)
-    eur_rate: Mapped[Decimal | None] = mapped_column(Numeric(12, 4))
+    # 2 decimal places — what an organizer actually types, not a computed
+    # figure needing extra precision (schemas.TournamentUpdate quantizes on write)
+    eur_rate: Mapped[Decimal | None] = mapped_column(Numeric(12, 2))
 
     fio_token: Mapped[str | None] = mapped_column(String(200))
     output_sheet_url: Mapped[str | None] = mapped_column(String(300))
@@ -226,8 +236,12 @@ class Tournament(Base):
     afterparty_fee: Mapped[int] = mapped_column(default=0)
     afterparty_fee_early: Mapped[int | None]
 
-    # ordered pricing discounts: [{name, condition, effect, scope}]; shape is
-    # validated in schemas and interpreted in pricing.py
+    # ordered pricing discounts: [{name, condition, effect, scope}], where a
+    # `fixed` effect is {kind, value, value_eur} — value_eur is the EUR amount,
+    # an independent organizer decision like every other EUR price, present
+    # only in local + EUR mode; a `percent` effect is currency-neutral and
+    # carries only {kind, value}. Shape is validated in schemas and
+    # interpreted in pricing.py
     discounts: Mapped[list] = mapped_column(JSON, default=list)
 
     @property
@@ -242,16 +256,12 @@ class Tournament(Base):
 
     @property
     def shows_eur(self) -> bool:
-        """Whether a second, EUR-denominated figure applies. False for an
-        EUR-priced tournament (its primary figure already is the EUR one) and
-        false without a usable rate — the single condition every EUR
-        presentation and conversion path consults (design D2)."""
-        return (
-            self.eur_payments_enabled
-            and self.primary_currency != Currency.EUR
-            and self.eur_rate is not None
-            and self.eur_rate > 0
-        )
+        """Whether EUR is an accepted second currency alongside the local one.
+        False for an EUR-priced tournament (its local figure already is the
+        EUR one) — the single condition every EUR presentation, pricing, and
+        matching path consults. Does not depend on eur_rate, which is a Setup
+        convenience only and plays no part in whether EUR applies."""
+        return self.eur_payments_enabled and self.local_currency != Currency.EUR
 
     owner: Mapped[Fencer | None] = relationship(foreign_keys=[owner_id])
     disciplines: Mapped[list[Discipline]] = relationship(back_populates="tournament")
@@ -282,6 +292,11 @@ class Discipline(Base):
     # (setup_missing gates registration until every discipline is priced)
     fee: Mapped[int | None]
     fee_early: Mapped[int | None]
+    # EUR prices, present only in local + EUR mode. Authoritative organizer
+    # decisions, never derived from fee/fee_early (design Decision 1) — see
+    # Tournament.eur_rate for the one place a rate is allowed to touch money.
+    fee_eur: Mapped[int | None]
+    fee_early_eur: Mapped[int | None]
     # optional schedule (mainly multi-day events) and ruleset reference; purely
     # informational, never touches pricing
     schedule_when: Mapped[str | None] = mapped_column(String(200))
@@ -303,6 +318,9 @@ class ExtraItem(Base):
     name: Mapped[str] = mapped_column(String(200))
     category: Mapped[ExtraCategory] = mapped_column(str_enum(ExtraCategory))
     price: Mapped[int]
+    # EUR price, present only in local + EUR mode. Authoritative, never
+    # derived from `price` (design Decision 1).
+    price_eur: Mapped[int | None]
     # per-registration quantity limit; 1 renders as a checkbox
     max_qty: Mapped[int] = mapped_column(default=1)
     # optional descriptive fields shown when the item is presented
@@ -377,6 +395,10 @@ class Registration(Base):
     # instead of two registrations sharing one VS
     vs: Mapped[int | None] = mapped_column(unique=True)
     total_amount: Mapped[int] = mapped_column(default=0)
+    # the EUR total, stored at registration exactly as total_amount is, and
+    # NULL for a tournament that does not price in EUR (design Decision 1) —
+    # never recomputed on read, never moved by a later price or rate change
+    total_eur: Mapped[int | None]
     expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     reminded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     paid_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
@@ -385,15 +407,26 @@ class Registration(Base):
     refund_state: Mapped[RefundState] = mapped_column(
         str_enum(RefundState), default=RefundState.NOT_APPLICABLE
     )
-    # sum of payments credited to this registration, in the tournament's
-    # primary currency in cents, at the rate applied when each was matched
-    # (matching.paid_cents_in_primary) — the one stored money figure; the
+    # sum of payments credited to this registration in the tournament's local
+    # currency, in cents — the one stored local-currency money figure; the
     # balance is always derived (see outstanding_cents), never stored
     amount_paid_cents: Mapped[int] = mapped_column(default=0)
+    # the EUR sibling of amount_paid_cents: sum of EUR payments credited, in
+    # EUR cents. The two counters are never summed — a registration is settled
+    # when either currency's credit covers that currency's own total (design
+    # Decision 5); see matching.match_new_transactions.
+    amount_paid_eur_cents: Mapped[int] = mapped_column(default=0)
 
     @property
     def outstanding_cents(self) -> int:
         return self.total_amount * 100 - self.amount_paid_cents
+
+    @property
+    def outstanding_eur_cents(self) -> int | None:
+        """None when this registration has no EUR total to owe against."""
+        if self.total_eur is None:
+            return None
+        return self.total_eur * 100 - self.amount_paid_eur_cents
 
     # legacy billable extras (pre-itemized tournaments) and free-text fields
     weapon_rentals: Mapped[list[str]] = mapped_column(JSON, default=list)

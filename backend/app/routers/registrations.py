@@ -87,20 +87,21 @@ def next_vs(session, tournament: Tournament) -> int:
     return tournament.vs_prefix * 1000 + seq
 
 
-def _outstanding_amount(registration: Registration) -> Decimal:
-    """`outstanding_cents` in the tournament's primary currency, at the same
-    two-decimal precision as a converted EUR figure."""
-    return (Decimal(registration.outstanding_cents) / 100).quantize(
-        Decimal("0.01"), rounding=ROUND_HALF_UP
-    )
+def _cents_to_amount(cents: int) -> Decimal:
+    return (Decimal(cents) / 100).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
 
 def registration_out(session, registration: Registration) -> dict:
+    outstanding_eur_cents = registration.outstanding_eur_cents
     return {
         "state": registration.state,
         "vs": registration.vs,
         "total_amount": registration.total_amount,
-        "outstanding_amount": _outstanding_amount(registration),
+        "outstanding_amount": _cents_to_amount(registration.outstanding_cents),
+        "total_eur": registration.total_eur,
+        "outstanding_eur_amount": (
+            _cents_to_amount(outstanding_eur_cents) if outstanding_eur_cents is not None else None
+        ),
         "expires_at": registration.expires_at,
         "registered_at": registration.registered_at,
         "paid_at": registration.paid_at,
@@ -252,7 +253,7 @@ def _validate_options(selections, extras_by_id: dict[int, ExtraItem]) -> None:
 @router.post("/price-preview", response_model=PricePreviewOut)
 def price_preview(data: PricePreviewIn, tournament: TournamentDep):
     selected, extras = _resolve_selection(tournament, data)
-    total = pricing.selection_total(
+    totals = pricing.selection_totals(
         tournament,
         disciplines=selected,
         extras=extras,
@@ -261,9 +262,9 @@ def price_preview(data: PricePreviewIn, tournament: TournamentDep):
         at=_now().date(),
     )
     return PricePreviewOut(
-        total=total,
-        currency=tournament.primary_currency,
-        eur_total=pricing.to_eur(total, tournament),
+        total=totals.local,
+        currency=tournament.local_currency,
+        eur_total=totals.eur,
     )
 
 
@@ -368,7 +369,9 @@ def register(
     else:
         raise HTTPException(status_code=409, detail="vs_allocation_failed")
 
-    registration.total_amount = pricing.registration_total(registration, tournament)
+    totals = pricing.registration_total(registration, tournament)
+    registration.total_amount = totals.local
+    registration.total_eur = totals.eur
     registration.expires_at = (
         None
         if as_substitute
@@ -463,8 +466,11 @@ def amend_registration(
 
     # vs and expires_at are read-only through this path: amending must not
     # renew the hold or reissue the QR (Decision 3, the load-bearing guarantee)
-    registration.total_amount = pricing.registration_total(registration, tournament)
-    if was_paid and registration.outstanding_cents < 0:
+    totals = pricing.registration_total(registration, tournament)
+    registration.total_amount = totals.local
+    registration.total_eur = totals.eur
+    overpaid = registration.outstanding_cents < 0 or (registration.outstanding_eur_cents or 0) < 0
+    if was_paid and overpaid:
         registration.refund_state = RefundState.PENDING
 
     session.add(
@@ -477,8 +483,9 @@ def amend_registration(
     )
     session.commit()
 
+    underpaid = registration.outstanding_cents > 0 or (registration.outstanding_eur_cents or 0) > 0
     if was_paid:
-        if registration.outstanding_cents > 0:
+        if underpaid:
             emails.send_surcharge_due(mailer, tournament, fencer, registration)
     else:
         emails.send_amendment_confirmation(mailer, tournament, fencer, registration)
@@ -503,14 +510,14 @@ def my_registration_payment(tournament: TournamentDep, session: SessionDep, fenc
     primary, eur = emails.payment_spayd(tournament, registration)
     return PaymentInstructionsOut(
         amount=registration.total_amount,
-        currency=tournament.primary_currency,
+        currency=tournament.local_currency,
         iban=tournament.bank_account,
         vs=registration.vs,
         message=message,
         expires_at=registration.expires_at,
         spayd=primary,
         qr_png_base64=base64.b64encode(spayd.qr_png(primary)).decode(),
-        eur_amount=pricing.to_eur(registration.total_amount, tournament),
+        eur_amount=registration.total_eur,
         eur_spayd=eur,
         eur_qr_png_base64=(
             base64.b64encode(spayd.qr_png(eur)).decode() if eur else None
@@ -564,7 +571,9 @@ def admit_substitute(
     entry.is_substitute = False
     # Fees are frozen to the original registration date; admission bills the
     # admitted discipline (plus extras on first admission) and opens a fresh window.
-    registration.total_amount = pricing.registration_total(registration, tournament)
+    totals = pricing.registration_total(registration, tournament)
+    registration.total_amount = totals.local
+    registration.total_eur = totals.eur
     registration.expires_at = _now() + timedelta(days=tournament.reservation_validity_days)
     session.commit()
     # Admission opens the payment window: send the payment instructions now.

@@ -3,7 +3,7 @@ communication language."""
 
 from decimal import ROUND_HALF_UP, Decimal
 
-from app import pricing, spayd
+from app import spayd
 from app.config import settings
 from app.i18n import format_money, t
 from app.mail import Mailer, build_message
@@ -39,21 +39,28 @@ def _summary_lines(registration: Registration, lang: str) -> str:
 
 def _eur_note(tournament: Tournament, lang: str) -> str:
     """The sentence pointing at the second, EUR-denominated QR; empty for a
-    tournament that takes only its primary currency."""
+    tournament that takes only its local currency."""
     if not tournament.shows_eur:
         return ""
     return t("email.confirmation.eur_note", lang)
 
 
-def _total_text(tournament: Tournament, registration: Registration) -> str:
-    """The amount due, with the EUR equivalent appended when the tournament
-    takes EUR — one string so every email body has a single {total} slot."""
-    lang = tournament.language
-    primary = format_money(registration.total_amount, tournament.primary_currency, lang)
-    eur = pricing.to_eur(registration.total_amount, tournament)
-    if eur is None:
+def _amount_text(
+    tournament: Tournament, lang: str, local_amount: int | Decimal, eur_amount: int | Decimal | None
+) -> str:
+    """A local-currency figure with the stored EUR figure appended when the
+    tournament takes EUR — one string so every email body has a single slot.
+    Neither figure is ever computed from the other."""
+    primary = format_money(local_amount, tournament.local_currency, lang)
+    if eur_amount is None:
         return primary
-    return f"{primary} ({format_money(eur, 'EUR', lang)})"
+    return f"{primary} ({format_money(eur_amount, 'EUR', lang)})"
+
+
+def _total_text(tournament: Tournament, registration: Registration) -> str:
+    return _amount_text(
+        tournament, tournament.language, registration.total_amount, registration.total_eur
+    )
 
 
 def send_registration_confirmation(
@@ -100,28 +107,33 @@ def payment_message(tournament: Tournament, registration: Registration) -> str:
 
 
 def payment_spayd(
-    tournament: Tournament, registration: Registration, amount: int | Decimal | None = None
+    tournament: Tournament,
+    registration: Registration,
+    *,
+    local_amount: int | Decimal | None = None,
+    eur_amount: int | Decimal | None = None,
 ) -> tuple[str, str | None]:
-    """The primary SPAYD string and, for a tournament that also takes EUR, a
-    second one denominated in EUR against the same IBAN (design D4).
+    """The local-currency SPAYD string and, for a tournament that also takes
+    EUR, a second one denominated in EUR against the same IBAN (design D4).
 
-    `amount` overrides the registration's total — the same VS, but for the
-    outstanding difference rather than the full amount (a surcharge due)."""
-    due = registration.total_amount if amount is None else amount
+    The two override amounts are independent — the same VS, but for whatever
+    is outstanding in each currency (a surcharge due) rather than each
+    currency's full total. Each defaults to that currency's stored total."""
+    local_due = registration.total_amount if local_amount is None else local_amount
     message = payment_message(tournament, registration)
     primary = spayd.spayd_string(
         tournament.bank_account,
-        due,
+        local_due,
         registration.vs,
         message,
-        currency=str(tournament.primary_currency),
+        currency=str(tournament.local_currency),
     )
-    eur_amount = pricing.to_eur(due, tournament)
-    if eur_amount is None:
+    eur_due = registration.total_eur if eur_amount is None else eur_amount
+    if eur_due is None:
         return primary, None
     eur = spayd.spayd_string(
         tournament.bank_account,
-        eur_amount,
+        eur_due,
         registration.vs,
         message,
         currency="EUR",
@@ -130,11 +142,17 @@ def payment_spayd(
 
 
 def payment_qrs(
-    tournament: Tournament, registration: Registration, amount: int | Decimal | None = None
+    tournament: Tournament,
+    registration: Registration,
+    *,
+    local_amount: int | Decimal | None = None,
+    eur_amount: int | Decimal | None = None,
 ) -> tuple[bytes | None, bytes | None]:
     if not tournament.bank_account:
         return None, None
-    primary, eur = payment_spayd(tournament, registration, amount)
+    primary, eur = payment_spayd(
+        tournament, registration, local_amount=local_amount, eur_amount=eur_amount
+    )
     return spayd.qr_png(primary), (spayd.qr_png(eur) if eur else None)
 
 
@@ -187,7 +205,7 @@ def send_payment_received(
         lang,
         name=fencer.display_name,
         tournament=tournament.display_name,
-        total=format_money(registration.total_amount, tournament.primary_currency, lang),
+        total=_total_text(tournament, registration),
         vs=registration.vs,
     )
     mailer.send(build_message(fencer.email, settings.email_sender, subject, body))
@@ -239,22 +257,32 @@ def send_surcharge_due(
     mailer: Mailer, tournament: Tournament, fencer: Fencer, registration: Registration
 ) -> None:
     """A paid registration amended upward: payment instructions for exactly
-    the difference, against the same VS the fencer already paid once."""
+    the difference in each currency, against the same VS the fencer already
+    paid once. The two currencies' outstanding amounts are independent —
+    a price change need not move both the same way."""
     lang = tournament.language
-    outstanding = (Decimal(registration.outstanding_cents) / 100).quantize(
+    outstanding_local = (Decimal(registration.outstanding_cents) / 100).quantize(
         Decimal("0.01"), rounding=ROUND_HALF_UP
     )
+    outstanding_eur = None
+    if registration.outstanding_eur_cents is not None:
+        outstanding_eur = (Decimal(registration.outstanding_eur_cents) / 100).quantize(
+            Decimal("0.01"), rounding=ROUND_HALF_UP
+        )
+
     subject = t("email.surcharge.subject", lang, tournament=tournament.display_name)
     body = t(
         "email.surcharge.body",
         lang,
         name=fencer.display_name,
         tournament=tournament.display_name,
-        amount=format_money(outstanding, tournament.primary_currency, lang),
+        amount=_amount_text(tournament, lang, outstanding_local, outstanding_eur),
         account=tournament.bank_account or "?",
         vs=registration.vs,
     )
-    qr, qr_eur = payment_qrs(tournament, registration, amount=outstanding)
+    qr, qr_eur = payment_qrs(
+        tournament, registration, local_amount=outstanding_local, eur_amount=outstanding_eur
+    )
     mailer.send(
         build_message(
             fencer.email, settings.email_sender, subject, body, qr=qr, qr_eur=qr_eur
@@ -276,7 +304,7 @@ def send_reservation_reinstated(
         lang,
         name=fencer.display_name,
         tournament=tournament.display_name,
-        total=format_money(registration.total_amount, tournament.primary_currency, lang),
+        total=_total_text(tournament, registration),
         vs=registration.vs,
     )
     mailer.send(build_message(fencer.email, settings.email_sender, subject, body))

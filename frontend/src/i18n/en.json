@@ -199,6 +199,7 @@
   },
   "setup": {
     "pricingWarning": "This tournament already has registrations — editing prices changes what unpaid reservations owe.",
+    "recalculateMissing": "Recalculate missing",
     "checklist": {
       "title": "Setup status",
       "ready": "Setup is complete — registration is possible (subject to the registration window)."
@@ -208,7 +209,17 @@
       "organizers": "At least one titular organizer is missing",
       "disciplines": "At least one discipline is missing",
       "discipline_prices": "Some discipline has no price",
-      "eur_rate": "Exchange rate for EUR payments is missing"
+      "extra_item_prices": "Some extra service has no EUR price",
+      "discount_prices": "Some fixed discount has no EUR amount",
+      "legacy_fixed_fees_block_eur": "This tournament uses the legacy fixed weapon-rental/afterparty fees, which have no EUR counterpart — switch to itemized extra services to enable EUR"
+    },
+    "priceChangeWarning": {
+      "title": "Changing prices on a tournament with open registration",
+      "existing": "fencers already registered keep the amount they were quoted",
+      "amending": "a fencer who later amends is repriced at the new prices",
+      "new": "new registrations use the new prices",
+      "badPractice": "Changing prices mid-registration is bad practice. Continue?",
+      "proceed": "Continue"
     },
     "identity": {
       "title": "Basic information",
@@ -225,7 +236,7 @@
       "qualificationOpen": "Open to everyone",
       "qualificationRequired": "Qualification required",
       "qualificationCriteria": "Qualification criteria",
-      "qualificationCriteriaHint": "For example \"national championship placement, HR top 500\".",
+      "qualificationCriteriaHint": "For example \"national championship placement\", \"HR top 500\" etc.",
       "qualificationCriteriaRequired": "Enter the qualification criteria, or switch back to \"open to everyone\".",
       "registrationInstructions": "Registration instructions",
       "registrationInstructionsHint": "Shown only on the registration form — the place for payment or registration notes that do not belong on the public page."
@@ -250,6 +261,7 @@
       "code": "Code",
       "capacity": "Capacity",
       "fee": "Fee ({{currency}})",
+      "feeEur": "Fee (EUR)",
       "add": "Add discipline",
       "when": "When (optional)",
       "where": "Where (optional)",
@@ -265,6 +277,7 @@
       "name": "Name",
       "category": "Category",
       "price": "Price ({{currency}})",
+      "priceEur": "Price (EUR)",
       "maxQty": "Max quantity",
       "add": "Add service",
       "categories": {
@@ -291,6 +304,7 @@
       "conditionEarly": "Registered before date",
       "effect": "Effect",
       "fixed": "Fixed amount ({{currency}})",
+      "fixedEur": "Fixed amount (EUR)",
       "percent": "Percent (%)",
       "add": "Add discount"
     },
@@ -320,13 +334,16 @@
     },
     "currency": {
       "title": "Currency",
-      "primary": "Primary currency",
-      "eurPayments": "Also accept EUR payments",
+      "mode": {
+        "local": "CZK only",
+        "local_eur": "CZK + EUR",
+        "eur": "EUR only"
+      },
       "rate": "Exchange rate (1 EUR = ?)",
-      "rateHint": "How many units of the primary currency one euro is worth — for example 25.5 CZK per EUR.",
-      "rateWarning": "That rate looks implausible. Check the direction: primary-currency units per 1 EUR.",
-      "rateNote": "Changing the rate also changes the EUR figures shown on existing unpaid reservations.",
-      "rateRequired": "Set an exchange rate to accept EUR payments."
+      "rateHint": "How many units of the local currency one euro is worth — for example 25.5 CZK per EUR. Used only for the \"Recalculate missing\" button.",
+      "rateWarning": "That rate looks implausible. Check the direction: local-currency units per 1 EUR.",
+      "rateNote": "The rate is only a convenience for filling in missing prices — stored prices, totals, and payment instructions never change when it changes.",
+      "legacyFixedFeesBlockEur": "This tournament uses the legacy fixed weapon-rental/afterparty fees, which have no EUR counterpart — switch to itemized extra services to enable EUR."
     }
   },
   "admin": {
