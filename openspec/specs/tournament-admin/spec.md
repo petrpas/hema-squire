@@ -269,6 +269,8 @@ Per tournament, the organizer SHALL configure: reservation validity in days, rem
 
 The expiry grace period SHALL define how long after a reservation expires a payment carrying its VS may still reinstate it, subject to capacity. It SHALL default to 48 hours for a new tournament and SHALL accept zero, which disables automatic reinstatement and routes every post-expiry payment to explicit organizer action.
 
+The reminder day MUST fall before the reservation validity period ends. A reminder day at or beyond the validity period SHALL be rejected with a message naming both values, because expiry runs before reminders: such a reservation would always be expired before its reminder was due, and no reminder would ever be sent.
+
 #### Scenario: Parameters applied
 - **WHEN** the organizer sets reservation validity to 10 days and the reminder to day 5
 - **THEN** new reservations expire after 10 unpaid days and reminder emails go out on day 5
@@ -280,6 +282,14 @@ The expiry grace period SHALL define how long after a reservation expires a paym
 #### Scenario: Grace period disabled
 - **WHEN** the organizer sets the expiry grace period to zero
 - **THEN** no payment reinstates a reservation automatically and every post-expiry payment is flagged for organizer action
+
+#### Scenario: Reminder day at or beyond expiry rejected
+- **WHEN** the organizer sets the reminder day to 10 with a reservation validity of 10 days
+- **THEN** the update is rejected with a message naming both values, and no tournament is left in a state where reminders are silently never sent
+
+#### Scenario: Reminder day shortened below a valid reminder
+- **WHEN** the organizer shortens reservation validity to 5 days on a tournament whose reminder day is 7
+- **THEN** the update is rejected, since the combination would stop reminders being sent
 
 ### Requirement: Variable symbol series
 Each tournament SHALL carry a VS year and a VS series, which together form the prefix of every variable symbol it issues. The VS year SHALL be taken from the tournament's date when the series is assigned, so that an event held in January belongs to that January's year even when it is created and sells out during the preceding year. The VS series SHALL be an integer from 1 to 99 and SHALL be unique among the tournaments sharing a VS year.
