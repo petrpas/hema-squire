@@ -17,10 +17,13 @@ function slugify(text: string): string {
     .replace(/^-+|-+$/g, "");
 }
 
+const YEAR_TOKEN = /(^|-)(19|20)\d{2}(-|$)/;
+
 function deriveSlug(name: string, dateValue: string): string {
   const year = dateValue ? new Date(dateValue).getFullYear() : new Date().getFullYear();
   const base = slugify(name);
-  return base ? `${base}-${year}` : "";
+  if (!base) return "";
+  return YEAR_TOKEN.test(base) ? base : `${base}-${year}`;
 }
 
 function NewTournamentDialog({

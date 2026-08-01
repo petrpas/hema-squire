@@ -263,12 +263,7 @@
     },
     "vsSeries": {
       "title": "Variable symbol series",
-      "series": "Series",
-      "seriesHint": "The two digits that, with the year, form the prefix of every variable symbol this tournament issues.",
-      "prefix": "Variable symbols for this tournament start with {{prefix}}.",
-      "frozenHint": "The series is fixed once the tournament has its first registration, so already-issued variable symbols keep their prefix.",
-      "taken": "That series is already used by another tournament this year.",
-      "frozen": "The series can no longer be changed — this tournament already has a registration."
+      "prefix": "Variable symbols for this tournament start with {{prefix}}."
     },
     "organizers": {
       "title": "Titular organizers (clubs/entities)",
@@ -280,8 +275,8 @@
       "title": "Disciplines",
       "code": "Code",
       "capacity": "Capacity",
-      "fee": "Fee ({{currency}})",
-      "feeEur": "Fee (EUR)",
+      "fee": "unit price ({{currency}})",
+      "feeEur": "unit price (EUR)",
       "add": "Add discipline",
       "when": "When (optional)",
       "where": "Where (optional)",
@@ -297,8 +292,8 @@
       "title": "Extra services",
       "name": "Name",
       "category": "Category",
-      "price": "Price ({{currency}})",
-      "priceEur": "Price (EUR)",
+      "price": "unit price ({{currency}})",
+      "priceEur": "unit price (EUR)",
       "maxQty": "Max quantity",
       "add": "Add service",
       "categories": {
@@ -325,8 +320,8 @@
       "conditionCount": "Discipline count",
       "conditionEarly": "Registered before date",
       "effect": "Effect",
-      "fixed": "Fixed amount ({{currency}})",
-      "fixedEur": "Fixed amount (EUR)",
+      "fixed": "unit price ({{currency}})",
+      "fixedEur": "unit price (EUR)",
       "percent": "Percent (%)",
       "add": "Add discount"
     },
@@ -485,8 +480,6 @@
     "title": "Registration",
     "formNumber": "Registration — form no. 3",
     "afterparty": "Afterparty",
-    "aftersparring": "Post-tournament sparring",
-    "accommodation": "Accommodation (note)",
     "notes": "Notes",
     "total": "Total: {{amount}}",
     "submit": "Submit registration",
@@ -497,7 +490,7 @@
       "items": "Optional items",
       "other": "Other"
     },
-    "remarks": "Remarks",
+    "remarks": "Note",
     "quantity": "Number of pieces",
     "full": "full {{taken}}/{{capacity}} — you will be registered as a substitute",
     "freePlaces": "{{free}} of {{capacity}} places free",

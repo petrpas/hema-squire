@@ -146,8 +146,8 @@ export const ACTION_CATEGORIES = ["seminar", "afterparty", "other_action"] as co
 
 /** Optional when/where/remark line shared by discipline and action rows. The
  * caller decides how it's set off (the tournament face wraps it in a
- * dash-led `.detail-extra` line; the registration form's checklist already
- * has its own indented detail block, so it renders this plain). */
+ * `.detail-extra` line; the registration form's checklist already has its
+ * own indented detail block, so it renders this plain). */
 export function ScheduleLines({
   when,
   where,
@@ -453,8 +453,6 @@ export function RegistrationForm({
     return map;
   });
   const [afterparty, setAfterparty] = useState(initial?.afterparty ?? false);
-  const [aftersparring, setAftersparring] = useState(initial?.aftersparring ?? false);
-  const [accommodation, setAccommodation] = useState(initial?.accommodation ?? "");
   const [notes, setNotes] = useState(initial?.notes ?? "");
   const [total, setTotal] = useState(initial?.total_amount ?? 0);
   const [eurTotal, setEurTotal] = useState<number | null>(initial?.total_eur ?? null);
@@ -632,8 +630,10 @@ export function RegistrationForm({
         disciplines: [...disciplines],
         weapon_rentals: weaponRentals(),
         afterparty,
-        aftersparring,
-        accommodation: accommodation.trim() === "" ? null : accommodation,
+        // the API keeps both fields for the table-import path; the in-app
+        // form no longer offers either (design D9)
+        aftersparring: false,
+        accommodation: null,
         notes: notes.trim() === "" ? null : notes,
         // full rows were chosen knowingly, so substitute placement is accepted
         wait_for_all: selectedFull.length > 0,
@@ -761,21 +761,9 @@ export function RegistrationForm({
         {t("form.total", { amount: formatMoneyWithEur(total, eurTotal, detail) })}
       </p>
 
-      {/* non-billable answers: nothing here changes the total */}
+      {/* non-billable answer: nothing here changes the total */}
       <h3 className="register-section">{t("form.sections.other")}</h3>
       <div className="form-fields">
-        <label className="checkbox-chip">
-          <input
-            type="checkbox"
-            checked={aftersparring}
-            onChange={(event) => setAftersparring(event.target.checked)}
-          />
-          {t("form.aftersparring")}
-        </label>
-        <label className="form-field">
-          <span>{t("form.accommodation")}</span>
-          <input value={accommodation} onChange={(event) => setAccommodation(event.target.value)} />
-        </label>
         <label className="form-field">
           <span>{t("form.remarks")}</span>
           <textarea value={notes} onChange={(event) => setNotes(event.target.value)} />

@@ -15,9 +15,15 @@ All user-facing text — UI, emails, generated documents — SHALL be externaliz
 ### Requirement: Communication language vs UI language
 Emails to fencers SHALL use the tournament's communication language. The console and fencer-facing UI language SHALL follow the user's preference.
 
+The tournament's communication language SHALL be fixed when the tournament is created and SHALL NOT be exposed as an editable setting in the console. It remains a stored property of the tournament, read by every email path exactly as before; it is simply not something the organizer changes after the fact.
+
 #### Scenario: Czech tournament, foreign organizer
 - **WHEN** a tournament is configured with Czech communication and an organizer prefers another UI language
 - **THEN** fencers receive Czech emails while the organizer's console renders in their preferred language once available
+
+#### Scenario: Communication language not editable
+- **WHEN** the organizer looks for the communication language in the console
+- **THEN** no screen offers it for editing, and the language assigned at creation continues to govern every email the tournament sends
 
 ### Requirement: Per-account UI language preference
 Each account SHALL store a preferred UI language, chosen at signup from the implemented localizations (derived from the bundled locale resources, not a hardcoded list) and editable on the Profile page. The application SHALL render in the account's language after login and immediately after signup. The registration window's language selector SHALL default to English on first render; changing the selection SHALL switch the window's own language at once. Accounts without an explicit preference SHALL default to English.

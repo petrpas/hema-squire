@@ -30,7 +30,7 @@ export default function SetupPreview({
   return (
     <div className="setup-preview">
       <p className="setup-preview-heading">{t("preview.heading")}</p>
-      <nav className="stage-control">
+      <nav className="stage-control preview-tabs">
         <button className={tab === "face" ? "active" : ""} onClick={() => setTab("face")}>
           {t("preview.tabs.face")}
         </button>

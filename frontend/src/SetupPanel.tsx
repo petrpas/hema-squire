@@ -249,10 +249,9 @@ type DisciplineDraft = {
 const IDENTITY_FIELDS = [
   { key: "display_name", type: "text" },
   { key: "subtitle", type: "text" },
-  { key: "description", type: "textarea", markdown: true },
   { key: "date", type: "date" },
   { key: "location", type: "text" },
-  { key: "language", type: "text" },
+  { key: "description", type: "textarea", markdown: true },
   { key: "registration_opens", type: "date" },
   { key: "registration_closes", type: "date" },
   // shown only on the registration form, unlike description
@@ -263,6 +262,15 @@ const IDENTITY_FIELDS = [
     markdown: true,
   },
 ] as const;
+
+// rendered as three runs — [display_name, subtitle], [date, location, description],
+// [registration_opens, registration_closes, registration_instructions] — with the
+// logo block after the first and the qualification block after the second, so the
+// section reads name, subtitle, logo, date, location, description, qualification,
+// reg. opens, reg. closes, reg. instructions (design D5).
+const IDENTITY_RUN_1 = IDENTITY_FIELDS.slice(0, 2);
+const IDENTITY_RUN_2 = IDENTITY_FIELDS.slice(2, 5);
+const IDENTITY_RUN_3 = IDENTITY_FIELDS.slice(5);
 
 function IdentitySection({
   detail,
@@ -365,43 +373,81 @@ function IdentitySection({
     },
   });
 
+  function renderField(field: (typeof IDENTITY_FIELDS)[number]) {
+    return field.type === "textarea" ? (
+      <label key={field.key} className="form-field">
+        <span>
+          {t(`param.${field.key}`)}
+          {"hint" in field && <HelpHint text={t(field.hint)} />}
+        </span>
+        <textarea
+          className={"markdown" in field && field.markdown ? "markdown-input" : undefined}
+          value={values[field.key] ?? ""}
+          onChange={(event) => {
+            setValues({ ...values, [field.key]: event.target.value });
+            setDirty(true);
+          }}
+        />
+        {"markdown" in field && field.markdown && (
+          <span className="markdown-hint">{t("setup.identity.markdownHint")}</span>
+        )}
+      </label>
+    ) : (
+      <label key={field.key} className="form-field">
+        <span>{t(`param.${field.key}`)}</span>
+        <input
+          type={field.type}
+          value={values[field.key] ?? ""}
+          onChange={(event) => {
+            setValues({ ...values, [field.key]: event.target.value });
+            setDirty(true);
+          }}
+        />
+      </label>
+    );
+  }
+
   return (
     <section className="rail-card">
-      <div className="form-fields">
-        {IDENTITY_FIELDS.map((field) =>
-          field.type === "textarea" ? (
-            <label key={field.key} className="form-field">
-              <span>
-                {t(`param.${field.key}`)}
-                {"hint" in field && <HelpHint text={t(field.hint)} />}
-              </span>
-              <textarea
-                className={"markdown" in field && field.markdown ? "markdown-input" : undefined}
-                value={values[field.key] ?? ""}
-                onChange={(event) => {
-                  setValues({ ...values, [field.key]: event.target.value });
-                  setDirty(true);
-                }}
-              />
-              {"markdown" in field && field.markdown && (
-                <span className="markdown-hint">{t("setup.identity.markdownHint")}</span>
-              )}
-            </label>
-          ) : (
-            <label key={field.key} className="form-field">
-              <span>{t(`param.${field.key}`)}</span>
-              <input
-                type={field.type}
-                value={values[field.key] ?? ""}
-                onChange={(event) => {
-                  setValues({ ...values, [field.key]: event.target.value });
-                  setDirty(true);
-                }}
-              />
-            </label>
-          ),
+      <div className="form-fields">{IDENTITY_RUN_1.map(renderField)}</div>
+      <div className="logo-control">
+        <span className="logo-control-label">{t("setup.identity.logo")}</span>
+        {detail.has_logo && (
+          <img
+            className="logo-preview"
+            src={`${logoUrl(slug)}?v=${logoVersion}`}
+            alt={t("setup.identity.logo")}
+          />
         )}
+        <div className="logo-control-actions">
+          <label className="logo-upload">
+            {t("setup.identity.logoUpload")}
+            <input
+              type="file"
+              accept="image/*"
+              disabled={logoBusy}
+              onChange={(event) => {
+                const file = event.target.files?.[0];
+                if (file) void uploadLogo(file);
+                event.target.value = "";
+              }}
+            />
+          </label>
+          {detail.has_logo && (
+            <button
+              type="button"
+              className="link-button"
+              disabled={logoBusy}
+              onClick={() => void removeLogo()}
+            >
+              {t("setup.identity.logoRemove")}
+            </button>
+          )}
+        </div>
+        <span className="rail-hint">{t("setup.identity.logoHint")}</span>
+        {logoError && <span className="login-error">{logoError}</span>}
       </div>
+      <div className="form-fields">{IDENTITY_RUN_2.map(renderField)}</div>
       <div className="form-field qualification-control">
         <span>{t("setup.identity.qualification")}</span>
         <label className="qualification-option">
@@ -445,121 +491,18 @@ function IdentitySection({
         )}
         {qualificationError && <span className="login-error">{qualificationError}</span>}
       </div>
-      <div className="logo-control">
-        <span className="logo-control-label">{t("setup.identity.logo")}</span>
-        {detail.has_logo && (
-          <img
-            className="logo-preview"
-            src={`${logoUrl(slug)}?v=${logoVersion}`}
-            alt={t("setup.identity.logo")}
-          />
-        )}
-        <div className="logo-control-actions">
-          <label className="secondary logo-upload">
-            {t("setup.identity.logoUpload")}
-            <input
-              type="file"
-              accept="image/*"
-              disabled={logoBusy}
-              onChange={(event) => {
-                const file = event.target.files?.[0];
-                if (file) void uploadLogo(file);
-                event.target.value = "";
-              }}
-            />
-          </label>
-          {detail.has_logo && (
-            <button
-              type="button"
-              className="secondary"
-              disabled={logoBusy}
-              onClick={() => void removeLogo()}
-            >
-              {t("setup.identity.logoRemove")}
-            </button>
-          )}
-        </div>
-        <span className="rail-hint">{t("setup.identity.logoHint")}</span>
-        {logoError && <span className="login-error">{logoError}</span>}
-      </div>
+      <div className="form-fields">{IDENTITY_RUN_3.map(renderField)}</div>
     </section>
   );
 }
 
-function VsSeriesSection({
-  detail,
-  slug,
-  registry,
-}: {
-  detail: TournamentDetail;
-  slug: string;
-  registry: SaverRegistry;
-}) {
+function VsSeriesSection({ detail }: { detail: TournamentDetail }) {
   const { t } = useTranslation();
-  const [series, setSeries] = useState("");
-  const [dirty, setDirty] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    setSeries(String(detail.vs_series));
-    setError(null);
-    setDirty(false);
-  }, [detail]);
-
-  useSectionSaver(registry, "payments", "vsSeries", {
-    pendingCount: dirty ? 1 : 0,
-    touchesPrice: false,
-    validate: () => true,
-    flush: async () => {
-      setError(null);
-      try {
-        await api.updateTournament(slug, { vs_series: Number(series) });
-        setDirty(false);
-        return [{ change: "vsSeries", section: "vsSeries", error: null }];
-      } catch (err) {
-        const message =
-          err instanceof ApiError &&
-          typeof err.detail === "string" &&
-          err.detail.startsWith("vs_series_taken")
-            ? t("setup.vsSeries.taken")
-            : err instanceof ApiError && err.detail === "vs_series_frozen"
-              ? t("setup.vsSeries.frozen")
-              : t("setup.saveBar.genericError", {
-                  status: err instanceof ApiError ? err.status : "?",
-                });
-        setError(message);
-        return [{ change: "vsSeries", section: "vsSeries", error: message }];
-      }
-    },
-  });
 
   return (
     <section className="rail-card">
       <h2>{t("setup.vsSeries.title")}</h2>
-      {detail.vs_series_editable ? (
-        <div className="form-fields">
-          <label className="form-field">
-            <span>
-              {t("setup.vsSeries.series")}
-              <HelpHint text={t("setup.vsSeries.seriesHint")} />
-            </span>
-            <input
-              type="number"
-              min={1}
-              max={99}
-              value={series}
-              onChange={(event) => {
-                setSeries(event.target.value);
-                setDirty(true);
-              }}
-            />
-          </label>
-        </div>
-      ) : (
-        <p className="rail-hint">{t("setup.vsSeries.frozenHint")}</p>
-      )}
       <p className="rail-hint">{t("setup.vsSeries.prefix", { prefix: detail.vs_prefix })}</p>
-      {error && <p className="login-error">{error}</p>}
     </section>
   );
 }
@@ -2180,84 +2123,86 @@ export default function SetupPanel({
           <ChecklistSection detail={detail} />
           <SetupTabBar tabs={offeredTabs} tab={tab} onSelect={setTab} markedTabs={markedTabs} />
         </div>
-        <div
-          className="setup-tabpanel"
-          id="setup-tabpanel-tournament"
-          role="tabpanel"
-          aria-labelledby="setup-tab-tournament"
-          hidden={tab !== "tournament"}
-        >
-          <IdentitySection detail={detail} slug={slug} onSaved={onSaved} registry={registry} />
-          <OrganizersSection detail={detail} slug={slug} registry={registry} />
-        </div>
-        <div
-          className="setup-tabpanel"
-          id="setup-tabpanel-disciplines"
-          role="tabpanel"
-          aria-labelledby="setup-tab-disciplines"
-          hidden={tab !== "disciplines"}
-        >
-          <DisciplinesSection
-            detail={detail}
-            slug={slug}
-            pricingWarning={hasRegistrations}
-            registry={registry}
-          />
-        </div>
-        <div
-          className="setup-tabpanel"
-          id="setup-tabpanel-extra"
-          role="tabpanel"
-          aria-labelledby="setup-tab-extra"
-          hidden={tab !== "extra"}
-        >
-          <ExtraItemsSection
-            detail={detail}
-            slug={slug}
-            pricingWarning={hasRegistrations}
-            registry={registry}
-          />
-        </div>
-        <div
-          className="setup-tabpanel"
-          id="setup-tabpanel-payments"
-          role="tabpanel"
-          aria-labelledby="setup-tab-payments"
-          hidden={tab !== "payments"}
-        >
-          <CurrencySection detail={detail} slug={slug} registry={registry} />
-          <VsSeriesSection detail={detail} slug={slug} registry={registry} />
-          <DiscountsSection
-            detail={detail}
-            slug={slug}
-            pricingWarning={hasRegistrations}
-            registry={registry}
-          />
-        </div>
-        {isOwner && (
+        <div className="setup-panel-body">
           <div
             className="setup-tabpanel"
-            id="setup-tabpanel-other"
+            id="setup-tabpanel-tournament"
             role="tabpanel"
-            aria-labelledby="setup-tab-other"
-            hidden={tab !== "other"}
+            aria-labelledby="setup-tab-tournament"
+            hidden={tab !== "tournament"}
           >
-            <TeamSection slug={slug} />
-            <DangerZoneSection
+            <IdentitySection detail={detail} slug={slug} onSaved={onSaved} registry={registry} />
+            <OrganizersSection detail={detail} slug={slug} registry={registry} />
+          </div>
+          <div
+            className="setup-tabpanel"
+            id="setup-tabpanel-disciplines"
+            role="tabpanel"
+            aria-labelledby="setup-tab-disciplines"
+            hidden={tab !== "disciplines"}
+          >
+            <DisciplinesSection
+              detail={detail}
               slug={slug}
-              hasRegistrations={hasRegistrations}
-              cancelled={detail.cancelled_at !== null}
-              onDeleted={onDeleted}
-              onCancelled={onSaved}
+              pricingWarning={hasRegistrations}
+              registry={registry}
             />
           </div>
-        )}
-        <SetupSaveBar
-          tab={tab}
-          registry={registry}
-          hasRegistrations={hasRegistrations}
-          onSaved={onSaved}
-        />
+          <div
+            className="setup-tabpanel"
+            id="setup-tabpanel-extra"
+            role="tabpanel"
+            aria-labelledby="setup-tab-extra"
+            hidden={tab !== "extra"}
+          >
+            <ExtraItemsSection
+              detail={detail}
+              slug={slug}
+              pricingWarning={hasRegistrations}
+              registry={registry}
+            />
+          </div>
+          <div
+            className="setup-tabpanel"
+            id="setup-tabpanel-payments"
+            role="tabpanel"
+            aria-labelledby="setup-tab-payments"
+            hidden={tab !== "payments"}
+          >
+            <CurrencySection detail={detail} slug={slug} registry={registry} />
+            <VsSeriesSection detail={detail} />
+            <DiscountsSection
+              detail={detail}
+              slug={slug}
+              pricingWarning={hasRegistrations}
+              registry={registry}
+            />
+          </div>
+          {isOwner && (
+            <div
+              className="setup-tabpanel"
+              id="setup-tabpanel-other"
+              role="tabpanel"
+              aria-labelledby="setup-tab-other"
+              hidden={tab !== "other"}
+            >
+              <TeamSection slug={slug} />
+              <DangerZoneSection
+                slug={slug}
+                hasRegistrations={hasRegistrations}
+                cancelled={detail.cancelled_at !== null}
+                onDeleted={onDeleted}
+                onCancelled={onSaved}
+              />
+            </div>
+          )}
+          <SetupSaveBar
+            tab={tab}
+            registry={registry}
+            hasRegistrations={hasRegistrations}
+            onSaved={onSaved}
+          />
+        </div>
       </div>
       <SetupPreview detail={detail} slug={slug} />
     </div>

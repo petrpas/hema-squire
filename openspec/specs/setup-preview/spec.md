@@ -47,9 +47,18 @@ form. Exactly one tab SHALL be selected at a time, the tournament face on entry.
 selected tab SHALL survive a save of any settings section, so an organizer editing
 prices while watching the registration form is not returned to the other tab.
 
+The tab bar SHALL be sized to its labels and aligned to the leading edge of the pane,
+never stretched to the pane's full width. It SHALL match the settings pane's tab bar
+in this as in its control treatment, so the two bars read as the same control at
+different sizes.
+
 #### Scenario: Two tabs offered
 - **WHEN** the organizer looks at the preview pane
 - **THEN** it offers a tournament-face tab and a registration-form tab, with the tournament face selected
+
+#### Scenario: Tab bar sized to its labels
+- **WHEN** the organizer widens the console so the preview pane is far wider than the two tab labels
+- **THEN** the tab bar stays as wide as its labels, aligned to the pane's leading edge, with empty pane to its trailing side
 
 #### Scenario: Tab switching
 - **WHEN** the organizer selects the registration-form tab

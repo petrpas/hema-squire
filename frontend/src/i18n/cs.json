@@ -263,12 +263,7 @@
     },
     "vsSeries": {
       "title": "Řada variabilního symbolu",
-      "series": "Řada",
-      "seriesHint": "Dvojčíslí, které spolu s rokem tvoří předčíslí každého variabilního symbolu vydaného tímto turnajem.",
-      "prefix": "Variabilní symboly tohoto turnaje začínají na {{prefix}}.",
-      "frozenHint": "Řada je pevná od první registrace na turnaj, aby si už vydané variabilní symboly zachovaly své předčíslí.",
-      "taken": "Tuto řadu už v tomto roce používá jiný turnaj.",
-      "frozen": "Řadu už nelze změnit — turnaj už má registraci."
+      "prefix": "Variabilní symboly tohoto turnaje začínají na {{prefix}}."
     },
     "organizers": {
       "title": "Pořadatelé (kluby/subjekty)",
@@ -280,8 +275,8 @@
       "title": "Disciplíny",
       "code": "Kód",
       "capacity": "Kapacita",
-      "fee": "Cena ({{currency}})",
-      "feeEur": "Cena (EUR)",
+      "fee": "jednotková cena ({{currency}})",
+      "feeEur": "jednotková cena (EUR)",
       "add": "Přidat disciplínu",
       "when": "Kdy (nepovinné)",
       "where": "Kde (nepovinné)",
@@ -297,8 +292,8 @@
       "title": "Doplňkové služby",
       "name": "Název",
       "category": "Kategorie",
-      "price": "Cena ({{currency}})",
-      "priceEur": "Cena (EUR)",
+      "price": "jednotková cena ({{currency}})",
+      "priceEur": "jednotková cena (EUR)",
       "maxQty": "Max. množství",
       "add": "Přidat službu",
       "categories": {
@@ -325,8 +320,8 @@
       "conditionCount": "Počet disciplín",
       "conditionEarly": "Registrace do data",
       "effect": "Efekt",
-      "fixed": "Pevná částka ({{currency}})",
-      "fixedEur": "Pevná částka (EUR)",
+      "fixed": "jednotková cena ({{currency}})",
+      "fixedEur": "jednotková cena (EUR)",
       "percent": "Procenta (%)",
       "add": "Přidat slevu"
     },
@@ -485,8 +480,6 @@
     "title": "Registrace",
     "formNumber": "Registrace — tiskopis č. 3",
     "afterparty": "Afterparty",
-    "aftersparring": "Sparing po turnaji",
-    "accommodation": "Ubytování (poznámka)",
     "notes": "Poznámka",
     "total": "Celkem: {{amount}}",
     "submit": "Odeslat registraci",
@@ -497,7 +490,7 @@
       "items": "Volitelné položky",
       "other": "Ostatní"
     },
-    "remarks": "Poznámky",
+    "remarks": "Poznámka",
     "quantity": "Počet kusů",
     "full": "zaplněno {{taken}}/{{capacity}} — budeš registrován jako náhradník",
     "freePlaces": "volných míst {{free}} z {{capacity}}",
