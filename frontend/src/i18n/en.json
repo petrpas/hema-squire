@@ -139,7 +139,12 @@
     "error": "Could not load data. Are you an organizer of this tournament?",
     "footerStats": "{{rows}} registered · {{paid}} paid",
     "footerNote": "File maintained in good order.",
-    "footerRevision": "rev. {{n}}"
+    "footerRevision": "rev. {{n}}",
+    "leaveSetup": {
+      "title": "unsaved setup changes",
+      "body": "leaving setup now will discard the unsaved changes on this tab.",
+      "confirm": "discard and leave"
+    }
   },
   "column": {
     "name": "Name",
@@ -200,6 +205,20 @@
   "setup": {
     "pricingWarning": "This tournament already has registrations — editing prices changes what unpaid reservations owe.",
     "recalculateMissing": "Recalculate missing",
+    "tabs": {
+      "tournament": "tournament",
+      "disciplines": "disciplines",
+      "extra": "extra",
+      "payments": "payments",
+      "other": "other",
+      "incomplete": "incomplete configuration"
+    },
+    "saveBar": {
+      "save": "Save changes ({{count}})",
+      "nothingToSave": "Nothing to save",
+      "partial": "{{written}} of {{total}} changes written, {{pending}} still unsaved",
+      "genericError": "The change could not be saved (error {{status}})."
+    },
     "checklist": {
       "title": "Setup status",
       "ready": "Setup is complete — registration is possible (subject to the registration window)."
@@ -271,7 +290,8 @@
       "whenHint": "A rough time, for example \"Saturday morning\".",
       "whereHint": "A place within the venue, for example \"Main Hall\".",
       "rulesetNameHint": "A short ruleset name, for example \"Right of Way\".",
-      "rulesetUrlHint": "A link to the full ruleset text, if one exists."
+      "rulesetUrlHint": "A link to the full ruleset text, if one exists.",
+      "rowInvalid": "Enter a code and capacity for this row."
     },
     "extras": {
       "title": "Extra services",
@@ -295,7 +315,8 @@
       "optionLabel": "Option",
       "optionChoices": "Choices",
       "optionLabelHint": "Name of one thing the fencer picks when selecting this item, for example \"size\". Leave empty for no option.",
-      "optionChoicesHint": "Comma-separated allowed answers, for example \"S, M, L, XL\". Leave empty for free text."
+      "optionChoicesHint": "Comma-separated allowed answers, for example \"S, M, L, XL\". Leave empty for free text.",
+      "rowInvalid": "Enter a name and price for this row."
     },
     "discounts": {
       "title": "Discounts",

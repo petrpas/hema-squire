@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import {
@@ -20,6 +20,35 @@ export const LEGACY_WEAPONS: Record<string, string> = {
   RD: "Rapier & Dagger",
   SB: "Sword & Buckler",
 };
+
+// extra breathing room around inline "·" separators — several sit right
+// next to numerals/currency and read as cramped without it
+const DOT = "  ·  ";
+
+/** Joins non-empty parts (strings or nodes, e.g. a ruleset link) with `DOT`,
+ * rendering nothing when every part is empty. */
+function DotJoined({
+  parts,
+  className = "muted",
+}: {
+  parts: React.ReactNode[];
+  className?: string;
+}) {
+  const visible = parts.filter(
+    (part) => part !== null && part !== undefined && part !== false && part !== "",
+  );
+  if (visible.length === 0) return null;
+  return (
+    <span className={className}>
+      {visible.map((part, index) => (
+        <Fragment key={index}>
+          {index > 0 && DOT}
+          {part}
+        </Fragment>
+      ))}
+    </span>
+  );
+}
 
 type RegistrationStatus = "open" | "opens_on" | "closed";
 
@@ -80,15 +109,19 @@ export function InfoHeader({ detail }: { detail: TournamentDetailData }) {
         </div>
         {(detail.registration_opens || detail.registration_closes) && (
           <p className="rail-hint">
-            {detail.registration_opens &&
-              t("detail.opensOn", {
-                date: new Date(detail.registration_opens).toLocaleDateString("cs"),
-              })}
-            {detail.registration_opens && detail.registration_closes && " · "}
-            {detail.registration_closes &&
-              t("detail.closesOn", {
-                date: new Date(detail.registration_closes).toLocaleDateString("cs"),
-              })}
+            <DotJoined
+              className=""
+              parts={[
+                detail.registration_opens &&
+                  t("detail.opensOn", {
+                    date: new Date(detail.registration_opens).toLocaleDateString("cs"),
+                  }),
+                detail.registration_closes &&
+                  t("detail.closesOn", {
+                    date: new Date(detail.registration_closes).toLocaleDateString("cs"),
+                  }),
+              ]}
+            />
           </p>
         )}
         <p className="rail-hint">
@@ -108,7 +141,10 @@ export function InfoHeader({ detail }: { detail: TournamentDetailData }) {
 // as the optional programme on the register screen
 export const ACTION_CATEGORIES = ["seminar", "afterparty", "other_action"] as const;
 
-/** Optional when/where/remark lines shared by discipline and action rows. */
+/** Optional when/where/remark line shared by discipline and action rows. The
+ * caller decides how it's set off (the tournament face wraps it in a
+ * dash-led `.detail-extra` line; the registration form's checklist already
+ * has its own indented detail block, so it renders this plain). */
 export function ScheduleLines({
   when,
   where,
@@ -118,13 +154,7 @@ export function ScheduleLines({
   where?: string | null;
   remark?: string | null;
 }) {
-  const parts = [when, where].filter(Boolean).join(" · ");
-  return (
-    <>
-      {parts && <span className="muted">{parts}</span>}
-      {remark && <span className="muted">{remark}</span>}
-    </>
-  );
+  return <DotJoined parts={[when, where, remark]} />;
 }
 
 export function DisciplinesInfo({
@@ -144,20 +174,9 @@ export function DisciplinesInfo({
           const a = byCode.get(d.code);
           const taken = a ? a.taken : 0;
           const free = a ? a.free : d.capacity;
-          return (
-            <li key={d.code}>
-              <strong>
-                {d.code} — {d.name}
-              </strong>
-              <span className="muted">
-                {d.fee === null ? "—" : formatMoneyWithEur(d.fee, d.fee_eur, detail)} ·{" "}
-                {t("detail.fencersCount", { taken, capacity: d.capacity })}
-                {free <= 0 &&
-                  ` · ${t("detail.queueLength", { count: a?.queue_length ?? 0 })}`}
-              </span>
-              <ScheduleLines when={d.schedule_when} where={d.schedule_where} />
-              {d.ruleset_name &&
-                (d.ruleset_url ? (
+          const ruleset = d.ruleset_name
+            ? d.ruleset_url
+              ? (
                   <a
                     className="detail-inline-link"
                     href={d.ruleset_url}
@@ -166,11 +185,34 @@ export function DisciplinesInfo({
                   >
                     {t("detail.rulesetLabel")}: {d.ruleset_name}
                   </a>
-                ) : (
-                  <span className="muted">
-                    {t("detail.rulesetLabel")}: {d.ruleset_name}
-                  </span>
-                ))}
+                )
+              : `${t("detail.rulesetLabel")}: ${d.ruleset_name}`
+            : null;
+          const hasExtra = Boolean(d.schedule_when || d.schedule_where || ruleset);
+          return (
+            <li key={d.code}>
+              <div className="detail-row">
+                <strong>
+                  {d.code} — {d.name}
+                </strong>
+                <DotJoined
+                  parts={[
+                    d.fee === null ? "—" : formatMoneyWithEur(d.fee, d.fee_eur, detail),
+                    t("detail.fencersCount", { taken, capacity: d.capacity }),
+                    free <= 0
+                      ? t("detail.queueLength", { count: a?.queue_length ?? 0 })
+                      : null,
+                  ]}
+                />
+              </div>
+              {hasExtra && (
+                <div className="detail-extra">
+                  <DotJoined
+                    className=""
+                    parts={[d.schedule_when, d.schedule_where, ruleset]}
+                  />
+                </div>
+              )}
             </li>
           );
         })}
@@ -189,16 +231,24 @@ export function OtherActionsInfo({ detail }: { detail: TournamentDetailData }) {
     <section className="rail-card">
       <h2>{t("detail.otherActions")}</h2>
       <ul className="detail-list">
-        {actions.map((item) => (
-          <li key={item.id}>
-            <strong>{item.name}</strong>
-            <ScheduleLines
-              when={item.schedule_when}
-              where={item.schedule_where}
-              remark={item.remark}
-            />
-          </li>
-        ))}
+        {actions.map((item) => {
+          const hasExtra = Boolean(item.schedule_when || item.schedule_where || item.remark);
+          return (
+            <li key={item.id}>
+              <div className="detail-row">
+                <strong>{item.name}</strong>
+              </div>
+              {hasExtra && (
+                <div className="detail-extra">
+                  <DotJoined
+                    className=""
+                    parts={[item.schedule_when, item.schedule_where, item.remark]}
+                  />
+                </div>
+              )}
+            </li>
+          );
+        })}
       </ul>
     </section>
   );

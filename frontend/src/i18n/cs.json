@@ -139,7 +139,12 @@
     "error": "Data se nepodařilo načíst. Jsi organizátorem tohoto turnaje?",
     "footerStats": "{{rows}} registrací · {{paid}} zaplaceno",
     "footerNote": "Spis veden řádně.",
-    "footerRevision": "rev. {{n}}"
+    "footerRevision": "rev. {{n}}",
+    "leaveSetup": {
+      "title": "neuložené změny v nastavení",
+      "body": "opuštěním nastavení teď se neuložené změny na této záložce zahodí.",
+      "confirm": "zahodit a odejít"
+    }
   },
   "column": {
     "name": "Jméno",
@@ -200,6 +205,20 @@
   "setup": {
     "pricingWarning": "Turnaj už má registrace — úprava cen mění dlužnou částku u nezaplacených rezervací.",
     "recalculateMissing": "Doplnit chybějící ceny",
+    "tabs": {
+      "tournament": "turnaj",
+      "disciplines": "disciplíny",
+      "extra": "doplňky",
+      "payments": "platby",
+      "other": "ostatní",
+      "incomplete": "neúplné nastavení"
+    },
+    "saveBar": {
+      "save": "Uložit změny ({{count}})",
+      "nothingToSave": "Není co ukládat",
+      "partial": "Uloženo {{written}} z {{total}} změn, {{pending}} zbývá neuloženo",
+      "genericError": "Změnu se nepodařilo uložit (chyba {{status}})."
+    },
     "checklist": {
       "title": "Stav nastavení",
       "ready": "Nastavení je kompletní — registrace je možná (podle registračního okna)."
@@ -271,7 +290,8 @@
       "whenHint": "Přibližný čas, například \"sobota dopoledne\".",
       "whereHint": "Místo v rámci areálu, například \"Hlavní sál\".",
       "rulesetNameHint": "Krátký název pravidel, například \"Right of Way\".",
-      "rulesetUrlHint": "Odkaz na úplné znění pravidel, pokud existuje."
+      "rulesetUrlHint": "Odkaz na úplné znění pravidel, pokud existuje.",
+      "rowInvalid": "Zadej kód a kapacitu pro tento řádek."
     },
     "extras": {
       "title": "Doplňkové služby",
@@ -295,7 +315,8 @@
       "optionLabel": "Volba",
       "optionChoices": "Možnosti",
       "optionLabelHint": "Název jedné volby, kterou fencer u položky vybírá, například „velikost“. Prázdné = bez volby.",
-      "optionChoicesHint": "Povolené odpovědi oddělené čárkou, například „S, M, L, XL“. Prázdné = volný text."
+      "optionChoicesHint": "Povolené odpovědi oddělené čárkou, například „S, M, L, XL“. Prázdné = volný text.",
+      "rowInvalid": "Zadej název a cenu pro tento řádek."
     },
     "discounts": {
       "title": "Slevy",

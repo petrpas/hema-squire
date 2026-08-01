@@ -108,6 +108,8 @@ export default function Console({
   const [error, setError] = useState(false);
   const [matchRow, setMatchRow] = useState<SheetRow | null>(null);
   const [account, setAccount] = useState<Account | null>(null);
+  const [setupDirty, setSetupDirty] = useState(false);
+  const [pendingPhase, setPendingPhase] = useState<Phase | null>(null);
 
   useEffect(() => {
     api.account().then(setAccount, () => setAccount(null));
@@ -145,6 +147,16 @@ export default function Console({
   function resolveMatch(row: SheetRow, hrId: number | null) {
     setMatchRow(null);
     void addRule("match_resolution", row.id, { field: "hr_id", value: hrId });
+  }
+
+  // Leaving Setup dirty is confirmed (spec: setup-navigation); switching
+  // between Setup's own tabs never goes through this, since it isn't a phase change.
+  function requestPhase(next: Phase) {
+    if (phase === "setup" && setupDirty && next !== "setup") {
+      setPendingPhase(next);
+    } else {
+      setPhase(next);
+    }
   }
 
   const rows = sheet?.rows ?? [];
@@ -191,7 +203,10 @@ export default function Console({
         {PHASES.map((p, index) => (
           <div key={p} className="step-slot">
             {index > 0 && <div className="step-connector" />}
-            <button className={`step ${p === phase ? "active" : ""}`} onClick={() => setPhase(p)}>
+            <button
+              className={`step ${p === phase ? "active" : ""}`}
+              onClick={() => requestPhase(p)}
+            >
               <span className="step-number">{index + 1}</span>
               <span className="step-label">{t(`phase.${p}`)}</span>
             </button>
@@ -207,6 +222,7 @@ export default function Console({
             onSaved={refresh}
             hasRegistrations={activeRows.length > 0}
             onDeleted={onBack}
+            onDirtyChange={setSetupDirty}
           />
         ) : (
           <>
@@ -400,6 +416,34 @@ export default function Console({
           onResolve={(hrId) => resolveMatch(matchRow, hrId)}
           onClose={() => setMatchRow(null)}
         />
+      )}
+
+      {pendingPhase !== null && (
+        <div className="modal-backdrop" onClick={() => setPendingPhase(null)}>
+          <div className="modal" onClick={(event) => event.stopPropagation()}>
+            <h2>{t("console.leaveSetup.title")}</h2>
+            <p>{t("console.leaveSetup.body")}</p>
+            <div className="modal-actions">
+              <button
+                type="button"
+                className="secondary"
+                onClick={() => setPendingPhase(null)}
+              >
+                {t("common.cancel")}
+              </button>
+              <button
+                type="button"
+                className="btn-primary"
+                onClick={() => {
+                  setPhase(pendingPhase);
+                  setPendingPhase(null);
+                }}
+              >
+                {t("console.leaveSetup.confirm")}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
