@@ -19,7 +19,10 @@ def make_tournament(**kwargs) -> Tournament:
     tournament = Tournament(**{**defaults, **kwargs})
     if "disciplines" not in kwargs:
         tournament.disciplines = [
-            Discipline(tournament=tournament, code="LS", name="LS", capacity=32, fee=800)
+            Discipline(
+                tournament=tournament, slug="LS", name="LS",
+                weapon="LS", gender="", material="", capacity=32, fee=800,
+            )
         ]
     return tournament
 

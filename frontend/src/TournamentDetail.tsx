@@ -107,21 +107,27 @@ function RegistrationLines({
   const { t } = useTranslation();
   const active = registration.entries.filter((e) => !e.is_substitute);
   const substitutes = registration.entries.filter((e) => e.is_substitute);
+  // discipline entries are identified by slug, but a fencer never reads a
+  // slug (design discipline-identity D6) — the name is what tells them which
+  // one they entered
+  const disciplineName = new Map(detail.disciplines.map((d) => [d.slug, d.name]));
 
   return (
     <>
       <ul className="detail-list">
         {active.map((e) => (
-          <li key={e.code}>{e.code}</li>
+          <li key={e.slug}>{disciplineName.get(e.slug) ?? e.slug}</li>
         ))}
         {substitutes.map((e) => (
-          <li key={e.code} className="muted">
-            {e.code} — {t("registration.queuePosition", { position: e.queue_position })}
+          <li key={e.slug} className="muted">
+            {disciplineName.get(e.slug) ?? e.slug} —{" "}
+            {t("registration.queuePosition", { position: e.queue_position })}
           </li>
         ))}
         {registration.teams.map((team) => (
           <li key={`team-${team.id}`} className={team.waitlisted ? "muted" : undefined}>
-            {team.name} — {team.code}: {formatMoneyWithEur(team.fee, team.fee_eur, detail)}
+            {team.name} — {disciplineName.get(team.slug) ?? team.slug}:{" "}
+            {formatMoneyWithEur(team.fee, team.fee_eur, detail)}
             {team.waitlisted && ` (${t("registration.teamWaitlisted")})`}
             {team.members.length > 0 && (
               <ul className="detail-list">

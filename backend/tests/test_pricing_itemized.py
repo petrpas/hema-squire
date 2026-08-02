@@ -35,7 +35,8 @@ def make_registration(tournament, fees, extras=(), registered_at=REGISTERED_AT):
     entries = [
         RegistrationDiscipline(
             discipline=Discipline(
-                tournament=tournament, code=f"D{i}", name=f"D{i}", capacity=10, fee=fee
+                tournament=tournament, slug=f"D{i}", name=f"D{i}",
+                weapon=f"D{i}", gender="", material="", capacity=10, fee=fee,
             ),
             is_substitute=False,
         )

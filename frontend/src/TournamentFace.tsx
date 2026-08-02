@@ -169,14 +169,14 @@ export function DisciplinesInfo({
   availability: Availability[];
 }) {
   const { t } = useTranslation();
-  const byCode = new Map(availability.map((a) => [a.code, a]));
+  const bySlug = new Map(availability.map((a) => [a.slug, a]));
   const hasTeamDiscipline = detail.disciplines.some((d) => d.kind === "team");
   return (
     <section className="rail-card">
       <h2>{t("detail.disciplines")}</h2>
       <ul className="detail-list">
         {detail.disciplines.map((d) => {
-          const a = byCode.get(d.code);
+          const a = bySlug.get(d.slug);
           const taken = a ? a.taken : 0;
           const free = a ? a.free : d.capacity;
           const ruleset = d.ruleset_name
@@ -196,10 +196,10 @@ export function DisciplinesInfo({
           const hasExtra = Boolean(d.schedule_when || d.schedule_where || ruleset);
           const isTeam = d.kind === "team";
           return (
-            <li key={d.code}>
+            <li key={d.slug}>
               <div className="detail-row">
                 <strong>
-                  {d.code} — {d.name}
+                  {d.name}
                   {isTeam && <span className="tag tag-file-blue"> {t("detail.teamEvent")}</span>}
                 </strong>
                 <DotJoined
@@ -455,14 +455,14 @@ export function RegistrationForm({
   const amending = mode.kind === "amend";
   const initial = mode.kind === "amend" ? mode.initial : undefined;
   const [disciplines, setDisciplines] = useState<Set<string>>(
-    () => new Set(initial?.entries.map((e) => e.code) ?? []),
+    () => new Set(initial?.entries.map((e) => e.slug) ?? []),
   );
   // teams are named, not checked — a discipline row may carry several,
   // each priced separately (spec: "Team section rendered"). `id` present
   // means an already-entered team whose roster is kept on amendment; absent
   // means a freshly added one (design team-disciplines 4.3)
-  const [teams, setTeams] = useState<{ id?: number; code: string; name: string }[]>(
-    () => (initial?.teams ?? []).map((team) => ({ id: team.id, code: team.code, name: team.name })),
+  const [teams, setTeams] = useState<{ id?: number; slug: string; name: string }[]>(
+    () => (initial?.teams ?? []).map((team) => ({ id: team.id, slug: team.slug, name: team.name })),
   );
   const [newTeamName, setNewTeamName] = useState<Record<string, string>>({});
   const [extraQty, setExtraQty] = useState<Record<number, number>>(() => {
@@ -490,7 +490,7 @@ export function RegistrationForm({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const byCode = new Map(availability.map((a) => [a.code, a]));
+  const bySlug = new Map(availability.map((a) => [a.slug, a]));
   const legacy = detail.extra_items.length === 0;
 
   // trial selections made against a since-changed tournament (the preview's
@@ -498,10 +498,10 @@ export function RegistrationForm({
   // tournament no longer has — a stale id 422s at price-preview and blanks
   // the total
   useEffect(() => {
-    const validCodes = new Set(detail.disciplines.map((d) => d.code));
+    const validSlugs = new Set(detail.disciplines.map((d) => d.slug));
     const validItemIds = new Set(detail.extra_items.map((i) => i.id));
     setDisciplines((prev) => {
-      const next = new Set([...prev].filter((code) => validCodes.has(code)));
+      const next = new Set([...prev].filter((slug) => validSlugs.has(slug)));
       return next.size === prev.size ? prev : next;
     });
     setExtraQty((prev) => {
@@ -522,10 +522,10 @@ export function RegistrationForm({
   // an already-held (non-substitute) discipline still counts itself as taken
   // in `availability` — amending frees it before re-claiming it, so it must
   // not read as full just because this registration already occupies it
-  function freePlaces(code: string): number {
-    const a = byCode.get(code);
+  function freePlaces(slug: string): number {
+    const a = bySlug.get(slug);
     const free = a ? a.free : 999999;
-    const alreadyHeld = initial?.entries.some((e) => e.code === code && !e.is_substitute);
+    const alreadyHeld = initial?.entries.some((e) => e.slug === slug && !e.is_substitute);
     return alreadyHeld ? free + 1 : free;
   }
 
@@ -560,7 +560,7 @@ export function RegistrationForm({
           weapon_rentals: weaponRentals(),
           afterparty,
           extras: extrasPayload(),
-          teams: teams.map((team) => ({ code: team.code })),
+          teams: teams.map((team) => ({ slug: team.slug })),
         })
         .then(
           (result) => {
@@ -582,22 +582,22 @@ export function RegistrationForm({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [disciplines, teams, extraQty, legacyQty, afterparty, detail]);
 
-  function addTeam(code: string) {
-    const name = (newTeamName[code] ?? "").trim();
+  function addTeam(slug: string) {
+    const name = (newTeamName[slug] ?? "").trim();
     if (!name) return;
-    setTeams((prev) => [...prev, { code, name }]);
-    setNewTeamName((prev) => ({ ...prev, [code]: "" }));
+    setTeams((prev) => [...prev, { slug, name }]);
+    setNewTeamName((prev) => ({ ...prev, [slug]: "" }));
   }
 
   function removeTeam(index: number) {
     setTeams((prev) => prev.filter((_, i) => i !== index));
   }
 
-  function toggleDiscipline(code: string) {
+  function toggleDiscipline(slug: string) {
     setDisciplines((prev) => {
       const next = new Set(prev);
-      if (next.has(code)) next.delete(code);
-      else next.add(code);
+      if (next.has(slug)) next.delete(slug);
+      else next.add(slug);
       return next;
     });
   }
@@ -617,9 +617,9 @@ export function RegistrationForm({
 
   // a full discipline is registered for as a substitute, chosen on its own row
   const selectedFull = detail.disciplines
-    .filter((d) => disciplines.has(d.code))
-    .filter((d) => freePlaces(d.code) <= 0)
-    .map((d) => d.code);
+    .filter((d) => disciplines.has(d.slug))
+    .filter((d) => freePlaces(d.slug) <= 0)
+    .map((d) => d.slug);
 
   /** Rows whose option is declared but unanswered block submission. */
   const unanswered = optionalItems
@@ -683,7 +683,7 @@ export function RegistrationForm({
         extras: extrasPayload(),
         teams: teams.map((team) => ({
           ...(team.id ? { id: team.id } : {}),
-          code: team.code,
+          slug: team.slug,
           name: team.name,
         })),
       };
@@ -697,7 +697,9 @@ export function RegistrationForm({
       if (err instanceof ApiError && err.status === 409) {
         const detailBody = err.detail as { full_disciplines?: string[] } | null;
         if (detailBody?.full_disciplines) {
-          setError(t("form.nowFull", { codes: detailBody.full_disciplines.join(", ") }));
+          const byDisciplineSlug = new Map(detail.disciplines.map((d) => [d.slug, d.name]));
+          const names = detailBody.full_disciplines.map((s) => byDisciplineSlug.get(s) ?? s);
+          setError(t("form.nowFull", { codes: names.join(", ") }));
           return;
         }
       }
@@ -720,16 +722,16 @@ export function RegistrationForm({
         {detail.disciplines
           .filter((d) => d.kind === "individual")
           .map((d) => {
-          const a = byCode.get(d.code);
+          const a = bySlug.get(d.slug);
           const taken = a ? a.taken : 0;
-          const free = freePlaces(d.code);
+          const free = freePlaces(d.slug);
           return (
             <ChecklistRow
-              key={d.code}
-              name={`${d.code} — ${d.name}`}
+              key={d.slug}
+              name={d.name}
               price={d.fee === null ? "—" : formatMoneyWithEur(d.fee, d.fee_eur, detail)}
-              checked={disciplines.has(d.code)}
-              onToggle={() => toggleDiscipline(d.code)}
+              checked={disciplines.has(d.slug)}
+              onToggle={() => toggleDiscipline(d.slug)}
             >
               <ScheduleLines when={d.schedule_when} where={d.schedule_where} />
               {free <= 0 ? (
@@ -751,11 +753,9 @@ export function RegistrationForm({
             {teamDisciplines.map((d) => {
               const fee = d.fee === null ? "—" : formatMoneyWithEur(d.fee, d.fee_eur, detail);
               return (
-                <div key={d.code} className="team-discipline-block">
+                <div key={d.slug} className="team-discipline-block">
                   <div className="detail-row">
-                    <strong>
-                      {d.code} — {d.name}
-                    </strong>
+                    <strong>{d.name}</strong>
                     <DotJoined
                       parts={[
                         d.fee === null ? "—" : t("form.teams.perTeamFee", { amount: fee }),
@@ -764,7 +764,7 @@ export function RegistrationForm({
                     />
                   </div>
                   {teams.map((team, index) =>
-                    team.code === d.code ? (
+                    team.slug === d.slug ? (
                       <div key={index} className="checklist-row team-row">
                         <span className="checklist-name">{team.name}</span>
                         <span className="checklist-price">{fee}</span>
@@ -781,17 +781,17 @@ export function RegistrationForm({
                   )}
                   <div className="team-add-row">
                     <input
-                      value={newTeamName[d.code] ?? ""}
+                      value={newTeamName[d.slug] ?? ""}
                       placeholder={t("form.teams.namePlaceholder")}
                       onChange={(event) =>
-                        setNewTeamName((prev) => ({ ...prev, [d.code]: event.target.value }))
+                        setNewTeamName((prev) => ({ ...prev, [d.slug]: event.target.value }))
                       }
                     />
                     <button
                       type="button"
                       className="secondary"
-                      disabled={!(newTeamName[d.code] ?? "").trim()}
-                      onClick={() => addTeam(d.code)}
+                      disabled={!(newTeamName[d.slug] ?? "").trim()}
+                      onClick={() => addTeam(d.slug)}
                     >
                       {t("form.teams.add")}
                     </button>

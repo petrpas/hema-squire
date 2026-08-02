@@ -24,6 +24,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
+from app import taxonomy
 from app.db import Base
 
 
@@ -242,7 +243,10 @@ class Tournament(Base):
 
     fio_token: Mapped[str | None] = mapped_column(String(200))
     output_sheet_url: Mapped[str | None] = mapped_column(String(300))
-    # discipline code -> HR category keyword, overriding the built-in default
+    # taxonomy code (design discipline-identity D5) -> HR category keyword,
+    # overriding the built-in default. Keyed by classification, not by
+    # discipline identity, so disciplines sharing a classification (tiers)
+    # share one entry and cannot drift apart.
     hr_category_map: Mapped[dict] = mapped_column(JSON, default=dict)
 
     # legacy billable extras; early-bird prices apply within the optional
@@ -295,16 +299,27 @@ class Tournament(Base):
 class Discipline(Base):
     """A competition category offered by one tournament.
 
-    Codes come from the HEMA taxonomy (weapon LS/SA/RA/RD/SB x gender x material).
+    Identity is the slug: short, stable, organizer-visible, unique within the
+    tournament. Classification is the three facets — weapon, gender,
+    material — carried separately, so several disciplines MAY share a
+    classification (tiers, or individual-plus-team in one weapon). No field
+    here is called `code`: that name is what collapsed identity and
+    classification together before this split (design discipline-identity D5).
     """
 
     __tablename__ = "disciplines"
-    __table_args__ = (UniqueConstraint("tournament_id", "code"),)
+    __table_args__ = (UniqueConstraint("tournament_id", "slug"),)
 
     id: Mapped[int] = mapped_column(primary_key=True)
     tournament_id: Mapped[int] = mapped_column(ForeignKey("tournaments.id"))
-    code: Mapped[str] = mapped_column(String(10))
+    slug: Mapped[str] = mapped_column(String(30))
     name: Mapped[str] = mapped_column(String(100))
+    # classification: the five taxonomy weapons are offered as suggestions,
+    # but any weapon is accepted (design discipline-identity D4); gender and
+    # material stay closed sets
+    weapon: Mapped[str] = mapped_column(String(30))
+    gender: Mapped[str] = mapped_column(String(1))
+    material: Mapped[str] = mapped_column(String(10))
     # individual or team (design team-disciplines D1); frozen once any
     # RegistrationDiscipline or Team references this row (enforced in the
     # router, not here). For a TEAM discipline, capacity counts teams and fee/
@@ -330,6 +345,13 @@ class Discipline(Base):
     schedule_where: Mapped[str | None] = mapped_column(String(300))
     ruleset_name: Mapped[str | None] = mapped_column(String(100))
     ruleset_url: Mapped[str | None] = mapped_column(String(500))
+
+    @property
+    def taxonomy_code(self) -> str:
+        """The join key to everything outside this discipline — HR category
+        mapping, ratings snapshots (design discipline-identity D5). Never this
+        discipline's identity: several disciplines MAY derive the same code."""
+        return taxonomy.taxonomy_code(self.weapon, self.gender, self.material)
 
     tournament: Mapped[Tournament] = relationship(back_populates="disciplines")
 
@@ -668,6 +690,9 @@ class HRSnapshotRating(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     snapshot_id: Mapped[int] = mapped_column(ForeignKey("hr_rating_snapshots.id"))
     hr_id: Mapped[int]
+    # a taxonomy code (design discipline-identity D5), not a discipline's
+    # identity — one rating per fencer per classification, shared by every
+    # discipline that classification is
     discipline_code: Mapped[str] = mapped_column(String(15))
     rating: Mapped[float | None]
     rank: Mapped[int | None]

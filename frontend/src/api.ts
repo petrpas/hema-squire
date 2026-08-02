@@ -120,9 +120,21 @@ export interface PleaQueueItem {
  *  (design team-disciplines D2). */
 export type DisciplineKind = "individual" | "team";
 
+/** Gender stays a closed set: Open, Women, Men (design discipline-identity D4). */
+export type DisciplineGender = "" | "W" | "M";
+/** Material stays a closed set: Steel, Plastic (design discipline-identity D4). */
+export type DisciplineMaterial = "" | "Plastic";
+
 export interface Discipline {
-  code: string;
+  /** Identity: unique within the tournament, generated or overridden, frozen
+   *  once referenced (design discipline-identity). Never shown to fencers. */
+  slug: string;
   name: string;
+  /** The five taxonomy weapons are offered as suggestions; any weapon is
+   *  accepted (design discipline-identity D4). */
+  weapon: string;
+  gender: DisciplineGender;
+  material: DisciplineMaterial;
   kind: DisciplineKind;
   /** Roster bounds; present only when kind is "team". */
   team_min: number | null;
@@ -142,7 +154,13 @@ export interface Discipline {
 
 /** Editable discipline payload (Setup add/patch). */
 export interface DisciplineInput {
-  code: string;
+  /** Omitted on creation to let the server generate one from the
+   *  classification (design discipline-identity D3). */
+  slug?: string | null;
+  name?: string | null;
+  weapon: string;
+  gender: DisciplineGender;
+  material: DisciplineMaterial;
   kind: DisciplineKind;
   team_min?: number | null;
   team_max?: number | null;
@@ -315,7 +333,9 @@ export type RegistrationStatus = "open" | "opens_on" | "closed";
 export type MyRegistrationState = "none" | "reserved" | "paid" | "substitute" | "cancelled";
 
 export interface OpenDiscipline {
-  code: string;
+  /** Not rendered to fencers (design discipline-identity D6); carried only
+   *  as a stable list key. */
+  slug: string;
   name: string;
   fee: number | null;
   fee_eur: number | null;
@@ -347,7 +367,7 @@ export interface PastTournament extends OpenTournament {
 }
 
 export interface Availability {
-  code: string;
+  slug: string;
   kind: DisciplineKind;
   capacity: number;
   taken: number;
@@ -362,7 +382,7 @@ export type RegistrationRowState = "reserved" | "paid" | "expired" | "cancelled"
 export type RefundState = "not_applicable" | "pending" | "refunded";
 
 export interface RegistrationEntry {
-  code: string;
+  slug: string;
   is_substitute: boolean;
   queue_position: number | null;
 }
@@ -385,7 +405,7 @@ export interface RosterMember {
 
 export interface TeamEntry {
   id: number;
-  code: string;
+  slug: string;
   name: string;
   waitlisted: boolean;
   /** Per-team fee, in each configured currency — never multiplied by roster
@@ -435,7 +455,7 @@ export interface TeamEntryPayload {
   /** Matching an existing team's id keeps its roster on amendment; omitted
    *  (or non-matching) starts the team with an empty roster. */
   id?: number | null;
-  code: string;
+  slug: string;
   name: string;
 }
 
@@ -456,7 +476,7 @@ export interface PricePreviewPayload {
   weapon_rentals?: string[];
   afterparty?: boolean;
   extras?: ExtraSelectionPayload[];
-  teams?: { code: string }[];
+  teams?: { slug: string }[];
 }
 
 export interface RosterMemberInput {
@@ -477,7 +497,7 @@ export interface ConsoleTeam {
 }
 
 export interface ConsoleTeamDiscipline {
-  code: string;
+  slug: string;
   name: string;
   team_min: number;
   team_max: number;
@@ -578,13 +598,15 @@ export const api = {
       method: "POST",
       body: JSON.stringify(data),
     }),
-  updateDiscipline: (slug: string, code: string, data: DisciplineInput) =>
-    request<Discipline>(`/api/tournaments/${slug}/disciplines/${code}`, {
+  updateDiscipline: (slug: string, disciplineSlug: string, data: DisciplineInput) =>
+    request<Discipline>(`/api/tournaments/${slug}/disciplines/${disciplineSlug}`, {
       method: "PATCH",
       body: JSON.stringify(data),
     }),
-  deleteDiscipline: (slug: string, code: string) =>
-    request<void>(`/api/tournaments/${slug}/disciplines/${code}`, { method: "DELETE" }),
+  deleteDiscipline: (slug: string, disciplineSlug: string) =>
+    request<void>(`/api/tournaments/${slug}/disciplines/${disciplineSlug}`, {
+      method: "DELETE",
+    }),
   addExtraItem: (slug: string, data: ExtraItemInput) =>
     request<ExtraItem>(`/api/tournaments/${slug}/extra-items`, {
       method: "POST",

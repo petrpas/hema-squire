@@ -27,12 +27,12 @@ def setup_tournament(client, organizer, early_bird=False):
     client.patch("/api/tournaments/cup", json=patch, headers=organizer)
     client.post(
         "/api/tournaments/cup/disciplines",
-        json={"code": "LS", "capacity": 2, "fee": 800, "fee_early": 600},
+        json={"slug": "LS", "weapon": "LS", "capacity": 2, "fee": 800, "fee_early": 600},
         headers=organizer,
     )
     client.post(
         "/api/tournaments/cup/disciplines",
-        json={"code": "SB", "capacity": 1, "fee": 500},
+        json={"slug": "SB", "weapon": "SB", "capacity": 1, "fee": 500},
         headers=organizer,
     )
     publish(client, organizer, "cup")
@@ -108,13 +108,13 @@ def test_wait_for_all_queues_everything_unbilled(client, auth_headers):
     assert all(e["is_substitute"] for e in body["entries"])
     assert body["total_amount"] == 0
     assert body["expires_at"] is None
-    sb_entry = next(e for e in body["entries"] if e["code"] == "SB")
+    sb_entry = next(e for e in body["entries"] if e["slug"] == "SB")
     assert sb_entry["queue_position"] == 1
 
     availability = client.get("/api/tournaments/cup/availability").json()
-    sb = next(a for a in availability if a["code"] == "SB")
+    sb = next(a for a in availability if a["slug"] == "SB")
     assert sb == {
-        "code": "SB",
+        "slug": "SB",
         "kind": "individual",
         "capacity": 1,
         "taken": 1,
@@ -268,12 +268,12 @@ def test_price_preview_fixed_discount_reported_in_both_currencies(client, auth_h
     # then enable EUR mode as a separate, already-complete step
     client.patch(
         "/api/tournaments/cup/disciplines/LS",
-        json={"code": "LS", "capacity": 2, "fee": 800, "fee_early": 600, "fee_eur": 32},
+        json={"slug": "LS", "weapon": "LS", "capacity": 2, "fee": 800, "fee_early": 600, "fee_eur": 32},
         headers=organizer,
     )
     client.patch(
         "/api/tournaments/cup/disciplines/SB",
-        json={"code": "SB", "capacity": 1, "fee": 500, "fee_eur": 20},
+        json={"slug": "SB", "weapon": "SB", "capacity": 1, "fee": 500, "fee_eur": 20},
         headers=organizer,
     )
     # legacy fixed weapon-rental/afterparty fees carry no EUR column and
@@ -319,12 +319,12 @@ def test_price_preview_percentage_discount_carries_no_eur_value(client, auth_hea
     # (design D3 of add-explicit-publishing)
     client.patch(
         "/api/tournaments/cup/disciplines/LS",
-        json={"code": "LS", "capacity": 2, "fee": 800, "fee_early": 600, "fee_eur": 32},
+        json={"slug": "LS", "weapon": "LS", "capacity": 2, "fee": 800, "fee_early": 600, "fee_eur": 32},
         headers=organizer,
     )
     client.patch(
         "/api/tournaments/cup/disciplines/SB",
-        json={"code": "SB", "capacity": 1, "fee": 500, "fee_eur": 20},
+        json={"slug": "SB", "weapon": "SB", "capacity": 1, "fee": 500, "fee_eur": 20},
         headers=organizer,
     )
     client.patch(
@@ -401,7 +401,7 @@ def test_cancel_then_reregister_reuses_the_slot(client, auth_headers):
     assert second.status_code == 201, second.text
     body = second.json()
     assert body["state"] == "reserved"
-    assert body["entries"][0]["code"] == "SB"
+    assert body["entries"][0]["slug"] == "SB"
     assert body["vs"] != first["vs"]
 
 
@@ -502,3 +502,216 @@ def test_admit_requires_organizer_and_capacity(client, auth_headers):
     )
     assert full.status_code == 409
     assert full.json()["detail"] == "discipline_full"
+
+
+# ---------------------------------------------------------------------------
+# 9.2-9.4 Console: slug generation, override, collision, freeze, custom
+# weapon (design discipline-identity D3, D4)
+# ---------------------------------------------------------------------------
+
+
+def test_two_disciplines_same_classification_get_generated_slugs(client, auth_headers):
+    organizer = auth_headers()
+    client.post(
+        "/api/tournaments",
+        json={"slug": "cup", "display_name": "Cup", "date": "2026-12-05"},
+        headers=organizer,
+    )
+    first = client.post(
+        "/api/tournaments/cup/disciplines",
+        json={"weapon": "LS", "capacity": 10, "fee": 800},
+        headers=organizer,
+    )
+    assert first.status_code == 201, first.text
+    assert first.json()["slug"] == "LS"
+    second = client.post(
+        "/api/tournaments/cup/disciplines",
+        json={"weapon": "LS", "capacity": 10, "fee": 800},
+        headers=organizer,
+    )
+    assert second.status_code == 201, second.text
+    assert second.json()["slug"] == "LS-2"
+
+
+def test_individual_and_team_discipline_in_one_weapon_both_accepted(client, auth_headers):
+    organizer = auth_headers()
+    client.post(
+        "/api/tournaments",
+        json={"slug": "cup", "display_name": "Cup", "date": "2026-12-05"},
+        headers=organizer,
+    )
+    individual = client.post(
+        "/api/tournaments/cup/disciplines",
+        json={"weapon": "LS", "capacity": 10, "fee": 800},
+        headers=organizer,
+    )
+    team = client.post(
+        "/api/tournaments/cup/disciplines",
+        json={
+            "weapon": "LS", "capacity": 5, "fee": 3000,
+            "kind": "team", "team_min": 3, "team_max": 4,
+        },
+        headers=organizer,
+    )
+    assert individual.status_code == 201
+    assert team.status_code == 201
+    assert individual.json()["slug"] != team.json()["slug"]
+
+
+def test_organizer_override_accepted_and_collision_refused(client, auth_headers):
+    organizer = auth_headers()
+    client.post(
+        "/api/tournaments",
+        json={"slug": "cup", "display_name": "Cup", "date": "2026-12-05"},
+        headers=organizer,
+    )
+    a = client.post(
+        "/api/tournaments/cup/disciplines",
+        json={"slug": "LS-A", "weapon": "LS", "capacity": 10, "fee": 800},
+        headers=organizer,
+    )
+    b = client.post(
+        "/api/tournaments/cup/disciplines",
+        json={"slug": "LS-B", "weapon": "LS", "capacity": 10, "fee": 800},
+        headers=organizer,
+    )
+    assert a.status_code == 201 and a.json()["slug"] == "LS-A"
+    assert b.status_code == 201 and b.json()["slug"] == "LS-B"
+
+    collision = client.post(
+        "/api/tournaments/cup/disciplines",
+        json={"slug": "LS-A", "weapon": "LS", "capacity": 10, "fee": 800},
+        headers=organizer,
+    )
+    assert collision.status_code == 409
+    assert "LS-A" in collision.json()["detail"]
+
+
+def test_slug_editable_before_registration_frozen_after(client, auth_headers):
+    organizer = auth_headers()
+    setup_tournament(client, organizer)
+    edited = client.patch(
+        "/api/tournaments/cup/disciplines/LS",
+        json={"slug": "LS-renamed", "weapon": "LS", "capacity": 2, "fee": 800, "fee_early": 600},
+        headers=organizer,
+    )
+    assert edited.status_code == 200
+    assert edited.json()["slug"] == "LS-renamed"
+
+    fencer = auth_headers(email="f1@example.com", name="F1")
+    register(client, fencer, disciplines=["LS-renamed"])
+    frozen = client.patch(
+        "/api/tournaments/cup/disciplines/LS-renamed",
+        json={
+            "slug": "LS-renamed-again", "weapon": "LS", "capacity": 2, "fee": 800,
+            "fee_early": 600,
+        },
+        headers=organizer,
+    )
+    assert frozen.status_code == 409
+    assert frozen.json()["detail"] == "discipline_slug_frozen"
+
+
+def test_slug_frozen_after_team_entry(client, auth_headers):
+    organizer = auth_headers()
+    client.post(
+        "/api/tournaments",
+        json={"slug": "cup", "display_name": "Cup", "date": "2026-12-05"},
+        headers=organizer,
+    )
+    client.patch(
+        "/api/tournaments/cup",
+        json={"location": "Brno", "organizers": [{"name": "Org", "link": None}]},
+        headers=organizer,
+    )
+    client.post(
+        "/api/tournaments/cup/disciplines",
+        json={
+            "slug": "LS-Team", "weapon": "LS", "capacity": 5, "fee": 3000,
+            "kind": "team", "team_min": 3, "team_max": 4,
+        },
+        headers=organizer,
+    )
+    publish(client, organizer, "cup")
+    captain = auth_headers(email="captain@example.com", name="Captain")
+    client.post(
+        "/api/tournaments/cup/register",
+        json={"disciplines": [], "teams": [{"slug": "LS-Team", "name": "Wolves"}]},
+        headers=captain,
+    )
+    frozen = client.patch(
+        "/api/tournaments/cup/disciplines/LS-Team",
+        json={
+            "slug": "LS-Team-2", "weapon": "LS", "capacity": 5, "fee": 3000,
+            "kind": "team", "team_min": 3, "team_max": 4,
+        },
+        headers=organizer,
+    )
+    assert frozen.status_code == 409
+    assert frozen.json()["detail"] == "discipline_slug_frozen"
+
+
+def test_custom_weapon_accepted_with_name_refused_without(client, auth_headers):
+    organizer = auth_headers()
+    client.post(
+        "/api/tournaments",
+        json={"slug": "cup", "display_name": "Cup", "date": "2026-12-05"},
+        headers=organizer,
+    )
+    named = client.post(
+        "/api/tournaments/cup/disciplines",
+        json={"weapon": "Messer", "name": "Messer Open", "capacity": 10, "fee": 800},
+        headers=organizer,
+    )
+    assert named.status_code == 201, named.text
+    assert named.json()["name"] == "Messer Open"
+
+    unnamed = client.post(
+        "/api/tournaments/cup/disciplines",
+        json={"weapon": "Ringen", "capacity": 10, "fee": 800},
+        headers=organizer,
+    )
+    assert unnamed.status_code == 422
+    assert unnamed.json()["detail"] == "discipline_name_required"
+
+
+# ---------------------------------------------------------------------------
+# 9.5 Registration: two same-classification disciplines are counted
+# separately (design discipline-identity)
+# ---------------------------------------------------------------------------
+
+
+def test_entering_one_tier_does_not_count_against_the_other(client, auth_headers):
+    organizer = auth_headers()
+    client.post(
+        "/api/tournaments",
+        json={"slug": "cup", "display_name": "Cup", "date": "2026-12-05"},
+        headers=organizer,
+    )
+    client.patch(
+        "/api/tournaments/cup",
+        json={"location": "Brno", "organizers": [{"name": "Org", "link": None}]},
+        headers=organizer,
+    )
+    client.post(
+        "/api/tournaments/cup/disciplines",
+        json={"slug": "LS-A", "weapon": "LS", "name": "Top", "capacity": 1, "fee": 800},
+        headers=organizer,
+    )
+    client.post(
+        "/api/tournaments/cup/disciplines",
+        json={"slug": "LS-B", "weapon": "LS", "name": "Open", "capacity": 1, "fee": 800},
+        headers=organizer,
+    )
+    publish(client, organizer, "cup")
+    fencer = auth_headers(email="f1@example.com", name="F1")
+    response = client.post(
+        "/api/tournaments/cup/register", json={"disciplines": ["LS-A"]}, headers=fencer
+    )
+    assert response.status_code == 201
+
+    availability = {a["slug"]: a for a in client.get("/api/tournaments/cup/availability").json()}
+    assert availability["LS-A"]["taken"] == 1
+    assert availability["LS-A"]["free"] == 0
+    assert availability["LS-B"]["taken"] == 0
+    assert availability["LS-B"]["free"] == 1

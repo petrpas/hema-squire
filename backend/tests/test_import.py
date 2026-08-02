@@ -2,7 +2,7 @@
 
 import io
 
-from app.importer import ImportParser, ParsedDiscipline, ParsedFencer, get_import_parser
+from app.importer import ImportParser, ParsedFencer, get_import_parser
 from app.main import app
 
 CSV = (
@@ -38,7 +38,7 @@ class FakeParser:
                     email=raw["E-mailová adresa"],
                     club=raw["Klub / Club"],
                     hr_id=int(hr) if hr.strip().isdigit() else None,
-                    disciplines=[ParsedDiscipline(weapon="SA")],
+                    disciplines=["SA"],
                     notes=raw.get("Poznámka / Note") or None,
                     problems="afterparty answer ambiguous" if "Asi" in afterparty_raw else None,
                 )
@@ -54,7 +54,7 @@ def setup(client, organizer):
     )
     client.post(
         "/api/tournaments/cup/disciplines",
-        json={"code": "SA", "capacity": 20, "fee": 800},
+        json={"slug": "SA", "weapon": "SA", "capacity": 20, "fee": 800},
         headers=organizer,
     )
 
@@ -194,3 +194,136 @@ def test_unsupported_format_rejected(client, auth_headers):
     override_parser(FakeParser())
     response = upload(client, organizer, filename="regs.pdf")
     assert response.status_code == 422
+
+
+# ---------------------------------------------------------------------------
+# 9.9 The parser chooses a discipline instead of describing one
+# (design discipline-identity D7/D8)
+# ---------------------------------------------------------------------------
+
+
+def setup_split_tournament(client, organizer):
+    """A tournament offering two longsword tiers sharing a classification —
+    the ambiguity scenario a legacy "weapon only" row cannot resolve on its
+    own (design D8)."""
+    client.post(
+        "/api/tournaments",
+        json={"slug": "split", "display_name": "Split", "date": "2026-12-05"},
+        headers=organizer,
+    )
+    client.post(
+        "/api/tournaments/split/disciplines",
+        json={
+            "slug": "LS-A", "weapon": "LS", "name": "Longsword Top",
+            "capacity": 20, "fee": 800,
+        },
+        headers=organizer,
+    )
+    client.post(
+        "/api/tournaments/split/disciplines",
+        json={
+            "slug": "LS-B", "weapon": "LS", "name": "Longsword Open",
+            "capacity": 20, "fee": 800,
+        },
+        headers=organizer,
+    )
+
+
+class BracketAwareParser:
+    """Stands in for the LLM: resolves a row naming a bracket to that
+    bracket's slug, and leaves a row naming only the weapon unresolved with a
+    problem (design D8) — the offered `disciplines` argument is exactly the
+    `(slug, name)` pairs the real prompt is built from."""
+
+    def parse(self, rows, disciplines):
+        parsed = []
+        for raw in rows:
+            text = raw.get("row", "")
+            if "Top" in text:
+                slugs, problem = ["LS-A"], None
+            elif "Open" in text:
+                slugs, problem = ["LS-B"], None
+            else:
+                slugs, problem = [], "ambiguous: longsword split into two brackets"
+            parsed.append(
+                ParsedFencer(
+                    registration_time="2026-04-01T14:15:27",
+                    name=text or "Fencer",
+                    disciplines=slugs,
+                    problems=problem,
+                )
+            )
+        return parsed
+
+
+def upload_split(client, organizer, rows):
+    content = "row\n" + "\n".join(rows) + "\n"
+    return client.post(
+        "/api/tournaments/split/import",
+        files={"file": ("regs.csv", io.BytesIO(content.encode()), "text/csv")},
+        headers=organizer,
+    )
+
+
+def split_sheet_rows(client, organizer):
+    rows = client.get("/api/tournaments/split/sheet", headers=organizer).json()["rows"]
+    return [r for r in rows if r["id"].startswith("imp:")]
+
+
+def test_row_naming_bracket_resolves(client, auth_headers):
+    organizer = auth_headers()
+    setup_split_tournament(client, organizer)
+    override_parser(BracketAwareParser())
+    upload_split(client, organizer, ["Alice Top"])
+    assert split_sheet_rows(client, organizer)[0]["disciplines"] == ["LS-A"]
+
+
+def test_ambiguous_row_left_unresolved_with_problem(client, auth_headers):
+    organizer = auth_headers()
+    setup_split_tournament(client, organizer)
+    override_parser(BracketAwareParser())
+    upload_split(client, organizer, ["Bob Longsword"])
+    row = split_sheet_rows(client, organizer)[0]
+    assert row["disciplines"] == []
+    assert row["problems"] and "ambiguous" in row["problems"]
+
+
+def test_old_shape_decision_resolves_when_unambiguous():
+    """A decision stored before disciplines carried slugs describes a
+    discipline as weapon/gender/material; it resolves without a new LLM call
+    when exactly one offered discipline matches that classification."""
+    from types import SimpleNamespace
+
+    from app.models import Discipline
+    from app.sheet import _resolve_discipline_slugs
+
+    tournament = SimpleNamespace(
+        disciplines=[Discipline(slug="LS", weapon="LS", gender="", material="")]
+    )
+    slugs, problems = _resolve_discipline_slugs(
+        tournament, [{"weapon": "LS", "gender": "", "material": ""}]
+    )
+    assert slugs == ["LS"]
+    assert problems == []
+
+
+def test_old_shape_decision_ambiguous_after_split():
+    """The same old-shape decision, read after the organizer has since split
+    that weapon into two disciplines, is reported unresolved rather than
+    silently attached to either (design D8, Risks)."""
+    from types import SimpleNamespace
+
+    from app.models import Discipline
+    from app.sheet import _resolve_discipline_slugs
+
+    tournament = SimpleNamespace(
+        disciplines=[
+            Discipline(slug="LS-A", weapon="LS", gender="", material=""),
+            Discipline(slug="LS-B", weapon="LS", gender="", material=""),
+        ]
+    )
+    slugs, problems = _resolve_discipline_slugs(
+        tournament, [{"weapon": "LS", "gender": "", "material": ""}]
+    )
+    assert slugs == []
+    assert len(problems) == 1

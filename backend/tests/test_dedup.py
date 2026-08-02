@@ -4,7 +4,7 @@ import io
 
 from app.dedup import MergeProposal, ThreeBands, default_merge, get_dedup_llm
 from app.hr_match import HRMatchResult, get_hr_matcher
-from app.importer import ImportParser, ParsedDiscipline, ParsedFencer, get_import_parser
+from app.importer import ImportParser, ParsedFencer, get_import_parser
 from app.main import app
 
 CSV = (
@@ -32,7 +32,7 @@ class FakeParser(ImportParser):
                     email=raw.get("Email"),
                     club=raw.get("Club"),
                     hr_id=int(hr) if hr.strip().isdigit() else None,
-                    disciplines=[ParsedDiscipline(weapon="SA")],
+                    disciplines=["SA"],
                     notes=raw.get("Notes") or None,
                 )
             )
@@ -92,7 +92,7 @@ def setup(client, organizer, parser=None):
     )
     client.post(
         "/api/tournaments/cup/disciplines",
-        json={"code": "SA", "capacity": 20, "fee": 800},
+        json={"slug": "SA", "weapon": "SA", "capacity": 20, "fee": 800},
         headers=organizer,
     )
     app.dependency_overrides[get_import_parser] = lambda: parser or FakeParser()

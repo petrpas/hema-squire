@@ -23,7 +23,7 @@ def setup(client, organizer):
     for code in ("LS", "SA"):
         client.post(
             "/api/tournaments/cup/disciplines",
-            json={"code": code, "capacity": 10, "fee": 1000},
+            json={"slug": code, "weapon": code, "capacity": 10, "fee": 1000},
             headers=organizer,
         )
     publish(client, organizer, "cup")
@@ -261,7 +261,7 @@ def test_v3_currency_and_option_fields_round_trip(client, auth_headers):
     for code in ("LS", "SA"):
         client.patch(
             f"/api/tournaments/cup/disciplines/{code}",
-            json={"code": code, "capacity": 10, "fee": 1000, "fee_eur": 40},
+            json={"slug": code, "weapon": code, "capacity": 10, "fee": 1000, "fee_eur": 40},
             headers=organizer,
         )
     client.patch(
@@ -330,3 +330,217 @@ def test_v3_currency_and_option_fields_round_trip(client, auth_headers):
         "/api/tournaments/cup/export/json", headers=new_organizer
     ).json()
     assert again["registrations"][0]["extras"][0]["option_value"] == "M"
+
+
+# ---------------------------------------------------------------------------
+# 9.7 Discipline identity round-trips (design discipline-identity)
+# ---------------------------------------------------------------------------
+
+
+def test_tiers_round_trip(client, auth_headers):
+    organizer = auth_headers()
+    client.post(
+        "/api/tournaments",
+        json={"slug": "tiers", "display_name": "Tiers", "date": "2026-12-05"},
+        headers=organizer,
+    )
+    client.patch(
+        "/api/tournaments/tiers",
+        json={"location": "Brno", "organizers": [{"name": "Org", "link": None}]},
+        headers=organizer,
+    )
+    client.post(
+        "/api/tournaments/tiers/disciplines",
+        json={"slug": "LS-A", "weapon": "LS", "name": "Longsword Top", "capacity": 10, "fee": 800},
+        headers=organizer,
+    )
+    client.post(
+        "/api/tournaments/tiers/disciplines",
+        json={"slug": "LS-B", "weapon": "LS", "name": "Longsword Open", "capacity": 12, "fee": 500},
+        headers=organizer,
+    )
+    publish(client, organizer, "tiers")
+    top = auth_headers(email="top@example.com", name="Top")
+    client.post("/api/tournaments/tiers/register", json={"disciplines": ["LS-A"]}, headers=top)
+    openf = auth_headers(email="open@example.com", name="Open")
+    client.post("/api/tournaments/tiers/register", json={"disciplines": ["LS-B"]}, headers=openf)
+
+    document = client.get("/api/tournaments/tiers/export/json", headers=organizer).json()
+    by_slug = {d["slug"]: d for d in document["disciplines"]}
+    assert by_slug.keys() == {"LS-A", "LS-B"}
+    assert by_slug["LS-A"]["capacity"] == 10
+    assert by_slug["LS-B"]["capacity"] == 12
+
+    new_organizer, restore_client = fresh_deployment(client, auth_headers)
+    restore = restore_client.post(
+        "/api/tournaments/restore", json=document, headers=new_organizer
+    )
+    assert restore.status_code == 201, restore.text
+    detail = restore_client.get("/api/tournaments/tiers", headers=new_organizer).json()
+    slugs = {d["slug"]: d for d in detail["disciplines"]}
+    assert slugs.keys() == {"LS-A", "LS-B"}
+    assert slugs["LS-A"]["name"] == "Longsword Top"
+    export2 = restore_client.get(
+        "/api/tournaments/tiers/export/json", headers=new_organizer
+    ).json()
+    entries_by_email = {r["fencer_email"]: r["entries"] for r in export2["registrations"]}
+    assert entries_by_email["top@example.com"][0]["slug"] == "LS-A"
+    assert entries_by_email["open@example.com"][0]["slug"] == "LS-B"
+
+
+def test_individual_and_team_in_one_weapon_round_trip(client, auth_headers):
+    organizer = auth_headers()
+    client.post(
+        "/api/tournaments",
+        json={"slug": "mixed", "display_name": "Mixed", "date": "2026-12-05"},
+        headers=organizer,
+    )
+    client.patch(
+        "/api/tournaments/mixed",
+        json={"location": "Brno", "organizers": [{"name": "Org", "link": None}]},
+        headers=organizer,
+    )
+    client.post(
+        "/api/tournaments/mixed/disciplines",
+        json={"slug": "LS", "weapon": "LS", "capacity": 10, "fee": 800},
+        headers=organizer,
+    )
+    client.post(
+        "/api/tournaments/mixed/disciplines",
+        json={
+            "slug": "LS-Team", "weapon": "LS", "capacity": 5, "fee": 3000,
+            "kind": "team", "team_min": 3, "team_max": 4,
+        },
+        headers=organizer,
+    )
+    publish(client, organizer, "mixed")
+    solo = auth_headers(email="solo@example.com", name="Solo")
+    client.post("/api/tournaments/mixed/register", json={"disciplines": ["LS"]}, headers=solo)
+    captain = auth_headers(email="captain@example.com", name="Captain")
+    client.post(
+        "/api/tournaments/mixed/register",
+        json={"disciplines": [], "teams": [{"slug": "LS-Team", "name": "Wolves"}]},
+        headers=captain,
+    )
+
+    document = client.get("/api/tournaments/mixed/export/json", headers=organizer).json()
+    new_organizer, restore_client = fresh_deployment(client, auth_headers)
+    restore = restore_client.post(
+        "/api/tournaments/restore", json=document, headers=new_organizer
+    )
+    assert restore.status_code == 201, restore.text
+    export2 = restore_client.get(
+        "/api/tournaments/mixed/export/json", headers=new_organizer
+    ).json()
+    by_email = {r["fencer_email"]: r for r in export2["registrations"]}
+    assert by_email["solo@example.com"]["entries"][0]["slug"] == "LS"
+    assert by_email["captain@example.com"]["teams"][0]["discipline_slug"] == "LS-Team"
+    assert by_email["captain@example.com"]["entries"] == []
+
+
+def test_dangling_discipline_slug_rejected(client, auth_headers):
+    organizer = auth_headers()
+    setup(client, organizer)
+    document = client.get("/api/tournaments/cup/export/json", headers=organizer).json()
+    document["tournament"]["slug"] = "dangling"
+    document["tournament"]["vs_series"] = 77  # avoid colliding with "cup" in the same DB
+    document["fencers"] = [
+        {"email": "ghost@example.com", "display_name": "Ghost", "hr_id": None,
+         "nationality": None, "club": None}
+    ]
+    document["registrations"] = [
+        {
+            "ref": 1,
+            "fencer_email": "ghost@example.com",
+            "registered_at": "2026-01-01T00:00:00+00:00",
+            "state": "reserved",
+            "vs": None,
+            "total_amount": 0,
+            "total_eur": None,
+            "expires_at": None,
+            "reminded_at": None,
+            "paid_at": None,
+            "cancelled_at": None,
+            "refundable": None,
+            "refund_state": "not_applicable",
+            "weapon_rentals": [],
+            "afterparty": False,
+            "aftersparring": False,
+            "accommodation": None,
+            "notes": None,
+            "entries": [{"slug": "NO-SUCH-SLUG", "is_substitute": False}],
+            "extras": [],
+            "teams": [],
+        }
+    ]
+    response = client.post("/api/tournaments/restore", json=document, headers=organizer)
+    assert response.status_code == 422
+    assert "NO-SUCH-SLUG" in response.text
+    # no partial registration created
+    assert client.get(
+        "/api/tournaments/dangling", headers=organizer
+    ).status_code == 404
+
+
+def test_pre_version_document_restores_with_code_as_slug(client, auth_headers):
+    """A document produced before disciplines carried a classification (no
+    `slug`/`weapon`/`gender`/`material`, only `code`) restores with the old
+    code taken as the slug and the classification parsed from it (design
+    discipline-identity Migration Plan)."""
+    organizer = auth_headers()
+    document = {
+        "schema_version": 6,
+        "exported_at": "2026-01-01T00:00:00+00:00",
+        "tournament": {
+            "slug": "legacy-classification",
+            "display_name": "Legacy",
+            "date": "2026-11-01",
+            "language": "cs",
+            "reservation_validity_days": 10,
+            "reminder_day": 5,
+            "amount_tolerance_percent": 5,
+            "refundable_until": None,
+            "bank_account": None,
+            "unpaid_list_treatment": "greyed",
+            "early_bird_until": None,
+            "weapon_rental_fee": 0,
+            "weapon_rental_fee_early": None,
+            "afterparty_fee": 0,
+            "afterparty_fee_early": None,
+            "location": "Prague",
+            "description": None,
+            "qualification_open": True,
+            "qualification_criteria": None,
+            "registration_instructions": None,
+            "local_currency": "CZK",
+            "eur_payments_enabled": False,
+            "eur_rate": None,
+            "organizers": [{"name": "Legacy Org", "link": None}],
+            "discounts": [],
+            "registration_opens": None,
+            "registration_closes": None,
+            "vs_year": 2026,
+            "vs_series": 51,
+            "vs_next_seq": 1,
+            "team_composition_deadline": None,
+        },
+        "disciplines": [
+            {"code": "Plastic SAW", "name": "Sabre Women (Plastic)", "capacity": 10,
+             "fee": 500, "fee_early": None, "fee_eur": None, "fee_early_eur": None},
+        ],
+        "extra_items": [],
+        "fencers": [],
+        "registrations": [],
+        "bank_transactions": [],
+        "import_batches": [],
+        "decisions": [],
+        "rules": [],
+    }
+    restore = client.post("/api/tournaments/restore", json=document, headers=organizer)
+    assert restore.status_code == 201, restore.text
+    detail = client.get("/api/tournaments/legacy-classification", headers=organizer).json()
+    discipline = detail["disciplines"][0]
+    assert discipline["slug"] == "Plastic SAW"
+    assert discipline["weapon"] == "SA"
+    assert discipline["gender"] == "W"
+    assert discipline["material"] == "Plastic"

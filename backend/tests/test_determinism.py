@@ -123,7 +123,7 @@ def build_scenario(client, auth_headers):
     for code in ("LS", "SA"):
         client.post(
             "/api/tournaments/cup/disciplines",
-            json={"code": code, "capacity": 10, "fee": 1000},
+            json={"slug": code, "weapon": code, "capacity": 10, "fee": 1000},
             headers=organizer,
         )
     publish(client, organizer, "cup")

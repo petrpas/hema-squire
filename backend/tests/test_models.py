@@ -39,7 +39,8 @@ def make_tournament(**kwargs) -> Tournament:
 def test_registration_roundtrip(session):
     tournament = make_tournament()
     discipline = Discipline(
-        tournament=tournament, code="LS", name="Longsword Open Steel", capacity=32, fee=800
+        tournament=tournament, slug="LS", name="Longsword Open Steel",
+        weapon="LS", gender="", material="", capacity=32, fee=800,
     )
     fencer = Fencer(email="jan@example.com", display_name="Jan Novák", hr_id=1234)
     registration = Registration(
@@ -51,7 +52,7 @@ def test_registration_roundtrip(session):
     saved = session.get(Registration, registration.id)
     assert saved.state == RegistrationState.RESERVED
     assert saved.fencer.hr_id == 1234
-    assert [e.discipline.code for e in saved.entries] == ["LS"]
+    assert [e.discipline.slug for e in saved.entries] == ["LS"]
     assert saved.tournament.unpaid_list_treatment == UnpaidListTreatment.GREYED
 
 
@@ -81,13 +82,28 @@ def test_one_registration_per_fencer_per_tournament(session):
         session.commit()
 
 
-def test_discipline_code_unique_per_tournament_only(session):
+def test_discipline_slug_unique_per_tournament_only(session):
     first = make_tournament()
     second = make_tournament(slug="jindra-cup-2026", display_name="Jindra Cup", vs_series=2)
-    session.add(Discipline(tournament=first, code="LS", name="Longsword", capacity=32, fee=800))
-    session.add(Discipline(tournament=second, code="LS", name="Longsword", capacity=16, fee=500))
+    session.add(
+        Discipline(
+            tournament=first, slug="LS", name="Longsword",
+            weapon="LS", gender="", material="", capacity=32, fee=800,
+        )
+    )
+    session.add(
+        Discipline(
+            tournament=second, slug="LS", name="Longsword",
+            weapon="LS", gender="", material="", capacity=16, fee=500,
+        )
+    )
     session.commit()
 
-    session.add(Discipline(tournament=first, code="LS", name="Duplicate", capacity=8, fee=100))
+    session.add(
+        Discipline(
+            tournament=first, slug="LS", name="Duplicate",
+            weapon="LS", gender="", material="", capacity=8, fee=100,
+        )
+    )
     with pytest.raises(IntegrityError):
         session.commit()

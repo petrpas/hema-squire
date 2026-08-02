@@ -29,7 +29,7 @@ def make_tournament(client, organizer, slug="cup", **patch):
 def add_priced_discipline(client, organizer, slug="cup"):
     client.post(
         f"/api/tournaments/{slug}/disciplines",
-        json={"code": "LS", "capacity": 10, "fee": 800},
+        json={"slug": "LS", "weapon": "LS", "capacity": 10, "fee": 800},
         headers=organizer,
     )
 
@@ -59,7 +59,7 @@ def test_missing_discipline_price_rejects_registration(client, auth_headers):
     )
     client.post(
         f"/api/tournaments/{slug}/disciplines",
-        json={"code": "LS", "capacity": 10, "fee": None},
+        json={"slug": "LS", "weapon": "LS", "capacity": 10, "fee": None},
         headers=organizer,
     )
     fencer = auth_headers(email="f1@example.com", name="F1")
@@ -162,7 +162,7 @@ def test_gate_does_not_block_cancellation_or_admission_on_incomplete_setup(
     )
     client.post(
         f"/api/tournaments/{slug}/disciplines",
-        json={"code": "LS", "capacity": 1, "fee": 800},
+        json={"slug": "LS", "weapon": "LS", "capacity": 1, "fee": 800},
         headers=organizer,
     )
     publish(client, organizer, slug)

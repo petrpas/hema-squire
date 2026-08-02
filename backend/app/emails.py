@@ -13,7 +13,7 @@ from app.models import Currency, Fencer, Registration, Tournament
 
 def _summary_lines(registration: Registration, tournament: Tournament, lang: str) -> str:
     lines = [
-        f"  {entry.discipline.code} — {entry.discipline.name}"
+        f"  {entry.discipline.name}"
         + (f" ({t('email.confirmation.substitute', lang)})" if entry.is_substitute else "")
         for entry in registration.entries
     ]

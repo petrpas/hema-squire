@@ -96,8 +96,8 @@ function TournamentCard({
         <CardHeading tournament={tournament} badge={<StatusBadge tournament={tournament} />} />
         <div className="chips">
           {tournament.disciplines.map((d) => (
-            <span key={d.code} className="chip">
-              {d.code} {d.taken}/{d.capacity}
+            <span key={d.slug} className="chip">
+              {d.name} {d.taken}/{d.capacity}
               {d.queue_length > 0 ? ` (+${d.queue_length})` : ""}
             </span>
           ))}
@@ -134,8 +134,8 @@ function PastCard({
         />
         <div className="chips">
           {tournament.disciplines.map((d) => (
-            <span key={d.code} className="chip">
-              {d.code} {d.taken}/{d.capacity}
+            <span key={d.slug} className="chip">
+              {d.name} {d.taken}/{d.capacity}
             </span>
           ))}
         </div>

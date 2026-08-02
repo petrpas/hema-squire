@@ -64,8 +64,8 @@ def _fencer_values(row: Row) -> dict[str, str]:
     }
 
 
-def _discipline_values(row: Row, ratings: Ratings, code: str) -> dict[str, str]:
-    rating = ratings.get((row["hr_id"], code)) if row.get("hr_id") is not None else None
+def _discipline_values(row: Row, ratings: Ratings, taxonomy_code: str) -> dict[str, str]:
+    rating = ratings.get((row["hr_id"], taxonomy_code)) if row.get("hr_id") is not None else None
     return {
         "Name": row.get("name") or "",
         "Nat.": row.get("nationality") or "",
@@ -141,21 +141,26 @@ def export_to_sheets(
 
     # a team discipline has no RegistrationDiscipline rows to populate a
     # worksheet with (its entries are Team rows instead) and produces no
-    # worksheet of its own (design team-disciplines D8)
-    codes = [d.code for d in tournament.disciplines if d.kind == DisciplineKind.INDIVIDUAL]
-    for code in codes:
-        entered = [r for r in active if code in (r.get("disciplines") or [])]
+    # worksheet of its own (design team-disciplines D8). One worksheet per
+    # slug — so tiers of one weapon get one each — with ratings read by
+    # taxonomy code, so tiers share a rating (design discipline-identity D5)
+    individual = [d for d in tournament.disciplines if d.kind == DisciplineKind.INDIVIDUAL]
+    for discipline in individual:
+        entered = [r for r in active if discipline.slug in (r.get("disciplines") or [])]
         roster = [
             (
                 _identity(r.get("name") or "", str(r.get("hr_id") or "")),
-                _discipline_values(r, ratings, code),
+                _discipline_values(r, ratings, discipline.taxonomy_code),
             )
             for r in entered
             if r.get("name")
         ]
-        client.write(code, merge_grid(client.read(code), DISCIPLINE_HEADER, roster))
+        client.write(
+            discipline.slug, merge_grid(client.read(discipline.slug), DISCIPLINE_HEADER, roster)
+        )
 
-    return {"worksheets": [FENCERS_SHEET, *codes], "fencers": len(fencer_roster)}
+    slugs = [d.slug for d in individual]
+    return {"worksheets": [FENCERS_SHEET, *slugs], "fencers": len(fencer_roster)}
 
 
 class GspreadSheetsClient:

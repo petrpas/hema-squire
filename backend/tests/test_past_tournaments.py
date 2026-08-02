@@ -20,7 +20,7 @@ def publish_future(client, organizer, slug, **overrides):
     client.patch(f"/api/tournaments/{slug}", json=patch, headers=organizer)
     client.post(
         f"/api/tournaments/{slug}/disciplines",
-        json={"code": "LS", "capacity": 2, "fee": 800},
+        json={"slug": "LS", "weapon": "LS", "capacity": 2, "fee": 800},
         headers=organizer,
     )
     publish(client, organizer, slug)

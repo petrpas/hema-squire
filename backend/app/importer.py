@@ -23,6 +23,11 @@ from sqlalchemy.orm import Session
 from app.config import settings
 from app.models import ImportBatch, ImportDecision, ImportedRow, Tournament
 
+# an offered discipline as handed to the parser: (slug, name) — the name is
+# where a tier, a bracket, or a weapon the taxonomy does not know lives, so it
+# is what the model actually matches on (design discipline-identity D7)
+OfferedDiscipline = tuple[str, str]
+
 PARSE_BATCH_SIZE = 20
 
 
@@ -61,22 +66,6 @@ def row_fingerprint(raw: dict[str, str]) -> str:
     return hashlib.sha256(canonical.encode()).hexdigest()[:16]
 
 
-class ParsedDiscipline(BaseModel):
-    weapon: Literal["LS", "SA", "RA", "RD", "SB"]
-    gender: Literal["", "W", "M", "O"] = Field(
-        default="", description="Open when not explicitly stated; O normalizes to ''."
-    )
-    material: Literal["", "Steel", "Plastic"] = Field(
-        default="", description="Steel when not explicitly stated."
-    )
-
-    @property
-    def code(self) -> str:
-        material = "" if self.material in ("", "Steel") else self.material
-        gender = self.gender if self.gender in ("W", "M") else ""
-        return f"{material} {self.weapon}{gender}".strip()
-
-
 class ParsedFencer(BaseModel):
     """The canonical fencer record an imported row parses into (v1-proven shape)."""
 
@@ -92,7 +81,9 @@ class ParsedFencer(BaseModel):
     hr_id: int | None = Field(
         default=None, description="Plain integer, or null for any non-numeric content."
     )
-    disciplines: list[ParsedDiscipline] = []
+    disciplines: list[str] = Field(
+        default=[], description="Slugs chosen from the tournament's offered disciplines."
+    )
     borrow: list[Literal["LS", "SA", "RA", "RD", "SB"]] = []
     after_party: Literal["Yes", "No", "Oth"] | None = None
     aftersparring: Literal["Yes", "No", "Oth"] | None = None
@@ -106,7 +97,9 @@ class ParsedFencer(BaseModel):
 
 
 class ImportParser(Protocol):
-    def parse(self, rows: list[dict[str, str]], disciplines: list[str]) -> list[ParsedFencer]: ...
+    def parse(
+        self, rows: list[dict[str, str]], disciplines: list[OfferedDiscipline]
+    ) -> list[ParsedFencer]: ...
 
 
 _SYSTEM_PROMPT = """\
@@ -114,18 +107,19 @@ You are a data-cleaning assistant for a HEMA (Historical European Martial Arts) 
 You receive a batch of records from a registration table and must output a clean,
 structured fencer record for each. Return exactly one record per input row, in order.
 
-HEMA weapons: LS Longsword, SA Sabre, RA Rapier, RD Rapier and Dagger, SB Sword and Buckler.
-A discipline is weapon + gender (M men, W women, open when unstated) + material
-(steel when unstated; "Plastic SA" means plastic sabre open).
-
-Disciplines offered by this tournament: {disciplines}
+Disciplines offered by this tournament (slug — name): {disciplines}
 
 Rules:
 1. hr_id: a plain integer as-is; empty or any non-numeric text ("N/A", "Don't have") -> null.
-2. Only use disciplines offered by this tournament, nothing else.
-3. Content that fits no field goes to notes. Parsing doubts go to problems.
-4. after_party / aftersparring: map local phrasing to Yes/No/Oth; null if the column is absent.
-5. accommodation: copy free text; null if absent or empty.
+2. disciplines: choose the slug of the matching offered discipline. Match on the name,
+   which is where a tier, a bracket, or a weapon not in the usual HEMA taxonomy is named.
+   Only use slugs from the offered list, nothing else.
+3. If a row's content could match more than one offered discipline and does not say which
+   (for example it names only a weapon that the tournament splits into several brackets),
+   do not guess: leave that discipline out of the row and note the ambiguity in problems.
+4. Content that fits no field goes to notes. Parsing doubts go to problems.
+5. after_party / aftersparring: map local phrasing to Yes/No/Oth; null if the column is absent.
+6. accommodation: copy free text; null if absent or empty.
 """
 
 
@@ -140,15 +134,18 @@ class LLMImportParser:
         self._model = model
         self._batch_size = batch_size
 
-    def parse(self, rows: list[dict[str, str]], disciplines: list[str]) -> list[ParsedFencer]:
+    def parse(
+        self, rows: list[dict[str, str]], disciplines: list[OfferedDiscipline]
+    ) -> list[ParsedFencer]:
         from pydantic_ai import Agent
         from pydantic_ai.settings import ModelSettings
 
+        offered = ", ".join(f"{slug} — {name}" for slug, name in disciplines)
         agent = Agent(
             model=self._model,
             model_settings=ModelSettings(temperature=0.0),
             output_type=_ParsedBatch,
-            system_prompt=_SYSTEM_PROMPT.format(disciplines=", ".join(disciplines)),
+            system_prompt=_SYSTEM_PROMPT.format(disciplines=offered),
             retries=3,
         )
         parsed: list[ParsedFencer] = []
@@ -266,8 +263,8 @@ def import_table(
                 "problems": [],
                 "detail": "llm_not_configured",
             }
-        discipline_codes = [d.code for d in tournament.disciplines]
-        parsed = parser.parse([row.raw for row in undecided], discipline_codes)
+        offered = [(d.slug, d.name) for d in tournament.disciplines]
+        parsed = parser.parse([row.raw for row in undecided], offered)
         for row, record in zip(undecided, parsed, strict=True):
             store_decision(session, tournament, "parse", row.key, record.model_dump())
         parsed_count = len(parsed)

@@ -76,7 +76,7 @@ def test_setup_fields_patch_round_trip_and_detail(client, auth_headers):
 
     client.post(
         "/api/tournaments/na-duel-2026/disciplines",
-        json={"code": "LS", "capacity": 10, "fee": 800},
+        json={"slug": "LS", "weapon": "LS", "capacity": 10, "fee": 800},
         headers=headers,
     )
     complete = client.get("/api/tournaments/na-duel-2026", headers=headers).json()
@@ -266,7 +266,7 @@ def test_creator_becomes_organizer_and_can_configure(client, auth_headers):
 
     response = client.post(
         "/api/tournaments/na-duel-2026/disciplines",
-        json={"code": "LS", "capacity": 32, "fee": 800},
+        json={"slug": "LS", "weapon": "LS", "capacity": 32, "fee": 800},
         headers=headers,
     )
     assert response.status_code == 201
@@ -329,22 +329,25 @@ def test_non_organizer_cannot_administer(client, auth_headers):
 
     response = client.post(
         "/api/tournaments/na-duel-2026/disciplines",
-        json={"code": "SB", "capacity": 16, "fee": 500},
+        json={"slug": "SB", "weapon": "SB", "capacity": 16, "fee": 500},
         headers=intruder,
     )
     assert response.status_code == 403
 
 
-def test_unknown_discipline_code_rejected(client, auth_headers):
+def test_custom_weapon_without_name_rejected(client, auth_headers):
+    # Creation no longer checks a closed taxonomy of weapon codes; any
+    # `weapon` string is accepted, but a non-taxonomy weapon requires an
+    # explicit `name` (design discipline-identity D4).
     headers = auth_headers()
     make_tournament(client, headers)
     response = client.post(
         "/api/tournaments/na-duel-2026/disciplines",
-        json={"code": "XX", "capacity": 8, "fee": 100},
+        json={"slug": "XX", "weapon": "XX", "capacity": 8, "fee": 100},
         headers=headers,
     )
     assert response.status_code == 422
-    assert response.json()["detail"] == "unknown_discipline_code"
+    assert response.json()["detail"] == "discipline_name_required"
 
 
 def test_taxonomy_codes(client):
@@ -380,7 +383,7 @@ def test_public_can_read_but_not_write(client, auth_headers):
     make_tournament(client, headers)
     client.post(
         "/api/tournaments/na-duel-2026/disciplines",
-        json={"code": "SA", "capacity": 42, "fee": 700, "fee_early": 600},
+        json={"slug": "SA", "weapon": "SA", "capacity": 42, "fee": 700, "fee_early": 600},
         headers=headers,
     )
 

@@ -98,7 +98,14 @@ def test_legacy_totals_unchanged_by_currency_columns(session):
     """A pre-itemized tournament's total is the legacy computation, untouched."""
     tournament = make_tournament(weapon_rental_fee=50, afterparty_fee=400)
     longsword = Discipline(
-        tournament=tournament, code="LS", name="Longsword Open Steel", capacity=32, fee=500
+        tournament=tournament,
+        slug="LS",
+        weapon="LS",
+        gender="",
+        material="",
+        name="Longsword Open Steel",
+        capacity=32,
+        fee=500,
     )
     session.add(tournament)
     session.commit()
@@ -138,7 +145,15 @@ def test_extra_item_declares_no_option_by_default(session):
 def test_eur_price_stored_independently_of_local_price(session):
     tournament = make_tournament(local_currency=Currency.CZK, eur_payments_enabled=True)
     longsword = Discipline(
-        tournament=tournament, code="LS", name="Longsword", capacity=32, fee=800, fee_eur=32
+        tournament=tournament,
+        slug="LS",
+        weapon="LS",
+        gender="",
+        material="",
+        name="Longsword",
+        capacity=32,
+        fee=800,
+        fee_eur=32,
     )
     session.add(tournament)
     session.commit()
@@ -161,8 +176,28 @@ def test_totals_need_not_correspond_at_any_rate(session):
     tournament = make_tournament(
         local_currency=Currency.CZK, eur_payments_enabled=True, eur_rate=Decimal("25")
     )
-    row1 = Discipline(tournament=tournament, code="LS", name="LS", capacity=10, fee=800, fee_eur=32)
-    row2 = Discipline(tournament=tournament, code="SA", name="SA", capacity=10, fee=700, fee_eur=30)
+    row1 = Discipline(
+        tournament=tournament,
+        slug="LS",
+        weapon="LS",
+        gender="",
+        material="",
+        name="LS",
+        capacity=10,
+        fee=800,
+        fee_eur=32,
+    )
+    row2 = Discipline(
+        tournament=tournament,
+        slug="SA",
+        weapon="SA",
+        gender="",
+        material="",
+        name="SA",
+        capacity=10,
+        fee=700,
+        fee_eur=30,
+    )
     session.add(tournament)
     session.commit()
 
@@ -181,7 +216,15 @@ def test_totals_need_not_correspond_at_any_rate(session):
 def test_eur_rate_change_does_not_move_any_stored_price(session):
     tournament = make_tournament(local_currency=Currency.CZK, eur_payments_enabled=True)
     longsword = Discipline(
-        tournament=tournament, code="LS", name="LS", capacity=10, fee=800, fee_eur=32
+        tournament=tournament,
+        slug="LS",
+        weapon="LS",
+        gender="",
+        material="",
+        name="LS",
+        capacity=10,
+        fee=800,
+        fee_eur=32,
     )
     session.add(tournament)
     session.commit()
@@ -436,7 +479,7 @@ def test_mode_switch_retains_stored_prices(client, auth_headers):
     _patch(client, headers, eur_payments_enabled=True)
     client.post(
         "/api/tournaments/na-duel-2026/disciplines",
-        json={"code": "LS", "capacity": 10, "fee": 800, "fee_eur": 32},
+        json={"slug": "LS", "weapon": "LS", "capacity": 10, "fee": 800, "fee_eur": 32},
         headers=headers,
     )
 
@@ -444,7 +487,7 @@ def test_mode_switch_retains_stored_prices(client, auth_headers):
     assert _patch(client, headers, eur_payments_enabled=True).status_code == 200
 
     detail = client.get("/api/tournaments/na-duel-2026", headers=headers).json()
-    discipline = next(d for d in detail["disciplines"] if d["code"] == "LS")
+    discipline = next(d for d in detail["disciplines"] if d["slug"] == "LS")
     assert discipline["fee"] == 800
     assert discipline["fee_eur"] == 32
 
@@ -484,7 +527,7 @@ def publish_with_eur(client, headers, *, eur=True, fee=1750, fee_eur=70):
     assert client.patch(
         "/api/tournaments/na-duel-2026", json=patch, headers=headers
     ).status_code == 200
-    discipline = {"code": "LS", "capacity": 10, "fee": fee}
+    discipline = {"slug": "LS", "weapon": "LS", "capacity": 10, "fee": fee}
     if eur:
         discipline["fee_eur"] = fee_eur
     client.post(
@@ -686,7 +729,7 @@ def test_incomplete_eur_prices_block_registration(client, auth_headers):
     # fee_eur left empty — completeness follows from the form (design Decision 2)
     client.post(
         "/api/tournaments/na-duel-2026/disciplines",
-        json={"code": "LS", "capacity": 10, "fee": 1750},
+        json={"slug": "LS", "weapon": "LS", "capacity": 10, "fee": 1750},
         headers=headers,
     )
     fencer = auth_headers(email="fincomplete@example.com", name="F")
@@ -715,7 +758,7 @@ def test_price_change_leaves_existing_registration_untouched(client, auth_header
 
     assert client.patch(
         "/api/tournaments/na-duel-2026/disciplines/LS",
-        json={"code": "LS", "capacity": 10, "fee": 2000, "fee_eur": 80},
+        json={"slug": "LS", "weapon": "LS", "capacity": 10, "fee": 2000, "fee_eur": 80},
         headers=headers,
     ).status_code == 200
 

@@ -15,8 +15,10 @@ import {
   type Currency,
   type CurrencyMode,
   type Discipline,
+  type DisciplineGender,
   type DisciplineInput,
   type DisciplineKind,
+  type DisciplineMaterial,
   type Discount,
   type DiscountCondition,
   type DiscountEffect,
@@ -32,6 +34,10 @@ import {
 import HelpHint from "./HelpHint";
 import { showsEur } from "./money";
 import SetupPreview from "./SetupPreview";
+import { LEGACY_WEAPONS } from "./TournamentFace";
+
+const TAXONOMY_WEAPON_CODES = Object.keys(LEGACY_WEAPONS);
+const OTHER_WEAPON = "__other__";
 
 // design Decision D1 (split-setup-into-tabs); `publish` added last (design D6
 // of add-explicit-publishing) — the end of the Setup arc, offered to every
@@ -246,6 +252,11 @@ function isActionCategory(category: ExtraCategory): boolean {
 }
 
 type DisciplineDraft = {
+  slug: string;
+  name: string;
+  weapon: string;
+  gender: DisciplineGender;
+  material: DisciplineMaterial;
   kind: DisciplineKind;
   team_min: string;
   team_max: string;
@@ -728,15 +739,22 @@ function OrganizersSection({
 
 type DisciplineRow = DisciplineDraft & {
   rowId: string;
-  code: string;
   isNew: boolean;
   error: string | null;
+  // UI-only: whether the weapon field shows the free-text "other" input
+  // rather than the taxonomy select (design discipline-identity D4)
+  weaponCustom: boolean;
 };
 
 function disciplineToRow(d: Discipline): DisciplineRow {
   return {
-    rowId: d.code,
-    code: d.code,
+    rowId: d.slug,
+    slug: d.slug,
+    name: d.name,
+    weapon: d.weapon,
+    gender: d.gender,
+    material: d.material,
+    weaponCustom: !TAXONOMY_WEAPON_CODES.includes(d.weapon),
     isNew: false,
     error: null,
     kind: d.kind,
@@ -753,9 +771,13 @@ function disciplineToRow(d: Discipline): DisciplineRow {
 }
 
 function disciplineRowDirty(row: DisciplineRow, detail: TournamentDetail): boolean {
-  const original = detail.disciplines.find((d) => d.code === row.code);
+  const original = detail.disciplines.find((d) => d.slug === row.slug);
   if (!original) return false;
   return (
+    original.name !== row.name ||
+    original.weapon !== row.weapon ||
+    original.gender !== row.gender ||
+    original.material !== row.material ||
     original.kind !== row.kind ||
     (original.team_min === null ? "" : String(original.team_min)) !== row.team_min ||
     (original.team_max === null ? "" : String(original.team_max)) !== row.team_max ||
@@ -771,7 +793,11 @@ function disciplineRowDirty(row: DisciplineRow, detail: TournamentDetail): boole
 
 function disciplineRowInput(row: DisciplineRow): DisciplineInput {
   return {
-    code: row.code,
+    slug: row.slug || null,
+    name: row.name || null,
+    weapon: row.weapon,
+    gender: row.gender,
+    material: row.material,
     kind: row.kind,
     team_min: row.kind === "team" ? Number(row.team_min) : null,
     team_max: row.kind === "team" ? Number(row.team_max) : null,
@@ -790,7 +816,7 @@ function disciplineRowInput(row: DisciplineRow): DisciplineInput {
 // necessarily introduces a price, so it always counts.
 function disciplineRowTouchesPrice(row: DisciplineRow, detail: TournamentDetail): boolean {
   if (row.isNew) return true;
-  const original = detail.disciplines.find((d) => d.code === row.code);
+  const original = detail.disciplines.find((d) => d.slug === row.slug);
   if (!original) return false;
   return (
     (original.fee === null ? "" : String(original.fee)) !== row.fee ||
@@ -801,7 +827,12 @@ function disciplineRowTouchesPrice(row: DisciplineRow, detail: TournamentDetail)
 function blankDisciplineRow(rowId: string): DisciplineRow {
   return {
     rowId,
-    code: "",
+    slug: "",
+    name: "",
+    weapon: "",
+    gender: "",
+    material: "",
+    weaponCustom: false,
     isNew: true,
     error: null,
     kind: "individual",
@@ -829,7 +860,6 @@ function DisciplinesSection({
   registry: SaverRegistry;
 }) {
   const { t } = useTranslation();
-  const [taxonomy, setTaxonomy] = useState<Record<string, string>>({});
   const [rows, setRows] = useState<DisciplineRow[]>(() => detail.disciplines.map(disciplineToRow));
   const [removed, setRemoved] = useState<Set<string>>(new Set());
   const eur = showsEur(detail);
@@ -874,10 +904,6 @@ function DisciplinesSection({
     },
   });
 
-  useEffect(() => {
-    api.taxonomy().then(setTaxonomy, () => setTaxonomy({}));
-  }, []);
-
   // Reseed from the freshly saved detail only while the section holds no
   // pending changes, so a refetch triggered by another tab's save (or by
   // this tab's own save) cannot stomp still-pending drafts (D8).
@@ -897,7 +923,7 @@ function DisciplinesSection({
 
   function removeRow(row: DisciplineRow) {
     setRows((prev) => prev.filter((r) => r.rowId !== row.rowId));
-    if (!row.isNew) setRemoved((prev) => new Set(prev).add(row.code));
+    if (!row.isNew) setRemoved((prev) => new Set(prev).add(row.slug));
   }
 
   function addRow() {
@@ -925,8 +951,10 @@ function DisciplinesSection({
         prev.map((row) => {
           const min = Number(row.team_min);
           const max = Number(row.team_max);
+          const weapon = row.weaponCustom ? row.weapon.trim() : row.weapon;
           const invalid =
-            !row.code ||
+            !weapon ||
+            (row.weaponCustom && !row.name.trim()) ||
             row.capacity.trim() === "" ||
             !Number.isFinite(Number(row.capacity)) ||
             (row.kind === "team" &&
@@ -945,46 +973,49 @@ function DisciplinesSection({
     flush: async () => {
       const outcomes: SaveOutcome[] = [];
       const stillRemoved = new Set<string>();
-      for (const code of removed) {
+      for (const rowSlug of removed) {
         try {
-          await api.deleteDiscipline(slug, code);
-          outcomes.push({ change: code, section: "disciplines", error: null });
+          await api.deleteDiscipline(slug, rowSlug);
+          outcomes.push({ change: rowSlug, section: "disciplines", error: null });
         } catch (err) {
-          stillRemoved.add(code);
+          stillRemoved.add(rowSlug);
           const message = t("setup.saveBar.genericError", {
             status: err instanceof ApiError ? err.status : "?",
           });
-          outcomes.push({ change: code, section: "disciplines", error: message });
+          outcomes.push({ change: rowSlug, section: "disciplines", error: message });
         }
       }
 
       const results = new Map<string, string | null>();
+      const created = new Map<string, Discipline>();
       for (const row of rowsRef.current.filter(
         (row) => !row.isNew && disciplineRowDirty(row, detail),
       )) {
         try {
-          await api.updateDiscipline(slug, row.code, disciplineRowInput(row));
+          const saved = await api.updateDiscipline(slug, row.slug, disciplineRowInput(row));
           results.set(row.rowId, null);
-          outcomes.push({ change: row.code, section: "disciplines", error: null });
+          created.set(row.rowId, saved);
+          outcomes.push({ change: saved.slug, section: "disciplines", error: null });
         } catch (err) {
           const message = t("setup.saveBar.genericError", {
             status: err instanceof ApiError ? err.status : "?",
           });
           results.set(row.rowId, message);
-          outcomes.push({ change: row.code, section: "disciplines", error: message });
+          outcomes.push({ change: row.slug, section: "disciplines", error: message });
         }
       }
       for (const row of rowsRef.current.filter((row) => row.isNew)) {
         try {
-          await api.addDiscipline(slug, disciplineRowInput(row));
+          const saved = await api.addDiscipline(slug, disciplineRowInput(row));
           results.set(row.rowId, null);
-          outcomes.push({ change: row.code, section: "disciplines", error: null });
+          created.set(row.rowId, saved);
+          outcomes.push({ change: saved.slug, section: "disciplines", error: null });
         } catch (err) {
           const message = t("setup.saveBar.genericError", {
             status: err instanceof ApiError ? err.status : "?",
           });
           results.set(row.rowId, message);
-          outcomes.push({ change: row.code, section: "disciplines", error: message });
+          outcomes.push({ change: row.slug || row.name, section: "disciplines", error: message });
         }
       }
 
@@ -993,15 +1024,14 @@ function DisciplinesSection({
         prev.map((row) => {
           const result = results.get(row.rowId);
           if (result === undefined) return row;
-          return result === null ? { ...row, isNew: false, error: null } : { ...row, error: result };
+          if (result !== null) return { ...row, error: result };
+          const saved = created.get(row.rowId);
+          return saved ? { ...disciplineToRow(saved), rowId: row.rowId } : { ...row, isNew: false, error: null };
         }),
       );
       return outcomes;
     },
   });
-
-  const usedCodes = new Set(rows.map((row) => row.code));
-  const availableCodes = Object.keys(taxonomy).filter((code) => !usedCodes.has(code));
 
   return (
     <section className="rail-card">
@@ -1010,7 +1040,15 @@ function DisciplinesSection({
       <table className="sheet-table">
         <thead>
           <tr>
-            <th>{t("setup.disciplines.code")}</th>
+            <th>{t("setup.disciplines.weapon")}</th>
+            <th>
+              {t("setup.disciplines.name")}
+              <HelpHint text={t("setup.disciplines.nameHint")} />
+            </th>
+            <th>
+              {t("setup.disciplines.slug")}
+              <HelpHint text={t("setup.disciplines.slugHint")} />
+            </th>
             <th>{t("setup.disciplines.kind")}</th>
             <th>{t("setup.disciplines.capacity")}</th>
             <th>{t("setup.disciplines.fee", { currency: detail.local_currency })}</th>
@@ -1023,23 +1061,79 @@ function DisciplinesSection({
             <Fragment key={row.rowId}>
               <tr>
                 <td>
-                  {row.code === "" ? (
+                  <div className="param-fields">
                     <select
-                      value={row.code}
-                      onChange={(event) => patchRow(row.rowId, { code: event.target.value })}
+                      value={row.weaponCustom ? OTHER_WEAPON : row.weapon}
+                      disabled={!row.isNew}
+                      onChange={(event) => {
+                        const value = event.target.value;
+                        if (value === OTHER_WEAPON) {
+                          patchRow(row.rowId, { weaponCustom: true, weapon: "" });
+                        } else {
+                          patchRow(row.rowId, { weaponCustom: false, weapon: value });
+                        }
+                      }}
                     >
                       <option value="">—</option>
-                      {availableCodes.map((code) => (
+                      {TAXONOMY_WEAPON_CODES.map((code) => (
                         <option key={code} value={code}>
-                          {code} — {taxonomy[code]}
+                          {LEGACY_WEAPONS[code]}
                         </option>
                       ))}
+                      <option value={OTHER_WEAPON}>{t("setup.disciplines.weaponOther")}</option>
                     </select>
-                  ) : (
-                    <strong>
-                      {row.code} — {taxonomy[row.code] ?? row.code}
-                    </strong>
-                  )}
+                    {row.weaponCustom && (
+                      <input
+                        className="cell-input"
+                        placeholder={t("setup.disciplines.weaponOther")}
+                        disabled={!row.isNew}
+                        value={row.weapon}
+                        onChange={(event) => patchRow(row.rowId, { weapon: event.target.value })}
+                      />
+                    )}
+                    <select
+                      value={row.gender}
+                      disabled={!row.isNew}
+                      onChange={(event) =>
+                        patchRow(row.rowId, { gender: event.target.value as DisciplineGender })
+                      }
+                    >
+                      <option value="">{t("setup.disciplines.genderOpen")}</option>
+                      <option value="W">{t("setup.disciplines.genderWomen")}</option>
+                      <option value="M">{t("setup.disciplines.genderMen")}</option>
+                    </select>
+                    <select
+                      value={row.material}
+                      disabled={!row.isNew}
+                      onChange={(event) =>
+                        patchRow(row.rowId, { material: event.target.value as DisciplineMaterial })
+                      }
+                    >
+                      <option value="">{t("setup.disciplines.materialSteel")}</option>
+                      <option value="Plastic">{t("setup.disciplines.materialPlastic")}</option>
+                    </select>
+                    {row.weaponCustom && (
+                      <span className="muted">{t("setup.disciplines.weaponNoRatingHint")}</span>
+                    )}
+                  </div>
+                </td>
+                <td>
+                  <input
+                    className="cell-input"
+                    disabled={!row.isNew}
+                    placeholder={row.weaponCustom ? undefined : t("setup.disciplines.nameAuto")}
+                    value={row.name}
+                    onChange={(event) => patchRow(row.rowId, { name: event.target.value })}
+                  />
+                </td>
+                <td>
+                  <input
+                    className="cell-input"
+                    disabled={!row.isNew}
+                    placeholder={t("setup.disciplines.slugAuto")}
+                    value={row.slug}
+                    onChange={(event) => patchRow(row.rowId, { slug: event.target.value })}
+                  />
                 </td>
                 <td>
                   <select
@@ -1103,7 +1197,7 @@ function DisciplinesSection({
                 </td>
               </tr>
               <tr className="detail-subrow">
-                <td colSpan={eur ? 6 : 5}>
+                <td colSpan={eur ? 8 : 7}>
                   <div className="param-fields">
                     {row.kind === "team" && (
                       <>

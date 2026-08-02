@@ -80,7 +80,7 @@ def setup_tournament(client, organizer, capacity=10, **patch):
     client.patch("/api/tournaments/cup", json=base | patch, headers=organizer)
     client.post(
         "/api/tournaments/cup/disciplines",
-        json={"code": "LS", "capacity": capacity, "fee": 1000},
+        json={"slug": "LS", "weapon": "LS", "capacity": capacity, "fee": 1000},
         headers=organizer,
     )
     publish(client, organizer, "cup")
@@ -285,7 +285,7 @@ def test_amendment_adding_full_discipline_is_accepted_as_substitute(client, auth
     setup_tournament(client, organizer, capacity=10)
     client.post(
         "/api/tournaments/cup/disciplines",
-        json={"code": "SB", "capacity": 1, "fee": 500},
+        json={"slug": "SB", "weapon": "SB", "capacity": 1, "fee": 500},
         headers=organizer,
     )
     fencer = auth_headers(email="f1@example.com", name="F1")
@@ -295,7 +295,7 @@ def test_amendment_adding_full_discipline_is_accepted_as_substitute(client, auth
 
     amended = amend(client, fencer, disciplines=["LS", "SB"])
     assert amended.status_code == 200, amended.text
-    entries = {e["code"]: e["is_substitute"] for e in amended.json()["entries"]}
+    entries = {e["slug"]: e["is_substitute"] for e in amended.json()["entries"]}
     # the kept, still-open discipline is unaffected; only the full one queues
     assert entries == {"LS": False, "SB": True}
 
@@ -542,7 +542,7 @@ def test_foreign_currency_credit_unchanged_by_later_rate_edit(client, auth_heade
     # moment (design D3 of add-explicit-publishing)
     client.patch(
         "/api/tournaments/cup/disciplines/LS",
-        json={"code": "LS", "capacity": 10, "fee": 1000, "fee_eur": 40},
+        json={"slug": "LS", "weapon": "LS", "capacity": 10, "fee": 1000, "fee_eur": 40},
         headers=organizer,
     )
     client.patch(

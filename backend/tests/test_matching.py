@@ -47,7 +47,7 @@ def setup(client, organizer):
     )
     client.post(
         "/api/tournaments/cup/disciplines",
-        json={"code": "LS", "capacity": 10, "fee": 1000},
+        json={"slug": "LS", "weapon": "LS", "capacity": 10, "fee": 1000},
         headers=organizer,
     )
     publish(client, organizer, "cup")
@@ -178,7 +178,7 @@ def test_vs_in_message_matches_sepa_style(client, auth_headers, mailbox):
     # before enabling EUR mode (design D3 of add-explicit-publishing)
     client.patch(
         "/api/tournaments/cup/disciplines/LS",
-        json={"code": "LS", "capacity": 10, "fee": 1000, "fee_eur": 39},
+        json={"slug": "LS", "weapon": "LS", "capacity": 10, "fee": 1000, "fee_eur": 39},
         headers=organizer,
     )
     client.patch(
@@ -234,7 +234,7 @@ def setup_with_eur(client, organizer, fee=1000, fee_eur=40):
     # moment (design D3 of add-explicit-publishing)
     client.patch(
         "/api/tournaments/cup/disciplines/LS",
-        json={"code": "LS", "capacity": 10, "fee": fee, "fee_eur": fee_eur},
+        json={"slug": "LS", "weapon": "LS", "capacity": 10, "fee": fee, "fee_eur": fee_eur},
         headers=organizer,
     )
     client.patch(
@@ -596,7 +596,7 @@ def test_reevaluated_flagged_transaction_not_credited_twice(client, auth_headers
     # before enabling EUR mode (design D3 of add-explicit-publishing)
     client.patch(
         "/api/tournaments/cup/disciplines/LS",
-        json={"code": "LS", "capacity": 10, "fee": 1000, "fee_eur": 40},
+        json={"slug": "LS", "weapon": "LS", "capacity": 10, "fee": 1000, "fee_eur": 40},
         headers=organizer,
     )
     client.patch(

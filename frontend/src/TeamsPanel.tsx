@@ -28,9 +28,9 @@ export default function TeamsPanel({ slug }: { slug: string }) {
           <p className="sheet-empty">{t("teams.empty")}</p>
         ) : (
           disciplines.map((discipline) => (
-            <section key={discipline.code} className="rail-card">
+            <section key={discipline.slug} className="rail-card">
               <h2>
-                {discipline.code} — {discipline.name}
+                {discipline.slug} — {discipline.name}
               </h2>
               <p className="rail-hint">
                 {t("teams.bounds", { min: discipline.team_min, max: discipline.team_max })}

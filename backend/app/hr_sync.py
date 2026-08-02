@@ -234,9 +234,9 @@ def parse_fighter_ratings(html: str) -> list[tuple[str, float | None, int | None
     return rows
 
 
-def category_keyword(tournament: Tournament, code: str) -> str | None:
+def category_keyword(tournament: Tournament, taxonomy_code: str) -> str | None:
     override = tournament.hr_category_map or {}
-    return override.get(code, DEFAULT_CATEGORY_KEYWORDS.get(code))
+    return override.get(taxonomy_code, DEFAULT_CATEGORY_KEYWORDS.get(taxonomy_code))
 
 
 def take_snapshot(
@@ -245,8 +245,14 @@ def take_snapshot(
     """Fetch current ratings for the given fencers and store a dated snapshot.
     If every page parses to zero categories, the fetch is rejected as drift."""
     # team disciplines carry no HR rating category (design team-disciplines:
-    # "Team disciplines carry no HR rating category")
-    codes = [d.code for d in tournament.disciplines if d.kind == DisciplineKind.INDIVIDUAL]
+    # "Team disciplines carry no HR rating category"). Distinct taxonomy
+    # codes, not one per discipline: tiers of one weapon share a fetch and a
+    # rating (design discipline-identity D5)
+    codes = list(
+        dict.fromkeys(
+            d.taxonomy_code for d in tournament.disciplines if d.kind == DisciplineKind.INDIVIDUAL
+        )
+    )
     parsed_pages = 0
     pages_with_ratings = 0
     missing: list[int] = []

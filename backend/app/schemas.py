@@ -100,8 +100,18 @@ class TokenOut(BaseModel):
 
 
 class DisciplineIn(BaseModel):
-    code: str
+    # optional on creation: the system generates one from the classification
+    # when omitted (design discipline-identity D3); an organizer override is
+    # checked for uniqueness by the router, which is where a conflict can be
+    # named against the tournament's other disciplines
+    slug: str | None = Field(default=None, max_length=30)
     name: str | None = None
+    # the five taxonomy weapons are offered as suggestions, but any weapon is
+    # accepted (design discipline-identity D4); gender and material stay
+    # closed sets
+    weapon: str = Field(min_length=1, max_length=30)
+    gender: Literal["", "W", "M"] = ""
+    material: Literal["", "Plastic"] = ""
     # individual is the default and behaves exactly as before team disciplines
     # existed; a team discipline's capacity counts teams and its fee is per
     # team (design team-disciplines D2)
@@ -136,8 +146,11 @@ class DisciplineIn(BaseModel):
 class DisciplineOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
-    code: str
+    slug: str
     name: str
+    weapon: str
+    gender: str
+    material: str
     kind: DisciplineKind
     team_min: int | None
     team_max: int | None
@@ -462,7 +475,7 @@ class TeamEntryIn(BaseModel):
     entirely on an initial registration, which has no existing teams."""
 
     id: int | None = None
-    code: str
+    slug: str
     name: str = Field(min_length=1, max_length=200)
 
     @field_validator("name")
@@ -478,7 +491,7 @@ class PreviewTeamIn(BaseModel):
     """A team entry for the price preview: identified by its discipline alone
     — a team's name and roster are not pricing inputs (spec: Price preview)."""
 
-    code: str
+    slug: str
 
 
 class RosterMemberIn(BaseModel):
@@ -511,7 +524,7 @@ class RosterUpdateIn(BaseModel):
 
 class TeamEntryOut(BaseModel):
     id: int
-    code: str
+    slug: str
     name: str
     waitlisted: bool
     # per-team fee, in each configured currency — never multiplied by roster
@@ -551,7 +564,7 @@ class RegisterIn(BaseModel):
 
 
 class RegistrationEntryOut(BaseModel):
-    code: str
+    slug: str
     is_substitute: bool
     queue_position: int | None
 
@@ -592,7 +605,7 @@ class RegistrationOut(BaseModel):
 
 
 class AvailabilityOut(BaseModel):
-    code: str
+    slug: str
     kind: DisciplineKind = DisciplineKind.INDIVIDUAL
     capacity: int
     taken: int
@@ -653,7 +666,9 @@ class PaymentInstructionsOut(BaseModel):
 
 
 class OpenDisciplineOut(BaseModel):
-    code: str
+    # not rendered to fencers (design discipline-identity D6); carried only as
+    # a stable list key
+    slug: str
     name: str
     fee: int | None
     fee_eur: int | None = None
@@ -801,7 +816,7 @@ class ConsoleTeamOut(BaseModel):
 
 
 class ConsoleTeamDisciplineOut(BaseModel):
-    code: str
+    slug: str
     name: str
     team_min: int
     team_max: int

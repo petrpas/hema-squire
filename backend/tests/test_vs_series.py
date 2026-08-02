@@ -21,7 +21,7 @@ def create_tournament(client, organizer, slug, date="2026-12-05"):
     )
     client.post(
         f"/api/tournaments/{slug}/disciplines",
-        json={"code": "LS", "capacity": 32, "fee": 800},
+        json={"slug": "LS", "weapon": "LS", "capacity": 32, "fee": 800},
         headers=organizer,
     )
     publish(client, organizer, slug)

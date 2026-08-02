@@ -44,7 +44,7 @@ def make_ready_tournament(client, headers):
     )
     client.post(
         f"/api/tournaments/{SLUG}/disciplines",
-        json={"code": "LS", "capacity": 10, "fee": 800},
+        json={"slug": "LS", "weapon": "LS", "capacity": 10, "fee": 800},
         headers=headers,
     )
     publish(client, headers, SLUG)
@@ -243,7 +243,14 @@ def test_option_value_does_not_change_the_total(session):
         slug="t", display_name="T", date=datetime.date(2026, 10, 3), vs_year=2026, vs_series=1
     )
     longsword = Discipline(
-        tournament=tournament, code="LS", name="LS", capacity=32, fee=800
+        tournament=tournament,
+        slug="LS",
+        weapon="LS",
+        gender="",
+        material="",
+        name="LS",
+        capacity=32,
+        fee=800,
     )
     shirt = ExtraItem(
         tournament=tournament,

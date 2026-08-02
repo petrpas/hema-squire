@@ -16,6 +16,7 @@ from fastapi import HTTPException
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
+from app import taxonomy
 from app.models import (
     BankTransaction,
     Discipline,
@@ -35,7 +36,7 @@ from app.models import (
 )
 from app.routers.tournaments import _lowest_free_series
 
-SCHEMA_VERSION = 6
+SCHEMA_VERSION = 7
 
 _TOURNAMENT_FIELDS = [
     "slug", "display_name", "date", "language",
@@ -143,7 +144,8 @@ def export_tournament(session: Session, tournament: Tournament) -> dict:
             _record(
                 d,
                 [
-                    "code", "name", "kind", "team_min", "team_max",
+                    "slug", "name", "weapon", "gender", "material", "kind",
+                    "team_min", "team_max",
                     "capacity", "fee", "fee_early", "fee_eur", "fee_early_eur",
                 ],
             )
@@ -169,7 +171,7 @@ def export_tournament(session: Session, tournament: Tournament) -> dict:
                 "fencer_email": r.fencer.email,
                 **_record(r, _REGISTRATION_FIELDS),
                 "entries": [
-                    {"code": e.discipline.code, "is_substitute": e.is_substitute}
+                    {"slug": e.discipline.slug, "is_substitute": e.is_substitute}
                     for e in r.entries
                 ],
                 "extras": [
@@ -184,7 +186,7 @@ def export_tournament(session: Session, tournament: Tournament) -> dict:
                 "teams": [
                     {
                         "name": team.name,
-                        "discipline_code": team.discipline.code,
+                        "discipline_slug": team.discipline.slug,
                         "waitlisted": team.waitlisted,
                         "members": [
                             {
@@ -245,7 +247,7 @@ def _parse_date(value: str | None) -> datetime.date | None:
 
 def restore_tournament(session: Session, data: dict, actor: Fencer) -> Tournament:
     version = data.get("schema_version")
-    if version not in (1, 2, 3, 4, 5, SCHEMA_VERSION):
+    if version not in (1, 2, 3, 4, 5, 6, SCHEMA_VERSION):
         raise HTTPException(status_code=422, detail="unsupported_schema_version")
     doc = dict(data["tournament"])
     if version == 1:
@@ -298,9 +300,20 @@ def restore_tournament(session: Session, data: dict, actor: Fencer) -> Tournamen
         # kind/team_min/team_max arrived in v6; an older file's disciplines
         # are all individual (design team-disciplines D8)
         fields = {"kind": "individual", "team_min": None, "team_max": None, **entry}
+        if "code" in fields:
+            # a pre-split document carries a discipline's identity and
+            # classification packed into one "code" — that value becomes the
+            # slug verbatim, and the classification is parsed back out of it,
+            # exactly as the migration backfills stored rows (design
+            # discipline-identity Migration Plan)
+            code = fields.pop("code")
+            weapon, gender, material = taxonomy.parse_code(code)
+            fields = {
+                **fields, "slug": code, "weapon": weapon, "gender": gender, "material": material,
+            }
         discipline = Discipline(tournament_id=tournament.id, **fields)
         session.add(discipline)
-        disciplines[entry["code"]] = discipline
+        disciplines[fields["slug"]] = discipline
 
     extra_items: dict[tuple[str, str], ExtraItem] = {}
     for entry in data.get("extra_items", []):
@@ -341,10 +354,16 @@ def restore_tournament(session: Session, data: dict, actor: Fencer) -> Tournamen
         session.add(registration)
         session.flush()
         for item in entry["entries"]:
+            # "code" is the pre-v7 key; a v7+ document carries "slug"
+            slug = item.get("slug", item.get("code"))
+            if slug not in disciplines:
+                raise HTTPException(
+                    status_code=422, detail=f"unknown_discipline_slug: {slug}"
+                )
             session.add(
                 RegistrationDiscipline(
                     registration_id=registration.id,
-                    discipline_id=disciplines[item["code"]].id,
+                    discipline_id=disciplines[slug].id,
                     is_substitute=item["is_substitute"],
                 )
             )
@@ -363,10 +382,17 @@ def restore_tournament(session: Session, data: dict, actor: Fencer) -> Tournamen
         # (design team-disciplines D8). A member is restored as the plain
         # record it is — never as a Fencer (design D4)
         for team_entry in entry.get("teams", []):
+            # "discipline_code" is the pre-v7 key; a v7+ document carries
+            # "discipline_slug"
+            slug = team_entry.get("discipline_slug", team_entry.get("discipline_code"))
+            if slug not in disciplines:
+                raise HTTPException(
+                    status_code=422, detail=f"unknown_discipline_slug: {slug}"
+                )
             team = Team(
                 tournament_id=tournament.id,
                 registration_id=registration.id,
-                discipline_id=disciplines[team_entry["discipline_code"]].id,
+                discipline_id=disciplines[slug].id,
                 name=team_entry["name"],
                 waitlisted=team_entry["waitlisted"],
             )

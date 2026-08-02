@@ -23,7 +23,7 @@ def make_tournament(client, organizer, slug="cup", **patch):
 def add_priced_discipline(client, organizer, slug="cup", code="LS", fee=800):
     response = client.post(
         f"/api/tournaments/{slug}/disciplines",
-        json={"code": code, "capacity": 10, "fee": fee},
+        json={"slug": code, "weapon": code, "capacity": 10, "fee": fee},
         headers=organizer,
     )
     assert response.status_code == 201, response.text
@@ -153,7 +153,7 @@ def test_clearing_a_discipline_price_on_published_tournament_rejected(client, au
 
     response = client.patch(
         f"/api/tournaments/{slug}/disciplines/LS",
-        json={"code": "LS", "capacity": 10, "fee": None},
+        json={"slug": "LS", "weapon": "LS", "capacity": 10, "fee": None},
         headers=organizer,
     )
     assert response.status_code == 422
@@ -220,7 +220,7 @@ def test_enabling_eur_with_unpriced_extra_item_on_published_tournament_rejected(
     add_priced_discipline(client, organizer, slug, fee=800)
     client.patch(
         f"/api/tournaments/{slug}/disciplines/LS",
-        json={"code": "LS", "capacity": 10, "fee": 800, "fee_eur": 32},
+        json={"slug": "LS", "weapon": "LS", "capacity": 10, "fee": 800, "fee_eur": 32},
         headers=organizer,
     )
     item = client.post(

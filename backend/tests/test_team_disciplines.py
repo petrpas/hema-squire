@@ -56,8 +56,11 @@ def make_tournament(**kwargs) -> Tournament:
 def team_discipline(tournament, fee=3000, team_min=3, team_max=4, code="LS"):
     return Discipline(
         tournament=tournament,
-        code=code,
+        slug=code,
         name=code,
+        weapon=code,
+        gender="",
+        material="",
         kind=DisciplineKind.TEAM,
         team_min=team_min,
         team_max=team_max,
@@ -130,7 +133,7 @@ def test_discipline_scoped_discount_reaches_team_fee():
     # one individual discipline entry (satisfies the count condition) plus one team
     from app.models import RegistrationDiscipline
 
-    individual = Discipline(tournament=tournament, code="SB", name="SB", capacity=10, fee=1000)
+    individual = Discipline(tournament=tournament, slug="SB", name="SB", weapon="SB", gender="", material="", capacity=10, fee=1000)
     team = Team(discipline=discipline, name="Wolves", waitlisted=False)
     registration = Registration(
         tournament=tournament,
@@ -157,7 +160,7 @@ def test_team_entry_does_not_satisfy_discipline_count_condition():
     discipline = team_discipline(tournament, fee=3000)
     from app.models import RegistrationDiscipline
 
-    individual = Discipline(tournament=tournament, code="SB", name="SB", capacity=10, fee=1000)
+    individual = Discipline(tournament=tournament, slug="SB", name="SB", weapon="SB", gender="", material="", capacity=10, fee=1000)
     team = Team(discipline=discipline, name="Wolves", waitlisted=False)
     registration = Registration(
         tournament=tournament,
@@ -202,7 +205,8 @@ def setup_team_tournament(client, organizer, *, team_min=3, team_max=4, capacity
     client.post(
         "/api/tournaments/cup/disciplines",
         json={
-            "code": "LS",
+            "slug": "LS",
+            "weapon": "LS",
             "capacity": capacity,
             "fee": 3000,
             "kind": "team",
@@ -215,7 +219,7 @@ def setup_team_tournament(client, organizer, *, team_min=3, team_max=4, capacity
 
 
 def register_team(client, headers, name="Wolves", code="LS", **overrides):
-    payload = {"disciplines": [], "teams": [{"code": code, "name": name}], **overrides}
+    payload = {"disciplines": [], "teams": [{"slug": code, "name": name}], **overrides}
     return client.post("/api/tournaments/cup/register", json=payload, headers=headers)
 
 
@@ -293,12 +297,15 @@ def test_full_individual_discipline_unaffected_by_teams(client, auth_headers):
     )
     client.post(
         "/api/tournaments/cup/disciplines",
-        json={"code": "SB", "capacity": 1, "fee": 500},
+        json={"slug": "SB", "weapon": "SB", "capacity": 1, "fee": 500},
         headers=organizer,
     )
     client.post(
         "/api/tournaments/cup/disciplines",
-        json={"code": "LS", "capacity": 5, "fee": 3000, "kind": "team", "team_min": 3, "team_max": 4},
+        json={
+            "slug": "LS", "weapon": "LS", "capacity": 5, "fee": 3000,
+            "kind": "team", "team_min": 3, "team_max": 4,
+        },
         headers=organizer,
     )
     publish(client, organizer, "cup")
@@ -310,10 +317,10 @@ def test_full_individual_discipline_unaffected_by_teams(client, auth_headers):
     )
     client.post(
         "/api/tournaments/cup/register",
-        json={"disciplines": [], "teams": [{"code": "LS", "name": "Wolves"}]},
+        json={"disciplines": [], "teams": [{"slug": "LS", "name": "Wolves"}]},
         headers=b,
     )
-    availability = {row["code"]: row for row in client.get("/api/tournaments/cup/availability").json()}
+    availability = {row["slug"]: row for row in client.get("/api/tournaments/cup/availability").json()}
     assert availability["SB"]["free"] == 0
     assert availability["LS"]["taken"] == 1
     assert availability["LS"]["free"] == 4
@@ -349,7 +356,7 @@ def test_two_teams_by_one_fencer(client, auth_headers):
         client,
         fencer,
         name="ignored",
-        teams=[{"code": "LS", "name": "Wolves"}, {"code": "LS", "name": "Wolves"}],
+        teams=[{"slug": "LS", "name": "Wolves"}, {"slug": "LS", "name": "Wolves"}],
     )
     assert response.status_code == 201
     body = response.json()
@@ -365,7 +372,7 @@ def test_team_removal_on_amendment_drops_roster(client, auth_headers):
     # doesn't also try to leave the registration with nothing at all
     client.post(
         "/api/tournaments/cup/disciplines",
-        json={"code": "SB", "capacity": 5, "fee": 500},
+        json={"slug": "SB", "weapon": "SB", "capacity": 5, "fee": 500},
         headers=organizer,
     )
     fencer = auth_headers(email="f1@example.com", name="F1")
@@ -477,7 +484,10 @@ def test_roster_editable_after_amendments_close(client, auth_headers):
     # but adding/removing a team itself is still an amendment, and is refused
     amend = client.post(
         "/api/tournaments/cup/my-registration/amend",
-        json={"disciplines": [], "teams": [{"code": "LS", "name": "Wolves"}, {"code": "LS", "name": "Bears"}]},
+        json={
+            "disciplines": [],
+            "teams": [{"slug": "LS", "name": "Wolves"}, {"slug": "LS", "name": "Bears"}],
+        },
         headers=fencer,
     )
     assert amend.status_code == 403
@@ -700,7 +710,7 @@ def test_v6_roundtrip_with_teams_and_rosters(client, auth_headers):
     export = client.get("/api/tournaments/cup/export/json", headers=organizer)
     assert export.status_code == 200, export.text
     doc = export.json()
-    assert doc["schema_version"] == 6
+    assert doc["schema_version"] == 7
     assert doc["disciplines"][0]["kind"] == "team"
     assert doc["disciplines"][0]["team_min"] == 3
 
@@ -794,13 +804,13 @@ def test_teams_absent_from_sheets_export(client, auth_headers):
     )
     client.post(
         "/api/tournaments/cup/disciplines",
-        json={"code": "LS", "capacity": 10, "fee": 1000},
+        json={"slug": "LS", "weapon": "LS", "capacity": 10, "fee": 1000},
         headers=organizer,
     )
     client.post(
         "/api/tournaments/cup/disciplines",
         json={
-            "code": "SA", "capacity": 5, "fee": 3000,
+            "slug": "SA", "weapon": "SA", "capacity": 5, "fee": 3000,
             "kind": "team", "team_min": 3, "team_max": 4,
         },
         headers=organizer,
@@ -819,7 +829,7 @@ def test_teams_absent_from_sheets_export(client, auth_headers):
     fencer = auth_headers(email="jan@example.com", name="Jan Novák")
     client.post(
         "/api/tournaments/cup/register",
-        json={"disciplines": ["LS"], "teams": [{"code": "SA", "name": "Wolves"}]},
+        json={"disciplines": ["LS"], "teams": [{"slug": "SA", "name": "Wolves"}]},
         headers=fencer,
     )
     team_id = client.get("/api/tournaments/cup/my-registration", headers=fencer).json()[
@@ -860,7 +870,7 @@ def test_discipline_kind_frozen_once_referenced(client, auth_headers):
 
     response = client.patch(
         "/api/tournaments/cup/disciplines/LS",
-        json={"code": "LS", "kind": "individual", "capacity": 5, "fee": 3000},
+        json={"weapon": "LS", "kind": "individual", "capacity": 5, "fee": 3000},
         headers=organizer,
     )
     assert response.status_code == 409
@@ -869,7 +879,7 @@ def test_discipline_kind_frozen_once_referenced(client, auth_headers):
     response = client.patch(
         "/api/tournaments/cup/disciplines/LS",
         json={
-            "code": "LS", "kind": "team", "team_min": 3, "team_max": 4,
+            "weapon": "LS", "kind": "team", "team_min": 3, "team_max": 4,
             "capacity": 5, "fee": 3500,
         },
         headers=organizer,
@@ -883,7 +893,7 @@ def test_discipline_kind_editable_before_any_registration(client, auth_headers):
     setup_team_tournament(client, organizer, capacity=5)
     response = client.patch(
         "/api/tournaments/cup/disciplines/LS",
-        json={"code": "LS", "kind": "individual", "capacity": 5, "fee": 3000},
+        json={"weapon": "LS", "kind": "individual", "capacity": 5, "fee": 3000},
         headers=organizer,
     )
     assert response.status_code == 200
@@ -909,13 +919,13 @@ def test_team_discipline_absent_from_hr_category_map_options(client, auth_header
     setup_team_tournament(client, organizer, capacity=5)
     client.post(
         "/api/tournaments/cup/disciplines",
-        json={"code": "SB", "capacity": 5, "fee": 500},
+        json={"slug": "SB", "weapon": "SB", "capacity": 5, "fee": 500},
         headers=organizer,
     )
     session = db_session()
     tournament = session.scalar(select(Tournament).where(Tournament.slug == "cup"))
-    codes = [d.code for d in tournament.disciplines if d.kind == DisciplineKind.INDIVIDUAL]
-    assert codes == ["SB"]  # the team discipline "LS" never appears
+    slugs = [d.slug for d in tournament.disciplines if d.kind == DisciplineKind.INDIVIDUAL]
+    assert slugs == ["SB"]  # the team discipline "LS" never appears
 
 
 # ---------------------------------------------------------------------------
@@ -937,7 +947,7 @@ def test_no_team_discipline_regression(client, auth_headers):
     )
     client.post(
         "/api/tournaments/cup/disciplines",
-        json={"code": "LS", "capacity": 2, "fee": 800},
+        json={"slug": "LS", "weapon": "LS", "capacity": 2, "fee": 800},
         headers=organizer,
     )
     publish(client, organizer, "cup")

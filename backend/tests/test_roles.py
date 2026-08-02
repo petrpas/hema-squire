@@ -62,7 +62,7 @@ def test_admin_retains_fencer_capabilities(client, auth_headers):
     )
     client.post(
         "/api/tournaments/cup/disciplines",
-        json={"code": "LS", "capacity": 10, "fee": 100},
+        json={"slug": "LS", "weapon": "LS", "capacity": 10, "fee": 100},
         headers=organizer,
     )
     publish(client, organizer, "cup")

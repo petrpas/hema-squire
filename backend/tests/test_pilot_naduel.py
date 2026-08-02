@@ -20,8 +20,18 @@ import pytest
 
 from app.dedup import MergeProposal, ThreeBands, default_merge, get_dedup_llm
 from app.hr_match import HRMatchResult, get_hr_matcher
-from app.importer import ParsedDiscipline, ParsedFencer, get_import_parser
+from app.importer import ParsedFencer, get_import_parser
 from app.main import app
+
+# the v1 archive predates slugs: `disciplines` entries are {weapon, gender,
+# material} dicts. This reproduces the taxonomy code they described (the old
+# importer.ParsedDiscipline.code property) purely to replay/compare archived
+# fixtures — the current pipeline itself never emits this shape (design
+# discipline-identity D7).
+def _legacy_code(d: dict) -> str:
+    material = "" if d.get("material", "") in ("", "Steel") else d["material"]
+    gender = d.get("gender", "") if d.get("gender", "") in ("W", "M") else ""
+    return f"{material} {d['weapon']}{gender}".strip()
 
 ARCHIVE = Path.home() / "hema/hema-agent/data/Na Duel! 2026"
 
@@ -62,7 +72,14 @@ class ArchiveParser:
             assert (raw["E-mailová adresa"] or None) == archived["email"], (
                 "archive/CSV row alignment broke"
             )
-            records.append(ParsedFencer(**archived))
+            records.append(
+                ParsedFencer(
+                    **{
+                        **archived,
+                        "disciplines": [_legacy_code(d) for d in archived["disciplines"]],
+                    }
+                )
+            )
         return records
 
 
@@ -119,7 +136,7 @@ def fencer_view(name, hr_id, email, club, nationality, disciplines, afterparty,
 
 
 def archive_view(record):
-    codes = [ParsedDiscipline(**d).code for d in record["disciplines"]]
+    codes = [_legacy_code(d) for d in record["disciplines"]]
     return fencer_view(
         record["name"], record["hr_id"], record["email"], record["club"],
         record["nationality"], codes, record["after_party"] == "Yes",
@@ -145,7 +162,7 @@ def test_pilot_replay_reproduces_v1_final_state(client, auth_headers, archive):
     for code in ("SA", "SB"):
         client.post(
             "/api/tournaments/na-duel-2026/disciplines",
-            json={"code": code, "capacity": 64, "fee": 800},
+            json={"slug": code, "weapon": code, "capacity": 64, "fee": 800},
             headers=organizer,
         )
 

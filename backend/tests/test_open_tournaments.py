@@ -20,7 +20,7 @@ def make_open_tournament(client, organizer, slug, **overrides):
     client.patch(f"/api/tournaments/{slug}", json=patch, headers=organizer)
     client.post(
         f"/api/tournaments/{slug}/disciplines",
-        json={"code": "LS", "capacity": 2, "fee": 800},
+        json={"slug": "LS", "weapon": "LS", "capacity": 2, "fee": 800},
         headers=organizer,
     )
     publish(client, organizer, slug)
@@ -61,7 +61,7 @@ def test_open_carries_discipline_counts_and_own_state(client, auth_headers):
 
     listed = client.get("/api/tournaments/open", headers=fencer).json()
     cup = next(t for t in listed if t["slug"] == "cup")
-    ls = next(d for d in cup["disciplines"] if d["code"] == "LS")
+    ls = next(d for d in cup["disciplines"] if d["slug"] == "LS")
     assert (ls["fee"], ls["taken"], ls["capacity"], ls["queue_length"]) == (800, 1, 2, 0)
     assert cup["registration_status"] == "open"
     assert cup["my_registration_state"] == "reserved"

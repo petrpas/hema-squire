@@ -43,7 +43,7 @@ def setup(client, organizer):
     )
     client.post(
         "/api/tournaments/cup/disciplines",
-        json={"code": "LS", "capacity": 10, "fee": 1000},
+        json={"slug": "LS", "weapon": "LS", "capacity": 10, "fee": 1000},
         headers=organizer,
     )
     publish(client, organizer, "cup")
@@ -191,7 +191,7 @@ def test_manual_link_distributes_without_overpaying(client, auth_headers, mailbo
     setup(client, organizer)
     client.patch(
         "/api/tournaments/cup/disciplines/LS",
-        json={"code": "LS", "capacity": 10, "fee": 1750},
+        json={"slug": "LS", "weapon": "LS", "capacity": 10, "fee": 1750},
         headers=organizer,
     )
     fencer_a, vs_a = enroll(client, auth_headers, "a@example.com", "Adéla")
@@ -229,7 +229,7 @@ def test_removing_distributed_link_reverts_exact_amounts(client, auth_headers, m
     fencer_a, vs_a = enroll(client, auth_headers, "a@example.com", "Adéla")
     client.patch(
         "/api/tournaments/cup/disciplines/LS",
-        json={"code": "LS", "capacity": 10, "fee": 2000},
+        json={"slug": "LS", "weapon": "LS", "capacity": 10, "fee": 2000},
         headers=organizer,
     )
     fencer_b, vs_b = enroll(client, auth_headers, "b@example.com", "Boris")

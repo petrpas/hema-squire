@@ -172,7 +172,7 @@ def open_tournaments(session: SessionDep, fencer: FencerDep):
 
         disciplines = [
             OpenDisciplineOut(
-                code=d.code,
+                slug=d.slug,
                 name=d.name,
                 fee=d.fee,
                 fee_eur=d.fee_eur,
@@ -267,7 +267,7 @@ def past_tournaments(session: SessionDep, fencer: FencerDep):
 
         disciplines = [
             OpenDisciplineOut(
-                code=d.code,
+                slug=d.slug,
                 name=d.name,
                 fee=d.fee,
                 fee_eur=d.fee_eur,
@@ -406,7 +406,9 @@ def update_tournament(
         # could never be meaningfully checked
         raise HTTPException(status_code=422, detail="composition_deadline_after_tournament_date")
     if updates.get("hr_category_map") is not None:
-        team_codes = {d.code for d in tournament.disciplines if d.kind == DisciplineKind.TEAM}
+        team_codes = {
+            d.taxonomy_code for d in tournament.disciplines if d.kind == DisciplineKind.TEAM
+        }
         offending = team_codes & set(tournament.hr_category_map)
         if offending:
             # team disciplines carry no HR rating category (design
@@ -487,19 +489,50 @@ def get_logo(tournament: TournamentDep):
     return Response(content=tournament.logo_bytes, media_type=tournament.logo_mime)
 
 
+def generate_slug(tournament: Tournament, weapon: str, gender: str, material: str) -> str:
+    """The taxonomy code with spaces replaced by `-`, disambiguated against the
+    tournament's existing slugs with a `-2`, `-3`, ... suffix (design
+    discipline-identity D3)."""
+    base = taxonomy.taxonomy_code(weapon, gender, material).replace(" ", "-")
+    existing = {d.slug for d in tournament.disciplines}
+    if base not in existing:
+        return base
+    counter = 2
+    while f"{base}-{counter}" in existing:
+        counter += 1
+    return f"{base}-{counter}"
+
+
 @router.post("/{slug}/disciplines", response_model=DisciplineOut, status_code=201)
 def add_discipline(
     data: DisciplineIn, tournament: TournamentDep, session: SessionDep, fencer: FencerDep
 ):
     require_console_access(session, tournament, fencer)
-    if not taxonomy.is_valid_code(data.code):
-        raise HTTPException(status_code=422, detail="unknown_discipline_code")
-    if any(d.code == data.code for d in tournament.disciplines):
-        raise HTTPException(status_code=409, detail="discipline_exists")
+    if data.gender not in ("", "W", "M") or data.material not in ("", "Plastic"):
+        # already enforced by the schema's Literal types; kept as a guard
+        # since the closed sets are the domain invariant, not the schema
+        raise HTTPException(status_code=422, detail="invalid_classification")
+    name = data.name
+    if not taxonomy.is_taxonomy_weapon(data.weapon):
+        if not name:
+            raise HTTPException(status_code=422, detail="discipline_name_required")
+    else:
+        name = name or taxonomy.taxonomy_name(data.weapon, data.gender, data.material)
+    if data.slug is None:
+        discipline_slug = generate_slug(tournament, data.weapon, data.gender, data.material)
+    else:
+        if any(d.slug == data.slug for d in tournament.disciplines):
+            raise HTTPException(
+                status_code=409, detail=f"discipline_slug_taken: {data.slug}"
+            )
+        discipline_slug = data.slug
     discipline = Discipline(
         tournament=tournament,
-        code=data.code,
-        name=data.name or taxonomy.default_name(data.code),
+        slug=discipline_slug,
+        name=name,
+        weapon=data.weapon,
+        gender=data.gender,
+        material=data.material,
         kind=data.kind,
         team_min=data.team_min,
         team_max=data.team_max,
@@ -539,23 +572,43 @@ def _discipline_referenced(session: Session, discipline: Discipline) -> bool:
     )
 
 
-@router.patch("/{slug}/disciplines/{code}", response_model=DisciplineOut)
+@router.patch("/{slug}/disciplines/{discipline_slug}", response_model=DisciplineOut)
 def update_discipline(
-    code: str,
+    discipline_slug: str,
     data: DisciplineIn,
     tournament: TournamentDep,
     session: SessionDep,
     fencer: FencerDep,
 ):
     require_console_access(session, tournament, fencer)
-    discipline = next((d for d in tournament.disciplines if d.code == code), None)
+    discipline = next((d for d in tournament.disciplines if d.slug == discipline_slug), None)
     if discipline is None:
         raise HTTPException(status_code=404, detail="discipline_not_found")
-    if data.code != code:
-        raise HTTPException(status_code=422, detail="code_is_immutable")
-    if data.kind != discipline.kind and _discipline_referenced(session, discipline):
+    referenced = _discipline_referenced(session, discipline)
+    slug_changed = data.slug is not None and data.slug != discipline.slug
+    classification_changed = (
+        data.weapon != discipline.weapon
+        or data.gender != discipline.gender
+        or data.material != discipline.material
+    )
+    if (slug_changed or classification_changed) and referenced:
+        raise HTTPException(status_code=409, detail="discipline_slug_frozen")
+    if data.kind != discipline.kind and referenced:
         raise HTTPException(status_code=409, detail="discipline_kind_frozen")
-    discipline.name = data.name or discipline.name
+    if slug_changed:
+        if any(d.slug == data.slug for d in tournament.disciplines if d.id != discipline.id):
+            raise HTTPException(
+                status_code=409, detail=f"discipline_slug_taken: {data.slug}"
+            )
+        discipline.slug = data.slug
+    if not taxonomy.is_taxonomy_weapon(data.weapon) and not data.name:
+        raise HTTPException(status_code=422, detail="discipline_name_required")
+    discipline.weapon = data.weapon
+    discipline.gender = data.gender
+    discipline.material = data.material
+    discipline.name = data.name or taxonomy.taxonomy_name(
+        data.weapon, data.gender, data.material
+    ) or discipline.name
     discipline.kind = data.kind
     discipline.team_min = data.team_min
     discipline.team_max = data.team_max
@@ -574,12 +627,12 @@ def update_discipline(
     return discipline
 
 
-@router.delete("/{slug}/disciplines/{code}", status_code=204)
+@router.delete("/{slug}/disciplines/{discipline_slug}", status_code=204)
 def delete_discipline(
-    code: str, tournament: TournamentDep, session: SessionDep, fencer: FencerDep
+    discipline_slug: str, tournament: TournamentDep, session: SessionDep, fencer: FencerDep
 ):
     require_console_access(session, tournament, fencer)
-    discipline = next((d for d in tournament.disciplines if d.code == code), None)
+    discipline = next((d for d in tournament.disciplines if d.slug == discipline_slug), None)
     if discipline is None:
         raise HTTPException(status_code=404, detail="discipline_not_found")
     session.delete(discipline)
@@ -641,7 +694,7 @@ def console_teams(tournament: TournamentDep, session: SessionDep, fencer: Fencer
             )
         result.append(
             ConsoleTeamDisciplineOut(
-                code=discipline.code,
+                slug=discipline.slug,
                 name=discipline.name,
                 team_min=discipline.team_min,
                 team_max=discipline.team_max,

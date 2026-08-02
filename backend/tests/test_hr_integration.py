@@ -198,12 +198,16 @@ def test_hr_nationalities_lists_distinct_sorted_values(client, auth_headers, use
 
 def test_snapshot_respects_category_mapping_and_override(client, auth_headers):
     organizer = make_organizer(client, auth_headers)
-    for code in ("LS", "SAW"):
-        client.post(
-            "/api/tournaments/cup/disciplines",
-            json={"code": code, "capacity": 10, "fee": 1000},
-            headers=organizer,
-        )
+    client.post(
+        "/api/tournaments/cup/disciplines",
+        json={"slug": "LS", "weapon": "LS", "capacity": 10, "fee": 1000},
+        headers=organizer,
+    )
+    client.post(
+        "/api/tournaments/cup/disciplines",
+        json={"slug": "SAW", "weapon": "SA", "gender": "W", "capacity": 10, "fee": 1000},
+        headers=organizer,
+    )
     publish(client, organizer, "cup")
     fencer = auth_headers(email="jan@example.com", name="Jan N")
     client.post("/api/account/hr-binding", json={"hr_id": 10234}, headers=fencer)
@@ -258,7 +262,7 @@ def test_snapshot_drift_rejected_when_no_page_parses(client, auth_headers):
     organizer = make_organizer(client, auth_headers)
     client.post(
         "/api/tournaments/cup/disciplines",
-        json={"code": "LS", "capacity": 10, "fee": 1000},
+        json={"slug": "LS", "weapon": "LS", "capacity": 10, "fee": 1000},
         headers=organizer,
     )
     publish(client, organizer, "cup")
@@ -277,3 +281,74 @@ def test_snapshot_drift_rejected_when_no_page_parses(client, auth_headers):
     assert "drift" in response.json()["detail"]["detail"]["reason"]
     latest = client.get("/api/tournaments/cup/ratings", headers=organizer).json()
     assert latest["taken_at"] is None  # nothing stored
+
+
+# ---------------------------------------------------------------------------
+# 9.6 Tiers share one fetch; a custom weapon contributes nothing (design
+# discipline-identity D5, D4)
+# ---------------------------------------------------------------------------
+
+
+def test_two_tiers_share_one_fetch_and_one_rating(client, auth_headers):
+    organizer = make_organizer(client, auth_headers)
+    client.post(
+        "/api/tournaments/cup/disciplines",
+        json={"slug": "LS-A", "weapon": "LS", "name": "Longsword Top", "capacity": 10, "fee": 800},
+        headers=organizer,
+    )
+    client.post(
+        "/api/tournaments/cup/disciplines",
+        json={"slug": "LS-B", "weapon": "LS", "name": "Longsword Open", "capacity": 10, "fee": 800},
+        headers=organizer,
+    )
+    publish(client, organizer, "cup")
+    fencer = auth_headers(email="jan@example.com", name="Jan N")
+    client.post("/api/account/hr-binding", json={"hr_id": 10234}, headers=fencer)
+    client.post(
+        "/api/tournaments/cup/register", json={"disciplines": ["LS-A"]}, headers=fencer
+    )
+
+    fetcher = FakeHRFetcher()
+    fetcher.pages[10234] = fighter_page([("Mixed & Men's Steel Longsword", 1400.0, 20)])
+    wire_fetcher(fetcher)
+
+    outcome = client.post("/api/tournaments/cup/ratings/snapshot", headers=organizer).json()
+    assert outcome["status"] == "ok"
+    # one rating fetched under the shared taxonomy code, not one per discipline
+    assert outcome["ratings"] == 1
+
+    session = next(app.dependency_overrides[get_session]())
+    from sqlalchemy import select
+
+    from app.models import HRRatingSnapshot
+
+    snapshot = session.scalars(
+        select(HRRatingSnapshot).order_by(HRRatingSnapshot.id.desc()).limit(1)
+    ).first()
+    codes = {r.discipline_code for r in snapshot.ratings}
+    assert codes == {"LS"}  # the taxonomy code, shared by both tiers
+
+
+def test_custom_weapon_contributes_nothing_without_failing_snapshot(client, auth_headers):
+    organizer = make_organizer(client, auth_headers)
+    client.post(
+        "/api/tournaments/cup/disciplines",
+        json={"weapon": "Messer", "name": "Messer Open", "capacity": 10, "fee": 800},
+        headers=organizer,
+    )
+    publish(client, organizer, "cup")
+    fencer = auth_headers(email="jan@example.com", name="Jan N")
+    client.post("/api/account/hr-binding", json={"hr_id": 10234}, headers=fencer)
+    client.post(
+        "/api/tournaments/cup/register", json={"disciplines": ["Messer"]}, headers=fencer
+    )
+
+    fetcher = FakeHRFetcher()
+    # the page parses fine, just carries no category the custom weapon could match
+    fetcher.pages[10234] = fighter_page([("Mixed & Men's Steel Longsword", 1400.0, 20)])
+    wire_fetcher(fetcher)
+
+    outcome = client.post("/api/tournaments/cup/ratings/snapshot", headers=organizer).json()
+    assert outcome["status"] == "ok"
+    assert outcome["ratings"] == 0
+    assert outcome["fencers"] == 1

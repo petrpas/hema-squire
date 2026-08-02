@@ -5,10 +5,12 @@ rows are "imp:<fingerprint>" (stable across re-uploads of unchanged rows).
 Phase views (task 4.3) select columns over this same projection.
 """
 
+from collections import defaultdict
+
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
-from app import hr_match, importer
+from app import hr_match, importer, taxonomy
 from app.models import (
     ExtraCategory,
     ImportedRow,
@@ -74,10 +76,10 @@ def base_rows(session: Session, tournament: Tournament) -> dict[str, Row]:
             "match_verdict": "confirmed" if registration.fencer.hr_id else "unknown",
             "email": registration.fencer.email,
             "disciplines": [
-                e.discipline.code for e in registration.entries if not e.is_substitute
+                e.discipline.slug for e in registration.entries if not e.is_substitute
             ],
             "substitute_for": [
-                e.discipline.code for e in registration.entries if e.is_substitute
+                e.discipline.slug for e in registration.entries if e.is_substitute
             ],
             "state": registration.state.value,
             "vs": registration.vs,
@@ -99,6 +101,41 @@ def base_rows(session: Session, tournament: Tournament) -> dict[str, Row]:
     return rows
 
 
+def _resolve_discipline_slugs(tournament: Tournament, entries: list) -> tuple[list[str], list[str]]:
+    """A stored parse decision's `disciplines` entries, resolved to slugs.
+
+    New-shape entries already are slugs (design discipline-identity D7). Old
+    entries — decisions stored before disciplines carried slugs — describe a
+    discipline as a `{weapon, gender, material}` dict; each resolves through
+    `taxonomy.taxonomy_code` to the offered disciplines sharing that
+    classification: to the one when there is exactly one, and to a reported
+    problem when the weapon was since split into several (design D8, Risks).
+    This shim expires per row at its next re-upload, once it is reparsed into
+    the new shape — it is not a permanent fork.
+    """
+    by_taxonomy_code: dict[str, list] = defaultdict(list)
+    for d in tournament.disciplines:
+        by_taxonomy_code[d.taxonomy_code].append(d)
+
+    slugs: list[str] = []
+    problems: list[str] = []
+    for entry in entries:
+        if isinstance(entry, str):
+            slugs.append(entry)
+            continue
+        code = taxonomy.taxonomy_code(
+            entry.get("weapon", ""), entry.get("gender", ""), entry.get("material", "")
+        )
+        matches = by_taxonomy_code.get(code, [])
+        if len(matches) == 1:
+            slugs.append(matches[0].slug)
+        else:
+            problems.append(
+                f"legacy discipline {code!r} is ambiguous among this tournament's disciplines"
+            )
+    return slugs, problems
+
+
 def _imported_rows(session: Session, tournament: Tournament) -> dict[str, Row]:
     batch = importer.latest_batch(session, tournament)
     if batch is None:
@@ -118,9 +155,9 @@ def _imported_rows(session: Session, tournament: Tournament) -> dict[str, Row]:
             # intake succeeded but the parse did not run (e.g. LLM unconfigured)
             rows[row_id] = _unparsed_row(row_id, row)
             continue
-        disciplines = [
-            importer.ParsedDiscipline(**d).code for d in record.get("disciplines", [])
-        ]
+        disciplines, discipline_problems = _resolve_discipline_slugs(
+            tournament, record.get("disciplines", [])
+        )
         name = record.get("name")
         reg_name = record.get("reg_name")
         club = record.get("club")
@@ -144,6 +181,10 @@ def _imported_rows(session: Session, tournament: Tournament) -> dict[str, Row]:
                     nationality = match.payload.get("nationality") or nationality
                 else:
                     verdict = "none_found"
+        problems = record.get("problems")
+        if discipline_problems:
+            extra = "; ".join(discipline_problems)
+            problems = f"{problems} | {extra}" if problems else extra
         rows[row_id] = {
             "id": row_id,
             "name": name,
@@ -167,7 +208,7 @@ def _imported_rows(session: Session, tournament: Tournament) -> dict[str, Row]:
             "aftersparring": record.get("aftersparring") == "Yes",
             "accommodation": record.get("accommodation"),
             "notes": record.get("notes"),
-            "problems": record.get("problems"),
+            "problems": problems,
             "_source": {"file": row.batch.filename, "row": row.row_number},
             "_deleted": False,
         }

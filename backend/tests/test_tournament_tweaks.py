@@ -40,7 +40,8 @@ def test_discipline_schedule_and_ruleset_round_trip(client, auth_headers):
     headers = auth_headers()
     make_tournament(client, headers)
     body = {
-        "code": "LS",
+        "slug": "LS",
+        "weapon": "LS",
         "capacity": 32,
         "fee": 300,
         "schedule_when": "Saturday",
@@ -61,7 +62,7 @@ def test_discipline_schedule_and_ruleset_round_trip(client, auth_headers):
     # empty fields on a second discipline stay null
     plain = client.post(
         "/api/tournaments/na-duel-2026/disciplines",
-        json={"code": "SA", "capacity": 16, "fee": 200},
+        json={"slug": "SA", "weapon": "SA", "capacity": 16, "fee": 200},
         headers=headers,
     )
     assert plain.status_code == 201, plain.text
@@ -74,7 +75,7 @@ def test_extra_item_descriptive_fields_do_not_change_price(client, auth_headers)
     make_tournament(client, headers)
     client.post(
         "/api/tournaments/na-duel-2026/disciplines",
-        json={"code": "LS", "capacity": 32, "fee": 300},
+        json={"slug": "LS", "weapon": "LS", "capacity": 32, "fee": 300},
         headers=headers,
     )
     item = client.post(

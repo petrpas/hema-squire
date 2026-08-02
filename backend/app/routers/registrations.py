@@ -114,7 +114,7 @@ def _team_out(team: Team, tournament: Tournament, at) -> dict:
         }
     return {
         "id": team.id,
-        "code": team.discipline.code,
+        "slug": team.discipline.slug,
         "name": team.name,
         "waitlisted": team.waitlisted,
         "fee": pricing.discipline_fee(tournament, team.discipline, at, "local"),
@@ -173,7 +173,7 @@ def registration_out(session, registration: Registration, tournament: Tournament
         ],
         "entries": [
             {
-                "code": entry.discipline.code,
+                "slug": entry.discipline.slug,
                 "is_substitute": entry.is_substitute,
                 "queue_position": queue_position(session, entry)
                 if entry.is_substitute
@@ -193,7 +193,7 @@ def availability(tournament: TournamentDep, session: SessionDep):
             taken = taken_team_slots(session, discipline)
             result.append(
                 AvailabilityOut(
-                    code=discipline.code,
+                    slug=discipline.slug,
                     kind=discipline.kind,
                     capacity=discipline.capacity,
                     taken=taken,
@@ -207,7 +207,7 @@ def availability(tournament: TournamentDep, session: SessionDep):
             taken = taken_seats(session, discipline)
             result.append(
                 AvailabilityOut(
-                    code=discipline.code,
+                    slug=discipline.slug,
                     kind=discipline.kind,
                     capacity=discipline.capacity,
                     taken=taken,
@@ -238,10 +238,10 @@ def participants(tournament: TournamentDep, session: SessionDep):
 
     result = []
     for registration in rows:
-        active_codes = [
-            e.discipline.code for e in registration.entries if not e.is_substitute
+        active_slugs = [
+            e.discipline.slug for e in registration.entries if not e.is_substitute
         ]
-        if not active_codes:
+        if not active_slugs:
             continue  # fully-queued substitutes are not participants
         confirmed = registration.state == RegistrationState.PAID
         if not confirmed and not show_unpaid:
@@ -251,7 +251,7 @@ def participants(tournament: TournamentDep, session: SessionDep):
                 name=registration.fencer.display_name,
                 club=registration.fencer.club,
                 nationality=registration.fencer.nationality,
-                disciplines=active_codes,
+                disciplines=active_slugs,
                 status="confirmed" if confirmed else "unconfirmed",
             )
         )
@@ -262,11 +262,11 @@ def _resolve_selection(tournament: Tournament, data) -> tuple[list, list[tuple]]
     """Validate the billable subset of RegisterIn/PricePreviewIn against the
     tournament's disciplines/extras; shared by register() and price_preview()
     so both reject the same selections the same way."""
-    by_code = {d.code: d for d in tournament.disciplines}
-    unknown = [c for c in data.disciplines if c not in by_code]
+    by_slug = {d.slug: d for d in tournament.disciplines}
+    unknown = [c for c in data.disciplines if c not in by_slug]
     if unknown:
         raise HTTPException(status_code=422, detail={"unknown_disciplines": unknown})
-    wrong_kind = [c for c in data.disciplines if by_code[c].kind != DisciplineKind.INDIVIDUAL]
+    wrong_kind = [c for c in data.disciplines if by_slug[c].kind != DisciplineKind.INDIVIDUAL]
     if wrong_kind:
         # a team discipline is entered through `teams`, not `disciplines`
         raise HTTPException(status_code=422, detail={"team_discipline_not_individual": wrong_kind})
@@ -284,7 +284,7 @@ def _resolve_selection(tournament: Tournament, data) -> tuple[list, list[tuple]]
     if over_limit:
         raise HTTPException(status_code=422, detail={"extras_over_limit": over_limit})
 
-    selected = [by_code[c] for c in data.disciplines]
+    selected = [by_slug[c] for c in data.disciplines]
     extras = [(extras_by_id[e.extra_item_id], e.qty) for e in data.extras]
     return selected, extras
 
@@ -293,15 +293,15 @@ def _resolve_teams(tournament: Tournament, entries) -> list[tuple[Discipline, ob
     """Validate team entries (RegisterIn/PricePreviewIn's `teams`) against the
     tournament's team disciplines. Works for both `TeamEntryIn` (register/
     amend, carries `id`/`name`) and `PreviewTeamIn` (preview, carries only
-    `code`) — nothing here reads more than `.code`."""
-    by_code = {d.code: d for d in tournament.disciplines}
-    unknown = [e.code for e in entries if e.code not in by_code]
+    `slug`) — nothing here reads more than `.slug`."""
+    by_slug = {d.slug: d for d in tournament.disciplines}
+    unknown = [e.slug for e in entries if e.slug not in by_slug]
     if unknown:
         raise HTTPException(status_code=422, detail={"unknown_disciplines": unknown})
-    wrong_kind = [e.code for e in entries if by_code[e.code].kind != DisciplineKind.TEAM]
+    wrong_kind = [e.slug for e in entries if by_slug[e.slug].kind != DisciplineKind.TEAM]
     if wrong_kind:
         raise HTTPException(status_code=422, detail={"discipline_not_team_kind": wrong_kind})
-    return [(by_code[e.code], e) for e in entries]
+    return [(by_slug[e.slug], e) for e in entries]
 
 
 def _team_waitlist_flags(
@@ -421,7 +421,7 @@ def register(
         raise HTTPException(status_code=422, detail="no_disciplines_or_teams")
     team_entries = _resolve_teams(tournament, data.teams)
     _validate_options(data.extras, {item.id: item for item in tournament.extra_items})
-    full = [d.code for d in selected if taken_seats(session, d) >= d.capacity]
+    full = [d.slug for d in selected if taken_seats(session, d) >= d.capacity]
 
     if full and not data.wait_for_all:
         # The fencer chooses: trim the selection to open disciplines, or resubmit
@@ -613,7 +613,7 @@ def amend_registration(
     # waitlist"). `exclude_registration_id` keeps this registration's own
     # (soon-to-be-replaced) teams out of the capacity count, so a kept team is
     # not counted against itself.
-    full = {d.code for d in selected if taken_seats(session, d) >= d.capacity}
+    full = {d.slug for d in selected if taken_seats(session, d) >= d.capacity}
     team_flags = _team_waitlist_flags(
         session, team_entries, exclude_registration_id=registration.id
     )
@@ -626,7 +626,7 @@ def amend_registration(
     for discipline in selected:
         registration.entries.append(
             RegistrationDiscipline(
-                discipline=discipline, is_substitute=discipline.code in full
+                discipline=discipline, is_substitute=discipline.slug in full
             )
         )
     for selection in data.extras:
@@ -736,10 +736,12 @@ def cancel_registration(tournament: TournamentDep, session: SessionDep, fencer: 
     return registration_out(session, registration, tournament)
 
 
-@router.post("/registrations/{registration_id}/admit/{code}", response_model=RegistrationOut)
+@router.post(
+    "/registrations/{registration_id}/admit/{discipline_slug}", response_model=RegistrationOut
+)
 def admit_substitute(
     registration_id: int,
-    code: str,
+    discipline_slug: str,
     tournament: TournamentDep,
     session: SessionDep,
     fencer: FencerDep,
@@ -750,7 +752,11 @@ def admit_substitute(
     if registration is None or registration.tournament_id != tournament.id:
         raise HTTPException(status_code=404, detail="registration_not_found")
     entry = next(
-        (e for e in registration.entries if e.discipline.code == code and e.is_substitute),
+        (
+            e
+            for e in registration.entries
+            if e.discipline.slug == discipline_slug and e.is_substitute
+        ),
         None,
     )
     if entry is None:

@@ -61,7 +61,7 @@ def setup(client, auth_headers, organizer):
     for code in ("LS", "SA"):
         client.post(
             "/api/tournaments/cup/disciplines",
-            json={"code": code, "capacity": 10, "fee": 1000},
+            json={"slug": code, "weapon": code, "capacity": 10, "fee": 1000},
             headers=organizer,
         )
     client.patch(
@@ -206,3 +206,94 @@ def test_export_requires_configuration(client, auth_headers):
     app.dependency_overrides[get_sheets_client_factory] = lambda: (lambda t: None)
     response = client.post("/api/tournaments/cup/export/sheet", headers=organizer)
     assert response.status_code == 422
+
+
+# ---------------------------------------------------------------------------
+# 9.8 Tiers and a custom weapon (design discipline-identity D5, D4)
+# ---------------------------------------------------------------------------
+
+
+def test_two_tiers_produce_two_worksheets(client, auth_headers):
+    organizer = auth_headers()
+    client.post(
+        "/api/tournaments",
+        json={"slug": "tiers", "display_name": "Tiers", "date": "2026-12-05"},
+        headers=organizer,
+    )
+    client.post(
+        "/api/tournaments/tiers/disciplines",
+        json={"slug": "LS-A", "weapon": "LS", "name": "Longsword Top", "capacity": 10, "fee": 1000},
+        headers=organizer,
+    )
+    client.post(
+        "/api/tournaments/tiers/disciplines",
+        json={"slug": "LS-B", "weapon": "LS", "name": "Longsword Open", "capacity": 10, "fee": 1000},
+        headers=organizer,
+    )
+    client.patch(
+        "/api/tournaments/tiers",
+        json={
+            "output_sheet_url": "https://sheets.example/tiers",
+            "location": "Brno",
+            "organizers": [{"name": "Org", "link": None}],
+        },
+        headers=organizer,
+    )
+    publish(client, organizer, "tiers")
+
+    top = auth_headers(email="top@example.com", name="Top Fencer")
+    client.post(
+        "/api/tournaments/tiers/register", json={"disciplines": ["LS-A"]}, headers=top
+    )
+    openb = auth_headers(email="open@example.com", name="Open Fencer")
+    client.post(
+        "/api/tournaments/tiers/register", json={"disciplines": ["LS-B"]}, headers=openb
+    )
+
+    sheets = InMemorySheets()
+    app.dependency_overrides[get_sheets_client_factory] = lambda: (lambda t: sheets)
+    response = client.post("/api/tournaments/tiers/export/sheet", headers=organizer)
+    assert response.status_code == 200, response.text
+    assert set(response.json()["worksheets"]) == {"Fencers", "LS-A", "LS-B"}
+    assert grid_row(sheets.worksheets["LS-A"], "Top Fencer")
+    assert grid_row(sheets.worksheets["LS-B"], "Open Fencer")
+    assert all(row[1] != "Open Fencer" for row in sheets.worksheets["LS-A"][1:])
+    # both tiers carry the same slug in the Fencers worksheet's Disciplines column
+    fencers = sheets.worksheets["Fencers"]
+    assert grid_row(fencers, "Top Fencer")[5] == "LS-A"
+    assert grid_row(fencers, "Open Fencer")[5] == "LS-B"
+
+
+def test_custom_weapon_worksheet_has_empty_rating_columns(client, auth_headers):
+    organizer = auth_headers()
+    client.post(
+        "/api/tournaments",
+        json={"slug": "messer", "display_name": "Messer Cup", "date": "2026-12-05"},
+        headers=organizer,
+    )
+    client.post(
+        "/api/tournaments/messer/disciplines",
+        json={"weapon": "Messer", "name": "Messer Open", "capacity": 10, "fee": 1000},
+        headers=organizer,
+    )
+    client.patch(
+        "/api/tournaments/messer",
+        json={
+            "output_sheet_url": "https://sheets.example/messer",
+            "location": "Brno",
+            "organizers": [{"name": "Org", "link": None}],
+        },
+        headers=organizer,
+    )
+    publish(client, organizer, "messer")
+    fencer = auth_headers(email="messer@example.com", name="Messer Fencer")
+    client.post(
+        "/api/tournaments/messer/register", json={"disciplines": ["Messer"]}, headers=fencer
+    )
+
+    sheets = InMemorySheets()
+    app.dependency_overrides[get_sheets_client_factory] = lambda: (lambda t: sheets)
+    response = client.post("/api/tournaments/messer/export/sheet", headers=organizer)
+    assert response.status_code == 200, response.text
+    row = grid_row(sheets.worksheets["Messer"], "Messer Fencer")
+    assert row[5:7] == ["", ""]  # HRating, HRank: no taxonomy counterpart

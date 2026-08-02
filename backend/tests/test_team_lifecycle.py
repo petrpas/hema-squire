@@ -18,7 +18,7 @@ def make_tournament(client, headers, slug="cup"):
 def add_priced_discipline(client, headers, slug):
     client.post(
         f"/api/tournaments/{slug}/disciplines",
-        json={"code": "LS", "capacity": 10, "fee": 800},
+        json={"slug": "LS", "weapon": "LS", "capacity": 10, "fee": 800},
         headers=headers,
     )
 

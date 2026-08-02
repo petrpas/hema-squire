@@ -19,12 +19,12 @@ def setup_tournament(client, organizer):
     )
     client.post(
         "/api/tournaments/cup/disciplines",
-        json={"code": "LS", "capacity": 10, "fee": 800},
+        json={"slug": "LS", "weapon": "LS", "capacity": 10, "fee": 800},
         headers=organizer,
     )
     client.post(
         "/api/tournaments/cup/disciplines",
-        json={"code": "SB", "capacity": 1, "fee": 500},
+        json={"slug": "SB", "weapon": "SB", "capacity": 1, "fee": 500},
         headers=organizer,
     )
     publish(client, organizer, "cup")
