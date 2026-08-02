@@ -18,6 +18,7 @@ from sqlalchemy.orm import Session, selectinload
 from app.config import settings
 from app.hr_index import HRRating, fold
 from app.models import (
+    DisciplineKind,
     HRFighter,
     HRIndexRefresh,
     HRRatingSnapshot,
@@ -243,7 +244,9 @@ def take_snapshot(
 ) -> dict:
     """Fetch current ratings for the given fencers and store a dated snapshot.
     If every page parses to zero categories, the fetch is rejected as drift."""
-    codes = [d.code for d in tournament.disciplines]
+    # team disciplines carry no HR rating category (design team-disciplines:
+    # "Team disciplines carry no HR rating category")
+    codes = [d.code for d in tournament.disciplines if d.kind == DisciplineKind.INDIVIDUAL]
     parsed_pages = 0
     pages_with_ratings = 0
     missing: list[int] = []

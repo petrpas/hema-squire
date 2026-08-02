@@ -4,19 +4,33 @@ communication language."""
 from decimal import ROUND_HALF_UP, Decimal
 from typing import Literal
 
-from app import spayd
+from app import pricing, spayd
 from app.config import settings
 from app.i18n import format_money, t
 from app.mail import Mailer, build_message
 from app.models import Currency, Fencer, Registration, Tournament
 
 
-def _summary_lines(registration: Registration, lang: str) -> str:
+def _summary_lines(registration: Registration, tournament: Tournament, lang: str) -> str:
     lines = [
         f"  {entry.discipline.code} — {entry.discipline.name}"
         + (f" ({t('email.confirmation.substitute', lang)})" if entry.is_substitute else "")
         for entry in registration.entries
     ]
+    # two teams in one discipline are two lines, never a quantity (design
+    # team-disciplines 5.1); the waitlisted marker reuses the substitute
+    # marker's shape but is worded distinctly (a team is not a fencer queue)
+    at = registration.registered_at.date()
+    for team in registration.teams:
+        fee = format_money(
+            pricing.discipline_fee(tournament, team.discipline, at, "local"),
+            tournament.local_currency,
+            lang,
+        )
+        marker = (
+            f" ({t('email.confirmation.teamWaitlisted', lang)})" if team.waitlisted else ""
+        )
+        lines.append(f"  {team.name} — {team.discipline.name}: {fee}{marker}")
     if registration.weapon_rentals:
         lines.append(
             f"  {t('email.confirmation.rentals', lang)}: "
@@ -68,7 +82,13 @@ def send_registration_confirmation(
     mailer: Mailer, tournament: Tournament, fencer: Fencer, registration: Registration
 ) -> None:
     lang = tournament.language
-    queued = all(entry.is_substitute for entry in registration.entries)
+    # nothing owed when every individual entry is queued and every team is
+    # waitlisted — vacuously true on whichever axis carries nothing, so a
+    # team-only registration is judged on its teams alone (design
+    # team-disciplines: task 5.2)
+    queued = all(entry.is_substitute for entry in registration.entries) and all(
+        team.waitlisted for team in registration.teams
+    )
 
     if queued:
         subject = t("email.queued.subject", lang, tournament=tournament.display_name)
@@ -77,7 +97,7 @@ def send_registration_confirmation(
             lang,
             name=fencer.display_name,
             tournament=tournament.display_name,
-            summary=_summary_lines(registration, lang),
+            summary=_summary_lines(registration, tournament, lang),
         )
         mailer.send(build_message(fencer.email, settings.email_sender, subject, body))
         return
@@ -88,7 +108,7 @@ def send_registration_confirmation(
         lang,
         name=fencer.display_name,
         tournament=tournament.display_name,
-        summary=_summary_lines(registration, lang),
+        summary=_summary_lines(registration, tournament, lang),
         total=_total_text(tournament, registration),
         eur_note=_eur_note(tournament, lang),
         account=tournament.bank_account or "?",
@@ -272,7 +292,9 @@ def send_amendment_confirmation(
     recomputed amount, and a QR against the unchanged VS — reissued because a
     reserved amendment leaves `vs` and `expires_at` untouched (Decision 3)."""
     lang = tournament.language
-    queued = all(entry.is_substitute for entry in registration.entries)
+    queued = all(entry.is_substitute for entry in registration.entries) and all(
+        team.waitlisted for team in registration.teams
+    )
 
     if queued:
         subject = t("email.amendment.queuedSubject", lang, tournament=tournament.display_name)
@@ -281,7 +303,7 @@ def send_amendment_confirmation(
             lang,
             name=fencer.display_name,
             tournament=tournament.display_name,
-            summary=_summary_lines(registration, lang),
+            summary=_summary_lines(registration, tournament, lang),
         )
         mailer.send(build_message(fencer.email, settings.email_sender, subject, body))
         return
@@ -292,7 +314,7 @@ def send_amendment_confirmation(
         lang,
         name=fencer.display_name,
         tournament=tournament.display_name,
-        summary=_summary_lines(registration, lang),
+        summary=_summary_lines(registration, tournament, lang),
         total=_total_text(tournament, registration),
         eur_note=_eur_note(tournament, lang),
         account=tournament.bank_account or "?",
@@ -378,5 +400,38 @@ def send_payment_after_expiry(
         name=fencer.display_name,
         tournament=tournament.display_name,
         vs=registration.vs,
+    )
+    mailer.send(build_message(fencer.email, settings.email_sender, subject, body))
+
+
+def send_composition_reminder(
+    mailer: Mailer, tournament: Tournament, fencer: Fencer, teams: list
+) -> None:
+    """Reminds the entering fencer, once per team, that a roster is still
+    below its discipline's minimum ahead of the composition deadline (spec:
+    "Composition reminder to the entering fencer"). `teams` are this fencer's
+    own short teams; the deadline is stated once since a tournament carries a
+    single one (design D7). Sends nothing and touches no pricing, VS, or
+    capacity path — scheduler.process_composition_reminders stamps
+    `composition_reminded_at` per team so a later tick does not resend it."""
+    lang = tournament.language
+    lines = [
+        f"  {team.name} — {team.discipline.name}: "
+        + t(
+            "email.compositionReminder.count",
+            lang,
+            have=len(team.members),
+            min=team.discipline.team_min,
+        )
+        for team in teams
+    ]
+    subject = t("email.compositionReminder.subject", lang, tournament=tournament.display_name)
+    body = t(
+        "email.compositionReminder.body",
+        lang,
+        name=fencer.display_name,
+        tournament=tournament.display_name,
+        teams="\n".join(lines),
+        deadline=tournament.team_composition_deadline.isoformat(),
     )
     mailer.send(build_message(fencer.email, settings.email_sender, subject, body))

@@ -131,7 +131,8 @@
     "matching": "Matching on HR",
     "dedup": "Deduplication",
     "payments": "Payments",
-    "export": "Export"
+    "export": "Export",
+    "teams": "Teams"
   },
   "console": {
     "title": "Registered fencers",
@@ -285,7 +286,16 @@
     "disciplines": {
       "title": "Disciplines",
       "code": "Code",
+      "kind": "Kind",
+      "kindIndividual": "Individual",
+      "kindTeam": "Team",
+      "kindFrozenHint": "A discipline's kind cannot change once it has been created.",
       "capacity": "Capacity",
+      "capacityUnitIndividual": "fencers",
+      "capacityUnitTeam": "teams",
+      "feeUnitTeam": "per team",
+      "teamMin": "Min. roster size",
+      "teamMax": "Max. roster size",
       "fee": "unit price ({{currency}})",
       "feeEur": "unit price (EUR)",
       "add": "Add discipline",
@@ -297,7 +307,9 @@
       "whereHint": "A place within the venue, for example \"Main Hall\".",
       "rulesetNameHint": "A short ruleset name, for example \"Right of Way\".",
       "rulesetUrlHint": "A link to the full ruleset text, if one exists.",
-      "rowInvalid": "Enter a code and capacity for this row."
+      "rowInvalid": "Enter a code, capacity, and (for a team discipline) roster bounds for this row.",
+      "compositionDeadline": "Composition deadline (optional)",
+      "compositionDeadlineHint": "The date by which team rosters are expected to be complete. Locks nothing — it only flags short rosters for the organizer after this date."
     },
     "extras": {
       "title": "Extra services",
@@ -484,6 +496,11 @@
     "otherActions": "Other actions",
     "rulesetLabel": "Ruleset",
     "fencersCount": "{{taken}}/{{capacity}} fencers",
+    "teamsCount": "{{taken}}/{{capacity}} teams",
+    "teamEvent": "team event",
+    "perTeamFee": "{{amount}} per team",
+    "rosterBounds": "roster {{min}}–{{max}} members",
+    "compositionDeadline": "composition deadline: {{date}}",
     "qualificationOpen": "Open to everyone",
     "qualificationRequired": "Qualification: {{criteria}}"
   },
@@ -497,9 +514,17 @@
     "submitFailed": "Could not submit the registration.",
     "sections": {
       "tournament": "Tournament",
+      "teams": "Teams",
       "programme": "Optional programme",
       "items": "Optional items",
       "other": "Other"
+    },
+    "teams": {
+      "perTeamFee": "{{amount}} per team",
+      "rosterBounds": "roster {{min}}–{{max}} members",
+      "namePlaceholder": "Team name",
+      "add": "Add team",
+      "deadlineNote": "Rosters may be filled in later, by {{date}}."
     },
     "remarks": "Note",
     "quantity": "Number of pieces",
@@ -540,9 +565,33 @@
       "cancelled": "Cancelled"
     },
     "queuePosition": "position {{position}}",
+    "teamWaitlisted": "team on the waitlist",
     "fullyQueuedHint": "You're queued for every selected discipline — payment opens once you're admitted.",
     "amend": "Amend registration",
     "outstanding": "Outstanding: {{amount}}"
+  },
+  "roster": {
+    "title": "Roster — {{team}}",
+    "bounds": "{{min}}–{{max}} members",
+    "shortfall": "{{count}} more member(s) needed to reach the minimum.",
+    "namePlaceholder": "Name",
+    "add": "Add",
+    "search": "Search HR",
+    "moveUp": "Move up",
+    "moveDown": "Move down",
+    "rebind": "Bind to an HR profile",
+    "save": "Save roster",
+    "saveFailed": "Could not save the roster."
+  },
+  "teams": {
+    "title": "Teams",
+    "empty": "This tournament offers no team discipline.",
+    "bounds": "Roster {{min}}–{{max}} members",
+    "noneEntered": "No team entered yet.",
+    "memberCount": "{{count}}/{{min}}–{{max}} members",
+    "waitlistPosition": "position {{position}}",
+    "belowMinimum": "below minimum",
+    "enteredBy": "entered by {{name}}"
   },
   "cancel": {
     "button": "Cancel registration",

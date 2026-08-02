@@ -28,6 +28,11 @@
     "expiredHoldingPayment": {
       "subject": "Reservation expired, payment held — {tournament}",
       "body": "Hi {name},\n\nyour reservation for {tournament} (VS {vs}) has expired without the full amount arriving. We are holding the partial payment you already sent — the organizer will be in contact about it.\n\n{tournament} team"
+    },
+    "compositionReminder": {
+      "subject": "Roster reminder — {tournament}",
+      "body": "Hi {name},\n\nthe roster deadline for {tournament} is coming up, and these teams of yours still don't have enough members:\n\n{teams}\n\nRoster deadline: {deadline}\n\nYou can fill in the roster from your registration for {tournament} — this doesn't affect the team's place, it's just names.\n\n{tournament} team",
+      "count": "{have}/{min} members"
     }
   }
 }

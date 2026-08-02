@@ -13,6 +13,7 @@ import PaidStamp from "./PaidStamp";
 import ParamPanel from "./ParamPanel";
 import PaymentsPanel from "./PaymentsPanel";
 import SetupPanel from "./SetupPanel";
+import TeamsPanel from "./TeamsPanel";
 import {
   type Account,
   type Sheet,
@@ -24,12 +25,23 @@ import {
 
 const STAGES = ["pre", "in", "post"] as const;
 // Setup is step 0, ahead of the fencer-list phases (spec: etl-console).
-const PHASES = ["setup", "load", "parsing", "matching", "dedup", "payments", "export"] as const;
+// Teams is a read-only view of team disciplines (design team-disciplines
+// 7.2) tacked on at the end — it is not part of the ETL sequence.
+const PHASES = [
+  "setup",
+  "load",
+  "parsing",
+  "matching",
+  "dedup",
+  "payments",
+  "export",
+  "teams",
+] as const;
 export type Phase = (typeof PHASES)[number];
 
 // A phase tab is a view of the whole fencer list plus that operation's
 // parameters (design Decision 1). Shared base columns, phase-owned columns.
-// Setup replaces the fencer table entirely, so it owns no columns.
+// Setup and Teams replace the fencer table entirely, so they own no columns.
 const BASE_COLUMNS = ["name", "nationality", "club"];
 
 const PHASE_COLUMNS: Record<Phase, string[]> = {
@@ -40,6 +52,7 @@ const PHASE_COLUMNS: Record<Phase, string[]> = {
   dedup: ["hr_id", "state"],
   payments: ["vs", "total_amount", "expires_at", "paid_at", "state"],
   export: ["hr_id", "disciplines", "state"],
+  teams: [],
 };
 
 // Manual edits on these columns become field_edit rules.
@@ -224,6 +237,8 @@ export default function Console({
             onDeleted={onBack}
             onDirtyChange={setSetupDirty}
           />
+        ) : phase === "teams" ? (
+          <TeamsPanel slug={tournament.slug} />
         ) : (
           <>
         <main className="sheet-area">

@@ -28,12 +28,14 @@ from app.models import (
     RegistrationDiscipline,
     RegistrationExtra,
     Rule,
+    Team,
+    TeamMember,
     Tournament,
     TournamentOrganizer,
 )
 from app.routers.tournaments import _lowest_free_series
 
-SCHEMA_VERSION = 5
+SCHEMA_VERSION = 6
 
 _TOURNAMENT_FIELDS = [
     "slug", "display_name", "date", "language",
@@ -47,7 +49,12 @@ _TOURNAMENT_FIELDS = [
     "organizers", "discounts",
     "registration_opens", "registration_closes",
     "vs_year", "vs_series", "vs_next_seq",
+    "team_composition_deadline",
 ]
+
+# v6 addition, defaulted when restoring an older file so a v1-v5 export lands
+# with no composition deadline (design team-disciplines D8)
+_V6_TOURNAMENT_DEFAULTS = {"team_composition_deadline": None}
 
 # v3 additions, defaulted when restoring an older file so a v1/v2 export lands
 # as the CZK, EUR-off, option-less tournament it was
@@ -93,6 +100,8 @@ def export_tournament(session: Session, tournament: Tournament) -> dict:
             selectinload(Registration.fencer),
             selectinload(Registration.entries),
             selectinload(Registration.extra_selections).selectinload(RegistrationExtra.item),
+            selectinload(Registration.teams).selectinload(Team.discipline),
+            selectinload(Registration.teams).selectinload(Team.members),
         )
         .order_by(Registration.id)
     ).all()
@@ -131,7 +140,13 @@ def export_tournament(session: Session, tournament: Tournament) -> dict:
         "exported_at": datetime.datetime.now(datetime.UTC).isoformat(),
         "tournament": _record(tournament, _TOURNAMENT_FIELDS),
         "disciplines": [
-            _record(d, ["code", "name", "capacity", "fee", "fee_early", "fee_eur", "fee_early_eur"])
+            _record(
+                d,
+                [
+                    "code", "name", "kind", "team_min", "team_max",
+                    "capacity", "fee", "fee_early", "fee_eur", "fee_early_eur",
+                ],
+            )
             for d in tournament.disciplines
         ],
         "extra_items": [
@@ -165,6 +180,23 @@ def export_tournament(session: Session, tournament: Tournament) -> dict:
                         "option_value": sel.option_value,
                     }
                     for sel in r.extra_selections
+                ],
+                "teams": [
+                    {
+                        "name": team.name,
+                        "discipline_code": team.discipline.code,
+                        "waitlisted": team.waitlisted,
+                        "members": [
+                            {
+                                "name": m.name,
+                                "hr_id": m.hr_id,
+                                "club": m.club,
+                                "nationality": m.nationality,
+                            }
+                            for m in team.members
+                        ],
+                    }
+                    for team in r.teams
                 ],
             }
             for r in registrations
@@ -213,7 +245,7 @@ def _parse_date(value: str | None) -> datetime.date | None:
 
 def restore_tournament(session: Session, data: dict, actor: Fencer) -> Tournament:
     version = data.get("schema_version")
-    if version not in (1, 2, 3, 4, SCHEMA_VERSION):
+    if version not in (1, 2, 3, 4, 5, SCHEMA_VERSION):
         raise HTTPException(status_code=422, detail="unsupported_schema_version")
     doc = dict(data["tournament"])
     if version == 1:
@@ -230,6 +262,9 @@ def restore_tournament(session: Session, data: dict, actor: Fencer) -> Tournamen
         # the field was renamed local_currency in v5; a v2-v4 export still
         # carries the old key (design Decision 2)
         doc["local_currency"] = doc.pop("primary_currency")
+    if version < 6:
+        for field, default in _V6_TOURNAMENT_DEFAULTS.items():
+            doc.setdefault(field, default)
     if session.scalar(select(Tournament).where(Tournament.slug == doc["slug"])):
         raise HTTPException(status_code=409, detail="slug_taken")
 
@@ -251,6 +286,7 @@ def restore_tournament(session: Session, data: dict, actor: Fencer) -> Tournamen
             "early_bird_until": _parse_date(doc.get("early_bird_until")),
             "registration_opens": _parse_date(doc.get("registration_opens")),
             "registration_closes": _parse_date(doc.get("registration_closes")),
+            "team_composition_deadline": _parse_date(doc.get("team_composition_deadline")),
         }
     )
     session.add(tournament)
@@ -259,7 +295,10 @@ def restore_tournament(session: Session, data: dict, actor: Fencer) -> Tournamen
 
     disciplines: dict[str, Discipline] = {}
     for entry in data.get("disciplines", []):
-        discipline = Discipline(tournament_id=tournament.id, **entry)
+        # kind/team_min/team_max arrived in v6; an older file's disciplines
+        # are all individual (design team-disciplines D8)
+        fields = {"kind": "individual", "team_min": None, "team_max": None, **entry}
+        discipline = Discipline(tournament_id=tournament.id, **fields)
         session.add(discipline)
         disciplines[entry["code"]] = discipline
 
@@ -318,6 +357,30 @@ def restore_tournament(session: Session, data: dict, actor: Fencer) -> Tournamen
                         extra_item_id=extra_items[key].id,
                         qty=extra["qty"],
                         option_value=extra.get("option_value"),
+                    )
+                )
+        # teams arrived in v6; an older file's registrations carry none
+        # (design team-disciplines D8). A member is restored as the plain
+        # record it is — never as a Fencer (design D4)
+        for team_entry in entry.get("teams", []):
+            team = Team(
+                tournament_id=tournament.id,
+                registration_id=registration.id,
+                discipline_id=disciplines[team_entry["discipline_code"]].id,
+                name=team_entry["name"],
+                waitlisted=team_entry["waitlisted"],
+            )
+            session.add(team)
+            session.flush()
+            for ordinal, member in enumerate(team_entry.get("members", [])):
+                session.add(
+                    TeamMember(
+                        team_id=team.id,
+                        ordinal=ordinal,
+                        name=member["name"],
+                        hr_id=member.get("hr_id"),
+                        club=member.get("club"),
+                        nationality=member.get("nationality"),
                     )
                 )
         reg_map[entry["ref"]] = registration

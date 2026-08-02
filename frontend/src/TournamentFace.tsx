@@ -1,3 +1,4 @@
+import { IconX } from "@tabler/icons-react";
 import { Fragment, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -169,6 +170,7 @@ export function DisciplinesInfo({
 }) {
   const { t } = useTranslation();
   const byCode = new Map(availability.map((a) => [a.code, a]));
+  const hasTeamDiscipline = detail.disciplines.some((d) => d.kind === "team");
   return (
     <section className="rail-card">
       <h2>{t("detail.disciplines")}</h2>
@@ -192,16 +194,29 @@ export function DisciplinesInfo({
               : `${t("detail.rulesetLabel")}: ${d.ruleset_name}`
             : null;
           const hasExtra = Boolean(d.schedule_when || d.schedule_where || ruleset);
+          const isTeam = d.kind === "team";
           return (
             <li key={d.code}>
               <div className="detail-row">
                 <strong>
                   {d.code} — {d.name}
+                  {isTeam && <span className="tag tag-file-blue"> {t("detail.teamEvent")}</span>}
                 </strong>
                 <DotJoined
                   parts={[
-                    d.fee === null ? "—" : formatMoneyWithEur(d.fee, d.fee_eur, detail),
-                    t("detail.fencersCount", { taken, capacity: d.capacity }),
+                    d.fee === null
+                      ? "—"
+                      : isTeam
+                        ? t("detail.perTeamFee", {
+                            amount: formatMoneyWithEur(d.fee, d.fee_eur, detail),
+                          })
+                        : formatMoneyWithEur(d.fee, d.fee_eur, detail),
+                    isTeam
+                      ? t("detail.rosterBounds", { min: d.team_min, max: d.team_max })
+                      : null,
+                    isTeam
+                      ? t("detail.teamsCount", { taken, capacity: d.capacity })
+                      : t("detail.fencersCount", { taken, capacity: d.capacity }),
                     free <= 0
                       ? t("detail.queueLength", { count: a?.queue_length ?? 0 })
                       : null,
@@ -220,6 +235,13 @@ export function DisciplinesInfo({
           );
         })}
       </ul>
+      {hasTeamDiscipline && detail.team_composition_deadline && (
+        <p className="rail-hint">
+          {t("detail.compositionDeadline", {
+            date: new Date(detail.team_composition_deadline).toLocaleDateString("cs"),
+          })}
+        </p>
+      )}
     </section>
   );
 }
@@ -435,6 +457,14 @@ export function RegistrationForm({
   const [disciplines, setDisciplines] = useState<Set<string>>(
     () => new Set(initial?.entries.map((e) => e.code) ?? []),
   );
+  // teams are named, not checked — a discipline row may carry several,
+  // each priced separately (spec: "Team section rendered"). `id` present
+  // means an already-entered team whose roster is kept on amendment; absent
+  // means a freshly added one (design team-disciplines 4.3)
+  const [teams, setTeams] = useState<{ id?: number; code: string; name: string }[]>(
+    () => (initial?.teams ?? []).map((team) => ({ id: team.id, code: team.code, name: team.name })),
+  );
+  const [newTeamName, setNewTeamName] = useState<Record<string, string>>({});
   const [extraQty, setExtraQty] = useState<Record<number, number>>(() => {
     const map: Record<number, number> = {};
     for (const extra of initial?.extras ?? []) map[extra.extra_item_id] = extra.qty;
@@ -517,7 +547,7 @@ export function RegistrationForm({
   }
 
   useEffect(() => {
-    if (disciplines.size === 0) {
+    if (disciplines.size === 0 && teams.length === 0) {
       setTotal(0);
       setEurTotal(null);
       setDiscounts([]);
@@ -530,6 +560,7 @@ export function RegistrationForm({
           weapon_rentals: weaponRentals(),
           afterparty,
           extras: extrasPayload(),
+          teams: teams.map((team) => ({ code: team.code })),
         })
         .then(
           (result) => {
@@ -549,7 +580,18 @@ export function RegistrationForm({
     // save (a fencer's never does mid-form), and a saved price change must
     // reach the running total, not just the per-row price
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [disciplines, extraQty, legacyQty, afterparty, detail]);
+  }, [disciplines, teams, extraQty, legacyQty, afterparty, detail]);
+
+  function addTeam(code: string) {
+    const name = (newTeamName[code] ?? "").trim();
+    if (!name) return;
+    setTeams((prev) => [...prev, { code, name }]);
+    setNewTeamName((prev) => ({ ...prev, [code]: "" }));
+  }
+
+  function removeTeam(index: number) {
+    setTeams((prev) => prev.filter((_, i) => i !== index));
+  }
 
   function toggleDiscipline(code: string) {
     setDisciplines((prev) => {
@@ -571,6 +613,7 @@ export function RegistrationForm({
   const optionalItems = detail.extra_items.filter(
     (i) => !ACTION_CATEGORIES.includes(i.category as (typeof ACTION_CATEGORIES)[number]),
   );
+  const teamDisciplines = detail.disciplines.filter((d) => d.kind === "team");
 
   // a full discipline is registered for as a substitute, chosen on its own row
   const selectedFull = detail.disciplines
@@ -638,6 +681,11 @@ export function RegistrationForm({
         // full rows were chosen knowingly, so substitute placement is accepted
         wait_for_all: selectedFull.length > 0,
         extras: extrasPayload(),
+        teams: teams.map((team) => ({
+          ...(team.id ? { id: team.id } : {}),
+          code: team.code,
+          name: team.name,
+        })),
       };
       const registration = amending
         ? await api.amendRegistration(detail.slug, payload)
@@ -669,7 +717,9 @@ export function RegistrationForm({
 
       <h3 className="register-section">{t("form.sections.tournament")}</h3>
       <div className="checklist">
-        {detail.disciplines.map((d) => {
+        {detail.disciplines
+          .filter((d) => d.kind === "individual")
+          .map((d) => {
           const a = byCode.get(d.code);
           const taken = a ? a.taken : 0;
           const free = freePlaces(d.code);
@@ -693,6 +743,72 @@ export function RegistrationForm({
           );
         })}
       </div>
+
+      {teamDisciplines.length > 0 && (
+        <>
+          <h3 className="register-section">{t("form.sections.teams")}</h3>
+          <div className="checklist">
+            {teamDisciplines.map((d) => {
+              const fee = d.fee === null ? "—" : formatMoneyWithEur(d.fee, d.fee_eur, detail);
+              return (
+                <div key={d.code} className="team-discipline-block">
+                  <div className="detail-row">
+                    <strong>
+                      {d.code} — {d.name}
+                    </strong>
+                    <DotJoined
+                      parts={[
+                        d.fee === null ? "—" : t("form.teams.perTeamFee", { amount: fee }),
+                        t("form.teams.rosterBounds", { min: d.team_min, max: d.team_max }),
+                      ]}
+                    />
+                  </div>
+                  {teams.map((team, index) =>
+                    team.code === d.code ? (
+                      <div key={index} className="checklist-row team-row">
+                        <span className="checklist-name">{team.name}</span>
+                        <span className="checklist-price">{fee}</span>
+                        <button
+                          type="button"
+                          className="row-action"
+                          title={t("actions.delete")}
+                          onClick={() => removeTeam(index)}
+                        >
+                          <IconX size={16} stroke={1.5} />
+                        </button>
+                      </div>
+                    ) : null,
+                  )}
+                  <div className="team-add-row">
+                    <input
+                      value={newTeamName[d.code] ?? ""}
+                      placeholder={t("form.teams.namePlaceholder")}
+                      onChange={(event) =>
+                        setNewTeamName((prev) => ({ ...prev, [d.code]: event.target.value }))
+                      }
+                    />
+                    <button
+                      type="button"
+                      className="secondary"
+                      disabled={!(newTeamName[d.code] ?? "").trim()}
+                      onClick={() => addTeam(d.code)}
+                    >
+                      {t("form.teams.add")}
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          {detail.team_composition_deadline && (
+            <p className="rail-hint">
+              {t("form.teams.deadlineNote", {
+                date: new Date(detail.team_composition_deadline).toLocaleDateString("cs"),
+              })}
+            </p>
+          )}
+        </>
+      )}
 
       {(programmeItems.length > 0 || legacy) && (
         <>
@@ -777,7 +893,7 @@ export function RegistrationForm({
       ) : (
         <button
           className="btn-primary param-save"
-          disabled={busy || disciplines.size === 0}
+          disabled={busy || (disciplines.size === 0 && teams.length === 0)}
           onClick={() => void submit()}
         >
           {amending ? t("form.amendSubmit") : t("form.submit")}

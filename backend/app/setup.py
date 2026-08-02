@@ -8,7 +8,7 @@ import datetime
 
 from fastapi import HTTPException
 
-from app.models import Tournament
+from app.models import DisciplineKind, Tournament
 
 # distinct 4xx reasons a registration submission can be rejected with
 NOT_PUBLISHED = "not_published"
@@ -26,6 +26,8 @@ MISSING_DISCOUNT_PRICES = "discount_prices"
 # afterparty parameters cannot enable EUR — those parameters are
 # single-currency and gain no EUR counterpart (design Decision 9)
 MISSING_LEGACY_BLOCKS_EUR = "legacy_fixed_fees_block_eur"
+# a team discipline lacking valid roster bounds (design team-disciplines 3.2)
+MISSING_TEAM_BOUNDS = "team_bounds"
 
 
 def uses_legacy_fixed_fees(tournament: Tournament) -> bool:
@@ -55,6 +57,21 @@ def setup_missing(tournament: Tournament) -> list[str]:
             )
         if incomplete:
             missing.append(MISSING_DISCIPLINE_PRICES)
+        if any(
+            d.kind == DisciplineKind.TEAM
+            and (
+                d.team_min is None
+                or d.team_max is None
+                or d.team_min < 1
+                or d.team_max < d.team_min
+            )
+            for d in tournament.disciplines
+        ):
+            missing.append(MISSING_TEAM_BOUNDS)
+
+    # the composition deadline checks, it never enforces (design D7): a
+    # tournament may offer team disciplines with no deadline set, so it is
+    # deliberately not a completeness item
 
     # completeness follows from the form: a rendered price field left empty is
     # incomplete, whether it belongs to an extra item or a fixed discount

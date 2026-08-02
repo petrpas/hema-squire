@@ -12,7 +12,7 @@ import unicodedata
 from typing import Protocol
 
 from app.hr_index import HRRating
-from app.models import Tournament
+from app.models import DisciplineKind, Tournament
 from app.rules import Row
 
 # ratings lookup from the tournament's latest snapshot: (hr_id, code) -> HRRating
@@ -139,7 +139,10 @@ def export_to_sheets(
         FENCERS_SHEET, merge_grid(client.read(FENCERS_SHEET), FENCERS_HEADER, fencer_roster)
     )
 
-    codes = [d.code for d in tournament.disciplines]
+    # a team discipline has no RegistrationDiscipline rows to populate a
+    # worksheet with (its entries are Team rows instead) and produces no
+    # worksheet of its own (design team-disciplines D8)
+    codes = [d.code for d in tournament.disciplines if d.kind == DisciplineKind.INDIVIDUAL]
     for code in codes:
         entered = [r for r in active if code in (r.get("disciplines") or [])]
         roster = [

@@ -1,9 +1,4 @@
-# data-export Specification
-
-## Purpose
-Export tournament data in the canonical JSON format and the legacy Google Sheets format consumed by v1 in-tournament tooling.
-
-## Requirements
+## MODIFIED Requirements
 
 ### Requirement: Canonical JSON export
 The full tournament dataset SHALL be exportable in the application's own versioned JSON format, sufficient to reconstruct the fencer table, registrations, and payment states.
@@ -40,17 +35,3 @@ Teams SHALL NOT change this format. A roster member SHALL NOT appear in the Fenc
 #### Scenario: Teams absent from the sheet
 - **WHEN** a tournament with team disciplines and rosters is exported to Sheets
 - **THEN** the worksheets are exactly those the same tournament would produce without teams, and no roster member appears in the Fencers worksheet
-
-### Requirement: Repeat-export preservation semantics
-Re-exporting to an existing sheet SHALL leave manually managed columns (Reg., No.) untouched, SHALL always refresh HRating and HRank, and SHALL write other cells only when blank or unchanged, preserving downstream manual work.
-
-#### Scenario: Manual numbering survives
-- **WHEN** the organizer re-exports after downstream staff filled the No. column
-- **THEN** the numbering is preserved while ratings refresh
-
-### Requirement: Export scope
-Deleted (withdrawn) rows SHALL be excluded from exports. Payment state SHALL be exported in the Paid column.
-
-#### Scenario: Withdrawn fencer
-- **WHEN** a row was deleted in the console before export
-- **THEN** the fencer appears in no exported worksheet

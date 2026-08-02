@@ -131,7 +131,8 @@
     "matching": "Párování na HR",
     "dedup": "Deduplikace",
     "payments": "Platby",
-    "export": "Export"
+    "export": "Export",
+    "teams": "Týmy"
   },
   "console": {
     "title": "Registrovaní šermíři",
@@ -285,7 +286,16 @@
     "disciplines": {
       "title": "Disciplíny",
       "code": "Kód",
+      "kind": "Druh",
+      "kindIndividual": "Individuální",
+      "kindTeam": "Týmová",
+      "kindFrozenHint": "Druh disciplíny nelze po založení změnit.",
       "capacity": "Kapacita",
+      "capacityUnitIndividual": "šermířů",
+      "capacityUnitTeam": "týmů",
+      "feeUnitTeam": "za tým",
+      "teamMin": "Min. členů týmu",
+      "teamMax": "Max. členů týmu",
       "fee": "jednotková cena ({{currency}})",
       "feeEur": "jednotková cena (EUR)",
       "add": "Přidat disciplínu",
@@ -297,7 +307,9 @@
       "whereHint": "Místo v rámci areálu, například \"Hlavní sál\".",
       "rulesetNameHint": "Krátký název pravidel, například \"Right of Way\".",
       "rulesetUrlHint": "Odkaz na úplné znění pravidel, pokud existuje.",
-      "rowInvalid": "Zadej kód a kapacitu pro tento řádek."
+      "rowInvalid": "Zadej kód, kapacitu a (u týmové disciplíny) meze soupisky pro tento řádek.",
+      "compositionDeadline": "Uzávěrka soupisek (nepovinné)",
+      "compositionDeadlineHint": "Datum, do kterého mají být soupisky týmů kompletní. Nic neuzamyká — jen po tomto datu označí neúplné týmy organizátorovi."
     },
     "extras": {
       "title": "Doplňkové služby",
@@ -484,6 +496,11 @@
     "otherActions": "Další aktivity",
     "rulesetLabel": "Pravidla",
     "fencersCount": "{{taken}}/{{capacity}} šermířů",
+    "teamsCount": "{{taken}}/{{capacity}} týmů",
+    "teamEvent": "týmová soutěž",
+    "perTeamFee": "{{amount}} za tým",
+    "rosterBounds": "soupiska {{min}}–{{max}} členů",
+    "compositionDeadline": "uzávěrka soupisek: {{date}}",
     "qualificationOpen": "Otevřeno pro všechny",
     "qualificationRequired": "Kvalifikace: {{criteria}}"
   },
@@ -497,9 +514,17 @@
     "submitFailed": "Registraci se nepodařilo odeslat.",
     "sections": {
       "tournament": "Turnaj",
+      "teams": "Týmy",
       "programme": "Volitelný program",
       "items": "Volitelné položky",
       "other": "Ostatní"
+    },
+    "teams": {
+      "perTeamFee": "{{amount}} za tým",
+      "rosterBounds": "soupiska {{min}}–{{max}} členů",
+      "namePlaceholder": "Název týmu",
+      "add": "Přidat tým",
+      "deadlineNote": "Soupisky lze doplnit později, do {{date}}."
     },
     "remarks": "Poznámka",
     "quantity": "Počet kusů",
@@ -540,9 +565,33 @@
       "cancelled": "Zrušeno"
     },
     "queuePosition": "pořadí {{position}}",
+    "teamWaitlisted": "tým v pořadí",
     "fullyQueuedHint": "Čekáš v pořadí na všechny vybrané disciplíny — platba se otevře po zařazení.",
     "amend": "Upravit registraci",
     "outstanding": "Zbývá doplatit: {{amount}}"
+  },
+  "roster": {
+    "title": "Soupiska — {{team}}",
+    "bounds": "{{min}}–{{max}} členů",
+    "shortfall": "Do minimálního počtu chybí ještě {{count}}.",
+    "namePlaceholder": "Jméno",
+    "add": "Přidat",
+    "search": "Vyhledat v HR",
+    "moveUp": "Posunout výš",
+    "moveDown": "Posunout níž",
+    "rebind": "Napojit na profil HR",
+    "save": "Uložit soupisku",
+    "saveFailed": "Soupisku se nepodařilo uložit."
+  },
+  "teams": {
+    "title": "Týmy",
+    "empty": "Turnaj nenabízí žádnou týmovou disciplínu.",
+    "bounds": "Soupiska {{min}}–{{max}} členů",
+    "noneEntered": "Zatím nepřihlášen žádný tým.",
+    "memberCount": "{{count}}/{{min}}–{{max}} členů",
+    "waitlistPosition": "v pořadí {{position}}",
+    "belowMinimum": "pod minimem",
+    "enteredBy": "přihlásil/a {{name}}"
   },
   "cancel": {
     "button": "Zrušit registraci",

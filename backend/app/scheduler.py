@@ -15,7 +15,7 @@ from app import bank, emails, matching
 from app.config import settings
 from app.db import SessionLocal
 from app.mail import Mailer, get_mailer
-from app.models import PaymentEvent, Registration, RegistrationState, Tournament
+from app.models import PaymentEvent, Registration, RegistrationState, Team, Tournament
 
 logger = logging.getLogger(__name__)
 
@@ -88,6 +88,50 @@ def process_expiries(session: Session, tournament: Tournament, mailer: Mailer) -
     return len(overdue)
 
 
+def process_composition_reminders(session: Session, tournament: Tournament, mailer: Mailer) -> int:
+    """Remind the entering fencer, once per team, of a roster still short of
+    its discipline's minimum, ahead of the composition deadline (spec:
+    "Composition reminder to the entering fencer"). Mirrors the shape of
+    `process_reminders` — `reminder_day` days of notice, a stamped timestamp
+    so a later tick does not resend (design team-disciplines D7). Skips
+    entirely when the tournament has no deadline, is outside the notice
+    window, is waitlisted, already reminded, or already at its minimum — none
+    of which is a case for a reminder."""
+    if tournament.team_composition_deadline is None:
+        return 0
+    today = _now().date()
+    window_start = tournament.team_composition_deadline - timedelta(days=tournament.reminder_day)
+    if not (window_start <= today <= tournament.team_composition_deadline):
+        return 0
+
+    candidates = session.scalars(
+        select(Team)
+        .join(Registration, Team.registration_id == Registration.id)
+        .where(
+            Team.tournament_id == tournament.id,
+            Team.waitlisted.is_(False),
+            Team.composition_reminded_at.is_(None),
+            Registration.state.in_([RegistrationState.RESERVED, RegistrationState.PAID]),
+        )
+    ).all()
+
+    by_fencer: dict[int, list[Team]] = {}
+    for team in candidates:
+        if len(team.members) >= team.discipline.team_min:
+            continue
+        by_fencer.setdefault(team.registration.fencer_id, []).append(team)
+
+    sent = 0
+    for teams in by_fencer.values():
+        fencer = teams[0].registration.fencer
+        emails.send_composition_reminder(mailer, tournament, fencer, teams)
+        for team in teams:
+            team.composition_reminded_at = _now()
+        sent += len(teams)
+    session.commit()
+    return sent
+
+
 def run_tournament_tick(
     session: Session,
     tournament: Tournament,
@@ -107,6 +151,7 @@ def run_tournament_tick(
     # Expire first: a reservation past its window must not receive a reminder.
     result["expired"] = process_expiries(session, tournament, mailer)
     result["reminders"] = process_reminders(session, tournament, mailer)
+    result["composition_reminders"] = process_composition_reminders(session, tournament, mailer)
     return result
 
 

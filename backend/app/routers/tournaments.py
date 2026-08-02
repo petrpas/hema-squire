@@ -22,6 +22,7 @@ from app.models import (
     BankTransaction,
     Currency,
     Discipline,
+    DisciplineKind,
     ExtraItem,
     Fencer,
     HRRatingSnapshot,
@@ -31,15 +32,19 @@ from app.models import (
     ImportedRow,
     PaymentEvent,
     Registration,
+    RegistrationDiscipline,
     RegistrationState,
     Role,
     Rule,
     RuleJournalEntry,
+    Team,
     Tournament,
     TournamentOrganizer,
 )
 from app.schemas import (
     AdminOwnerAssignIn,
+    ConsoleTeamDisciplineOut,
+    ConsoleTeamOut,
     DisciplineIn,
     DisciplineOut,
     ExtraItemIn,
@@ -391,6 +396,22 @@ def update_tournament(
     ):
         # a later value would never be reached (registration itself closes first)
         raise HTTPException(status_code=422, detail="amendments_close_after_registration_closes")
+    if (
+        tournament.team_composition_deadline is not None
+        and tournament.team_composition_deadline > tournament.date
+    ):
+        # deliberately no ordering constraint against registration_closes or
+        # amendments_close in either direction (design team-disciplines D7) —
+        # only the tournament date bounds it, since a deadline after the event
+        # could never be meaningfully checked
+        raise HTTPException(status_code=422, detail="composition_deadline_after_tournament_date")
+    if updates.get("hr_category_map") is not None:
+        team_codes = {d.code for d in tournament.disciplines if d.kind == DisciplineKind.TEAM}
+        offending = team_codes & set(tournament.hr_category_map)
+        if offending:
+            # team disciplines carry no HR rating category (design
+            # team-disciplines: "Team disciplines carry no HR rating category")
+            raise HTTPException(status_code=422, detail="hr_category_map_excludes_team_disciplines")
     if tournament.reminder_day >= tournament.reservation_validity_days:
         # expiry runs before reminders (scheduler.run_tournament_tick): a
         # reservation would always be expired before its reminder was due,
@@ -479,6 +500,9 @@ def add_discipline(
         tournament=tournament,
         code=data.code,
         name=data.name or taxonomy.default_name(data.code),
+        kind=data.kind,
+        team_min=data.team_min,
+        team_max=data.team_max,
         capacity=data.capacity,
         fee=data.fee,
         fee_early=data.fee_early,
@@ -496,6 +520,25 @@ def add_discipline(
     return discipline
 
 
+def _discipline_referenced(session: Session, discipline: Discipline) -> bool:
+    """Whether any registration already references this discipline, individual
+    or team — a discipline's kind is frozen once this is true (design
+    team-disciplines: "A discipline's kind SHALL NOT change once any
+    registration references it")."""
+    return (
+        session.scalar(
+            select(RegistrationDiscipline.id)
+            .where(RegistrationDiscipline.discipline_id == discipline.id)
+            .limit(1)
+        )
+        is not None
+        or session.scalar(
+            select(Team.id).where(Team.discipline_id == discipline.id).limit(1)
+        )
+        is not None
+    )
+
+
 @router.patch("/{slug}/disciplines/{code}", response_model=DisciplineOut)
 def update_discipline(
     code: str,
@@ -510,7 +553,12 @@ def update_discipline(
         raise HTTPException(status_code=404, detail="discipline_not_found")
     if data.code != code:
         raise HTTPException(status_code=422, detail="code_is_immutable")
+    if data.kind != discipline.kind and _discipline_referenced(session, discipline):
+        raise HTTPException(status_code=409, detail="discipline_kind_frozen")
     discipline.name = data.name or discipline.name
+    discipline.kind = data.kind
+    discipline.team_min = data.team_min
+    discipline.team_max = data.team_max
     discipline.capacity = data.capacity
     discipline.fee = data.fee
     discipline.fee_early = data.fee_early
@@ -541,6 +589,66 @@ def delete_discipline(
     tournament.disciplines.remove(discipline)
     setup.guard_published_completeness(tournament)
     session.commit()
+
+
+@router.get("/{slug}/teams", response_model=list[ConsoleTeamDisciplineOut])
+def console_teams(tournament: TournamentDep, session: SessionDep, fencer: FencerDep):
+    """Read-only, per team discipline: every team with its entering fencer,
+    ordered roster, member count, waitlist position, and below-minimum flag.
+    Offers no action (spec: "Organizer's read-only teams view") — there is no
+    admit/edit/cancel endpoint here or anywhere else for a team."""
+    require_console_access(session, tournament, fencer)
+    today = datetime.now(UTC).date()
+    deadline = tournament.team_composition_deadline
+    deadline_passed = deadline is not None and today > deadline
+
+    result = []
+    for discipline in tournament.disciplines:
+        if discipline.kind != DisciplineKind.TEAM:
+            continue
+        teams = session.scalars(
+            select(Team)
+            .where(Team.discipline_id == discipline.id)
+            .options(selectinload(Team.members), selectinload(Team.registration))
+            .order_by(Team.created_at)
+        ).all()
+        waitlist_position = 0
+        team_rows = []
+        for team in teams:
+            if team.waitlisted:
+                waitlist_position += 1
+                position = waitlist_position
+            else:
+                position = None
+            team_rows.append(
+                ConsoleTeamOut(
+                    id=team.id,
+                    name=team.name,
+                    entering_fencer=team.registration.fencer.display_name,
+                    waitlisted=team.waitlisted,
+                    waitlist_position=position,
+                    members=[
+                        {
+                            "name": m.name,
+                            "hr_id": m.hr_id,
+                            "club": m.club,
+                            "nationality": m.nationality,
+                        }
+                        for m in team.members
+                    ],
+                    below_minimum=deadline_passed and len(team.members) < discipline.team_min,
+                )
+            )
+        result.append(
+            ConsoleTeamDisciplineOut(
+                code=discipline.code,
+                name=discipline.name,
+                team_min=discipline.team_min,
+                team_max=discipline.team_max,
+                teams=team_rows,
+            )
+        )
+    return result
 
 
 def _normalized_extra_item_fields(data: ExtraItemIn) -> dict:

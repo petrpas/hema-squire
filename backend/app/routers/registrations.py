@@ -9,9 +9,11 @@ from sqlalchemy.exc import IntegrityError
 
 from app import emails, pricing, setup, spayd
 from app.auth import require_console_access
-from app.availability import queue_length, taken_seats
+from app.availability import queue_length, taken_seats, taken_team_slots, team_queue_length
 from app.mail import Mailer, get_mailer
 from app.models import (
+    Discipline,
+    DisciplineKind,
     ExtraItem,
     PaymentEvent,
     RefundState,
@@ -19,6 +21,8 @@ from app.models import (
     RegistrationDiscipline,
     RegistrationExtra,
     RegistrationState,
+    Team,
+    TeamMember,
     Tournament,
     UnpaidListTreatment,
 )
@@ -32,6 +36,10 @@ from app.schemas import (
     PricePreviewOut,
     RegisterIn,
     RegistrationOut,
+    RosterMemberOut,
+    RosterUpdateIn,
+    TeamEntryIn,
+    TeamEntryOut,
 )
 from app.taxonomy import WEAPONS
 
@@ -92,8 +100,47 @@ def _cents_to_amount(cents: int) -> Decimal:
     return (Decimal(cents) / 100).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
 
-def registration_out(session, registration: Registration) -> dict:
+def _team_out(team: Team, tournament: Tournament, at) -> dict:
+    prefill = None
+    if not team.members:
+        # a UI convenience only while the roster is still empty; never
+        # persisted as a role (design team-disciplines D5, task 4.6)
+        fencer = team.registration.fencer
+        prefill = {
+            "name": fencer.display_name,
+            "hr_id": fencer.hr_id,
+            "club": fencer.club,
+            "nationality": fencer.nationality,
+        }
+    return {
+        "id": team.id,
+        "code": team.discipline.code,
+        "name": team.name,
+        "waitlisted": team.waitlisted,
+        "fee": pricing.discipline_fee(tournament, team.discipline, at, "local"),
+        "fee_eur": (
+            pricing.discipline_fee(tournament, team.discipline, at, "eur")
+            if tournament.shows_eur
+            else None
+        ),
+        "team_min": team.discipline.team_min,
+        "team_max": team.discipline.team_max,
+        "members": [
+            {
+                "name": m.name,
+                "hr_id": m.hr_id,
+                "club": m.club,
+                "nationality": m.nationality,
+            }
+            for m in team.members
+        ],
+        "prefill": prefill,
+    }
+
+
+def registration_out(session, registration: Registration, tournament: Tournament) -> dict:
     outstanding_eur_cents = registration.outstanding_eur_cents
+    at = registration.registered_at.date()
     return {
         "state": registration.state,
         "vs": registration.vs,
@@ -134,6 +181,7 @@ def registration_out(session, registration: Registration) -> dict:
             }
             for entry in registration.entries
         ],
+        "teams": [_team_out(team, tournament, at) for team in registration.teams],
     }
 
 
@@ -141,16 +189,32 @@ def registration_out(session, registration: Registration) -> dict:
 def availability(tournament: TournamentDep, session: SessionDep):
     result = []
     for discipline in tournament.disciplines:
-        taken = taken_seats(session, discipline)
-        result.append(
-            AvailabilityOut(
-                code=discipline.code,
-                capacity=discipline.capacity,
-                taken=taken,
-                free=max(discipline.capacity - taken, 0),
-                queue_length=queue_length(session, discipline),
+        if discipline.kind == DisciplineKind.TEAM:
+            taken = taken_team_slots(session, discipline)
+            result.append(
+                AvailabilityOut(
+                    code=discipline.code,
+                    kind=discipline.kind,
+                    capacity=discipline.capacity,
+                    taken=taken,
+                    free=max(discipline.capacity - taken, 0),
+                    queue_length=team_queue_length(session, discipline),
+                    team_min=discipline.team_min,
+                    team_max=discipline.team_max,
+                )
             )
-        )
+        else:
+            taken = taken_seats(session, discipline)
+            result.append(
+                AvailabilityOut(
+                    code=discipline.code,
+                    kind=discipline.kind,
+                    capacity=discipline.capacity,
+                    taken=taken,
+                    free=max(discipline.capacity - taken, 0),
+                    queue_length=queue_length(session, discipline),
+                )
+            )
     return result
 
 
@@ -202,6 +266,10 @@ def _resolve_selection(tournament: Tournament, data) -> tuple[list, list[tuple]]
     unknown = [c for c in data.disciplines if c not in by_code]
     if unknown:
         raise HTTPException(status_code=422, detail={"unknown_disciplines": unknown})
+    wrong_kind = [c for c in data.disciplines if by_code[c].kind != DisciplineKind.INDIVIDUAL]
+    if wrong_kind:
+        # a team discipline is entered through `teams`, not `disciplines`
+        raise HTTPException(status_code=422, detail={"team_discipline_not_individual": wrong_kind})
     invalid_rentals = [w for w in data.weapon_rentals if w not in WEAPONS]
     if invalid_rentals:
         raise HTTPException(status_code=422, detail={"unknown_weapons": invalid_rentals})
@@ -219,6 +287,44 @@ def _resolve_selection(tournament: Tournament, data) -> tuple[list, list[tuple]]
     selected = [by_code[c] for c in data.disciplines]
     extras = [(extras_by_id[e.extra_item_id], e.qty) for e in data.extras]
     return selected, extras
+
+
+def _resolve_teams(tournament: Tournament, entries) -> list[tuple[Discipline, object]]:
+    """Validate team entries (RegisterIn/PricePreviewIn's `teams`) against the
+    tournament's team disciplines. Works for both `TeamEntryIn` (register/
+    amend, carries `id`/`name`) and `PreviewTeamIn` (preview, carries only
+    `code`) — nothing here reads more than `.code`."""
+    by_code = {d.code: d for d in tournament.disciplines}
+    unknown = [e.code for e in entries if e.code not in by_code]
+    if unknown:
+        raise HTTPException(status_code=422, detail={"unknown_disciplines": unknown})
+    wrong_kind = [e.code for e in entries if by_code[e.code].kind != DisciplineKind.TEAM]
+    if wrong_kind:
+        raise HTTPException(status_code=422, detail={"discipline_not_team_kind": wrong_kind})
+    return [(by_code[e.code], e) for e in entries]
+
+
+def _team_waitlist_flags(
+    session, team_entries: list[tuple[Discipline, object]], *, exclude_registration_id: int | None = None
+) -> list[bool]:
+    """One waitlisted flag per team entry, in submission order, assigning
+    remaining capacity sequentially so two teams entered into the same
+    discipline in one submission are not both charged into the same last-open
+    slot. `exclude_registration_id` excludes a registration's own current
+    teams from the count, so recomputing on amendment does not count a team
+    against itself (design team-disciplines 4.3)."""
+    counts: dict[int, int] = {}
+    flags = []
+    for discipline, _ in team_entries:
+        if discipline.id not in counts:
+            counts[discipline.id] = taken_team_slots(
+                session, discipline, exclude_registration_id=exclude_registration_id
+            )
+        taken = counts[discipline.id]
+        waitlisted = taken >= discipline.capacity
+        counts[discipline.id] = taken if waitlisted else taken + 1
+        flags.append(waitlisted)
+    return flags
 
 
 def _validate_options(selections, extras_by_id: dict[int, ExtraItem]) -> None:
@@ -254,6 +360,8 @@ def _validate_options(selections, extras_by_id: dict[int, ExtraItem]) -> None:
 @router.post("/price-preview", response_model=PricePreviewOut)
 def price_preview(data: PricePreviewIn, tournament: TournamentDep):
     selected, extras = _resolve_selection(tournament, data)
+    team_entries = _resolve_teams(tournament, data.teams)
+    team_disciplines = [d for d, _ in team_entries]
     at = _now().date()
     totals = pricing.selection_totals(
         tournament,
@@ -262,8 +370,11 @@ def price_preview(data: PricePreviewIn, tournament: TournamentDep):
         weapon_rentals=data.weapon_rentals,
         afterparty=data.afterparty,
         at=at,
+        team_disciplines=team_disciplines,
     )
-    discounts = pricing.selection_discounts(tournament, disciplines=selected, extras=extras, at=at)
+    discounts = pricing.selection_discounts(
+        tournament, disciplines=selected, extras=extras, at=at, team_disciplines=team_disciplines
+    )
     return PricePreviewOut(
         total=totals.local,
         currency=tournament.local_currency,
@@ -304,6 +415,11 @@ def register(
         raise HTTPException(status_code=409, detail="already_registered")
 
     selected, extras = _resolve_selection(tournament, data)
+    if not selected and not data.teams:
+        # a team-only registration is valid (spec: "Registration consisting
+        # only of a team"), but a registration must carry something
+        raise HTTPException(status_code=422, detail="no_disciplines_or_teams")
+    team_entries = _resolve_teams(tournament, data.teams)
     _validate_options(data.extras, {item.id: item for item in tournament.extra_items})
     full = [d.code for d in selected if taken_seats(session, d) >= d.capacity]
 
@@ -336,6 +452,15 @@ def register(
                     RegistrationExtra.registration_id == existing.id
                 )
             )
+            # a previous cycle's teams (and their rosters) do not carry
+            # forward into a fresh registration cycle, exactly as its
+            # disciplines and extras do not
+            stale_team_ids = session.scalars(
+                select(Team.id).where(Team.registration_id == existing.id)
+            ).all()
+            if stale_team_ids:
+                session.execute(delete(TeamMember).where(TeamMember.team_id.in_(stale_team_ids)))
+                session.execute(delete(Team).where(Team.id.in_(stale_team_ids)))
             registration = existing
             registration.state = RegistrationState.RESERVED
             registration.cancelled_at = None
@@ -374,6 +499,16 @@ def register(
                     option_value=value or None,
                 )
             )
+        # every team entry is fresh on an initial registration — a team's `id`
+        # (if the client sent one) is meaningless here and ignored (design
+        # team-disciplines 4.2); waitlisting is decided per team, in entry
+        # order, never rejecting the submission (spec: "Team entered into a
+        # full team discipline")
+        team_flags = _team_waitlist_flags(session, team_entries)
+        for (discipline, team_in), waitlisted in zip(team_entries, team_flags):
+            registration.teams.append(
+                Team(tournament_id=tournament.id, discipline=discipline, name=team_in.name, waitlisted=waitlisted)
+            )
         try:
             session.flush()
             break
@@ -392,7 +527,7 @@ def register(
     )
     session.commit()
     emails.send_registration_confirmation(mailer, tournament, fencer, registration)
-    return registration_out(session, registration)
+    return registration_out(session, registration, tournament)
 
 
 def get_my_registration(session, tournament: Tournament, fencer) -> Registration:
@@ -410,7 +545,7 @@ def get_my_registration(session, tournament: Tournament, fencer) -> Registration
 
 @router.get("/my-registration", response_model=RegistrationOut)
 def my_registration(tournament: TournamentDep, session: SessionDep, fencer: FencerDep):
-    return registration_out(session, get_my_registration(session, tournament, fencer))
+    return registration_out(session, get_my_registration(session, tournament, fencer), tournament)
 
 
 @router.post("/my-registration/amend", response_model=RegistrationOut)
@@ -432,6 +567,9 @@ def amend_registration(
         raise HTTPException(status_code=409, detail="amend_not_allowed")
 
     selected, extras = _resolve_selection(tournament, data)
+    if not selected and not data.teams:
+        raise HTTPException(status_code=422, detail="no_disciplines_or_teams")
+    team_entries = _resolve_teams(tournament, data.teams)
     _validate_options(data.extras, {item.id: item for item in tournament.extra_items})
 
     was_paid = registration.state == RegistrationState.PAID
@@ -447,13 +585,38 @@ def amend_registration(
     session.execute(
         delete(RegistrationExtra).where(RegistrationExtra.registration_id == registration.id)
     )
+
+    # teams are replaced too, but selectively: a team whose id the client
+    # resubmits keeps its roster (and row); one it does not is dropped with
+    # its roster (design team-disciplines D6, task 4.3 — "editing the names
+    # inside a team is not [an amendment]" but adding/removing a team is)
+    existing_teams = {t.id: t for t in registration.teams}
+    keep_ids = {e.id for _, e in team_entries if e.id is not None and e.id in existing_teams}
+    remove_ids = [tid for tid in existing_teams if tid not in keep_ids]
+    if remove_ids:
+        session.execute(delete(TeamMember).where(TeamMember.team_id.in_(remove_ids)))
+        session.execute(delete(Team).where(Team.id.in_(remove_ids)))
+        # `registration.teams` was already loaded above (to build
+        # `existing_teams`), so the ORM does not know to drop the deleted rows
+        # from its cached collection on its own — same reasoning as
+        # tournaments.delete_discipline's `tournament.disciplines.remove(...)`
+        for tid in remove_ids:
+            registration.teams.remove(existing_teams[tid])
     session.flush()
 
     # unlike register(), amendment never rejects for fullness: a discipline
     # that is full joins as a substitute placement in place, and every other
     # selected discipline is unaffected by it (design Decision 3 — rejecting
-    # the whole submission would discard the parts that were fine)
+    # the whole submission would discard the parts that were fine). Teams
+    # follow the same never-reject rule: a full team discipline waitlists the
+    # team instead (design team-disciplines, spec "Team capacity and the team
+    # waitlist"). `exclude_registration_id` keeps this registration's own
+    # (soon-to-be-replaced) teams out of the capacity count, so a kept team is
+    # not counted against itself.
     full = {d.code for d in selected if taken_seats(session, d) >= d.capacity}
+    team_flags = _team_waitlist_flags(
+        session, team_entries, exclude_registration_id=registration.id
+    )
 
     registration.weapon_rentals = data.weapon_rentals
     registration.afterparty = data.afterparty
@@ -475,6 +638,16 @@ def amend_registration(
                 option_value=value or None,
             )
         )
+    for (discipline, team_in), waitlisted in zip(team_entries, team_flags):
+        if team_in.id is not None and team_in.id in keep_ids:
+            team = existing_teams[team_in.id]
+            team.discipline = discipline
+            team.name = team_in.name
+            team.waitlisted = waitlisted
+        else:
+            registration.teams.append(
+                Team(tournament_id=tournament.id, discipline=discipline, name=team_in.name, waitlisted=waitlisted)
+            )
     session.flush()
 
     # vs and expires_at are read-only through this path: amending must not
@@ -502,7 +675,7 @@ def amend_registration(
             emails.send_surcharge_due(mailer, tournament, fencer, registration)
     else:
         emails.send_amendment_confirmation(mailer, tournament, fencer, registration)
-    return registration_out(session, registration)
+    return registration_out(session, registration, tournament)
 
 
 @router.get("/my-registration/payment", response_model=PaymentInstructionsOut)
@@ -512,7 +685,13 @@ def my_registration_payment(tournament: TournamentDep, session: SessionDep, fenc
     registration = get_my_registration(session, tournament, fencer)
     if registration.state != RegistrationState.RESERVED:
         raise HTTPException(status_code=409, detail="not_unpaid")
-    if all(e.is_substitute for e in registration.entries):
+    # nothing owed when every individual entry is queued and every team is
+    # waitlisted — vacuously true on whichever axis carries nothing, so a
+    # team-only registration is judged on its teams alone (design
+    # team-disciplines: a team-only registration is priced like any other)
+    if all(e.is_substitute for e in registration.entries) and all(
+        t.waitlisted for t in registration.teams
+    ):
         raise HTTPException(status_code=409, detail="no_payment_due")
     if not tournament.bank_account:
         raise HTTPException(status_code=404, detail="no_bank_account")
@@ -554,7 +733,7 @@ def cancel_registration(tournament: TournamentDep, session: SessionDep, fencer: 
             RefundState.PENDING if refundable else RefundState.NOT_APPLICABLE
         )
     session.commit()
-    return registration_out(session, registration)
+    return registration_out(session, registration, tournament)
 
 
 @router.post("/registrations/{registration_id}/admit/{code}", response_model=RegistrationOut)
@@ -591,4 +770,60 @@ def admit_substitute(
     session.commit()
     # Admission opens the payment window: send the payment instructions now.
     emails.send_registration_confirmation(mailer, tournament, registration.fencer, registration)
-    return registration_out(session, registration)
+    return registration_out(session, registration, tournament)
+
+
+def _team_for_roster_edit(session, tournament: Tournament, fencer, team_id: int) -> Team:
+    """The entering fencer's own team, on a registration that may still be
+    edited — never gated by amendment_availability (design team-disciplines
+    D6): refused only on a cancelled or expired registration."""
+    team = session.get(Team, team_id)
+    if team is None or team.tournament_id != tournament.id:
+        raise HTTPException(status_code=404, detail="team_not_found")
+    registration = team.registration
+    if registration.fencer_id != fencer.id:
+        raise HTTPException(status_code=404, detail="team_not_found")
+    if registration.state in (RegistrationState.CANCELLED, RegistrationState.EXPIRED):
+        raise HTTPException(status_code=409, detail="registration_not_active")
+    return team
+
+
+@router.put(
+    "/my-registration/teams/{team_id}/roster", response_model=TeamEntryOut
+)
+def update_roster(
+    team_id: int,
+    data: RosterUpdateIn,
+    tournament: TournamentDep,
+    session: SessionDep,
+    fencer: FencerDep,
+):
+    """Whole-roster replace: add, remove, rename, rebind, and reorder are all
+    expressed as a new member list, persisted as `ordinal` (spec: "The roster
+    is an ordered list without roles"). Deliberately untouched here: price,
+    VS, email, refund state, and capacity (design D6) — this endpoint does not
+    import pricing, emails, or availability, and does not consult
+    `setup.amendment_availability`, so a roster save succeeds even after the
+    amendment window has closed (design team-disciplines 4.4/4.5)."""
+    team = _team_for_roster_edit(session, tournament, fencer, team_id)
+    if len(data.members) > team.discipline.team_max:
+        raise HTTPException(
+            status_code=422,
+            detail={"roster_over_maximum": team.discipline.team_max},
+        )
+    session.execute(delete(TeamMember).where(TeamMember.team_id == team.id))
+    session.flush()
+    for ordinal, member in enumerate(data.members):
+        session.add(
+            TeamMember(
+                team_id=team.id,
+                ordinal=ordinal,
+                name=member.name,
+                hr_id=member.hr_id,
+                club=member.club,
+                nationality=member.nationality,
+            )
+        )
+    session.commit()
+    session.refresh(team)
+    return _team_out(team, tournament, team.registration.registered_at.date())

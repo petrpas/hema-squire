@@ -16,6 +16,7 @@ import {
   type CurrencyMode,
   type Discipline,
   type DisciplineInput,
+  type DisciplineKind,
   type Discount,
   type DiscountCondition,
   type DiscountEffect,
@@ -52,6 +53,7 @@ const MISSING_TAB: Record<string, SetupTab> = {
   organizers: "tournament",
   disciplines: "disciplines",
   discipline_prices: "disciplines",
+  team_bounds: "disciplines",
   extra_item_prices: "extra",
   discount_prices: "payments",
   legacy_fixed_fees_block_eur: "payments",
@@ -244,6 +246,9 @@ function isActionCategory(category: ExtraCategory): boolean {
 }
 
 type DisciplineDraft = {
+  kind: DisciplineKind;
+  team_min: string;
+  team_max: string;
   capacity: string;
   fee: string;
   fee_eur: string;
@@ -734,6 +739,9 @@ function disciplineToRow(d: Discipline): DisciplineRow {
     code: d.code,
     isNew: false,
     error: null,
+    kind: d.kind,
+    team_min: d.team_min === null ? "" : String(d.team_min),
+    team_max: d.team_max === null ? "" : String(d.team_max),
     capacity: String(d.capacity),
     fee: d.fee === null ? "" : String(d.fee),
     fee_eur: d.fee_eur === null ? "" : String(d.fee_eur),
@@ -748,6 +756,9 @@ function disciplineRowDirty(row: DisciplineRow, detail: TournamentDetail): boole
   const original = detail.disciplines.find((d) => d.code === row.code);
   if (!original) return false;
   return (
+    original.kind !== row.kind ||
+    (original.team_min === null ? "" : String(original.team_min)) !== row.team_min ||
+    (original.team_max === null ? "" : String(original.team_max)) !== row.team_max ||
     String(original.capacity) !== row.capacity ||
     (original.fee === null ? "" : String(original.fee)) !== row.fee ||
     (original.fee_eur === null ? "" : String(original.fee_eur)) !== row.fee_eur ||
@@ -761,6 +772,9 @@ function disciplineRowDirty(row: DisciplineRow, detail: TournamentDetail): boole
 function disciplineRowInput(row: DisciplineRow): DisciplineInput {
   return {
     code: row.code,
+    kind: row.kind,
+    team_min: row.kind === "team" ? Number(row.team_min) : null,
+    team_max: row.kind === "team" ? Number(row.team_max) : null,
     capacity: Number(row.capacity),
     fee: row.fee === "" ? null : Number(row.fee),
     fee_eur: row.fee_eur === "" ? null : Number(row.fee_eur),
@@ -790,6 +804,9 @@ function blankDisciplineRow(rowId: string): DisciplineRow {
     code: "",
     isNew: true,
     error: null,
+    kind: "individual",
+    team_min: "",
+    team_max: "",
     capacity: "",
     fee: "",
     fee_eur: "",
@@ -823,6 +840,39 @@ function DisciplinesSection({
   rowsRef.current = rows;
   const removedRef = useRef(removed);
   removedRef.current = removed;
+
+  // Below the table, shown only while a team row exists in the current draft
+  // — including one added but not yet saved (design setup-navigation:
+  // "Deadline appears with the first team row"). Written by this same tab's
+  // save control, as its own registry entry alongside the table (task 8.2).
+  const [deadline, setDeadline] = useState(detail.team_composition_deadline ?? "");
+  const [deadlineDirty, setDeadlineDirty] = useState(false);
+  const hasTeamRow = rows.some((row) => row.kind === "team");
+
+  useEffect(() => {
+    setDeadline(detail.team_composition_deadline ?? "");
+    setDeadlineDirty(false);
+  }, [detail]);
+
+  useSectionSaver(registry, "disciplines", "compositionDeadline", {
+    pendingCount: deadlineDirty ? 1 : 0,
+    touchesPrice: false,
+    validate: () => true,
+    flush: async () => {
+      try {
+        await api.updateTournament(slug, {
+          team_composition_deadline: deadline || null,
+        });
+        setDeadlineDirty(false);
+        return [{ change: "team_composition_deadline", section: "disciplines", error: null }];
+      } catch (err) {
+        const message = t("setup.saveBar.genericError", {
+          status: err instanceof ApiError ? err.status : "?",
+        });
+        return [{ change: "team_composition_deadline", section: "disciplines", error: message }];
+      }
+    },
+  });
 
   useEffect(() => {
     api.taxonomy().then(setTaxonomy, () => setTaxonomy({}));
@@ -873,8 +923,19 @@ function DisciplinesSection({
       let ok = true;
       setRows((prev) =>
         prev.map((row) => {
+          const min = Number(row.team_min);
+          const max = Number(row.team_max);
           const invalid =
-            !row.code || row.capacity.trim() === "" || !Number.isFinite(Number(row.capacity));
+            !row.code ||
+            row.capacity.trim() === "" ||
+            !Number.isFinite(Number(row.capacity)) ||
+            (row.kind === "team" &&
+              (row.team_min.trim() === "" ||
+                row.team_max.trim() === "" ||
+                !Number.isFinite(min) ||
+                !Number.isFinite(max) ||
+                min < 1 ||
+                max < min));
           if (invalid) ok = false;
           return { ...row, error: invalid ? t("setup.disciplines.rowInvalid") : null };
         }),
@@ -950,6 +1011,7 @@ function DisciplinesSection({
         <thead>
           <tr>
             <th>{t("setup.disciplines.code")}</th>
+            <th>{t("setup.disciplines.kind")}</th>
             <th>{t("setup.disciplines.capacity")}</th>
             <th>{t("setup.disciplines.fee", { currency: detail.local_currency })}</th>
             {eur && <th>{t("setup.disciplines.feeEur")}</th>}
@@ -980,6 +1042,19 @@ function DisciplinesSection({
                   )}
                 </td>
                 <td>
+                  <select
+                    value={row.kind}
+                    disabled={!row.isNew}
+                    title={!row.isNew ? t("setup.disciplines.kindFrozenHint") : undefined}
+                    onChange={(event) =>
+                      patchRow(row.rowId, { kind: event.target.value as DisciplineKind })
+                    }
+                  >
+                    <option value="individual">{t("setup.disciplines.kindIndividual")}</option>
+                    <option value="team">{t("setup.disciplines.kindTeam")}</option>
+                  </select>
+                </td>
+                <td>
                   <input
                     className="cell-input"
                     type="number"
@@ -987,6 +1062,12 @@ function DisciplinesSection({
                     value={row.capacity}
                     onChange={(event) => patchRow(row.rowId, { capacity: event.target.value })}
                   />
+                  <span className="muted">
+                    {" "}
+                    {row.kind === "team"
+                      ? t("setup.disciplines.capacityUnitTeam")
+                      : t("setup.disciplines.capacityUnitIndividual")}
+                  </span>
                 </td>
                 <td>
                   <input
@@ -996,6 +1077,9 @@ function DisciplinesSection({
                     value={row.fee}
                     onChange={(event) => patchRow(row.rowId, { fee: event.target.value })}
                   />
+                  {row.kind === "team" && (
+                    <span className="muted"> {t("setup.disciplines.feeUnitTeam")}</span>
+                  )}
                 </td>
                 {eur && (
                   <td>
@@ -1019,8 +1103,36 @@ function DisciplinesSection({
                 </td>
               </tr>
               <tr className="detail-subrow">
-                <td colSpan={eur ? 5 : 4}>
+                <td colSpan={eur ? 6 : 5}>
                   <div className="param-fields">
+                    {row.kind === "team" && (
+                      <>
+                        <label className="param-field">
+                          <span>{t("setup.disciplines.teamMin")}</span>
+                          <input
+                            className="cell-input"
+                            type="number"
+                            min={1}
+                            value={row.team_min}
+                            onChange={(event) =>
+                              patchRow(row.rowId, { team_min: event.target.value })
+                            }
+                          />
+                        </label>
+                        <label className="param-field">
+                          <span>{t("setup.disciplines.teamMax")}</span>
+                          <input
+                            className="cell-input"
+                            type="number"
+                            min={1}
+                            value={row.team_max}
+                            onChange={(event) =>
+                              patchRow(row.rowId, { team_max: event.target.value })
+                            }
+                          />
+                        </label>
+                      </>
+                    )}
                     <label className="param-field">
                       <span>
                         {t("setup.disciplines.when")}
@@ -1088,6 +1200,22 @@ function DisciplinesSection({
         >
           {t("setup.recalculateMissing")}
         </button>
+      )}
+      {hasTeamRow && (
+        <label className="param-field">
+          <span>
+            {t("setup.disciplines.compositionDeadline")}
+            <HelpHint text={t("setup.disciplines.compositionDeadlineHint")} />
+          </span>
+          <input
+            type="date"
+            value={deadline}
+            onChange={(event) => {
+              setDeadline(event.target.value);
+              setDeadlineDirty(true);
+            }}
+          />
+        </label>
       )}
     </section>
   );

@@ -115,9 +115,18 @@ export interface PleaQueueItem {
   created_at: string;
 }
 
+/** Individual is the default and behaves exactly as before team disciplines
+ *  existed; for a team discipline, capacity counts teams and fee is per team
+ *  (design team-disciplines D2). */
+export type DisciplineKind = "individual" | "team";
+
 export interface Discipline {
   code: string;
   name: string;
+  kind: DisciplineKind;
+  /** Roster bounds; present only when kind is "team". */
+  team_min: number | null;
+  team_max: number | null;
   capacity: number;
   fee: number | null;
   fee_early: number | null;
@@ -134,6 +143,9 @@ export interface Discipline {
 /** Editable discipline payload (Setup add/patch). */
 export interface DisciplineInput {
   code: string;
+  kind: DisciplineKind;
+  team_min?: number | null;
+  team_max?: number | null;
   capacity: number;
   fee: number | null;
   fee_eur?: number | null;
@@ -240,6 +252,9 @@ export interface TournamentDetail extends Tournament {
   registration_closes: string | null;
   /** Unset means "same window as registration" (Decision 4). */
   amendments_close: string | null;
+  /** Checks, never enforces; meaningful only with a team discipline (design
+   *  team-disciplines D7). Independent of registration/amendment windows. */
+  team_composition_deadline: string | null;
   discounts: Discount[];
   extra_items: ExtraItem[];
   setup_missing: string[] | null;
@@ -333,10 +348,14 @@ export interface PastTournament extends OpenTournament {
 
 export interface Availability {
   code: string;
+  kind: DisciplineKind;
   capacity: number;
   taken: number;
   free: number;
   queue_length: number;
+  /** Roster bounds; present only when kind is "team". */
+  team_min: number | null;
+  team_max: number | null;
 }
 
 export type RegistrationRowState = "reserved" | "paid" | "expired" | "cancelled";
@@ -355,6 +374,30 @@ export interface RegistrationExtraSelection {
   qty: number;
   option_label: string | null;
   option_value: string | null;
+}
+
+export interface RosterMember {
+  name: string;
+  hr_id: number | null;
+  club: string | null;
+  nationality: string | null;
+}
+
+export interface TeamEntry {
+  id: number;
+  code: string;
+  name: string;
+  waitlisted: boolean;
+  /** Per-team fee, in each configured currency — never multiplied by roster
+   *  size (design team-disciplines D2). */
+  fee: number;
+  fee_eur: number | null;
+  team_min: number;
+  team_max: number;
+  members: RosterMember[];
+  /** The entering fencer's own name/HR binding, suggested as the first
+   *  member while the roster is still empty; never persisted as a role. */
+  prefill: RosterMember | null;
 }
 
 export interface RegistrationDetail {
@@ -379,12 +422,21 @@ export interface RegistrationDetail {
   refund_state: RefundState;
   extras: RegistrationExtraSelection[];
   entries: RegistrationEntry[];
+  teams: TeamEntry[];
 }
 
 export interface ExtraSelectionPayload {
   extra_item_id: number;
   qty: number;
   option_value?: string | null;
+}
+
+export interface TeamEntryPayload {
+  /** Matching an existing team's id keeps its roster on amendment; omitted
+   *  (or non-matching) starts the team with an empty roster. */
+  id?: number | null;
+  code: string;
+  name: string;
 }
 
 export interface RegisterPayload {
@@ -396,6 +448,7 @@ export interface RegisterPayload {
   notes?: string | null;
   wait_for_all?: boolean;
   extras?: ExtraSelectionPayload[];
+  teams?: TeamEntryPayload[];
 }
 
 export interface PricePreviewPayload {
@@ -403,6 +456,32 @@ export interface PricePreviewPayload {
   weapon_rentals?: string[];
   afterparty?: boolean;
   extras?: ExtraSelectionPayload[];
+  teams?: { code: string }[];
+}
+
+export interface RosterMemberInput {
+  name: string;
+  hr_id?: number | null;
+  club?: string | null;
+  nationality?: string | null;
+}
+
+export interface ConsoleTeam {
+  id: number;
+  name: string;
+  entering_fencer: string;
+  waitlisted: boolean;
+  waitlist_position: number | null;
+  members: RosterMember[];
+  below_minimum: boolean;
+}
+
+export interface ConsoleTeamDiscipline {
+  code: string;
+  name: string;
+  team_min: number;
+  team_max: number;
+  teams: ConsoleTeam[];
 }
 
 export interface DiscountBreakdown {
@@ -690,6 +769,13 @@ export const api = {
     }),
   paymentInstructions: (slug: string) =>
     request<PaymentInstructions>(`/api/tournaments/${slug}/my-registration/payment`),
+  updateRoster: (slug: string, teamId: number, members: RosterMemberInput[]) =>
+    request<TeamEntry>(`/api/tournaments/${slug}/my-registration/teams/${teamId}/roster`, {
+      method: "PUT",
+      body: JSON.stringify({ members }),
+    }),
+  consoleTeams: (slug: string) =>
+    request<ConsoleTeamDiscipline[]>(`/api/tournaments/${slug}/teams`),
   unmatchedTransactions: (slug: string) =>
     request<Transaction[]>(`/api/tournaments/${slug}/payments/unmatched`),
   reinstateTransaction: (slug: string, transactionId: number) =>

@@ -32,6 +32,7 @@ const PHASE_PARAMS: Record<Phase, ParamField[]> = {
     { key: "amendments_close", type: "date" },
   ],
   export: [{ key: "output_sheet_url", type: "text" }],
+  teams: [],
 };
 
 export default function ParamPanel({

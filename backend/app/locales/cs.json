@@ -11,6 +11,7 @@
       "subject": "Registrace na {tournament} — pokyny k platbě",
       "body": "Ahoj {name},\n\npřijali jsme tvou registraci na {tournament}:\n\n{summary}\n\nCelkem k úhradě: {total}\nÚčet: {account}\nVariabilní symbol: {vs}\nRezervace platí do: {expires}\n\nZaplatit můžeš naskenováním přiloženého QR kódu v bankovní aplikaci. U plateb ze zahraničí uveď prosím VS{vs} ve zprávě pro příjemce.{eur_note}\n\nPokud platba do konce rezervace nedorazí, místo se automaticky uvolní.\n\nTým {tournament}",
       "substitute": "náhradník",
+      "teamWaitlisted": "tým v pořadí",
       "rentals": "Zapůjčení zbraně",
       "afterparty": "Afterparty",
       "aftersparring": "After-sparring",
@@ -58,6 +59,11 @@
     "expiredHoldingPayment": {
       "subject": "Rezervace vypršela, platbu držíme — {tournament}",
       "body": "Ahoj {name},\n\ntvá rezervace na {tournament} (VS {vs}) vypršela, aniž by dorazila celá částka. Částečnou platbu, kterou jsi už poslal/a, si necháváme — ozve se ti organizátor a domluví další postup.\n\nTým {tournament}"
+    },
+    "compositionReminder": {
+      "subject": "Připomínka soupisky — {tournament}",
+      "body": "Ahoj {name},\n\nblíží se uzávěrka soupisek pro {tournament} a tyto tvoje týmy ještě nemají dost členů:\n\n{teams}\n\nUzávěrka soupisek: {deadline}\n\nSoupisku můžeš doplnit ve své registraci na {tournament} — místo v týmu tím neztrácíš, jde jen o jména.\n\nTým {tournament}",
+      "count": "{have}/{min} členů"
     }
   }
 }

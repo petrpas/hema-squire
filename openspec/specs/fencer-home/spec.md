@@ -74,13 +74,17 @@ WHEN a tournament detail is opened from the Past tab, the page SHALL present the
 - **THEN** the detail shows the tournament information and their paid registration summary, with no Register button, payment panel, or cancel action
 
 ### Requirement: Tournament detail — information
-The tournament detail page SHALL open, from the list, on an information screen that presents the tournament's full public information and does not itself contain the registration form. It SHALL show: name, subtitle when set, logo when set, date, location, organizer names, registration window, and three grouped sections. The disciplines section SHALL list each discipline with its entry fee, its registered count as registered/capacity (or substitute-queue length when full), its optional when/where, and its optional ruleset shown as a short style name linking to the external ruleset document when a link is set. The discounts section SHALL follow the disciplines section and SHALL list every discount the tournament configures, in configured order, each with its name, its condition stated as text, and its configured value — a fixed amount in each configured currency, or a percentage. The discounts section SHALL NOT show selection markers, since the information screen carries no selection, and SHALL be omitted entirely when the tournament configures no discounts. The other-actions section SHALL list non-purchasable activities — seminars, afterparties, after-sparrings, and accommodation — each with its optional when/where and remark. The information screen SHALL NOT mention gear lending or merch, and SHALL NOT show prices or quantity selectors for the other-actions section. When registration is available, the screen SHALL offer a control that opens the separate Register screen.
+The tournament detail page SHALL open, from the list, on an information screen that presents the tournament's full public information and does not itself contain the registration form. It SHALL show: name, subtitle when set, logo when set, date, location, organizer names, registration window, and three grouped sections. The disciplines section SHALL list each discipline with its entry fee, its registered count as registered/capacity (or substitute-queue length when full), its optional when/where, and its optional ruleset shown as a short style name linking to the external ruleset document when a link is set. A team discipline SHALL be listed in the same section, marked as a team event, with its per-team fee, its roster bounds, and its count stated in teams as entered/capacity (or waitlist length when full). When the tournament sets a team composition deadline and offers at least one team discipline, the deadline SHALL be stated in this section. The discounts section SHALL follow the disciplines section and SHALL list every discount the tournament configures, in configured order, each with its name, its condition stated as text, and its configured value — a fixed amount in each configured currency, or a percentage. The discounts section SHALL NOT show selection markers, since the information screen carries no selection, and SHALL be omitted entirely when the tournament configures no discounts. The other-actions section SHALL list non-purchasable activities — seminars, afterparties, after-sparrings, and accommodation — each with its optional when/where and remark. The information screen SHALL NOT mention gear lending or merch, and SHALL NOT show prices or quantity selectors for the other-actions section. When registration is available, the screen SHALL offer a control that opens the separate Register screen.
 
 Where a discipline or an action carries any of its optional when/where/ruleset/remark text, that text SHALL be presented as a subordinate line beneath the row, one size down and in faded ink, with its parts separated by the spaced middle dot used elsewhere. The line SHALL NOT be introduced by a leading dash or any other bullet character: its indentation and weight already mark it as subordinate.
 
 #### Scenario: Fencer reviews a tournament
 - **WHEN** a fencer opens a tournament's detail from Fencer Home
 - **THEN** they see the date, location, organizers, and each discipline with its fee, registered/capacity count, and any when/where and ruleset link, on an information screen without the registration form
+
+#### Scenario: Team discipline presented in teams
+- **WHEN** a tournament offering a team discipline with capacity 8 and 5 teams entered is opened
+- **THEN** that discipline is listed as a team event with its per-team fee, its roster bounds, and a count of 5/8 teams, alongside the composition deadline when one is set
 
 #### Scenario: Detail line carries no leading dash
 - **WHEN** a discipline with a when, a where and a ruleset is presented on the information screen
@@ -167,6 +171,10 @@ WHEN the account holds an unpaid reservation for the tournament, the detail page
 ### Requirement: Registration management
 WHEN the account has a registration for the tournament, the detail page SHALL show its state (reserved with expiry, paid, substitute with queue positions per discipline, cancelled), the selected disciplines and extra services with the computed total, and SHALL offer cancellation per the cancellation policy, stating whether the cancellation is refundable before the fencer confirms.
 
+WHEN the registration carries teams, it SHALL additionally list them: each team's name, its discipline, its per-team fee, its waitlisted state where applicable, and its roster in order with each member's name and, where bound, their club. Each team SHALL offer a roster editor, which adds, removes, renames, rebinds, and reorders members through the nationality-filtered HEMA Ratings search, saving without recomputing the total or sending any email. The roster editor SHALL state the discipline's roster bounds, how many members the team still needs to reach its minimum, and the composition deadline when one is set. It SHALL remain available after the amendment window has closed and until the tournament date, and SHALL be absent on a cancelled or expired registration.
+
+A member the search does not find SHALL be enterable as a plain name, and SHALL be presented as an ordinary member thereafter, never marked as incomplete or in error.
+
 #### Scenario: Paid registration shown
 - **WHEN** a fencer with a paid registration opens the tournament detail
 - **THEN** the page shows the paid state and the selected items, and no payment instructions are shown
@@ -174,6 +182,26 @@ WHEN the account has a registration for the tournament, the detail page SHALL sh
 #### Scenario: Cancel before the refundable date
 - **WHEN** the fencer cancels while the tournament's refundable-until date has not passed
 - **THEN** the confirmation states the fee is refundable and the registration is cancelled on confirm
+
+#### Scenario: Teams shown on the registration
+- **WHEN** a fencer holding a registration with two teams opens the tournament detail
+- **THEN** both teams are listed with their names, disciplines, fees, and ordered rosters, each with a roster editor
+
+#### Scenario: Roster edited without touching money
+- **WHEN** the fencer replaces a member and saves
+- **THEN** the roster is updated and the registration's total, outstanding balance, and payment state are unchanged, with no email sent
+
+#### Scenario: Shortfall stated
+- **WHEN** a team holds two members against a minimum of three
+- **THEN** the editor states that one more member is needed and shows the composition deadline when one is set
+
+#### Scenario: Unknown name entered plainly
+- **WHEN** the fencer types a name the HEMA Ratings search does not match and saves it
+- **THEN** the member is stored by name alone and is presented like any other member
+
+#### Scenario: Editor open after amendments close
+- **WHEN** the fencer opens the roster editor after the amendment window has closed
+- **THEN** it is available and saves normally, while the controls that add or remove a team are not offered
 
 ### Requirement: Navigation rewiring
 Fencer Home SHALL be the post-login landing for every role. The tournament picker SHALL remain reachable only through the account menu's To Organizer entry and SHALL no longer contain the organizer plea section (the plea lives on the Profile page).

@@ -1813,6 +1813,46 @@ label.checklist-row > input[type="checkbox"] {
   color: var(--stamp);
 }
 
+/* one team discipline's block in the registration form's team section
+   (design team-disciplines 9.1): the discipline row, its added teams, and
+   the add-team control, set off from the next discipline by a hairline */
+.team-discipline-block {
+  padding: 0.5rem 0;
+  border-bottom: var(--border-w) solid var(--hairline);
+}
+
+.team-discipline-block:last-child {
+  border-bottom: none;
+}
+
+/* an added team's own line, and a roster member's row (shared shape: name,
+   price/detail column, row actions) — a plain div rather than
+   label.checklist-row, since neither carries a checkbox */
+.team-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.35rem 0;
+  font-size: 13px;
+  color: var(--ink);
+}
+
+.team-row .checklist-name,
+.team-row .cell-input {
+  flex: 1;
+}
+
+.team-add-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-top: 0.4rem;
+}
+
+.team-add-row input {
+  flex: 1;
+}
+
 /* the tournament's own instructions above the form, set apart from the
    heading above it by a gap larger than the .register-section inter-section
    gap (0.9rem) so it doesn't read as a continuation of the title block */

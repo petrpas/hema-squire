@@ -65,6 +65,14 @@ class RegistrationState(enum.StrEnum):
     CANCELLED = "cancelled"
 
 
+class DisciplineKind(enum.StrEnum):
+    """Whether a discipline is entered by one fencer or by a team (design
+    team-disciplines D1). Frozen once any registration references it."""
+
+    INDIVIDUAL = "individual"
+    TEAM = "team"
+
+
 class RefundState(enum.StrEnum):
     NOT_APPLICABLE = "not_applicable"
     PENDING = "pending"
@@ -187,6 +195,11 @@ class Tournament(Base):
     # freezes the roster for amendments independently of registration close;
     # unset means "same window as registration" (setup.amendment_availability)
     amendments_close: Mapped[date | None]
+    # the date by which team rosters are expected to reach their disciplines'
+    # minimum size; meaningful only when a team discipline exists. Checks, it
+    # never enforces — no roster is locked, no team is cancelled or waitlisted,
+    # and no capacity is freed on account of it (design team-disciplines D7)
+    team_composition_deadline: Mapped[date | None]
 
     # payment and reservation parameters
     reservation_validity_days: Mapped[int] = mapped_column(default=10)
@@ -292,6 +305,15 @@ class Discipline(Base):
     tournament_id: Mapped[int] = mapped_column(ForeignKey("tournaments.id"))
     code: Mapped[str] = mapped_column(String(10))
     name: Mapped[str] = mapped_column(String(100))
+    # individual or team (design team-disciplines D1); frozen once any
+    # RegistrationDiscipline or Team references this row (enforced in the
+    # router, not here). For a TEAM discipline, capacity counts teams and fee/
+    # fee_early/fee_eur/fee_early_eur are per team, not per member (design D2)
+    kind: Mapped[DisciplineKind] = mapped_column(
+        str_enum(DisciplineKind), default=DisciplineKind.INDIVIDUAL
+    )
+    team_min: Mapped[int | None]
+    team_max: Mapped[int | None]
     capacity: Mapped[int]
     # unit price; nullable so a Setup row can exist before pricing is decided
     # (setup_missing gates registration until every discipline is priced)
@@ -448,6 +470,7 @@ class Registration(Base):
     extra_selections: Mapped[list[RegistrationExtra]] = relationship(
         back_populates="registration"
     )
+    teams: Mapped[list[Team]] = relationship(back_populates="registration")
 
 
 class RegistrationExtra(Base):
@@ -719,3 +742,54 @@ class RegistrationDiscipline(Base):
 
     registration: Mapped[Registration] = relationship(back_populates="entries")
     discipline: Mapped[Discipline] = relationship()
+
+
+class Team(Base):
+    """One team, entered into one team discipline by one fencer through that
+    fencer's own registration — billed on that registration's total, owed
+    against its VS, carrying no VS, expiry, or payment window of its own
+    (design team-disciplines D1). A registration may carry several teams, in
+    the same discipline or different ones; nothing here deduplicates by name
+    (design D9)."""
+
+    __tablename__ = "teams"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    tournament_id: Mapped[int] = mapped_column(ForeignKey("tournaments.id"))
+    discipline_id: Mapped[int] = mapped_column(ForeignKey("disciplines.id"))
+    registration_id: Mapped[int] = mapped_column(ForeignKey("registrations.id"))
+    name: Mapped[str] = mapped_column(String(200))
+    waitlisted: Mapped[bool] = mapped_column(default=False)
+    # set once a composition reminder has been sent, so a later tick does not
+    # resend it (design D7); unrelated to registration.reminded_at
+    composition_reminded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+
+    registration: Mapped[Registration] = relationship(back_populates="teams")
+    discipline: Mapped[Discipline] = relationship()
+    members: Mapped[list[TeamMember]] = relationship(
+        back_populates="team", order_by="TeamMember.ordinal", cascade="all, delete-orphan"
+    )
+
+
+class TeamMember(Base):
+    """A named roster entry — never a `Fencer`: `Fencer.email` is unique and
+    non-nullable, and most roster members neither have nor will ever have a
+    Squire account (design team-disciplines D4). `hr_id` null is the expected
+    case for an HR-unknown member, not a degraded one; no uniqueness
+    constraint, since identity is local to this roster (two rosters naming the
+    same person produce two independent rows)."""
+
+    __tablename__ = "team_members"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    team_id: Mapped[int] = mapped_column(ForeignKey("teams.id", ondelete="CASCADE"))
+    ordinal: Mapped[int]
+    name: Mapped[str] = mapped_column(String(200))
+    hr_id: Mapped[int | None] = mapped_column(index=True)
+    club: Mapped[str | None] = mapped_column(String(200))
+    nationality: Mapped[str | None] = mapped_column(String(100))
+
+    team: Mapped[Team] = relationship(back_populates="members")

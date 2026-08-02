@@ -1,13 +1,18 @@
+import { IconArrowDown, IconArrowUp, IconSearch, IconX } from "@tabler/icons-react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import AccountMenu from "./AccountMenu";
+import HRSearchPicker from "./HRSearch";
 import PaidStamp from "./PaidStamp";
 import {
   type Account,
   type Availability,
+  type HRProfile,
   type PaymentInstructions,
   type RegistrationDetail,
+  type RosterMember,
+  type TeamEntry,
   type TournamentDetail as TournamentDetailData,
   api,
 } from "./api";
@@ -114,6 +119,22 @@ function RegistrationLines({
             {e.code} — {t("registration.queuePosition", { position: e.queue_position })}
           </li>
         ))}
+        {registration.teams.map((team) => (
+          <li key={`team-${team.id}`} className={team.waitlisted ? "muted" : undefined}>
+            {team.name} — {team.code}: {formatMoneyWithEur(team.fee, team.fee_eur, detail)}
+            {team.waitlisted && ` (${t("registration.teamWaitlisted")})`}
+            {team.members.length > 0 && (
+              <ul className="detail-list">
+                {team.members.map((member, index) => (
+                  <li key={index} className="muted">
+                    {member.name}
+                    {member.club && ` · ${member.club}`}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </li>
+        ))}
         {registration.extras.map((extra) => (
           <li key={extra.extra_item_id}>
             {extra.name} × {extra.qty}
@@ -142,6 +163,219 @@ function RegistrationLines({
   );
 }
 
+/** Adds, removes, renames, rebinds, and reorders a team's roster through its
+ *  own endpoint alone — no total, VS, or capacity is touched (design
+ *  team-disciplines D6). Offered independently of the amendment window: it
+ *  remains available after `amendments_close` and is absent only when the
+ *  registration itself is cancelled or expired (spec: "Roster editing changes
+ *  no money", scenario "Editor open after amendments close"). */
+function RosterEditor({
+  slug,
+  team,
+  onUpdated,
+}: {
+  slug: string;
+  team: TeamEntry;
+  onUpdated: (team: TeamEntry) => void;
+}) {
+  const { t } = useTranslation();
+  const [members, setMembers] = useState<RosterMember[]>(() =>
+    team.members.length > 0 ? team.members : team.prefill ? [team.prefill] : [],
+  );
+  const [dirty, setDirty] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [newName, setNewName] = useState("");
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [rebindIndex, setRebindIndex] = useState<number | null>(null);
+
+  function patch(next: RosterMember[]) {
+    setMembers(next);
+    setDirty(true);
+  }
+
+  function renameMember(index: number, name: string) {
+    patch(members.map((m, i) => (i === index ? { ...m, name } : m)));
+  }
+
+  function removeMember(index: number) {
+    patch(members.filter((_, i) => i !== index));
+  }
+
+  function moveMember(index: number, delta: number) {
+    const target = index + delta;
+    if (target < 0 || target >= members.length) return;
+    const next = [...members];
+    [next[index], next[target]] = [next[target], next[index]];
+    patch(next);
+  }
+
+  function addTyped() {
+    const name = newName.trim();
+    if (!name) return;
+    patch([...members, { name, hr_id: null, club: null, nationality: null }]);
+    setNewName("");
+  }
+
+  function addFromSearch(profile: HRProfile) {
+    patch([
+      ...members,
+      {
+        name: profile.name,
+        hr_id: profile.hr_id,
+        club: profile.club,
+        nationality: profile.nationality,
+      },
+    ]);
+    setSearchOpen(false);
+  }
+
+  function rebindFromSearch(profile: HRProfile) {
+    if (rebindIndex === null) return;
+    patch(
+      members.map((m, i) =>
+        i === rebindIndex
+          ? {
+              name: profile.name,
+              hr_id: profile.hr_id,
+              club: profile.club,
+              nationality: profile.nationality,
+            }
+          : m,
+      ),
+    );
+    setRebindIndex(null);
+  }
+
+  async function save() {
+    setBusy(true);
+    setError(null);
+    try {
+      const updated = await api.updateRoster(
+        slug,
+        team.id,
+        members.map((m) => ({
+          name: m.name,
+          hr_id: m.hr_id,
+          club: m.club,
+          nationality: m.nationality,
+        })),
+      );
+      onUpdated(updated);
+      setDirty(false);
+    } catch {
+      setError(t("roster.saveFailed"));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const shortfall = Math.max(team.team_min - members.length, 0);
+
+  return (
+    <div className="rail-card dashed">
+      <h3 className="register-section">{t("roster.title", { team: team.name })}</h3>
+      <p className="rail-hint">{t("roster.bounds", { min: team.team_min, max: team.team_max })}</p>
+      {shortfall > 0 && <p className="rail-hint">{t("roster.shortfall", { count: shortfall })}</p>}
+
+      <ul className="detail-list">
+        {members.map((member, index) => (
+          <li key={index}>
+            <div className="checklist-row team-row">
+              <input
+                className="cell-input"
+                value={member.name}
+                onChange={(event) => renameMember(index, event.target.value)}
+              />
+              {member.club && <span className="muted"> {member.club}</span>}
+              <button
+                type="button"
+                className="row-action"
+                title={t("roster.moveUp")}
+                disabled={index === 0}
+                onClick={() => moveMember(index, -1)}
+              >
+                <IconArrowUp size={16} stroke={1.5} />
+              </button>
+              <button
+                type="button"
+                className="row-action"
+                title={t("roster.moveDown")}
+                disabled={index === members.length - 1}
+                onClick={() => moveMember(index, 1)}
+              >
+                <IconArrowDown size={16} stroke={1.5} />
+              </button>
+              <button
+                type="button"
+                className="row-action"
+                title={t("roster.rebind")}
+                onClick={() => setRebindIndex(rebindIndex === index ? null : index)}
+              >
+                <IconSearch size={16} stroke={1.5} />
+              </button>
+              <button
+                type="button"
+                className="row-action"
+                title={t("actions.delete")}
+                onClick={() => removeMember(index)}
+              >
+                <IconX size={16} stroke={1.5} />
+              </button>
+            </div>
+            {rebindIndex === index && (
+              <HRSearchPicker
+                lockedQuery={member.name}
+                onConfirm={rebindFromSearch}
+                onCancel={() => setRebindIndex(null)}
+              />
+            )}
+          </li>
+        ))}
+      </ul>
+
+      {members.length < team.team_max && (
+        <>
+          <div className="team-add-row">
+            <input
+              value={newName}
+              placeholder={t("roster.namePlaceholder")}
+              onChange={(event) => setNewName(event.target.value)}
+            />
+            <button
+              type="button"
+              className="secondary"
+              disabled={!newName.trim()}
+              onClick={addTyped}
+            >
+              {t("roster.add")}
+            </button>
+            <button
+              type="button"
+              className="secondary"
+              onClick={() => setSearchOpen(!searchOpen)}
+            >
+              {t("roster.search")}
+            </button>
+          </div>
+          {searchOpen && (
+            <HRSearchPicker onConfirm={addFromSearch} onCancel={() => setSearchOpen(false)} />
+          )}
+        </>
+      )}
+
+      {error && <p className="login-error">{error}</p>}
+      <button
+        className="btn-primary param-save"
+        disabled={busy || !dirty}
+        onClick={() => void save()}
+      >
+        {t("roster.save")}
+      </button>
+    </div>
+  );
+}
+
 function RegistrationSummary({
   registration,
   detail,
@@ -166,6 +400,7 @@ function RegistrationPanel({
   canAmend,
   onAmend,
   onCancelled,
+  onTeamUpdated,
 }: {
   slug: string;
   detail: TournamentDetailData;
@@ -173,6 +408,7 @@ function RegistrationPanel({
   canAmend: boolean;
   onAmend: () => void;
   onCancelled: () => void;
+  onTeamUpdated: (team: TeamEntry) => void;
 }) {
   const { t } = useTranslation();
   const [confirming, setConfirming] = useState(false);
@@ -209,6 +445,11 @@ function RegistrationPanel({
       {registration.state === "reserved" && fullyQueued && (
         <p className="rail-hint">{t("registration.fullyQueuedHint")}</p>
       )}
+
+      {(registration.state === "reserved" || registration.state === "paid") &&
+        registration.teams.map((team) => (
+          <RosterEditor key={team.id} slug={slug} team={team} onUpdated={onTeamUpdated} />
+        ))}
 
       {canAmend && (
         <button className="secondary" onClick={onAmend}>
@@ -380,6 +621,18 @@ export default function TournamentDetail({
                 canAmend={canAmend}
                 onAmend={() => setScreen("amend")}
                 onCancelled={refresh}
+                onTeamUpdated={(updated) =>
+                  setRegistration((prev) =>
+                    prev
+                      ? {
+                          ...prev,
+                          teams: prev.teams.map((team) =>
+                            team.id === updated.id ? updated : team,
+                          ),
+                        }
+                      : prev,
+                  )
+                }
               />
             ) : canRegister ? (
               <button className="btn-primary param-save" onClick={() => setScreen("register")}>

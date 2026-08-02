@@ -143,12 +143,27 @@ def _itemized_selection_breakdown(
     extras: list[tuple[ExtraItem, int]],
     at: datetime.date,
     which: PriceColumn,
+    team_disciplines: list[Discipline] = (),
 ) -> tuple[int, list[DiscountOutcome]]:
     """The total together with one `DiscountOutcome` per configured discount,
     in configured order — inactive discounts included, so a caller can report
-    on the whole list, not just what applied."""
+    on the whole list, not just what applied.
+
+    `team_disciplines` carries one entry per priced team (a discipline
+    repeated once per team entered into it — not a `Team` row, so a
+    hypothetical price preview can price teams without persisting any). Each
+    entry contributes its discipline's per-team fee to the DISCIPLINE
+    subtotal once, regardless of roster size. Team entries are deliberately
+    not added to `disciplines` — that list feeds
+    `_condition_met(discipline_count=...)`, and a team entry must not trip a
+    discount conditioned on how many disciplines the fencer themselves
+    entered (design team-disciplines D1/D3).
+    """
     subtotals: dict[str, Decimal] = {
-        DISCIPLINE_CATEGORY: Decimal(sum(discipline_fee(tournament, d, at, which) for d in disciplines))
+        DISCIPLINE_CATEGORY: Decimal(
+            sum(discipline_fee(tournament, d, at, which) for d in disciplines)
+            + sum(discipline_fee(tournament, d, at, which) for d in team_disciplines)
+        )
     }
     for item, qty in extras:
         category = item.category.value
@@ -205,8 +220,11 @@ def _itemized_selection_total(
     extras: list[tuple[ExtraItem, int]],
     at: datetime.date,
     which: PriceColumn,
+    team_disciplines: list[Discipline] = (),
 ) -> int:
-    total, _ = _itemized_selection_breakdown(tournament, disciplines, extras, at, which)
+    total, _ = _itemized_selection_breakdown(
+        tournament, disciplines, extras, at, which, team_disciplines
+    )
     return total
 
 
@@ -219,21 +237,29 @@ def selection_total(
     afterparty: bool,
     at: datetime.date,
     which: PriceColumn = "local",
+    team_disciplines: list[Discipline] = (),
 ) -> int:
     """Amount due, in one currency, for a set of active (non-substitute)
     picks, independent of whether they're persisted — the pricing entry point
     shared by a saved registration's total and the unsaved price preview.
 
-    Extras are billed only when at least one discipline is active (a
-    fully-queued substitute registration owes nothing until admission). The
-    legacy weapon-rental/afterparty parameters are single-currency (design
-    Decision 9) and contribute only to the local total.
+    `team_disciplines` carries one entry per priced team, as
+    `_itemized_selection_breakdown` does. Extras are billed only when at
+    least one discipline or team is active (a fully-queued substitute
+    registration owes nothing until admission). The legacy weapon-rental/
+    afterparty parameters are single-currency (design Decision 9) and
+    contribute only to the local total. A legacy (non-itemized) tournament
+    still prices a team's fee from the discipline row (design task 2.4) —
+    teams join the same per-discipline sum extras do not.
     """
-    if not disciplines:
+    if not disciplines and not team_disciplines:
         return 0
     if uses_itemized_pricing(tournament):
-        return _itemized_selection_total(tournament, disciplines, extras, at, which)
+        return _itemized_selection_total(
+            tournament, disciplines, extras, at, which, team_disciplines
+        )
     total = sum(discipline_fee(tournament, d, at, which) for d in disciplines)
+    total += sum(discipline_fee(tournament, d, at, which) for d in team_disciplines)
     if which == "local":
         total += len(weapon_rentals) * weapon_rental_fee(tournament, at)
         if afterparty:
@@ -249,6 +275,7 @@ def selection_totals(
     weapon_rentals: list[str],
     afterparty: bool,
     at: datetime.date,
+    team_disciplines: list[Discipline] = (),
 ) -> Totals:
     """Both currencies' totals for a selection, each independently computed
     and summed from its own column (design Decision 1) — the totals need not
@@ -261,6 +288,7 @@ def selection_totals(
         afterparty=afterparty,
         at=at,
         which="local",
+        team_disciplines=team_disciplines,
     )
     eur = None
     if tournament.shows_eur:
@@ -272,6 +300,7 @@ def selection_totals(
             afterparty=afterparty,
             at=at,
             which="eur",
+            team_disciplines=team_disciplines,
         )
     return Totals(local=local, eur=eur)
 
@@ -282,6 +311,7 @@ def selection_discounts(
     disciplines: list[Discipline],
     extras: list[tuple[ExtraItem, int]],
     at: datetime.date,
+    team_disciplines: list[Discipline] = (),
 ) -> list[DiscountBreakdown]:
     """The per-discount breakdown for a selection, in configured order,
     reporting exactly what `selection_totals` applied rather than a separate
@@ -292,10 +322,14 @@ def selection_discounts(
     currencies. Empty for a legacy tournament or one with no discounts."""
     if not tournament.discounts:
         return []
-    _, local_outcomes = _itemized_selection_breakdown(tournament, disciplines, extras, at, "local")
+    _, local_outcomes = _itemized_selection_breakdown(
+        tournament, disciplines, extras, at, "local", team_disciplines
+    )
     eur_outcomes: list[DiscountOutcome] | None = None
     if tournament.shows_eur:
-        _, eur_outcomes = _itemized_selection_breakdown(tournament, disciplines, extras, at, "eur")
+        _, eur_outcomes = _itemized_selection_breakdown(
+            tournament, disciplines, extras, at, "eur", team_disciplines
+        )
 
     breakdown = []
     for i, outcome in enumerate(local_outcomes):
@@ -315,9 +349,11 @@ def selection_discounts(
 
 def registration_total(registration: Registration, tournament: Tournament) -> Totals:
     """Amount(s) due now for a persisted registration; delegates to
-    `selection_totals`."""
+    `selection_totals`. Waitlisted teams are excluded exactly as substitute
+    discipline entries are (design team-disciplines D3)."""
     active = [e.discipline for e in registration.entries if not e.is_substitute]
     extras = [(s.item, s.qty) for s in registration.extra_selections]
+    team_disciplines = [t.discipline for t in registration.teams if not t.waitlisted]
     return selection_totals(
         tournament,
         disciplines=active,
@@ -325,4 +361,5 @@ def registration_total(registration: Registration, tournament: Tournament) -> To
         weapon_rentals=registration.weapon_rentals,
         afterparty=registration.afterparty,
         at=registration.registered_at.date(),
+        team_disciplines=team_disciplines,
     )

@@ -113,7 +113,16 @@ def test_wait_for_all_queues_everything_unbilled(client, auth_headers):
 
     availability = client.get("/api/tournaments/cup/availability").json()
     sb = next(a for a in availability if a["code"] == "SB")
-    assert sb == {"code": "SB", "capacity": 1, "taken": 1, "free": 0, "queue_length": 1}
+    assert sb == {
+        "code": "SB",
+        "kind": "individual",
+        "capacity": 1,
+        "taken": 1,
+        "free": 0,
+        "queue_length": 1,
+        "team_min": None,
+        "team_max": None,
+    }
 
 
 def test_cancel_frees_spot_and_admit_bills_frozen_prices(client, auth_headers):

@@ -15,6 +15,7 @@ from pydantic import (
 from app.i18n import catalog
 from app.models import (
     Currency,
+    DisciplineKind,
     ExtraCategory,
     RefundState,
     RegistrationState,
@@ -101,6 +102,12 @@ class TokenOut(BaseModel):
 class DisciplineIn(BaseModel):
     code: str
     name: str | None = None
+    # individual is the default and behaves exactly as before team disciplines
+    # existed; a team discipline's capacity counts teams and its fee is per
+    # team (design team-disciplines D2)
+    kind: DisciplineKind = DisciplineKind.INDIVIDUAL
+    team_min: int | None = Field(default=None, ge=1)
+    team_max: int | None = Field(default=None, ge=1)
     capacity: int = Field(gt=0)
     fee: int | None = Field(default=None, ge=0)
     fee_early: int | None = Field(default=None, ge=0)
@@ -114,12 +121,26 @@ class DisciplineIn(BaseModel):
     ruleset_name: str | None = Field(default=None, max_length=100)
     ruleset_url: str | None = Field(default=None, max_length=500)
 
+    @model_validator(mode="after")
+    def _team_bounds(self) -> DisciplineIn:
+        if self.kind == DisciplineKind.TEAM:
+            if self.team_min is None or self.team_max is None:
+                raise ValueError("team discipline requires team_min and team_max")
+            if self.team_max < self.team_min:
+                raise ValueError("team_max must not be below team_min")
+        elif self.team_min is not None or self.team_max is not None:
+            raise ValueError("team_min/team_max are only valid for a team discipline")
+        return self
+
 
 class DisciplineOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     code: str
     name: str
+    kind: DisciplineKind
+    team_min: int | None
+    team_max: int | None
     capacity: int
     fee: int | None
     fee_early: int | None
@@ -266,6 +287,11 @@ class TournamentUpdate(BaseModel):
     # unset means "same window as registration"; when both this and
     # registration_closes are set, this must not fall after it (router-checked)
     amendments_close: datetime.date | None = None
+    # meaningful only when the tournament offers a team discipline; checks,
+    # never enforces, and is deliberately independent of registration_closes
+    # and amendments_close in both directions (design team-disciplines D7) —
+    # validated only as a date on or before the tournament date (router-checked)
+    team_composition_deadline: datetime.date | None = None
     discounts: list[DiscountIn] | None = None
     reservation_validity_days: int | None = Field(default=None, gt=0)
     reminder_day: int | None = Field(default=None, gt=0)
@@ -351,6 +377,7 @@ class TournamentOut(BaseModel):
     registration_opens: datetime.date | None
     registration_closes: datetime.date | None
     amendments_close: datetime.date | None
+    team_composition_deadline: datetime.date | None
     discounts: list[DiscountIn]
     extra_items: list[ExtraItemOut] = []
     # filled by the detail endpoint from setup.setup_missing(); None elsewhere
@@ -427,6 +454,79 @@ class PleaDecisionOut(BaseModel):
     state: RequestState
 
 
+class TeamEntryIn(BaseModel):
+    """One team named on a registration or an amendment. `id`, when it matches
+    an existing team of this registration, keeps that team's roster and only
+    updates its name/discipline; omitted or non-matching, the team (re)starts
+    with an empty roster (design team-disciplines D1, task 4.3). Ignored
+    entirely on an initial registration, which has no existing teams."""
+
+    id: int | None = None
+    code: str
+    name: str = Field(min_length=1, max_length=200)
+
+    @field_validator("name")
+    @classmethod
+    def _trim_name(cls, value: str) -> str:
+        trimmed = value.strip()
+        if not trimmed:
+            raise ValueError("team name required")
+        return trimmed
+
+
+class PreviewTeamIn(BaseModel):
+    """A team entry for the price preview: identified by its discipline alone
+    — a team's name and roster are not pricing inputs (spec: Price preview)."""
+
+    code: str
+
+
+class RosterMemberIn(BaseModel):
+    name: str = Field(min_length=1, max_length=200)
+    hr_id: int | None = None
+    club: str | None = Field(default=None, max_length=200)
+    nationality: str | None = Field(default=None, max_length=100)
+
+    @field_validator("name")
+    @classmethod
+    def _trim_name(cls, value: str) -> str:
+        trimmed = value.strip()
+        if not trimmed:
+            raise ValueError("member name required")
+        return trimmed
+
+
+class RosterMemberOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    name: str
+    hr_id: int | None
+    club: str | None
+    nationality: str | None
+
+
+class RosterUpdateIn(BaseModel):
+    members: list[RosterMemberIn] = []
+
+
+class TeamEntryOut(BaseModel):
+    id: int
+    code: str
+    name: str
+    waitlisted: bool
+    # per-team fee, in each configured currency — never multiplied by roster
+    # size (design team-disciplines D2)
+    fee: int
+    fee_eur: int | None = None
+    team_min: int
+    team_max: int
+    members: list[RosterMemberOut] = []
+    # the entering fencer's own name/HR binding, suggested as the first member
+    # while the roster is still empty; a UI convenience only, never persisted
+    # as a role (design team-disciplines D5) — None once any member exists
+    prefill: RosterMemberOut | None = None
+
+
 class ExtraSelectionIn(BaseModel):
     extra_item_id: int
     qty: int = Field(default=1, ge=1)
@@ -436,7 +536,10 @@ class ExtraSelectionIn(BaseModel):
 
 
 class RegisterIn(BaseModel):
-    disciplines: list[str] = Field(min_length=1)
+    # at least one discipline OR one team must be selected; enforced in the
+    # router, where both fields are visible together (a team-only registration
+    # is valid — spec: "Registration consisting only of a team")
+    disciplines: list[str] = []
     weapon_rentals: list[str] = []
     afterparty: bool = False
     aftersparring: bool = False
@@ -444,6 +547,7 @@ class RegisterIn(BaseModel):
     notes: str | None = None
     wait_for_all: bool = False
     extras: list[ExtraSelectionIn] = []
+    teams: list[TeamEntryIn] = []
 
 
 class RegistrationEntryOut(BaseModel):
@@ -484,21 +588,30 @@ class RegistrationOut(BaseModel):
     refund_state: RefundState
     extras: list[RegistrationExtraOut] = []
     entries: list[RegistrationEntryOut]
+    teams: list[TeamEntryOut] = []
 
 
 class AvailabilityOut(BaseModel):
     code: str
+    kind: DisciplineKind = DisciplineKind.INDIVIDUAL
     capacity: int
     taken: int
     free: int
     queue_length: int
+    # roster bounds, present only for a team-kind row (design team-disciplines
+    # 4.8); absent for an individual discipline
+    team_min: int | None = None
+    team_max: int | None = None
 
 
 class PricePreviewIn(BaseModel):
-    disciplines: list[str] = Field(min_length=1)
+    # at least one discipline or team must be selected; enforced in the router
+    # (a team-only preview is valid — spec: "Team previewed without a roster")
+    disciplines: list[str] = []
     weapon_rentals: list[str] = []
     afterparty: bool = False
     extras: list[ExtraSelectionIn] = []
+    teams: list[PreviewTeamIn] = []
 
 
 class DiscountBreakdownOut(BaseModel):
@@ -666,6 +779,33 @@ class AppliedChangeOut(BaseModel):
 class SheetOut(BaseModel):
     rows: list[dict]
     edits: list[AppliedChangeOut]
+
+
+class ConsoleTeamOut(BaseModel):
+    """One team as the organizer's read-only teams view presents it (spec:
+    "Organizer's read-only teams view"). Offers no action — no admission, no
+    roster editing on the entrant's behalf, no cancellation; the console
+    renders none for a reason, since those controls do not exist here."""
+
+    id: int
+    name: str
+    entering_fencer: str
+    waitlisted: bool
+    # position in the team waitlist, in entry order; None for a placed team
+    waitlist_position: int | None = None
+    members: list[RosterMemberOut] = []
+    # distinguishes a team whose roster is short after the deadline has
+    # passed (deadline set, in the past, and members below team_min);
+    # unrelated to waitlisted, and never true with no deadline configured
+    below_minimum: bool
+
+
+class ConsoleTeamDisciplineOut(BaseModel):
+    code: str
+    name: str
+    team_min: int
+    team_max: int
+    teams: list[ConsoleTeamOut] = []
 
 
 class ParticipantOut(BaseModel):
