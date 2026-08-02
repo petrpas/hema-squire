@@ -211,6 +211,7 @@
       "extra": "doplňky",
       "payments": "platby",
       "other": "ostatní",
+      "publish": "Zveřejnění",
       "incomplete": "neúplné nastavení"
     },
     "saveBar": {
@@ -219,9 +220,19 @@
       "partial": "Uloženo {{written}} z {{total}} změn, {{pending}} zbývá neuloženo",
       "genericError": "Změnu se nepodařilo uložit (chyba {{status}})."
     },
-    "checklist": {
-      "title": "Stav nastavení",
-      "ready": "Nastavení je kompletní — registrace je možná (podle registračního okna)."
+    "publish": {
+      "draftStatement": "Tento turnaj není zveřejněný — šermířům je neviditelný a registrace je uzavřená.",
+      "blockedHint": "Před zveřejněním je potřeba doplnit vypsané položky.",
+      "unsavedNote": "Na jiných záložkách jsou neuložené změny — zveřejnění pracuje jen s uloženým stavem.",
+      "publishButton": "Zveřejnit",
+      "confirmBody": "Po zveřejnění turnaj uvidí šermíři a registrace se bude řídit nastavenými daty. Tento krok nelze vrátit zpět.",
+      "confirmButton": "Zveřejnit",
+      "published": "Zveřejněno {{date}}.",
+      "cancelled": "Tento turnaj je zrušený a nelze ho zveřejnit.",
+      "failedAlreadyPublished": "Tento turnaj je už zveřejněný.",
+      "failedCancelled": "Zrušený turnaj nelze zveřejnit.",
+      "failedIncomplete": "Nastavení ještě není kompletní — zkontroluj záložky výše.",
+      "failedGeneric": "Zveřejnění se nezdařilo. Zkus to prosím znovu."
     },
     "missing": {
       "location": "Chybí místo konání",

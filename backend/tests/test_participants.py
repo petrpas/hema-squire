@@ -3,6 +3,7 @@ from sqlalchemy import select
 from app.db import get_session
 from app.main import app
 from app.models import Registration, RegistrationState
+from tests.conftest import publish
 
 
 def setup_tournament(client, organizer):
@@ -26,6 +27,7 @@ def setup_tournament(client, organizer):
         json={"code": "SB", "capacity": 1, "fee": 500},
         headers=organizer,
     )
+    publish(client, organizer, "cup")
 
 
 def register(client, headers, disciplines=("LS",), **overrides):

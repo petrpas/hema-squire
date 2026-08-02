@@ -4,6 +4,7 @@ import pytest
 
 from app.mail import get_mailer
 from app.main import app
+from tests.conftest import publish
 
 
 class CollectingMailer:
@@ -45,6 +46,7 @@ def setup(client, organizer):
         json={"code": "LS", "capacity": 10, "fee": 1000},
         headers=organizer,
     )
+    publish(client, organizer, "cup")
 
 
 def enroll(client, auth_headers, email, name):

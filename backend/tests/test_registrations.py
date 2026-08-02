@@ -1,5 +1,7 @@
 from datetime import date, timedelta
 
+from tests.conftest import publish
+
 TODAY = date.today()
 
 
@@ -33,6 +35,7 @@ def setup_tournament(client, organizer, early_bird=False):
         json={"code": "SB", "capacity": 1, "fee": 500},
         headers=organizer,
     )
+    publish(client, organizer, "cup")
 
 
 def register(client, headers, **overrides):
@@ -250,13 +253,10 @@ def test_price_preview_breakdown_lists_applied_and_unapplied(client, auth_header
 def test_price_preview_fixed_discount_reported_in_both_currencies(client, auth_headers):
     organizer = auth_headers()
     setup_tournament(client, organizer)
-    # legacy fixed weapon-rental/afterparty fees carry no EUR column and
-    # block EUR mode (design Decision 9); clear them before enabling it
-    client.patch(
-        "/api/tournaments/cup",
-        json={"weapon_rental_fee": 0, "afterparty_fee": 0, "eur_payments_enabled": True},
-        headers=organizer,
-    )
+    # the tournament is already published, so enabling EUR must not pass
+    # through a moment where a discipline has no EUR price (design D3 of
+    # add-explicit-publishing): give every discipline its EUR price first,
+    # then enable EUR mode as a separate, already-complete step
     client.patch(
         "/api/tournaments/cup/disciplines/LS",
         json={"code": "LS", "capacity": 2, "fee": 800, "fee_early": 600, "fee_eur": 32},
@@ -265,6 +265,13 @@ def test_price_preview_fixed_discount_reported_in_both_currencies(client, auth_h
     client.patch(
         "/api/tournaments/cup/disciplines/SB",
         json={"code": "SB", "capacity": 1, "fee": 500, "fee_eur": 20},
+        headers=organizer,
+    )
+    # legacy fixed weapon-rental/afterparty fees carry no EUR column and
+    # block EUR mode (design Decision 9); clear them before enabling it
+    client.patch(
+        "/api/tournaments/cup",
+        json={"weapon_rental_fee": 0, "afterparty_fee": 0, "eur_payments_enabled": True},
         headers=organizer,
     )
     client.patch(
@@ -298,14 +305,22 @@ def test_price_preview_fixed_discount_reported_in_both_currencies(client, auth_h
 def test_price_preview_percentage_discount_carries_no_eur_value(client, auth_headers):
     organizer = auth_headers()
     setup_tournament(client, organizer)
-    client.patch(
-        "/api/tournaments/cup",
-        json={"weapon_rental_fee": 0, "afterparty_fee": 0, "eur_payments_enabled": True},
-        headers=organizer,
-    )
+    # give every discipline its EUR price before enabling EUR mode, so the
+    # already-published tournament never passes through an incomplete moment
+    # (design D3 of add-explicit-publishing)
     client.patch(
         "/api/tournaments/cup/disciplines/LS",
         json={"code": "LS", "capacity": 2, "fee": 800, "fee_early": 600, "fee_eur": 32},
+        headers=organizer,
+    )
+    client.patch(
+        "/api/tournaments/cup/disciplines/SB",
+        json={"code": "SB", "capacity": 1, "fee": 500, "fee_eur": 20},
+        headers=organizer,
+    )
+    client.patch(
+        "/api/tournaments/cup",
+        json={"weapon_rental_fee": 0, "afterparty_fee": 0, "eur_payments_enabled": True},
         headers=organizer,
     )
     client.patch(

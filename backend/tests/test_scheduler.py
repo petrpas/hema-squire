@@ -7,6 +7,7 @@ from app.db import get_session
 from app.mail import get_mailer
 from app.main import app
 from app.models import PaymentEvent, Registration
+from tests.conftest import publish
 
 
 class CollectingMailer:
@@ -50,6 +51,7 @@ def setup(client, organizer):
         json={"code": "LS", "capacity": 1, "fee": 1000},
         headers=organizer,
     )
+    publish(client, organizer, "cup")
 
 
 def enroll(client, auth_headers, email="jan@example.com"):

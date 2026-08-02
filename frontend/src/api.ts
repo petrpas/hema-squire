@@ -50,6 +50,9 @@ export interface Tournament {
   language: string;
   owner_id: number | null;
   cancelled_at: string | null;
+  /** Null means draft: invisible to fencers, closed to registration. Set
+   *  once, for good, by the publish action — never cleared. */
+  published_at: string | null;
 }
 
 /** Public URL of a tournament logo (unauthenticated, so it works in <img>). */
@@ -643,6 +646,8 @@ export const api = {
     }),
   cancelTournament: (slug: string) =>
     request<TournamentDetail>(`/api/tournaments/${slug}/cancel`, { method: "POST" }),
+  publishTournament: (slug: string) =>
+    request<TournamentDetail>(`/api/tournaments/${slug}/publish`, { method: "POST" }),
   deleteTournament: (slug: string) =>
     request<void>(`/api/tournaments/${slug}`, { method: "DELETE" }),
   adminAccounts: () => request<AdminAccount[]>("/api/admin/accounts"),

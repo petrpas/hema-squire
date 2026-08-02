@@ -460,11 +460,10 @@ button.secondary:disabled {
 
 .setup-panel-header {
   flex: none;
-  padding: 1.2rem 1.4rem 0.8rem;
+  padding: 1rem 1.4rem;
   background: var(--paper);
   display: flex;
   flex-direction: column;
-  gap: 0.8rem;
   border-bottom: var(--border-w) solid var(--hairline);
 }
 

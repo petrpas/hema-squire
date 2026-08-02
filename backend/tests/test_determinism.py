@@ -18,6 +18,7 @@ from datetime import UTC, datetime
 from app.importer import get_import_parser
 from app.main import app
 from app.rules import replay
+from tests.conftest import publish
 from tests.test_import import CSV, FakeParser
 
 
@@ -125,6 +126,7 @@ def build_scenario(client, auth_headers):
             json={"code": code, "capacity": 10, "fee": 1000},
             headers=organizer,
         )
+    publish(client, organizer, "cup")
     fencer = auth_headers(email="jan@example.com", name="Jan Novak")
     vs = client.post(
         "/api/tournaments/cup/register", json={"disciplines": ["LS"]}, headers=fencer

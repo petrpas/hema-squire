@@ -3,6 +3,7 @@ import pytest
 from app.mail import get_mailer
 from app.main import app
 from app.spayd import qr_png, spayd_string
+from tests.conftest import publish
 
 
 class CollectingMailer:
@@ -65,6 +66,7 @@ def _setup(client, organizer):
         json={"code": "LS", "capacity": 1, "fee": 800},
         headers=organizer,
     )
+    publish(client, organizer, "cup")
 
 
 def test_confirmation_email_localized_with_qr(client, auth_headers, mailbox):

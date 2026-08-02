@@ -4,6 +4,8 @@ draft/cancelled/unrelated tournaments the tab must never show."""
 
 from datetime import date, timedelta
 
+from tests.conftest import publish
+
 TODAY = date.today()
 
 
@@ -21,6 +23,7 @@ def publish_future(client, organizer, slug, **overrides):
         json={"code": "LS", "capacity": 2, "fee": 800},
         headers=organizer,
     )
+    publish(client, organizer, slug)
 
 
 def move_to_past(client, organizer, slug, past_date):

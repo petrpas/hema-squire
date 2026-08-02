@@ -349,7 +349,7 @@ Assigning a series SHALL fail with a clear message naming the exhausted year whe
 - **THEN** creation is refused with a message naming the exhausted year
 
 ### Requirement: Organizer authorization
-Each tournament SHALL have exactly one Tournament Owner (initially the creator) and a team of Tournament Organizers. Console access SHALL be restricted to the Tournament Owner and team members. The Tournament Owner SHALL manage the team: adding any existing account by email (no global role required) and removing members. Team membership grants full console access; ownership additionally grants team management, ownership transfer, and delete/cancel.
+Each tournament SHALL have exactly one Tournament Owner (initially the creator) and a team of Tournament Organizers. Console access SHALL be restricted to the Tournament Owner and team members. The Tournament Owner SHALL manage the team: adding any existing account by email (no global role required) and removing members. Team membership grants full console access, including publishing the tournament; ownership additionally grants team management, ownership transfer, and delete/cancel.
 
 #### Scenario: Unauthorized user
 - **WHEN** a signed-in account that is neither the Tournament Owner nor a team member opens the tournament's console
@@ -362,6 +362,10 @@ Each tournament SHALL have exactly one Tournament Owner (initially the creator) 
 #### Scenario: Team member cannot manage the team
 - **WHEN** a Tournament Organizer who is not the owner attempts to add or remove team members
 - **THEN** the request is rejected with an authorization error
+
+#### Scenario: Team member may publish
+- **WHEN** a Tournament Organizer who is not the owner publishes a setup-complete tournament
+- **THEN** the tournament is published and the publication record names that account
 
 ### Requirement: In-app tournament creation
 An account holding the global Organizer role or higher SHALL be able to create a tournament from the tournament picker via a minimal dialog asking display name and date. The slug SHALL be auto-derived from the name and be editable before submission. Derivation SHALL append the event's year only when the slugified name does not already carry one: a four-digit group between 1900 and 2099 standing as its own token in the slug counts as a year already present, and in that case the slug is the slugified name alone. The creator SHALL become the tournament's Tournament Owner and land in the console's Setup phase. Accounts below the Organizer role SHALL NOT be able to create tournaments.
@@ -417,7 +421,7 @@ The Tournament Owner SHALL be able to hard-delete a tournament only while it has
 - **THEN** the tournament disappears from public listings, new registrations are rejected, and the console and all existing data remain accessible
 
 ### Requirement: Registration window
-A tournament SHALL have optional registration-opens and registration-closes dates. Registration SHALL be unavailable before the opens date (when set) and after the closes date (when set); with no closes date, registration stays available until the tournament date. With no opens date, registration is available as soon as setup is complete.
+A tournament SHALL have optional registration-opens and registration-closes dates. Registration SHALL be unavailable before the opens date (when set) and after the closes date (when set); with no closes date, registration stays available until the tournament date. With no opens date, registration is available as soon as the tournament is published (see `tournament-publication`).
 
 A tournament SHALL additionally have an optional amendments-close date, after which fencers may no longer amend their registrations even while registration itself remains open. With no amendments-close date set, amendment SHALL be available on exactly the same window as registration. When both are set, the amendments-close date MUST NOT fall after the registration-closes date, and the combination SHALL be rejected with a clear message — a later value would never be reached.
 
@@ -442,23 +446,25 @@ A tournament SHALL additionally have an optional amendments-close date, after wh
 - **THEN** the update is rejected with a message naming the conflict
 
 ### Requirement: Setup completeness
-Mandatory setup SHALL comprise: display name, date, location, at least one titular organizer, at least one discipline with a unit price, and — whenever the tournament prices in EUR as a second currency — every rendered EUR price field: each discipline's EUR price, each extra item's EUR price, and the EUR amount of each fixed discount. A tournament still pricing through the legacy fixed weapon-rental/afterparty parameters SHALL be reported as blocked from enabling EUR, naming those parameters and directing the organizer to itemized extra services. The recorded exchange ratio is a Setup convenience only and is never part of completeness. The Setup phase SHALL show a completeness checklist naming each missing item. A tournament with incomplete mandatory setup SHALL NOT accept registrations.
+Mandatory setup SHALL comprise: display name, date, location, at least one titular organizer, at least one discipline with a unit price, and — whenever the tournament prices in EUR as a second currency — every rendered EUR price field: each discipline's EUR price, each extra item's EUR price, and the EUR amount of each fixed discount. A tournament still pricing through the legacy fixed weapon-rental/afterparty parameters SHALL be reported as blocked from enabling EUR, naming those parameters and directing the organizer to itemized extra services. The recorded exchange ratio is a Setup convenience only and is never part of completeness.
 
-#### Scenario: Checklist shows gaps
-- **WHEN** the organizer opens Setup for a tournament without location and without discipline prices
-- **THEN** the checklist lists location and the missing unit prices as blocking registration
+Complete mandatory setup SHALL be the precondition for publishing a tournament, and SHALL NOT by itself make a tournament public: publication is the explicit act fixed by `tournament-publication`. The items still unconfigured SHALL be named on the Setup phase's `PUBLISH` tab, which is where the organizer learns what stands between the tournament and publication. A tournament that has not been published SHALL NOT accept registrations, whether or not its mandatory setup is complete.
 
-#### Scenario: Missing EUR price blocks registration
+#### Scenario: Blocking items shown
+- **WHEN** the organizer opens `PUBLISH` for a tournament without location and without discipline prices
+- **THEN** the tab lists location and the missing unit prices as blocking publication
+
+#### Scenario: Missing EUR price blocks publication
 - **WHEN** a CZK + EUR tournament has a discipline whose EUR price is empty
-- **THEN** the checklist lists the missing EUR price and registration is unavailable, with no separate exchange-rate requirement
+- **THEN** the missing EUR price is listed as blocking publication, with no separate exchange-rate requirement
 
 #### Scenario: Legacy fixed fees block EUR
 - **WHEN** the organizer enables EUR on a tournament still pricing through the fixed weapon-rental or afterparty parameters
-- **THEN** the checklist names those parameters as blocking EUR and directs the organizer to itemized extra services
+- **THEN** those parameters are named as blocking EUR and the organizer is directed to itemized extra services
 
 #### Scenario: Setup completed
 - **WHEN** the last mandatory item is filled
-- **THEN** the checklist reports the tournament ready and registration becomes available (subject to the registration window)
+- **THEN** the `PUBLISH` tab lists nothing blocking and offers the publish action; the tournament remains invisible to fencers and closed to registration until it is published
 
 ### Requirement: Price columns labelled uniformly
 Every price column the organizer edits in Setup — on the disciplines table, the

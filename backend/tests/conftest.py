@@ -40,6 +40,16 @@ def client(engine):
         app.dependency_overrides.clear()
 
 
+def publish(client, headers, slug):
+    """Publish a tournament so it reaches fencers: setup-complete alone no
+    longer does (design add-explicit-publishing). Every test that expects a
+    tournament in /open, /mine/past, or accepting registrations must call
+    this after completing its mandatory setup."""
+    response = client.post(f"/api/tournaments/{slug}/publish", headers=headers)
+    assert response.status_code == 200, response.text
+    return response.json()
+
+
 @pytest.fixture
 def auth_headers(client, engine):
     """Signup helper. Accounts default to the Organizer role because most

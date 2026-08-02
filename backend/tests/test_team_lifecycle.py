@@ -3,6 +3,7 @@ paths), delete-empty vs delete-blocked, and cancelled tournament visibility
 and registration gating (tasks 3.1-3.3)."""
 
 from app.models import Role
+from tests.conftest import publish
 
 TOURNAMENT = {"slug": "cup", "display_name": "Cup", "date": "2026-12-05"}
 
@@ -220,6 +221,7 @@ def test_delete_blocked_by_registrations(client, auth_headers):
         headers=owner,
     )
     add_priced_discipline(client, owner, slug)
+    publish(client, owner, slug)
     fencer = auth_headers(email="f1@example.com", name="F1")
     assert register(client, fencer, slug).status_code == 201
 
@@ -237,6 +239,7 @@ def test_cancel_hides_from_public_list_but_keeps_console(client, auth_headers):
         headers=owner,
     )
     add_priced_discipline(client, owner, slug)
+    publish(client, owner, slug)
     fencer = auth_headers(email="f1@example.com", name="F1")
     assert register(client, fencer, slug).status_code == 201
 

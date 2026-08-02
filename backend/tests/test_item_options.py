@@ -13,6 +13,7 @@ from app.db import Base
 from app.mail import get_mailer
 from app.main import app
 from app.models import Discipline, ExtraCategory, ExtraItem, Tournament
+from tests.conftest import publish
 from tests.test_tournaments import make_tournament as make_api_tournament
 
 SLUG = "na-duel-2026"
@@ -34,7 +35,7 @@ def mailbox():
     app.dependency_overrides.pop(get_mailer, None)
 
 
-def publish(client, headers):
+def make_ready_tournament(client, headers):
     make_api_tournament(client, headers)
     client.patch(
         f"/api/tournaments/{SLUG}",
@@ -46,6 +47,7 @@ def publish(client, headers):
         json={"code": "LS", "capacity": 10, "fee": 800},
         headers=headers,
     )
+    publish(client, headers, SLUG)
 
 
 def add_item(client, headers, **fields):
@@ -68,7 +70,7 @@ def register(client, headers, extras):
 
 def test_option_with_choices_round_trip(client, auth_headers):
     headers = auth_headers()
-    publish(client, headers)
+    make_ready_tournament(client, headers)
 
     item = add_item(
         client, headers, option_label="size", option_choices=["S", "M", "L", "XL"]
@@ -79,7 +81,7 @@ def test_option_with_choices_round_trip(client, auth_headers):
 
 def test_free_text_option_round_trip(client, auth_headers):
     headers = auth_headers()
-    publish(client, headers)
+    make_ready_tournament(client, headers)
 
     item = add_item(client, headers, option_label="engraving")
     assert item["option_label"] == "engraving"
@@ -88,7 +90,7 @@ def test_free_text_option_round_trip(client, auth_headers):
 
 def test_choices_are_trimmed_and_deduplicated(client, auth_headers):
     headers = auth_headers()
-    publish(client, headers)
+    make_ready_tournament(client, headers)
 
     item = add_item(
         client, headers, option_label="size", option_choices=[" S ", "M", "M", "", "  "]
@@ -98,7 +100,7 @@ def test_choices_are_trimmed_and_deduplicated(client, auth_headers):
 
 def test_choices_without_a_label_rejected(client, auth_headers):
     headers = auth_headers()
-    publish(client, headers)
+    make_ready_tournament(client, headers)
 
     response = client.post(
         f"/api/tournaments/{SLUG}/extra-items",
@@ -115,7 +117,7 @@ def test_choices_without_a_label_rejected(client, auth_headers):
 
 def test_option_fields_editable(client, auth_headers):
     headers = auth_headers()
-    publish(client, headers)
+    make_ready_tournament(client, headers)
     item = add_item(client, headers)
 
     response = client.patch(
@@ -140,7 +142,7 @@ def test_option_fields_editable(client, auth_headers):
 
 def test_preset_choice_recorded_and_itemized(client, auth_headers):
     headers = auth_headers()
-    publish(client, headers)
+    make_ready_tournament(client, headers)
     item = add_item(client, headers, option_label="size", option_choices=["S", "M", "L"])
     fencer = auth_headers(email="f1@example.com", name="F1")
 
@@ -164,7 +166,7 @@ def test_preset_choice_recorded_and_itemized(client, auth_headers):
 
 def test_free_text_option_recorded(client, auth_headers):
     headers = auth_headers()
-    publish(client, headers)
+    make_ready_tournament(client, headers)
     item = add_item(client, headers, option_label="engraving")
     fencer = auth_headers(email="f1@example.com", name="F1")
 
@@ -177,7 +179,7 @@ def test_free_text_option_recorded(client, auth_headers):
 
 def test_missing_required_option_rejected(client, auth_headers):
     headers = auth_headers()
-    publish(client, headers)
+    make_ready_tournament(client, headers)
     item = add_item(client, headers, option_label="size", option_choices=["S", "M"])
     fencer = auth_headers(email="f1@example.com", name="F1")
 
@@ -189,7 +191,7 @@ def test_missing_required_option_rejected(client, auth_headers):
 @pytest.mark.parametrize("value", ["XXL", "m", " "])
 def test_value_outside_choices_rejected(client, auth_headers, value):
     headers = auth_headers()
-    publish(client, headers)
+    make_ready_tournament(client, headers)
     item = add_item(client, headers, option_label="size", option_choices=["S", "M"])
     fencer = auth_headers(email="f1@example.com", name="F1")
 
@@ -201,7 +203,7 @@ def test_value_outside_choices_rejected(client, auth_headers, value):
 
 def test_option_for_option_less_item_rejected(client, auth_headers):
     headers = auth_headers()
-    publish(client, headers)
+    make_ready_tournament(client, headers)
     item = add_item(client, headers)
     fencer = auth_headers(email="f1@example.com", name="F1")
 
@@ -214,7 +216,7 @@ def test_option_for_option_less_item_rejected(client, auth_headers):
 
 def test_option_value_reaches_the_confirmation_email(client, auth_headers, mailbox):
     headers = auth_headers()
-    publish(client, headers)
+    make_ready_tournament(client, headers)
     item = add_item(client, headers, option_label="size", option_choices=["S", "M"])
     fencer = auth_headers(email="f1@example.com", name="F1")
 
@@ -285,7 +287,7 @@ def test_selection_predating_the_option_stays_valid(client, auth_headers):
     """An organizer adding an option label later must not invalidate rows that
     were stored without one."""
     headers = auth_headers()
-    publish(client, headers)
+    make_ready_tournament(client, headers)
     item = add_item(client, headers)
     fencer = auth_headers(email="f1@example.com", name="F1")
     register(client, fencer, [{"extra_item_id": item["id"], "qty": 1}])

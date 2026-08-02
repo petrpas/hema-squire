@@ -5,6 +5,7 @@ import pytest
 
 from app.config import settings
 from app.models import Role
+from tests.conftest import publish
 
 TOURNAMENT = {"slug": "cup", "display_name": "Cup", "date": "2026-12-05"}
 
@@ -64,6 +65,7 @@ def test_admin_retains_fencer_capabilities(client, auth_headers):
         json={"code": "LS", "capacity": 10, "fee": 100},
         headers=organizer,
     )
+    publish(client, organizer, "cup")
     admin = auth_headers(email="admin@example.com", name="Admin", role=Role.ADMIN)
     response = client.post(
         "/api/tournaments/cup/register", json={"disciplines": ["LS"]}, headers=admin

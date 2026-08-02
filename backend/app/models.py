@@ -161,6 +161,11 @@ class Tournament(Base):
     # set when the Tournament Owner cancels; a cancelled tournament is hidden
     # from public listings and rejects new registrations, data retained
     cancelled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # null means draft: invisible to fencers, closed to registration, freely
+    # editable into incompleteness. Publication is one-way — no action ever
+    # clears this (design D1 of add-explicit-publishing)
+    published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    published_by_id: Mapped[int | None] = mapped_column(ForeignKey("fencers.id"))
     language: Mapped[str] = mapped_column(String(10), default="cs")
     location: Mapped[str | None] = mapped_column(String(300))
     # optional free-form plain text, presented with line breaks preserved;

@@ -8,6 +8,7 @@ from app.db import get_session
 from app.mail import get_mailer
 from app.main import app
 from app.models import PaymentEvent, RefundState, Registration, RegistrationState, Rule
+from tests.conftest import publish
 
 
 class CollectingMailer:
@@ -49,6 +50,7 @@ def setup(client, organizer):
         json={"code": "LS", "capacity": 10, "fee": 1000},
         headers=organizer,
     )
+    publish(client, organizer, "cup")
 
 
 def enroll(client, auth_headers, email="jan@example.com", name="Jan"):
@@ -172,14 +174,16 @@ def test_vs_in_message_matches_sepa_style(client, auth_headers, mailbox):
     transfer is compared straight against the stored EUR total (39)."""
     organizer = auth_headers()
     setup(client, organizer)
-    client.patch(
-        "/api/tournaments/cup",
-        json={"eur_payments_enabled": True},
-        headers=organizer,
-    )
+    # the tournament is already published: give the discipline its EUR price
+    # before enabling EUR mode (design D3 of add-explicit-publishing)
     client.patch(
         "/api/tournaments/cup/disciplines/LS",
         json={"code": "LS", "capacity": 10, "fee": 1000, "fee_eur": 39},
+        headers=organizer,
+    )
+    client.patch(
+        "/api/tournaments/cup",
+        json={"eur_payments_enabled": True},
         headers=organizer,
     )
     fencer, vs = enroll(client, auth_headers)
@@ -225,14 +229,17 @@ def test_second_payment_for_paid_registration_flagged(client, auth_headers, mail
 
 def setup_with_eur(client, organizer, fee=1000, fee_eur=40):
     setup(client, organizer)
-    client.patch(
-        "/api/tournaments/cup",
-        json={"eur_payments_enabled": True},
-        headers=organizer,
-    )
+    # the tournament is already published: give the discipline its EUR price
+    # before enabling EUR mode, so it never passes through an incomplete
+    # moment (design D3 of add-explicit-publishing)
     client.patch(
         "/api/tournaments/cup/disciplines/LS",
         json={"code": "LS", "capacity": 10, "fee": fee, "fee_eur": fee_eur},
+        headers=organizer,
+    )
+    client.patch(
+        "/api/tournaments/cup",
+        json={"eur_payments_enabled": True},
         headers=organizer,
     )
 
@@ -585,6 +592,13 @@ def test_reevaluated_flagged_transaction_not_credited_twice(client, auth_headers
     queue = client.get("/api/tournaments/cup/payments/unmatched", headers=organizer).json()
     assert queue[0]["status_reason"] == "currency_not_accepted"
 
+    # the tournament is already published: give the discipline its EUR price
+    # before enabling EUR mode (design D3 of add-explicit-publishing)
+    client.patch(
+        "/api/tournaments/cup/disciplines/LS",
+        json={"code": "LS", "capacity": 10, "fee": 1000, "fee_eur": 40},
+        headers=organizer,
+    )
     client.patch(
         "/api/tournaments/cup", json={"eur_payments_enabled": True}, headers=organizer,
     )

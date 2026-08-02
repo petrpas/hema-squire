@@ -211,6 +211,7 @@
       "extra": "extra",
       "payments": "payments",
       "other": "other",
+      "publish": "publish",
       "incomplete": "incomplete configuration"
     },
     "saveBar": {
@@ -219,9 +220,19 @@
       "partial": "{{written}} of {{total}} changes written, {{pending}} still unsaved",
       "genericError": "The change could not be saved (error {{status}})."
     },
-    "checklist": {
-      "title": "Setup status",
-      "ready": "Setup is complete — registration is possible (subject to the registration window)."
+    "publish": {
+      "draftStatement": "This tournament is not published — it is invisible to fencers and closed to registration.",
+      "blockedHint": "The listed items must be configured before publishing.",
+      "unsavedNote": "There are unsaved changes on other tabs — publication acts on the saved state only.",
+      "publishButton": "Publish",
+      "confirmBody": "Once published, fencers will see this tournament and registration will follow the registration window. This cannot be undone.",
+      "confirmButton": "Publish",
+      "published": "Published on {{date}}.",
+      "cancelled": "This tournament is cancelled and cannot be published.",
+      "failedAlreadyPublished": "This tournament is already published.",
+      "failedCancelled": "A cancelled tournament cannot be published.",
+      "failedIncomplete": "Setup is not complete yet — check the tabs above.",
+      "failedGeneric": "Publication failed. Please try again."
     },
     "missing": {
       "location": "Location is missing",

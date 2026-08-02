@@ -1,9 +1,12 @@
 """Setup completeness: the single source of truth for which mandatory Setup
-items a tournament is still missing. Drives the console checklist and the
-registration gate — a tournament with a non-empty result must not accept
-registrations."""
+items a tournament is still missing. Drives the PUBLISH tab and is the
+precondition for publication; the registration gate reads the publication
+record instead, since a published tournament is guaranteed complete (see
+guard_published_completeness)."""
 
 import datetime
+
+from fastapi import HTTPException
 
 from app.models import Tournament
 
@@ -70,16 +73,34 @@ def setup_missing(tournament: Tournament) -> list[str]:
     return missing
 
 
+def guard_published_completeness(tournament: Tournament) -> None:
+    """Raise 422 when a save would leave a published tournament missing a
+    mandatory item (design D3): called after the mutation is applied to the
+    ORM objects and before commit, so the session rolls back and nothing is
+    written. No-op on a draft, which stays freely editable into
+    incompleteness."""
+    if tournament.published_at is None:
+        return
+    missing = setup_missing(tournament)
+    if missing:
+        raise HTTPException(
+            status_code=422, detail={"reason": "setup_incomplete", "missing": missing}
+        )
+
+
 def registration_availability(tournament: Tournament, today: datetime.date) -> str | None:
     """None when a new registration submission may proceed; otherwise the
-    reason it is rejected (D6 gate order: setup complete -> opens -> closes).
+    reason it is rejected (gate order: cancelled -> published -> opens ->
+    closes — design D2 of add-explicit-publishing). Completeness is not
+    re-checked here: a published tournament is guaranteed complete by
+    guard_published_completeness.
 
     Applies only to new submissions — never to cancellation, payment
     matching, or admission of substitutes on existing registrations.
     """
     if tournament.cancelled_at is not None:
         return CLOSED
-    if setup_missing(tournament):
+    if tournament.published_at is None:
         return NOT_PUBLISHED
     if tournament.registration_opens is not None and today < tournament.registration_opens:
         return NOT_YET_OPEN

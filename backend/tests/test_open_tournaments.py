@@ -3,10 +3,15 @@ filtering, per-discipline counts, registration status, and own state."""
 
 from datetime import date, timedelta
 
+from tests.conftest import publish
+
 TODAY = date.today()
 
 
-def publish(client, organizer, slug, **overrides):
+def make_open_tournament(client, organizer, slug, **overrides):
+    """Builds a setup-complete tournament and publishes it — the two steps
+    that together used to be "complete setup" alone (design
+    add-explicit-publishing)."""
     payload = {"slug": slug, "display_name": slug.title(), "date": str(TODAY + timedelta(days=30))}
     payload.update({k: v for k, v in overrides.items() if k in ("slug", "display_name", "date")})
     client.post("/api/tournaments", json=payload, headers=organizer)
@@ -18,11 +23,12 @@ def publish(client, organizer, slug, **overrides):
         json={"code": "LS", "capacity": 2, "fee": 800},
         headers=organizer,
     )
+    publish(client, organizer, slug)
 
 
 def test_open_hides_drafts_cancelled_and_past(client, auth_headers):
     organizer = auth_headers()
-    publish(client, organizer, "ready")
+    make_open_tournament(client, organizer, "ready")
 
     # draft: missing setup (no location/organizers/disciplines)
     client.post(
@@ -32,11 +38,11 @@ def test_open_hides_drafts_cancelled_and_past(client, auth_headers):
     )
 
     # cancelled
-    publish(client, organizer, "gone")
+    make_open_tournament(client, organizer, "gone")
     client.post("/api/tournaments/gone/cancel", headers=organizer)
 
     # past
-    publish(client, organizer, "past", date=str(TODAY - timedelta(days=1)))
+    make_open_tournament(client, organizer, "past", date=str(TODAY - timedelta(days=1)))
 
     fencer = auth_headers(email="f1@example.com", name="F1")
     listed = client.get("/api/tournaments/open", headers=fencer).json()
@@ -45,7 +51,7 @@ def test_open_hides_drafts_cancelled_and_past(client, auth_headers):
 
 def test_open_carries_discipline_counts_and_own_state(client, auth_headers):
     organizer = auth_headers()
-    publish(client, organizer, "cup")
+    make_open_tournament(client, organizer, "cup")
     fencer = auth_headers(email="f1@example.com", name="F1")
     other = auth_headers(email="f2@example.com", name="F2")
 
@@ -68,7 +74,7 @@ def test_open_carries_discipline_counts_and_own_state(client, auth_headers):
 
 def test_open_reports_substitute_paid_and_cancelled_states(client, auth_headers):
     organizer = auth_headers()
-    publish(client, organizer, "cup")
+    make_open_tournament(client, organizer, "cup")
     first = auth_headers(email="a@example.com", name="A")
     client.post("/api/tournaments/cup/register", json={"disciplines": ["LS"]}, headers=first)
 
@@ -118,8 +124,8 @@ def test_open_registration_status_opens_on_and_closed(client, auth_headers):
     organizer = auth_headers()
     fencer = auth_headers(email="f1@example.com", name="F1")
 
-    publish(client, organizer, "future-open", registration_opens=str(TODAY + timedelta(days=1)))
-    publish(client, organizer, "past-close", registration_closes=str(TODAY - timedelta(days=1)))
+    make_open_tournament(client, organizer, "future-open", registration_opens=str(TODAY + timedelta(days=1)))
+    make_open_tournament(client, organizer, "past-close", registration_closes=str(TODAY - timedelta(days=1)))
 
     listed = client.get("/api/tournaments/open", headers=fencer).json()
     future_open = next(t for t in listed if t["slug"] == "future-open")

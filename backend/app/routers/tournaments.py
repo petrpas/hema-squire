@@ -146,16 +146,17 @@ def open_tournaments(session: SessionDep, fencer: FencerDep):
     today = datetime.now(UTC).date()
     rows = session.scalars(
         select(Tournament)
-        .where(Tournament.cancelled_at.is_(None), Tournament.date >= today)
+        .where(
+            Tournament.cancelled_at.is_(None),
+            Tournament.published_at.is_not(None),
+            Tournament.date >= today,
+        )
         .options(selectinload(Tournament.disciplines))
         .order_by(Tournament.date)
     ).all()
 
     result = []
     for tournament in rows:
-        if setup.setup_missing(tournament):
-            continue
-
         reason = setup.registration_availability(tournament, today)
         if reason == setup.NOT_YET_OPEN:
             status_, opens_on = "opens_on", tournament.registration_opens
@@ -243,16 +244,17 @@ def past_tournaments(session: SessionDep, fencer: FencerDep):
 
     rows = session.scalars(
         select(Tournament)
-        .where(Tournament.cancelled_at.is_(None), Tournament.date < today)
+        .where(
+            Tournament.cancelled_at.is_(None),
+            Tournament.published_at.is_not(None),
+            Tournament.date < today,
+        )
         .options(selectinload(Tournament.disciplines))
         .order_by(Tournament.date.desc())
     ).all()
 
     result = []
     for tournament in rows:
-        if setup.setup_missing(tournament):
-            continue
-
         organized = tournament.owner_id == fencer.id or tournament.id in organizer_tournament_ids
         participated = tournament.id in participated_tournament_ids
         if not organized and not participated:
@@ -402,6 +404,7 @@ def update_tournament(
             ),
         )
     _apply_currency_invariants(tournament)
+    setup.guard_published_completeness(tournament)
     session.commit()
     session.refresh(tournament)
     out = TournamentOut.model_validate(tournament)
@@ -487,6 +490,7 @@ def add_discipline(
         ruleset_url=data.ruleset_url,
     )
     session.add(discipline)
+    setup.guard_published_completeness(tournament)
     session.commit()
     session.refresh(discipline)
     return discipline
@@ -516,6 +520,7 @@ def update_discipline(
     discipline.schedule_where = data.schedule_where
     discipline.ruleset_name = data.ruleset_name
     discipline.ruleset_url = data.ruleset_url
+    setup.guard_published_completeness(tournament)
     session.commit()
     session.refresh(discipline)
     return discipline
@@ -530,6 +535,11 @@ def delete_discipline(
     if discipline is None:
         raise HTTPException(status_code=404, detail="discipline_not_found")
     session.delete(discipline)
+    # the in-memory collection does not drop the row on delete()/flush() alone
+    # (only a commit + expire would); guard_published_completeness reads it
+    # directly, so it must reflect the deletion before that check runs
+    tournament.disciplines.remove(discipline)
+    setup.guard_published_completeness(tournament)
     session.commit()
 
 
@@ -552,6 +562,7 @@ def add_extra_item(
     require_console_access(session, tournament, fencer)
     item = ExtraItem(tournament=tournament, **_normalized_extra_item_fields(data))
     session.add(item)
+    setup.guard_published_completeness(tournament)
     session.commit()
     session.refresh(item)
     return item
@@ -580,6 +591,7 @@ def update_extra_item(
     item.remark = fields["remark"]
     item.option_label = fields["option_label"]
     item.option_choices = fields["option_choices"]
+    setup.guard_published_completeness(tournament)
     session.commit()
     session.refresh(item)
     return item
@@ -594,6 +606,8 @@ def delete_extra_item(
     if item is None:
         raise HTTPException(status_code=404, detail="extra_item_not_found")
     session.delete(item)
+    tournament.extra_items.remove(item)
+    setup.guard_published_completeness(tournament)
     session.commit()
 
 
@@ -706,6 +720,30 @@ def cancel_tournament(tournament: TournamentDep, session: SessionDep, fencer: Fe
     session.commit()
     session.refresh(tournament)
     return tournament
+
+
+@router.post("/{slug}/publish", response_model=TournamentOut)
+def publish_tournament(tournament: TournamentDep, session: SessionDep, fencer: FencerDep):
+    """One-time, irreversible: stamps the publication record so the
+    tournament becomes visible to fencers and open within its registration
+    window (design D4). Open to any console team member, not owner-only."""
+    require_console_access(session, tournament, fencer)
+    if tournament.published_at is not None:
+        raise HTTPException(status_code=409, detail="already_published")
+    if tournament.cancelled_at is not None:
+        raise HTTPException(status_code=409, detail="cancelled")
+    missing = setup.setup_missing(tournament)
+    if missing:
+        raise HTTPException(
+            status_code=422, detail={"reason": "setup_incomplete", "missing": missing}
+        )
+    tournament.published_at = datetime.now(UTC)
+    tournament.published_by_id = fencer.id
+    session.commit()
+    session.refresh(tournament)
+    out = TournamentOut.model_validate(tournament)
+    out.setup_missing = setup.setup_missing(tournament)
+    return out
 
 
 def _cascade_delete(session: Session, tournament: Tournament) -> None:

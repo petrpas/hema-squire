@@ -5,6 +5,7 @@ from decimal import Decimal
 
 from app.export_json import SCHEMA_VERSION
 from app.importer import get_import_parser
+from tests.conftest import publish
 from tests.test_import import CSV, FakeParser
 
 
@@ -25,6 +26,7 @@ def setup(client, organizer):
             json={"code": code, "capacity": 10, "fee": 1000},
             headers=organizer,
         )
+    publish(client, organizer, "cup")
 
 
 def make_statement(vs, amount="1 000,00"):
@@ -254,6 +256,14 @@ def test_restore_accepts_a_v2_document_without_currency_fields(client, auth_head
 def test_v3_currency_and_option_fields_round_trip(client, auth_headers):
     organizer = auth_headers()
     setup(client, organizer)
+    # the tournament is already published: give every discipline its EUR
+    # price before enabling EUR mode (design D3 of add-explicit-publishing)
+    for code in ("LS", "SA"):
+        client.patch(
+            f"/api/tournaments/cup/disciplines/{code}",
+            json={"code": code, "capacity": 10, "fee": 1000, "fee_eur": 40},
+            headers=organizer,
+        )
     client.patch(
         "/api/tournaments/cup",
         json={
@@ -263,12 +273,6 @@ def test_v3_currency_and_option_fields_round_trip(client, auth_headers):
         },
         headers=organizer,
     )
-    for code in ("LS", "SA"):
-        client.patch(
-            f"/api/tournaments/cup/disciplines/{code}",
-            json={"code": code, "capacity": 10, "fee": 1000, "fee_eur": 40},
-            headers=organizer,
-        )
     item = client.post(
         "/api/tournaments/cup/extra-items",
         json={

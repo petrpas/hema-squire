@@ -1,3 +1,6 @@
+from tests.conftest import publish
+
+
 def setup(client, organizer):
     client.post(
         "/api/tournaments",
@@ -14,6 +17,7 @@ def setup(client, organizer):
         json={"code": "LS", "capacity": 10, "fee": 1000},
         headers=organizer,
     )
+    publish(client, organizer, "cup")
 
 
 def enroll(client, auth_headers, email, name):

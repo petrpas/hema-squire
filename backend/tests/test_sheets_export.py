@@ -6,6 +6,7 @@ from app.hr_sync import get_hr_fetcher
 from app.importer import get_import_parser
 from app.main import app
 from app.sheets_export import get_sheets_client_factory
+from tests.conftest import publish
 from tests.test_import import CSV, FakeParser
 
 
@@ -72,6 +73,7 @@ def setup(client, auth_headers, organizer):
         },
         headers=organizer,
     )
+    publish(client, organizer, "cup")
     # one in-app registration with an HR-bound account
     fencer = auth_headers(email="jan@example.com", name="Jan Novák")
     binding = client.post(

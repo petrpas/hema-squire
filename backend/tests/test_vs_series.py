@@ -4,6 +4,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models import Registration, Tournament
+from tests.conftest import publish
 
 
 def create_tournament(client, organizer, slug, date="2026-12-05"):
@@ -23,6 +24,7 @@ def create_tournament(client, organizer, slug, date="2026-12-05"):
         json={"code": "LS", "capacity": 32, "fee": 800},
         headers=organizer,
     )
+    publish(client, organizer, slug)
     return response.json()
 
 

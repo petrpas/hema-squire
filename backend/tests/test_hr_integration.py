@@ -7,6 +7,7 @@ from app.db import get_session
 from app.hr_index import get_hr_index
 from app.hr_sync import get_hr_fetcher, parse_fighters_html
 from app.main import app
+from tests.conftest import publish
 from tests.test_sheets_export import FakeHRFetcher, fighter_page
 
 
@@ -203,6 +204,7 @@ def test_snapshot_respects_category_mapping_and_override(client, auth_headers):
             json={"code": code, "capacity": 10, "fee": 1000},
             headers=organizer,
         )
+    publish(client, organizer, "cup")
     fencer = auth_headers(email="jan@example.com", name="Jan N")
     client.post("/api/account/hr-binding", json={"hr_id": 10234}, headers=fencer)
     client.post(
@@ -259,6 +261,7 @@ def test_snapshot_drift_rejected_when_no_page_parses(client, auth_headers):
         json={"code": "LS", "capacity": 10, "fee": 1000},
         headers=organizer,
     )
+    publish(client, organizer, "cup")
     fencer = auth_headers(email="jan@example.com", name="Jan N")
     client.post("/api/account/hr-binding", json={"hr_id": 10234}, headers=fencer)
     client.post(

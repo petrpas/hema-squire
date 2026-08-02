@@ -19,6 +19,7 @@ from app.db import get_session
 from app.mail import get_mailer
 from app.main import app
 from app.models import PaymentEvent, RefundState, Registration, RegistrationState, Tournament
+from tests.conftest import publish
 
 IBAN = "CZ6508000000192000145399"
 
@@ -82,6 +83,7 @@ def setup_tournament(client, organizer, capacity=10, **patch):
         json={"code": "LS", "capacity": capacity, "fee": 1000},
         headers=organizer,
     )
+    publish(client, organizer, "cup")
 
 
 def register(client, headers, **overrides):
@@ -534,14 +536,17 @@ def test_foreign_currency_credit_unchanged_by_later_rate_edit(client, auth_heade
     stored EUR total with no conversion — so a later rate edit cannot move it
     (design Decision 3/4)."""
     organizer = auth_headers()
-    setup_tournament(
-        client, organizer, capacity=10,
-        eur_payments_enabled=True, eur_rate="25.5",
-    )
+    setup_tournament(client, organizer, capacity=10, eur_rate="25.5")
+    # the tournament is already published: give the discipline its EUR price
+    # before enabling EUR mode, so it never passes through an incomplete
+    # moment (design D3 of add-explicit-publishing)
     client.patch(
         "/api/tournaments/cup/disciplines/LS",
         json={"code": "LS", "capacity": 10, "fee": 1000, "fee_eur": 40},
         headers=organizer,
+    )
+    client.patch(
+        "/api/tournaments/cup", json={"eur_payments_enabled": True}, headers=organizer,
     )
     fencer = auth_headers(email="f1@example.com", name="F1")
     initial = register(client, fencer).json()

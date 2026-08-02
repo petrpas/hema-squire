@@ -324,6 +324,7 @@ class TournamentOut(BaseModel):
     language: str
     owner_id: int | None
     cancelled_at: datetime.datetime | None
+    published_at: datetime.datetime | None
     reservation_validity_days: int
     reminder_day: int
     amount_tolerance_percent: int

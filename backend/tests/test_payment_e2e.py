@@ -21,6 +21,7 @@ from app.mail import get_mailer
 from app.main import app
 from app.models import Registration
 from app.spayd import spayd_string
+from tests.conftest import publish
 
 IBAN = "CZ6508000000192000145399"
 
@@ -92,6 +93,7 @@ def setup(client, organizer, capacity=10):
         json={"code": "LS", "capacity": capacity, "fee": 1000},
         headers=organizer,
     )
+    publish(client, organizer, "cup")
 
 
 def age_registration(vs, days):
