@@ -1,4 +1,4 @@
-import { IconX } from "@tabler/icons-react";
+import { IconEdit, IconX } from "@tabler/icons-react";
 import {
   Fragment,
   type KeyboardEvent,
@@ -31,13 +31,13 @@ import {
   api,
   logoUrl,
 } from "./api";
+import DisciplineDialog, { type DisciplineIdentity } from "./DisciplineDialog";
 import HelpHint from "./HelpHint";
 import { showsEur } from "./money";
 import SetupPreview from "./SetupPreview";
 import { LEGACY_WEAPONS } from "./TournamentFace";
 
 const TAXONOMY_WEAPON_CODES = Object.keys(LEGACY_WEAPONS);
-const OTHER_WEAPON = "__other__";
 
 // design Decision D1 (split-setup-into-tabs); `publish` added last (design D6
 // of add-explicit-publishing) — the end of the Setup arc, offered to every
@@ -744,12 +744,19 @@ type DisciplineRow = DisciplineDraft & {
   // UI-only: whether the weapon field shows the free-text "other" input
   // rather than the taxonomy select (design discipline-identity D4)
   weaponCustom: boolean;
+  // The slug the server knows this row by, unchanged by editing `slug`
+  // (design discipline-identity-modal D7) — lookups and the PATCH path
+  // resolve by this, never by the (now editable) `slug` field.
+  originalSlug: string;
+  identityFrozen: boolean;
 };
 
 function disciplineToRow(d: Discipline): DisciplineRow {
   return {
     rowId: d.slug,
     slug: d.slug,
+    originalSlug: d.slug,
+    identityFrozen: d.identity_frozen,
     name: d.name,
     weapon: d.weapon,
     gender: d.gender,
@@ -771,9 +778,10 @@ function disciplineToRow(d: Discipline): DisciplineRow {
 }
 
 function disciplineRowDirty(row: DisciplineRow, detail: TournamentDetail): boolean {
-  const original = detail.disciplines.find((d) => d.slug === row.slug);
+  const original = detail.disciplines.find((d) => d.slug === row.originalSlug);
   if (!original) return false;
   return (
+    original.slug !== row.slug ||
     original.name !== row.name ||
     original.weapon !== row.weapon ||
     original.gender !== row.gender ||
@@ -816,7 +824,7 @@ function disciplineRowInput(row: DisciplineRow): DisciplineInput {
 // necessarily introduces a price, so it always counts.
 function disciplineRowTouchesPrice(row: DisciplineRow, detail: TournamentDetail): boolean {
   if (row.isNew) return true;
-  const original = detail.disciplines.find((d) => d.slug === row.slug);
+  const original = detail.disciplines.find((d) => d.slug === row.originalSlug);
   if (!original) return false;
   return (
     (original.fee === null ? "" : String(original.fee)) !== row.fee ||
@@ -828,6 +836,8 @@ function blankDisciplineRow(rowId: string): DisciplineRow {
   return {
     rowId,
     slug: "",
+    originalSlug: "",
+    identityFrozen: false,
     name: "",
     weapon: "",
     gender: "",
@@ -862,6 +872,10 @@ function DisciplinesSection({
   const { t } = useTranslation();
   const [rows, setRows] = useState<DisciplineRow[]>(() => detail.disciplines.map(disciplineToRow));
   const [removed, setRemoved] = useState<Set<string>>(new Set());
+  // "new" opens the dialog for a discipline not yet in the table (design
+  // discipline-identity-modal: "a row exists only once the dialog is
+  // confirmed"); a rowId reopens the dialog on that existing row.
+  const [dialogRowId, setDialogRowId] = useState<string | "new" | null>(null);
   const eur = showsEur(detail);
   const rate = Number(detail.eur_rate);
   const nextTempId = useRef(0);
@@ -923,11 +937,36 @@ function DisciplinesSection({
 
   function removeRow(row: DisciplineRow) {
     setRows((prev) => prev.filter((r) => r.rowId !== row.rowId));
-    if (!row.isNew) setRemoved((prev) => new Set(prev).add(row.slug));
+    // the server knows this row by its original slug, not a possibly-edited
+    // draft one (design discipline-identity-modal D7)
+    if (!row.isNew) setRemoved((prev) => new Set(prev).add(row.originalSlug));
   }
 
-  function addRow() {
-    setRows((prev) => [...prev, blankDisciplineRow(`new-${nextTempId.current++}`)]);
+  function rowIdentity(row: DisciplineRow): DisciplineIdentity {
+    return {
+      kind: row.kind,
+      weapon: row.weapon,
+      weaponCustom: row.weaponCustom,
+      gender: row.gender,
+      material: row.material,
+      name: row.name,
+      slug: row.slug,
+    };
+  }
+
+  // Confirming the dialog writes to the local draft only — no addDiscipline
+  // or updateDiscipline call here; the tab's save control stays the only
+  // writer (design discipline-identity-modal D2, setup-navigation).
+  function confirmDialog(identity: DisciplineIdentity) {
+    if (dialogRowId === "new") {
+      setRows((prev) => [
+        ...prev,
+        { ...blankDisciplineRow(`new-${nextTempId.current++}`), ...identity },
+      ]);
+    } else if (dialogRowId !== null) {
+      patchRow(dialogRowId, identity);
+    }
+    setDialogRowId(null);
   }
 
   function recalculateAll() {
@@ -992,7 +1031,7 @@ function DisciplinesSection({
         (row) => !row.isNew && disciplineRowDirty(row, detail),
       )) {
         try {
-          const saved = await api.updateDiscipline(slug, row.slug, disciplineRowInput(row));
+          const saved = await api.updateDiscipline(slug, row.originalSlug, disciplineRowInput(row));
           results.set(row.rowId, null);
           created.set(row.rowId, saved);
           outcomes.push({ change: saved.slug, section: "disciplines", error: null });
@@ -1040,7 +1079,6 @@ function DisciplinesSection({
       <table className="sheet-table">
         <thead>
           <tr>
-            <th>{t("setup.disciplines.weapon")}</th>
             <th>
               {t("setup.disciplines.name")}
               <HelpHint text={t("setup.disciplines.nameHint")} />
@@ -1049,7 +1087,6 @@ function DisciplinesSection({
               {t("setup.disciplines.slug")}
               <HelpHint text={t("setup.disciplines.slugHint")} />
             </th>
-            <th>{t("setup.disciplines.kind")}</th>
             <th>{t("setup.disciplines.capacity")}</th>
             <th>{t("setup.disciplines.fee", { currency: detail.local_currency })}</th>
             {eur && <th>{t("setup.disciplines.feeEur")}</th>}
@@ -1061,92 +1098,10 @@ function DisciplinesSection({
             <Fragment key={row.rowId}>
               <tr>
                 <td>
-                  <div className="param-fields">
-                    <select
-                      value={row.weaponCustom ? OTHER_WEAPON : row.weapon}
-                      disabled={!row.isNew}
-                      onChange={(event) => {
-                        const value = event.target.value;
-                        if (value === OTHER_WEAPON) {
-                          patchRow(row.rowId, { weaponCustom: true, weapon: "" });
-                        } else {
-                          patchRow(row.rowId, { weaponCustom: false, weapon: value });
-                        }
-                      }}
-                    >
-                      <option value="">—</option>
-                      {TAXONOMY_WEAPON_CODES.map((code) => (
-                        <option key={code} value={code}>
-                          {LEGACY_WEAPONS[code]}
-                        </option>
-                      ))}
-                      <option value={OTHER_WEAPON}>{t("setup.disciplines.weaponOther")}</option>
-                    </select>
-                    {row.weaponCustom && (
-                      <input
-                        className="cell-input"
-                        placeholder={t("setup.disciplines.weaponOther")}
-                        disabled={!row.isNew}
-                        value={row.weapon}
-                        onChange={(event) => patchRow(row.rowId, { weapon: event.target.value })}
-                      />
-                    )}
-                    <select
-                      value={row.gender}
-                      disabled={!row.isNew}
-                      onChange={(event) =>
-                        patchRow(row.rowId, { gender: event.target.value as DisciplineGender })
-                      }
-                    >
-                      <option value="">{t("setup.disciplines.genderOpen")}</option>
-                      <option value="W">{t("setup.disciplines.genderWomen")}</option>
-                      <option value="M">{t("setup.disciplines.genderMen")}</option>
-                    </select>
-                    <select
-                      value={row.material}
-                      disabled={!row.isNew}
-                      onChange={(event) =>
-                        patchRow(row.rowId, { material: event.target.value as DisciplineMaterial })
-                      }
-                    >
-                      <option value="">{t("setup.disciplines.materialSteel")}</option>
-                      <option value="Plastic">{t("setup.disciplines.materialPlastic")}</option>
-                    </select>
-                    {row.weaponCustom && (
-                      <span className="muted">{t("setup.disciplines.weaponNoRatingHint")}</span>
-                    )}
-                  </div>
+                  <strong>{row.name}</strong>
                 </td>
                 <td>
-                  <input
-                    className="cell-input"
-                    disabled={!row.isNew}
-                    placeholder={row.weaponCustom ? undefined : t("setup.disciplines.nameAuto")}
-                    value={row.name}
-                    onChange={(event) => patchRow(row.rowId, { name: event.target.value })}
-                  />
-                </td>
-                <td>
-                  <input
-                    className="cell-input"
-                    disabled={!row.isNew}
-                    placeholder={t("setup.disciplines.slugAuto")}
-                    value={row.slug}
-                    onChange={(event) => patchRow(row.rowId, { slug: event.target.value })}
-                  />
-                </td>
-                <td>
-                  <select
-                    value={row.kind}
-                    disabled={!row.isNew}
-                    title={!row.isNew ? t("setup.disciplines.kindFrozenHint") : undefined}
-                    onChange={(event) =>
-                      patchRow(row.rowId, { kind: event.target.value as DisciplineKind })
-                    }
-                  >
-                    <option value="individual">{t("setup.disciplines.kindIndividual")}</option>
-                    <option value="team">{t("setup.disciplines.kindTeam")}</option>
-                  </select>
+                  <span className="muted">{row.slug}</span>
                 </td>
                 <td>
                   <input
@@ -1187,17 +1142,28 @@ function DisciplinesSection({
                   </td>
                 )}
                 <td className="col-actions">
-                  <button
-                    className="row-action"
-                    title={t("actions.delete")}
-                    onClick={() => removeRow(row)}
-                  >
-                    <IconX size={16} stroke={1.5} />
-                  </button>
+                  <div className="row-actions">
+                    {!row.identityFrozen && (
+                      <button
+                        className="row-action"
+                        title={t("setup.disciplines.reopen")}
+                        onClick={() => setDialogRowId(row.rowId)}
+                      >
+                        <IconEdit size={16} stroke={1.5} />
+                      </button>
+                    )}
+                    <button
+                      className="row-action"
+                      title={t("actions.delete")}
+                      onClick={() => removeRow(row)}
+                    >
+                      <IconX size={16} stroke={1.5} />
+                    </button>
+                  </div>
                 </td>
               </tr>
               <tr className="detail-subrow">
-                <td colSpan={eur ? 8 : 7}>
+                <td colSpan={eur ? 6 : 5}>
                   <div className="param-fields">
                     {row.kind === "team" && (
                       <>
@@ -1283,7 +1249,7 @@ function DisciplinesSection({
           ))}
         </tbody>
       </table>
-      <button className="link-button" onClick={addRow}>
+      <button className="link-button" onClick={() => setDialogRowId("new")}>
         + {t("setup.disciplines.add")}
       </button>
       {eur && (
@@ -1310,6 +1276,21 @@ function DisciplinesSection({
             }}
           />
         </label>
+      )}
+      {dialogRowId !== null && (
+        <DisciplineDialog
+          initial={
+            dialogRowId === "new"
+              ? null
+              : rowIdentity(rows.find((row) => row.rowId === dialogRowId)!)
+          }
+          otherNames={rows.filter((row) => row.rowId !== dialogRowId).map((row) => row.name)}
+          otherSlugs={
+            new Set(rows.filter((row) => row.rowId !== dialogRowId).map((row) => row.slug))
+          }
+          onConfirm={confirmDialog}
+          onClose={() => setDialogRowId(null)}
+        />
       )}
     </section>
   );

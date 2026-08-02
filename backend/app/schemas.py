@@ -163,6 +163,11 @@ class DisciplineOut(BaseModel):
     schedule_where: str | None
     ruleset_name: str | None
     ruleset_url: str | None
+    # not an ORM attribute; filled explicitly by every construction site from
+    # a per-tournament grouped query (design discipline-identity-modal D6) —
+    # never inferred from availability.taken_seats, which excludes cancelled
+    # and expired entries, substitutes, and teams entirely
+    identity_frozen: bool = False
 
 
 class ExtraItemIn(BaseModel):

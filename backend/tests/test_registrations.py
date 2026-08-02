@@ -555,7 +555,35 @@ def test_individual_and_team_discipline_in_one_weapon_both_accepted(client, auth
     )
     assert individual.status_code == 201
     assert team.status_code == 201
-    assert individual.json()["slug"] != team.json()["slug"]
+    assert individual.json()["slug"] == "LS"
+    assert team.json()["slug"] == "Team-LS"
+
+
+def test_second_individual_and_team_discipline_disambiguated(client, auth_headers):
+    """design discipline-identity-modal D5: `LS`, `Team-LS`, `LS-2`, `Team-LS-2`."""
+    organizer = auth_headers()
+    client.post(
+        "/api/tournaments",
+        json={"slug": "cup", "display_name": "Cup", "date": "2026-12-05"},
+        headers=organizer,
+    )
+    payload = {"weapon": "LS", "capacity": 10, "fee": 800}
+    team_payload = {
+        "weapon": "LS", "capacity": 5, "fee": 3000,
+        "kind": "team", "team_min": 3, "team_max": 4,
+    }
+    first = client.post("/api/tournaments/cup/disciplines", json=payload, headers=organizer)
+    team_first = client.post(
+        "/api/tournaments/cup/disciplines", json=team_payload, headers=organizer
+    )
+    second = client.post("/api/tournaments/cup/disciplines", json=payload, headers=organizer)
+    team_second = client.post(
+        "/api/tournaments/cup/disciplines", json=team_payload, headers=organizer
+    )
+    assert first.json()["slug"] == "LS"
+    assert team_first.json()["slug"] == "Team-LS"
+    assert second.json()["slug"] == "LS-2"
+    assert team_second.json()["slug"] == "Team-LS-2"
 
 
 def test_organizer_override_accepted_and_collision_refused(client, auth_headers):
@@ -585,6 +613,130 @@ def test_organizer_override_accepted_and_collision_refused(client, auth_headers)
     )
     assert collision.status_code == 409
     assert "LS-A" in collision.json()["detail"]
+
+
+def test_slug_generated_from_a_weapon_outside_the_taxonomy_is_normalized(client, auth_headers):
+    organizer = auth_headers()
+    client.post(
+        "/api/tournaments",
+        json={"slug": "cup", "display_name": "Cup", "date": "2026-12-05"},
+        headers=organizer,
+    )
+    created = client.post(
+        "/api/tournaments/cup/disciplines",
+        json={"weapon": "Tešák", "name": "Tesak Open", "capacity": 10, "fee": 800},
+        headers=organizer,
+    )
+    assert created.status_code == 201, created.text
+    assert created.json()["slug"] == "Tesak"
+
+
+def test_slug_override_is_normalized(client, auth_headers):
+    organizer = auth_headers()
+    client.post(
+        "/api/tournaments",
+        json={"slug": "cup", "display_name": "Cup", "date": "2026-12-05"},
+        headers=organizer,
+    )
+    created = client.post(
+        "/api/tournaments/cup/disciplines",
+        json={
+            "slug": "Sword & Buckler (variant)", "weapon": "SB", "capacity": 10, "fee": 800,
+        },
+        headers=organizer,
+    )
+    assert created.status_code == 201, created.text
+    assert created.json()["slug"] == "Sword-Buckler-variant"
+
+
+def test_existing_team_slug_from_before_kind_aware_generation_is_not_rewritten(
+    client, auth_headers
+):
+    """design discipline-identity-modal D5: forward-only — a tournament whose
+    team discipline is `LS-2` (created before slugs stated their kind) keeps
+    it, and merely renaming the discipline does not touch the slug."""
+    organizer = auth_headers()
+    client.post(
+        "/api/tournaments",
+        json={"slug": "cup", "display_name": "Cup", "date": "2026-12-05"},
+        headers=organizer,
+    )
+    client.post(
+        "/api/tournaments/cup/disciplines",
+        json={"slug": "LS-2", "weapon": "LS", "capacity": 5, "fee": 3000, "kind": "team",
+              "team_min": 3, "team_max": 4},
+        headers=organizer,
+    )
+    renamed = client.patch(
+        "/api/tournaments/cup/disciplines/LS-2",
+        json={"weapon": "LS", "name": "Team Longsword (renamed)", "capacity": 5, "fee": 3000,
+              "kind": "team", "team_min": 3, "team_max": 4},
+        headers=organizer,
+    )
+    assert renamed.status_code == 200, renamed.text
+    assert renamed.json()["slug"] == "LS-2"
+    assert renamed.json()["name"] == "Team Longsword (renamed)"
+
+
+# ---------------------------------------------------------------------------
+# identity_frozen (design discipline-identity-modal D6): reported alongside
+# the discipline rather than inferred from taken seats
+# ---------------------------------------------------------------------------
+
+
+def _identity_frozen(client, organizer, slug="LS"):
+    detail = client.get("/api/tournaments/cup", headers=organizer).json()
+    discipline = next(d for d in detail["disciplines"] if d["slug"] == slug)
+    return discipline["identity_frozen"]
+
+
+def test_unreferenced_discipline_is_not_frozen(client, auth_headers):
+    organizer = auth_headers()
+    setup_tournament(client, organizer)
+    assert _identity_frozen(client, organizer) is False
+
+
+def test_cancelled_entry_still_freezes(client, auth_headers):
+    organizer = auth_headers()
+    setup_tournament(client, organizer)
+    fencer = auth_headers(email="f1@example.com", name="F1")
+    register(client, fencer)
+    client.post("/api/tournaments/cup/my-registration/cancel", headers=fencer)
+
+    availability = client.get("/api/tournaments/cup/availability").json()
+    ls = next(a for a in availability if a["slug"] == "LS")
+    assert ls["taken"] == 0  # the case `taken` gets wrong
+
+    assert _identity_frozen(client, organizer) is True
+
+
+def test_substitute_entry_freezes(client, auth_headers):
+    organizer = auth_headers()
+    setup_tournament(client, organizer)
+    register(client, auth_headers(email="a@example.com", name="A"), disciplines=["SB"])
+    waiting = auth_headers(email="b@example.com", name="B")
+    body = register(client, waiting, disciplines=["SB"], wait_for_all=True).json()
+    assert all(e["is_substitute"] for e in body["entries"])
+
+    assert _identity_frozen(client, organizer, slug="SB") is True
+
+
+def test_rename_succeeds_on_a_frozen_discipline(client, auth_headers):
+    organizer = auth_headers()
+    setup_tournament(client, organizer)
+    fencer = auth_headers(email="f1@example.com", name="F1")
+    register(client, fencer)
+    assert _identity_frozen(client, organizer) is True
+
+    renamed = client.patch(
+        "/api/tournaments/cup/disciplines/LS",
+        json={"weapon": "LS", "name": "Longsword Renamed", "capacity": 2, "fee": 800,
+              "fee_early": 600},
+        headers=organizer,
+    )
+    assert renamed.status_code == 200, renamed.text
+    assert renamed.json()["name"] == "Longsword Renamed"
+    assert renamed.json()["slug"] == "LS"
 
 
 def test_slug_editable_before_registration_frozen_after(client, auth_headers):

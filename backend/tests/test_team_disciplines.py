@@ -262,6 +262,20 @@ def test_team_discipline_counted_in_teams(client, auth_headers):
     assert row["team_max"] == 4
 
 
+def test_team_entry_freezes_a_team_discipline(client, auth_headers):
+    """design discipline-identity-modal D6: `identity_frozen` covers a team
+    discipline once a team enters it, unlike `taken_seats`, which ignores
+    teams entirely."""
+    organizer = auth_headers()
+    setup_team_tournament(client, organizer, capacity=2)
+    fencer = auth_headers(email="f1@example.com", name="F1")
+    register_team(client, fencer, name="Wolves")
+
+    detail = client.get("/api/tournaments/cup", headers=organizer).json()
+    discipline = next(d for d in detail["disciplines"] if d["slug"] == "LS")
+    assert discipline["identity_frozen"] is True
+
+
 def test_team_waitlisted_at_capacity(client, auth_headers):
     organizer = auth_headers()
     setup_team_tournament(client, organizer, capacity=1)

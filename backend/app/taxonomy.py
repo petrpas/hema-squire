@@ -7,6 +7,9 @@ code, W/M gender suffix; Open and Steel are unmarked defaults.
 Examples: "LS", "SAW", "Plastic LSM".
 """
 
+import re
+import unicodedata
+
 WEAPONS = {
     "LS": "Longsword",
     "SA": "Sabre",
@@ -69,3 +72,28 @@ def taxonomy_name(weapon: str, gender: str, material: str) -> str | None:
     taxonomy does not name — such a discipline requires an explicit name
     (design discipline-identity D4)."""
     return DISCIPLINES.get(taxonomy_code(weapon, gender, material))
+
+
+def discipline_name(weapon: str, gender: str, material: str, is_team: bool) -> str | None:
+    """The generated name for a discipline, marked as a team discipline when
+    it is one, so an individual and a team discipline classified alike do not
+    generate the same name (design discipline-identity-modal D8). `is_team`
+    rather than `models.DisciplineKind` to avoid a circular import — models.py
+    imports this module."""
+    name = taxonomy_name(weapon, gender, material)
+    if name is None:
+        return None
+    return f"Team {name}" if is_team else name
+
+
+def normalize_slug(value: str) -> str:
+    """Fold a slug into a form safe in a URL path, a spreadsheet column, and
+    an import parse: diacritics folded to ASCII, every run of characters
+    outside letters, digits and `-` collapsed to a single `-`, leading and
+    trailing `-` stripped. Case-preserving (design discipline-identity-modal
+    D4) — a slug derived from a taxonomy code reads as that code does
+    everywhere else in the system. May return the empty string; the caller
+    decides the fallback (design discipline-identity-modal task 1.2)."""
+    folded = unicodedata.normalize("NFKD", value).encode("ascii", "ignore").decode("ascii")
+    collapsed = re.sub(r"[^A-Za-z0-9-]+", "-", folded)
+    return collapsed.strip("-")

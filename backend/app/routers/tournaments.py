@@ -132,7 +132,7 @@ def create_tournament(data: TournamentCreate, session: SessionDep, fencer: Fence
 def list_tournaments(session: SessionDep):
     # cancelled tournaments are retired: hidden from public listings, but
     # their detail/console stay reachable by slug (design D5)
-    return session.scalars(
+    tournaments = session.scalars(
         select(Tournament)
         .where(Tournament.cancelled_at.is_(None))
         .options(
@@ -140,6 +140,10 @@ def list_tournaments(session: SessionDep):
         )
         .order_by(Tournament.date)
     ).all()
+    outs = [TournamentOut.model_validate(tournament) for tournament in tournaments]
+    for tournament, out in zip(tournaments, outs, strict=True):
+        _apply_disciplines_frozen(session, tournament, out)
+    return outs
 
 
 @router.get("/open", response_model=list[OpenTournamentOut])
@@ -320,6 +324,7 @@ def tournament_detail(tournament: TournamentDep, session: SessionDep):
     out = TournamentOut.model_validate(tournament)
     out.setup_missing = setup.setup_missing(tournament)
     out.vs_series_editable = not _has_registrations(session, tournament)
+    _apply_disciplines_frozen(session, tournament, out)
     return out
 
 
@@ -432,6 +437,7 @@ def update_tournament(
     session.refresh(tournament)
     out = TournamentOut.model_validate(tournament)
     out.vs_series_editable = not _has_registrations(session, tournament)
+    _apply_disciplines_frozen(session, tournament, out)
     return out
 
 
@@ -469,6 +475,7 @@ async def upload_logo(
     session.refresh(tournament)
     out = TournamentOut.model_validate(tournament)
     out.setup_missing = setup.setup_missing(tournament)
+    _apply_disciplines_frozen(session, tournament, out)
     return out
 
 
@@ -489,11 +496,16 @@ def get_logo(tournament: TournamentDep):
     return Response(content=tournament.logo_bytes, media_type=tournament.logo_mime)
 
 
-def generate_slug(tournament: Tournament, weapon: str, gender: str, material: str) -> str:
-    """The taxonomy code with spaces replaced by `-`, disambiguated against the
-    tournament's existing slugs with a `-2`, `-3`, ... suffix (design
-    discipline-identity D3)."""
-    base = taxonomy.taxonomy_code(weapon, gender, material).replace(" ", "-")
+def generate_slug(
+    tournament: Tournament, kind: DisciplineKind, weapon: str, gender: str, material: str
+) -> str:
+    """The taxonomy code, `Team-`-prefixed for a team discipline so it is
+    distinguishable from its individual counterpart, normalized, and
+    disambiguated against the tournament's existing slugs with a `-2`, `-3`,
+    ... suffix (design discipline-identity-modal D5, discipline-identity D3)."""
+    base = taxonomy.normalize_slug(taxonomy.taxonomy_code(weapon, gender, material)) or "Discipline"
+    if kind == DisciplineKind.TEAM:
+        base = f"Team-{base}"
     existing = {d.slug for d in tournament.disciplines}
     if base not in existing:
         return base
@@ -513,19 +525,23 @@ def add_discipline(
         # since the closed sets are the domain invariant, not the schema
         raise HTTPException(status_code=422, detail="invalid_classification")
     name = data.name
+    is_team = data.kind == DisciplineKind.TEAM
     if not taxonomy.is_taxonomy_weapon(data.weapon):
         if not name:
             raise HTTPException(status_code=422, detail="discipline_name_required")
     else:
-        name = name or taxonomy.taxonomy_name(data.weapon, data.gender, data.material)
+        name = name or taxonomy.discipline_name(data.weapon, data.gender, data.material, is_team)
     if data.slug is None:
-        discipline_slug = generate_slug(tournament, data.weapon, data.gender, data.material)
+        discipline_slug = generate_slug(tournament, data.kind, data.weapon, data.gender, data.material)
     else:
-        if any(d.slug == data.slug for d in tournament.disciplines):
+        normalized_slug = taxonomy.normalize_slug(data.slug) or generate_slug(
+            tournament, data.kind, data.weapon, data.gender, data.material
+        )
+        if any(d.slug == normalized_slug for d in tournament.disciplines):
             raise HTTPException(
-                status_code=409, detail=f"discipline_slug_taken: {data.slug}"
+                status_code=409, detail=f"discipline_slug_taken: {normalized_slug}"
             )
-        discipline_slug = data.slug
+        discipline_slug = normalized_slug
     discipline = Discipline(
         tournament=tournament,
         slug=discipline_slug,
@@ -550,6 +566,8 @@ def add_discipline(
     setup.guard_published_completeness(tournament)
     session.commit()
     session.refresh(discipline)
+    # identity_frozen defaults to False (DisciplineOut) — correct here, since
+    # nothing can reference a discipline created in this same request
     return discipline
 
 
@@ -572,6 +590,34 @@ def _discipline_referenced(session: Session, discipline: Discipline) -> bool:
     )
 
 
+def _disciplines_frozen(session: Session, tournament: Tournament) -> dict[int, bool]:
+    """`_discipline_referenced`, for every discipline of the tournament at
+    once: two grouped queries rather than two per discipline, so serializing
+    a tournament detail does not cost 2N queries (design
+    discipline-identity-modal D6)."""
+    discipline_ids = [d.id for d in tournament.disciplines]
+    if not discipline_ids:
+        return {}
+    referenced = set(
+        session.scalars(
+            select(RegistrationDiscipline.discipline_id).where(
+                RegistrationDiscipline.discipline_id.in_(discipline_ids)
+            )
+        )
+    ) | set(
+        session.scalars(
+            select(Team.discipline_id).where(Team.discipline_id.in_(discipline_ids))
+        )
+    )
+    return {discipline_id: discipline_id in referenced for discipline_id in discipline_ids}
+
+
+def _apply_disciplines_frozen(session: Session, tournament: Tournament, out: TournamentOut) -> None:
+    frozen = _disciplines_frozen(session, tournament)
+    for discipline, discipline_out in zip(tournament.disciplines, out.disciplines, strict=True):
+        discipline_out.identity_frozen = frozen.get(discipline.id, False)
+
+
 @router.patch("/{slug}/disciplines/{discipline_slug}", response_model=DisciplineOut)
 def update_discipline(
     discipline_slug: str,
@@ -584,8 +630,13 @@ def update_discipline(
     discipline = next((d for d in tournament.disciplines if d.slug == discipline_slug), None)
     if discipline is None:
         raise HTTPException(status_code=404, detail="discipline_not_found")
+    normalized_slug = None
+    if data.slug is not None:
+        normalized_slug = taxonomy.normalize_slug(data.slug) or generate_slug(
+            tournament, data.kind, data.weapon, data.gender, data.material
+        )
     referenced = _discipline_referenced(session, discipline)
-    slug_changed = data.slug is not None and data.slug != discipline.slug
+    slug_changed = normalized_slug is not None and normalized_slug != discipline.slug
     classification_changed = (
         data.weapon != discipline.weapon
         or data.gender != discipline.gender
@@ -596,18 +647,18 @@ def update_discipline(
     if data.kind != discipline.kind and referenced:
         raise HTTPException(status_code=409, detail="discipline_kind_frozen")
     if slug_changed:
-        if any(d.slug == data.slug for d in tournament.disciplines if d.id != discipline.id):
+        if any(d.slug == normalized_slug for d in tournament.disciplines if d.id != discipline.id):
             raise HTTPException(
-                status_code=409, detail=f"discipline_slug_taken: {data.slug}"
+                status_code=409, detail=f"discipline_slug_taken: {normalized_slug}"
             )
-        discipline.slug = data.slug
+        discipline.slug = normalized_slug
     if not taxonomy.is_taxonomy_weapon(data.weapon) and not data.name:
         raise HTTPException(status_code=422, detail="discipline_name_required")
     discipline.weapon = data.weapon
     discipline.gender = data.gender
     discipline.material = data.material
-    discipline.name = data.name or taxonomy.taxonomy_name(
-        data.weapon, data.gender, data.material
+    discipline.name = data.name or taxonomy.discipline_name(
+        data.weapon, data.gender, data.material, data.kind == DisciplineKind.TEAM
     ) or discipline.name
     discipline.kind = data.kind
     discipline.team_min = data.team_min
@@ -624,7 +675,11 @@ def update_discipline(
     setup.guard_published_completeness(tournament)
     session.commit()
     session.refresh(discipline)
-    return discipline
+    out = DisciplineOut.model_validate(discipline)
+    # `referenced` was computed above, before this edit — an edit changes
+    # nothing about whether the discipline is referenced
+    out.identity_frozen = referenced
+    return out
 
 
 @router.delete("/{slug}/disciplines/{discipline_slug}", status_code=204)
@@ -853,7 +908,9 @@ def transfer_ownership(
         session.add(TournamentOrganizer(tournament_id=tournament.id, fencer_id=previous_owner_id))
     session.commit()
     session.refresh(tournament)
-    return tournament
+    out = TournamentOut.model_validate(tournament)
+    _apply_disciplines_frozen(session, tournament, out)
+    return out
 
 
 @router.post("/{slug}/assign-owner", response_model=TournamentOut)
@@ -869,7 +926,9 @@ def assign_owner(
     tournament.owner_id = target.id
     session.commit()
     session.refresh(tournament)
-    return tournament
+    out = TournamentOut.model_validate(tournament)
+    _apply_disciplines_frozen(session, tournament, out)
+    return out
 
 
 @router.post("/{slug}/cancel", response_model=TournamentOut)
@@ -880,7 +939,9 @@ def cancel_tournament(tournament: TournamentDep, session: SessionDep, fencer: Fe
     tournament.cancelled_at = datetime.now(UTC)
     session.commit()
     session.refresh(tournament)
-    return tournament
+    out = TournamentOut.model_validate(tournament)
+    _apply_disciplines_frozen(session, tournament, out)
+    return out
 
 
 @router.post("/{slug}/publish", response_model=TournamentOut)
@@ -904,6 +965,7 @@ def publish_tournament(tournament: TournamentDep, session: SessionDep, fencer: F
     session.refresh(tournament)
     out = TournamentOut.model_validate(tournament)
     out.setup_missing = setup.setup_missing(tournament)
+    _apply_disciplines_frozen(session, tournament, out)
     return out
 
 

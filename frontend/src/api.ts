@@ -150,6 +150,10 @@ export interface Discipline {
   schedule_where: string | null;
   ruleset_name: string | null;
   ruleset_url: string | null;
+  /** Whether slug, classification, and kind are frozen — derived from
+   *  whether any entry or team references the discipline, not from occupied
+   *  seats (design discipline-identity-modal D6). The name is never covered. */
+  identity_frozen: boolean;
 }
 
 /** Editable discipline payload (Setup add/patch). */

@@ -20,3 +20,28 @@ def test_is_taxonomy_weapon():
     for code in taxonomy.WEAPONS:
         assert taxonomy.is_taxonomy_weapon(code) is True
     assert taxonomy.is_taxonomy_weapon("Messer") is False
+
+
+def test_discipline_name_marks_a_team_discipline():
+    individual = taxonomy.discipline_name("LS", "", "", is_team=False)
+    team = taxonomy.discipline_name("LS", "", "", is_team=True)
+    assert individual == taxonomy.taxonomy_name("LS", "", "")
+    assert team == f"Team {individual}"
+    assert individual != team
+
+
+def test_discipline_name_returns_none_for_a_weapon_outside_the_taxonomy():
+    assert taxonomy.discipline_name("Messer", "", "", is_team=False) is None
+    assert taxonomy.discipline_name("Messer", "", "", is_team=True) is None
+
+
+def test_normalize_slug():
+    assert taxonomy.normalize_slug("Tešák") == "Tesak"
+    assert taxonomy.normalize_slug("Sword & Buckler (variant)") == "Sword-Buckler-variant"
+    assert taxonomy.normalize_slug("LS") == "LS"
+    assert taxonomy.normalize_slug("Team-LS") == "Team-LS"
+    assert taxonomy.normalize_slug("LS-A") == "LS-A"
+
+
+def test_normalize_slug_can_return_empty():
+    assert taxonomy.normalize_slug("!!!") == ""

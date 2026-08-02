@@ -8,6 +8,8 @@ import {
   type Discount,
   type DiscountBreakdown,
   type DiscountCondition,
+  type DisciplineGender,
+  type DisciplineMaterial,
   type ExtraItem,
   type RegistrationDetail,
   type TournamentDetail as TournamentDetailData,
@@ -24,6 +26,63 @@ export const LEGACY_WEAPONS: Record<string, string> = {
   RD: "Rapier & Dagger",
   SB: "Sword & Buckler",
 };
+
+const TAXONOMY_GENDERS: Record<string, string> = { "": "Open", W: "Women", M: "Men" };
+const TAXONOMY_MATERIALS: Record<string, string> = { "": "Steel", Plastic: "Plastic" };
+
+/** Port of backend/app/taxonomy.py:taxonomy_code (design
+ * discipline-identity-modal D3), kept beside LEGACY_WEAPONS as the one place
+ * this duplication lives. Meaningful even for a weapon outside the taxonomy. */
+export function taxonomyCode(
+  weapon: string,
+  gender: DisciplineGender,
+  material: DisciplineMaterial,
+): string {
+  const materialPrefix = material === "" ? "" : material;
+  const genderSuffix = gender === "W" || gender === "M" ? gender : "";
+  return `${materialPrefix} ${weapon}${genderSuffix}`.trim();
+}
+
+function taxonomyName(
+  weapon: string,
+  gender: DisciplineGender,
+  material: DisciplineMaterial,
+): string | null {
+  const weaponName = LEGACY_WEAPONS[weapon];
+  if (weaponName === undefined) return null;
+  const genderName = TAXONOMY_GENDERS[gender === "W" || gender === "M" ? gender : ""];
+  const name = `${weaponName} ${genderName}`;
+  return material === "Plastic" ? `${name} (${TAXONOMY_MATERIALS.Plastic})` : name;
+}
+
+/** The generated name for a discipline, marked as a team discipline when it
+ * is one - port of backend/app/taxonomy.py:discipline_name (design
+ * discipline-identity-modal D8). Null for a weapon outside the taxonomy,
+ * which requires an explicit name. */
+export function disciplineName(
+  weapon: string,
+  gender: DisciplineGender,
+  material: DisciplineMaterial,
+  isTeam: boolean,
+): string | null {
+  const name = taxonomyName(weapon, gender, material);
+  if (name === null) return null;
+  return isTeam ? `Team ${name}` : name;
+}
+
+// combining diacritical marks left behind by NFKD decomposition (design
+// discipline-identity-modal D4) - matches Python's unicodedata fold
+const COMBINING_MARKS = /[̀-ͯ]/g;
+
+/** Port of backend/app/taxonomy.py:normalize_slug - case-preserving (design
+ * discipline-identity-modal D4). May return the empty string; the caller
+ * decides the fallback. */
+export function normalizeSlug(value: string): string {
+  const folded = value.normalize("NFKD").replace(COMBINING_MARKS, "");
+  const ascii = folded.replace(/[^\x00-\x7F]/g, "");
+  const collapsed = ascii.replace(/[^A-Za-z0-9-]+/g, "-");
+  return collapsed.replace(/^-+|-+$/g, "");
+}
 
 // extra breathing room around inline "·" separators — several sit right
 // next to numerals/currency and read as cramped without it

@@ -923,6 +923,11 @@ button.secondary:disabled {
   text-align: center;
 }
 
+.row-actions {
+  display: inline-flex;
+  gap: 0.2rem;
+}
+
 .row-action {
   border: none;
   background: transparent;
@@ -1005,6 +1010,7 @@ tr.row-deleted td.col-actions {
   padding: 1.4rem;
   width: 26rem;
   max-height: 70vh;
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
   gap: 0.9rem;
@@ -1014,6 +1020,13 @@ tr.row-deleted td.col-actions {
   font-family: var(--font-doc);
   font-weight: 500;
   font-size: 17px;
+}
+
+.modal-rule {
+  width: 100%;
+  border: none;
+  border-top: var(--border-w) solid var(--hairline);
+  margin: 0;
 }
 
 .modal input {
