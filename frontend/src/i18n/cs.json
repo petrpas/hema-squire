@@ -526,7 +526,8 @@
     "tabs": {
       "tournament": "Turnaj",
       "register": "Registrovat se",
-      "registered": "Registrace"
+      "registered": "Registrace",
+      "teams": "Týmy"
     },
     "close": "Zavřít",
     "otherActions": "Další aktivity",
@@ -618,8 +619,8 @@
     "moveUp": "Posunout výš",
     "moveDown": "Posunout níž",
     "rebind": "Napojit na profil HR",
-    "save": "Uložit soupisku",
-    "saveFailed": "Soupisku se nepodařilo uložit.",
+    "saveAll": "Uložit soupisky",
+    "saveFailedTeams": "Nepodařilo se uložit: {{teams}}.",
     "addTitle": "Přidat člena",
     "rebindTitle": "Napojit člena na profil",
     "searchHint": "Vyhledej jméno v hemaratings, nebo ho přidej tak, jak je napsané.",

@@ -1,19 +1,17 @@
-import { IconArrowDown, IconArrowUp, IconSearch, IconX } from "@tabler/icons-react";
+import { IconX } from "@tabler/icons-react";
 import { type ReactNode, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 
 import NotFound from "./NotFound";
 import PaidStamp from "./PaidStamp";
-import RosterMemberDialog from "./RosterMemberDialog";
+import TeamsTab from "./TeamsTab";
 import { type HomeTab } from "./FencerShell";
 import { home } from "./routes";
 import {
   type Availability,
   type PaymentInstructions,
   type RegistrationDetail,
-  type RosterMember,
-  type TeamEntry,
   type TournamentDetail as TournamentDetailData,
   api,
 } from "./api";
@@ -226,167 +224,6 @@ function RegistrationLines({
   );
 }
 
-/** Adds, removes, renames, rebinds, and reorders a team's roster through its
- *  own endpoint alone — no total, VS, or capacity is touched (design
- *  team-disciplines D6). Offered independently of the amendment window: it
- *  remains available after `amendments_close` and is absent only when the
- *  registration itself is cancelled or expired (spec: "Roster editing changes
- *  no money", scenario "Editor open after amendments close"). */
-function RosterEditor({
-  slug,
-  team,
-  onUpdated,
-}: {
-  slug: string;
-  team: TeamEntry;
-  onUpdated: (team: TeamEntry) => void;
-}) {
-  const { t } = useTranslation();
-  const [members, setMembers] = useState<RosterMember[]>(() =>
-    team.members.length > 0 ? team.members : team.prefill ? [team.prefill] : [],
-  );
-  const [dirty, setDirty] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  // one slot: naming a member happens in the dialog, whether the member is
-  // being added or rebound, so the roster itself carries no name field and no
-  // search block (spec: "Member added through the dialog")
-  const [dialog, setDialog] = useState<{ index: number | null } | null>(null);
-
-  function patch(next: RosterMember[]) {
-    setMembers(next);
-    setDirty(true);
-  }
-
-  function renameMember(index: number, name: string) {
-    patch(members.map((m, i) => (i === index ? { ...m, name } : m)));
-  }
-
-  function removeMember(index: number) {
-    patch(members.filter((_, i) => i !== index));
-  }
-
-  function moveMember(index: number, delta: number) {
-    const target = index + delta;
-    if (target < 0 || target >= members.length) return;
-    const next = [...members];
-    [next[index], next[target]] = [next[target], next[index]];
-    patch(next);
-  }
-
-  function confirmDialog(member: RosterMember) {
-    const index = dialog?.index ?? null;
-    patch(index === null ? [...members, member] : members.map((m, i) => (i === index ? member : m)));
-    setDialog(null);
-  }
-
-  async function save() {
-    setBusy(true);
-    setError(null);
-    try {
-      const updated = await api.updateRoster(
-        slug,
-        team.id,
-        members.map((m) => ({
-          name: m.name,
-          hr_id: m.hr_id,
-          club: m.club,
-          nationality: m.nationality,
-        })),
-      );
-      onUpdated(updated);
-      setDirty(false);
-    } catch {
-      setError(t("roster.saveFailed"));
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  const shortfall = Math.max(team.team_min - members.length, 0);
-
-  return (
-    <div className="rail-card dashed">
-      <h3 className="register-section">{t("roster.title", { team: team.name })}</h3>
-      <p className="rail-hint">{t("roster.bounds", { min: team.team_min, max: team.team_max })}</p>
-      {shortfall > 0 && <p className="rail-hint">{t("roster.shortfall", { count: shortfall })}</p>}
-
-      {/* one line per member: their name, their club, their row actions */}
-      <ul className="detail-list">
-        {members.map((member, index) => (
-          <li key={index}>
-            <div className="checklist-row team-row">
-              <input
-                className="cell-input"
-                value={member.name}
-                onChange={(event) => renameMember(index, event.target.value)}
-              />
-              {member.club && <span className="muted">{member.club}</span>}
-              <button
-                type="button"
-                className="row-action"
-                title={t("roster.moveUp")}
-                disabled={index === 0}
-                onClick={() => moveMember(index, -1)}
-              >
-                <IconArrowUp size={16} stroke={1.5} />
-              </button>
-              <button
-                type="button"
-                className="row-action"
-                title={t("roster.moveDown")}
-                disabled={index === members.length - 1}
-                onClick={() => moveMember(index, 1)}
-              >
-                <IconArrowDown size={16} stroke={1.5} />
-              </button>
-              <button
-                type="button"
-                className="row-action"
-                title={t("roster.rebind")}
-                onClick={() => setDialog({ index })}
-              >
-                <IconSearch size={16} stroke={1.5} />
-              </button>
-              <button
-                type="button"
-                className="row-action"
-                title={t("actions.delete")}
-                onClick={() => removeMember(index)}
-              >
-                <IconX size={16} stroke={1.5} />
-              </button>
-            </div>
-          </li>
-        ))}
-      </ul>
-
-      {members.length < team.team_max && (
-        <button type="button" className="secondary" onClick={() => setDialog({ index: null })}>
-          {t("roster.add")}
-        </button>
-      )}
-
-      {error && <p className="login-error">{error}</p>}
-      <button
-        className="btn-primary param-save"
-        disabled={busy || !dirty}
-        onClick={() => void save()}
-      >
-        {t("roster.save")}
-      </button>
-
-      {dialog && (
-        <RosterMemberDialog
-          initial={dialog.index === null ? null : members[dialog.index]}
-          onConfirm={confirmDialog}
-          onClose={() => setDialog(null)}
-        />
-      )}
-    </div>
-  );
-}
-
 function RegistrationSummary({
   registration,
   detail,
@@ -411,7 +248,6 @@ function RegistrationPanel({
   canAmend,
   onAmend,
   onCancelled,
-  onTeamUpdated,
 }: {
   slug: string;
   detail: TournamentDetailData;
@@ -419,7 +255,6 @@ function RegistrationPanel({
   canAmend: boolean;
   onAmend: () => void;
   onCancelled: () => void;
-  onTeamUpdated: (team: TeamEntry) => void;
 }) {
   const { t } = useTranslation();
   // which destructive action is awaiting its confirmation, if any — the two
@@ -458,11 +293,6 @@ function RegistrationPanel({
       {registration.state === "reserved" && fullyQueued && (
         <p className="rail-hint">{t("registration.fullyQueuedHint")}</p>
       )}
-
-      {(registration.state === "reserved" || registration.state === "paid") &&
-        registration.teams.map((team) => (
-          <RosterEditor key={team.id} slug={slug} team={team} onUpdated={onTeamUpdated} />
-        ))}
 
       {/* amend and cancel both rewrite something the fencer already holds, so
           both are destructive controls behind a confirmation, standing as one
@@ -532,8 +362,10 @@ export default function TournamentDetail() {
   const [registrationChecked, setRegistrationChecked] = useState(false);
   // the page opens on `tournament` from every entry point (design D3); the
   // second tab, when offered, carries either the registration form or the
-  // held registration, with an amendment opening in place of the latter
-  const [tab, setTab] = useState<"tournament" | "registration">("tournament");
+  // held registration, with an amendment opening in place of the latter; the
+  // third tab, offered only alongside a held team, carries every roster
+  // editor (design team-disciplines D1)
+  const [tab, setTab] = useState<"tournament" | "registration" | "teams">("tournament");
   const [amending, setAmending] = useState(false);
 
   function refresh() {
@@ -581,6 +413,9 @@ export default function TournamentDetail() {
     (registration.state === "reserved" || registration.state === "paid") &&
     amendmentOpen(detail);
   const secondTabOffered = hasActive || canRegister;
+  // offered only alongside a held team, on a registration that is still
+  // active and a tournament not yet held (design team-disciplines D5)
+  const teamsTabOffered = !readOnly && hasActive && (registration?.teams.length ?? 0) > 0;
 
   // a cancellation on a closed tournament can drop both `hasActive` and
   // `canRegister` at once — fall back before a selected-but-absent tab (or a
@@ -589,12 +424,18 @@ export default function TournamentDetail() {
     if (!secondTabOffered) {
       setTab("tournament");
       setAmending(false);
+    } else if (tab === "teams" && !teamsTabOffered) {
+      // an amendment removing the last team, or a cancellation, can withdraw
+      // the teams tab out from under the fencer standing on it (design
+      // team-disciplines D5)
+      setTab("tournament");
     }
-  }, [secondTabOffered]);
+  }, [secondTabOffered, teamsTabOffered, tab]);
 
   /** Leaving the registration tab abandons any amendment in progress — the
-   *  page introduces no separate cancel control for it (design D3). */
-  function selectTab(next: "tournament" | "registration") {
+   *  page introduces no separate cancel control for it (design D3); this
+   *  covers the teams tab for free since the guard is `next !== "registration"`. */
+  function selectTab(next: "tournament" | "registration" | "teams") {
     if (next !== "registration") setAmending(false);
     setTab(next);
   }
@@ -620,6 +461,14 @@ export default function TournamentDetail() {
               onClick={() => selectTab("registration")}
             >
               {hasActive ? t("detail.tabs.registered") : t("detail.tabs.register")}
+            </button>
+          )}
+          {teamsTabOffered && (
+            <button
+              className={tab === "teams" ? "active" : ""}
+              onClick={() => selectTab("teams")}
+            >
+              {t("detail.tabs.teams")}
             </button>
           )}
         </nav>
@@ -653,6 +502,23 @@ export default function TournamentDetail() {
                 </section>
               )}
             </>
+          ) : tab === "teams" && registration ? (
+            <TeamsTab
+              slug={slug}
+              teams={registration.teams}
+              onTeamUpdated={(updated) =>
+                setRegistration((prev) =>
+                  prev
+                    ? {
+                        ...prev,
+                        teams: prev.teams.map((team) =>
+                          team.id === updated.id ? updated : team,
+                        ),
+                      }
+                    : prev,
+                )
+              }
+            />
           ) : amending && registration ? (
             <RegistrationForm
               detail={detail}
@@ -678,18 +544,6 @@ export default function TournamentDetail() {
                 canAmend={canAmend}
                 onAmend={() => setAmending(true)}
                 onCancelled={refresh}
-                onTeamUpdated={(updated) =>
-                  setRegistration((prev) =>
-                    prev
-                      ? {
-                          ...prev,
-                          teams: prev.teams.map((team) =>
-                            team.id === updated.id ? updated : team,
-                          ),
-                        }
-                      : prev,
-                  )
-                }
               />
             )
           ) : (

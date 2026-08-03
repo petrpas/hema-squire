@@ -526,7 +526,8 @@
     "tabs": {
       "tournament": "Tournament",
       "register": "Register",
-      "registered": "Registered"
+      "registered": "Registered",
+      "teams": "Teams"
     },
     "close": "Close",
     "otherActions": "Other actions",
@@ -618,8 +619,8 @@
     "moveUp": "Move up",
     "moveDown": "Move down",
     "rebind": "Bind to an HR profile",
-    "save": "Save roster",
-    "saveFailed": "Could not save the roster.",
+    "saveAll": "Save rosters",
+    "saveFailedTeams": "Could not save: {{teams}}.",
     "addTitle": "Add member",
     "rebindTitle": "Bind member to a profile",
     "searchHint": "Search hemaratings for this name, or add it as typed.",

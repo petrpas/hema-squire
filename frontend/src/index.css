@@ -932,6 +932,14 @@ button.secondary:disabled {
   cursor: default;
 }
 
+/* the teams tab's one shared save sits at the tab's foot sized to its own
+   label, not stretched full-width like the setup panels' saves (design
+   team-disciplines D6) — .param-save itself stays untouched */
+.param-save.param-save-inline {
+  width: auto;
+  align-self: flex-start;
+}
+
 /* ===== operations rail ===== */
 
 .rail {
@@ -2083,6 +2091,15 @@ label.checklist-row > input[type="checkbox"] {
   border-bottom: none;
 }
 
+/* the Teams tab: one bordered block per team (rail-card's own solid hairline,
+   design team-disciplines D1) separated by a gap so no two blocks' borders
+   touch, with the shared save at the foot (design D6) */
+.teams-tab {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
 /* an added team's own line, and a roster member's row (shared shape: name,
    price/detail column, row actions) — a plain div rather than
    label.checklist-row, since neither carries a checkbox */
@@ -2098,6 +2115,27 @@ label.checklist-row > input[type="checkbox"] {
 .team-row .checklist-name,
 .team-row .cell-input {
   flex: 1;
+}
+
+/* a roster row's name field is editable throughout, so the sheet-table's
+   --stamp accent rule (which reads as "editable", but here reads as an
+   error on every row) is scoped back down to the ordinary hairline at rest,
+   turning --stamp only on focus like any other text field (design
+   team-disciplines D7) */
+.team-row .cell-input {
+  border-bottom: var(--border-w) solid var(--hairline);
+}
+
+.team-row .cell-input:focus {
+  border-bottom: var(--focus);
+}
+
+/* the HRID column: fixed-width and muted so it, the name, and the row
+   actions line up down the roster even when empty (design team-disciplines
+   D8) */
+.team-row .roster-hrid {
+  flex: none;
+  width: 3.5rem;
 }
 
 .team-add-row {
