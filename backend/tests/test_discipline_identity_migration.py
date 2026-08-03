@@ -66,7 +66,10 @@ def pre_migration_db(tmp_path) -> Path:
 
 @pytest.fixture
 def migrated_db(pre_migration_db) -> Path:
-    result = _run_alembic("upgrade", "head", db_path=pre_migration_db)
+    # pinned to the revision under test, not "head" — a later migration
+    # (add-field-validation's discipline slug rewrite) legitimately touches
+    # the same table and would otherwise make this test depend on it
+    result = _run_alembic("upgrade", "52ba5b743d48", db_path=pre_migration_db)
     assert result.returncode == 0, result.stderr
     return pre_migration_db
 

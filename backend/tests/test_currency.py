@@ -499,7 +499,11 @@ def test_enabling_eur_blocked_by_legacy_fixed_fees(client, auth_headers):
 
     response = _patch(client, headers, eur_payments_enabled=True)
     assert response.status_code == 422
-    assert response.json()["detail"] == "legacy_fixed_fees_block_eur"
+    assert response.json()["detail"] == {
+        "errors": [
+            {"field": "eur_payments_enabled", "code": "legacy_fixed_fees_block_eur", "params": {}}
+        ]
+    }
 
 
 def test_registration_instructions_round_trip(client, auth_headers):

@@ -2,9 +2,16 @@ import asyncio
 import logging
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
+from fastapi.exceptions import RequestValidationError
 
 from app.config import settings
+from app.errors import (
+    FieldValidationError,
+    field_validation_error_handler,
+    http_exception_handler,
+    validation_exception_handler,
+)
 from app.routers import (
     accounts,
     admin,
@@ -76,6 +83,9 @@ async def lifespan(app: FastAPI):
 
 def create_app() -> FastAPI:
     app = FastAPI(title="HEMA Squire", lifespan=lifespan)
+    app.add_exception_handler(RequestValidationError, validation_exception_handler)
+    app.add_exception_handler(HTTPException, http_exception_handler)
+    app.add_exception_handler(FieldValidationError, field_validation_error_handler)
 
     @app.get("/api/health")
     def health() -> dict[str, str]:

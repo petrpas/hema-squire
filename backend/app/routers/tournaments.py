@@ -8,7 +8,7 @@ from PIL import Image, UnidentifiedImageError
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session, selectinload
 
-from app import setup, taxonomy
+from app import money_bounds, setup, taxonomy
 from app.auth import (
     current_fencer,
     require_console_access,
@@ -22,6 +22,7 @@ from app.availability import (
     team_queue_length,
 )
 from app.db import get_session
+from app.errors import FieldValidationError
 from app.models import (
     ACTION_CATEGORIES,
     BankTransaction,
@@ -432,6 +433,31 @@ def update_tournament(
             ),
         )
     _apply_currency_invariants(tournament)
+    # local-currency money: ceiling resolved from the currency now in effect
+    # (design 2.4a); checked only for fields this request actually touches —
+    # an untouched stored value is never re-validated (design Risks)
+    money_fields = {
+        field: updates[field]
+        for field in (
+            "weapon_rental_fee",
+            "weapon_rental_fee_early",
+            "afterparty_fee",
+            "afterparty_fee_early",
+        )
+        if field in updates
+    }
+    money_errors = money_bounds.collect_local_money_errors(tournament, money_fields)
+    if "discounts" in updates:
+        for index, discount in enumerate(updates["discounts"] or []):
+            effect = discount.get("effect") or {}
+            if effect.get("kind") == "fixed":
+                error = money_bounds.local_money_error(
+                    tournament, f"discounts.{index}.effect.value", effect.get("value")
+                )
+                if error:
+                    money_errors.append(error)
+    if money_errors:
+        raise FieldValidationError(money_errors)
     setup.guard_published_completeness(tournament)
     session.commit()
     session.refresh(tournament)
@@ -520,6 +546,11 @@ def add_discipline(
     data: DisciplineIn, tournament: TournamentDep, session: SessionDep, fencer: FencerDep
 ):
     require_console_access(session, tournament, fencer)
+    money_errors = money_bounds.collect_local_money_errors(
+        tournament, {"fee": data.fee, "fee_early": data.fee_early}
+    )
+    if money_errors:
+        raise FieldValidationError(money_errors)
     if data.gender not in ("", "W", "M") or data.material not in ("", "Plastic"):
         # already enforced by the schema's Literal types; kept as a guard
         # since the closed sets are the domain invariant, not the schema
@@ -532,16 +563,14 @@ def add_discipline(
     else:
         name = name or taxonomy.discipline_name(data.weapon, data.gender, data.material, is_team)
     if data.slug is None:
+        # the schema's own BeforeValidator already normalized an override, and
+        # maps an empty result to None (design D6, task 8a.1) — this branch is
+        # therefore "no override given" or "override normalized to nothing"
         discipline_slug = generate_slug(tournament, data.kind, data.weapon, data.gender, data.material)
     else:
-        normalized_slug = taxonomy.normalize_slug(data.slug) or generate_slug(
-            tournament, data.kind, data.weapon, data.gender, data.material
-        )
-        if any(d.slug == normalized_slug for d in tournament.disciplines):
-            raise HTTPException(
-                status_code=409, detail=f"discipline_slug_taken: {normalized_slug}"
-            )
-        discipline_slug = normalized_slug
+        if any(d.slug == data.slug for d in tournament.disciplines):
+            raise HTTPException(status_code=409, detail=f"discipline_slug_taken: {data.slug}")
+        discipline_slug = data.slug
     discipline = Discipline(
         tournament=tournament,
         slug=discipline_slug,
@@ -630,11 +659,14 @@ def update_discipline(
     discipline = next((d for d in tournament.disciplines if d.slug == discipline_slug), None)
     if discipline is None:
         raise HTTPException(status_code=404, detail="discipline_not_found")
-    normalized_slug = None
-    if data.slug is not None:
-        normalized_slug = taxonomy.normalize_slug(data.slug) or generate_slug(
-            tournament, data.kind, data.weapon, data.gender, data.material
-        )
+    money_errors = money_bounds.collect_local_money_errors(
+        tournament, {"fee": data.fee, "fee_early": data.fee_early}
+    )
+    if money_errors:
+        raise FieldValidationError(money_errors)
+    # already normalized (and, if it normalized to nothing, mapped to None) by
+    # the schema's own BeforeValidator (design D6, task 8a.1)
+    normalized_slug = data.slug
     referenced = _discipline_referenced(session, discipline)
     slug_changed = normalized_slug is not None and normalized_slug != discipline.slug
     classification_changed = (
@@ -776,6 +808,9 @@ def add_extra_item(
     data: ExtraItemIn, tournament: TournamentDep, session: SessionDep, fencer: FencerDep
 ):
     require_console_access(session, tournament, fencer)
+    money_errors = money_bounds.collect_local_money_errors(tournament, {"price": data.price})
+    if money_errors:
+        raise FieldValidationError(money_errors)
     item = ExtraItem(tournament=tournament, **_normalized_extra_item_fields(data))
     session.add(item)
     setup.guard_published_completeness(tournament)
@@ -796,6 +831,9 @@ def update_extra_item(
     item = next((i for i in tournament.extra_items if i.id == item_id), None)
     if item is None:
         raise HTTPException(status_code=404, detail="extra_item_not_found")
+    money_errors = money_bounds.collect_local_money_errors(tournament, {"price": data.price})
+    if money_errors:
+        raise FieldValidationError(money_errors)
     fields = _normalized_extra_item_fields(data)
     item.name = fields["name"]
     item.category = fields["category"]

@@ -33,7 +33,9 @@ def test_slug_collision_rejected(client, auth_headers):
         headers=headers,
     )
     assert response.status_code == 409
-    assert response.json()["detail"] == "slug_taken"
+    assert response.json()["detail"] == {
+        "errors": [{"field": "slug", "code": "slug_taken", "params": {}}]
+    }
 
 
 def test_setup_fields_patch_round_trip_and_detail(client, auth_headers):
@@ -163,7 +165,11 @@ def test_qualification_requires_criteria_when_not_open(client, auth_headers):
         headers=headers,
     )
     assert rejected.status_code == 422
-    assert rejected.json()["detail"] == "qualification_criteria_required"
+    assert rejected.json()["detail"] == {
+        "errors": [
+            {"field": "qualification_criteria", "code": "qualification_criteria_required", "params": {}}
+        ]
+    }
 
     accepted = client.patch(
         "/api/tournaments/na-duel-2026",
@@ -347,7 +353,9 @@ def test_custom_weapon_without_name_rejected(client, auth_headers):
         headers=headers,
     )
     assert response.status_code == 422
-    assert response.json()["detail"] == "discipline_name_required"
+    assert response.json()["detail"] == {
+        "errors": [{"field": "name", "code": "discipline_name_required", "params": {}}]
+    }
 
 
 def test_taxonomy_codes(client):

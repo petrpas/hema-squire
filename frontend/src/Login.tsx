@@ -1,9 +1,12 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
+import FieldError, { invalidProps } from "./FieldError";
 import HRSearchPicker from "./HRSearch";
 import { ApiError, type HRProfile, api, setToken } from "./api";
 import i18n from "./i18n";
+import { useFieldValidation } from "./useFieldValidation";
+import { apiErrors, checkPassword, checkString } from "./validation";
 
 const IMPLEMENTED_LANGUAGES = Object.keys(i18n.options.resources ?? {});
 
@@ -28,6 +31,14 @@ function SignupForm({ onSignedUp, onCancel }: { onSignedUp: () => void; onCancel
   const [showHrSearch, setShowHrSearch] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const validation = useFieldValidation();
+
+  function passwordCheck() {
+    return checkPassword("password", "SignupIn.password", password);
+  }
+  function nameCheck() {
+    return checkString("name", "SignupIn.display_name", name, { required: true });
+  }
 
   function changeLanguage(value: string) {
     setLanguage(value);
@@ -48,6 +59,7 @@ function SignupForm({ onSignedUp, onCancel }: { onSignedUp: () => void; onCancel
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
+    if (validation.validateAll([passwordCheck, nameCheck]) > 0) return;
     setBusy(true);
     setError(null);
     try {
@@ -64,8 +76,10 @@ function SignupForm({ onSignedUp, onCancel }: { onSignedUp: () => void; onCancel
     } catch (err) {
       if (err instanceof ApiError) {
         const detail = typeof err.detail === "string" ? err.detail : null;
+        const fieldErrors = apiErrors(err);
         if (detail === "email_already_registered") setError(t("signup.errors.emailTaken"));
         else if (detail === "hr_profile_not_found") setError(t("signup.errors.hrNotFound"));
+        else if (fieldErrors.length > 0) validation.applyApiErrors(fieldErrors);
         else if (err.status === 422) setError(t("signup.errors.invalid"));
         else setError(t("signup.errors.failed"));
       } else {
@@ -99,19 +113,31 @@ function SignupForm({ onSignedUp, onCancel }: { onSignedUp: () => void; onCancel
         <input
           type="password"
           value={password}
-          onChange={(e) => setPassword(e.target.value)}
+          onChange={(e) => {
+            setPassword(e.target.value);
+            validation.clearIfValid("password", passwordCheck);
+          }}
+          onBlur={() => validation.touch("password", passwordCheck)}
           required
           minLength={8}
+          {...invalidProps("password", validation.errors.password)}
         />
+        <FieldError field="password" error={validation.errors.password} />
       </label>
       <label>
         {t("signup.name")}
         <input
           value={name}
-          onChange={(e) => setName(e.target.value)}
+          onChange={(e) => {
+            setName(e.target.value);
+            validation.clearIfValid("name", nameCheck);
+          }}
+          onBlur={() => validation.touch("name", nameCheck)}
           required
           readOnly={hrProfile !== null}
+          {...invalidProps("name", validation.errors.name)}
         />
+        <FieldError field="name" error={validation.errors.name} />
       </label>
       <label>
         {t("signup.language")}

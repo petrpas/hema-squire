@@ -12,6 +12,16 @@ from pydantic import (
     model_validator,
 )
 
+from app import constraints
+from app.errors import FieldValueError
+from app.fieldtypes import (
+    DisciplineSlugStr,
+    HttpUrlStr,
+    MultilineStr,
+    SingleLineStr,
+    TolerantDecimal,
+    TolerantInt,
+)
 from app.i18n import catalog
 from app.models import (
     Currency,
@@ -25,15 +35,20 @@ from app.models import (
 )
 
 # an option answer is a size, a shirt cut, a meal choice — never prose
-OPTION_VALUE_MAX_LENGTH = 100
+OPTION_VALUE_MAX_LENGTH = constraints.OPTION_VALUE_MAX_LENGTH
 
 
 class SignupIn(BaseModel):
     email: EmailStr
-    password: str = Field(min_length=8)
-    display_name: str | None = Field(default=None, min_length=1, max_length=200)
+    password: str = Field(min_length=constraints.PASSWORD_MIN_LENGTH)
+    display_name: (
+        SingleLineStr(
+            constraints.DISPLAY_NAME_MAX_LENGTH, min_length=constraints.DISPLAY_NAME_MIN_LENGTH
+        )
+        | None
+    ) = None
     hr_id: int | None = None
-    club: str | None = Field(default=None, max_length=200)
+    club: SingleLineStr(constraints.CLUB_MAX_LENGTH) | None = None
     language: str = "cs"
 
     @field_validator("language")
@@ -60,7 +75,7 @@ class AccountOut(BaseModel):
 
 
 class PleaIn(BaseModel):
-    message: str | None = Field(default=None, max_length=1000)
+    message: MultilineStr(constraints.PLEA_MESSAGE_MAX_LENGTH) | None = None
 
 
 class PleaOut(BaseModel):
@@ -74,8 +89,13 @@ class PleaOut(BaseModel):
 
 class AccountUpdate(BaseModel):
     email: EmailStr | None = None
-    display_name: str | None = Field(default=None, min_length=1, max_length=200)
-    club: str | None = Field(default=None, max_length=200)
+    display_name: (
+        SingleLineStr(
+            constraints.DISPLAY_NAME_MAX_LENGTH, min_length=constraints.DISPLAY_NAME_MIN_LENGTH
+        )
+        | None
+    ) = None
+    club: SingleLineStr(constraints.CLUB_MAX_LENGTH) | None = None
     language: str | None = None
 
     @field_validator("language")
@@ -103,33 +123,40 @@ class DisciplineIn(BaseModel):
     # optional on creation: the system generates one from the classification
     # when omitted (design discipline-identity D3); an organizer override is
     # checked for uniqueness by the router, which is where a conflict can be
-    # named against the tournament's other disciplines
-    slug: str | None = Field(default=None, max_length=30)
-    name: str | None = None
+    # named against the tournament's other disciplines. Normalized ahead of
+    # its own pattern (design add-field-validation D6) — see fieldtypes.py.
+    slug: DisciplineSlugStr() = None
+    name: SingleLineStr(constraints.DISCIPLINE_NAME_MAX_LENGTH) | None = None
     # the five taxonomy weapons are offered as suggestions, but any weapon is
     # accepted (design discipline-identity D4); gender and material stay
     # closed sets
-    weapon: str = Field(min_length=1, max_length=30)
+    weapon: SingleLineStr(
+        constraints.DISCIPLINE_WEAPON_MAX_LENGTH, min_length=constraints.DISCIPLINE_WEAPON_MIN_LENGTH
+    )
     gender: Literal["", "W", "M"] = ""
     material: Literal["", "Plastic"] = ""
     # individual is the default and behaves exactly as before team disciplines
     # existed; a team discipline's capacity counts teams and its fee is per
     # team (design team-disciplines D2)
     kind: DisciplineKind = DisciplineKind.INDIVIDUAL
-    team_min: int | None = Field(default=None, ge=1)
-    team_max: int | None = Field(default=None, ge=1)
-    capacity: int = Field(gt=0)
-    fee: int | None = Field(default=None, ge=0)
-    fee_early: int | None = Field(default=None, ge=0)
+    team_min: int | None = Field(default=None, ge=constraints.TEAM_BOUND_MIN)
+    team_max: int | None = Field(default=None, ge=constraints.TEAM_BOUND_MIN)
+    capacity: TolerantInt = Field(gt=0)
+    # local-currency money: non-negative, ceiling resolved per request from
+    # the tournament's local_currency (design D4/2.4a) — the router checks it,
+    # since a static Field bound cannot know which currency this carries
+    fee: TolerantInt | None = Field(default=None, ge=0)
+    fee_early: TolerantInt | None = Field(default=None, ge=0)
     # EUR prices, filled only in local + EUR mode; authoritative, never
-    # computed from fee/fee_early (design Decision 1)
-    fee_eur: int | None = Field(default=None, ge=0)
-    fee_early_eur: int | None = Field(default=None, ge=0)
+    # computed from fee/fee_early (design Decision 1) — always EUR, so the
+    # ceiling is static
+    fee_eur: TolerantInt | None = Field(default=None, ge=0, le=constraints.MONEY_MAX["EUR"])
+    fee_early_eur: TolerantInt | None = Field(default=None, ge=0, le=constraints.MONEY_MAX["EUR"])
     # optional schedule + ruleset reference; informational, never affect pricing
-    schedule_when: str | None = Field(default=None, max_length=200)
-    schedule_where: str | None = Field(default=None, max_length=300)
-    ruleset_name: str | None = Field(default=None, max_length=100)
-    ruleset_url: str | None = Field(default=None, max_length=500)
+    schedule_when: SingleLineStr(constraints.DISCIPLINE_SCHEDULE_WHEN_MAX_LENGTH) | None = None
+    schedule_where: SingleLineStr(constraints.DISCIPLINE_SCHEDULE_WHERE_MAX_LENGTH) | None = None
+    ruleset_name: SingleLineStr(constraints.DISCIPLINE_RULESET_NAME_MAX_LENGTH) | None = None
+    ruleset_url: HttpUrlStr(constraints.DISCIPLINE_RULESET_URL_MAX_LENGTH) | None = None
 
     @model_validator(mode="after")
     def _team_bounds(self) -> DisciplineIn:
@@ -140,6 +167,16 @@ class DisciplineIn(BaseModel):
                 raise ValueError("team_max must not be below team_min")
         elif self.team_min is not None or self.team_max is not None:
             raise ValueError("team_min/team_max are only valid for a team discipline")
+        return self
+
+    @model_validator(mode="after")
+    def _capacity_ceiling(self) -> DisciplineIn:
+        # a team discipline's capacity counts teams, an individual's counts
+        # fencers — the ceiling is resolved from `kind`, not a static bound
+        # (design add-field-validation)
+        ceiling = constraints.DISCIPLINE_CAPACITY_MAX[str(self.kind)]
+        if self.capacity > ceiling:
+            raise FieldValueError("capacity", "out_of_range", {"min": 1, "max": ceiling})
         return self
 
 
@@ -171,20 +208,23 @@ class DisciplineOut(BaseModel):
 
 
 class ExtraItemIn(BaseModel):
-    name: str = Field(min_length=1, max_length=200)
+    name: SingleLineStr(
+        constraints.EXTRA_ITEM_NAME_MAX_LENGTH, min_length=constraints.EXTRA_ITEM_NAME_MIN_LENGTH
+    )
     category: ExtraCategory
-    price: int = Field(ge=0)
+    # local-currency money: ceiling resolved per request (design 2.4a)
+    price: TolerantInt = Field(ge=0)
     # EUR price, filled only in local + EUR mode; authoritative, never
-    # computed from `price` (design Decision 1)
-    price_eur: int | None = Field(default=None, ge=0)
-    max_qty: int = Field(default=1, ge=1)
+    # computed from `price` (design Decision 1) — always EUR, static ceiling
+    price_eur: TolerantInt | None = Field(default=None, ge=0, le=constraints.MONEY_MAX["EUR"])
+    max_qty: TolerantInt = Field(default=1, ge=constraints.EXTRA_ITEM_MAX_QTY_MIN)
     # optional descriptive fields; informational, never affect pricing
-    schedule_when: str | None = Field(default=None, max_length=200)
-    schedule_where: str | None = Field(default=None, max_length=300)
-    remark: str | None = Field(default=None, max_length=500)
+    schedule_when: SingleLineStr(constraints.EXTRA_ITEM_SCHEDULE_WHEN_MAX_LENGTH) | None = None
+    schedule_where: SingleLineStr(constraints.EXTRA_ITEM_SCHEDULE_WHERE_MAX_LENGTH) | None = None
+    remark: MultilineStr(constraints.EXTRA_ITEM_REMARK_MAX_LENGTH) | None = None
     # optional single option the fencer answers on selection; choices empty
     # means free text. Never affects pricing.
-    option_label: str | None = Field(default=None, max_length=50)
+    option_label: SingleLineStr(constraints.EXTRA_ITEM_OPTION_LABEL_MAX_LENGTH) | None = None
     option_choices: list[str] = []
 
     @model_validator(mode="after")
@@ -196,11 +236,23 @@ class ExtraItemIn(BaseModel):
             trimmed = choice.strip()
             if trimmed and trimmed not in seen:
                 if len(trimmed) > OPTION_VALUE_MAX_LENGTH:
-                    raise ValueError("option choice too long")
+                    raise ValueError("too_long")
                 seen.append(trimmed)
         self.option_choices = seen
         if self.option_choices and self.option_label is None:
             raise ValueError("option choices require an option label")
+        return self
+
+    @model_validator(mode="after")
+    def _max_qty_ceiling(self) -> ExtraItemIn:
+        # action categories (seminar/afterparty/other_action) are always
+        # forced to 1 by the router regardless of what is submitted, so they
+        # carry no ceiling of their own here (design add-field-validation)
+        ceiling = constraints.EXTRA_ITEM_MAX_QTY_CEILING.get(str(self.category))
+        if ceiling is not None and self.max_qty > ceiling:
+            raise FieldValueError(
+                "max_qty", "out_of_range", {"min": constraints.EXTRA_ITEM_MAX_QTY_MIN, "max": ceiling}
+            )
         return self
 
 
@@ -218,7 +270,7 @@ ScopeCategory = Literal[
 
 class DiscountCondition(BaseModel):
     kind: Literal["discipline_count", "early"]
-    count: int | None = Field(default=None, ge=1)
+    count: int | None = Field(default=None, ge=constraints.DISCOUNT_COUNT_MIN)
     until: datetime.date | None = None
 
     @model_validator(mode="after")
@@ -237,31 +289,38 @@ class DiscountCondition(BaseModel):
 
 class DiscountEffect(BaseModel):
     kind: Literal["fixed", "percent"]
-    value: int = Field(ge=0)
+    # a fixed amount is local-currency money, ceiling resolved per request
+    # (design 2.4a); a percent effect is bounded to 0-100 below
+    value: TolerantInt = Field(ge=0)
     # the EUR amount of a fixed discount — a price decision like any other
     # (design Decision 1), filled only in local + EUR mode. A percentage
-    # effect is currency-neutral and carries no second value.
-    value_eur: int | None = Field(default=None, ge=0)
+    # effect is currency-neutral and carries no second value. Always EUR, so
+    # the ceiling is static.
+    value_eur: TolerantInt | None = Field(default=None, ge=0, le=constraints.MONEY_MAX["EUR"])
 
     @model_validator(mode="after")
     def _percent_bounds(self) -> DiscountEffect:
-        if self.kind == "percent" and self.value > 100:
-            raise ValueError("percent discount cannot exceed 100")
+        if self.kind == "percent" and self.value > constraints.PERCENT_MAX:
+            raise ValueError("out_of_range")
         if self.kind == "percent" and self.value_eur is not None:
             raise ValueError("percent discount cannot carry a EUR amount")
         return self
 
 
 class DiscountIn(BaseModel):
-    name: str = Field(min_length=1, max_length=200)
+    name: SingleLineStr(
+        constraints.DISCOUNT_NAME_MAX_LENGTH, min_length=constraints.DISCOUNT_NAME_MIN_LENGTH
+    )
     condition: DiscountCondition
     effect: DiscountEffect
     scope: list[ScopeCategory] = ["discipline"]
 
 
 class OrganizerIn(BaseModel):
-    name: str = Field(min_length=1, max_length=200)
-    link: str | None = Field(default=None, max_length=500)
+    name: SingleLineStr(
+        constraints.ORGANIZER_NAME_MAX_LENGTH, min_length=constraints.ORGANIZER_NAME_MIN_LENGTH
+    )
+    link: HttpUrlStr(constraints.ORGANIZER_LINK_MAX_LENGTH) | None = None
 
 
 class OrganizerOut(BaseModel):
@@ -278,27 +337,40 @@ def _tolerant_organizers(value: Any) -> Any:
 
 
 class TournamentCreate(BaseModel):
-    slug: str = Field(pattern=r"^[a-z0-9][a-z0-9-]{1,98}$")
-    display_name: str = Field(min_length=1, max_length=200)
+    slug: str = Field(pattern=constraints.TOURNAMENT_SLUG_PATTERN)
+    display_name: SingleLineStr(
+        constraints.TOURNAMENT_DISPLAY_NAME_MAX_LENGTH,
+        min_length=constraints.TOURNAMENT_DISPLAY_NAME_MIN_LENGTH,
+    )
     date: datetime.date
     language: str = "cs"
 
 
 class TournamentUpdate(BaseModel):
-    display_name: str | None = Field(default=None, min_length=1, max_length=200)
-    subtitle: str | None = Field(default=None, max_length=400)
+    display_name: (
+        SingleLineStr(
+            constraints.TOURNAMENT_DISPLAY_NAME_MAX_LENGTH,
+            min_length=constraints.TOURNAMENT_DISPLAY_NAME_MIN_LENGTH,
+        )
+        | None
+    ) = None
+    subtitle: SingleLineStr(constraints.TOURNAMENT_SUBTITLE_MAX_LENGTH) | None = None
     date: datetime.date | None = None
     language: str | None = None
-    location: str | None = Field(default=None, max_length=300)
-    description: str | None = None
+    location: SingleLineStr(constraints.TOURNAMENT_LOCATION_MAX_LENGTH) | None = None
+    description: MultilineStr(constraints.TOURNAMENT_DESCRIPTION_MAX_LENGTH) | None = None
     qualification_open: bool | None = None
-    qualification_criteria: str | None = None
-    registration_instructions: str | None = None
+    qualification_criteria: (
+        MultilineStr(constraints.TOURNAMENT_QUALIFICATION_CRITERIA_MAX_LENGTH) | None
+    ) = None
+    registration_instructions: (
+        MultilineStr(constraints.TOURNAMENT_REGISTRATION_INSTRUCTIONS_MAX_LENGTH) | None
+    ) = None
     local_currency: Currency | None = None
     eur_payments_enabled: bool | None = None
     # local-currency units per 1 EUR; a Setup convenience for recalculate-
     # missing only (design Decision 3) — a non-positive rate is meaningless
-    eur_rate: decimal.Decimal | None = Field(default=None, gt=0)
+    eur_rate: TolerantDecimal | None = Field(default=None, gt=0)
     organizers: list[OrganizerIn] | None = None
     registration_opens: datetime.date | None = None
     registration_closes: datetime.date | None = None
@@ -313,24 +385,40 @@ class TournamentUpdate(BaseModel):
     discounts: list[DiscountIn] | None = None
     reservation_validity_days: int | None = Field(default=None, gt=0)
     reminder_day: int | None = Field(default=None, gt=0)
-    amount_tolerance_percent: int | None = Field(default=None, ge=0, le=100)
+    amount_tolerance_percent: int | None = Field(default=None, ge=0, le=constraints.PERCENT_MAX)
     refundable_until: datetime.date | None = None
-    bank_account: str | None = None
+    bank_account: (
+        SingleLineStr(
+            constraints.TOURNAMENT_BANK_ACCOUNT_MAX_LENGTH, pattern=constraints.BANK_ACCOUNT_PATTERN
+        )
+        | None
+    ) = None
     # hours after expiry a VS-matched payment may still reinstate a
     # reservation, subject to capacity; 0 disables automatic reinstatement
     expiry_grace_hours: int | None = Field(default=None, ge=0)
-    fio_token: str | None = None
+    fio_token: SingleLineStr(constraints.TOURNAMENT_FIO_TOKEN_MAX_LENGTH) | None = None
     unpaid_list_treatment: UnpaidListTreatment | None = None
-    output_sheet_url: str | None = None
-    hr_category_map: dict[str, str] | None = None
+    output_sheet_url: HttpUrlStr(constraints.TOURNAMENT_OUTPUT_SHEET_URL_MAX_LENGTH) | None = None
+    hr_category_map: (
+        dict[
+            SingleLineStr(constraints.HR_CATEGORY_MAP_KEY_MAX_LENGTH),
+            SingleLineStr(constraints.HR_CATEGORY_MAP_VALUE_MAX_LENGTH),
+        ]
+        | None
+    ) = None
     early_bird_until: datetime.date | None = None
-    weapon_rental_fee: int | None = Field(default=None, ge=0)
-    weapon_rental_fee_early: int | None = Field(default=None, ge=0)
-    afterparty_fee: int | None = Field(default=None, ge=0)
-    afterparty_fee_early: int | None = Field(default=None, ge=0)
+    # local-currency money: ceiling resolved per request (design 2.4a); no
+    # EUR-suffixed counterpart exists for these two legacy fixed fees, which
+    # is why a tournament using them cannot enable EUR (_apply_currency_invariants)
+    weapon_rental_fee: TolerantInt | None = Field(default=None, ge=0)
+    weapon_rental_fee_early: TolerantInt | None = Field(default=None, ge=0)
+    afterparty_fee: TolerantInt | None = Field(default=None, ge=0)
+    afterparty_fee_early: TolerantInt | None = Field(default=None, ge=0)
     # editable only until the tournament's first registration (design
     # Decision 2); rejected otherwise, and rejected on collision
-    vs_series: int | None = Field(default=None, ge=1, le=99)
+    vs_series: int | None = Field(
+        default=None, ge=constraints.VS_SERIES_MIN, le=constraints.VS_SERIES_MAX
+    )
 
     # a rate is a Setup convenience the organizer reads back, not a computed
     # figure; two decimal places is what an organizer actually types
@@ -481,15 +569,11 @@ class TeamEntryIn(BaseModel):
 
     id: int | None = None
     slug: str
-    name: str = Field(min_length=1, max_length=200)
-
-    @field_validator("name")
-    @classmethod
-    def _trim_name(cls, value: str) -> str:
-        trimmed = value.strip()
-        if not trimmed:
-            raise ValueError("team name required")
-        return trimmed
+    # SingleLineStr trims and collapses whitespace before min_length is
+    # checked, so a whitespace-only name is already rejected as too_short
+    name: SingleLineStr(
+        constraints.TEAM_NAME_MAX_LENGTH, min_length=constraints.TEAM_NAME_MIN_LENGTH
+    )
 
 
 class PreviewTeamIn(BaseModel):
@@ -500,18 +584,12 @@ class PreviewTeamIn(BaseModel):
 
 
 class RosterMemberIn(BaseModel):
-    name: str = Field(min_length=1, max_length=200)
+    name: SingleLineStr(
+        constraints.ROSTER_MEMBER_NAME_MAX_LENGTH, min_length=constraints.ROSTER_MEMBER_NAME_MIN_LENGTH
+    )
     hr_id: int | None = None
-    club: str | None = Field(default=None, max_length=200)
-    nationality: str | None = Field(default=None, max_length=100)
-
-    @field_validator("name")
-    @classmethod
-    def _trim_name(cls, value: str) -> str:
-        trimmed = value.strip()
-        if not trimmed:
-            raise ValueError("member name required")
-        return trimmed
+    club: SingleLineStr(constraints.ROSTER_MEMBER_CLUB_MAX_LENGTH) | None = None
+    nationality: SingleLineStr(constraints.ROSTER_MEMBER_NATIONALITY_MAX_LENGTH) | None = None
 
 
 class RosterMemberOut(BaseModel):
@@ -547,10 +625,10 @@ class TeamEntryOut(BaseModel):
 
 class ExtraSelectionIn(BaseModel):
     extra_item_id: int
-    qty: int = Field(default=1, ge=1)
+    qty: TolerantInt = Field(default=1, ge=constraints.EXTRA_SELECTION_QTY_MIN)
     # answer to the item's option; presence is validated against the item at
     # registration time (the schema cannot see which item this points at)
-    option_value: str | None = Field(default=None, max_length=OPTION_VALUE_MAX_LENGTH)
+    option_value: SingleLineStr(OPTION_VALUE_MAX_LENGTH) | None = None
 
 
 class RegisterIn(BaseModel):
@@ -745,7 +823,7 @@ class TransactionOut(BaseModel):
 
 class LinkIn(BaseModel):
     transaction_id: int
-    vs: list[int] = Field(min_length=1)
+    vs: list[int] = Field(min_length=constraints.LINK_VS_MIN_ITEMS)
 
 
 class IngestAndMatchOut(BaseModel):
@@ -762,9 +840,9 @@ class IngestAndMatchOut(BaseModel):
 
 
 class RuleIn(BaseModel):
-    phase: str = Field(max_length=20)
-    kind: str = Field(max_length=30)
-    target: str = Field(max_length=50)
+    phase: str = Field(max_length=constraints.RULE_PHASE_MAX_LENGTH)
+    kind: str = Field(max_length=constraints.RULE_KIND_MAX_LENGTH)
+    target: str = Field(max_length=constraints.RULE_TARGET_MAX_LENGTH)
     payload: dict
 
 

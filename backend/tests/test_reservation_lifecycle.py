@@ -581,7 +581,15 @@ def test_amendments_close_after_registration_closes_rejected(client, auth_header
         headers=organizer,
     )
     assert response.status_code == 422
-    assert response.json()["detail"] == "amendments_close_after_registration_closes"
+    assert response.json()["detail"] == {
+        "errors": [
+            {
+                "field": "amendments_close",
+                "code": "amendments_close_after_registration_closes",
+                "params": {},
+            }
+        ]
+    }
 
 
 def test_expiry_grace_hours_zero_disables_automatic_reinstatement(client, auth_headers, fio):

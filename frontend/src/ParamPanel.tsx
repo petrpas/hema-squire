@@ -2,7 +2,19 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import type { Phase } from "./Console";
+import FieldError, { invalidProps } from "./FieldError";
 import { type TournamentDetail, api } from "./api";
+import { parseInteger } from "./numeric";
+import { useFieldValidation } from "./useFieldValidation";
+import {
+  apiErrors,
+  checkMoney,
+  checkNumeric,
+  checkPercent,
+  checkString,
+  checkUrl,
+  type FieldError as FieldErrorValue,
+} from "./validation";
 
 type FieldType = "number" | "date" | "text";
 
@@ -35,6 +47,35 @@ const PHASE_PARAMS: Record<Phase, ParamField[]> = {
   teams: [],
 };
 
+// per-field checks against TournamentUpdate's bounds (design
+// `add-field-validation`); money fields resolve their ceiling from the
+// tournament's own currency (2.4a) rather than a static bound
+function fieldCheck(
+  key: string,
+  raw: string,
+  currency: TournamentDetail["local_currency"],
+): FieldErrorValue | null {
+  switch (key) {
+    case "weapon_rental_fee":
+    case "afterparty_fee":
+      return checkMoney(key, raw, currency);
+    case "reservation_validity_days":
+      return checkNumeric(key, "TournamentUpdate.reservation_validity_days", raw);
+    case "reminder_day":
+      return checkNumeric(key, "TournamentUpdate.reminder_day", raw);
+    case "amount_tolerance_percent":
+      return checkPercent(key, raw);
+    case "expiry_grace_hours":
+      return checkNumeric(key, "TournamentUpdate.expiry_grace_hours", raw);
+    case "bank_account":
+      return checkString(key, "TournamentUpdate.bank_account", raw);
+    case "output_sheet_url":
+      return checkUrl(key, "TournamentUpdate.output_sheet_url", raw);
+    default:
+      return null;
+  }
+}
+
 export default function ParamPanel({
   phase,
   detail,
@@ -51,6 +92,8 @@ export default function ParamPanel({
   const [values, setValues] = useState<Record<string, string>>({});
   const [dirty, setDirty] = useState(false);
   const [busy, setBusy] = useState(false);
+  const validation = useFieldValidation();
+  const currency = detail?.local_currency ?? "CZK";
 
   useEffect(() => {
     if (detail === null) return;
@@ -60,8 +103,10 @@ export default function ParamPanel({
       next[field.key] = value === null || value === undefined ? "" : String(value);
     }
     setValues(next);
+    validation.clearAll();
     setDirty(false);
-  }, [detail, phase]); // eslint-disable-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [detail, phase]);
 
   if (fields.length === 0) {
     return (
@@ -73,6 +118,8 @@ export default function ParamPanel({
   }
 
   async function save() {
+    const checks = fields.map((field) => () => fieldCheck(field.key, values[field.key] ?? "", currency));
+    if (validation.validateAll(checks) > 0) return;
     setBusy(true);
     try {
       const patch: Record<string, unknown> = {};
@@ -80,13 +127,18 @@ export default function ParamPanel({
         const raw = values[field.key] ?? "";
         if (raw === "") {
           patch[field.key] = null;
+        } else if (field.type === "number") {
+          const result = parseInteger(raw);
+          patch[field.key] = result.ok ? result.value : null;
         } else {
-          patch[field.key] = field.type === "number" ? Number(raw) : raw;
+          patch[field.key] = raw;
         }
       }
       await api.updateTournament(slug, patch);
       setDirty(false);
       onSaved();
+    } catch (err) {
+      validation.applyApiErrors(apiErrors(err));
     } finally {
       setBusy(false);
     }
@@ -96,22 +148,30 @@ export default function ParamPanel({
     <section className="rail-card">
       <h2>{t("rail.parameters")}</h2>
       <div className="param-fields">
-        {fields.map((field) => (
+        {fields.map((field) => {
+          const check = () => fieldCheck(field.key, values[field.key] ?? "", currency);
+          return (
           <label key={field.key} className="param-field">
             {/* fee labels name the tournament's currency rather than baking it in */}
             <span>
               {t(`param.${field.key}`, { currency: detail?.local_currency ?? "CZK" })}
             </span>
             <input
-              type={field.type}
+              type={field.type === "number" ? "text" : field.type}
+              inputMode={field.type === "number" ? "numeric" : undefined}
               value={values[field.key] ?? ""}
               onChange={(event) => {
                 setValues({ ...values, [field.key]: event.target.value });
                 setDirty(true);
+                validation.clearIfValid(field.key, check);
               }}
+              onBlur={() => validation.touch(field.key, check)}
+              {...invalidProps(field.key, validation.errors[field.key])}
             />
+            <FieldError field={field.key} error={validation.errors[field.key]} />
           </label>
-        ))}
+          );
+        })}
       </div>
       <button className="secondary param-save" onClick={save} disabled={!dirty || busy}>
         {t("rail.save")}

@@ -612,7 +612,11 @@ def test_organizer_override_accepted_and_collision_refused(client, auth_headers)
         headers=organizer,
     )
     assert collision.status_code == 409
-    assert "LS-A" in collision.json()["detail"]
+    assert collision.json()["detail"] == {
+        "errors": [
+            {"field": "slug", "code": "discipline_slug_taken", "params": {"value": "LS-A"}}
+        ]
+    }
 
 
 def test_slug_generated_from_a_weapon_outside_the_taxonomy_is_normalized(client, auth_headers):
@@ -761,7 +765,9 @@ def test_slug_editable_before_registration_frozen_after(client, auth_headers):
         headers=organizer,
     )
     assert frozen.status_code == 409
-    assert frozen.json()["detail"] == "discipline_slug_frozen"
+    assert frozen.json()["detail"] == {
+        "errors": [{"field": "slug", "code": "discipline_slug_frozen", "params": {}}]
+    }
 
 
 def test_slug_frozen_after_team_entry(client, auth_headers):
@@ -800,7 +806,9 @@ def test_slug_frozen_after_team_entry(client, auth_headers):
         headers=organizer,
     )
     assert frozen.status_code == 409
-    assert frozen.json()["detail"] == "discipline_slug_frozen"
+    assert frozen.json()["detail"] == {
+        "errors": [{"field": "slug", "code": "discipline_slug_frozen", "params": {}}]
+    }
 
 
 def test_custom_weapon_accepted_with_name_refused_without(client, auth_headers):
@@ -824,7 +832,9 @@ def test_custom_weapon_accepted_with_name_refused_without(client, auth_headers):
         headers=organizer,
     )
     assert unnamed.status_code == 422
-    assert unnamed.json()["detail"] == "discipline_name_required"
+    assert unnamed.json()["detail"] == {
+        "errors": [{"field": "name", "code": "discipline_name_required", "params": {}}]
+    }
 
 
 # ---------------------------------------------------------------------------
