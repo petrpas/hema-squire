@@ -1,8 +1,10 @@
 import { IconCheck, IconX } from "@tabler/icons-react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useNavigate } from "react-router-dom";
 
 import AccountMenu from "./AccountMenu";
+import { useAuth } from "./RequireAuth";
 import { type Account, type AdminAccount, type PleaQueueItem, type Role, api } from "./api";
 
 const ROLES: Role[] = ["fencer", "organizer", "admin"];
@@ -165,20 +167,10 @@ function PleaQueueSection({
   );
 }
 
-export default function AdminPanel({
-  onBack,
-  onProfile,
-  onOrganizer,
-  onFencer,
-  onLogout,
-}: {
-  onBack: () => void;
-  onProfile: () => void;
-  onOrganizer: () => void;
-  onFencer: () => void;
-  onLogout: () => void;
-}) {
+export default function AdminPanel() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
+  const { onLogout } = useAuth();
   const [accounts, setAccounts] = useState<AdminAccount[] | null>(null);
   const [pleas, setPleas] = useState<PleaQueueItem[] | null>(null);
   const [error, setError] = useState(false);
@@ -197,14 +189,7 @@ export default function AdminPanel({
   return (
     <div className="login-page">
       <div className="page-menu-corner">
-        <AccountMenu
-          account={account}
-          onProfile={onProfile}
-          onAdmin={() => {}}
-          onFencer={onFencer}
-          onOrganizer={onOrganizer}
-          onLogout={onLogout}
-        />
+        <AccountMenu account={account} onLogout={onLogout} />
       </div>
       <div className="login-card wide-card">
         <h1>{t("admin.title")}</h1>
@@ -218,7 +203,7 @@ export default function AdminPanel({
             <AccountsSection accounts={accounts} onChanged={refresh} />
           </div>
         )}
-        <button className="link-button" onClick={onBack}>
+        <button className="link-button" onClick={() => navigate(-1)}>
           {t("admin.back")}
         </button>
       </div>

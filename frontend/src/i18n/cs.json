@@ -7,6 +7,11 @@
     "logout": "Odhlásit",
     "cancel": "Zrušit"
   },
+  "notFound": {
+    "title": "Stránka nenalezena",
+    "body": "Na této adrese žádná obrazovka není.",
+    "home": "Zpět na přehled turnajů"
+  },
   "actions": {
     "delete": "Smazat řádek (vratné)",
     "restore": "Obnovit řádek",
@@ -117,7 +122,8 @@
     "pleaSubmit": "Odeslat žádost",
     "pleaPending": "Tvoje žádost o roli organizátora čeká na posouzení.",
     "pleaDenied": "Předchozí žádost byla zamítnuta. Můžeš požádat znovu.",
-    "adminPanel": "Admin panel"
+    "adminPanel": "Admin panel",
+    "draft": "koncept"
   },
   "stage": {
     "pre": "Před turnajem",
@@ -656,5 +662,29 @@
       }
     },
     "setAside": "{{count}} patřilo jinému turnaji na tomto účtu — není třeba nic dělat, spáruje je jeho vlastní konzole."
+  },
+  "validation": {
+    "required": "toto pole je povinné",
+    "too_short": "musí mít aspoň {{min}} znaků",
+    "too_long": "smí mít nejvýš {{max}} znaků",
+    "out_of_range": "musí být mezi {{min}} a {{max}}",
+    "not_a_number": "zadej číslo, čárkou nebo tečkou odděl jen desetinnou část",
+    "must_be_whole": "musí to být celé číslo, bez desetinné čárky",
+    "bad_pattern": "tento tvar hodnoty není přijímán",
+    "bad_email": "zadej platnou e-mailovou adresu",
+    "bad_url": "odkaz musí začínat http:// nebo https://",
+    "bad_link_scheme": "odkaz musí začínat http:// nebo https://",
+    "bad_enum": "tato hodnota není z povolené nabídky",
+    "bad_date": "zadej platné datum",
+    "forbidden_characters": "obsahuje znak, který zde není přijímán",
+    "slug_taken": "tento zkratkový tvar už turnaj používá",
+    "discipline_slug_taken": "zkratkový tvar {{value}} už tahle disciplína používá",
+    "discipline_slug_frozen": "zkratkový tvar nejde měnit — disciplína už má registrace",
+    "discipline_kind_frozen": "druh disciplíny nejde měnit — disciplína už má registrace",
+    "discipline_name_required": "u zbraně mimo taxonomii je název povinný",
+    "qualification_criteria_required": "je potřeba doplnit kritéria kvalifikace",
+    "amendments_close_after_registration_closes": "uzávěrka změn nesmí být po uzávěrce registrace",
+    "legacy_fixed_fees_block_eur": "staré pevné poplatky nemají eurový protějšek — nejdřív přejdi na položkové doplňkové služby",
+    "fieldsNeedAttention": "{{count}} polí potřebuje opravu"
   }
 }

@@ -1,9 +1,14 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { Link, useNavigate } from "react-router-dom";
 
 import AccountMenu from "./AccountMenu";
-import type { Phase } from "./Console";
+import { useAuth } from "./RequireAuth";
+import { consolePath } from "./routes";
 import { ApiError, type Account, type Tournament, api } from "./api";
+import FieldError, { invalidProps } from "./FieldError";
+import { useFieldValidation } from "./useFieldValidation";
+import { apiErrors, checkString } from "./validation";
 
 // slug = slugified display name + event year, editable before submission
 // (design D7); the server remains the validator on collision (409).
@@ -40,13 +45,24 @@ function NewTournamentDialog({
   const [slugEdited, setSlugEdited] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const validation = useFieldValidation();
 
   useEffect(() => {
     if (!slugEdited) setSlug(deriveSlug(displayName, date));
   }, [displayName, date, slugEdited]);
 
+  function displayNameCheck() {
+    return checkString("display_name", "TournamentCreate.display_name", displayName, {
+      required: true,
+    });
+  }
+  function slugCheck() {
+    return checkString("slug", "TournamentCreate.slug", slug, { required: true });
+  }
+
   async function submit(event: React.FormEvent) {
     event.preventDefault();
+    if (validation.validateAll([displayNameCheck, slugCheck]) > 0) return;
     setBusy(true);
     setError(null);
     try {
@@ -57,11 +73,16 @@ function NewTournamentDialog({
       });
       onCreated(tournament);
     } catch (err) {
-      setError(
-        err instanceof ApiError && err.status === 409
-          ? t("picker.slugTaken")
-          : t("picker.createFailed"),
-      );
+      const fieldErrors = apiErrors(err);
+      if (fieldErrors.length > 0) {
+        validation.applyApiErrors(fieldErrors);
+      } else {
+        setError(
+          err instanceof ApiError && err.status === 409
+            ? t("picker.slugTaken")
+            : t("picker.createFailed"),
+        );
+      }
     } finally {
       setBusy(false);
     }
@@ -77,10 +98,16 @@ function NewTournamentDialog({
             <span>{t("picker.displayName")}</span>
             <input
               value={displayName}
-              onChange={(event) => setDisplayName(event.target.value)}
+              onChange={(event) => {
+                setDisplayName(event.target.value);
+                validation.clearIfValid("display_name", displayNameCheck);
+              }}
+              onBlur={() => validation.touch("display_name", displayNameCheck)}
               required
               autoFocus
+              {...invalidProps("display_name", validation.errors.display_name)}
             />
+            <FieldError field="display_name" error={validation.errors.display_name} />
           </label>
           <label className="form-field">
             <span>{t("picker.date")}</span>
@@ -98,10 +125,14 @@ function NewTournamentDialog({
               onChange={(event) => {
                 setSlug(event.target.value);
                 setSlugEdited(true);
+                validation.clearIfValid("slug", slugCheck);
               }}
+              onBlur={() => validation.touch("slug", slugCheck)}
               pattern="[a-z0-9][a-z0-9-]{1,98}"
               required
+              {...invalidProps("slug", validation.errors.slug)}
             />
+            <FieldError field="slug" error={validation.errors.slug} />
           </label>
         </div>
         {error && <p className="login-error">{error}</p>}
@@ -118,20 +149,10 @@ function NewTournamentDialog({
   );
 }
 
-export default function TournamentPicker({
-  onPick,
-  onLogout,
-  onAdmin,
-  onProfile,
-  onFencer,
-}: {
-  onPick: (tournament: Tournament, initialPhase?: Phase) => void;
-  onLogout: () => void;
-  onAdmin: () => void;
-  onProfile: () => void;
-  onFencer: () => void;
-}) {
+export default function TournamentPicker() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
+  const { onLogout } = useAuth();
   const [tournaments, setTournaments] = useState<Tournament[] | null>(null);
   const [creating, setCreating] = useState(false);
   const [account, setAccount] = useState<Account | null>(null);
@@ -146,14 +167,7 @@ export default function TournamentPicker({
   return (
     <div className="login-page">
       <div className="page-menu-corner">
-        <AccountMenu
-          account={account}
-          onProfile={onProfile}
-          onAdmin={onAdmin}
-          onFencer={onFencer}
-          onOrganizer={() => {}}
-          onLogout={onLogout}
-        />
+        <AccountMenu account={account} onLogout={onLogout} />
       </div>
       <div className="login-card">
         <h1>{t("picker.title")}</h1>
@@ -165,10 +179,17 @@ export default function TournamentPicker({
           <ul className="picker-list">
             {tournaments.map((tournament) => (
               <li key={tournament.slug}>
-                <button onClick={() => onPick(tournament)}>
+                <Link to={consolePath(tournament.slug)}>
                   <strong>{tournament.display_name}</strong>
-                  <span>{new Date(tournament.date).toLocaleDateString("cs")}</span>
-                </button>
+                  <span className="picker-meta">
+                    {/* drafts and published tournaments both live here; only the
+                        draft state is marked, published being the resting one */}
+                    {tournament.published_at === null && (
+                      <span className="picker-draft">{t("picker.draft")}</span>
+                    )}
+                    <span>{new Date(tournament.date).toLocaleDateString("cs")}</span>
+                  </span>
+                </Link>
               </li>
             ))}
           </ul>
@@ -184,7 +205,7 @@ export default function TournamentPicker({
           onClose={() => setCreating(false)}
           onCreated={(tournament) => {
             setCreating(false);
-            onPick(tournament, "setup");
+            navigate(consolePath(tournament.slug, "setup"));
           }}
         />
       )}

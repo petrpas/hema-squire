@@ -1,31 +1,24 @@
 import { IconDots } from "@tabler/icons-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { Link } from "react-router-dom";
 
-import { type Account, setToken } from "./api";
+import { type Account } from "./api";
+import * as routes from "./routes";
 
 export default function AccountMenu({
   account,
-  onProfile,
-  onAdmin,
-  onFencer,
-  onOrganizer,
   onLogout,
 }: {
   account: Account | null;
-  onProfile: () => void;
-  onAdmin: () => void;
-  onFencer: () => void;
-  onOrganizer: () => void;
   onLogout: () => void;
 }) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const isAdmin = account !== null && (account.role === "admin" || account.is_deployment_owner);
 
-  function select(action: () => void) {
+  function close() {
     setOpen(false);
-    action();
   }
 
   return (
@@ -39,19 +32,27 @@ export default function AccountMenu({
       </button>
       {open && (
         <>
-          <div className="menu-backdrop" onClick={() => setOpen(false)} />
+          <div className="menu-backdrop" onClick={close} />
           <div className="account-menu-dropdown">
-            <button onClick={() => select(onProfile)}>{t("menu.profile")}</button>
-            {isAdmin && <button onClick={() => select(onAdmin)}>{t("menu.admin")}</button>}
-            <button onClick={() => select(onFencer)}>{t("menu.toFencer")}</button>
-            <button onClick={() => select(onOrganizer)}>{t("menu.toOrganizer")}</button>
+            <Link to={routes.profile()} onClick={close}>
+              {t("menu.profile")}
+            </Link>
+            {isAdmin && (
+              <Link to={routes.admin()} onClick={close}>
+                {t("menu.admin")}
+              </Link>
+            )}
+            <Link to={routes.home()} onClick={close}>
+              {t("menu.toFencer")}
+            </Link>
+            <Link to={routes.picker()} onClick={close}>
+              {t("menu.toOrganizer")}
+            </Link>
             <button
-              onClick={() =>
-                select(() => {
-                  setToken(null);
-                  onLogout();
-                })
-              }
+              onClick={() => {
+                close();
+                onLogout();
+              }}
             >
               {t("menu.logout")}
             </button>

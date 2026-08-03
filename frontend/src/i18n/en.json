@@ -7,6 +7,11 @@
     "logout": "Log out",
     "cancel": "Cancel"
   },
+  "notFound": {
+    "title": "Page not found",
+    "body": "There is no screen at this address.",
+    "home": "Back to Fencer Home"
+  },
   "actions": {
     "delete": "Delete row (reversible)",
     "restore": "Restore row",
@@ -117,7 +122,8 @@
     "pleaSubmit": "Send request",
     "pleaPending": "Your request for the organizer role is pending review.",
     "pleaDenied": "Your previous request was denied. You may ask again.",
-    "adminPanel": "Admin panel"
+    "adminPanel": "Admin panel",
+    "draft": "draft"
   },
   "stage": {
     "pre": "Pre Tournament",
@@ -656,5 +662,29 @@
       }
     },
     "setAside": "{{count}} belonged to another tournament on this account — nothing to do, its own console will match it."
+  },
+  "validation": {
+    "required": "this field is required",
+    "too_short": "must be at least {{min}} characters",
+    "too_long": "must be at most {{max}} characters",
+    "out_of_range": "must be between {{min}} and {{max}}",
+    "not_a_number": "enter a number, using a comma or a point for the decimal part",
+    "must_be_whole": "must be a whole number, no decimal point",
+    "bad_pattern": "this value's shape is not accepted",
+    "bad_email": "enter a valid e-mail address",
+    "bad_url": "the link must start with http:// or https://",
+    "bad_link_scheme": "the link must start with http:// or https://",
+    "bad_enum": "this value is not one of the accepted options",
+    "bad_date": "enter a valid date",
+    "forbidden_characters": "contains a character that is not accepted here",
+    "slug_taken": "another tournament already uses this slug",
+    "discipline_slug_taken": "this discipline already uses the slug {{value}}",
+    "discipline_slug_frozen": "the slug cannot change — this discipline already has registrations",
+    "discipline_kind_frozen": "the kind cannot change — this discipline already has registrations",
+    "discipline_name_required": "a name is required for a weapon outside the taxonomy",
+    "qualification_criteria_required": "qualification criteria are required",
+    "amendments_close_after_registration_closes": "the amendments deadline cannot fall after registration closes",
+    "legacy_fixed_fees_block_eur": "the legacy fixed fees have no EUR counterpart — switch to itemized extra services first",
+    "fieldsNeedAttention": "{{count}} fields need attention"
   }
 }

@@ -2,10 +2,14 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import AccountMenu from "./AccountMenu";
+import FieldError, { invalidProps } from "./FieldError";
 import HRSearchPicker from "./HRSearch";
 import PleaSection from "./PleaSection";
+import { useAuth } from "./RequireAuth";
 import { ApiError, type Account, type HRProfile, type Plea, api } from "./api";
 import i18n from "./i18n";
+import { useFieldValidation } from "./useFieldValidation";
+import { apiErrors, checkString } from "./validation";
 
 const IMPLEMENTED_LANGUAGES = Object.keys(i18n.options.resources ?? {});
 
@@ -23,15 +27,25 @@ function AccountSection({
   const [dirty, setDirty] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const validation = useFieldValidation();
 
   useEffect(() => {
     setEmail(account.email);
     setDisplayName(account.display_name);
     setLanguage(account.language);
+    validation.clearAll();
     setDirty(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [account]);
 
+  function displayNameCheck() {
+    return checkString("display_name", "AccountUpdate.display_name", displayName, {
+      required: true,
+    });
+  }
+
   async function save() {
+    if (validation.validateAll([displayNameCheck]) > 0) return;
     setBusy(true);
     setError(null);
     try {
@@ -40,11 +54,16 @@ function AccountSection({
       void i18n.changeLanguage(updated.language);
       setDirty(false);
     } catch (err) {
-      setError(
-        err instanceof ApiError && err.status === 409
-          ? t("profile.account.emailTaken")
-          : t("profile.account.saveFailed"),
-      );
+      const fieldErrors = apiErrors(err);
+      if (fieldErrors.length > 0) {
+        validation.applyApiErrors(fieldErrors);
+      } else {
+        setError(
+          err instanceof ApiError && err.status === 409
+            ? t("profile.account.emailTaken")
+            : t("profile.account.saveFailed"),
+        );
+      }
     } finally {
       setBusy(false);
     }
@@ -72,8 +91,12 @@ function AccountSection({
             onChange={(event) => {
               setDisplayName(event.target.value);
               setDirty(true);
+              validation.clearIfValid("display_name", displayNameCheck);
             }}
+            onBlur={() => validation.touch("display_name", displayNameCheck)}
+            {...invalidProps("display_name", validation.errors.display_name)}
           />
+          <FieldError field="display_name" error={validation.errors.display_name} />
         </label>
         <label className="param-field">
           <span>{t("profile.account.language")}</span>
@@ -225,18 +248,9 @@ function HRMatchSection({
   );
 }
 
-export default function ProfilePage({
-  onAdmin,
-  onOrganizer,
-  onFencer,
-  onLogout,
-}: {
-  onAdmin: () => void;
-  onOrganizer: () => void;
-  onFencer: () => void;
-  onLogout: () => void;
-}) {
+export default function ProfilePage() {
   const { t } = useTranslation();
+  const { onLogout } = useAuth();
   const [account, setAccount] = useState<Account | null>(null);
   const [error, setError] = useState(false);
 
@@ -247,14 +261,7 @@ export default function ProfilePage({
   return (
     <div className="login-page">
       <div className="page-menu-corner">
-        <AccountMenu
-          account={account}
-          onProfile={() => {}}
-          onAdmin={onAdmin}
-          onFencer={onFencer}
-          onOrganizer={onOrganizer}
-          onLogout={onLogout}
-        />
+        <AccountMenu account={account} onLogout={onLogout} />
       </div>
       <div className="login-card wide-card">
         <h1>{t("profile.title")}</h1>
@@ -263,7 +270,7 @@ export default function ProfilePage({
         ) : account === null ? (
           <p>{t("common.loading")}</p>
         ) : (
-          <div className="setup-panel">
+          <div className="page-card-body">
             <AccountSection account={account} onUpdated={setAccount} />
             <RoleSection account={account} />
             {account.hr_id !== null ? (

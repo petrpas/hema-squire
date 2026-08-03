@@ -1,7 +1,9 @@
 import { type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
+import { Link } from "react-router-dom";
 
 import AccountMenu from "./AccountMenu";
+import { home, profile } from "./routes";
 import { type Account } from "./api";
 
 /** The four filter tabs the fencer's world is cut into. The first three
@@ -18,23 +20,15 @@ export const HOME_TABS: HomeTab[] = ["announced", "open", "past", "mine"];
 export default function FencerShell({
   account,
   tab,
-  onSelectTab,
   counts,
-  onProfile,
-  onAdmin,
-  onOrganizer,
   onLogout,
   children,
 }: {
   account: Account | null;
   tab: HomeTab;
-  onSelectTab: (tab: HomeTab) => void;
   /** Entry counts shown beside a tab. Announced and Open only — Past is an
    *  archive and Mine a personal list; neither reads as a queue to clear. */
   counts?: Partial<Record<HomeTab, number>>;
-  onProfile: () => void;
-  onAdmin: () => void;
-  onOrganizer: () => void;
   onLogout: () => void;
   children: ReactNode;
 }) {
@@ -50,14 +44,10 @@ export default function FencerShell({
           {HOME_TABS.map((name) => {
             const count = counts?.[name];
             return (
-              <button
-                key={name}
-                className={tab === name ? "active" : ""}
-                onClick={() => onSelectTab(name)}
-              >
+              <Link key={name} className={tab === name ? "active" : ""} to={home(name)}>
                 {t(`home.tabs.${name}`)}
                 {count !== undefined && count > 0 && <span className="tab-count">{count}</span>}
-              </button>
+              </Link>
             );
           })}
         </nav>
@@ -73,19 +63,12 @@ export default function FencerShell({
               {t("home.identity.hrid", { id: account.hr_id })}
             </a>
           ) : (
-            <button className="link-button identity-hrid" onClick={onProfile}>
+            <Link className="link-button identity-hrid" to={profile()}>
               {t("home.identity.noHemaratings")}
-            </button>
+            </Link>
           )}
         </div>
-        <AccountMenu
-          account={account}
-          onProfile={onProfile}
-          onAdmin={onAdmin}
-          onFencer={() => {}}
-          onOrganizer={onOrganizer}
-          onLogout={onLogout}
-        />
+        <AccountMenu account={account} onLogout={onLogout} />
       </header>
       {children}
     </div>

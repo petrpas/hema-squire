@@ -1,9 +1,13 @@
 import { IconArrowDown, IconArrowUp, IconSearch, IconX } from "@tabler/icons-react";
 import { type ReactNode, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 
+import NotFound from "./NotFound";
 import PaidStamp from "./PaidStamp";
 import RosterMemberDialog from "./RosterMemberDialog";
+import { type HomeTab } from "./FencerShell";
+import { home } from "./routes";
 import {
   type Availability,
   type PaymentInstructions,
@@ -516,17 +520,13 @@ function RegistrationPanel({
   );
 }
 
-export default function TournamentDetail({
-  slug,
-  readOnly = false,
-  onClose,
-}: {
-  slug: string;
-  readOnly?: boolean;
-  onClose: () => void;
-}) {
+export default function TournamentDetail() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { slug = "" } = useParams();
   const [detail, setDetail] = useState<TournamentDetailData | null>(null);
+  const [notFound, setNotFound] = useState(false);
   const [availability, setAvailability] = useState<Availability[]>([]);
   const [registration, setRegistration] = useState<RegistrationDetail | null>(null);
   const [registrationChecked, setRegistrationChecked] = useState(false);
@@ -537,7 +537,7 @@ export default function TournamentDetail({
   const [amending, setAmending] = useState(false);
 
   function refresh() {
-    api.tournament(slug).then(setDetail, () => setDetail(null));
+    api.tournament(slug).then(setDetail, () => setNotFound(true));
     api.availability(slug).then(setAvailability, () => setAvailability([]));
     api.myRegistration(slug).then(
       (r) => {
@@ -553,6 +553,15 @@ export default function TournamentDetail({
 
   useEffect(refresh, [slug]);
 
+  // the close control returns to the list the page was opened from (the tab
+  // carried in the Link's navigation state), or to Fencer Home's default
+  // Open tab when the page was reached by URL rather than from a list
+  function close() {
+    const openedFrom = (location.state as { tab?: HomeTab } | null)?.tab;
+    navigate(home(openedFrom));
+  }
+
+  const readOnly = detail !== null && detail.date < new Date().toISOString().slice(0, 10);
   const hasActive = registration !== null && registration.state !== "cancelled";
   // register is offered only when open and at least one discipline or item has
   // an open slot (extra items carry no capacity, so their presence counts)
@@ -590,6 +599,8 @@ export default function TournamentDetail({
     setTab(next);
   }
 
+  if (notFound) return <NotFound />;
+
   return (
     <div className="workspace detail-workspace">
       {/* the tournament's own row, under the heading the list page shares
@@ -617,7 +628,7 @@ export default function TournamentDetail({
           className="row-action"
           title={t("detail.close")}
           aria-label={t("detail.close")}
-          onClick={onClose}
+          onClick={close}
         >
           <IconX size={18} stroke={1.5} />
         </button>

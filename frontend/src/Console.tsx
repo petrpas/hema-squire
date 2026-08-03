@@ -1,6 +1,7 @@
 import { IconArrowBackUp, IconTrash, IconX } from "@tabler/icons-react";
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { Link, useNavigate } from "react-router-dom";
 
 import AccountMenu from "./AccountMenu";
 import DedupPanel from "./DedupPanel";
@@ -12,8 +13,12 @@ import MatchPanel from "./MatchPanel";
 import PaidStamp from "./PaidStamp";
 import ParamPanel from "./ParamPanel";
 import PaymentsPanel from "./PaymentsPanel";
+import { useAuth } from "./RequireAuth";
+import * as routes from "./routes";
 import SetupPanel from "./SetupPanel";
 import TeamsPanel from "./TeamsPanel";
+import { parseInteger } from "./numeric";
+import { checkNumeric, checkString, type FieldError } from "./validation";
 import {
   type Account,
   type Sheet,
@@ -27,7 +32,7 @@ const STAGES = ["pre", "in", "post"] as const;
 // Setup is step 0, ahead of the fencer-list phases (spec: etl-console).
 // Teams is a read-only view of team disciplines (design team-disciplines
 // 7.2) tacked on at the end — it is not part of the ETL sequence.
-const PHASES = [
+export const PHASES = [
   "setup",
   "load",
   "parsing",
@@ -99,23 +104,14 @@ function CellDisplay({ row, column }: { row: SheetRow; column: string }) {
 
 export default function Console({
   tournament,
-  initialPhase,
-  onBack,
-  onLogout,
-  onProfile,
-  onAdmin,
-  onFencer,
+  phase,
 }: {
   tournament: Tournament;
-  initialPhase?: Phase;
-  onBack: () => void;
-  onLogout: () => void;
-  onProfile: () => void;
-  onAdmin: () => void;
-  onFencer: () => void;
+  phase: Phase;
 }) {
   const { t } = useTranslation();
-  const [phase, setPhase] = useState<Phase>(initialPhase ?? "load");
+  const navigate = useNavigate();
+  const { onLogout } = useAuth();
   const [sheet, setSheet] = useState<Sheet | null>(null);
   const [detail, setDetail] = useState<TournamentDetail | null>(null);
   const [error, setError] = useState(false);
@@ -146,9 +142,33 @@ export default function Console({
     refresh();
   }
 
+  function cellCheck(field: string, raw: string): FieldError | null {
+    switch (field) {
+      case "hr_id":
+        return checkNumeric(field, "RosterMemberIn.hr_id", raw);
+      case "name":
+        return checkString(field, "RosterMemberIn.name", raw, { required: true });
+      case "club":
+        return checkString(field, "RosterMemberIn.club", raw);
+      case "nationality":
+        return checkString(field, "RosterMemberIn.nationality", raw);
+      default:
+        return null;
+    }
+  }
+
   function saveEdit(row: SheetRow, field: string, raw: string) {
     const value =
-      field === "hr_id" ? (raw === "" ? null : Number(raw)) : raw === "" ? null : raw;
+      field === "hr_id"
+        ? raw === ""
+          ? null
+          : (() => {
+              const result = parseInteger(raw);
+              return result.ok ? result.value : null;
+            })()
+        : raw === ""
+          ? null
+          : raw;
     void addRule("field_edit", row.id, { field, value });
   }
 
@@ -168,7 +188,7 @@ export default function Console({
     if (phase === "setup" && setupDirty && next !== "setup") {
       setPendingPhase(next);
     } else {
-      setPhase(next);
+      navigate(routes.consolePath(tournament.slug, next));
     }
   }
 
@@ -182,9 +202,9 @@ export default function Console({
   return (
     <div className="app">
       <header className="topbar">
-        <button className="logo-button" onClick={onBack} title={t("picker.title")}>
+        <Link className="logo-button" to={routes.picker()} title={t("picker.title")}>
           <span className="logo">{t("app.title")}</span>
-        </button>
+        </Link>
         <nav className="stage-control">
           {STAGES.map((stage) => (
             <button
@@ -202,14 +222,7 @@ export default function Console({
             {new Date(tournament.date).toLocaleDateString("cs")}
           </div>
         </div>
-        <AccountMenu
-          account={account}
-          onProfile={onProfile}
-          onAdmin={onAdmin}
-          onFencer={onFencer}
-          onOrganizer={onBack}
-          onLogout={onLogout}
-        />
+        <AccountMenu account={account} onLogout={onLogout} />
       </header>
 
       <nav className="stepper">
@@ -234,7 +247,7 @@ export default function Console({
             slug={tournament.slug}
             onSaved={refresh}
             hasRegistrations={activeRows.length > 0}
-            onDeleted={onBack}
+            onDeleted={() => navigate(routes.picker())}
             onDirtyChange={setSetupDirty}
           />
         ) : phase === "teams" ? (
@@ -311,6 +324,7 @@ export default function Console({
                                 display={<CellDisplay row={row} column={column} />}
                                 value={row[column]}
                                 onSave={(raw) => saveEdit(row, column, raw)}
+                                validate={(raw) => cellCheck(column, raw)}
                               />
                             ) : (
                               <CellDisplay row={row} column={column} />
@@ -450,7 +464,7 @@ export default function Console({
                 type="button"
                 className="btn-primary"
                 onClick={() => {
-                  setPhase(pendingPhase);
+                  navigate(routes.consolePath(tournament.slug, pendingPhase));
                   setPendingPhase(null);
                 }}
               >

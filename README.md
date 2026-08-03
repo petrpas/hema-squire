@@ -19,6 +19,11 @@ Requirements: [uv](https://docs.astral.sh/uv/) and Node 18+. The script
 installs dependencies, applies migrations, starts FastAPI (with reload) and
 Vite, and stops both on Ctrl+C.
 
+The frontend uses client-side routing (`react-router-dom`), so any server
+that hosts the built bundle in production must fall back to `index.html` for
+unknown paths, or deep links (e.g. `/t/<slug>`) will 404 before React loads.
+Vite's dev server already does this.
+
 With `--seed` you get the **Na Duel! 2026** demo tournament — organizer login
 `petr@example.com` / `demo-heslo-123` at <http://localhost:5173>: a complete
 Setup (location, titular organizers, an open registration window, itemized

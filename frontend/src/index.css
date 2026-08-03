@@ -237,6 +237,14 @@ button.secondary:disabled {
   border-bottom: 2px solid var(--stamp);
 }
 
+.login-card input[aria-invalid="true"] {
+  border-bottom: var(--border-w) solid var(--stamp);
+}
+
+.login-card input[aria-invalid="true"]:focus {
+  border-bottom: var(--focus);
+}
+
 .login-card select {
   border: var(--border-w) solid var(--hairline);
   border-radius: var(--radius);
@@ -285,7 +293,7 @@ button.secondary:disabled {
   border-top: var(--border-w) solid var(--hairline);
 }
 
-.picker-list button {
+.picker-list a {
   width: 100%;
   display: flex;
   justify-content: space-between;
@@ -296,11 +304,25 @@ button.secondary:disabled {
   border-radius: 0;
   background: transparent;
   text-align: left;
+  text-decoration: none;
   color: var(--ink);
 }
 
-.picker-list button:hover {
+.picker-list a:hover {
   background: var(--paper-shade);
+}
+
+.picker-meta {
+  display: flex;
+  align-items: baseline;
+  gap: 1rem;
+}
+
+.picker-draft {
+  color: var(--ink-faded);
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
 }
 
 /* ===== console frame ===== */
@@ -322,9 +344,11 @@ button.secondary:disabled {
 }
 
 .logo-button {
+  display: inline-block;
   border: none;
   background: transparent;
   padding: 0;
+  text-decoration: none;
 }
 
 .logo {
@@ -342,7 +366,8 @@ button.secondary:disabled {
   overflow: hidden;
 }
 
-.stage-control button {
+.stage-control button,
+.stage-control a {
   border: none;
   background: transparent;
   color: var(--ink-faded);
@@ -351,14 +376,17 @@ button.secondary:disabled {
   text-transform: uppercase;
   letter-spacing: 0.1em;
   font-weight: 500;
+  text-decoration: none;
   transition: background-color 120ms;
 }
 
-.stage-control button + button {
+.stage-control button + button,
+.stage-control a + a {
   border-left: var(--border-w) solid var(--ink);
 }
 
-.stage-control button.active {
+.stage-control button.active,
+.stage-control a.active {
   background: var(--ink);
   color: var(--paper);
 }
@@ -770,6 +798,47 @@ button.secondary:disabled {
 .param-field input:focus {
   outline: none;
   border-bottom: 2px solid var(--stamp);
+}
+
+/* invalid-field state (design add-field-validation): the bottom rule turns
+   --stamp-colored at rest and thickens on focus exactly as a valid field
+   does — no outline, glow, fill, icon or animation is added on top */
+.form-field input[aria-invalid="true"],
+.form-field textarea[aria-invalid="true"],
+.param-field input[aria-invalid="true"] {
+  border-bottom: var(--border-w) solid var(--stamp);
+}
+
+.form-field input[aria-invalid="true"]:focus,
+.form-field textarea[aria-invalid="true"]:focus,
+.param-field input[aria-invalid="true"]:focus {
+  border-bottom: var(--focus);
+}
+
+.field-error {
+  font-size: 12px;
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: normal;
+  color: var(--stamp);
+}
+
+/* the save bar's blocked-save statement: same 12px --stamp text as a field
+   error, rendered as a plain button so activating it can move focus */
+.save-bar-error {
+  display: block;
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: normal;
+  color: var(--stamp);
+  text-align: left;
+  cursor: pointer;
 }
 
 .qualification-control {
@@ -1300,7 +1369,9 @@ tr.row-deleted td.col-actions {
   z-index: 6;
 }
 
-.account-menu-dropdown button {
+.account-menu-dropdown button,
+.account-menu-dropdown a {
+  display: block;
   border: none;
   background: transparent;
   text-align: left;
@@ -1309,14 +1380,17 @@ tr.row-deleted td.col-actions {
   border-radius: 0;
   border-bottom: var(--border-w) solid var(--hairline);
   color: var(--ink);
+  text-decoration: none;
   transition: background-color 120ms;
 }
 
-.account-menu-dropdown button:last-child {
+.account-menu-dropdown button:last-child,
+.account-menu-dropdown a:last-child {
   border-bottom: none;
 }
 
-.account-menu-dropdown button:hover:not(:disabled) {
+.account-menu-dropdown button:hover:not(:disabled),
+.account-menu-dropdown a:hover {
   background: var(--paper-shade);
 }
 
@@ -1350,6 +1424,7 @@ tr.row-deleted td.col-actions {
   background: none;
   font: inherit;
   color: inherit;
+  text-decoration: none;
   padding: 1rem 1em;
   border-bottom: var(--border-w) solid var(--hairline);
   border-radius: 0;

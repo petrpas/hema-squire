@@ -1,8 +1,19 @@
 import { type ReactNode, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { Link, useOutletContext } from "react-router-dom";
 
 import { type HomeTab } from "./FencerShell";
+import { detail } from "./routes";
 import { type OpenTournament, api, logoUrl } from "./api";
+
+/** What `FencerLayout` provides its two child routes through the outlet
+ *  (design D4): the resolved filter tab and the upcoming lists it fetches
+ *  once, so opening a tournament never refetches them. */
+export interface FencerOutletContext {
+  tab: HomeTab;
+  announced: OpenTournament[] | null;
+  open: OpenTournament[] | null;
+}
 
 function StatusBadge({ tournament }: { tournament: OpenTournament }) {
   const { t } = useTranslation();
@@ -95,15 +106,15 @@ function CardHeading({
 function TournamentCard({
   tournament,
   badge,
-  onOpen,
+  tab,
 }: {
   tournament: OpenTournament;
   badge: ReactNode;
-  onOpen: (slug: string) => void;
+  tab: HomeTab;
 }) {
   return (
     <li>
-      <button className="rail-card home-card" onClick={() => onOpen(tournament.slug)}>
+      <Link className="rail-card home-card" to={detail(tournament.slug)} state={{ tab }}>
         <CardHeading tournament={tournament} badge={badge} />
         <div className="chips">
           {tournament.disciplines.map((d) => (
@@ -113,7 +124,7 @@ function TournamentCard({
             </span>
           ))}
         </div>
-      </button>
+      </Link>
     </li>
   );
 }
@@ -137,19 +148,8 @@ export function useUpcoming(): {
   };
 }
 
-export default function FencerHome({
-  tab,
-  announced,
-  open,
-  onOpen,
-}: {
-  tab: HomeTab;
-  announced: OpenTournament[] | null;
-  open: OpenTournament[] | null;
-  /** `readOnly` marks a tournament already held: its detail opens without
-   *  register, payment or cancel actions. */
-  onOpen: (slug: string, readOnly?: boolean) => void;
-}) {
+export default function FencerHome() {
+  const { tab, announced, open } = useOutletContext<FencerOutletContext>();
   const { t } = useTranslation();
   const [held, setHeld] = useState<OpenTournament[] | null>(null);
   const [mine, setMine] = useState<OpenTournament[] | null>(null);
@@ -163,7 +163,6 @@ export default function FencerHome({
     }
   }, [tab, held, mine]);
 
-  const today = new Date().toISOString().slice(0, 10);
   const list =
     tab === "announced" ? announced : tab === "open" ? open : tab === "past" ? held : mine;
 
@@ -184,6 +183,7 @@ export default function FencerHome({
             <TournamentCard
               key={tournament.slug}
               tournament={tournament}
+              tab={tab}
               badge={
                 tab === "past" || tab === "mine" ? (
                   <BondBadge tournament={tournament} />
@@ -191,7 +191,6 @@ export default function FencerHome({
                   <StatusBadge tournament={tournament} />
                 )
               }
-              onOpen={(slug) => onOpen(slug, tournament.date < today)}
             />
           ))}
         </ul>

@@ -25,3 +25,8 @@ Components live one per file; a file approaching ~300 lines should be split
 along component seams. Panels composed of sections keep the orchestrator thin
 and give each section its own file under a directory named after the panel
 (see `frontend/src/setup/`).
+
+Navigation lives in the route table in `App.tsx`; no screen owns navigation
+callbacks as props. A path is never spelled out twice — build it from the
+functions in `routes.ts` (`home`, `detail`, `picker`, `consolePath`, `admin`,
+`profile`) whether navigating with `<Link>` or `navigate()`.
