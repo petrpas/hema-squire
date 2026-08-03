@@ -15,7 +15,12 @@ from app.auth import (
     require_role,
     require_tournament_owner,
 )
-from app.availability import queue_length, taken_seats
+from app.availability import (
+    queue_length,
+    taken_seats,
+    taken_team_slots,
+    team_queue_length,
+)
 from app.db import get_session
 from app.models import (
     ACTION_CATEGORIES,
@@ -52,7 +57,6 @@ from app.schemas import (
     OpenDisciplineOut,
     OpenTournamentOut,
     OwnerTransferIn,
-    PastTournamentOut,
     TeamAdd,
     TeamMemberOut,
     TournamentCreate,
@@ -128,6 +132,28 @@ def create_tournament(data: TournamentCreate, session: SessionDep, fencer: Fence
     return tournament
 
 
+def _open_discipline_out(session: Session, discipline: Discipline) -> OpenDisciplineOut:
+    """Fencer-facing counts for one discipline. A team discipline counts teams,
+    an individual one counts fencers (team-disciplines D1/2.6) — the counting
+    pairs are mutually exclusive by kind and assert on the wrong kind, so the
+    dispatch cannot be skipped."""
+    if discipline.kind == DisciplineKind.TEAM:
+        taken = taken_team_slots(session, discipline)
+        queued = team_queue_length(session, discipline)
+    else:
+        taken = taken_seats(session, discipline)
+        queued = queue_length(session, discipline)
+    return OpenDisciplineOut(
+        slug=discipline.slug,
+        name=discipline.name,
+        fee=discipline.fee,
+        fee_eur=discipline.fee_eur,
+        taken=taken,
+        capacity=discipline.capacity,
+        queue_length=queued,
+    )
+
+
 @router.get("", response_model=list[TournamentOut])
 def list_tournaments(session: SessionDep):
     # cancelled tournaments are retired: hidden from public listings, but
@@ -146,175 +172,149 @@ def list_tournaments(session: SessionDep):
     return outs
 
 
-@router.get("/open", response_model=list[OpenTournamentOut])
-def open_tournaments(session: SessionDep, fencer: FencerDep):
-    """Published, non-cancelled, upcoming tournaments for the fencer-facing
-    home list (design D1) — a trimmed DTO so drafts and organizer-only
-    config never leak, with per-discipline counts and the caller's own
-    registration state folded in to avoid N+1 calls from the frontend."""
+def _my_registration_state(session: Session, tournament: Tournament, fencer: Fencer) -> str:
+    """The caller's own standing on one tournament, as the fencer-facing lists
+    report it. A reservation holding nothing but substitute entries reads as
+    `substitute`; a cancelled or scheduler-expired one reads as `cancelled`."""
+    registration = session.scalar(
+        select(Registration).where(
+            Registration.tournament_id == tournament.id,
+            Registration.fencer_id == fencer.id,
+        )
+    )
+    if registration is None:
+        return "none"
+    if registration.state == RegistrationState.PAID:
+        return "paid"
+    if registration.state == RegistrationState.RESERVED:
+        active = any(not e.is_substitute for e in registration.entries)
+        return "reserved" if active else "substitute"
+    return "cancelled"
+
+
+def _fencer_tournament_out(
+    session: Session, tournament: Tournament, fencer: Fencer, *, organized: bool
+) -> OpenTournamentOut:
+    """One entry of a fencer-facing list. The three scopes (upcoming, held,
+    own) share this body so their payloads cannot drift apart — a trimmed DTO
+    so drafts and organizer-only config never leak, with per-discipline counts
+    and the caller's own bonds folded in to avoid N+1 calls from the
+    frontend."""
     today = datetime.now(UTC).date()
-    rows = session.scalars(
-        select(Tournament)
-        .where(
-            Tournament.cancelled_at.is_(None),
-            Tournament.published_at.is_not(None),
-            Tournament.date >= today,
-        )
-        .options(selectinload(Tournament.disciplines))
-        .order_by(Tournament.date)
-    ).all()
+    reason = setup.registration_availability(tournament, today)
+    if reason == setup.NOT_YET_OPEN:
+        status_, opens_on = "opens_on", tournament.registration_opens
+    elif reason == setup.CLOSED:
+        status_, opens_on = "closed", None
+    else:
+        status_, opens_on = "open", None
 
-    result = []
-    for tournament in rows:
-        reason = setup.registration_availability(tournament, today)
-        if reason == setup.NOT_YET_OPEN:
-            status_, opens_on = "opens_on", tournament.registration_opens
-        elif reason == setup.CLOSED:
-            status_, opens_on = "closed", None
-        else:
-            status_, opens_on = "open", None
-
-        disciplines = [
-            OpenDisciplineOut(
-                slug=d.slug,
-                name=d.name,
-                fee=d.fee,
-                fee_eur=d.fee_eur,
-                taken=taken_seats(session, d),
-                capacity=d.capacity,
-                queue_length=queue_length(session, d),
-            )
-            for d in tournament.disciplines
-        ]
-
-        registration = session.scalar(
-            select(Registration).where(
-                Registration.tournament_id == tournament.id,
-                Registration.fencer_id == fencer.id,
-            )
-        )
-        my_state = "none"
-        if registration is not None:
-            if registration.state == RegistrationState.PAID:
-                my_state = "paid"
-            elif registration.state == RegistrationState.RESERVED:
-                active = any(not e.is_substitute for e in registration.entries)
-                my_state = "reserved" if active else "substitute"
-            else:  # CANCELLED, or a scheduler-expired reservation
-                my_state = "cancelled"
-
-        result.append(
-            OpenTournamentOut(
-                slug=tournament.slug,
-                display_name=tournament.display_name,
-                subtitle=tournament.subtitle,
-                has_logo=tournament.has_logo,
-                date=tournament.date,
-                location=tournament.location,
-                description=tournament.description,
-                qualification_open=tournament.qualification_open,
-                qualification_criteria=tournament.qualification_criteria,
-                local_currency=tournament.local_currency,
-                organizers=tournament.organizers,
-                registration_status=status_,
-                registration_opens_on=opens_on,
-                disciplines=disciplines,
-                my_registration_state=my_state,
-            )
-        )
-    return result
+    return OpenTournamentOut(
+        slug=tournament.slug,
+        display_name=tournament.display_name,
+        subtitle=tournament.subtitle,
+        has_logo=tournament.has_logo,
+        date=tournament.date,
+        location=tournament.location,
+        description=tournament.description,
+        qualification_open=tournament.qualification_open,
+        qualification_criteria=tournament.qualification_criteria,
+        local_currency=tournament.local_currency,
+        organizers=tournament.organizers,
+        registration_status=status_,
+        registration_opens_on=opens_on,
+        disciplines=[_open_discipline_out(session, d) for d in tournament.disciplines],
+        my_registration_state=_my_registration_state(session, tournament, fencer),
+        organized=organized,
+    )
 
 
-@router.get("/mine/past", response_model=list[PastTournamentOut])
-def past_tournaments(session: SessionDep, fencer: FencerDep):
-    """Personal history for the Past tab (design D1): non-cancelled tournaments
-    before today where the caller held a non-cancelled registration or
-    organized (owner or team member), newest first. Declared ahead of
-    `/{slug}` so "mine" is never captured as a slug."""
+def _published_tournaments(session: Session, *, upcoming: bool | None) -> list[Tournament]:
+    """Published, non-cancelled tournaments. `upcoming` True keeps those dated
+    today or later (ascending), False those before today (descending), None
+    every one of them (descending)."""
     today = datetime.now(UTC).date()
+    conditions = [Tournament.cancelled_at.is_(None), Tournament.published_at.is_not(None)]
+    if upcoming is True:
+        conditions.append(Tournament.date >= today)
+    elif upcoming is False:
+        conditions.append(Tournament.date < today)
+    order = Tournament.date if upcoming is True else Tournament.date.desc()
+    return list(
+        session.scalars(
+            select(Tournament)
+            .where(*conditions)
+            .options(selectinload(Tournament.disciplines))
+            .order_by(order)
+        ).all()
+    )
 
-    organizer_tournament_ids = set(
+
+def _organized_tournament_ids(session: Session, fencer: Fencer) -> set[int]:
+    """Tournaments the caller sits on the console team of. Ownership is held on
+    the tournament itself and is checked alongside this set, never in it."""
+    return set(
         session.scalars(
             select(TournamentOrganizer.tournament_id).where(
                 TournamentOrganizer.fencer_id == fencer.id
             )
         ).all()
     )
-    participated_tournament_ids = set(
+
+
+@router.get("/open", response_model=list[OpenTournamentOut])
+def open_tournaments(session: SessionDep, fencer: FencerDep):
+    """Upcoming scope of the fencer-facing list: published, non-cancelled
+    tournaments dated today or later, soonest first."""
+    organizer_ids = _organized_tournament_ids(session, fencer)
+    return [
+        _fencer_tournament_out(
+            session,
+            tournament,
+            fencer,
+            organized=tournament.owner_id == fencer.id or tournament.id in organizer_ids,
+        )
+        for tournament in _published_tournaments(session, upcoming=True)
+    ]
+
+
+@router.get("/held", response_model=list[OpenTournamentOut])
+def held_tournaments(session: SessionDep, fencer: FencerDep):
+    """Held scope: every published, non-cancelled tournament dated before
+    today, newest first, listed for every account whether or not it was
+    involved — the Past tab is a public archive, not a personal history."""
+    organizer_ids = _organized_tournament_ids(session, fencer)
+    return [
+        _fencer_tournament_out(
+            session,
+            tournament,
+            fencer,
+            organized=tournament.owner_id == fencer.id or tournament.id in organizer_ids,
+        )
+        for tournament in _published_tournaments(session, upcoming=False)
+    ]
+
+
+@router.get("/mine", response_model=list[OpenTournamentOut])
+def my_tournaments(session: SessionDep, fencer: FencerDep):
+    """Own scope: tournaments in either direction of today that the caller is
+    bound to — holding or having held a registration in any state, cancelled
+    included, or organizing it as owner or console team member. Newest first.
+    Declared ahead of `/{slug}` so "mine" is never captured as a slug."""
+    organizer_ids = _organized_tournament_ids(session, fencer)
+    registered_ids = set(
         session.scalars(
-            select(Registration.tournament_id).where(
-                Registration.fencer_id == fencer.id,
-                Registration.state.in_(
-                    [RegistrationState.PAID, RegistrationState.RESERVED]
-                ),
-            )
+            select(Registration.tournament_id).where(Registration.fencer_id == fencer.id)
         ).all()
     )
 
-    rows = session.scalars(
-        select(Tournament)
-        .where(
-            Tournament.cancelled_at.is_(None),
-            Tournament.published_at.is_not(None),
-            Tournament.date < today,
-        )
-        .options(selectinload(Tournament.disciplines))
-        .order_by(Tournament.date.desc())
-    ).all()
-
     result = []
-    for tournament in rows:
-        organized = tournament.owner_id == fencer.id or tournament.id in organizer_tournament_ids
-        participated = tournament.id in participated_tournament_ids
-        if not organized and not participated:
+    for tournament in _published_tournaments(session, upcoming=None):
+        organized = tournament.owner_id == fencer.id or tournament.id in organizer_ids
+        if not organized and tournament.id not in registered_ids:
             continue
-
-        disciplines = [
-            OpenDisciplineOut(
-                slug=d.slug,
-                name=d.name,
-                fee=d.fee,
-                fee_eur=d.fee_eur,
-                taken=taken_seats(session, d),
-                capacity=d.capacity,
-                queue_length=queue_length(session, d),
-            )
-            for d in tournament.disciplines
-        ]
-
-        my_state = "none"
-        if participated:
-            registration = session.scalar(
-                select(Registration).where(
-                    Registration.tournament_id == tournament.id,
-                    Registration.fencer_id == fencer.id,
-                )
-            )
-            if registration.state == RegistrationState.PAID:
-                my_state = "paid"
-            elif registration.state == RegistrationState.RESERVED:
-                active = any(not e.is_substitute for e in registration.entries)
-                my_state = "reserved" if active else "substitute"
-
         result.append(
-            PastTournamentOut(
-                slug=tournament.slug,
-                display_name=tournament.display_name,
-                subtitle=tournament.subtitle,
-                has_logo=tournament.has_logo,
-                date=tournament.date,
-                location=tournament.location,
-                description=tournament.description,
-                qualification_open=tournament.qualification_open,
-                qualification_criteria=tournament.qualification_criteria,
-                local_currency=tournament.local_currency,
-                organizers=tournament.organizers,
-                registration_status="closed",
-                registration_opens_on=None,
-                disciplines=disciplines,
-                my_registration_state=my_state,
-                organized=organized,
-            )
+            _fencer_tournament_out(session, tournament, fencer, organized=organized)
         )
     return result
 

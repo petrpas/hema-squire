@@ -1,9 +1,46 @@
-# fencer-home Specification
+## ADDED Requirements
 
-## Purpose
-Provide the fencer-facing GUI: a post-login Fencer Home landing listing open tournaments, a tournament detail page with the registration flow and in-app payment instructions, and registration management.
+### Requirement: Mine tab
+The Mine tab SHALL list every published, non-cancelled tournament the account is bound to: one it holds or held a registration for — in any state, including cancelled and substitute — and one it organizes or organized, as tournament owner or console team member. It SHALL span both directions of today: upcoming tournaments and tournaments already held, ordered by date descending so the nearest events lead.
 
-## Requirements
+Each entry SHALL state which bond it stands on: its registration state when the account holds or held one, and an organizer mark when the account is only its organizer. An entry standing on both SHALL state the registration state, the stronger claim.
+
+An upcoming entry SHALL open the tournament detail as any other list entry does; an entry already held SHALL open it read-only.
+
+#### Scenario: Registration and organized tournaments together
+- **WHEN** a fencer who registered for one upcoming tournament and organizes another opens the Mine tab
+- **THEN** both are listed, the first marked with its registration state and the second marked as organized
+
+#### Scenario: Cancelled registration still mine
+- **WHEN** the account cancelled its registration for a tournament
+- **THEN** that tournament is still listed under Mine, marked as cancelled
+
+#### Scenario: Past and upcoming in one list
+- **WHEN** the account holds a reservation for a tournament next month and held a paid registration for one last year
+- **THEN** both appear in Mine, newest first, and the past one opens read-only
+
+#### Scenario: Unrelated tournament absent
+- **WHEN** a published tournament exists that the account neither registered for nor organizes
+- **THEN** it does not appear in Mine
+
+### Requirement: Tournament detail shares the home heading
+The tournament detail page SHALL carry the Fencer Home heading unchanged — the same title, the same tournament filter tabs, the same identity block and account menu, in the same order — so that opening a tournament reads as the same page rather than a different one. Selecting a filter tab from the detail page SHALL leave the detail and show that list.
+
+The detail page's own controls — the tournament's display name, its `Tournament` / `Register` tab pair, and its close control — SHALL occupy a second row beneath that heading, and SHALL NOT be mixed into it.
+
+#### Scenario: Heading survives opening a tournament
+- **WHEN** a fencer opens a tournament from any list
+- **THEN** the top row still shows the title, the four filter tabs, the identity block and the account menu, exactly as the list showed them
+
+#### Scenario: Detail controls sit below
+- **WHEN** the detail page is open
+- **THEN** the tournament's name, its `Tournament` / `Register` tabs, and its close control are on a second row under the heading
+
+#### Scenario: Filter tab leaves the detail
+- **WHEN** the fencer selects the Open tab while a tournament's detail is open
+- **THEN** the detail closes and the Open list is shown
+
+## MODIFIED Requirements
 
 ### Requirement: Fencer Home landing
 Every logged-in account SHALL land on the Fencer Home page after login. The page SHALL be a full-screen console-style view with a top bar and a tournament list, filtered by four tabs: Vyhlášené turnaje (Announced — published, non-cancelled, upcoming tournaments whose registration is not open: not yet opened or already closed), Otevřené turnaje (Open — published, non-cancelled, upcoming tournaments whose registration is open right now), Proběhlé turnaje (Past — every published, non-cancelled tournament dated before today, whoever was involved), and Moje turnaje (Mine — the account's own, per its own requirement). The first three SHALL be disjoint and SHALL together hold every published, non-cancelled tournament; Mine overlaps them by design. "Published" means the tournament carries a publication record, not that its setup happens to be complete. The Open tab SHALL be selected after login. Upcoming tournaments SHALL be ordered by date ascending, tournaments already held by date descending.
@@ -86,108 +123,6 @@ The Proběhlé turnaje tab SHALL list every published, non-cancelled tournament 
 - **WHEN** a past tournament was never published
 - **THEN** it does not appear in the Past tab for anyone, including its organizer
 
-### Requirement: Mine tab
-The Mine tab SHALL list every published, non-cancelled tournament the account is bound to: one it holds or held a registration for — in any state, including cancelled and substitute — and one it organizes or organized, as tournament owner or console team member. It SHALL span both directions of today: upcoming tournaments and tournaments already held, ordered by date descending so the nearest events lead.
-
-Each entry SHALL state which bond it stands on: its registration state when the account holds or held one, and an organizer mark when the account is only its organizer. An entry standing on both SHALL state the registration state, the stronger claim.
-
-An upcoming entry SHALL open the tournament detail as any other list entry does; an entry already held SHALL open it read-only.
-
-#### Scenario: Registration and organized tournaments together
-- **WHEN** a fencer who registered for one upcoming tournament and organizes another opens the Mine tab
-- **THEN** both are listed, the first marked with its registration state and the second marked as organized
-
-#### Scenario: Cancelled registration still mine
-- **WHEN** the account cancelled its registration for a tournament
-- **THEN** that tournament is still listed under Mine, marked as cancelled
-
-#### Scenario: Past and upcoming in one list
-- **WHEN** the account holds a reservation for a tournament next month and held a paid registration for one last year
-- **THEN** both appear in Mine, newest first, and the past one opens read-only
-
-#### Scenario: Unrelated tournament absent
-- **WHEN** a published tournament exists that the account neither registered for nor organizes
-- **THEN** it does not appear in Mine
-
-### Requirement: Read-only past tournament detail
-WHEN a tournament detail is opened from the Past tab, the page SHALL present the tournament information (name, date, location, organizers, disciplines with fees, extra services with prices) and, when the account had a registration, its summary — state, selected disciplines and extra services, and the computed total. The page SHALL NOT offer registration, payment instructions, or cancellation.
-
-#### Scenario: Past detail shows history without actions
-- **WHEN** a fencer opens a past tournament where they had a paid registration
-- **THEN** the detail shows the tournament information and their paid registration summary, with no Register button, payment panel, or cancel action
-
-### Requirement: Tournament detail — page shell
-The tournament detail page SHALL carry a header holding the tournament's display name, a tab control, and a close control, in that order across the header.
-
-The tab control SHALL offer a `Tournament` tab, always present, holding the information screen. It SHALL offer a second tab whenever the account holds a registration for that tournament or registration is available to it: labelled `Registered` when a registration is held — active, substituted, or cancelled — and `Register` when none is held and registration is available. When neither condition holds, the tab control SHALL offer the `Tournament` tab alone, and the reason registration is unavailable SHALL be stated on the information screen as it is today. The page SHALL open on the `Tournament` tab from every entry point.
-
-Amending an existing registration SHALL open the amendment form on the `Registered` tab, in place of the registration it amends, and SHALL return to that registration when it is submitted or abandoned. No third tab SHALL be introduced for it.
-
-The close control SHALL return to the list the page was opened from, and SHALL replace the page's back links: no "back to tournaments" link and no "back to information" link SHALL be rendered. The close control SHALL carry an accessible name naming the action, so it is not announced as an unlabelled glyph.
-
-The page body SHALL scroll to its end whenever its content is taller than the space available, on both tabs. No part of the content SHALL be reachable only by resizing the window.
-
-Sections on either tab SHALL be separated from one another by vertical space, so that no two bordered sections share or abut an edge.
-
-The tournament's logo, where set, SHALL be presented at twice the size it is given on a list card and without a frame around it.
-
-#### Scenario: Detail opens on the tournament tab
-- **WHEN** a fencer opens a tournament from Fencer Home
-- **THEN** the page shows the tournament name, a tab control resting on `Tournament`, and a close control, with the information screen below
-
-#### Scenario: Register tab offered while registration is available
-- **WHEN** a fencer without a registration opens a tournament whose registration is open and has an open slot
-- **THEN** the tab control offers `Tournament` and `Register`, and selecting `Register` shows the registration form in place
-
-#### Scenario: Tab reads Registered once a registration is held
-- **WHEN** a fencer holding a reservation opens the same tournament
-- **THEN** the second tab reads `Registered` and holds the registration, its state, and its actions
-
-#### Scenario: Single tab when registration is impossible
-- **WHEN** a fencer without a registration opens a tournament whose registration has closed
-- **THEN** only the `Tournament` tab is offered and the information screen states that registration is closed
-
-#### Scenario: Past tournament with a registration
-- **WHEN** a fencer opens a past tournament from the Past tab where they held a paid registration
-- **THEN** the `Registered` tab holds the read-only summary, and no register, payment, or cancel action is offered on either tab
-
-#### Scenario: Returning to the information screen
-- **WHEN** the fencer is on the `Register` or `Registered` tab
-- **THEN** the `Tournament` tab returns them to the information screen without leaving the page
-
-#### Scenario: Amending stays on the registered tab
-- **WHEN** a fencer holding a reservation starts an amendment
-- **THEN** the amendment form opens on the `Registered` tab, the tab control still shows two tabs, and submitting returns to the amended registration on that same tab
-
-#### Scenario: Closing the page
-- **WHEN** the fencer activates the close control
-- **THEN** they return to the list the detail was opened from
-
-#### Scenario: Long tournament read to the end
-- **WHEN** a fencer opens a tournament whose information is taller than the window
-- **THEN** the page scrolls and the last section is reachable
-
-#### Scenario: Sections stand apart
-- **WHEN** the information screen renders the header, disciplines, discounts, and other-actions sections
-- **THEN** vertical space separates each from the next, with no two section borders touching
-
-### Requirement: Tournament detail shares the home heading
-The tournament detail page SHALL carry the Fencer Home heading unchanged — the same title, the same tournament filter tabs, the same identity block and account menu, in the same order — so that opening a tournament reads as the same page rather than a different one. Selecting a filter tab from the detail page SHALL leave the detail and show that list.
-
-The detail page's own controls — the tournament's display name, its `Tournament` / `Register` tab pair, and its close control — SHALL occupy a second row beneath that heading, and SHALL NOT be mixed into it.
-
-#### Scenario: Heading survives opening a tournament
-- **WHEN** a fencer opens a tournament from any list
-- **THEN** the top row still shows the title, the four filter tabs, the identity block and the account menu, exactly as the list showed them
-
-#### Scenario: Detail controls sit below
-- **WHEN** the detail page is open
-- **THEN** the tournament's name, its `Tournament` / `Register` tabs, and its close control are on a second row under the heading
-
-#### Scenario: Filter tab leaves the detail
-- **WHEN** the fencer selects the Open tab while a tournament's detail is open
-- **THEN** the detail closes and the Open list is shown
-
 ### Requirement: Tournament detail — information
 The tournament detail page SHALL open, from the list, on an information screen that presents the tournament's full public information and does not itself contain the registration form. It SHALL open with the tournament's identity stated as consecutive lines in this order: the title; the subtitle when set; the date, the location and the qualification statement on one line; the registration opening and closing dates on one line; the titular organizers; and the description. Parts sharing a line SHALL be separated by the spaced middle dot, and a line whose every part is absent SHALL be omitted rather than left blank. The logo, when set, stands beside these lines.
 
@@ -238,64 +173,6 @@ Where a discipline or an action carries any of its optional when/where/ruleset/r
 #### Scenario: Open Register from information
 - **WHEN** the fencer views the information screen while registration is available
 - **THEN** the page's `Register` tab is offered and opens the registration form, and the information screen itself carries no register button
-
-### Requirement: Registration with live total
-The Register screen SHALL be reached through the detail page's `Register` tab, offered only when the account has no active registration, registration is open, and at least one discipline or other purchasable item has an open slot. It SHALL present every purchasable item as one long list grouped into sections — tournament (disciplines), actions (seminars, afterparties, after-sparrings), gear lending (rentals), and merch & other — plus one non-billable field, a free-text note to the organizer. Each item SHALL offer selection or a quantity up to its limit. The displayed total SHALL be computed by the server pricing engine and refresh as the selection changes.
-
-Below the purchasable items and above the total, the screen SHALL show a discounts section listing every discount the tournament configures, in configured order, each with its name, its configured value, and a read-only marker stating whether the current selection activates it. The marker states SHALL come from the server's pricing evaluation of the current selection, and the screen SHALL NOT evaluate discount conditions itself. The markers SHALL refresh with the total, from the same evaluation, so the section can never contradict the amount below it. WHEN no discount state is available for the current selection — nothing selected, or the price evaluation failed — every marker SHALL read as inactive rather than retain an earlier state. The section SHALL be omitted entirely when the tournament configures no discounts.
-
-Submitting SHALL create the registration through the existing registration contract. WHEN a selected discipline is full, the screen SHALL surface the choice between trimming the selection and joining the substitute queue with the whole registration. On success the page SHALL move to the `Registered` tab, which thereafter holds the registration in place of the form.
-
-#### Scenario: Register screen grouped by section
-- **WHEN** the fencer opens the Register screen for a tournament with disciplines, a seminar, weapon rental, and a t-shirt
-- **THEN** the items appear as one long list grouped into tournament, actions, gear lending, and merch & other sections, each selectable with a quantity up to its limit
-
-#### Scenario: One non-billable field
-- **WHEN** the fencer reaches the bottom of the Register screen
-- **THEN** the only non-billable field offered is the free-text note, with no accommodation field and no after-sparring checkbox
-
-#### Scenario: Register unavailable when nothing is open
-- **WHEN** registration is closed, not yet open, or every discipline and item is full
-- **THEN** no `Register` tab is offered on the detail page
-
-#### Scenario: Total updates while selecting
-- **WHEN** the fencer adds a second discipline that triggers a multi-discipline discount
-- **THEN** the displayed total updates to the discounted amount computed by the server
-
-#### Scenario: Markers follow the selection
-- **WHEN** the fencer holds one discipline on a tournament offering −500 Kč for 2 disciplines and −200 Kč for 3, and then ticks a second discipline
-- **THEN** the 2-discipline row becomes marked active, the 3-discipline row stays inactive, and the total drops by the discount in the same refresh
-
-#### Scenario: Missed discount stays visible
-- **WHEN** the fencer's selection activates no discount at all
-- **THEN** every configured discount is still listed, all markers inactive, so the fencer can see what is on offer
-
-#### Scenario: Markers cannot be operated
-- **WHEN** the fencer clicks a discount row's marker
-- **THEN** nothing changes: the marker reports the consequence of the selection above it and is not itself selectable
-
-#### Scenario: Nothing selected
-- **WHEN** the fencer has selected no discipline
-- **THEN** the discounts section lists every discount with all markers inactive, beside a zero total
-
-#### Scenario: Price evaluation unavailable
-- **WHEN** the price evaluation for the current selection fails
-- **THEN** the markers clear along with the total rather than leaving a previous selection's discounts marked active
-
-#### Scenario: Successful registration from the screen
-- **WHEN** the fencer submits a valid selection
-- **THEN** a reservation is created and the page moves to the `Registered` tab, showing the registration with its payment instructions
-
-#### Scenario: Full discipline choice
-- **WHEN** the fencer submits a selection containing a full discipline
-- **THEN** the screen presents the full disciplines and offers joining the substitute queue or removing them before resubmitting
-
-### Requirement: In-app payment instructions
-WHEN the account holds an unpaid reservation for the tournament, the detail page SHALL display the payment instructions: total amount, bank account (IBAN), variable symbol, the instruction to quote the VS in the payment message for transfers without a VS field, the reservation expiry date, and an SPAYD QR code. The QR code and the full transfer details SHALL always be shown together.
-
-#### Scenario: Payment panel after registering
-- **WHEN** a fencer completes a registration
-- **THEN** the page shows the QR code alongside IBAN, amount, VS, and the VS-in-message instruction, and states when the reservation expires
 
 ### Requirement: Registration management
 WHEN the account has a registration for the tournament, the detail page SHALL show its state (reserved with expiry, paid, substitute with queue positions per discipline, cancelled), the selected disciplines and extra services with the computed total, and SHALL offer cancellation per the cancellation policy, stating whether the cancellation is refundable before the fencer confirms.
@@ -365,14 +242,3 @@ A member the search does not find SHALL be enterable as a plain name, and SHALL 
 #### Scenario: Editor open after amendments close
 - **WHEN** the fencer opens the roster editor after the amendment window has closed
 - **THEN** it is available and saves normally, while the controls that add or remove a team are not offered
-
-### Requirement: Navigation rewiring
-Fencer Home SHALL be the post-login landing for every role. The tournament picker SHALL remain reachable only through the account menu's To Organizer entry and SHALL no longer contain the organizer plea section (the plea lives on the Profile page).
-
-#### Scenario: Organizer lands on Fencer Home
-- **WHEN** an organizer logs in
-- **THEN** they land on Fencer Home and reach the tournament picker via the account menu
-
-#### Scenario: Plea only on profile
-- **WHEN** a plain fencer opens the tournament picker via the account menu
-- **THEN** no plea section is shown there

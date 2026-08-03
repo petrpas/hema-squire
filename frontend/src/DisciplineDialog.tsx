@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { type DisciplineGender, type DisciplineKind, type DisciplineMaterial } from "./api";
@@ -39,6 +39,30 @@ function generateDraftSlug(
   return `${prefixed}-${counter}`;
 }
 
+/** The name and slug a classification derives on its own, with no collision
+ * counter — the comparison basis for deciding whether a stored value was
+ * overridden (design discipline-identity-modal / refine-detail-and-setup-ui
+ * D5). Unlike `generateDraftSlug`, this never disambiguates against other
+ * rows, so a legitimately generated `LS-2` is not misread as an override. */
+function deriveIdentity(
+  kind: DisciplineKind,
+  weapon: string,
+  gender: DisciplineGender,
+  material: DisciplineMaterial,
+): { name: string; slug: string } {
+  const name = disciplineName(weapon, gender, material, kind === "team") ?? "";
+  if (!weapon) return { name, slug: "" };
+  const base = normalizeSlug(taxonomyCode(weapon, gender, material)) || "Discipline";
+  const slug = kind === "team" ? `Team-${base}` : base;
+  return { name, slug };
+}
+
+function initialTouched(initial: DisciplineIdentity | null): { name: boolean; slug: boolean } {
+  if (!initial) return { name: false, slug: false };
+  const derived = deriveIdentity(initial.kind, initial.weapon, initial.gender, initial.material);
+  return { name: initial.name !== derived.name, slug: initial.slug !== derived.slug };
+}
+
 export default function DisciplineDialog({
   initial,
   otherNames,
@@ -64,13 +88,23 @@ export default function DisciplineDialog({
   const [name, setName] = useState(initial?.name ?? "");
   const [slug, setSlug] = useState(initial?.slug ?? "");
   // Independent per-field flags: derivation runs until the organizer types
-  // into that field, then stops for that field alone (design D3). Reset on
-  // every open, including a reopen — the loaded values are not "typed".
-  const [nameTouched, setNameTouched] = useState(false);
-  const [slugTouched, setSlugTouched] = useState(false);
+  // into that field, then stops for that field alone (design D3). For a new
+  // discipline both start false; for a reopened one, each starts true when
+  // the stored value is not what its stored classification would derive
+  // (design D5), so an override is not recaptured by a later classification
+  // change while a generated value keeps tracking it.
+  const [nameTouched, setNameTouched] = useState(() => initialTouched(initial).name);
+  const [slugTouched, setSlugTouched] = useState(() => initialTouched(initial).slug);
   const [error, setError] = useState<string | null>(null);
+  // A reopened dialog's first effect run must not overwrite the loaded
+  // values before the touched flags above have had a chance to matter.
+  const skipFirstDerivation = useRef(initial !== null);
 
   useEffect(() => {
+    if (skipFirstDerivation.current) {
+      skipFirstDerivation.current = false;
+      return;
+    }
     if (!nameTouched) {
       setName(disciplineName(weapon, gender, material, kind === "team") ?? "");
     }

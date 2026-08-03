@@ -92,6 +92,40 @@ button.secondary:disabled {
   cursor: default;
 }
 
+/* an action that ends or rewrites something the user already holds: the
+   outlined shape of button.secondary in the one saturated color, never
+   filled, so the screen's single primary button stays the only filled one */
+.btn-danger {
+  border: var(--border-w) solid var(--stamp);
+  background: transparent;
+  color: var(--stamp);
+  border-radius: var(--radius);
+  padding: 0.45rem 0.9rem;
+  text-transform: uppercase;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  font-weight: 500;
+  transition: background-color 120ms;
+}
+
+.btn-danger:hover:not(:disabled) {
+  background: var(--paper-shade);
+}
+
+.btn-danger:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+/* two destructive controls stand as one centered row, spaced so neither can
+   be hit by aiming at its neighbour */
+.action-pair {
+  display: flex;
+  justify-content: center;
+  gap: 1.5rem;
+  margin-top: 0.6rem;
+}
+
 .link-button {
   border: none;
   background: transparent;
@@ -331,6 +365,12 @@ button.secondary:disabled {
 
 .stage-control button:disabled {
   cursor: default;
+}
+
+.stage-control .tab-count {
+  margin-left: 0.55em;
+  font-family: var(--font-data);
+  letter-spacing: 0;
 }
 
 .preview-tabs {
@@ -800,6 +840,19 @@ button.secondary:disabled {
   display: block;
 }
 
+/* Inside a sticky table header the box has no room above it — open it over
+   the rows instead, and lift its cell clear of the sibling headers' shared
+   z-index while it is open (design refine-detail-and-setup-ui D6). */
+.sheet-table thead .help-hint-box {
+  top: calc(100% + 0.3rem);
+  bottom: auto;
+}
+
+.sheet-table thead th:has(.help-hint-marker:hover),
+.sheet-table thead th:has(.help-hint-marker:focus-within) {
+  z-index: 2;
+}
+
 .param-save {
   margin-top: 0.6rem;
   width: 100%;
@@ -1114,11 +1167,27 @@ tr.row-deleted td.col-actions {
 
 /* ===== roles: plea, team, danger zone, admin panel ===== */
 
+/* A fixed header (name, tabs, close/back) over a body that scrolls on its
+   own — the card itself no longer scrolls as a whole, so its header stays in
+   place (design refine-detail-and-setup-ui D1). */
 .wide-card {
   width: 46rem;
   max-width: 92vw;
   max-height: 88vh;
+  overflow: hidden;
+}
+
+/* The scrolling body of a .wide-card, holding the active view's sections
+   with visible space between them — .setup-panel is the console's own
+   fixed-header pattern and sets no gap of its own, which is why sections
+   used to sit flush against one another here. */
+.page-card-body {
+  flex: 1;
+  min-height: 0;
   overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
 }
 
 .plea-status {
@@ -1552,13 +1621,15 @@ label.checkbox-chip,
 }
 
 .home-card-logo {
-  width: 44px;
-  height: 44px;
+  width: 88px;
+  height: 88px;
 }
 
 .detail-logo {
-  width: 64px;
-  height: 64px;
+  width: 128px;
+  height: 128px;
+  border: none;
+  background: transparent;
 }
 
 .home-card-heading {
@@ -1582,6 +1653,42 @@ label.checkbox-chip,
 .detail-description {
   color: var(--ink);
   font-size: 14px;
+}
+
+/* the detail page's fixed header: name, tab control, close — in that order
+   across the row (design refine-detail-and-setup-ui D1/D2) */
+/* the detail page under the shared heading: its own row, then the scrolling
+   body, both centered on the same measure the tournament list uses */
+.detail-workspace {
+  flex: 1;
+  min-height: 0;
+  flex-direction: column;
+  align-items: center;
+  padding: 1.5rem;
+  gap: 1rem;
+}
+
+.detail-workspace > * {
+  width: 100%;
+  max-width: 44rem;
+}
+
+.detail-header {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding-bottom: 0.8rem;
+  border-bottom: var(--border-w) solid var(--hairline);
+}
+
+.detail-header h1 {
+  flex: 1;
+  min-width: 0;
+}
+
+.detail-tabs {
+  flex: none;
 }
 
 /* organizer-authored markdown, rendered by Prose (frontend/src/Prose.tsx) */
@@ -1665,7 +1772,21 @@ label.checkbox-chip,
   border-top: var(--border-w) solid var(--hairline);
 }
 
-/* date and place as responsive columns rather than one long line */
+/* a card's own lines: date and place carry the weight, organizers follow in
+   faded ink. Both wrap rather than overflow on a narrow screen. */
+.home-card-when {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ink);
+}
+
+.home-card-organizers {
+  font-size: 12px;
+  color: var(--ink-faded);
+}
+
+/* the detail's own meta line: date · place · qualification, then the
+   registration window, in the same faded ink as a card's organizers */
 .home-card-meta {
   display: flex;
   flex-wrap: wrap;
@@ -1682,6 +1803,55 @@ label.checkbox-chip,
   display: flex;
   gap: 1rem;
   align-items: flex-start;
+}
+
+/* a registration's lines: what it is at the left, what it costs in a shared
+   right-hand column that the total closes */
+.registration-lines {
+  display: flex;
+  flex-direction: column;
+}
+
+.amount-line {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  column-gap: 1rem;
+  align-items: baseline;
+  padding: 0.35rem 0;
+  border-bottom: var(--border-w) solid var(--hairline);
+  font-size: 13px;
+}
+
+.amount-value {
+  font-family: var(--font-data);
+  white-space: nowrap;
+  text-align: right;
+}
+
+.amount-detail {
+  grid-column: 1 / -1;
+  margin-top: 0.2rem;
+}
+
+.amount-total {
+  border-bottom: none;
+  border-top: 2px solid var(--rule-strong);
+  margin-top: 0.6rem;
+  padding-top: 0.5rem;
+  font-weight: 500;
+}
+
+/* the detail's own third line: date · place · qualification, in reading ink
+   rather than the faded meta grey it replaced */
+.detail-facts {
+  font-size: 13px;
+  color: var(--ink);
+}
+
+/* the team-event marker stands off the discipline name it qualifies, rather
+   than sitting flush against it */
+.team-flag {
+  margin-left: 0.6rem;
 }
 
 .detail-info-heading {

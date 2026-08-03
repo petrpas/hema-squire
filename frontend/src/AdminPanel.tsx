@@ -213,7 +213,7 @@ export default function AdminPanel({
         ) : accounts === null || pleas === null ? (
           <p>{t("common.loading")}</p>
         ) : (
-          <div className="setup-panel">
+          <div className="page-card-body">
             <PleaQueueSection pleas={pleas} onChanged={refresh} />
             <AccountsSection accounts={accounts} onChanged={refresh} />
           </div>

@@ -488,12 +488,15 @@
     "tabs": {
       "announced": "Vyhlášené",
       "open": "Otevřené",
-      "past": "Proběhlé"
+      "past": "Proběhlé",
+      "mine": "Moje"
     },
     "empty": {
       "open": "Spis je prázdný. Zatím.",
       "announced": "Spis je prázdný. Zatím.",
-      "past": "Spis je prázdný. Zatím."
+      "past": "Spis je prázdný. Zatím.",
+      "openSeeAnnounced": "U vyhlášených turnajů registrace zatím nezačala.",
+      "mine": "Zatím nejsi na žádném turnaji."
     },
     "identity": {
       "hrid": "HRID: {{id}}",
@@ -506,7 +509,6 @@
     }
   },
   "detail": {
-    "back": "Zpět na turnaje",
     "disciplines": "Disciplíny",
     "extras": "Doplňkové služby",
     "freePlaces": "volných míst: {{count}}",
@@ -515,8 +517,12 @@
     "closesOn": "registrace do {{date}}",
     "notYetOpen": "Registrace na tento turnaj ještě nebyla otevřena.",
     "closedNotice": "Registrace na tento turnaj je uzavřena.",
-    "register": "Registrovat se",
-    "backToInfo": "Zpět na detail",
+    "tabs": {
+      "tournament": "Turnaj",
+      "register": "Registrovat se",
+      "registered": "Registrace"
+    },
+    "close": "Zavřít",
     "otherActions": "Další aktivity",
     "rulesetLabel": "Pravidla",
     "fencersCount": "{{taken}}/{{capacity}} šermířů",
@@ -531,7 +537,6 @@
   "form": {
     "title": "Registrace",
     "formNumber": "Registrace — tiskopis č. 3",
-    "afterparty": "Afterparty",
     "notes": "Poznámka",
     "total": "Celkem: {{amount}}",
     "submit": "Odeslat registraci",
@@ -557,9 +562,9 @@
     "chooseOption": "vyber",
     "optionRequired": "Vyber {{label}} u položky {{item}}.",
     "nowFull": "Tyto disciplíny se mezitím zaplnily: {{codes}}. Zkontroluj výběr a odešli znovu.",
-    "weaponRental": "Zapůjčení zbraně — {{weapon}}",
     "amendTitle": "Úprava registrace",
-    "amendSubmit": "Uložit úpravu"
+    "amendSubmit": "Uložit úpravu",
+    "totalLabel": "Celkem"
   },
   "discounts": {
     "title": "Slevy",
@@ -592,20 +597,27 @@
     "teamWaitlisted": "tým v pořadí",
     "fullyQueuedHint": "Čekáš v pořadí na všechny vybrané disciplíny — platba se otevře po zařazení.",
     "amend": "Upravit registraci",
-    "outstanding": "Zbývá doplatit: {{amount}}"
+    "outstanding": "Zbývá doplatit: {{amount}}",
+    "outstandingLabel": "Zbývá doplatit",
+    "amendConfirm": "Úpravou se cena přepočítá. U zaplacené registrace může vzniknout doplatek.",
+    "amendConfirmButton": "Ano, upravit registraci"
   },
   "roster": {
     "title": "Soupiska — {{team}}",
     "bounds": "{{min}}–{{max}} členů",
     "shortfall": "Do minimálního počtu chybí ještě {{count}}.",
     "namePlaceholder": "Jméno",
-    "add": "Přidat",
+    "add": "Přidat člena",
     "search": "Vyhledat v HR",
     "moveUp": "Posunout výš",
     "moveDown": "Posunout níž",
     "rebind": "Napojit na profil HR",
     "save": "Uložit soupisku",
-    "saveFailed": "Soupisku se nepodařilo uložit."
+    "saveFailed": "Soupisku se nepodařilo uložit.",
+    "addTitle": "Přidat člena",
+    "rebindTitle": "Napojit člena na profil",
+    "searchHint": "Vyhledej jméno v hemaratings, nebo ho přidej tak, jak je napsané.",
+    "confirmPlain": "Přidat jak je"
   },
   "teams": {
     "title": "Týmy",

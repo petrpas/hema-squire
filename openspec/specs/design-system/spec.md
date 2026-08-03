@@ -41,6 +41,10 @@ Tables SHALL have no zebra stripes. Rows are separated by a 1px `--hairline` rul
 ### Requirement: Form (tiskopis) conventions
 Forms SHALL number their sections with Roman numerals ("I.", "II.", …). Every labeled field, in panels and in modal dialogs alike, SHALL place its label above the control, styled per the typography conventions (10.5–11px uppercase, `letter-spacing: 0.12em`, weight 500, `--ink-faded`), with the control occupying the full width of its container. Inputs SHALL have a transparent background with a bottom rule only (`1px solid var(--ink)`), switching to a 2px `--stamp` bottom rule on focus, and no full-perimeter frame. Multiline text areas SHALL follow the same treatment and SHALL resize vertically only. Select and checkbox inputs SHALL use a full `1px solid var(--hairline)` frame on `--paper-raised` with 2px radius. Field error messages SHALL be `--stamp`-colored, 12px, placed below the field, stating what happened and what to do, with no exclamation marks.
 
+A field carrying an error SHALL mark itself with a `1px solid var(--stamp)` bottom rule, thickening to 2px on focus exactly as a valid field does, and SHALL carry `aria-invalid` with its message associated by `aria-describedby`. No other visual treatment SHALL signal invalidity: no browser default outline, no glow, no background fill, no icon, no animation. Numeric fields SHALL be rendered as text controls with a numeric input mode rather than native number inputs, so no separator a user types is discarded by the browser and no spinner appears.
+
+When a save is blocked because fields need attention, the save control SHALL state so plainly — what is wrong and how many fields — in the same 12px `--stamp` text as a field error, with no exclamation mark, and the statement SHALL move focus to the first invalid field when activated.
+
 #### Scenario: Focusing a text input
 - **WHEN** a user focuses a form text input
 - **THEN** its bottom rule becomes `2px solid var(--stamp)` and no other frame or outline appears around it
@@ -48,6 +52,18 @@ Forms SHALL number their sections with Roman numerals ("I.", "II.", …). Every 
 #### Scenario: Validation failure
 - **WHEN** a field fails validation (e.g. an invalid variable symbol)
 - **THEN** an error message appears below the field in `--stamp`, 12px, describing the problem and the fix, without an exclamation mark
+
+#### Scenario: Marking the invalid field itself
+- **WHEN** a field is showing an error message
+- **THEN** its bottom rule is `--stamp`-colored, it reports `aria-invalid`, its message is reachable through `aria-describedby`, and no outline, glow, fill or icon is added
+
+#### Scenario: A numeric field
+- **WHEN** a form presents a field that accepts only numbers
+- **THEN** it is a text control with a numeric input mode, showing no spinner and accepting a typed decimal comma or point without discarding it
+
+#### Scenario: A blocked save
+- **WHEN** a save is attempted while fields in that section are invalid
+- **THEN** the save control states how many fields need attention in 12px `--stamp` text without an exclamation mark, and activating that statement focuses the first invalid field
 
 #### Scenario: Field inside a modal dialog
 - **WHEN** a form field is rendered inside a modal dialog
@@ -59,6 +75,8 @@ Forms SHALL number their sections with Roman numerals ("I.", "II.", …). Every 
 
 ### Requirement: Field help hints
 A form field MAY carry a help hint explaining what belongs in it. The hint SHALL be reached through a marker placed after the field's label, drawn from the outline icon set or as a bordered glyph in `--ink-faded`, never an emoji and never filled. The hint SHALL be revealed on pointer hover **and** on keyboard focus of the marker, and SHALL be rendered as a static box on `--paper-raised` with a `1px solid var(--ink)` border and 2px radius — with no shadow, no blur, no transition, and no entrance animation. The marker SHALL be a focusable control associated with the hint text via `aria-describedby`. Help hints SHALL be reserved for fields whose expected content is not evident from the label; they SHALL NOT replace field labels or error messages.
+
+A revealed hint SHALL be legible in full, above every element it overlaps — including the neighbouring cells of a sticky table header it is opened from, and the rows beneath it. Nothing on the page SHALL paint over an open hint box.
 
 #### Scenario: Revealing a hint by pointer
 - **WHEN** a user hovers the help marker next to a field label
@@ -72,6 +90,10 @@ A form field MAY carry a help hint explaining what belongs in it. The hint SHALL
 - **WHEN** a field's label already states what belongs in it
 - **THEN** no help marker is rendered
 
+#### Scenario: Hint opened from a table header
+- **WHEN** a user reveals the hint on a column header that has other column headers to its right in the same sticky header row
+- **THEN** the whole hint box is readable above those headers, with no part of it hidden behind them
+
 ### Requirement: Button hierarchy
 Each screen SHALL have at most one primary button (filled `--stamp`, uppercase text, `--paper` text color, 2px radius). Secondary buttons SHALL be outlined (`1px solid var(--ink)`, `--ink` text). Tertiary actions SHALL be underlined text with no frame. All button and in-text link labels SHALL be verbs or verb phrases naming the action, never generic labels like "OK" or "Submit", and in-text links SHALL be `--ink` with underline, never the browser default blue.
 
@@ -82,6 +104,29 @@ Each screen SHALL have at most one primary button (filled `--stamp`, uppercase t
 #### Scenario: Labeling a submit action
 - **WHEN** a registration form's submit button is rendered
 - **THEN** its label is a verb phrase describing the action (e.g. "Register fencer"), not "Submit" or "OK"
+
+### Requirement: Destructive actions
+An action that ends or rewrites something the user already holds — cancelling a registration, amending one that is already reserved or paid — SHALL be presented as a destructive control: outlined in `--stamp` with `--stamp` text, never filled, so it stays distinct from the screen's single primary button and adds no second saturated color.
+
+A destructive control SHALL ask for confirmation before acting. The confirmation SHALL be the static, unanimated pattern already used for cancellation — a plain statement of the consequence with a pair of controls, one confirming and one abandoning — and SHALL NOT be a browser dialog.
+
+WHERE two or more destructive controls stand together, they SHALL be laid out as one centered row with space between them, so neither reads as the continuation of the other and neither can be hit by aiming at its neighbour.
+
+#### Scenario: A destructive control is drawn
+- **WHEN** a screen offers a cancel-registration control
+- **THEN** it is outlined in `--stamp` with `--stamp` text, unfilled, and the screen's primary button remains the only filled one
+
+#### Scenario: Confirmation before acting
+- **WHEN** a user activates a destructive control
+- **THEN** a static confirmation states what will happen and offers confirming and abandoning controls, with no animation and no browser dialog
+
+#### Scenario: Two destructive controls together
+- **WHEN** a screen offers both amend and cancel
+- **THEN** the two stand in one centered row separated by space
+
+#### Scenario: Abandoning changes nothing
+- **WHEN** a user abandons the confirmation
+- **THEN** nothing is sent, and the screen returns to the state it was in
 
 ### Requirement: Tags and stamps
 Category tags SHALL render as a pastel background with its matching `-ink` text color, 11px, 2px radius. The "Paid" stamp SHALL be an outlined (`1.5px solid var(--stamp)`) uppercase 10px label with `letter-spacing: 0.1em` and a rotation between −2° and +2° that is deterministically derived from the registration ID, so the same record renders the same tilt on every render. Pending payments SHALL render as plain `--ink-faded` text with the VS in `--font-data`, never as a badge.

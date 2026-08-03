@@ -488,12 +488,15 @@
     "tabs": {
       "announced": "Announced",
       "open": "Open",
-      "past": "Past"
+      "past": "Past",
+      "mine": "Mine"
     },
     "empty": {
       "open": "The file is empty. For now.",
       "announced": "The file is empty. For now.",
-      "past": "The file is empty. For now."
+      "past": "The file is empty. For now.",
+      "openSeeAnnounced": "Registration has not opened yet for the announced ones.",
+      "mine": "You are in no tournament yet."
     },
     "identity": {
       "hrid": "HRID: {{id}}",
@@ -506,7 +509,6 @@
     }
   },
   "detail": {
-    "back": "Back to tournaments",
     "disciplines": "Disciplines",
     "extras": "Extra services",
     "freePlaces": "{{count}} free places",
@@ -515,8 +517,12 @@
     "closesOn": "registration closes {{date}}",
     "notYetOpen": "Registration for this tournament hasn't opened yet.",
     "closedNotice": "Registration for this tournament is closed.",
-    "register": "Register",
-    "backToInfo": "Back to details",
+    "tabs": {
+      "tournament": "Tournament",
+      "register": "Register",
+      "registered": "Registered"
+    },
+    "close": "Close",
     "otherActions": "Other actions",
     "rulesetLabel": "Ruleset",
     "fencersCount": "{{taken}}/{{capacity}} fencers",
@@ -531,7 +537,6 @@
   "form": {
     "title": "Registration",
     "formNumber": "Registration — form no. 3",
-    "afterparty": "Afterparty",
     "notes": "Notes",
     "total": "Total: {{amount}}",
     "submit": "Submit registration",
@@ -557,9 +562,9 @@
     "chooseOption": "choose",
     "optionRequired": "Choose {{label}} for {{item}}.",
     "nowFull": "These disciplines filled up in the meantime: {{codes}}. Check your selection and submit again.",
-    "weaponRental": "Weapon rental — {{weapon}}",
     "amendTitle": "Amend registration",
-    "amendSubmit": "Save amendment"
+    "amendSubmit": "Save amendment",
+    "totalLabel": "Total"
   },
   "discounts": {
     "title": "Discounts",
@@ -592,20 +597,27 @@
     "teamWaitlisted": "team on the waitlist",
     "fullyQueuedHint": "You're queued for every selected discipline — payment opens once you're admitted.",
     "amend": "Amend registration",
-    "outstanding": "Outstanding: {{amount}}"
+    "outstanding": "Outstanding: {{amount}}",
+    "outstandingLabel": "Outstanding",
+    "amendConfirm": "Amending recomputes the price. A paid registration may end up owing more.",
+    "amendConfirmButton": "Yes, amend registration"
   },
   "roster": {
     "title": "Roster — {{team}}",
     "bounds": "{{min}}–{{max}} members",
     "shortfall": "{{count}} more member(s) needed to reach the minimum.",
     "namePlaceholder": "Name",
-    "add": "Add",
+    "add": "Add member",
     "search": "Search HR",
     "moveUp": "Move up",
     "moveDown": "Move down",
     "rebind": "Bind to an HR profile",
     "save": "Save roster",
-    "saveFailed": "Could not save the roster."
+    "saveFailed": "Could not save the roster.",
+    "addTitle": "Add member",
+    "rebindTitle": "Bind member to a profile",
+    "searchHint": "Search hemaratings for this name, or add it as typed.",
+    "confirmPlain": "Add as typed"
   },
   "teams": {
     "title": "Teams",

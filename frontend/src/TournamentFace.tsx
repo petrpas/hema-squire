@@ -16,7 +16,9 @@ import {
   api,
   logoUrl,
 } from "./api";
-import { formatMoney, formatMoneyWithEur } from "./money";
+import { FIELD_CONSTRAINTS } from "./constraints";
+import { formatMoneyWithEur } from "./money";
+import { parseInteger } from "./numeric";
 import Prose from "./Prose";
 
 export const LEGACY_WEAPONS: Record<string, string> = {
@@ -135,6 +137,10 @@ export function amendmentOpen(detail: TournamentDetailData): boolean {
 
 export function InfoHeader({ detail }: { detail: TournamentDetailData }) {
   const { t } = useTranslation();
+  // the tournament states itself as consecutive lines, in this order: title,
+  // subtitle, date · place · qualification, the registration window, the
+  // titular organizers, the description. A line whose every part is absent is
+  // not rendered — DotJoined returns null rather than an empty rule.
   return (
     <section className="rail-card detail-info-header">
       {detail.has_logo && (
@@ -143,55 +149,50 @@ export function InfoHeader({ detail }: { detail: TournamentDetailData }) {
       <div className="detail-info-heading">
         <h1>{detail.display_name}</h1>
         {detail.subtitle && <p className="detail-subtitle">{detail.subtitle}</p>}
-        <div className="home-card-meta">
-          {detail.organizers.length > 0 && (
-            <span className="meta-cell">
-              {detail.organizers.map((organizer, index) => (
-                <span key={index}>
-                  {index > 0 && ", "}
-                  {organizer.link ? (
-                    <a
-                      className="detail-inline-link"
-                      href={organizer.link}
-                      target="_blank"
-                      rel="noreferrer"
-                    >
-                      {organizer.name}
-                    </a>
-                  ) : (
-                    organizer.name
-                  )}
-                </span>
-              ))}
-            </span>
-          )}
-          <span className="meta-cell">
-            {new Date(detail.date).toLocaleDateString("cs")}
-          </span>
-          {detail.location && <span className="meta-cell">{detail.location}</span>}
-        </div>
-        {(detail.registration_opens || detail.registration_closes) && (
+        <DotJoined
+          className="detail-facts"
+          parts={[
+            new Date(detail.date).toLocaleDateString("cs"),
+            detail.location,
+            detail.qualification_open
+              ? t("detail.qualificationOpen")
+              : t("detail.qualificationRequired", { criteria: detail.qualification_criteria }),
+          ]}
+        />
+        <DotJoined
+          className="rail-hint"
+          parts={[
+            detail.registration_opens &&
+              t("detail.opensOn", {
+                date: new Date(detail.registration_opens).toLocaleDateString("cs"),
+              }),
+            detail.registration_closes &&
+              t("detail.closesOn", {
+                date: new Date(detail.registration_closes).toLocaleDateString("cs"),
+              }),
+          ]}
+        />
+        {detail.organizers.length > 0 && (
           <p className="rail-hint">
-            <DotJoined
-              className=""
-              parts={[
-                detail.registration_opens &&
-                  t("detail.opensOn", {
-                    date: new Date(detail.registration_opens).toLocaleDateString("cs"),
-                  }),
-                detail.registration_closes &&
-                  t("detail.closesOn", {
-                    date: new Date(detail.registration_closes).toLocaleDateString("cs"),
-                  }),
-              ]}
-            />
+            {detail.organizers.map((organizer, index) => (
+              <span key={index}>
+                {index > 0 && ", "}
+                {organizer.link ? (
+                  <a
+                    className="detail-inline-link"
+                    href={organizer.link}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    {organizer.name}
+                  </a>
+                ) : (
+                  organizer.name
+                )}
+              </span>
+            ))}
           </p>
         )}
-        <p className="rail-hint">
-          {detail.qualification_open
-            ? t("detail.qualificationOpen")
-            : t("detail.qualificationRequired", { criteria: detail.qualification_criteria })}
-        </p>
         <Prose source={detail.description} className="detail-description" />
       </div>
     </section>
@@ -259,7 +260,7 @@ export function DisciplinesInfo({
               <div className="detail-row">
                 <strong>
                   {d.name}
-                  {isTeam && <span className="tag tag-file-blue"> {t("detail.teamEvent")}</span>}
+                  {isTeam && <span className="tag tag-file-blue team-flag">{t("detail.teamEvent")}</span>}
                 </strong>
                 <DotJoined
                   parts={[
@@ -462,13 +463,13 @@ export function ItemControls({
         <span className="checklist-control">
           {t("form.quantity")}
           <input
-            type="number"
-            min={1}
-            max={item.max_qty}
+            type="text"
+            inputMode="numeric"
             value={qty}
-            onChange={(event) =>
-              onQty(Math.max(1, Math.min(item.max_qty, Number(event.target.value))))
-            }
+            onChange={(event) => {
+              const result = parseInteger(event.target.value);
+              if (result.ok) onQty(Math.max(1, Math.min(item.max_qty, result.value)));
+            }}
           />
         </span>
       )}
@@ -485,7 +486,11 @@ export function ItemControls({
               ))}
             </select>
           ) : (
-            <input value={optionValue} onChange={(event) => onOption(event.target.value)} />
+            <input
+              value={optionValue}
+              maxLength={FIELD_CONSTRAINTS["ExtraSelectionIn.option_value"]?.maxLength}
+              onChange={(event) => onOption(event.target.value)}
+            />
           )}
         </span>
       )}
@@ -536,12 +541,16 @@ export function RegistrationForm({
     }
     return map;
   });
-  const [legacyQty, setLegacyQty] = useState<Record<string, number>>(() => {
+  // Neither rentals nor afterparty are offered by this form (design D4 —
+  // `refine-detail-and-setup-ui`), but an amendment must not drop what an
+  // older registration already carries, so the seeded state still flows
+  // into the price preview and the submit payload below.
+  const [legacyQty] = useState<Record<string, number>>(() => {
     const map: Record<string, number> = {};
     for (const weapon of initial?.weapon_rentals ?? []) map[weapon] = (map[weapon] ?? 0) + 1;
     return map;
   });
-  const [afterparty, setAfterparty] = useState(initial?.afterparty ?? false);
+  const [afterparty] = useState(initial?.afterparty ?? false);
   const [notes, setNotes] = useState(initial?.notes ?? "");
   const [total, setTotal] = useState(initial?.total_amount ?? 0);
   const [eurTotal, setEurTotal] = useState<number | null>(initial?.total_eur ?? null);
@@ -550,7 +559,6 @@ export function RegistrationForm({
   const [error, setError] = useState<string | null>(null);
 
   const bySlug = new Map(availability.map((a) => [a.slug, a]));
-  const legacy = detail.extra_items.length === 0;
 
   // trial selections made against a since-changed tournament (the preview's
   // `detail` can change identity mid-session) must not keep keys the
@@ -869,64 +877,17 @@ export function RegistrationForm({
         </>
       )}
 
-      {(programmeItems.length > 0 || legacy) && (
+      {programmeItems.length > 0 && (
         <>
           <h3 className="register-section">{t("form.sections.programme")}</h3>
-          <div className="checklist">
-            {programmeItems.map(itemRow)}
-            {legacy && (
-              <ChecklistRow
-                name={t("form.afterparty")}
-                price={formatMoney(detail.afterparty_fee, detail.local_currency)}
-                checked={afterparty}
-                onToggle={() => setAfterparty(!afterparty)}
-              />
-            )}
-          </div>
+          <div className="checklist">{programmeItems.map(itemRow)}</div>
         </>
       )}
 
-      {(optionalItems.length > 0 || legacy) && (
+      {optionalItems.length > 0 && (
         <>
           <h3 className="register-section">{t("form.sections.items")}</h3>
-          <div className="checklist">
-            {optionalItems.map(itemRow)}
-            {legacy &&
-              Object.entries(LEGACY_WEAPONS).map(([code, name]) => {
-                const qty = legacyQty[code] ?? 0;
-                return (
-                  <ChecklistRow
-                    key={code}
-                    name={t("form.weaponRental", { weapon: name })}
-                    price={formatMoney(detail.weapon_rental_fee, detail.local_currency)}
-                    checked={qty > 0}
-                    onToggle={() =>
-                      setLegacyQty({ ...legacyQty, [code]: qty > 0 ? 0 : 1 })
-                    }
-                  >
-                    {qty > 0 && (
-                      <span className="checklist-controls">
-                        <span className="checklist-control">
-                          {t("form.quantity")}
-                          <input
-                            type="number"
-                            min={1}
-                            max={4}
-                            value={qty}
-                            onChange={(event) =>
-                              setLegacyQty({
-                                ...legacyQty,
-                                [code]: Math.max(1, Math.min(4, Number(event.target.value))),
-                              })
-                            }
-                          />
-                        </span>
-                      </span>
-                    )}
-                  </ChecklistRow>
-                );
-              })}
-          </div>
+          <div className="checklist">{optionalItems.map(itemRow)}</div>
         </>
       )}
 

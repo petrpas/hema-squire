@@ -43,7 +43,7 @@ def client(engine):
 def publish(client, headers, slug):
     """Publish a tournament so it reaches fencers: setup-complete alone no
     longer does (design add-explicit-publishing). Every test that expects a
-    tournament in /open, /mine/past, or accepting registrations must call
+    tournament in /open, /held, /mine, or accepting registrations must call
     this after completing its mandatory setup."""
     response = client.post(f"/api/tournaments/{slug}/publish", headers=headers)
     assert response.status_code == 200, response.text

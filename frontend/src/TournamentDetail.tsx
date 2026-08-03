@@ -1,14 +1,11 @@
 import { IconArrowDown, IconArrowUp, IconSearch, IconX } from "@tabler/icons-react";
-import { useEffect, useState } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import AccountMenu from "./AccountMenu";
-import HRSearchPicker from "./HRSearch";
 import PaidStamp from "./PaidStamp";
+import RosterMemberDialog from "./RosterMemberDialog";
 import {
-  type Account,
   type Availability,
-  type HRProfile,
   type PaymentInstructions,
   type RegistrationDetail,
   type RosterMember,
@@ -97,6 +94,28 @@ function RegistrationStateTag({ registration }: { registration: RegistrationDeta
 
 /** What a registration holds and what it owes — shared by the read-only summary
  *  and the owner's panel, so the two can never disagree. */
+/** One line of a registration: what it is, and what it costs, the amount
+ *  sitting in the shared right-hand column. */
+function AmountLine({
+  label,
+  amount,
+  className,
+  children,
+}: {
+  label: ReactNode;
+  amount?: ReactNode;
+  className?: string;
+  children?: ReactNode;
+}) {
+  return (
+    <div className={className ? `amount-line ${className}` : "amount-line"}>
+      <span className="amount-label">{label}</span>
+      <span className="amount-value">{amount}</span>
+      {children && <div className="amount-detail">{children}</div>}
+    </div>
+  );
+}
+
 function RegistrationLines({
   registration,
   detail,
@@ -110,62 +129,96 @@ function RegistrationLines({
   // discipline entries are identified by slug, but a fencer never reads a
   // slug (design discipline-identity D6) — the name is what tells them which
   // one they entered
-  const disciplineName = new Map(detail.disciplines.map((d) => [d.slug, d.name]));
+  const discipline = new Map(detail.disciplines.map((d) => [d.slug, d]));
+  const item = new Map(detail.extra_items.map((x) => [x.id, x]));
+
+  /** A discipline's own fee, stated as the tournament lists it — the
+   *  registration's total below is the server's, discounts and all. */
+  function disciplineFee(slug: string) {
+    const d = discipline.get(slug);
+    if (!d || d.fee === null) return null;
+    return formatMoneyWithEur(d.fee, d.fee_eur, detail);
+  }
 
   return (
-    <>
-      <ul className="detail-list">
-        {active.map((e) => (
-          <li key={e.slug}>{disciplineName.get(e.slug) ?? e.slug}</li>
-        ))}
-        {substitutes.map((e) => (
-          <li key={e.slug} className="muted">
-            {disciplineName.get(e.slug) ?? e.slug} —{" "}
-            {t("registration.queuePosition", { position: e.queue_position })}
-          </li>
-        ))}
-        {registration.teams.map((team) => (
-          <li key={`team-${team.id}`} className={team.waitlisted ? "muted" : undefined}>
-            {team.name} — {disciplineName.get(team.slug) ?? team.slug}:{" "}
-            {formatMoneyWithEur(team.fee, team.fee_eur, detail)}
-            {team.waitlisted && ` (${t("registration.teamWaitlisted")})`}
-            {team.members.length > 0 && (
-              <ul className="detail-list">
-                {team.members.map((member, index) => (
-                  <li key={index} className="muted">
-                    {member.name}
-                    {member.club && ` · ${member.club}`}
-                  </li>
-                ))}
-              </ul>
-            )}
-          </li>
-        ))}
-        {registration.extras.map((extra) => (
-          <li key={extra.extra_item_id}>
-            {extra.name} × {extra.qty}
-            {extra.option_value && ` (${extra.option_label}: ${extra.option_value})`}
-          </li>
-        ))}
-      </ul>
-      <p className="form-total">
-        {t("form.total", {
-          amount: formatMoneyWithEur(registration.total_amount, registration.total_eur, detail),
-        })}
-      </p>
+    <div className="registration-lines">
+      {active.map((e) => (
+        <AmountLine
+          key={e.slug}
+          label={discipline.get(e.slug)?.name ?? e.slug}
+          amount={disciplineFee(e.slug)}
+        />
+      ))}
+      {substitutes.map((e) => (
+        <AmountLine
+          key={e.slug}
+          className="muted"
+          label={`${discipline.get(e.slug)?.name ?? e.slug} — ${t("registration.queuePosition", {
+            position: e.queue_position,
+          })}`}
+          amount={disciplineFee(e.slug)}
+        />
+      ))}
+      {registration.teams.map((team) => (
+        <AmountLine
+          key={`team-${team.id}`}
+          className={team.waitlisted ? "muted" : undefined}
+          // the discipline names the entry, the team names the entrant
+          label={`${discipline.get(team.slug)?.name ?? team.slug}: ${team.name}${
+            team.waitlisted ? ` (${t("registration.teamWaitlisted")})` : ""
+          }`}
+          amount={formatMoneyWithEur(team.fee, team.fee_eur, detail)}
+        >
+          {team.members.length > 0 && (
+            <ul className="detail-list">
+              {team.members.map((member, index) => (
+                <li key={index} className="muted">
+                  {member.name}
+                  {member.club && ` · ${member.club}`}
+                </li>
+              ))}
+            </ul>
+          )}
+        </AmountLine>
+      ))}
+      {registration.extras.map((extra) => {
+        const priced = item.get(extra.extra_item_id);
+        return (
+          <AmountLine
+            key={extra.extra_item_id}
+            label={`${extra.name} × ${extra.qty}${
+              extra.option_value ? ` (${extra.option_label}: ${extra.option_value})` : ""
+            }`}
+            amount={
+              priced
+                ? formatMoneyWithEur(
+                    priced.price * extra.qty,
+                    priced.price_eur === null ? null : priced.price_eur * extra.qty,
+                    detail,
+                  )
+                : null
+            }
+          />
+        );
+      })}
+      <AmountLine
+        className="amount-total"
+        label={t("form.totalLabel")}
+        amount={formatMoneyWithEur(registration.total_amount, registration.total_eur, detail)}
+      />
       {(Number(registration.outstanding_amount) !== 0 ||
         Number(registration.outstanding_eur_amount ?? 0) !== 0) && (
-        <p className="rail-hint">
-          {t("registration.outstanding", {
-            amount: formatMoneyWithEur(
-              registration.outstanding_amount,
-              registration.outstanding_eur_amount,
-              detail,
-            ),
-          })}
-        </p>
+        <AmountLine
+          className="muted"
+          label={t("registration.outstandingLabel")}
+          amount={formatMoneyWithEur(
+            registration.outstanding_amount,
+            registration.outstanding_eur_amount,
+            detail,
+          )}
+        />
       )}
-    </>
+    </div>
   );
 }
 
@@ -191,9 +244,10 @@ function RosterEditor({
   const [dirty, setDirty] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [newName, setNewName] = useState("");
-  const [searchOpen, setSearchOpen] = useState(false);
-  const [rebindIndex, setRebindIndex] = useState<number | null>(null);
+  // one slot: naming a member happens in the dialog, whether the member is
+  // being added or rebound, so the roster itself carries no name field and no
+  // search block (spec: "Member added through the dialog")
+  const [dialog, setDialog] = useState<{ index: number | null } | null>(null);
 
   function patch(next: RosterMember[]) {
     setMembers(next);
@@ -216,41 +270,10 @@ function RosterEditor({
     patch(next);
   }
 
-  function addTyped() {
-    const name = newName.trim();
-    if (!name) return;
-    patch([...members, { name, hr_id: null, club: null, nationality: null }]);
-    setNewName("");
-  }
-
-  function addFromSearch(profile: HRProfile) {
-    patch([
-      ...members,
-      {
-        name: profile.name,
-        hr_id: profile.hr_id,
-        club: profile.club,
-        nationality: profile.nationality,
-      },
-    ]);
-    setSearchOpen(false);
-  }
-
-  function rebindFromSearch(profile: HRProfile) {
-    if (rebindIndex === null) return;
-    patch(
-      members.map((m, i) =>
-        i === rebindIndex
-          ? {
-              name: profile.name,
-              hr_id: profile.hr_id,
-              club: profile.club,
-              nationality: profile.nationality,
-            }
-          : m,
-      ),
-    );
-    setRebindIndex(null);
+  function confirmDialog(member: RosterMember) {
+    const index = dialog?.index ?? null;
+    patch(index === null ? [...members, member] : members.map((m, i) => (i === index ? member : m)));
+    setDialog(null);
   }
 
   async function save() {
@@ -284,6 +307,7 @@ function RosterEditor({
       <p className="rail-hint">{t("roster.bounds", { min: team.team_min, max: team.team_max })}</p>
       {shortfall > 0 && <p className="rail-hint">{t("roster.shortfall", { count: shortfall })}</p>}
 
+      {/* one line per member: their name, their club, their row actions */}
       <ul className="detail-list">
         {members.map((member, index) => (
           <li key={index}>
@@ -293,7 +317,7 @@ function RosterEditor({
                 value={member.name}
                 onChange={(event) => renameMember(index, event.target.value)}
               />
-              {member.club && <span className="muted"> {member.club}</span>}
+              {member.club && <span className="muted">{member.club}</span>}
               <button
                 type="button"
                 className="row-action"
@@ -316,7 +340,7 @@ function RosterEditor({
                 type="button"
                 className="row-action"
                 title={t("roster.rebind")}
-                onClick={() => setRebindIndex(rebindIndex === index ? null : index)}
+                onClick={() => setDialog({ index })}
               >
                 <IconSearch size={16} stroke={1.5} />
               </button>
@@ -329,45 +353,14 @@ function RosterEditor({
                 <IconX size={16} stroke={1.5} />
               </button>
             </div>
-            {rebindIndex === index && (
-              <HRSearchPicker
-                lockedQuery={member.name}
-                onConfirm={rebindFromSearch}
-                onCancel={() => setRebindIndex(null)}
-              />
-            )}
           </li>
         ))}
       </ul>
 
       {members.length < team.team_max && (
-        <>
-          <div className="team-add-row">
-            <input
-              value={newName}
-              placeholder={t("roster.namePlaceholder")}
-              onChange={(event) => setNewName(event.target.value)}
-            />
-            <button
-              type="button"
-              className="secondary"
-              disabled={!newName.trim()}
-              onClick={addTyped}
-            >
-              {t("roster.add")}
-            </button>
-            <button
-              type="button"
-              className="secondary"
-              onClick={() => setSearchOpen(!searchOpen)}
-            >
-              {t("roster.search")}
-            </button>
-          </div>
-          {searchOpen && (
-            <HRSearchPicker onConfirm={addFromSearch} onCancel={() => setSearchOpen(false)} />
-          )}
-        </>
+        <button type="button" className="secondary" onClick={() => setDialog({ index: null })}>
+          {t("roster.add")}
+        </button>
       )}
 
       {error && <p className="login-error">{error}</p>}
@@ -378,6 +371,14 @@ function RosterEditor({
       >
         {t("roster.save")}
       </button>
+
+      {dialog && (
+        <RosterMemberDialog
+          initial={dialog.index === null ? null : members[dialog.index]}
+          onConfirm={confirmDialog}
+          onClose={() => setDialog(null)}
+        />
+      )}
     </div>
   );
 }
@@ -417,7 +418,9 @@ function RegistrationPanel({
   onTeamUpdated: (team: TeamEntry) => void;
 }) {
   const { t } = useTranslation();
-  const [confirming, setConfirming] = useState(false);
+  // which destructive action is awaiting its confirmation, if any — the two
+  // share one slot, so neither can be confirmed behind the other
+  const [confirming, setConfirming] = useState<"amend" | "cancel" | null>(null);
   const [busy, setBusy] = useState(false);
 
   const active = registration.entries.filter((e) => !e.is_substitute);
@@ -431,7 +434,7 @@ function RegistrationPanel({
       onCancelled();
     } finally {
       setBusy(false);
-      setConfirming(false);
+      setConfirming(null);
     }
   }
 
@@ -457,38 +460,57 @@ function RegistrationPanel({
           <RosterEditor key={team.id} slug={slug} team={team} onUpdated={onTeamUpdated} />
         ))}
 
-      {canAmend && (
-        <button className="secondary" onClick={onAmend}>
-          {t("registration.amend")}
-        </button>
-      )}
-
-      {registration.state !== "cancelled" && (
-        <>
-          {confirming ? (
-            <div className="rail-card dashed">
-              <p>
-                {registration.state === "paid"
-                  ? refundable
-                    ? t("cancel.refundable")
-                    : t("cancel.notRefundable")
-                  : t("cancel.confirm")}
-              </p>
-              <div className="modal-actions">
-                <button className="secondary" onClick={() => setConfirming(false)}>
-                  {t("common.cancel")}
-                </button>
-                <button className="btn-primary" disabled={busy} onClick={() => void cancel()}>
-                  {t("cancel.confirmButton")}
-                </button>
-              </div>
-            </div>
-          ) : (
-            <button className="secondary" onClick={() => setConfirming(true)}>
-              {t("cancel.button")}
+      {/* amend and cancel both rewrite something the fencer already holds, so
+          both are destructive controls behind a confirmation, standing as one
+          centered pair (spec design-system: "Destructive actions") */}
+      {confirming !== null ? (
+        <div className="rail-card dashed">
+          <p>
+            {confirming === "amend"
+              ? t("registration.amendConfirm")
+              : registration.state === "paid"
+                ? refundable
+                  ? t("cancel.refundable")
+                  : t("cancel.notRefundable")
+                : t("cancel.confirm")}
+          </p>
+          <div className="modal-actions">
+            <button className="secondary" onClick={() => setConfirming(null)}>
+              {t("common.cancel")}
             </button>
-          )}
-        </>
+            <button
+              className="btn-danger"
+              disabled={busy}
+              onClick={() => {
+                if (confirming === "amend") {
+                  setConfirming(null);
+                  onAmend();
+                } else {
+                  void cancel();
+                }
+              }}
+            >
+              {confirming === "amend"
+                ? t("registration.amendConfirmButton")
+                : t("cancel.confirmButton")}
+            </button>
+          </div>
+        </div>
+      ) : (
+        (canAmend || registration.state !== "cancelled") && (
+          <div className="action-pair">
+            {canAmend && (
+              <button className="btn-danger" onClick={() => setConfirming("amend")}>
+                {t("registration.amend")}
+              </button>
+            )}
+            {registration.state !== "cancelled" && (
+              <button className="btn-danger" onClick={() => setConfirming("cancel")}>
+                {t("cancel.button")}
+              </button>
+            )}
+          </div>
+        )
       )}
     </section>
   );
@@ -497,29 +519,22 @@ function RegistrationPanel({
 export default function TournamentDetail({
   slug,
   readOnly = false,
-  onBack,
-  onProfile,
-  onAdmin,
-  onOrganizer,
-  onLogout,
+  onClose,
 }: {
   slug: string;
   readOnly?: boolean;
-  onBack: () => void;
-  onProfile: () => void;
-  onAdmin: () => void;
-  onOrganizer: () => void;
-  onLogout: () => void;
+  onClose: () => void;
 }) {
   const { t } = useTranslation();
   const [detail, setDetail] = useState<TournamentDetailData | null>(null);
   const [availability, setAvailability] = useState<Availability[]>([]);
   const [registration, setRegistration] = useState<RegistrationDetail | null>(null);
   const [registrationChecked, setRegistrationChecked] = useState(false);
-  const [account, setAccount] = useState<Account | null>(null);
-  // the detail page is split into an information screen and a separate
-  // register/amend screen; information is always the landing view
-  const [screen, setScreen] = useState<"information" | "register" | "amend">("information");
+  // the page opens on `tournament` from every entry point (design D3); the
+  // second tab, when offered, carries either the registration form or the
+  // held registration, with an amendment opening in place of the latter
+  const [tab, setTab] = useState<"tournament" | "registration">("tournament");
+  const [amending, setAmending] = useState(false);
 
   function refresh() {
     api.tournament(slug).then(setDetail, () => setDetail(null));
@@ -537,9 +552,6 @@ export default function TournamentDetail({
   }
 
   useEffect(refresh, [slug]);
-  useEffect(() => {
-    api.account().then(setAccount, () => setAccount(null));
-  }, []);
 
   const hasActive = registration !== null && registration.state !== "cancelled";
   // register is offered only when open and at least one discipline or item has
@@ -559,73 +571,101 @@ export default function TournamentDetail({
     registration !== null &&
     (registration.state === "reserved" || registration.state === "paid") &&
     amendmentOpen(detail);
-  const onRegisterScreen = screen === "register" && canRegister;
-  const onAmendScreen = screen === "amend" && canAmend;
-  const showingForm = onRegisterScreen || onAmendScreen;
+  const secondTabOffered = hasActive || canRegister;
+
+  // a cancellation on a closed tournament can drop both `hasActive` and
+  // `canRegister` at once — fall back before a selected-but-absent tab (or a
+  // stale in-progress amendment) can be reached (design D3, task 4.4)
+  useEffect(() => {
+    if (!secondTabOffered) {
+      setTab("tournament");
+      setAmending(false);
+    }
+  }, [secondTabOffered]);
+
+  /** Leaving the registration tab abandons any amendment in progress — the
+   *  page introduces no separate cancel control for it (design D3). */
+  function selectTab(next: "tournament" | "registration") {
+    if (next !== "registration") setAmending(false);
+    setTab(next);
+  }
 
   return (
-    <div className="login-page">
-      <div className="page-menu-corner">
-        <AccountMenu
-          account={account}
-          onProfile={onProfile}
-          onAdmin={onAdmin}
-          onFencer={onBack}
-          onOrganizer={onOrganizer}
-          onLogout={onLogout}
-        />
-      </div>
-      <div className="login-card wide-card">
+    <div className="workspace detail-workspace">
+      {/* the tournament's own row, under the heading the list page shares
+          with this one (spec: "Tournament detail shares the home heading") */}
+      <div className="detail-header">
+        <h1>{detail?.display_name}</h1>
+        <nav className="stage-control detail-tabs">
+          <button
+            className={tab === "tournament" ? "active" : ""}
+            onClick={() => selectTab("tournament")}
+          >
+            {t("detail.tabs.tournament")}
+          </button>
+          {secondTabOffered && (
+            <button
+              className={tab === "registration" ? "active" : ""}
+              onClick={() => selectTab("registration")}
+            >
+              {hasActive ? t("detail.tabs.registered") : t("detail.tabs.register")}
+            </button>
+          )}
+        </nav>
         <button
-          className="link-button"
-          onClick={() => (showingForm ? setScreen("information") : onBack())}
+          type="button"
+          className="row-action"
+          title={t("detail.close")}
+          aria-label={t("detail.close")}
+          onClick={onClose}
         >
-          {showingForm ? t("detail.backToInfo") : t("detail.back")}
+          <IconX size={18} stroke={1.5} />
         </button>
-        {detail === null || !registrationChecked ? (
-          <p>{t("common.loading")}</p>
-        ) : showingForm ? (
-          <div className="setup-panel">
+      </div>
+      {detail === null || !registrationChecked ? (
+        <p>{t("common.loading")}</p>
+      ) : (
+        <div className="page-card-body">
+          {tab === "tournament" ? (
+            <>
+              <InfoHeader detail={detail} />
+              <DisciplinesInfo detail={detail} availability={availability} />
+              <DiscountList detail={detail} />
+              <OtherActionsInfo detail={detail} />
+              {!readOnly && !secondTabOffered && (
+                <section className="rail-card dashed">
+                  <p className="rail-hint">
+                    {registrationStatus(detail) === "opens_on"
+                      ? t("detail.notYetOpen")
+                      : t("detail.closedNotice")}
+                  </p>
+                </section>
+              )}
+            </>
+          ) : amending && registration ? (
             <RegistrationForm
               detail={detail}
               availability={availability}
-              mode={
-                onAmendScreen && registration
-                  ? {
-                      kind: "amend",
-                      initial: registration,
-                      onRegistered: (r) => {
-                        setRegistration(r);
-                        setScreen("information");
-                      },
-                    }
-                  : {
-                      kind: "register",
-                      onRegistered: (r) => {
-                        setRegistration(r);
-                        setScreen("information");
-                      },
-                    }
-              }
+              mode={{
+                kind: "amend",
+                initial: registration,
+                onRegistered: (r) => {
+                  setRegistration(r);
+                  setAmending(false);
+                  setTab("registration");
+                },
+              }}
             />
-          </div>
-        ) : (
-          <div className="setup-panel">
-            <InfoHeader detail={detail} />
-            <DisciplinesInfo detail={detail} availability={availability} />
-            <DiscountList detail={detail} />
-            <OtherActionsInfo detail={detail} />
-            {readOnly ? (
-              hasActive && registration && (
-                <RegistrationSummary registration={registration} detail={detail} />
-              )
-            ) : hasActive && registration ? (
+          ) : hasActive && registration ? (
+            readOnly ? (
+              <RegistrationSummary registration={registration} detail={detail} />
+            ) : (
               <RegistrationPanel
                 slug={slug}
                 detail={detail}
                 registration={registration}
                 canAmend={canAmend}
-                onAmend={() => setScreen("amend")}
+                onAmend={() => setAmending(true)}
                 onCancelled={refresh}
                 onTeamUpdated={(updated) =>
                   setRegistration((prev) =>
@@ -640,22 +680,22 @@ export default function TournamentDetail({
                   )
                 }
               />
-            ) : canRegister ? (
-              <button className="btn-primary param-save" onClick={() => setScreen("register")}>
-                {t("detail.register")}
-              </button>
-            ) : (
-              <section className="rail-card dashed">
-                <p className="rail-hint">
-                  {registrationStatus(detail) === "opens_on"
-                    ? t("detail.notYetOpen")
-                    : t("detail.closedNotice")}
-                </p>
-              </section>
-            )}
-          </div>
-        )}
-      </div>
+            )
+          ) : (
+            <RegistrationForm
+              detail={detail}
+              availability={availability}
+              mode={{
+                kind: "register",
+                onRegistered: (r) => {
+                  setRegistration(r);
+                  setTab("registration");
+                },
+              }}
+            />
+          )}
+        </div>
+      )}
     </div>
   );
 }

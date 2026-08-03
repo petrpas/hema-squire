@@ -134,3 +134,52 @@ def test_open_registration_status_opens_on_and_closed(client, auth_headers):
 
     past_close = next(t for t in listed if t["slug"] == "past-close")
     assert past_close["registration_status"] == "closed"
+
+
+def test_open_counts_team_disciplines_in_teams(client, auth_headers):
+    """A team discipline on a published tournament must not break the list:
+    its counts come from the team pair, never the fencer pair (which asserts
+    on the wrong kind and used to 500 the whole endpoint)."""
+    organizer = auth_headers()
+    make_open_tournament(client, organizer, "cup")
+    client.post(
+        "/api/tournaments/cup/disciplines",
+        json={
+            "slug": "Team-LS", "weapon": "LS", "capacity": 5, "fee": 3000,
+            "kind": "team", "team_min": 3, "team_max": 4,
+        },
+        headers=organizer,
+    )
+
+    fencer = auth_headers(email="f1@example.com", name="F1")
+    client.post(
+        "/api/tournaments/cup/register",
+        json={"disciplines": [], "teams": [{"slug": "Team-LS", "name": "Wolves"}]},
+        headers=fencer,
+    )
+
+    response = client.get("/api/tournaments/open", headers=fencer)
+    assert response.status_code == 200
+    cup = next(t for t in response.json() if t["slug"] == "cup")
+    team = next(d for d in cup["disciplines"] if d["slug"] == "Team-LS")
+    assert (team["taken"], team["capacity"], team["queue_length"]) == (1, 5, 0)
+
+
+def test_mine_counts_team_disciplines_in_teams(client, auth_headers):
+    """Same dispatch on the own-scope list, which builds the same DTO."""
+    organizer = auth_headers()
+    make_open_tournament(client, organizer, "cup", date=str(TODAY - timedelta(days=1)))
+    client.post(
+        "/api/tournaments/cup/disciplines",
+        json={
+            "slug": "Team-LS", "weapon": "LS", "capacity": 5, "fee": 3000,
+            "kind": "team", "team_min": 3, "team_max": 4,
+        },
+        headers=organizer,
+    )
+
+    response = client.get("/api/tournaments/mine", headers=organizer)
+    assert response.status_code == 200
+    cup = next(t for t in response.json() if t["slug"] == "cup")
+    team = next(d for d in cup["disciplines"] if d["slug"] == "Team-LS")
+    assert (team["taken"], team["capacity"]) == (0, 5)

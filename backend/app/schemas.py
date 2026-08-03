@@ -702,15 +702,14 @@ class OpenTournamentOut(BaseModel):
     registration_opens_on: datetime.date | None = None
     disciplines: list[OpenDisciplineOut]
     my_registration_state: MyRegistrationState
+    # the caller's other bond to the tournament: owner or console team member.
+    # Independent of my_registration_state — an entry may carry both.
+    organized: bool = False
 
     @field_validator("organizers", mode="before")
     @classmethod
     def _normalize_organizers(cls, value: Any) -> Any:
         return _tolerant_organizers(value)
-
-
-class PastTournamentOut(OpenTournamentOut):
-    organized: bool
 
 
 class TransactionOut(BaseModel):

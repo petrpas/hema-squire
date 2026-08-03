@@ -364,9 +364,8 @@ export interface OpenTournament {
   registration_opens_on: string | null;
   disciplines: OpenDiscipline[];
   my_registration_state: MyRegistrationState;
-}
-
-export interface PastTournament extends OpenTournament {
+  /** The caller's other bond: owner or console team member. Independent of
+   *  my_registration_state — an entry may carry both. */
   organized: boolean;
 }
 
@@ -769,7 +768,8 @@ export const api = {
   adminDenyPlea: (id: number) =>
     request<{ id: number; state: string }>(`/api/admin/pleas/${id}/deny`, { method: "POST" }),
   openTournaments: () => request<OpenTournament[]>("/api/tournaments/open"),
-  pastTournaments: () => request<PastTournament[]>("/api/tournaments/mine/past"),
+  heldTournaments: () => request<OpenTournament[]>("/api/tournaments/held"),
+  myTournaments: () => request<OpenTournament[]>("/api/tournaments/mine"),
   availability: (slug: string) =>
     request<Availability[]>(`/api/tournaments/${slug}/availability`),
   myRegistration: (slug: string) =>

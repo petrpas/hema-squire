@@ -1,16 +1,8 @@
 import { type ReactNode, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import AccountMenu from "./AccountMenu";
-import {
-  type Account,
-  type OpenTournament,
-  type PastTournament,
-  api,
-  logoUrl,
-} from "./api";
-
-type Tab = "announced" | "open" | "past";
+import { type HomeTab } from "./FencerShell";
+import { type OpenTournament, api, logoUrl } from "./api";
 
 function StatusBadge({ tournament }: { tournament: OpenTournament }) {
   const { t } = useTranslation();
@@ -31,8 +23,25 @@ function StatusBadge({ tournament }: { tournament: OpenTournament }) {
   return <span className="chip status-closed">{t("home.status.closed")}</span>;
 }
 
-/** Logo + name + subtitle + responsive date/place block, shared by both cards.
- * Every part degrades cleanly when its field is absent. */
+/** What the account's own bond to a listed tournament is: its registration
+ *  state where it holds or held one, an organizer mark where that is the only
+ *  bond, and the registration status otherwise. */
+function BondBadge({ tournament }: { tournament: OpenTournament }) {
+  const { t } = useTranslation();
+  if (tournament.my_registration_state !== "none") {
+    return (
+      <span className="chip">{t(`registration.state.${tournament.my_registration_state}`)}</span>
+    );
+  }
+  if (tournament.organized) {
+    return <span className="chip organizer-chip">{t("home.organized")}</span>;
+  }
+  return <StatusBadge tournament={tournament} />;
+}
+
+/** Logo, then four lines: name, subtitle, date and place in the heavier
+ *  weight, organizers. Every line degrades cleanly when its field is absent —
+ *  no blank line and no stray middle dot is left behind. */
 function CardHeading({
   tournament,
   badge,
@@ -40,6 +49,11 @@ function CardHeading({
   tournament: OpenTournament;
   badge: ReactNode;
 }) {
+  const dateAndPlace = [
+    new Date(tournament.date).toLocaleDateString("cs"),
+    tournament.location,
+  ].filter(Boolean);
+
   return (
     <div className="home-card-header">
       {tournament.has_logo && (
@@ -50,33 +64,28 @@ function CardHeading({
         {tournament.subtitle && (
           <p className="home-card-subtitle">{tournament.subtitle}</p>
         )}
-        <div className="home-card-meta">
-          {tournament.organizers.length > 0 && (
-            <span className="meta-cell">
-              {tournament.organizers.map((organizer, index) => (
-                <span key={index}>
-                  {index > 0 && ", "}
-                  {organizer.link ? (
-                    <a
-                      className="detail-inline-link"
-                      href={organizer.link}
-                      target="_blank"
-                      rel="noreferrer"
-                    >
-                      {organizer.name}
-                    </a>
-                  ) : (
-                    organizer.name
-                  )}
-                </span>
-              ))}
-            </span>
-          )}
-          <span className="meta-cell">
-            {new Date(tournament.date).toLocaleDateString("cs")}
-          </span>
-          {tournament.location && <span className="meta-cell">{tournament.location}</span>}
-        </div>
+        <p className="home-card-when">{dateAndPlace.join(" · ")}</p>
+        {tournament.organizers.length > 0 && (
+          <p className="home-card-organizers">
+            {tournament.organizers.map((organizer, index) => (
+              <span key={index}>
+                {index > 0 && ", "}
+                {organizer.link ? (
+                  <a
+                    className="detail-inline-link"
+                    href={organizer.link}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    {organizer.name}
+                  </a>
+                ) : (
+                  organizer.name
+                )}
+              </span>
+            ))}
+          </p>
+        )}
       </div>
       {badge}
     </div>
@@ -85,15 +94,17 @@ function CardHeading({
 
 function TournamentCard({
   tournament,
+  badge,
   onOpen,
 }: {
   tournament: OpenTournament;
+  badge: ReactNode;
   onOpen: (slug: string) => void;
 }) {
   return (
     <li>
       <button className="rail-card home-card" onClick={() => onOpen(tournament.slug)}>
-        <CardHeading tournament={tournament} badge={<StatusBadge tournament={tournament} />} />
+        <CardHeading tournament={tournament} badge={badge} />
         <div className="chips">
           {tournament.disciplines.map((d) => (
             <span key={d.slug} className="chip">
@@ -107,158 +118,84 @@ function TournamentCard({
   );
 }
 
-function PastCard({
-  tournament,
-  onOpen,
-}: {
-  tournament: PastTournament;
-  onOpen: (slug: string, readOnly: boolean) => void;
-}) {
-  const { t } = useTranslation();
-  const participated = tournament.my_registration_state !== "none";
+/** The upcoming list, fetched once and split by registration status — the two
+ *  upcoming tabs are two views of one payload, so switching between them costs
+ *  no request. */
+export function useUpcoming(): {
+  announced: OpenTournament[] | null;
+  open: OpenTournament[] | null;
+} {
+  const [upcoming, setUpcoming] = useState<OpenTournament[] | null>(null);
 
-  return (
-    <li>
-      <button className="rail-card home-card" onClick={() => onOpen(tournament.slug, true)}>
-        <CardHeading
-          tournament={tournament}
-          badge={
-            participated ? (
-              <span className="chip">
-                {t(`registration.state.${tournament.my_registration_state}`)}
-              </span>
-            ) : (
-              <span className="chip organizer-chip">{t("home.organized")}</span>
-            )
-          }
-        />
-        <div className="chips">
-          {tournament.disciplines.map((d) => (
-            <span key={d.slug} className="chip">
-              {d.name} {d.taken}/{d.capacity}
-            </span>
-          ))}
-        </div>
-      </button>
-    </li>
-  );
+  useEffect(() => {
+    api.openTournaments().then(setUpcoming, () => setUpcoming([]));
+  }, []);
+
+  return {
+    announced: upcoming?.filter((tt) => tt.registration_status !== "open") ?? null,
+    open: upcoming?.filter((tt) => tt.registration_status === "open") ?? null,
+  };
 }
 
 export default function FencerHome({
+  tab,
+  announced,
+  open,
   onOpen,
-  onProfile,
-  onAdmin,
-  onOrganizer,
-  onLogout,
 }: {
+  tab: HomeTab;
+  announced: OpenTournament[] | null;
+  open: OpenTournament[] | null;
+  /** `readOnly` marks a tournament already held: its detail opens without
+   *  register, payment or cancel actions. */
   onOpen: (slug: string, readOnly?: boolean) => void;
-  onProfile: () => void;
-  onAdmin: () => void;
-  onOrganizer: () => void;
-  onLogout: () => void;
 }) {
   const { t } = useTranslation();
-  const [tab, setTab] = useState<Tab>("open");
-  const [account, setAccount] = useState<Account | null>(null);
-  const [tournaments, setTournaments] = useState<OpenTournament[] | null>(null);
-  const [past, setPast] = useState<PastTournament[] | null>(null);
+  const [held, setHeld] = useState<OpenTournament[] | null>(null);
+  const [mine, setMine] = useState<OpenTournament[] | null>(null);
 
   useEffect(() => {
-    api.account().then(setAccount, () => setAccount(null));
-    api.openTournaments().then(setTournaments, () => setTournaments([]));
-  }, []);
-
-  useEffect(() => {
-    if (tab === "past" && past === null) {
-      api.pastTournaments().then(setPast, () => setPast([]));
+    if (tab === "past" && held === null) {
+      api.heldTournaments().then(setHeld, () => setHeld([]));
     }
-  }, [tab, past]);
+    if (tab === "mine" && mine === null) {
+      api.myTournaments().then(setMine, () => setMine([]));
+    }
+  }, [tab, held, mine]);
 
-  const openList = tournaments?.filter((tt) => tt.registration_status === "open") ?? null;
-  const announcedList = tournaments?.filter((tt) => tt.registration_status !== "open") ?? null;
+  const today = new Date().toISOString().slice(0, 10);
+  const list =
+    tab === "announced" ? announced : tab === "open" ? open : tab === "past" ? held : mine;
 
   return (
-    <div className="app">
-      <header className="topbar">
-        <button className="logo-button" title={t("app.title")}>
-          <span className="logo">{t("app.title")}</span>
-        </button>
-        <nav className="stage-control">
-          <button
-            className={tab === "announced" ? "active" : ""}
-            onClick={() => setTab("announced")}
-          >
-            {t("home.tabs.announced")}
-          </button>
-          <button className={tab === "open" ? "active" : ""} onClick={() => setTab("open")}>
-            {t("home.tabs.open")}
-          </button>
-          <button className={tab === "past" ? "active" : ""} onClick={() => setTab("past")}>
-            {t("home.tabs.past")}
-          </button>
-        </nav>
-        <div className="identity-block">
-          <div className="identity-name">{account?.display_name}</div>
-          {account && account.hr_id !== null ? (
-            <a
-              className="identity-hrid"
-              href={`https://hemaratings.com/fighters/details/${account.hr_id}/`}
-              target="_blank"
-              rel="noreferrer"
-            >
-              {t("home.identity.hrid", { id: account.hr_id })}
-            </a>
-          ) : (
-            <button className="link-button identity-hrid" onClick={onProfile}>
-              {t("home.identity.noHemaratings")}
-            </button>
+    <div className="workspace home-workspace">
+      {list === null ? (
+        <p>{t("common.loading")}</p>
+      ) : list.length === 0 ? (
+        <>
+          <p className="rail-hint">{t(`home.empty.${tab}`)}</p>
+          {tab === "open" && announced !== null && announced.length > 0 && (
+            <p className="rail-hint">{t("home.empty.openSeeAnnounced")}</p>
           )}
-        </div>
-        <AccountMenu
-          account={account}
-          onProfile={onProfile}
-          onAdmin={onAdmin}
-          onFencer={() => {}}
-          onOrganizer={onOrganizer}
-          onLogout={onLogout}
-        />
-      </header>
-
-      <div className="workspace home-workspace">
-        {tab === "past" ? (
-          past === null ? (
-            <p>{t("common.loading")}</p>
-          ) : past.length === 0 ? (
-            <p className="rail-hint">{t("home.empty.past")}</p>
-          ) : (
-            <ul className="home-list">
-              {past.map((tournament) => (
-                <PastCard key={tournament.slug} tournament={tournament} onOpen={onOpen} />
-              ))}
-            </ul>
-          )
-        ) : tournaments === null ? (
-          <p>{t("common.loading")}</p>
-        ) : tab === "open" ? (
-          openList!.length === 0 ? (
-            <p className="rail-hint">{t("home.empty.open")}</p>
-          ) : (
-            <ul className="home-list">
-              {openList!.map((tournament) => (
-                <TournamentCard key={tournament.slug} tournament={tournament} onOpen={onOpen} />
-              ))}
-            </ul>
-          )
-        ) : announcedList!.length === 0 ? (
-          <p className="rail-hint">{t("home.empty.announced")}</p>
-        ) : (
-          <ul className="home-list">
-            {announcedList!.map((tournament) => (
-              <TournamentCard key={tournament.slug} tournament={tournament} onOpen={onOpen} />
-            ))}
-          </ul>
-        )}
-      </div>
+        </>
+      ) : (
+        <ul className="home-list">
+          {list.map((tournament) => (
+            <TournamentCard
+              key={tournament.slug}
+              tournament={tournament}
+              badge={
+                tab === "past" || tab === "mine" ? (
+                  <BondBadge tournament={tournament} />
+                ) : (
+                  <StatusBadge tournament={tournament} />
+                )
+              }
+              onOpen={(slug) => onOpen(slug, tournament.date < today)}
+            />
+          ))}
+        </ul>
+      )}
     </div>
   );
 }
