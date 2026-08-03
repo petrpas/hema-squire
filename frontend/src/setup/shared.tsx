@@ -1,0 +1,233 @@
+import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
+
+import { type Currency, type CurrencyMode, type ExtraCategory } from "../api";
+import { parseInteger } from "../numeric";
+import { LEGACY_WEAPONS } from "../TournamentFace";
+
+export const TAXONOMY_WEAPON_CODES = Object.keys(LEGACY_WEAPONS);
+
+// design Decision D1 (split-setup-into-tabs); `publish` added last (design D6
+// of add-explicit-publishing) — the end of the Setup arc, offered to every
+// console team member regardless of ownership
+export type SetupTab = "tournament" | "disciplines" | "extra" | "payments" | "other" | "publish";
+export const SETUP_TABS: SetupTab[] = [
+  "tournament",
+  "disciplines",
+  "extra",
+  "payments",
+  "other",
+  "publish",
+];
+
+// Keys are exactly those backend/app/setup.py emits (D1); a key absent from
+// this map marks no tab so an unrecognized checklist item never breaks the bar.
+export const MISSING_TAB: Record<string, SetupTab> = {
+  location: "tournament",
+  organizers: "tournament",
+  disciplines: "disciplines",
+  discipline_prices: "disciplines",
+  team_bounds: "disciplines",
+  extra_item_prices: "extra",
+  discount_prices: "payments",
+  legacy_fixed_fees_block_eur: "payments",
+};
+
+// Fixed flush/registration order, independent of effect-firing order (D7).
+export const SECTION_ORDER = [
+  "identity",
+  "organizers",
+  "disciplines",
+  "extra",
+  "currency",
+  "vsSeries",
+  "discounts",
+] as const;
+
+export type SaveOutcome = {
+  change: string;
+  section: string;
+  error: string | null;
+};
+
+export type SectionSaver = {
+  pendingCount: number;
+  touchesPrice: boolean;
+  // runs every field check, shows each result, and reports how many fields
+  // are invalid — 0 means the section may flush (design D5)
+  validate: () => number;
+  // moves focus to this section's first invalid field; a no-op when none is
+  // invalid. Called only when the blocked-save statement is activated, not
+  // when validate() itself runs (design: "activating that statement focuses
+  // the first invalid field")
+  focusFirstInvalid: () => void;
+  flush: () => Promise<SaveOutcome[]>;
+};
+
+/** Holds every mounted section's saver, keyed by section id, and notifies
+ * subscribers (the save bar, the dirty-count effect) on any change (D7). */
+export class SaverRegistry {
+  private entries = new Map<string, { tab: SetupTab; saver: SectionSaver }>();
+  private version = 0;
+  private listeners = new Set<() => void>();
+
+  set(id: string, tab: SetupTab, saver: SectionSaver) {
+    // The saver closure is refreshed on every call so flush()/validate() are
+    // never stale, but subscribers are only notified when a value they
+    // actually display changes — otherwise every keystroke in an
+    // already-dirty section would re-render the whole registry's
+    // subscribers forever (each re-render re-registers, which would
+    // re-notify, which would re-render...).
+    const prev = this.entries.get(id);
+    this.entries.set(id, { tab, saver });
+    if (
+      !prev ||
+      prev.tab !== tab ||
+      prev.saver.pendingCount !== saver.pendingCount ||
+      prev.saver.touchesPrice !== saver.touchesPrice
+    ) {
+      this.version++;
+      for (const listener of this.listeners) listener();
+    }
+  }
+
+  delete(id: string) {
+    if (!this.entries.delete(id)) return;
+    this.version++;
+    for (const listener of this.listeners) listener();
+  }
+
+  forTab(tab: SetupTab): { id: string; saver: SectionSaver }[] {
+    return [...this.entries.entries()]
+      .filter(([, entry]) => entry.tab === tab)
+      .map(([id, entry]) => ({ id, saver: entry.saver }))
+      .sort(
+        (a, b) =>
+          SECTION_ORDER.indexOf(a.id as (typeof SECTION_ORDER)[number]) -
+          SECTION_ORDER.indexOf(b.id as (typeof SECTION_ORDER)[number]),
+      );
+  }
+
+  all(): { id: string; tab: SetupTab; saver: SectionSaver }[] {
+    return [...this.entries.entries()].map(([id, entry]) => ({ id, ...entry }));
+  }
+
+  subscribe = (listener: () => void) => {
+    this.listeners.add(listener);
+    return () => {
+      this.listeners.delete(listener);
+    };
+  };
+
+  getVersion = () => this.version;
+}
+
+/** Registers (and, on unmount, unregisters) a section's saver. Sections stay
+ * mounted for the life of the Setup phase (D2), so unregistration in
+ * practice only happens when SetupPanel itself unmounts. */
+export function useSectionSaver(registry: SaverRegistry, tab: SetupTab, id: string, saver: SectionSaver) {
+  useEffect(() => {
+    registry.set(id, tab, saver);
+  });
+  useEffect(() => () => registry.delete(id), [registry, id]);
+}
+
+export const CURRENCY_MODES: CurrencyMode[] = ["local", "local_eur", "eur"];
+// the only local (non-EUR) currency today (design Decision 6); a picker
+// among several local currencies is future scope
+export const LOCAL_CURRENCY: Currency = "CZK";
+
+/** Fills empty EUR/local price pairs from filled ones at `rate`, rounded
+ * half-up to whole units, in either direction — never overwriting a typed
+ * value (design Decision 3). The one place `eur_rate` touches money. */
+export function recalculateMissing(local: string, eur: string, rate: number): [string, string] {
+  if (!Number.isFinite(rate) || rate <= 0) return [local, eur];
+  if (eur === "" && local !== "" && Number.isFinite(Number(local))) {
+    return [local, String(Math.round(Number(local) / rate))];
+  }
+  if (local === "" && eur !== "" && Number.isFinite(Number(eur))) {
+    return [String(Math.round(Number(eur) * rate)), eur];
+  }
+  return [local, eur];
+}
+
+/** Guards a save action behind the price-change confirmation when the
+ * tournament already has registrations (design Decision 7): existing
+ * registrations keep their quoted amount, amending fencers are repriced,
+ * new registrations use the new price. */
+export function usePriceChangeGuard() {
+  const [pendingAction, setPendingAction] = useState<(() => void) | null>(null);
+  // `shouldWarn` is passed at call time rather than bound once from a hook
+  // parameter, so it reflects the state at the moment of saving rather than
+  // whatever it was at the caller's last render.
+  function guard(shouldWarn: boolean, action: () => void) {
+    if (shouldWarn) setPendingAction(() => action);
+    else action();
+  }
+  function confirm() {
+    const action = pendingAction;
+    setPendingAction(null);
+    action?.();
+  }
+  function cancel() {
+    setPendingAction(null);
+  }
+  return { guard, confirming: pendingAction !== null, confirm, cancel };
+}
+
+export function PriceChangeWarning({
+  onConfirm,
+  onCancel,
+}: {
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  const { t } = useTranslation();
+  return (
+    <div className="rail-card dashed">
+      <p>{t("setup.priceChangeWarning.title")}</p>
+      <ul className="detail-list">
+        <li>{t("setup.priceChangeWarning.existing")}</li>
+        <li>{t("setup.priceChangeWarning.amending")}</li>
+        <li>{t("setup.priceChangeWarning.new")}</li>
+      </ul>
+      <p className="rail-hint">{t("setup.priceChangeWarning.badPractice")}</p>
+      <div className="modal-actions">
+        <button type="button" className="secondary" onClick={onCancel}>
+          {t("common.cancel")}
+        </button>
+        <button type="button" className="btn-primary" onClick={onConfirm}>
+          {t("setup.priceChangeWarning.proceed")}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/** Option choices are typed as one comma-separated line; the backend trims and
+ *  deduplicates, so this only has to split. */
+export function splitChoices(value: string): string[] {
+  return value.split(",").map((choice) => choice.trim()).filter(Boolean);
+}
+
+export const EXTRA_CATEGORIES: ExtraCategory[] = [
+  "seminar",
+  "afterparty",
+  "other_action",
+  "rental",
+  "merch",
+  "other_item",
+];
+
+// action categories happen at a time and place (when/where, no quantity
+// limit); item categories are goods (quantity limit, no when/where) — D4
+export const ACTION_EXTRA_CATEGORIES = new Set<ExtraCategory>(["seminar", "afterparty", "other_action"]);
+export function isActionCategory(category: ExtraCategory): boolean {
+  return ACTION_EXTRA_CATEGORIES.has(category);
+}
+
+// shared by DisciplinesSection, ExtraItemsSection, and DiscountsSection
+export function _int(raw: string): number | null {
+  const result = parseInteger(raw);
+  return result.ok ? result.value : null;
+}

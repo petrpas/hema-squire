@@ -18,3 +18,10 @@ This list takes precedence over everything else. The implementation NEVER uses:
 - weight 600+, Title Case, exclamation marks in system copy
 - more than one saturated color (`--stamp` is the only one)
 - any hex value outside `tokens.css`
+
+# Frontend conventions
+
+Components live one per file; a file approaching ~300 lines should be split
+along component seams. Panels composed of sections keep the orchestrator thin
+and give each section its own file under a directory named after the panel
+(see `frontend/src/setup/`).
