@@ -15,7 +15,8 @@
   "actions": {
     "delete": "Smazat řádek (vratné)",
     "restore": "Obnovit řádek",
-    "removeRule": "Odstranit pravidlo"
+    "removeRule": "Odstranit pravidlo",
+    "moveUp": "Posunout výš"
   },
   "import": {
     "title": "Import tabulky",
@@ -672,8 +673,6 @@
     "namePlaceholder": "Jméno",
     "add": "Přidat člena",
     "search": "Vyhledat v HR",
-    "moveUp": "Posunout výš",
-    "moveDown": "Posunout níž",
     "rebind": "Napojit na profil HR",
     "saveAll": "Uložit soupisky",
     "saveFailedTeams": "Nepodařilo se uložit: {{teams}}.",

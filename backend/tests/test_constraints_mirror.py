@@ -50,6 +50,7 @@ _NO_BOUND_NEEDED = {
     ("TournamentUpdate", "language"),
     ("TeamEntryIn", "id"),
     ("TeamEntryIn", "slug"),
+    ("DisciplineIn", "ordinal"),
     ("RosterMemberIn", "hr_id"),
     ("ExtraSelectionIn", "extra_item_id"),
 }

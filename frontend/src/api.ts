@@ -130,6 +130,9 @@ export interface Discipline {
    *  once referenced (design discipline-identity). Never shown to fencers. */
   slug: string;
   name: string;
+  /** Display order among the tournament's disciplines; organizer-set via the
+   *  Setup table's up arrow. */
+  ordinal: number;
   /** The five taxonomy weapons are offered as suggestions; any weapon is
    *  accepted (design discipline-identity D4). */
   weapon: string;
@@ -162,6 +165,7 @@ export interface DisciplineInput {
    *  classification (design discipline-identity D3). */
   slug?: string | null;
   name?: string | null;
+  ordinal?: number | null;
   weapon: string;
   gender: DisciplineGender;
   material: DisciplineMaterial;

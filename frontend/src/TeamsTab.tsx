@@ -1,4 +1,4 @@
-import { IconArrowDown, IconArrowUp, IconSearch, IconX } from "@tabler/icons-react";
+import { IconArrowUp, IconSearch, IconX } from "@tabler/icons-react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -36,11 +36,10 @@ function RosterEditor({
     onChange(members.filter((_, i) => i !== index));
   }
 
-  function moveMember(index: number, delta: number) {
-    const target = index + delta;
-    if (target < 0 || target >= members.length) return;
+  function moveMemberUp(index: number) {
+    if (index <= 0) return;
     const next = [...members];
-    [next[index], next[target]] = [next[target], next[index]];
+    [next[index - 1], next[index]] = [next[index], next[index - 1]];
     onChange(next);
   }
 
@@ -73,20 +72,11 @@ function RosterEditor({
               <button
                 type="button"
                 className="row-action"
-                title={t("roster.moveUp")}
+                title={t("actions.moveUp")}
                 disabled={index === 0}
-                onClick={() => moveMember(index, -1)}
+                onClick={() => moveMemberUp(index)}
               >
                 <IconArrowUp size={16} stroke={1.5} />
-              </button>
-              <button
-                type="button"
-                className="row-action"
-                title={t("roster.moveDown")}
-                disabled={index === members.length - 1}
-                onClick={() => moveMember(index, 1)}
-              >
-                <IconArrowDown size={16} stroke={1.5} />
               </button>
               <button
                 type="button"

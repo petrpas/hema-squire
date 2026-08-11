@@ -620,6 +620,8 @@ def add_discipline(
         ruleset_name=data.ruleset_name,
         ruleset_url=data.ruleset_url,
     )
+    if data.ordinal is not None:
+        discipline.ordinal = data.ordinal
     session.add(discipline)
     setup.guard_published_completeness(tournament)
     session.commit()
@@ -721,6 +723,8 @@ def update_discipline(
     discipline.name = data.name or taxonomy.discipline_name(
         data.weapon, data.gender, data.material, data.kind == DisciplineKind.TEAM
     ) or discipline.name
+    if data.ordinal is not None:
+        discipline.ordinal = data.ordinal
     discipline.kind = data.kind
     discipline.team_min = data.team_min
     discipline.team_max = data.team_max

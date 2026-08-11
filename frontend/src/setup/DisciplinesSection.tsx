@@ -1,4 +1,4 @@
-import { IconEdit, IconX } from "@tabler/icons-react";
+import { IconArrowUp, IconEdit, IconX } from "@tabler/icons-react";
 import { Fragment, type ChangeEvent, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -33,6 +33,10 @@ import {
 type DisciplineDraft = {
   slug: string;
   name: string;
+  /** Position among the tournament's disciplines; kept equal to this row's
+   *  index in `rows` and swapped, not recomputed, on a move (a move touches
+   *  only the two rows involved, keeping the rest undirtied). */
+  ordinal: number;
   weapon: string;
   gender: DisciplineGender;
   material: DisciplineMaterial;
@@ -69,6 +73,7 @@ function disciplineToRow(d: Discipline): DisciplineRow {
     originalSlug: d.slug,
     identityFrozen: d.identity_frozen,
     name: d.name,
+    ordinal: d.ordinal,
     weapon: d.weapon,
     gender: d.gender,
     material: d.material,
@@ -92,6 +97,7 @@ function disciplineRowDirty(row: DisciplineRow, detail: TournamentDetail): boole
   const original = detail.disciplines.find((d) => d.slug === row.originalSlug);
   if (!original) return false;
   return (
+    original.ordinal !== row.ordinal ||
     original.slug !== row.slug ||
     original.name !== row.name ||
     original.weapon !== row.weapon ||
@@ -114,6 +120,7 @@ function disciplineRowInput(row: DisciplineRow): DisciplineInput {
   return {
     slug: row.slug || null,
     name: row.name || null,
+    ordinal: row.ordinal,
     weapon: row.weapon,
     gender: row.gender,
     material: row.material,
@@ -194,13 +201,14 @@ function disciplineRowTouchesPrice(row: DisciplineRow, detail: TournamentDetail)
   );
 }
 
-function blankDisciplineRow(rowId: string): DisciplineRow {
+function blankDisciplineRow(rowId: string, ordinal: number): DisciplineRow {
   return {
     rowId,
     slug: "",
     originalSlug: "",
     identityFrozen: false,
     name: "",
+    ordinal,
     weapon: "",
     gender: "",
     material: "",
@@ -307,12 +315,30 @@ export function DisciplinesSection({
     if (dialogRowId === "new") {
       setRows((prev) => [
         ...prev,
-        { ...blankDisciplineRow(`new-${nextTempId.current++}`), ...identity },
+        {
+          ...blankDisciplineRow(`new-${nextTempId.current++}`, prev.length),
+          ...identity,
+        },
       ]);
     } else if (dialogRowId !== null) {
       patchRow(dialogRowId, identity);
     }
     setDialogRowId(null);
+  }
+
+  // Up-only reorder (same interaction as the team roster editor): swapping a
+  // row with its predecessor both in display order and in `ordinal` marks
+  // only those two rows dirty, so an untouched row never re-saves.
+  function moveRowUp(index: number) {
+    if (index <= 0) return;
+    setRows((prev) => {
+      const next = [...prev];
+      const above = next[index - 1];
+      const row = next[index];
+      next[index - 1] = { ...row, ordinal: above.ordinal };
+      next[index] = { ...above, ordinal: row.ordinal };
+      return next;
+    });
   }
 
   function recalculateAll() {
@@ -436,7 +462,7 @@ export function DisciplinesSection({
           </tr>
         </thead>
         <tbody>
-          {rows.map((row) => {
+          {rows.map((row, index) => {
             const checks = disciplineRowChecks(row, detail.local_currency);
             function fieldProps<K extends keyof DisciplineRow>(field: string, key: K) {
               const check = checks[field];
@@ -508,6 +534,14 @@ export function DisciplinesSection({
                 )}
                 <td className="col-actions">
                   <div className="row-actions">
+                    <button
+                      className="row-action"
+                      title={t("actions.moveUp")}
+                      disabled={index === 0}
+                      onClick={() => moveRowUp(index)}
+                    >
+                      <IconArrowUp size={16} stroke={1.5} />
+                    </button>
                     {!row.identityFrozen && (
                       <button
                         className="row-action"
