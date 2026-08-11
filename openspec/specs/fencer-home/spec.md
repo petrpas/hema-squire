@@ -381,7 +381,9 @@ WHEN the account holds an unpaid reservation for the tournament, the detail page
 - **THEN** the page shows the QR code alongside IBAN, amount, VS, and the VS-in-message instruction, and states when the reservation expires
 
 ### Requirement: Registration management
-WHEN the account has a registration for the tournament, the detail page SHALL show its state (reserved with expiry, paid, substitute with queue positions per discipline, cancelled), the selected disciplines and extra services with the computed total, and SHALL offer cancellation per the cancellation policy, stating whether the cancellation is refundable before the fencer confirms.
+WHEN the account has a registration for the tournament, the detail page SHALL show its state (reserved with expiry, paid, substitute with queue positions per discipline, cancelled), the selected disciplines and extra services with the computed total, and SHALL offer cancellation per the cancellation policy.
+
+The cancellation confirmation SHALL NOT assert that the fee is refundable, and SHALL NOT assert that it is not. Refundability is settled by the organizer outside the system, and the date it would be derived from is no longer configurable, so a promise in either direction would be one the system cannot keep. WHERE the registration is paid, the confirmation SHALL instead state that any refund is arranged with the organizer; WHERE nothing has been paid, it SHALL ask for confirmation alone, with no mention of money.
 
 Every amount on the registration — each discipline, each team, each extra service, the total, and any outstanding balance — SHALL be aligned on one right-hand column, so the amounts read as a column that the total closes rather than as prices embedded in running text. A team's line SHALL name its discipline and its team together, in that order, against its per-team fee in that column.
 
@@ -409,9 +411,13 @@ A member the search does not find SHALL be enterable as a plain name, and SHALL 
 - **WHEN** a fencer with an amendable registration reaches the bottom of it
 - **THEN** the amend and cancel controls stand side by side, centered, with space between them, both styled as destructive
 
-#### Scenario: Cancel before the refundable date
-- **WHEN** the fencer cancels while the tournament's refundable-until date has not passed
-- **THEN** the confirmation states the fee is refundable and the registration is cancelled on confirm
+#### Scenario: Paid cancellation promises nothing either way
+- **WHEN** a fencer with a paid registration activates the cancel control
+- **THEN** the confirmation states that any refund of the fee is arranged with the organizer, and neither promises a refund nor rules one out
+
+#### Scenario: Unpaid cancellation mentions no money
+- **WHEN** a fencer whose registration has not been paid activates the cancel control
+- **THEN** the confirmation asks only whether to cancel the registration, saying nothing about refunds
 
 #### Scenario: Amend asks first
 - **WHEN** the fencer activates the amend control

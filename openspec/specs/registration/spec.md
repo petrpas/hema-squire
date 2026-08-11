@@ -443,11 +443,27 @@ The system SHALL accept a registration only when the tournament has been publish
 - **THEN** the registration is rejected with the closed reason
 
 ### Requirement: Cancellation and refund policy
-A fencer SHALL be able to cancel a registration. A cancellation before the tournament's refundable-until date SHALL be marked refundable; after that date the fee is not refundable and the freed spot is offered to substitutes. Refund execution is manual; the system SHALL track refund state on the registration.
+A fencer SHALL be able to cancel a registration. The freed spot SHALL be offered to substitutes, whatever the cancellation's refund standing.
+
+Refund standing SHALL be settled only where there is money to return, that is on a registration that was paid at the moment it was cancelled. Such a cancellation on or before the tournament's refundable-until date SHALL be marked refundable and SHALL enter refund tracking as pending; after that date, or on a tournament carrying no such date, it SHALL be marked not refundable. A registration cancelled while unpaid SHALL carry no refund standing at all rather than being marked not refundable. Refund execution is manual; the system SHALL track refund state on the registration.
+
+Because the refundable-until date is no longer offered to the organizer (see `tournament-admin`), a tournament configured after that field was withdrawn carries none, and every paid cancellation on it is therefore marked not refundable. That marking SHALL be read as *the system makes no refund commitment*, not as a refusal: refunds on such a tournament are settled between the fencer and the organizer outside the system. Nothing in the fencer-facing cancellation flow SHALL present the marking as either a promise of a refund or a denial of one, as fixed by `fencer-home`. A tournament that already carries a stored refundable-until date SHALL continue to be evaluated against it, so the rule can be offered again without a migration.
 
 #### Scenario: Cancellation after the refundable date
 - **WHEN** a paid fencer cancels after the refundable-until date
 - **THEN** the registration is cancelled without refund and the spot is offered to the substitute queue
+
+#### Scenario: Cancellation on a tournament with no refundable date
+- **WHEN** a paid fencer cancels a registration on a tournament carrying no refundable-until date
+- **THEN** the registration is cancelled, marked not refundable, and the spot is offered to the substitute queue, and the fencer is told only that any refund is arranged with the organizer
+
+#### Scenario: Stored refundable date still honoured
+- **WHEN** a paid fencer cancels before a refundable-until date already stored on the tournament
+- **THEN** the cancellation is marked refundable and enters refund tracking as pending, even though the date can no longer be set
+
+#### Scenario: Unpaid cancellation carries no refund standing
+- **WHEN** a fencer cancels a registration that has not been paid
+- **THEN** the registration is cancelled with no refund standing recorded, and it is not marked not-refundable
 
 ### Requirement: Price preview
 The system SHALL compute the total price for a hypothetical selection (individual disciplines, team entries, and extra services with quantities and option values) for a tournament without creating a registration, using the same pricing engine — itemized pricing with discounts, or the legacy fee fields for legacy tournaments — that applies at registration time, evaluated as of the current date. The preview SHALL return a total per configured currency, each summed from that currency's prices by the same computation the registration will use.
