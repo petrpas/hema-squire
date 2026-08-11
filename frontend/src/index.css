@@ -368,6 +368,7 @@ button.secondary:disabled {
 
 .stage-control button,
 .stage-control a {
+  position: relative;
   border: none;
   background: transparent;
   color: var(--ink-faded);
@@ -557,6 +558,16 @@ button.secondary:disabled {
   border-radius: var(--radius);
   background: var(--stamp);
   vertical-align: middle;
+}
+
+.tab-dirty-mark {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 4px;
+  height: 4px;
+  border-radius: var(--radius);
+  background: var(--stamp);
 }
 
 .visually-hidden {

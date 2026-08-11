@@ -235,7 +235,8 @@
       "payments": "payments",
       "other": "other",
       "publish": "Publish",
-      "incomplete": "incomplete configuration"
+      "incomplete": "incomplete configuration",
+      "unsaved": "unsaved changes"
     },
     "saveBar": {
       "save": "Save changes ({{count}})",

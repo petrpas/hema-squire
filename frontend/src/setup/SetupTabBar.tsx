@@ -8,11 +8,13 @@ export function SetupTabBar({
   tab,
   onSelect,
   markedTabs,
+  dirtyTabs,
 }: {
   tabs: SetupTab[];
   tab: SetupTab;
   onSelect: (tab: SetupTab) => void;
   markedTabs: Set<SetupTab>;
+  dirtyTabs: Set<SetupTab>;
 }) {
   const { t } = useTranslation();
 
@@ -44,6 +46,11 @@ export function SetupTabBar({
           {markedTabs.has(id) && (
             <span className="tab-mark">
               <span className="visually-hidden">{t("setup.tabs.incomplete")}</span>
+            </span>
+          )}
+          {dirtyTabs.has(id) && (
+            <span className="tab-dirty-mark">
+              <span className="visually-hidden">{t("setup.tabs.unsaved")}</span>
             </span>
           )}
         </button>

@@ -75,11 +75,23 @@ export default function SetupPanel({
   // items are listed (design D7)
   if (markedTabs.size > 0) markedTabs.add("publish");
 
+  const dirtyTabs = new Set(
+    offeredTabs.filter((setupTab) =>
+      registry.forTab(setupTab).some((entry) => entry.saver.pendingCount > 0),
+    ),
+  );
+
   return (
     <div className="setup-split">
       <div className="setup-panel">
         <div className="setup-panel-header">
-          <SetupTabBar tabs={offeredTabs} tab={tab} onSelect={setTab} markedTabs={markedTabs} />
+          <SetupTabBar
+            tabs={offeredTabs}
+            tab={tab}
+            onSelect={setTab}
+            markedTabs={markedTabs}
+            dirtyTabs={dirtyTabs}
+          />
         </div>
         <div className="setup-panel-body">
           <div

@@ -235,7 +235,8 @@
       "payments": "platby",
       "other": "ostatní",
       "publish": "Zveřejnění",
-      "incomplete": "neúplné nastavení"
+      "incomplete": "neúplné nastavení",
+      "unsaved": "neuložené změny"
     },
     "saveBar": {
       "save": "Uložit změny ({{count}})",
@@ -270,8 +271,8 @@
     },
     "priceChangeWarning": {
       "title": "Změna cen na turnaji s otevřenou registrací",
-      "existing": "už registrovaní fenceři si podrží částku, na kterou byli zaregistrováni",
-      "amending": "fencer, který svou registraci později upraví, dostane přepočet podle nových cen",
+      "existing": "už registrovaní šermíři si podrží částku, na kterou byli zaregistrováni",
+      "amending": "šermíř, který svou registraci později upraví, dostane přepočet podle nových cen",
       "new": "nové registrace se počítají podle nových cen",
       "badPractice": "Měnit ceny během registrace není dobrý zvyk. Pokračovat?",
       "proceed": "Pokračovat"
@@ -380,7 +381,7 @@
       "remark": "Poznámka (nepovinné)",
       "optionLabel": "Volba",
       "optionChoices": "Možnosti",
-      "optionLabelHint": "Název jedné volby, kterou fencer u položky vybírá, například „velikost“. Prázdné = bez volby.",
+      "optionLabelHint": "Název jedné volby, kterou šermíř u položky vybírá, například „velikost“. Prázdné = bez volby.",
       "optionChoicesHint": "Povolené odpovědi oddělené čárkou, například „S, M, L, XL“. Prázdné = volný text.",
       "rowInvalid": "Zadej název a cenu pro tento řádek."
     },
