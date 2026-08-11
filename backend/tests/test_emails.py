@@ -3,7 +3,7 @@ import pytest
 from app.mail import get_mailer
 from app.main import app
 from app.spayd import qr_png, spayd_string
-from tests.conftest import publish
+from tests.conftest import enable_payments, publish
 
 
 class CollectingMailer:
@@ -51,6 +51,7 @@ def _setup(client, organizer):
         json={"slug": "cup", "display_name": "Na Duel! 2026", "date": "2026-12-05"},
         headers=organizer,
     )
+    enable_payments(client, organizer, "cup")
     client.patch(
         "/api/tournaments/cup",
         json={
@@ -102,6 +103,7 @@ def test_confirmation_email_states_iban_alone_for_foreign_account(client, auth_h
         json={"slug": "cup", "display_name": "Na Duel! 2026", "date": "2026-12-05"},
         headers=organizer,
     )
+    enable_payments(client, organizer, "cup")
     client.patch(
         "/api/tournaments/cup",
         json={

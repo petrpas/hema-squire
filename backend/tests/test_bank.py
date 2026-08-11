@@ -10,6 +10,7 @@ from app.bank import (
     parse_fio_json,
 )
 from app.main import app
+from tests.conftest import enable_payments
 
 FIO_JSON = {
     "accountStatement": {
@@ -85,6 +86,7 @@ def setup_tournament(client, organizer, fio_token=None):
         json={"slug": "cup", "display_name": "Cup", "date": "2026-12-05"},
         headers=organizer,
     )
+    enable_payments(client, organizer, "cup")
     if fio_token:
         client.patch(
             "/api/tournaments/cup", json={"fio_token": fio_token}, headers=organizer

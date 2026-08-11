@@ -4,7 +4,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models import Registration, Tournament
-from tests.conftest import publish
+from tests.conftest import enable_payments, publish
 
 
 def create_tournament(client, organizer, slug, date="2026-12-05"):
@@ -210,6 +210,7 @@ def test_legacy_vs_still_resolves_and_matches(client, auth_headers):
     """6.9: a pre-existing sequential VS still matches unchanged."""
     organizer = auth_headers()
     create_tournament(client, organizer, "aa")
+    enable_payments(client, organizer, "aa")
     client.patch(
         "/api/tournaments/aa",
         json={"bank_account": "CZ6508000000192000145399"},

@@ -66,6 +66,8 @@ from app.schemas import (
     TeamAdd,
     TeamMemberOut,
     TournamentCreate,
+    TournamentModeIn,
+    TournamentModeOut,
     TournamentOut,
     TournamentUpdate,
 )
@@ -491,6 +493,40 @@ def update_tournament(
     session.commit()
     session.refresh(tournament)
     out = TournamentOut.model_validate(tournament)
+    out.vs_series_editable = not _has_registrations(session, tournament)
+    _apply_disciplines_frozen(session, tournament, out)
+    return out
+
+
+@router.get("/{slug}/mode", response_model=TournamentModeOut)
+def tournament_mode(tournament: TournamentDep, session: SessionDep, fencer: FencerDep):
+    require_console_access(session, tournament, fencer)
+    return tournament
+
+
+@router.patch("/{slug}/mode", response_model=TournamentOut)
+def set_tournament_mode(
+    data: TournamentModeIn, tournament: TournamentDep, session: SessionDep, fencer: FencerDep
+):
+    """Choose the tournament's mode. Writes the four features and nothing else:
+    a feature turned off hides its settings and never clears, resets or deletes
+    one (design tournament-modes D4), which is what makes the mode safe to
+    experiment with.
+
+    Completeness is deliberately not guarded here. Turning payments on for a
+    published, priced tournament with no account recorded is accepted, and the
+    account is then reported as missing on PUBLISH — the mode is how the
+    organizer reaches the field that fixes it, so refusing the change would
+    leave them nowhere to go."""
+    require_console_access(session, tournament, fencer)
+    tournament.feature_schedule = data.feature_schedule
+    tournament.feature_payments = data.feature_payments
+    tournament.feature_teams = data.feature_teams
+    tournament.feature_extras = data.feature_extras
+    session.commit()
+    session.refresh(tournament)
+    out = TournamentOut.model_validate(tournament)
+    out.setup_missing = setup.setup_missing(tournament)
     out.vs_series_editable = not _has_registrations(session, tournament)
     _apply_disciplines_frozen(session, tournament, out)
     return out

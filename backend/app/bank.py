@@ -9,6 +9,7 @@ from decimal import Decimal
 from typing import Protocol
 
 import httpx
+from fastapi import HTTPException
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -16,6 +17,20 @@ from sqlalchemy.orm import Session
 from app.models import BankTransaction, Tournament
 
 FIO_API_BASE = "https://fioapi.fio.cz/v1/rest"
+
+
+def require_payments_enabled(tournament: Tournament) -> None:
+    """Refuse a reconciliation request against a tournament whose payments
+    feature is off (design tournament-modes D5). Such a tournament has no
+    money in flight for Squire to reconcile, and an organizer uploading a
+    statement against the wrong tournament must learn that rather than watch
+    it disappear — so this refuses rather than accepting with no effect.
+
+    Lives beside ingestion because ingestion is the first thing every
+    reconciliation path does; matching and the payments endpoints call it
+    directly for the paths that skip it."""
+    if not tournament.feature_payments:
+        raise HTTPException(status_code=409, detail="payments_disabled")
 
 
 class IncomingTransaction(BaseModel):
@@ -48,6 +63,7 @@ def ingest(
     transactions: list[IncomingTransaction],
 ) -> IngestResult:
     """Store transactions at most once per (tournament, external_id)."""
+    require_payments_enabled(tournament)
     seen = set(
         session.scalars(
             select(BankTransaction.external_id).where(

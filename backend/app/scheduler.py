@@ -282,7 +282,7 @@ def run_tournament_tick(
     fio_client: bank.FioClient | None = None,
 ) -> dict[str, int]:
     result: dict[str, int] = {}
-    if fio_client is not None and tournament.fio_token:
+    if fio_client is not None and tournament.fio_token and tournament.feature_payments:
         today = date.today()
         transactions = fio_client.fetch(
             tournament.fio_token, today - timedelta(days=14), today
@@ -297,9 +297,18 @@ def run_tournament_tick(
     # date is queued or expired would come down to tick timing. Settling first
     # makes it uniform — everything still reserved at the deadline is queued.
     result["seating_demoted"] = settle_seating_if_due(session, tournament)
-    # Expire second: a reservation past its window must not receive a reminder.
-    result["expired"] = process_expiries(session, tournament, mailer)
-    result["reminders"] = process_reminders(session, tournament, mailer)
+    # Reminders and expiry are the money passes, so they do not run at all
+    # while the payments feature is off (design tournament-modes D5) — nothing
+    # is owed, so there is nothing to remind about and no window to lapse.
+    # Seating settlement and composition reminders keep running above and
+    # below: they are about seats and rosters, which every tournament has.
+    if tournament.feature_payments:
+        # Expire second: a reservation past its window must not receive a reminder.
+        result["expired"] = process_expiries(session, tournament, mailer)
+        result["reminders"] = process_reminders(session, tournament, mailer)
+    else:
+        result["expired"] = 0
+        result["reminders"] = 0
     result["composition_reminders"] = process_composition_reminders(session, tournament, mailer)
     return result
 

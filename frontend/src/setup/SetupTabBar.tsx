@@ -1,17 +1,21 @@
 import { type KeyboardEvent } from "react";
 import { useTranslation } from "react-i18next";
 
-import { type SetupTab } from "./shared";
+import { type TournamentMode } from "../api";
+import { type SetupTab, setupTabTitleKey } from "./shared";
 
 export function SetupTabBar({
   tabs,
   tab,
+  mode,
   onSelect,
   markedTabs,
   dirtyTabs,
 }: {
   tabs: SetupTab[];
   tab: SetupTab;
+  /** Titles the payments tab for what it holds; the ids are unaffected. */
+  mode: TournamentMode;
   onSelect: (tab: SetupTab) => void;
   markedTabs: Set<SetupTab>;
   dirtyTabs: Set<SetupTab>;
@@ -42,7 +46,7 @@ export function SetupTabBar({
           onClick={() => onSelect(id)}
           onKeyDown={(event) => onKeyDown(event, index)}
         >
-          {t(`setup.tabs.${id}`)}
+          {t(setupTabTitleKey(id, mode))}
           {markedTabs.has(id) && (
             <span className="tab-mark">
               <span className="visually-hidden">{t("setup.tabs.incomplete")}</span>

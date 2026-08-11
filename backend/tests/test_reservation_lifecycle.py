@@ -19,7 +19,7 @@ from app.db import get_session
 from app.mail import get_mailer
 from app.main import app
 from app.models import PaymentEvent, RefundState, Registration, RegistrationState, Tournament
-from tests.conftest import publish
+from tests.conftest import enable_payments, publish
 
 IBAN = "CZ6508000000192000145399"
 
@@ -71,6 +71,7 @@ def setup_tournament(client, organizer, capacity=10, **patch):
         json={"slug": "cup", "display_name": "Cup", "date": "2026-12-05"},
         headers=organizer,
     )
+    enable_payments(client, organizer, "cup")
     base = {
         "location": "Brno",
         "organizers": [{"name": "Cup Org", "link": None}],

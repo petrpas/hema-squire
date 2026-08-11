@@ -26,6 +26,7 @@ import {
   type SheetRow,
   type Tournament,
   type TournamentDetail,
+  type TournamentMode,
   api,
 } from "./api";
 
@@ -46,6 +47,21 @@ export const PHASES = [
   "queue",
 ] as const;
 export type Phase = (typeof PHASES)[number];
+
+/** The phase the console opens on when the URL names none, and where a URL
+ *  naming a phase the mode does not offer lands. */
+export const DEFAULT_PHASE: Phase = "load";
+
+/** Which phases the tournament's mode offers, in the fixed order above — the
+ *  mode removes phases, it never reorders them (spec: etl-console). The rest
+ *  are always offered, since they are what every tournament is made of. */
+export function offeredPhases(mode: TournamentMode): Phase[] {
+  return PHASES.filter((phase) => {
+    if (phase === "payments") return mode.feature_payments;
+    if (phase === "teams") return mode.feature_teams;
+    return true;
+  });
+}
 
 // A phase tab is a view of the whole fencer list plus that operation's
 // parameters (design Decision 1). Shared base columns, phase-owned columns.
@@ -201,6 +217,9 @@ export default function Console({
   const visibleRows = rows;
   const activeRows = rows.filter((row) => !row._deleted);
   const paidCount = activeRows.filter((row) => row.paid).length;
+  // from the refreshed detail where there is one, so applying a mode in Setup
+  // adds and removes phases at once rather than on the next load
+  const phases = offeredPhases(detail ?? tournament);
   const columns = [...BASE_COLUMNS, ...PHASE_COLUMNS[phase]];
   const phaseEdits = (sheet?.edits ?? []).filter((edit) => edit.phase === phase);
 
@@ -231,7 +250,7 @@ export default function Console({
       </header>
 
       <nav className="stepper">
-        {PHASES.map((p, index) => (
+        {phases.map((p, index) => (
           <div key={p} className="step-slot">
             {index > 0 && <div className="step-connector" />}
             <button

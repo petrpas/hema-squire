@@ -11,10 +11,11 @@ import { ExportSheetSection } from "./setup/ExportSheetSection";
 import { ExtraItemsSection } from "./setup/ExtraItemsSection";
 import { IdentitySection, VsSeriesSection } from "./setup/IdentitySection";
 import { LegacyFeesSection } from "./setup/LegacyFeesSection";
+import { ModeSection } from "./setup/ModeSection";
 import { OrganizersSection } from "./setup/OrganizersSection";
 import { PaymentModeSection } from "./setup/PaymentModeSection";
 import { PublishSection } from "./setup/PublishSection";
-import { MISSING_TAB, SaverRegistry, SETUP_TABS, type SetupTab } from "./setup/shared";
+import { missingTab, offeredSetupTabs, SaverRegistry, type SetupTab } from "./setup/shared";
 import { SetupSaveBar } from "./setup/SetupSaveBar";
 import { SetupTabBar } from "./setup/SetupTabBar";
 import { TeamSection } from "./setup/TeamSection";
@@ -38,6 +39,9 @@ export default function SetupPanel({
 }) {
   const { t } = useTranslation();
   const [account, setAccount] = useState<Account | null>(null);
+  // TOURNAMENT is where Setup opens, and where it falls back to when the
+  // selected tab stops being offered — turning extra services off while
+  // EXTRA is open must not leave the pane on nothing.
   const [tab, setTab] = useState<SetupTab>("tournament");
   const registry = useRef(new SaverRegistry()).current;
   useSyncExternalStore(registry.subscribe, registry.getVersion);
@@ -64,12 +68,16 @@ export default function SetupPanel({
   if (detail === null) return <p>{t("common.loading")}</p>;
 
   const isOwner = account !== null && account.id === detail.owner_id;
-  const offeredTabs = isOwner ? SETUP_TABS : SETUP_TABS.filter((setupTab) => setupTab !== "other");
+  const offeredTabs = offeredSetupTabs(detail, isOwner);
+  const selected = offeredTabs.includes(tab) ? tab : "tournament";
   const missing = detail.setup_missing ?? [];
+  // A marker is only ever raised on a tab the mode offers: an item whose
+  // editor the features conceal marks PUBLISH alone, which names the feature
+  // that brings the editor back (spec: setup-navigation).
   const markedTabs = new Set(
     missing
-      .map((key) => MISSING_TAB[key])
-      .filter((value): value is SetupTab => value !== undefined),
+      .map((key) => missingTab(key, detail))
+      .filter((value): value is SetupTab => value !== undefined && offeredTabs.includes(value)),
   );
   // PUBLISH carries a marker whenever any other tab does — it is where the
   // items are listed (design D7)
@@ -87,7 +95,8 @@ export default function SetupPanel({
         <div className="setup-panel-header">
           <SetupTabBar
             tabs={offeredTabs}
-            tab={tab}
+            tab={selected}
+            mode={detail}
             onSelect={setTab}
             markedTabs={markedTabs}
             dirtyTabs={dirtyTabs}
@@ -99,7 +108,7 @@ export default function SetupPanel({
             id="setup-tabpanel-tournament"
             role="tabpanel"
             aria-labelledby="setup-tab-tournament"
-            hidden={tab !== "tournament"}
+            hidden={selected !== "tournament"}
           >
             <IdentitySection detail={detail} slug={slug} onSaved={onSaved} registry={registry} />
             <OrganizersSection detail={detail} slug={slug} registry={registry} />
@@ -109,7 +118,7 @@ export default function SetupPanel({
             id="setup-tabpanel-disciplines"
             role="tabpanel"
             aria-labelledby="setup-tab-disciplines"
-            hidden={tab !== "disciplines"}
+            hidden={selected !== "disciplines"}
           >
             <DisciplinesSection
               detail={detail}
@@ -119,26 +128,31 @@ export default function SetupPanel({
               onTeamKindChange={setHasTeamDiscipline}
             />
           </div>
-          <div
-            className="setup-tabpanel"
-            id="setup-tabpanel-extra"
-            role="tabpanel"
-            aria-labelledby="setup-tab-extra"
-            hidden={tab !== "extra"}
-          >
-            <ExtraItemsSection
-              detail={detail}
-              slug={slug}
-              pricingWarning={hasRegistrations}
-              registry={registry}
-            />
-          </div>
+          {/* a section whose feature is off is not rendered at all, so its
+              saver never registers and no marker can be raised on a tab that
+              is not in the bar (spec: setup-navigation) */}
+          {detail.feature_extras && (
+            <div
+              className="setup-tabpanel"
+              id="setup-tabpanel-extra"
+              role="tabpanel"
+              aria-labelledby="setup-tab-extra"
+              hidden={selected !== "extra"}
+            >
+              <ExtraItemsSection
+                detail={detail}
+                slug={slug}
+                pricingWarning={hasRegistrations}
+                registry={registry}
+              />
+            </div>
+          )}
           <div
             className="setup-tabpanel"
             id="setup-tabpanel-timeline"
             role="tabpanel"
             aria-labelledby="setup-tab-timeline"
-            hidden={tab !== "timeline"}
+            hidden={selected !== "timeline"}
           >
             <TimelineSection
               detail={detail}
@@ -152,12 +166,20 @@ export default function SetupPanel({
             id="setup-tabpanel-payments"
             role="tabpanel"
             aria-labelledby="setup-tab-payments"
-            hidden={tab !== "payments"}
+            hidden={selected !== "payments"}
           >
-            <PaymentModeSection detail={detail} slug={slug} registry={registry} />
-            <BankAccountSection detail={detail} slug={slug} registry={registry} />
+            {/* while payments are off the tab is titled PRICING and holds
+                only what survives that: the currency the tournament prices
+                in, its discounts, and any legacy fixed fees it still carries
+                (design D7) */}
+            {detail.feature_payments && (
+              <>
+                <PaymentModeSection detail={detail} slug={slug} registry={registry} />
+                <BankAccountSection detail={detail} slug={slug} registry={registry} />
+              </>
+            )}
             <CurrencySection detail={detail} slug={slug} registry={registry} />
-            <VsSeriesSection detail={detail} />
+            {detail.feature_payments && <VsSeriesSection detail={detail} />}
             <DiscountsSection
               detail={detail}
               slug={slug}
@@ -172,8 +194,9 @@ export default function SetupPanel({
               id="setup-tabpanel-other"
               role="tabpanel"
               aria-labelledby="setup-tab-other"
-              hidden={tab !== "other"}
+              hidden={selected !== "other"}
             >
+              <ModeSection detail={detail} onApplied={onSaved} />
               <TeamSection slug={slug} />
               <ExportSheetSection detail={detail} slug={slug} registry={registry} />
               <DangerZoneSection
@@ -190,7 +213,7 @@ export default function SetupPanel({
             id="setup-tabpanel-publish"
             role="tabpanel"
             aria-labelledby="setup-tab-publish"
-            hidden={tab !== "publish"}
+            hidden={selected !== "publish"}
           >
             <PublishSection
               slug={slug}
@@ -200,7 +223,7 @@ export default function SetupPanel({
             />
           </div>
           <SetupSaveBar
-            tab={tab}
+            tab={selected}
             registry={registry}
             hasRegistrations={hasRegistrations}
             onSaved={onSaved}

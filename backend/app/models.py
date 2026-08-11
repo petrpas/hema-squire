@@ -222,6 +222,20 @@ class Tournament(Base):
     # and no capacity is freed on account of it (design team-disciplines D7)
     team_composition_deadline: Mapped[date | None]
 
+    # the four advanced features this tournament uses (design tournament-modes
+    # D1). Easy mode is the absence of all four — there is no separate stored
+    # mode value, so the name a tournament is given and the sections its
+    # console offers can never disagree (D2). They record what the organizer
+    # asked to see and are never derived or re-derived from the tournament's
+    # contents at runtime: adding a team discipline does not turn
+    # feature_teams on (D9). Only feature_payments changes what the system
+    # does; the other three govern which controls Setup offers, and the data
+    # they conceal stays in force everywhere else (D4, D12).
+    feature_schedule: Mapped[bool] = mapped_column(default=False)
+    feature_payments: Mapped[bool] = mapped_column(default=False)
+    feature_teams: Mapped[bool] = mapped_column(default=False)
+    feature_extras: Mapped[bool] = mapped_column(default=False)
+
     # payment and reservation parameters
     # how a seat is held (see PaymentMode); `immediate` is what every
     # tournament created before the mode existed does, so it is the default

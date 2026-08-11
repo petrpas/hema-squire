@@ -41,7 +41,39 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   return response.json();
 }
 
-export interface Tournament {
+/** The four features that make up a tournament's mode. Easy mode is the
+ *  absence of all four, advanced mode at least one — there is no separately
+ *  stored mode value, so the name a tournament is given and the sections its
+ *  console offers can never disagree (design tournament-modes D2). */
+export interface TournamentMode {
+  /** Disciplines specify where and when they occur. */
+  feature_schedule: boolean;
+  /** Squire handles payment processing: the only feature that changes what
+   *  the system does rather than which controls Setup offers (D5). */
+  feature_payments: boolean;
+  feature_teams: boolean;
+  feature_extras: boolean;
+}
+
+export const MODE_FEATURES = [
+  "feature_schedule",
+  "feature_payments",
+  "feature_teams",
+  "feature_extras",
+] as const satisfies readonly (keyof TournamentMode)[];
+
+export const EASY_MODE: TournamentMode = {
+  feature_schedule: false,
+  feature_payments: false,
+  feature_teams: false,
+  feature_extras: false,
+};
+
+export function isEasyMode(mode: TournamentMode): boolean {
+  return !MODE_FEATURES.some((feature) => mode[feature]);
+}
+
+export interface Tournament extends TournamentMode {
   slug: string;
   display_name: string;
   subtitle: string | null;
@@ -647,6 +679,15 @@ export const api = {
     request<TournamentDetail>(`/api/tournaments/${slug}`, {
       method: "PATCH",
       body: JSON.stringify(patch),
+    }),
+  getTournamentMode: (slug: string) =>
+    request<TournamentMode>(`/api/tournaments/${slug}/mode`),
+  // a mode is chosen as a whole, never one feature at a time, so the whole
+  // set goes in one request (design tournament-modes D2)
+  setTournamentMode: (slug: string, mode: TournamentMode) =>
+    request<TournamentDetail>(`/api/tournaments/${slug}/mode`, {
+      method: "PATCH",
+      body: JSON.stringify(mode),
     }),
   taxonomy: () => request<Record<string, string>>("/api/taxonomy/disciplines"),
   addDiscipline: (slug: string, data: DisciplineInput) =>

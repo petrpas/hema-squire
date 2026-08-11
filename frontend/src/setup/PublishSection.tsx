@@ -1,7 +1,9 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { ApiError, type TournamentDetail, api } from "../api";
+import { ApiError, type TournamentDetail, type TournamentMode, api } from "../api";
+import { FEATURE_NAMES } from "../TournamentModeDialog";
+import { concealedBy } from "./shared";
 
 export function PublishSection({
   slug,
@@ -19,6 +21,16 @@ export function PublishSection({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const missing = detail.setup_missing ?? [];
+  // An item whose editor the mode conceals is reported here and nowhere else,
+  // so PUBLISH must also say which feature brings the editor back — otherwise
+  // it names something the organizer cannot reach (spec: setup-navigation).
+  const concealing = [
+    ...new Set(
+      missing
+        .map((key) => concealedBy(key, detail))
+        .filter((feature): feature is keyof TournamentMode => feature !== undefined),
+    ),
+  ];
 
   async function act() {
     setBusy(true);
@@ -87,6 +99,13 @@ export function PublishSection({
             ))}
           </div>
           <p className="rail-hint">{t("setup.publish.blockedHint")}</p>
+          {concealing.map((feature) => (
+            <p key={feature} className="rail-hint">
+              {t("setup.publish.turnOnFeature", {
+                feature: t(`setup.mode.feature.${FEATURE_NAMES[feature]}`),
+              })}
+            </p>
+          ))}
         </>
       )}
       {hasUnsavedChanges && <p className="rail-hint">{t("setup.publish.unsavedNote")}</p>}

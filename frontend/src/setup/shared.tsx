@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { type Currency, type CurrencyMode, type ExtraCategory } from "../api";
+import { type Currency, type CurrencyMode, type ExtraCategory, type TournamentMode } from "../api";
 import { parseInteger } from "../numeric";
 import { LEGACY_WEAPONS } from "../TournamentFace";
 
@@ -31,6 +31,29 @@ export const SETUP_TABS: SetupTab[] = [
   "publish",
 ];
 
+/** Which tabs the tournament's mode offers, in the fixed order above — the
+ *  mode removes tabs, it never reorders them (spec: setup-navigation).
+ *  `EXTRA` follows the extra services feature; `OTHER` keeps its owner-only
+ *  restriction; the remaining five are always offered, so an easy-mode
+ *  tournament is navigated by six. */
+export function offeredSetupTabs(mode: TournamentMode, isOwner: boolean): SetupTab[] {
+  return SETUP_TABS.filter((tab) => {
+    if (tab === "extra") return mode.feature_extras;
+    if (tab === "other") return isOwner;
+    return true;
+  });
+}
+
+/** The tab's title. Only the payments tab's changes with the mode: what it
+ *  then holds is the currency the tournament prices in and the discounts it
+ *  gives, and a tab titled for payments on a tournament that takes none
+ *  states something untrue (design D7). Its identifier stays `payments` —
+ *  the URL, the marker attribution and `aria-controls` are built from that. */
+export function setupTabTitleKey(tab: SetupTab, mode: TournamentMode): string {
+  if (tab === "payments" && !mode.feature_payments) return "setup.tabs.pricing";
+  return `setup.tabs.${tab}`;
+}
+
 // Keys are exactly those backend/app/setup.py emits (D1). Every key it can
 // emit has an entry here, and the tab named holds a section that resolves it
 // (regroup-setup-parameters Decision 1) — that is what makes an item read on
@@ -53,6 +76,32 @@ export const MISSING_TAB: Record<string, SetupTab> = {
   legacy_fixed_fees_block_eur: "payments",
   bank_account: "payments",
 };
+
+// The feature whose absence takes a missing item's editor out of Setup. The
+// item is still reported — completeness reads the tournament's contents, not
+// its features (design D4) — but there is nowhere to fix it until the feature
+// is turned back on, so it marks `PUBLISH` alone and `PUBLISH` names the way
+// back (spec: setup-navigation). Items that cannot arise in a mode at all —
+// the bank account and the deposit while payments are off — are not reported
+// by the backend and never reach here.
+export const MISSING_FEATURE: Record<string, keyof TournamentMode> = {
+  extra_item_prices: "feature_extras",
+  team_bounds: "feature_teams",
+};
+
+/** The feature a missing item needs turned on before it can be edited, or
+ *  undefined when its editor is already offered. */
+export function concealedBy(key: string, mode: TournamentMode): keyof TournamentMode | undefined {
+  const feature = MISSING_FEATURE[key];
+  return feature !== undefined && !mode[feature] ? feature : undefined;
+}
+
+/** The tab a missing item marks, or undefined when no tab does: either the
+ *  client does not recognize the item, or the mode conceals its editor. */
+export function missingTab(key: string, mode: TournamentMode): SetupTab | undefined {
+  if (concealedBy(key, mode) !== undefined) return undefined;
+  return MISSING_TAB[key];
+}
 
 // Fixed flush/registration order, independent of effect-firing order (D7).
 // `paymentMode` precedes `bankAccount`: how fencers pay stands first on the

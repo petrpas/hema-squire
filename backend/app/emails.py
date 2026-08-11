@@ -87,11 +87,52 @@ def _account_text(tournament: Tournament) -> str:
     return accounts.display(tournament.bank_account)
 
 
+def _payment_mail_suppressed(tournament: Tournament) -> bool:
+    """Whether this tournament's payment mail is not sent at all. With the
+    payments feature off Squire requests no money, so a reminder, an expiry
+    notice, a surcharge or a payment-received message has nothing to be about
+    (design tournament-modes D5). Guarded here, at the one place every such
+    message is composed, rather than at each of the several callers."""
+    return not tournament.feature_payments
+
+
+def _send_confirmation_without_payment(
+    mailer: Mailer, tournament: Tournament, fencer: Fencer, registration: Registration, key: str
+) -> None:
+    """The confirmation a payments-off tournament sends: the summary and the
+    total, and nothing about paying it — no account, no variable symbol, no QR
+    code and no expiry date. It confirms the registration rather than
+    requesting money; how the event is settled is the organizer's own
+    statement, made in the registration instructions."""
+    lang = tournament.language
+    mailer.send(
+        build_message(
+            fencer.email,
+            settings.email_sender,
+            t(f"{key}.subject", lang, tournament=tournament.display_name),
+            t(
+                f"{key}.body",
+                lang,
+                name=fencer.display_name,
+                tournament=tournament.display_name,
+                summary=_summary_lines(registration, tournament, lang),
+                total=_total_text(tournament, registration),
+            ),
+        )
+    )
+
+
 def send_registration_confirmation(
     mailer: Mailer, tournament: Tournament, fencer: Fencer, registration: Registration
 ) -> None:
     lang = tournament.language
     queued = registration.fully_queued
+
+    if not queued and not tournament.feature_payments:
+        _send_confirmation_without_payment(
+            mailer, tournament, fencer, registration, "email.confirmationNoPayment"
+        )
+        return
 
     if queued:
         subject = t("email.queued.subject", lang, tournament=tournament.display_name)
@@ -172,7 +213,10 @@ def payment_qrs(
     local_amount: int | Decimal | None = None,
     eur_amount: int | Decimal | None = None,
 ) -> tuple[bytes | None, bytes | None]:
-    if not tournament.bank_account:
+    # no QR is produced for a tournament Squire collects nothing for: a code
+    # drawn on an account no money is owed into is a demand the tournament is
+    # not making (design tournament-modes D5)
+    if not tournament.feature_payments or not tournament.bank_account:
         return None, None
     primary, eur = payment_spayd(
         tournament, registration, local_amount=local_amount, eur_amount=eur_amount
@@ -183,6 +227,8 @@ def payment_qrs(
 def send_payment_reminder(
     mailer: Mailer, tournament: Tournament, fencer: Fencer, registration: Registration
 ) -> None:
+    if _payment_mail_suppressed(tournament):
+        return
     lang = tournament.language
     subject = t("email.reminder.subject", lang, tournament=tournament.display_name)
     body = t(
@@ -216,6 +262,8 @@ def send_reservation_expired(
     while carrying a partial payment (design harden-payment-matching
     Decision 3): it states the organizer holds the money and will be in
     contact, and never implies the money is lost or promises a seat."""
+    if _payment_mail_suppressed(tournament):
+        return
     lang = tournament.language
     if holding_payment:
         subject = t(
@@ -243,6 +291,8 @@ def send_reservation_expired(
 def send_payment_received(
     mailer: Mailer, tournament: Tournament, fencer: Fencer, registration: Registration
 ) -> None:
+    if _payment_mail_suppressed(tournament):
+        return
     lang = tournament.language
     subject = t("email.paid.subject", lang, tournament=tournament.display_name)
     body = t(
@@ -267,6 +317,8 @@ def send_partial_payment_received(
     outstanding in the currency this payment credited, rather than being left
     to work the difference out themselves (design harden-payment-matching
     Decision 3)."""
+    if _payment_mail_suppressed(tournament):
+        return
     lang = tournament.language
     if which == "local":
         outstanding = Decimal(registration.outstanding_cents) / 100
@@ -298,6 +350,12 @@ def send_amendment_confirmation(
     queued = all(entry.is_substitute for entry in registration.entries) and all(
         team.waitlisted for team in registration.teams
     )
+
+    if not queued and not tournament.feature_payments:
+        _send_confirmation_without_payment(
+            mailer, tournament, fencer, registration, "email.amendmentNoPayment"
+        )
+        return
 
     if queued:
         subject = t("email.amendment.queuedSubject", lang, tournament=tournament.display_name)
@@ -339,6 +397,8 @@ def send_surcharge_due(
     the difference in each currency, against the same VS the fencer already
     paid once. The two currencies' outstanding amounts are independent —
     a price change need not move both the same way."""
+    if _payment_mail_suppressed(tournament):
+        return
     lang = tournament.language
     outstanding_local = (Decimal(registration.outstanding_cents) / 100).quantize(
         Decimal("0.01"), rounding=ROUND_HALF_UP
@@ -376,6 +436,8 @@ def send_reservation_reinstated(
     grace period: one message combining the reinstatement and the payment,
     consistent with the registration already showing as paid by the time this
     is sent (matching.match_new_transactions, routers/payments.reinstate)."""
+    if _payment_mail_suppressed(tournament):
+        return
     lang = tournament.language
     subject = t("email.reinstated.subject", lang, tournament=tournament.display_name)
     body = t(
@@ -395,6 +457,8 @@ def send_payment_after_expiry(
     """A payment that could not be reinstated automatically — outside grace,
     or the seat is gone. States plainly that it arrived and that the organizer
     will follow up; it must not promise a seat that may no longer exist."""
+    if _payment_mail_suppressed(tournament):
+        return
     lang = tournament.language
     subject = t("email.afterExpiry.subject", lang, tournament=tournament.display_name)
     body = t(

@@ -25,7 +25,7 @@ from app.db import Base
 from app.mail import get_mailer
 from app.main import app
 from app.models import Currency, Discipline, ExtraCategory, ExtraItem, Tournament
-from tests.conftest import publish
+from tests.conftest import enable_payments, publish
 from tests.test_tournaments import make_tournament as make_api_tournament
 
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
@@ -521,6 +521,7 @@ def test_registration_instructions_round_trip(client, auth_headers):
 
 def publish_with_eur(client, headers, *, eur=True, fee=1750, fee_eur=70):
     make_api_tournament(client, headers)
+    enable_payments(client, headers, "na-duel-2026")
     patch = {
         "location": "Brno",
         "organizers": [{"name": "Org", "link": None}],

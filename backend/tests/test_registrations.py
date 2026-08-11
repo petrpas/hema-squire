@@ -1,6 +1,6 @@
 from datetime import date, timedelta
 
-from tests.conftest import publish
+from tests.conftest import enable_payments, publish
 
 TODAY = date.today()
 
@@ -11,6 +11,7 @@ def setup_tournament(client, organizer, early_bird=False):
         json={"slug": "cup", "display_name": "Cup", "date": "2026-12-05"},
         headers=organizer,
     )
+    enable_payments(client, organizer, "cup")
     patch = {
         "weapon_rental_fee": 200,
         "afterparty_fee": 300,

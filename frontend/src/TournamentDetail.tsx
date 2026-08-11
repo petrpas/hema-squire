@@ -134,11 +134,22 @@ function PaymentPanel({ slug }: { slug: string }) {
   );
 }
 
-function RegistrationStateTag({ registration }: { registration: RegistrationDetail }) {
+function RegistrationStateTag({
+  registration,
+  detail,
+}: {
+  registration: RegistrationDetail;
+  detail: TournamentDetailData;
+}) {
   const { t } = useTranslation();
-  const label = t(`registration.state.${registration.state}`);
-  if (registration.state === "paid") return <PaidStamp id={registration.vs} label={label} />;
-  if (registration.state === "reserved") return <span className="tag tag-form-yellow">{label}</span>;
+  // A reservation on a payments-off tournament is not awaiting anything: no
+  // money was asked for and no window is running, so it reads as confirmed
+  // rather than as reserved (spec: fencer-home).
+  const state =
+    registration.state === "reserved" && !detail.feature_payments ? "paid" : registration.state;
+  const label = t(`registration.state.${state}`);
+  if (state === "paid") return <PaidStamp id={registration.vs} label={label} />;
+  if (state === "reserved") return <span className="tag tag-form-yellow">{label}</span>;
   return <span className="state-text">{label}</span>;
 }
 
@@ -256,18 +267,22 @@ function RegistrationLines({
         label={t("form.totalLabel")}
         amount={formatMoneyWithEur(registration.total_amount, registration.total_eur, detail)}
       />
-      {(Number(registration.outstanding_amount) !== 0 ||
-        Number(registration.outstanding_eur_amount ?? 0) !== 0) && (
-        <AmountLine
-          className="muted"
-          label={t("registration.outstandingLabel")}
-          amount={formatMoneyWithEur(
-            registration.outstanding_amount,
-            registration.outstanding_eur_amount,
-            detail,
-          )}
-        />
-      )}
+      {/* what the tournament costs is information the fencer needs; what is
+          outstanding is a demand, and a payments-off tournament makes none
+          (spec: fencer-home) */}
+      {detail.feature_payments &&
+        (Number(registration.outstanding_amount) !== 0 ||
+          Number(registration.outstanding_eur_amount ?? 0) !== 0) && (
+          <AmountLine
+            className="muted"
+            label={t("registration.outstandingLabel")}
+            amount={formatMoneyWithEur(
+              registration.outstanding_amount,
+              registration.outstanding_eur_amount,
+              detail,
+            )}
+          />
+        )}
     </div>
   );
 }
@@ -284,7 +299,7 @@ function RegistrationSummary({
     <section className="rail-card">
       <div className="rail-card-heading">
         <h2>{t("registration.title")}</h2>
-        <RegistrationStateTag registration={registration} />
+        <RegistrationStateTag registration={registration} detail={detail} />
       </div>
       <RegistrationLines registration={registration} detail={detail} />
     </section>
@@ -327,12 +342,18 @@ function RegistrationPanel({
     <section className="rail-card">
       <div className="rail-card-heading">
         <h2>{t("registration.title")}</h2>
-        <RegistrationStateTag registration={registration} />
+        <RegistrationStateTag registration={registration} detail={detail} />
       </div>
 
       <RegistrationLines registration={registration} detail={detail} />
 
-      {registration.state === "reserved" && <PaymentPanel slug={slug} />}
+      {/* nothing is being asked for while payments are off: no account to
+          quote, no variable symbol in use and no expiry to state, and a
+          partial set would tell the fencer to do something the tournament is
+          not asking of them (spec: fencer-home) */}
+      {registration.state === "reserved" && detail.feature_payments && (
+        <PaymentPanel slug={slug} />
+      )}
 
       {/* amend and cancel both rewrite something the fencer already holds, so
           both are destructive controls behind a confirmation, standing as one

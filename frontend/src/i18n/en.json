@@ -5,7 +5,8 @@
   "common": {
     "loading": "Loading…",
     "logout": "Log out",
-    "cancel": "Cancel"
+    "cancel": "Cancel",
+    "back": "Back"
   },
   "notFound": {
     "title": "Page not found",
@@ -234,6 +235,7 @@
       "extra": "extra",
       "timeline": "timeline",
       "payments": "payments",
+      "pricing": "pricing",
       "other": "other",
       "publish": "Publish",
       "incomplete": "incomplete configuration",
@@ -257,7 +259,8 @@
       "failedAlreadyPublished": "This tournament is already published.",
       "failedCancelled": "A cancelled tournament cannot be published.",
       "failedIncomplete": "Setup is not complete yet — check the tabs above.",
-      "failedGeneric": "Publication failed. Please try again."
+      "failedGeneric": "Publication failed. Please try again.",
+      "turnOnFeature": "This item has no editor in the current mode — turn the {{feature}} feature on, in the tournament mode on the other tab, to get it back."
     },
     "missing": {
       "location": "Location is missing",
@@ -465,6 +468,49 @@
     "exportSheet": {
       "title": "Sheet export",
       "hint": "The Google Sheet the export writes into."
+    },
+    "mode": {
+      "title": "Tournament mode",
+      "easy": "easy mode",
+      "easyHint": "Only the essentials — the tournament, its disciplines, its dates and its prices. Recommended.",
+      "advanced": "advanced mode",
+      "advancedHint": "Choose which advanced features the tournament uses.",
+      "nothingChosen": "With no feature chosen this is easy mode.",
+      "feature": {
+        "schedule": "Tournament schedule",
+        "payments": "Payments",
+        "teams": "Team disciplines",
+        "extras": "Extra services"
+      },
+      "hint": {
+        "schedule": "For larger tournaments with several disciplines on different days and in different places. Disciplines then state where and when they occur.",
+        "payments": "For organizers who want Squire to handle payment processing.",
+        "teams": "For tournaments including one or more team disciplines.",
+        "extras": "After-party, seminars, weapon lending, merchandise."
+      },
+      "apply": "Apply",
+      "confirm": "Hide and apply",
+      "confirmIntro": "Turning the feature off hides this:",
+      "hiding": {
+        "schedule": "disciplines carrying a time and place: {{count}}",
+        "teams": "team disciplines: {{count}}",
+        "extras": "extra services: {{count}}",
+        "payments": "recorded payment settings: {{settings}}"
+      },
+      "setting": {
+        "bank_account": "bank account",
+        "payment_mode": "payment mode",
+        "deposit_amount": "deposit"
+      },
+      "stillSold": "Nothing is deleted. Hidden items are still sold and fencers still see them — only their settings go out of sight, and they come back unchanged when the feature is turned on again.",
+      "paymentsConsequence": "Squire stops asking for money: no payment instructions, QR codes, reminders or expiry of unpaid reservations. Prices, currency, discounts and credited payments all stay recorded.",
+      "failed": "The mode could not be saved.",
+      "section": {
+        "title": "Tournament mode",
+        "easy": "The tournament is in easy mode.",
+        "advanced": "The tournament is in advanced mode: {{features}}.",
+        "change": "Change mode"
+      }
     }
   },
   "preview": {

@@ -564,7 +564,10 @@ export function DisciplinesSection({
               <tr className="detail-subrow">
                 <td colSpan={eur ? 6 : 5}>
                   <div className="param-fields">
-                    {row.kind === "team" && (
+                    {/* the bounds belong to the team feature; a stored
+                        discipline keeps them and the completeness check keeps
+                        reading them (design D4) */}
+                    {row.kind === "team" && detail.feature_teams && (
                       <>
                         <label className="param-field">
                           <span>{t("setup.disciplines.teamMin")}</span>
@@ -588,22 +591,29 @@ export function DisciplinesSection({
                         </label>
                       </>
                     )}
-                    <label className="param-field">
-                      <span>
-                        {t("setup.disciplines.when")}
-                        <HelpHint text={t("setup.disciplines.whenHint")} />
-                      </span>
-                      <input {...fieldProps("schedule_when", "schedule_when")} />
-                      <FieldError field={`schedule_when-${row.rowId}`} error={validation.errors[`schedule_when-${row.rowId}`]} />
-                    </label>
-                    <label className="param-field">
-                      <span>
-                        {t("setup.disciplines.where")}
-                        <HelpHint text={t("setup.disciplines.whereHint")} />
-                      </span>
-                      <input {...fieldProps("schedule_where", "schedule_where")} />
-                      <FieldError field={`schedule_where-${row.rowId}`} error={validation.errors[`schedule_where-${row.rowId}`]} />
-                    </label>
+                    {/* a discipline's time and place are the tournament
+                        schedule; an extra service's own are not, and are
+                        offered in every mode (design D8) */}
+                    {detail.feature_schedule && (
+                      <>
+                        <label className="param-field">
+                          <span>
+                            {t("setup.disciplines.when")}
+                            <HelpHint text={t("setup.disciplines.whenHint")} />
+                          </span>
+                          <input {...fieldProps("schedule_when", "schedule_when")} />
+                          <FieldError field={`schedule_when-${row.rowId}`} error={validation.errors[`schedule_when-${row.rowId}`]} />
+                        </label>
+                        <label className="param-field">
+                          <span>
+                            {t("setup.disciplines.where")}
+                            <HelpHint text={t("setup.disciplines.whereHint")} />
+                          </span>
+                          <input {...fieldProps("schedule_where", "schedule_where")} />
+                          <FieldError field={`schedule_where-${row.rowId}`} error={validation.errors[`schedule_where-${row.rowId}`]} />
+                        </label>
+                      </>
+                    )}
                     <label className="param-field">
                       <span>
                         {t("setup.disciplines.rulesetName")}
@@ -652,6 +662,7 @@ export function DisciplinesSection({
           otherSlugs={
             new Set(rows.filter((row) => row.rowId !== dialogRowId).map((row) => row.slug))
           }
+          offerKind={detail.feature_teams}
           onConfirm={confirmDialog}
           onClose={() => setDialogRowId(null)}
         />

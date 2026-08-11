@@ -5,7 +5,8 @@
   "common": {
     "loading": "Načítání…",
     "logout": "Odhlásit",
-    "cancel": "Zrušit"
+    "cancel": "Zrušit",
+    "back": "Zpět"
   },
   "notFound": {
     "title": "Stránka nenalezena",
@@ -234,6 +235,7 @@
       "extra": "doplňky",
       "timeline": "termíny",
       "payments": "platby",
+      "pricing": "ceny",
       "other": "ostatní",
       "publish": "Zveřejnění",
       "incomplete": "neúplné nastavení",
@@ -257,7 +259,8 @@
       "failedAlreadyPublished": "Tento turnaj je už zveřejněný.",
       "failedCancelled": "Zrušený turnaj nelze zveřejnit.",
       "failedIncomplete": "Nastavení ještě není kompletní — zkontroluj záložky výše.",
-      "failedGeneric": "Zveřejnění se nezdařilo. Zkus to prosím znovu."
+      "failedGeneric": "Zveřejnění se nezdařilo. Zkus to prosím znovu.",
+      "turnOnFeature": "Nastavení téhle položky je skryté — zapni funkci „{{feature}}“ v režimu turnaje na kartě ostatní, aby šla upravit."
     },
     "missing": {
       "location": "Chybí místo konání",
@@ -465,6 +468,49 @@
     "exportSheet": {
       "title": "Export do tabulky",
       "hint": "Google tabulka, do které export zapisuje."
+    },
+    "mode": {
+      "title": "Režim turnaje",
+      "easy": "jednoduchý režim",
+      "easyHint": "Jen to nejnutnější — turnaj, disciplíny, termíny a ceny. Doporučeno.",
+      "advanced": "pokročilý režim",
+      "advancedHint": "Vyber, které pokročilé funkce turnaj používá.",
+      "nothingChosen": "Bez zapnuté funkce je to jednoduchý režim.",
+      "feature": {
+        "schedule": "Program turnaje",
+        "payments": "Platby",
+        "teams": "Týmové disciplíny",
+        "extras": "Doplňkové služby"
+      },
+      "hint": {
+        "schedule": "Pro větší turnaje s několika disciplínami v různé dny a na různých místech. Disciplíny pak mají uvedený čas a místo.",
+        "payments": "Pro pořadatele, kteří chtějí, aby platby zpracovával Squire.",
+        "teams": "Pro turnaje s jednou nebo více týmovými disciplínami.",
+        "extras": "Afterparty, semináře, zapůjčení zbraní, merch."
+      },
+      "apply": "Použít",
+      "confirm": "Skrýt a použít",
+      "confirmIntro": "Vypnutím funkce se skryje toto nastavení:",
+      "hiding": {
+        "schedule": "disciplíny s uvedeným časem a místem: {{count}}",
+        "teams": "týmové disciplíny: {{count}}",
+        "extras": "doplňkové služby: {{count}}",
+        "payments": "uložené nastavení plateb: {{settings}}"
+      },
+      "setting": {
+        "bank_account": "bankovní účet",
+        "payment_mode": "způsob platby",
+        "deposit_amount": "záloha"
+      },
+      "stillSold": "Nic se nemaže. Skryté položky se dál prodávají a šermíři je dál vidí — mizí jen jejich nastavení a vrátí se beze změny, jakmile funkci znovu zapneš.",
+      "paymentsConsequence": "Squire přestane vybírat peníze: žádné pokyny k platbě, QR kódy, upomínky ani rušení nezaplacených rezervací. Ceny, měna, slevy i připsané platby zůstávají uložené.",
+      "failed": "Režim se nepodařilo uložit.",
+      "section": {
+        "title": "Režim turnaje",
+        "easy": "Turnaj je v jednoduchém režimu.",
+        "advanced": "Turnaj je v pokročilém režimu: {{features}}.",
+        "change": "Změnit režim"
+      }
     }
   },
   "preview": {

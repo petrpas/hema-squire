@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useParams } from "react-router-dom";
+import { Navigate, useParams } from "react-router-dom";
 
-import Console, { PHASES, type Phase } from "./Console";
+import Console, { DEFAULT_PHASE, offeredPhases, PHASES, type Phase } from "./Console";
 import NotFound from "./NotFound";
+import * as routes from "./routes";
 import { type Tournament, api } from "./api";
 
 function isPhase(value: string | undefined): value is Phase {
@@ -27,5 +28,13 @@ export default function ConsoleRoute() {
   if (tournament === "error") return <NotFound />;
   if (tournament === null) return <p>{t("common.loading")}</p>;
 
-  return <Console tournament={tournament} phase={phaseParam ?? "load"} />;
+  // A phase the mode does not offer is not reachable by its URL either: a
+  // bookmark saved before a feature was turned off lands on the default phase
+  // rather than on an empty view (spec: etl-console).
+  const phase = phaseParam ?? DEFAULT_PHASE;
+  if (!offeredPhases(tournament).includes(phase)) {
+    return <Navigate to={routes.consolePath(slug, DEFAULT_PHASE)} replace />;
+  }
+
+  return <Console tournament={tournament} phase={phase} />;
 }

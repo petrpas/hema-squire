@@ -23,7 +23,7 @@ from pydantic import BaseModel
 from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
-from app import emails
+from app import bank, emails
 from app import rules as rules_engine
 from app.availability import taken_seats
 from app.mail import Mailer
@@ -307,6 +307,7 @@ def match_new_transactions(
     Decision 2). Transactions in a terminal, organizer-decided state —
     matched, other_tournament, resolved (marked for refund), or already
     unmatched — are never revisited."""
+    bank.require_payments_enabled(tournament)
     result = MatchResult()
     candidates = session.scalars(
         select(BankTransaction)
@@ -556,6 +557,7 @@ def apply_payment_links(session: Session, tournament: Tournament, mailer: Mailer
     7) — rather than crediting the full amount to every one of them. The
     amount actually credited to each VS is recorded on the rule, so removing
     it later reverts exactly what happened."""
+    bank.require_payments_enabled(tournament)
     applied = 0
     for rule in rules_engine.active_rules(session, tournament, kind="payment_link"):
         transaction = _transaction_by_external_id(

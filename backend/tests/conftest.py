@@ -40,6 +40,32 @@ def client(engine):
         app.dependency_overrides.clear()
 
 
+FEATURE_FLAGS = ("feature_schedule", "feature_payments", "feature_teams", "feature_extras")
+
+
+def feature_payload(**enabled) -> dict:
+    """A whole mode: a feature not named is off, because a mode is chosen as a
+    whole rather than one flag at a time (design tournament-modes D2)."""
+    return {flag: enabled.get(flag, False) for flag in FEATURE_FLAGS}
+
+
+def set_features(client, headers, slug, **enabled):
+    """Turn tournament features on. A tournament is created in easy mode, which
+    asks fencers for no money at all, so every test exercising reservations,
+    reminders, expiry, matching or the bank account has to enable payments —
+    exactly as an organizer does, since nothing is ever derived at runtime
+    (design tournament-modes D9)."""
+    response = client.patch(
+        f"/api/tournaments/{slug}/mode", json=feature_payload(**enabled), headers=headers
+    )
+    assert response.status_code == 200, response.text
+    return response.json()
+
+
+def enable_payments(client, headers, slug):
+    return set_features(client, headers, slug, feature_payments=True)
+
+
 def publish(client, headers, slug):
     """Publish a tournament so it reaches fencers: setup-complete alone no
     longer does (design add-explicit-publishing). Every test that expects a

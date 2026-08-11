@@ -5,8 +5,9 @@ import { Link, useNavigate } from "react-router-dom";
 import AccountMenu from "./AccountMenu";
 import { useAuth } from "./RequireAuth";
 import { consolePath } from "./routes";
-import { ApiError, type Account, type Tournament, api } from "./api";
+import { ApiError, type Account, type Tournament, type TournamentDetail, api } from "./api";
 import FieldError, { invalidProps } from "./FieldError";
+import TournamentModeDialog from "./TournamentModeDialog";
 import { useFieldValidation } from "./useFieldValidation";
 import { apiErrors, checkString } from "./validation";
 
@@ -35,7 +36,7 @@ function NewTournamentDialog({
   onCreated,
   onClose,
 }: {
-  onCreated: (tournament: Tournament) => void;
+  onCreated: (tournament: TournamentDetail) => void;
   onClose: () => void;
 }) {
   const { t } = useTranslation();
@@ -155,6 +156,11 @@ export default function TournamentPicker() {
   const { onLogout } = useAuth();
   const [tournaments, setTournaments] = useState<Tournament[] | null>(null);
   const [creating, setCreating] = useState(false);
+  // The tournament the mode dialog is open on: creation takes two dialogs,
+  // and the second only opens once the tournament exists, so a failure to
+  // choose a mode can never lose a successfully created tournament
+  // (design tournament-modes D11).
+  const [choosingMode, setChoosingMode] = useState<TournamentDetail | null>(null);
   const [account, setAccount] = useState<Account | null>(null);
 
   useEffect(() => {
@@ -205,8 +211,17 @@ export default function TournamentPicker() {
           onClose={() => setCreating(false)}
           onCreated={(tournament) => {
             setCreating(false);
-            navigate(consolePath(tournament.slug, "setup"));
+            setChoosingMode(tournament);
           }}
+        />
+      )}
+      {choosingMode && (
+        <TournamentModeDialog
+          detail={choosingMode}
+          // dismissing leaves the tournament in the easy mode it was created
+          // in and opens Setup exactly as confirming does
+          onClose={() => navigate(consolePath(choosingMode.slug, "setup"))}
+          onApplied={() => navigate(consolePath(choosingMode.slug, "setup"))}
         />
       )}
     </div>

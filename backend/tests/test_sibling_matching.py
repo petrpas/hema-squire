@@ -3,7 +3,7 @@
 
 import io
 
-from tests.conftest import publish
+from tests.conftest import enable_payments, publish
 
 
 def create_tournament(client, organizer, slug, date="2026-12-05"):
@@ -13,6 +13,7 @@ def create_tournament(client, organizer, slug, date="2026-12-05"):
         headers=organizer,
     )
     assert response.status_code == 201, response.text
+    enable_payments(client, organizer, slug)
     client.patch(
         f"/api/tournaments/{slug}",
         json={

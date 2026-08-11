@@ -5,7 +5,7 @@ from decimal import Decimal
 
 from app.export_json import SCHEMA_VERSION
 from app.importer import get_import_parser
-from tests.conftest import publish
+from tests.conftest import enable_payments, publish
 from tests.test_import import CSV, FakeParser
 
 
@@ -15,6 +15,7 @@ def setup(client, organizer):
         json={"slug": "cup", "display_name": "Cup", "date": "2026-12-05"},
         headers=organizer,
     )
+    enable_payments(client, organizer, "cup")
     client.patch(
         "/api/tournaments/cup",
         json={"location": "Brno", "organizers": [{"name": "Cup Org", "link": None}]},

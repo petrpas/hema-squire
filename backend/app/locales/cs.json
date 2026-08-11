@@ -64,6 +64,14 @@
       "subject": "Připomínka soupisky — {tournament}",
       "body": "Ahoj {name},\n\nblíží se uzávěrka soupisek pro {tournament} a tyto tvoje týmy ještě nemají dost členů:\n\n{teams}\n\nUzávěrka soupisek: {deadline}\n\nSoupisku můžeš doplnit ve své registraci na {tournament} — místo v týmu tím neztrácíš, jde jen o jména.\n\nTým {tournament}",
       "count": "{have}/{min} členů"
+    },
+    "confirmationNoPayment": {
+      "subject": "Registrace na {tournament} — potvrzení",
+      "body": "Ahoj {name},\n\npřijali jsme tvou registraci na {tournament}:\n\n{summary}\n\nCelkem: {total}\n\nRegistrace je potvrzená. Částka je informativní — platbu vyřizuje pořadatel mimo tento systém.\n\nTým {tournament}"
+    },
+    "amendmentNoPayment": {
+      "subject": "Změna registrace na {tournament}",
+      "body": "Ahoj {name},\n\nupravili jsme tvou registraci na {tournament}:\n\n{summary}\n\nCelkem: {total}\n\nČástka je informativní — platbu vyřizuje pořadatel mimo tento systém.\n\nTým {tournament}"
     }
   }
 }

@@ -202,7 +202,11 @@ A reservation's lifecycle SHALL depend on the tournament's payment mode, and SHA
 
 The seating deadline SHALL NOT be expressed as a payment window on individual registrations, so that the expiry of a payment window can never release a seat that the seating deadline would have queued.
 
-Per mode, a seated reservation SHALL be held as follows:
+**Both clocks SHALL be dormant while the tournament's payments feature is off.** Such a registration SHALL be seated on the same capacity terms as any other, SHALL carry no due date, SHALL open no payment window, and SHALL never expire for non-payment. Its total SHALL still be computed and presented, as a statement of what the tournament costs rather than a demand, and it SHALL be presented to the fencer as confirmed rather than as awaiting payment. No payment mode SHALL apply to it: the mode describes how money is collected, and no money is being collected.
+
+A registration taken while payments were off SHALL NOT acquire a due date retroactively when the payments feature is turned on. It SHALL remain seated and SHALL NOT expire on account of a window that never opened; what becomes of it is the organizer's decision.
+
+Per mode, on a tournament whose payments feature is on, a seated reservation SHALL be held as follows:
 
 - **immediate** — the full amount is owed at registration and a payment window opens. Unpaid at the end of it, the reservation expires.
 - **deposit** — the deposit is owed at registration and a payment window opens for it. Crediting the deposit SHALL close the payment window, leaving the balance owed by the seating deadline. Unpaid at the end of the payment window, the reservation expires; deposit paid but balance unpaid at the seating deadline, it is moved to the substitute queue.
@@ -227,6 +231,18 @@ An expired reservation SHALL NOT bar the fencer from the tournament. A fencer wh
 #### Scenario: Free reservation holds without a payment window
 - **WHEN** a fencer registers in reservation mode
 - **THEN** nothing is owed, no payment window opens, and the seat is held until the seating deadline
+
+#### Scenario: Payments-off registration is seated outright
+- **WHEN** a fencer registers for a tournament whose payments feature is off
+- **THEN** the registration is seated with no due date and no payment window, its total is shown as information, and it is presented as confirmed
+
+#### Scenario: Payments-off registration never expires
+- **WHEN** the scheduler runs against a payments-off tournament long after any configured payment window would have closed
+- **THEN** no registration expires, no capacity is freed, and no expiry notice is sent
+
+#### Scenario: Turning payments on does not expire what came before
+- **WHEN** a tournament that took registrations with payments off turns payments on and the scheduler runs
+- **THEN** those registrations remain seated, none expires, and none is sent an expiry notice
 
 #### Scenario: Re-registration after expiry with seats free
 - **WHEN** a fencer whose reservation expired registers again while the selected disciplines have free places
@@ -373,7 +389,9 @@ A fencer viewing their registration SHALL be shown the outstanding amount in eac
 - **THEN** the outstanding amount is presented with its currency alongside the total
 
 ### Requirement: Confirmation email with QR payment
-On registration the system SHALL send a localized confirmation email containing the registration summary — items with quantities and option values — the total amount with its currency, the bank account, the VS, and an SPAYD-format QR code encoding amount, currency, account, VS, and message. When the tournament prices in EUR as a second currency, the email SHALL additionally carry the EUR total and a second QR code denominated in EUR against the same account.
+On registration for a tournament whose payments feature is on, the system SHALL send a localized confirmation email containing the registration summary — items with quantities and option values — the total amount with its currency, the bank account, the VS, and an SPAYD-format QR code encoding amount, currency, account, VS, and message. When the tournament prices in EUR as a second currency, the email SHALL additionally carry the EUR total and a second QR code denominated in EUR against the same account.
+
+**On a tournament whose payments feature is off, the confirmation email SHALL carry the summary and the total and nothing about paying it**: no bank account, no variable symbol, no QR code, no expiry date and no payment instruction. It SHALL confirm the registration rather than request money, and where the organizer has written registration instructions those SHALL be the tournament's own statement of how it is settled. No reminder, expiry notice, surcharge or payment-received mail SHALL be sent for such a tournament, because nothing generates one.
 
 Each discipline entered SHALL be summarized by its name alone. The email SHALL NOT carry discipline slugs, which are not fencer-facing text (`discipline-identity`); where a tournament offers several disciplines classified alike, the name is what tells the fencer which one they entered.
 
@@ -408,6 +426,14 @@ The account SHALL be stated in the same form as the in-app instructions: a Czech
 #### Scenario: No EUR block in single-currency mode
 - **WHEN** a tournament prices in one currency
 - **THEN** the email carries exactly one amount and one QR code
+
+#### Scenario: Payments-off confirmation carries no payment block
+- **WHEN** a fencer registers for a payments-off tournament totalling 1200 Kč
+- **THEN** the email states the summary and the total, and carries no account, no VS, no QR code and no expiry date
+
+#### Scenario: No payment mail for a payments-off tournament
+- **WHEN** the scheduler runs against a payments-off tournament holding registrations of every age
+- **THEN** no reminder, expiry notice, surcharge or payment-received mail is sent
 
 #### Scenario: Emailed amounts stable against configuration changes
 - **WHEN** the organizer changes prices or the recorded ratio after a confirmation email was sent

@@ -24,7 +24,7 @@ from app.models import (
     RegistrationState,
     Tournament,
 )
-from tests.conftest import publish
+from tests.conftest import enable_payments, publish
 
 IBAN = "CZ6508000000192000145399"
 TOURNAMENT_DATE = "2026-12-05"
@@ -58,6 +58,7 @@ def make_tournament(client, organizer, *, mode="immediate", capacity=2, fee_eur=
         json={"slug": "cup", "display_name": "Cup", "date": TOURNAMENT_DATE},
         headers=organizer,
     )
+    enable_payments(client, organizer, "cup")
     payload = {
         "bank_account": IBAN,
         "reservation_validity_days": 7,
@@ -842,6 +843,7 @@ def test_deposit_amount_is_a_setup_completeness_item(client, auth_headers):
         payment_mode=PaymentMode.DEPOSIT,
         location="Brno",
         organizers=[{"name": "Org", "link": None}],
+        feature_payments=True,
     )
     assert MISSING_DEPOSIT_AMOUNT in setup_missing(tournament)
     tournament.deposit_amount = 300

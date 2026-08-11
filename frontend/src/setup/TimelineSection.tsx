@@ -22,6 +22,11 @@ const TIMELINE_FIELDS = [
   { key: "registration_closes", hint: "setup.timeline.closesHint" },
 ] as const;
 
+/** The seating deadline is offered only while payments are on: nothing
+ *  settles against it when no money is owed (spec: setup-navigation). The
+ *  registration window is offered in every mode. */
+const SEATING_FIELD = "seating_deadline";
+
 const COMPOSITION_FIELD = {
   key: "team_composition_deadline",
   hint: "setup.timeline.compositionHint",
@@ -48,9 +53,15 @@ export function TimelineSection({
   const validation = useFieldValidation();
   const fieldRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
-  const fields = hasTeamDiscipline
-    ? [...TIMELINE_FIELDS, COMPOSITION_FIELD]
-    : TIMELINE_FIELDS;
+  // A stored date whose field is not offered is retained, never cleared: the
+  // flush below writes only the fields actually shown.
+  const shownTimelineFields = TIMELINE_FIELDS.filter(
+    (field) => field.key !== SEATING_FIELD || detail.feature_payments,
+  );
+  const fields =
+    hasTeamDiscipline && detail.feature_teams
+      ? [...shownTimelineFields, COMPOSITION_FIELD]
+      : shownTimelineFields;
 
   useEffect(() => {
     setValues({
@@ -75,16 +86,14 @@ export function TimelineSection({
     focusFirstInvalid: () => {},
     flush: async () => {
       try {
+        // Only the fields on show are written. A stored date whose field the
+        // mode conceals — the seating deadline with payments off, the
+        // composition deadline with the team feature off or with no team
+        // discipline left — is retained, not cleared (spec: "Stored deadline
+        // survives removing the team discipline").
         const patch: Record<string, unknown> = {};
-        for (const field of TIMELINE_FIELDS) {
+        for (const field of fields) {
           patch[field.key] = values[field.key] || null;
-        }
-        // Only written while a team discipline exists: a stored deadline on a
-        // tournament whose team disciplines have all been removed is retained,
-        // not cleared (spec: "Stored deadline survives removing the team
-        // discipline").
-        if (hasTeamDiscipline) {
-          patch[COMPOSITION_FIELD.key] = values[COMPOSITION_FIELD.key] || null;
         }
         await api.updateTournament(slug, patch);
         setDirty(false);

@@ -41,6 +41,7 @@ async def import_statement(
     mailer: MailerDep,
 ):
     require_console_access(session, tournament, fencer)
+    bank.require_payments_enabled(tournament)
     content = await file.read()
     try:
         transactions = bank.parse_fio_csv(content)
@@ -59,6 +60,7 @@ def fio_poll(
     days_back: int = 14,
 ):
     require_console_access(session, tournament, fencer)
+    bank.require_payments_enabled(tournament)
     if not tournament.fio_token:
         raise HTTPException(status_code=409, detail="fio_token_not_configured")
     today = date.today()
@@ -73,8 +75,13 @@ def process_lifecycle(
     """Run the lifecycle passes for this tournament now (also runs
     periodically). Same passes in the same order as the scheduler's tick,
     settlement included — running it by hand must not decide anything
-    differently from letting the tick reach it."""
+    differently from letting the tick reach it.
+
+    Refused for a payments-off tournament, whose tick skips these passes: the
+    lifecycle this drives is the payment lifecycle, and settling seating by
+    hand has its own action on the tournament."""
     require_console_access(session, tournament, fencer)
+    bank.require_payments_enabled(tournament)
     demoted = scheduler.settle_seating_if_due(session, tournament)
     expired = scheduler.process_expiries(session, tournament, mailer)
     return {
@@ -95,6 +102,7 @@ def link_transaction(
     """Manually link an unmatched transaction to one or more registrations.
     Persists as a payment_link rule: survives reruns, removable via the rules API."""
     require_console_access(session, tournament, fencer)
+    bank.require_payments_enabled(tournament)
     transaction = session.get(BankTransaction, data.transaction_id)
     if transaction is None or transaction.tournament_id != tournament.id:
         raise HTTPException(status_code=404, detail="transaction_not_found")
@@ -196,6 +204,7 @@ def reinstate_transaction(
     refused for capacity): the accepted amount is credited unconditionally,
     since the organizer has already reviewed and decided to accept it."""
     require_console_access(session, tournament, fencer)
+    bank.require_payments_enabled(tournament)
     transaction = _flagged_transaction(session, tournament, transaction_id)
     registration = _flagged_registration(session, tournament, transaction)
     if registration is None or registration.state != RegistrationState.EXPIRED:
@@ -235,6 +244,7 @@ def mark_transaction_for_refund(
     fencer: FencerDep,
 ):
     require_console_access(session, tournament, fencer)
+    bank.require_payments_enabled(tournament)
     transaction = _flagged_transaction(session, tournament, transaction_id)
     registration = _flagged_registration(session, tournament, transaction)
     which = matching.match_currency(transaction, tournament)

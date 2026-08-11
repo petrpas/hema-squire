@@ -462,6 +462,26 @@ class TournamentUpdate(BaseModel):
         return accounts.parse(value)
 
 
+class TournamentModeIn(BaseModel):
+    """The tournament's mode, chosen as a whole. All four features are given
+    together and none is optional: a mode is a shape the organizer picks, not
+    four settings toggled one at a time, so a request that omits a feature is
+    asking for it to be off rather than to be left alone. Easy mode is all
+    four false (design tournament-modes D2)."""
+
+    feature_schedule: bool
+    feature_payments: bool
+    feature_teams: bool
+    feature_extras: bool
+
+
+class TournamentModeOut(TournamentModeIn):
+    """What the mode dialog opens on. Deliberately the request model read back,
+    so the two can never describe different sets of features."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 # the three currency modes a tournament can be in (design Decision 2):
 # "local" — a single local currency; "local_eur" — local plus EUR as an
 # accepted second currency; "eur" — the local currency is EUR itself, so
@@ -521,6 +541,14 @@ class TournamentOut(BaseModel):
     registration_closes: datetime.date | None
     amendments_close: datetime.date | None
     team_composition_deadline: datetime.date | None
+    # the tournament's mode: easy mode is all four off (design
+    # tournament-modes D2). Read by the console to decide which tabs, sections
+    # and phases it offers, and by the fencer-facing surfaces to decide
+    # whether money is being asked for at all
+    feature_schedule: bool
+    feature_payments: bool
+    feature_teams: bool
+    feature_extras: bool
     discounts: list[DiscountIn]
     extra_items: list[ExtraItemOut] = []
     # filled by the detail endpoint from setup.setup_missing(); None elsewhere

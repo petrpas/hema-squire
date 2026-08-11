@@ -547,18 +547,31 @@ def _initial_expires_at(
     A substitute is never billed, so no window opens for one. In `reservation`
     mode nothing is owed until the seating deadline, so none opens there
     either; `taken_seats` already reads a null `expires_at` as holding, so the
-    seat is held correctly with no change to the capacity predicate."""
+    seat is held correctly with no change to the capacity predicate.
+
+    With the payments feature off no money is requested at all, so no window
+    opens whatever the stored payment mode says (design tournament-modes D5,
+    D6). The total is still computed and stored — it states what the
+    tournament costs, settled outside Squire — and the null window is what
+    makes the registration inert to expiry rather than a new state."""
+    if not tournament.feature_payments:
+        return None
     if as_substitute or tournament.payment_mode == PaymentMode.RESERVATION:
         return None
     return registration.registered_at + timedelta(days=tournament.reservation_validity_days)
 
 
-def _promotion_expires_at(tournament: Tournament) -> datetime:
+def _promotion_expires_at(tournament: Tournament) -> datetime | None:
     """The payment window a promotion opens, clamped to the tournament itself
     (Decision 8). Both rules apply at once: money requested always gets a
     payment window, and no reservation outlives the event it is for — a fencer
     promoted three days out on a seven-day window would otherwise be holding a
-    seat past the tournament."""
+    seat past the tournament.
+
+    None with the payments feature off: promotion seats the placement and
+    stops there, since no money is requested (seating-queue)."""
+    if not tournament.feature_payments:
+        return None
     window = _now() + timedelta(days=tournament.reservation_validity_days)
     end_of_tournament = datetime.combine(
         tournament.date + timedelta(days=1), time.min, tzinfo=UTC
@@ -719,6 +732,11 @@ def my_registration_payment(tournament: TournamentDep, session: SessionDep, fenc
     """Same content as the confirmation email (design D3): owner-only, and
     only for a reservation that actually owes money right now."""
     registration = get_my_registration(session, tournament, fencer)
+    if not tournament.feature_payments:
+        # nothing is being asked for: no account to quote, no VS in use and no
+        # expiry to state, and a partial set would tell the fencer to do
+        # something the tournament is not asking of them (fencer-home)
+        raise HTTPException(status_code=409, detail="payments_disabled")
     if registration.state != RegistrationState.RESERVED:
         raise HTTPException(status_code=409, detail="not_unpaid")
     if registration.fully_queued:
@@ -806,6 +824,10 @@ def admit_substitute(
     registration.expires_at = _promotion_expires_at(tournament)
     session.commit()
     # Admission opens the payment window: send the payment instructions now.
+    # With payments off it opens none, so the same mail tells the fencer they
+    # have a place and states the amount as information (seating-queue): a
+    # promotion that opens no window cannot lapse, so such a registration
+    # never returns to the queue on a clock.
     emails.send_registration_confirmation(mailer, tournament, registration.fencer, registration)
     return registration_out(session, registration, tournament)
 

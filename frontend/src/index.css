@@ -884,8 +884,17 @@ button.secondary:disabled {
 
 /* consequence and nested fields align to the option's text, not its radio */
 .mode-option .rail-hint,
-.mode-option .form-fields {
+.mode-option .form-fields,
+.mode-option .mode-features {
   margin-left: 1.45rem;
+}
+
+/* the tournament mode's four features, revealed under the advanced option */
+.mode-features {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-top: 0.5rem;
 }
 
 .form-field.qualification-control {
@@ -904,7 +913,8 @@ button.secondary:disabled {
   color: var(--ink);
 }
 
-.qualification-option input[type="radio"] {
+.qualification-option input[type="radio"],
+.qualification-option input[type="checkbox"] {
   accent-color: var(--stamp);
 }
 

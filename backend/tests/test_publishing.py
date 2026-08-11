@@ -4,7 +4,7 @@ after (design add-explicit-publishing)."""
 
 from datetime import date, timedelta
 
-from tests.conftest import publish
+from tests.conftest import enable_payments, publish
 
 TODAY = date.today()
 
@@ -15,6 +15,7 @@ def make_tournament(client, organizer, slug="cup", **patch):
         json={"slug": slug, "display_name": "Cup", "date": str(TODAY + timedelta(days=30))},
         headers=organizer,
     )
+    enable_payments(client, organizer, slug)
     base = {
         "location": "Brno",
         "organizers": [{"name": "Cup Org", "link": None}],

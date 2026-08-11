@@ -16,6 +16,9 @@ def make_tournament(**kwargs) -> Tournament:
         vs_year=2026,
         vs_series=1,
         bank_account="CZ6508000000192000145399",
+        # the account is mandatory only on a tournament Squire collects money
+        # for (design tournament-modes D5), so these cases enable payments
+        feature_payments=True,
     )
     tournament = Tournament(**{**defaults, **kwargs})
     if "disciplines" not in kwargs:

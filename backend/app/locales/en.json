@@ -33,6 +33,14 @@
       "subject": "Roster reminder — {tournament}",
       "body": "Hi {name},\n\nthe roster deadline for {tournament} is coming up, and these teams of yours still don't have enough members:\n\n{teams}\n\nRoster deadline: {deadline}\n\nYou can fill in the roster from your registration for {tournament} — this doesn't affect the team's place, it's just names.\n\n{tournament} team",
       "count": "{have}/{min} members"
+    },
+    "confirmationNoPayment": {
+      "subject": "Registration for {tournament} — confirmed",
+      "body": "Hi {name},\n\nwe've received your registration for {tournament}:\n\n{summary}\n\nTotal: {total}\n\nYour registration is confirmed. The amount is for your information — payment is settled by the organizer outside this system.\n\n{tournament} team"
+    },
+    "amendmentNoPayment": {
+      "subject": "Registration amendment for {tournament}",
+      "body": "Hi {name},\n\nwe've updated your registration for {tournament}:\n\n{summary}\n\nTotal: {total}\n\nThe amount is for your information — payment is settled by the organizer outside this system.\n\n{tournament} team"
     }
   }
 }

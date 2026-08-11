@@ -120,13 +120,31 @@ def setup_missing(tournament: Tournament) -> list[str]:
         if uses_legacy_fixed_fees(tournament):
             missing.append(MISSING_LEGACY_BLOCKS_EUR)
 
-    if tournament.payment_mode == PaymentMode.DEPOSIT and (
-        not tournament.deposit_amount
-        or (tournament.shows_eur and not tournament.deposit_amount_eur)
+    # the deposit belongs to a payment mode, and no payment mode applies while
+    # payments are off: the item could not be resolved (its editor is
+    # concealed) and need not be, since nothing holds a seat with money that
+    # is never requested (design tournament-modes D5, setup-navigation)
+    if (
+        tournament.feature_payments
+        and tournament.payment_mode == PaymentMode.DEPOSIT
+        and (
+            not tournament.deposit_amount
+            or (tournament.shows_eur and not tournament.deposit_amount_eur)
+        )
     ):
         missing.append(MISSING_DEPOSIT_AMOUNT)
 
-    if charges_money(tournament) and not (tournament.bank_account or "").strip():
+    # only a tournament Squire collects money for needs an account to collect
+    # it into (design tournament-modes D5). Every other item above is
+    # unaffected by the feature, because the rest of completeness is about what
+    # the tournament offers rather than about collecting for it — a hidden team
+    # discipline is still checked for roster bounds, an unpriced hidden extra
+    # item is still reported (design D4)
+    if (
+        tournament.feature_payments
+        and charges_money(tournament)
+        and not (tournament.bank_account or "").strip()
+    ):
         missing.append(MISSING_BANK_ACCOUNT)
     return missing
 

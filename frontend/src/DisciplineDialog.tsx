@@ -67,6 +67,7 @@ export default function DisciplineDialog({
   initial,
   otherNames,
   otherSlugs,
+  offerKind,
   onConfirm,
   onClose,
 }: {
@@ -76,6 +77,10 @@ export default function DisciplineDialog({
   otherNames: string[];
   /** Every other row's slug in the table, saved or merely drafted. */
   otherSlugs: Set<string>;
+  /** Whether the tournament's team feature offers the kind control. With it
+   *  off no kind is chosen and the discipline being added is individual; a
+   *  discipline already of the team kind keeps it (design D4). */
+  offerKind: boolean;
   onConfirm: (value: DisciplineIdentity) => void;
   onClose: () => void;
 }) {
@@ -155,13 +160,18 @@ export default function DisciplineDialog({
           {t(initial ? "setup.disciplineDialog.editTitle" : "setup.disciplineDialog.addTitle")}
         </h2>
         <div className="form-fields">
-          <label className="form-field">
-            <span>{t("setup.disciplines.kind")}</span>
-            <select value={kind} onChange={(event) => setKind(event.target.value as DisciplineKind)}>
-              <option value="individual">{t("setup.disciplines.kindIndividual")}</option>
-              <option value="team">{t("setup.disciplines.kindTeam")}</option>
-            </select>
-          </label>
+          {offerKind && (
+            <label className="form-field">
+              <span>{t("setup.disciplines.kind")}</span>
+              <select
+                value={kind}
+                onChange={(event) => setKind(event.target.value as DisciplineKind)}
+              >
+                <option value="individual">{t("setup.disciplines.kindIndividual")}</option>
+                <option value="team">{t("setup.disciplines.kindTeam")}</option>
+              </select>
+            </label>
+          )}
           <label className="form-field">
             <span>{t("setup.disciplines.material")}</span>
             <select
