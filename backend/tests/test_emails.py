@@ -88,10 +88,43 @@ def test_confirmation_email_localized_with_qr(client, auth_headers, mailbox):
     assert "Variabilní symbol: 2601001" in body
     assert "1100 Kč" in body
     assert "CZ6508000000192000145399" in body
+    assert "19-2000145399/0800" in body  # domestic form stated alongside the IBAN
 
     attachments = list(message.iter_attachments())
     assert len(attachments) == 1
     assert attachments[0].get_content_type() == "image/png"
+
+
+def test_confirmation_email_states_iban_alone_for_foreign_account(client, auth_headers, mailbox):
+    organizer = auth_headers()
+    client.post(
+        "/api/tournaments",
+        json={"slug": "cup", "display_name": "Na Duel! 2026", "date": "2026-12-05"},
+        headers=organizer,
+    )
+    client.patch(
+        "/api/tournaments/cup",
+        json={
+            "bank_account": "DE89370400440532013000",
+            "location": "Brno",
+            "organizers": [{"name": "Cup Org", "link": None}],
+        },
+        headers=organizer,
+    )
+    client.post(
+        "/api/tournaments/cup/disciplines",
+        json={"slug": "LS", "weapon": "LS", "capacity": 1, "fee": 800},
+        headers=organizer,
+    )
+    publish(client, organizer, "cup")
+
+    fencer = auth_headers(email="jan@example.com", name="Jan")
+    client.post(
+        "/api/tournaments/cup/register", json={"disciplines": ["LS"]}, headers=fencer
+    )
+
+    body = mailbox.sent[0].get_body(("plain",)).get_content()
+    assert "Účet: DE89370400440532013000\n" in body
 
 
 def test_queued_email_has_no_qr_and_no_amount(client, auth_headers, mailbox):

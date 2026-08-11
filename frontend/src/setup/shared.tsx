@@ -9,19 +9,36 @@ export const TAXONOMY_WEAPON_CODES = Object.keys(LEGACY_WEAPONS);
 
 // design Decision D1 (split-setup-into-tabs); `publish` added last (design D6
 // of add-explicit-publishing) — the end of the Setup arc, offered to every
-// console team member regardless of ownership
-export type SetupTab = "tournament" | "disciplines" | "extra" | "payments" | "other" | "publish";
+// console team member regardless of ownership. `timeline` sits between
+// `extra` and `payments` (regroup-setup-parameters Decision 2) so the bar
+// reads in the order the organizer works: what the tournament is, what it
+// offers, what those cost, when it happens, how it is paid for.
+export type SetupTab =
+  | "tournament"
+  | "disciplines"
+  | "extra"
+  | "timeline"
+  | "payments"
+  | "other"
+  | "publish";
 export const SETUP_TABS: SetupTab[] = [
   "tournament",
   "disciplines",
   "extra",
+  "timeline",
   "payments",
   "other",
   "publish",
 ];
 
-// Keys are exactly those backend/app/setup.py emits (D1); a key absent from
-// this map marks no tab so an unrecognized checklist item never breaks the bar.
+// Keys are exactly those backend/app/setup.py emits (D1). Every key it can
+// emit has an entry here, and the tab named holds a section that resolves it
+// (regroup-setup-parameters Decision 1) — that is what makes an item read on
+// PUBLISH traceable to somewhere it can actually be fixed.
+//
+// A key absent from this map marks no tab, so an unrecognized checklist item
+// never breaks the bar. That fallback is for a backend ahead of a deployed
+// client; it is not where a key this client is expected to resolve belongs.
 export const MISSING_TAB: Record<string, SetupTab> = {
   location: "tournament",
   organizers: "tournament",
@@ -30,18 +47,29 @@ export const MISSING_TAB: Record<string, SetupTab> = {
   team_bounds: "disciplines",
   extra_item_prices: "extra",
   discount_prices: "payments",
+  // resolved by PaymentModeSection's deposit field
+  deposit_amount: "payments",
+  // resolved by LegacyFeesSection's clear action
   legacy_fixed_fees_block_eur: "payments",
+  bank_account: "payments",
 };
 
 // Fixed flush/registration order, independent of effect-firing order (D7).
+// `paymentMode` precedes `bankAccount`: how fencers pay stands first on the
+// payments tab, before the account the money arrives in.
 export const SECTION_ORDER = [
   "identity",
   "organizers",
   "disciplines",
   "extra",
+  "timeline",
+  "paymentMode",
+  "bankAccount",
   "currency",
   "vsSeries",
   "discounts",
+  "legacyFees",
+  "exportSheet",
 ] as const;
 
 export type SaveOutcome = {

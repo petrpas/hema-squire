@@ -138,7 +138,8 @@
     "dedup": "Deduplication",
     "payments": "Payments",
     "export": "Export",
-    "teams": "Teams"
+    "teams": "Teams",
+    "queue": "Queue"
   },
   "console": {
     "title": "Registered fencers",
@@ -191,13 +192,27 @@
     "registration_closes": "Registration closes",
     "subtitle": "Subtitle",
     "description": "Description",
-    "registration_instructions": "Registration instructions"
+    "registration_instructions": "Registration instructions",
+    "payment_mode": "Payment mode",
+    "payment_mode.immediate": "Immediate payment",
+    "payment_mode.deposit": "Reservation with deposit",
+    "payment_mode.reservation": "Reservation without deposit",
+    "seating_deadline": "Seating deadline",
+    "deposit_amount": "Deposit ({{currency}})",
+    "deposit_amount_eur": "Deposit (EUR)",
+    "hint.payment_mode": "How a seat is held: by full payment, by a deposit with the balance due at the seating deadline, or by nothing until that deadline.",
+    "hint.seating_deadline": "Not the registration close: after this date registration stays open but grants only a place in the queue, and money still owed is overdue. Unset, it falls on the registration close.",
+    "hint.reservation_validity_days": "How long a fencer has to pay once money is requested, 2 to 7 days. It is a payment window, not a date.",
+    "team_composition_deadline": "Team composition deadline",
+    "unpaid_list_treatment": "Unpaid registrations on the public list",
+    "unpaid_list_treatment.greyed": "shown, greyed out",
+    "unpaid_list_treatment.hidden": "hidden until paid",
+    "hint.unpaid_list_treatment": "How a fencer who has not yet paid appears on the public participant list.",
+    "weapon_rental_fee_early": "Weapon rental fee, early bird ({{currency}})",
+    "afterparty_fee_early": "Afterparty fee, early bird ({{currency}})"
   },
   "rail": {
     "operations": "Operations",
-    "generalRules": "General rules",
-    "rulesHint": "This phase has no parameters yet.",
-    "parameters": "Parameters",
     "save": "Save",
     "columnsForStep": "Columns for step",
     "manualEdits": "Manual edits",
@@ -216,9 +231,10 @@
       "tournament": "tournament",
       "disciplines": "disciplines",
       "extra": "extra",
+      "timeline": "timeline",
       "payments": "payments",
       "other": "other",
-      "publish": "publish",
+      "publish": "Publish",
       "incomplete": "incomplete configuration"
     },
     "saveBar": {
@@ -248,7 +264,9 @@
       "discipline_prices": "Some discipline has no price",
       "extra_item_prices": "Some extra service has no EUR price",
       "discount_prices": "Some fixed discount has no EUR amount",
-      "legacy_fixed_fees_block_eur": "This tournament uses the legacy fixed weapon-rental/afterparty fees, which have no EUR counterpart — switch to itemized extra services to enable EUR"
+      "legacy_fixed_fees_block_eur": "This tournament uses the legacy fixed weapon-rental/afterparty fees, which have no EUR counterpart — switch to itemized extra services to enable EUR",
+      "bank_account": "The bank account payments are collected into is missing",
+      "deposit_amount": "The deposit is missing on a tournament that takes one"
     },
     "priceChangeWarning": {
       "title": "Changing prices on a tournament with open registration",
@@ -402,6 +420,11 @@
       "cancelButton": "Cancel tournament",
       "failed": "The action failed. Please try again."
     },
+    "bankAccount": {
+      "title": "Bank account",
+      "label": "Account",
+      "hint": "Enter either an IBAN, for example \"CZ6508000000192000145399\", or the Czech domestic form, for example \"19-2000145399/0800\". Registrations cannot be paid until an account is recorded here — required as soon as the tournament charges anything."
+    },
     "currency": {
       "title": "Currency",
       "mode": {
@@ -414,6 +437,32 @@
       "rateWarning": "That rate looks implausible. Check the direction: local-currency units per 1 EUR.",
       "rateNote": "The rate is only a convenience for filling in missing prices — stored prices, totals, and payment instructions never change when it changes.",
       "legacyFixedFeesBlockEur": "This tournament uses the legacy fixed weapon-rental/afterparty fees, which have no EUR counterpart — switch to itemized extra services to enable EUR."
+    },
+    "timeline": {
+      "title": "Dates",
+      "opensHint": "Registration opens on this day. Before it the tournament is visible but nobody can enter. Unset, it opens as soon as the tournament is published.",
+      "seatingHint": "Not the registration close. After this day registration stays open but grants only a place in the queue, and any reservation that still owes money moves below the line. Unset, it falls on the registration close.",
+      "closesHint": "The hard close: after this day no entry is accepted at all. Unset, it falls on the tournament date.",
+      "compositionHint": "The day by which teams should have reached their discipline's minimum size. It only reminds — no roster is locked, no team is cancelled or moved to the queue, and no capacity is freed. Unset, there is no deadline and no reminders.",
+      "anchor": "Tournament: {{date}} — set on the tournament tab."
+    },
+    "paymentMode": {
+      "title": "How fencers pay",
+      "effect.immediate": "Full amount due within {{days}} days of registering. Unpaid, the seat is released.",
+      "effect.deposit": "Deposit due within {{days}} days, the rest by {{deadline}}.",
+      "effect.reservation": "Seat held free until {{deadline}}. Still unpaid then, the fencer moves to the queue.",
+      "deadline.own": "{{date}}",
+      "deadline.close": "{{date}} (the registration close)",
+      "deadline.date": "{{date}} (the tournament date)"
+    },
+    "legacyFees": {
+      "title": "Legacy fixed fees",
+      "explanation": "This tournament still prices through the old fixed weapon-rental and afterparty fees. They have no EUR counterpart, so EUR cannot be enabled while they are set, and they are no longer editable — extra-service items replace them. Clearing them discards the amounts below.",
+      "clear": "Clear legacy fees"
+    },
+    "exportSheet": {
+      "title": "Sheet export",
+      "hint": "The Google Sheet the export writes into."
     }
   },
   "preview": {
@@ -583,13 +632,19 @@
   "payment": {
     "title": "Payment instructions",
     "amount": "Amount",
-    "iban": "Account (IBAN)",
+    "account": "Account",
+    "ibanLabel": "IBAN",
     "vs": "Variable symbol",
     "expiresAt": "Reservation valid until",
     "vsInMessage": "If your bank transfer has no VS field, put variable symbol {{vs}} in the payment message instead.",
     "eurAmount": "Amount in EUR",
     "eurTitle": "Pay in EUR",
-    "eurHint": "The EUR code pays the same registration against the same account."
+    "eurHint": "The EUR code pays the same registration against the same account.",
+    "reason": {
+      "no_bank_account": "Payment details are not available yet — the organizer will supply them.",
+      "not_unpaid": "This reservation is no longer awaiting payment.",
+      "generic": "Payment instructions could not be loaded (error {{status}}). Try reloading the page."
+    }
   },
   "registration": {
     "title": "Your registration",
@@ -639,8 +694,7 @@
   "cancel": {
     "button": "Cancel registration",
     "confirm": "Cancel this registration?",
-    "refundable": "The fee is refundable. Cancel this registration?",
-    "notRefundable": "The fee is no longer refundable. Cancel this registration?",
+    "paidConfirm": "Cancel this registration? Any refund of the fee is arranged with the organizer.",
     "confirmButton": "Yes, cancel registration"
   },
   "payments": {
@@ -662,7 +716,11 @@
         "registration_cancelled": "registration cancelled"
       }
     },
-    "setAside": "{{count}} belonged to another tournament on this account — nothing to do, its own console will match it."
+    "setAside": "{{count}} belonged to another tournament on this account — nothing to do, its own console will match it.",
+    "tolerance": {
+      "title": "Matching tolerance",
+      "hint": "How far a transferred amount may differ from what is owed and still count as payment. Applies on the next rerun."
+    }
   },
   "validation": {
     "required": "this field is required",
@@ -686,6 +744,34 @@
     "qualification_criteria_required": "qualification criteria are required",
     "amendments_close_after_registration_closes": "the amendments deadline cannot fall after registration closes",
     "legacy_fixed_fees_block_eur": "the legacy fixed fees have no EUR counterpart — switch to itemized extra services first",
+    "iban_checksum": "this IBAN's check digits do not agree with the rest of the account — check for a typo",
+    "account_checksum": "this account number does not pass its checksum — check for a typo",
     "fieldsNeedAttention": "{{count}} fields need attention"
+  },
+  "queue": {
+    "title": "Seating and queue",
+    "deadline": "Seating deadline {{date}}",
+    "settledOn": "Seating settled {{date}}",
+    "notSettled": "Seating has not settled yet.",
+    "freePlaces": "{{free}} of {{capacity}} places free",
+    "seated": "Seated",
+    "queued": "Queue",
+    "emptyQueue": "Nobody is waiting for this discipline.",
+    "noneSeated": "Nobody holds a place in this discipline.",
+    "position": "{{position}}.",
+    "registeredAt": "registered {{date}}",
+    "promote": "promote",
+    "returnToQueue": "return to queue",
+    "noDisciplines": "This tournament offers no individual discipline.",
+    "error": "Could not load the queue. Are you an organizer of this tournament?",
+    "actionFailed": "That did not go through: {{reason}}",
+    "settle": "Settle seating",
+    "settleTitle": "settle seating now",
+    "settleBody_one": "{{count}} registration still owes money and will be moved to the queue. Registrations submitted afterwards join the queue instead of taking a place.",
+    "settleBody_other": "{{count}} registrations still owe money and will be moved to the queue. Registrations submitted afterwards join the queue instead of taking a place.",
+    "settleIrreversible": "This cannot be undone. Individual cases are corrected by promoting from the queue.",
+    "settleConfirm": "settle seating",
+    "settleDone_one": "{{count}} registration moved to the queue.",
+    "settleDone_other": "{{count}} registrations moved to the queue."
   }
 }

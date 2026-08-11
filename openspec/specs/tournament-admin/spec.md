@@ -386,15 +386,47 @@ A failed logo upload SHALL tell the organizer which of the distinguishable cause
 - **THEN** the message reflects that cause and does not claim the file is not an image
 
 ### Requirement: Payment and reservation parameters
-Per tournament, the organizer SHALL configure: reservation validity in days, reminder day, amount-matching tolerance in percent, refundable-until date, the bank account used in payment instructions, the public-list treatment of unpaid registrations, and the expiry grace period in hours.
+Per tournament, the organizer SHALL configure: the payment mode, the payment window in days, the reminder day, the amount-matching tolerance in percent, the refundable-until date, the bank account used in payment instructions, the public-list treatment of unpaid registrations, and the expiry grace period in hours. In deposit mode the organizer SHALL additionally configure the deposit amount.
+
+The **payment mode** SHALL be one of:
+
+- **immediate payment** — the full amount is owed at registration;
+- **reservation with deposit** — a deposit is owed at registration and the balance by the seating deadline;
+- **reservation without deposit** — nothing is owed at registration and the full amount is owed by the seating deadline.
+
+It SHALL default to immediate payment, which is the behaviour of a tournament created before the mode existed.
+
+The **payment window** is the number of days between money being requested and money being due; it exists because bank transfers do not settle instantly. It SHALL apply wherever money is requested — at registration in immediate and deposit modes, and on promotion from the substitute queue in every mode. It SHALL be accepted between 2 and 7 days inclusive. A tournament configured before that range was introduced SHALL keep its stored value until the parameter is next edited.
+
+The **deposit** SHALL be a flat amount, never a percentage of the total, so that amending a registration can never change a deposit that has already been paid. It is a price like every other: a whole-unit amount in the tournament's local currency, plus an independent EUR amount where the tournament prices in EUR, and it participates in the setup completeness check on the same terms as other prices. It SHALL be required and greater than zero in deposit mode, and SHALL be ignored in the other modes.
 
 The expiry grace period SHALL define how long after a reservation expires a payment carrying its VS may still reinstate it, subject to capacity. It SHALL default to 48 hours for a new tournament and SHALL accept zero, which disables automatic reinstatement and routes every post-expiry payment to explicit organizer action.
 
-The reminder day MUST fall before the reservation validity period ends. A reminder day at or beyond the validity period SHALL be rejected with a message naming both values, because expiry runs before reminders: such a reservation would always be expired before its reminder was due, and no reminder would ever be sent.
+The reminder day MUST fall before the payment window ends. A reminder day at or beyond the payment window SHALL be rejected with a message naming both values, because expiry runs before reminders: such a reservation would always be expired before its reminder was due, and no reminder would ever be sent.
 
 #### Scenario: Parameters applied
-- **WHEN** the organizer sets reservation validity to 10 days and the reminder to day 5
-- **THEN** new reservations expire after 10 unpaid days and reminder emails go out on day 5
+- **WHEN** the organizer sets the payment window to 5 days and the reminder to day 3
+- **THEN** new reservations expire after 5 unpaid days and reminder emails go out on day 3
+
+#### Scenario: Mode defaults to immediate payment
+- **WHEN** the organizer creates a tournament without choosing a payment mode
+- **THEN** it is immediate payment, the full amount is owed at registration, and no deposit or seating behaviour applies
+
+#### Scenario: Payment window outside the accepted range
+- **WHEN** the organizer sets the payment window to 14 days
+- **THEN** the update is rejected with a message naming the accepted range
+
+#### Scenario: Existing longer window kept until edited
+- **WHEN** a tournament configured with a 10-day payment window is loaded and other parameters are read
+- **THEN** its stored window is unchanged and reservations continue to behave as before
+
+#### Scenario: Deposit required in deposit mode
+- **WHEN** the organizer selects reservation with deposit and leaves the deposit amount empty
+- **THEN** the update is rejected, naming the missing deposit
+
+#### Scenario: Deposit priced in both currencies
+- **WHEN** the tournament prices in EUR alongside its local currency and the organizer sets a deposit
+- **THEN** both the local and the EUR deposit amounts are required, neither is derived from the other, and setup is incomplete until both are filled
 
 #### Scenario: Grace period default
 - **WHEN** the organizer creates a tournament without touching the grace period
@@ -405,12 +437,83 @@ The reminder day MUST fall before the reservation validity period ends. A remind
 - **THEN** no payment reinstates a reservation automatically and every post-expiry payment is flagged for organizer action
 
 #### Scenario: Reminder day at or beyond expiry rejected
-- **WHEN** the organizer sets the reminder day to 10 with a reservation validity of 10 days
+- **WHEN** the organizer sets the reminder day to 5 with a payment window of 5 days
 - **THEN** the update is rejected with a message naming both values, and no tournament is left in a state where reminders are silently never sent
 
 #### Scenario: Reminder day shortened below a valid reminder
-- **WHEN** the organizer shortens reservation validity to 5 days on a tournament whose reminder day is 7
+- **WHEN** the organizer shortens the payment window to 3 days on a tournament whose reminder day is 4
 - **THEN** the update is rejected, since the combination would stop reminders being sent
+
+### Requirement: Seating deadline
+The organizer SHALL be able to set a **seating deadline**: the date on which the tournament's seating settles. It is distinct from the registration close, and the difference SHALL be stated where it is configured:
+
+- **registration close** — the hard boundary; after it no registration is accepted at all;
+- **seating deadline** — a soft boundary inside it; after it registration is still accepted but grants only a place in the substitute queue, and any money still owed on a seated registration has become overdue.
+
+The seating deadline SHALL be optional. Unset, it SHALL resolve to the registration close, which itself resolves to the tournament date — so a tournament with no explicit deadline settles its seating when registration closes and has no organizer-managed tail.
+
+A seating deadline later than the registration close SHALL be rejected, since it could never be reached.
+
+The seating deadline SHALL apply to the whole tournament, never to an individual discipline.
+
+#### Scenario: Deadline set within the registration window
+- **WHEN** the organizer sets a seating deadline four weeks before the registration close
+- **THEN** it is accepted, and registrations submitted after it join the substitute queue
+
+#### Scenario: Deadline after registration close rejected
+- **WHEN** the organizer sets a seating deadline later than the registration close
+- **THEN** the update is rejected with a message naming both dates
+
+#### Scenario: Deadline left unset
+- **WHEN** the organizer saves a tournament with no seating deadline
+- **THEN** seating settles at the registration close, and no separate deadline is presented to fencers
+
+#### Scenario: Deadline distinguished from registration close in setup
+- **WHEN** the organizer views the payment and reservation parameters
+- **THEN** the seating deadline is labelled and explained so it cannot be mistaken for the registration close
+
+### Requirement: Bank account entry and storage
+The bank account SHALL be accepted in either of two forms: an IBAN, or the Czech domestic form `[prefix-]number/bankcode` with a prefix of up to six digits that MAY be omitted, an account number of two to ten digits, and a four-digit bank code. An organizer SHALL NOT be required to look up an IBAN to configure a Czech tournament, because the domestic form is the one printed on statements and used in domestic transfers, while the IBAN appears in neither.
+
+A Czech account entered in domestic form SHALL be converted to its IBAN and stored as that IBAN, so that the stored value is always canonical and every consumer of the account sees exactly one format. The conversion SHALL be the standard mapping — bank code, then the prefix padded to six digits, then the account number padded to ten — with check digits computed rather than supplied. No second form SHALL be stored, since the domestic form is recoverable from a Czech IBAN whenever it is needed.
+
+The account SHALL be validated, not merely shape-checked. An IBAN SHALL satisfy its mod-97 check digits. A Czech account entered in domestic form SHALL satisfy the weighted modulo-11 checksum on its prefix and on its account number independently, both of which every genuine Czech account satisfies. An account failing either check SHALL be refused with a message naming the check that failed, rather than being stored, printed into payment emails, and encoded into a QR code that fails at the payer's bank. The bank code SHALL be checked for shape only and SHALL NOT be validated against a registry of live codes, which would rot.
+
+Only the Czech domestic form SHALL be accepted alongside IBAN. An account in any other country SHALL be entered as its IBAN.
+
+An account stored before this validation existed SHALL NOT be re-validated or rejected on read, and SHALL continue to be used exactly as it is.
+
+#### Scenario: Domestic account accepted and stored as IBAN
+- **WHEN** the organizer saves the bank account as `19-2000145399/0800`
+- **THEN** the save succeeds and the stored value is the corresponding IBAN
+
+#### Scenario: Domestic account without a prefix
+- **WHEN** the organizer saves an account with no prefix, as `2000145399/0800`
+- **THEN** it is accepted and converted with a zero prefix
+
+#### Scenario: IBAN accepted unchanged
+- **WHEN** the organizer saves a valid IBAN
+- **THEN** it is stored as given, normalized only for spacing and case
+
+#### Scenario: Both forms of one account are the same account
+- **WHEN** the organizer saves an account in domestic form, and later saves the IBAN that account converts to
+- **THEN** the stored value is identical in both cases
+
+#### Scenario: Mistyped IBAN refused
+- **WHEN** the organizer saves an IBAN whose check digits do not agree with the rest of the value
+- **THEN** the save is refused, naming the failed check, and nothing is stored
+
+#### Scenario: Mistyped domestic account refused
+- **WHEN** the organizer saves a domestic account whose account number fails the modulo-11 checksum
+- **THEN** the save is refused, naming the failed check, and nothing is stored
+
+#### Scenario: Foreign account entered as IBAN
+- **WHEN** the organizer of a tournament banking outside Czechia saves that account as an IBAN
+- **THEN** it is accepted, and no domestic form is required or derived
+
+#### Scenario: Existing account is left alone
+- **WHEN** a tournament whose account was stored before this validation is loaded and used to build payment instructions
+- **THEN** the account is used as stored and no validation refuses it
 
 ### Requirement: Variable symbol series
 Each tournament SHALL carry a VS year and a VS series, which together form the prefix of every variable symbol it issues. The VS year SHALL be taken from the tournament's date when the series is assigned, so that an event held in January belongs to that January's year even when it is created and sells out during the preceding year. The VS series SHALL be an integer from 1 to 99 and SHALL be unique among the tournaments sharing a VS year.
@@ -551,9 +654,15 @@ A tournament SHALL additionally have an optional team composition deadline, edit
 - **THEN** the combination is accepted, and rosters stay editable after amendments have closed
 
 ### Requirement: Setup completeness
-Mandatory setup SHALL comprise: display name, date, location, at least one titular organizer, at least one discipline with a unit price, and — whenever the tournament prices in EUR as a second currency — every rendered EUR price field: each discipline's EUR price, each extra item's EUR price, and the EUR amount of each fixed discount. Every team discipline SHALL additionally have valid roster bounds, and a team discipline missing them SHALL be reported as a missing item. The team composition deadline SHALL NOT be part of mandatory setup: a tournament may offer team disciplines without one. A tournament still pricing through the legacy fixed weapon-rental/afterparty parameters SHALL be reported as blocked from enabling EUR, naming those parameters and directing the organizer to itemized extra services. The recorded exchange ratio is a Setup convenience only and is never part of completeness.
+Mandatory setup SHALL comprise: display name, date, location, at least one titular organizer, at least one discipline with a unit price, the bank account payments are collected into whenever the tournament charges anything at all, and — whenever the tournament prices in EUR as a second currency — every rendered EUR price field: each discipline's EUR price, each extra item's EUR price, and the EUR amount of each fixed discount. Every team discipline SHALL additionally have valid roster bounds, and a team discipline missing them SHALL be reported as a missing item. The team composition deadline SHALL NOT be part of mandatory setup: a tournament may offer team disciplines without one. A tournament still pricing through the legacy fixed weapon-rental/afterparty parameters SHALL be reported as blocked from enabling EUR, naming those parameters and directing the organizer to itemized extra services. The recorded exchange ratio is a Setup convenience only and is never part of completeness.
+
+The bank account is mandatory because a published tournament accepts registrations, and a registration that cannot be paid holds a place against a deadline the fencer has no way to meet. Completeness is the only guarantee the registration path relies on, so the account SHALL be guaranteed by the same rule as every other mandatory item rather than checked again when a fencer asks how to pay.
+
+A tournament SHALL be treated as charging when any price it can build a total from is above zero — any discipline's unit or early-bird price in either currency, any extra item's price in either currency, or any of the legacy fixed weapon-rental and afterparty parameters. Discounts SHALL NOT be considered, since they only reduce a total and cannot make a free tournament charge. A tournament that charges nothing SHALL be publishable with no bank account recorded. Completeness therefore depends on price **values** and not merely on their presence, so a tournament SHALL become incomplete at the moment it first sets a nonzero price without an account to collect it into — including a published tournament, whose save SHALL then be refused until the account is supplied.
 
 Complete mandatory setup SHALL be the precondition for publishing a tournament, and SHALL NOT by itself make a tournament public: publication is the explicit act fixed by `tournament-publication`. The items still unconfigured SHALL be named on the Setup phase's `PUBLISH` tab, which is where the organizer learns what stands between the tournament and publication. A tournament that has not been published SHALL NOT accept registrations, whether or not its mandatory setup is complete.
+
+A tournament published before the bank account became mandatory SHALL remain published and SHALL NOT be un-published by this rule, since the guarantee attaches at the moment of publication and cannot be applied retroactively. Such tournaments SHALL be reportable, so that an organizer can be told to supply the account rather than discovering it through a fencer who cannot pay.
 
 #### Scenario: Blocking items shown
 - **WHEN** the organizer opens `PUBLISH` for a tournament without location and without discipline prices
@@ -574,6 +683,26 @@ Complete mandatory setup SHALL be the precondition for publishing a tournament, 
 #### Scenario: Legacy fixed fees block EUR
 - **WHEN** the organizer enables EUR on a tournament still pricing through the fixed weapon-rental or afterparty parameters
 - **THEN** those parameters are named as blocking EUR and the organizer is directed to itemized extra services
+
+#### Scenario: Missing bank account blocks publication
+- **WHEN** the organizer publishes a priced tournament whose every other mandatory item is configured but which has recorded no bank account
+- **THEN** the attempt is refused and names the bank account as the item still missing
+
+#### Scenario: A tournament that charges nothing needs no account
+- **WHEN** the organizer publishes a tournament whose every discipline and extra item is priced at zero and which has recorded no bank account
+- **THEN** the publication succeeds and no missing bank account is reported
+
+#### Scenario: Setting the first price makes the account mandatory
+- **WHEN** a published tournament that charged nothing is saved with a nonzero discipline price and still no bank account
+- **THEN** the save is refused, naming the bank account, and the price is not stored
+
+#### Scenario: Discounts alone do not make a tournament charge
+- **WHEN** a tournament priced entirely at zero carries a fixed discount and has no bank account
+- **THEN** it is still treated as charging nothing and remains publishable
+
+#### Scenario: Bank account cannot be cleared after publication
+- **WHEN** the organizer of a published priced tournament saves its payment settings with the bank account emptied
+- **THEN** the save is refused and the stored account is unchanged
 
 #### Scenario: Setup completed
 - **WHEN** the last mandatory item is filled

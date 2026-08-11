@@ -4,7 +4,7 @@ communication language."""
 from decimal import ROUND_HALF_UP, Decimal
 from typing import Literal
 
-from app import pricing, spayd
+from app import accounts, pricing, spayd
 from app.config import settings
 from app.i18n import format_money, t
 from app.mail import Mailer, build_message
@@ -78,17 +78,20 @@ def _total_text(tournament: Tournament, registration: Registration) -> str:
     )
 
 
+def _account_text(tournament: Tournament) -> str:
+    """The account in the form its payer can use — both forms for a Czech
+    account, the IBAN alone otherwise (design accept-czech-account-format
+    Decision 2)."""
+    if not tournament.bank_account:
+        return "?"
+    return accounts.display(tournament.bank_account)
+
+
 def send_registration_confirmation(
     mailer: Mailer, tournament: Tournament, fencer: Fencer, registration: Registration
 ) -> None:
     lang = tournament.language
-    # nothing owed when every individual entry is queued and every team is
-    # waitlisted — vacuously true on whichever axis carries nothing, so a
-    # team-only registration is judged on its teams alone (design
-    # team-disciplines: task 5.2)
-    queued = all(entry.is_substitute for entry in registration.entries) and all(
-        team.waitlisted for team in registration.teams
-    )
+    queued = registration.fully_queued
 
     if queued:
         subject = t("email.queued.subject", lang, tournament=tournament.display_name)
@@ -111,7 +114,7 @@ def send_registration_confirmation(
         summary=_summary_lines(registration, tournament, lang),
         total=_total_text(tournament, registration),
         eur_note=_eur_note(tournament, lang),
-        account=tournament.bank_account or "?",
+        account=_account_text(tournament),
         vs=registration.vs,
         expires=registration.expires_at.date().isoformat() if registration.expires_at else "-",
     )
@@ -189,7 +192,7 @@ def send_payment_reminder(
         tournament=tournament.display_name,
         total=_total_text(tournament, registration),
         eur_note=_eur_note(tournament, lang),
-        account=tournament.bank_account or "?",
+        account=_account_text(tournament),
         vs=registration.vs,
         expires=registration.expires_at.date().isoformat() if registration.expires_at else "-",
     )
@@ -317,7 +320,7 @@ def send_amendment_confirmation(
         summary=_summary_lines(registration, tournament, lang),
         total=_total_text(tournament, registration),
         eur_note=_eur_note(tournament, lang),
-        account=tournament.bank_account or "?",
+        account=_account_text(tournament),
         vs=registration.vs,
         expires=registration.expires_at.date().isoformat() if registration.expires_at else "-",
     )
@@ -353,7 +356,7 @@ def send_surcharge_due(
         name=fencer.display_name,
         tournament=tournament.display_name,
         amount=_amount_text(tournament, lang, outstanding_local, outstanding_eur),
-        account=tournament.bank_account or "?",
+        account=_account_text(tournament),
         vs=registration.vs,
     )
     qr, qr_eur = payment_qrs(

@@ -225,11 +225,15 @@ export function DisciplinesSection({
   slug,
   pricingWarning,
   registry,
+  onTeamKindChange,
 }: {
   detail: TournamentDetail;
   slug: string;
   pricingWarning: boolean;
   registry: SaverRegistry;
+  /** Reports whether the current draft holds a team discipline, so TIMELINE
+   *  can offer the composition deadline before the table is saved. */
+  onTeamKindChange: (hasTeamDiscipline: boolean) => void;
 }) {
   const { t } = useTranslation();
   const [rows, setRows] = useState<DisciplineRow[]>(() => detail.disciplines.map(disciplineToRow));
@@ -249,39 +253,16 @@ export function DisciplinesSection({
   const removedRef = useRef(removed);
   removedRef.current = removed;
 
-  // Below the table, shown only while a team row exists in the current draft
-  // — including one added but not yet saved (design setup-navigation:
-  // "Deadline appears with the first team row"). Written by this same tab's
-  // save control, as its own registry entry alongside the table (task 8.2).
-  const [deadline, setDeadline] = useState(detail.team_composition_deadline ?? "");
-  const [deadlineDirty, setDeadlineDirty] = useState(false);
+  // The composition deadline itself lives on TIMELINE with the other dates
+  // (regroup-setup-parameters), but the draft this table holds is what decides
+  // whether it is offered — "including a row added in the current unsaved
+  // draft". The two no longer share a component, so the signal is reported up
+  // to SetupPanel and passed down to TimelineSection (design Decision 3a).
   const hasTeamRow = rows.some((row) => row.kind === "team");
 
   useEffect(() => {
-    setDeadline(detail.team_composition_deadline ?? "");
-    setDeadlineDirty(false);
-  }, [detail]);
-
-  useSectionSaver(registry, "disciplines", "compositionDeadline", {
-    pendingCount: deadlineDirty ? 1 : 0,
-    touchesPrice: false,
-    validate: () => 0,
-    focusFirstInvalid: () => {},
-    flush: async () => {
-      try {
-        await api.updateTournament(slug, {
-          team_composition_deadline: deadline || null,
-        });
-        setDeadlineDirty(false);
-        return [{ change: "team_composition_deadline", section: "disciplines", error: null }];
-      } catch (err) {
-        const message = t("setup.saveBar.genericError", {
-          status: err instanceof ApiError ? err.status : "?",
-        });
-        return [{ change: "team_composition_deadline", section: "disciplines", error: message }];
-      }
-    },
-  });
+    onTeamKindChange(hasTeamRow);
+  }, [hasTeamRow, onTeamKindChange]);
 
   // Reseed from the freshly saved detail only while the section holds no
   // pending changes, so a refetch triggered by another tab's save (or by
@@ -483,40 +464,45 @@ export function DisciplinesSection({
                   <span className="muted">{row.slug}</span>
                 </td>
                 <td>
-                  <input
-                    className="cell-input"
-                    type="text"
-                    inputMode="numeric"
-                    {...fieldProps("capacity", "capacity")}
-                  />
-                  <span className="muted">
-                    {" "}
-                    {row.kind === "team"
-                      ? t("setup.disciplines.capacityUnitTeam")
-                      : t("setup.disciplines.capacityUnitIndividual")}
-                  </span>
-                  <FieldError field={`capacity-${row.rowId}`} error={validation.errors[`capacity-${row.rowId}`]} />
-                </td>
-                <td>
-                  <input
-                    className="cell-input"
-                    type="text"
-                    inputMode="numeric"
-                    {...fieldProps("fee", "fee")}
-                  />
-                  {row.kind === "team" && (
-                    <span className="muted"> {t("setup.disciplines.feeUnitTeam")}</span>
-                  )}
-                  <FieldError field={`fee-${row.rowId}`} error={validation.errors[`fee-${row.rowId}`]} />
-                </td>
-                {eur && (
-                  <td>
+                  <div className="cell-input-row">
                     <input
                       className="cell-input"
                       type="text"
                       inputMode="numeric"
-                      {...fieldProps("fee_eur", "fee_eur")}
+                      {...fieldProps("capacity", "capacity")}
                     />
+                    <span className="muted">
+                      {row.kind === "team"
+                        ? t("setup.disciplines.capacityUnitTeam")
+                        : t("setup.disciplines.capacityUnitIndividual")}
+                    </span>
+                  </div>
+                  <FieldError field={`capacity-${row.rowId}`} error={validation.errors[`capacity-${row.rowId}`]} />
+                </td>
+                <td>
+                  <div className="cell-input-row">
+                    <input
+                      className="cell-input"
+                      type="text"
+                      inputMode="numeric"
+                      {...fieldProps("fee", "fee")}
+                    />
+                    {row.kind === "team" && (
+                      <span className="muted">{t("setup.disciplines.feeUnitTeam")}</span>
+                    )}
+                  </div>
+                  <FieldError field={`fee-${row.rowId}`} error={validation.errors[`fee-${row.rowId}`]} />
+                </td>
+                {eur && (
+                  <td>
+                    <div className="cell-input-row">
+                      <input
+                        className="cell-input"
+                        type="text"
+                        inputMode="numeric"
+                        {...fieldProps("fee_eur", "fee_eur")}
+                      />
+                    </div>
                     <FieldError field={`fee_eur-${row.rowId}`} error={validation.errors[`fee_eur-${row.rowId}`]} />
                   </td>
                 )}
@@ -620,22 +606,6 @@ export function DisciplinesSection({
         >
           {t("setup.recalculateMissing")}
         </button>
-      )}
-      {hasTeamRow && (
-        <label className="param-field">
-          <span>
-            {t("setup.disciplines.compositionDeadline")}
-            <HelpHint text={t("setup.disciplines.compositionDeadlineHint")} />
-          </span>
-          <input
-            type="date"
-            value={deadline}
-            onChange={(event) => {
-              setDeadline(event.target.value);
-              setDeadlineDirty(true);
-            }}
-          />
-        </label>
       )}
       {dialogRowId !== null && (
         <DisciplineDialog

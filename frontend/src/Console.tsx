@@ -11,8 +11,9 @@ import ImportPanel from "./ImportPanel";
 import MatchDialog from "./MatchDialog";
 import MatchPanel from "./MatchPanel";
 import PaidStamp from "./PaidStamp";
-import ParamPanel from "./ParamPanel";
+import TolerancePanel from "./TolerancePanel";
 import PaymentsPanel from "./PaymentsPanel";
+import QueuePanel from "./QueuePanel";
 import { useAuth } from "./RequireAuth";
 import * as routes from "./routes";
 import SetupPanel from "./SetupPanel";
@@ -31,7 +32,8 @@ import {
 const STAGES = ["pre", "in", "post"] as const;
 // Setup is step 0, ahead of the fencer-list phases (spec: etl-console).
 // Teams is a read-only view of team disciplines (design team-disciplines
-// 7.2) tacked on at the end — it is not part of the ETL sequence.
+// 7.2) and Queue is the seating view (design add-payment-modes), both tacked
+// on at the end — neither is part of the ETL sequence.
 export const PHASES = [
   "setup",
   "load",
@@ -41,12 +43,14 @@ export const PHASES = [
   "payments",
   "export",
   "teams",
+  "queue",
 ] as const;
 export type Phase = (typeof PHASES)[number];
 
 // A phase tab is a view of the whole fencer list plus that operation's
 // parameters (design Decision 1). Shared base columns, phase-owned columns.
-// Setup and Teams replace the fencer table entirely, so they own no columns.
+// Setup, Teams and Queue replace the fencer table entirely, so they own no
+// columns.
 const BASE_COLUMNS = ["name", "nationality", "club"];
 
 const PHASE_COLUMNS: Record<Phase, string[]> = {
@@ -58,6 +62,7 @@ const PHASE_COLUMNS: Record<Phase, string[]> = {
   payments: ["vs", "total_amount", "expires_at", "paid_at", "state"],
   export: ["hr_id", "disciplines", "state"],
   teams: [],
+  queue: [],
 };
 
 // Manual edits on these columns become field_edit rules.
@@ -252,6 +257,8 @@ export default function Console({
           />
         ) : phase === "teams" ? (
           <TeamsPanel slug={tournament.slug} />
+        ) : phase === "queue" ? (
+          <QueuePanel slug={tournament.slug} />
         ) : (
           <>
         <main className="sheet-area">
@@ -378,13 +385,17 @@ export default function Console({
             {t("rail.operations")} · {t(`phase.${phase}`)}
           </div>
 
-          <ParamPanel phase={phase} detail={detail} slug={tournament.slug} onSaved={refresh} />
-
+          {/* a phase carries only its own operation's parameters; tournament
+              configuration is Setup's, and a phase with none shows no panel
+              (spec etl-console: "Operation parameters") */}
           {phase === "load" && <ImportPanel slug={tournament.slug} onImported={refresh} />}
           {phase === "matching" && <MatchPanel slug={tournament.slug} onChanged={refresh} />}
           {phase === "dedup" && <DedupPanel slug={tournament.slug} onChanged={refresh} />}
           {phase === "payments" && (
-            <PaymentsPanel slug={tournament.slug} onChanged={refresh} />
+            <>
+              <TolerancePanel detail={detail} slug={tournament.slug} onSaved={refresh} />
+              <PaymentsPanel slug={tournament.slug} onChanged={refresh} />
+            </>
           )}
           {phase === "export" && <ExportPanel slug={tournament.slug} />}
 

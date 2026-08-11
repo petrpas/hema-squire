@@ -760,7 +760,8 @@ button.secondary:disabled {
 
 .form-field input,
 .form-field textarea,
-.param-field input {
+.param-field input,
+.param-field select {
   font: 14px var(--font-ui);
   padding: 0.4rem 0;
   border: none;
@@ -795,7 +796,8 @@ button.secondary:disabled {
 
 .form-field input:focus,
 .form-field textarea:focus,
-.param-field input:focus {
+.param-field input:focus,
+.param-field select:focus {
   outline: none;
   border-bottom: 2px solid var(--stamp);
 }
@@ -805,13 +807,15 @@ button.secondary:disabled {
    does — no outline, glow, fill, icon or animation is added on top */
 .form-field input[aria-invalid="true"],
 .form-field textarea[aria-invalid="true"],
-.param-field input[aria-invalid="true"] {
+.param-field input[aria-invalid="true"],
+.param-field select[aria-invalid="true"] {
   border-bottom: var(--border-w) solid var(--stamp);
 }
 
 .form-field input[aria-invalid="true"]:focus,
 .form-field textarea[aria-invalid="true"]:focus,
-.param-field input[aria-invalid="true"]:focus {
+.param-field input[aria-invalid="true"]:focus,
+.param-field select[aria-invalid="true"]:focus {
   border-bottom: var(--focus);
 }
 
@@ -843,6 +847,39 @@ button.secondary:disabled {
 
 .qualification-control {
   gap: 0.4rem;
+}
+
+.currency-mode-control {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 1.2rem;
+}
+
+/* Payment-mode options: each a choice with its consequence stated under it,
+   and — for the deposit — its amount entered inside the option itself, since
+   the amount is part of that option's sentence rather than a sibling field. */
+.mode-options {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  margin-bottom: 1rem;
+}
+
+.mode-option {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+/* consequence and nested fields align to the option's text, not its radio */
+.mode-option .rail-hint,
+.mode-option .form-fields {
+  margin-left: 1.45rem;
+}
+
+.form-field.qualification-control {
+  margin-top: 0.6rem;
+  margin-bottom: 0.6rem;
 }
 
 .qualification-option {
@@ -937,7 +974,7 @@ button.secondary:disabled {
    team-disciplines D6) — .param-save itself stays untouched */
 .param-save.param-save-inline {
   width: auto;
-  align-self: flex-start;
+  align-self: center;
 }
 
 /* ===== operations rail ===== */
@@ -971,6 +1008,7 @@ button.secondary:disabled {
 
 .rail-card.dashed {
   border-style: dashed;
+  margin-top: 0.6rem;
 }
 
 .rail-card.plain {
@@ -982,6 +1020,18 @@ button.secondary:disabled {
   font-weight: 500;
   font-size: 13px;
   margin-bottom: 0.5rem;
+}
+
+.rail-card-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.6rem;
+  margin-bottom: 0.5rem;
+}
+
+.rail-card-heading h2 {
+  margin-bottom: 0;
 }
 
 .rail-count {
@@ -1099,6 +1149,22 @@ tr.row-deleted td.col-actions {
   border-radius: 0;
   background: transparent;
   color: var(--ink);
+}
+
+/* an input sharing its cell with a trailing unit label (e.g. capacity's
+   "/ fencers") — without this the full-width input pushes the label onto
+   its own line, growing that cell and throwing off the row's vertical
+   centering relative to cells with no label (design setup-tabpanel D9) */
+.cell-input-row {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.cell-input-row .cell-input {
+  width: auto;
+  flex: 1;
+  min-width: 0;
 }
 
 .dedup-actions {
@@ -1240,6 +1306,7 @@ tr.row-deleted td.col-actions {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  margin-top: 0.6rem;
 }
 
 /* ===== roles: plea, team, danger zone, admin panel ===== */
@@ -1481,12 +1548,24 @@ tr.row-deleted td.col-actions {
   flex-direction: column;
 }
 
+/* the "seated" / "queue" divider inside one discipline's card: a rule and a
+   small-caps label, so the line between above and below is a line */
+.queue-group {
+  margin-top: 0.6rem;
+  padding-top: 0.4rem;
+  border-top: var(--border-w) solid var(--hairline);
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-weight: 500;
+  color: var(--ink-faded);
+}
+
 .detail-list li {
   display: flex;
   flex-direction: column;
   gap: 0.2rem;
   padding: 0.4rem 0;
-  border-bottom: var(--border-w) solid var(--hairline);
   font-size: 13px;
 }
 
@@ -1924,6 +2003,13 @@ label.checkbox-chip,
   font-weight: 500;
 }
 
+/* the item directly above the total loses its own hairline — the thick
+   total rule already closes the list, so a second line there just reads
+   as an ambiguous extra divider */
+.amount-line:has(+ .amount-total) {
+  border-bottom: none;
+}
+
 /* the detail's own third line: date · place · qualification, in reading ink
    rather than the faded meta grey it replaced */
 .detail-facts {
@@ -2183,6 +2269,7 @@ label.checklist-row > input[type="checkbox"] {
   flex-direction: column;
   gap: 0.5rem;
   margin-top: 0.75rem;
+  margin-bottom: 0.75rem;
 }
 
 .logo-control-label {

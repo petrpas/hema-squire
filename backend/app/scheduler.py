@@ -16,6 +16,7 @@ from app.config import settings
 from app.db import SessionLocal
 from app.mail import Mailer, get_mailer
 from app.models import PaymentEvent, Registration, RegistrationState, Team, Tournament
+from app.setup import seating_deadline_for, seating_has_settled
 
 logger = logging.getLogger(__name__)
 
@@ -24,18 +25,47 @@ def _now() -> datetime:
     return datetime.now(UTC)
 
 
+def _reminder_due(tournament: Tournament, registration: Registration, now: datetime) -> bool:
+    """Whether this reservation has reached its reminder day.
+
+    A reminder is notice before an obligation falls due, so it is anchored to
+    whichever clock the registration is actually under (design Decision 2): the
+    payment window where one is running, and the seating deadline where the
+    seat is held without one — a `reservation`-mode registration has no private
+    clock at all, and the old `expires_at IS NOT NULL` filter would have
+    skipped it forever."""
+    if registration.expires_at is not None:
+        # SQLite drops tzinfo on round-trip even for a DateTime(timezone=True)
+        # column; every stored instant is UTC (matching.within_expiry_grace)
+        expires_at = registration.expires_at
+        if expires_at.tzinfo is None:
+            expires_at = expires_at.replace(tzinfo=UTC)
+        return now >= expires_at - timedelta(days=tournament.reminder_day)
+    deadline = seating_deadline_for(tournament)
+    return now.date() >= deadline - timedelta(days=tournament.reminder_day)
+
+
 def process_reminders(session: Session, tournament: Tournament, mailer: Mailer) -> int:
-    """Remind unpaid reservations that reached the tournament's reminder day."""
-    threshold = _now() - timedelta(days=tournament.reminder_day)
-    due = session.scalars(
+    """Remind unpaid reservations that reached the tournament's reminder day.
+
+    `expires_at IS NOT NULL` used to stand in for "not a substitute"; it no
+    longer can, since a seated `reservation`-mode registration has no window
+    either. Substitute status is filtered on directly instead — a registration
+    sitting entirely in the queue owes nothing and is never reminded, in any
+    mode."""
+    now = _now()
+    candidates = session.scalars(
         select(Registration).where(
             Registration.tournament_id == tournament.id,
             Registration.state == RegistrationState.RESERVED,
-            Registration.expires_at.is_not(None),
             Registration.reminded_at.is_(None),
-            Registration.registered_at <= threshold,
         )
     ).all()
+    due = [
+        registration
+        for registration in candidates
+        if not registration.fully_queued and _reminder_due(tournament, registration, now)
+    ]
     for registration in due:
         registration.reminded_at = _now()
         session.add(
@@ -58,7 +88,13 @@ def process_expiries(session: Session, tournament: Tournament, mailer: Mailer) -
     matching Decision 3) — a reservation holding one expires on schedule like
     any other, but distinctly: a separate audit event and a branched notice,
     since the organizer is left holding money for a reservation that no
-    longer exists."""
+    longer exists.
+
+    Once seating has settled the outcome changes: a lapsed window returns the
+    registration to the queue instead of expiring it (design Decision 8). The
+    only registrations under a window then are ones the organizer promoted
+    deliberately, and EXPIRED would discard them along with the registration
+    order they would never get back."""
     overdue = session.scalars(
         select(Registration).where(
             Registration.tournament_id == tournament.id,
@@ -67,6 +103,23 @@ def process_expiries(session: Session, tournament: Tournament, mailer: Mailer) -
             Registration.expires_at <= _now(),
         )
     ).all()
+    if seating_has_settled(tournament, _now().date()):
+        returned = 0
+        for registration in overdue:
+            registration.expires_at = None
+            if not _demote(registration):
+                continue
+            returned += 1
+            session.add(
+                PaymentEvent(
+                    tournament_id=tournament.id,
+                    registration_id=registration.id,
+                    kind="promotion_lapsed",
+                    detail=f"VS {registration.vs}",
+                )
+            )
+        session.commit()
+        return returned
     for registration in overdue:
         registration.state = RegistrationState.EXPIRED
         holding_payment = (
@@ -86,6 +139,96 @@ def process_expiries(session: Session, tournament: Tournament, mailer: Mailer) -
         )
     session.commit()
     return len(overdue)
+
+
+def _demote(registration: Registration) -> bool:
+    """Move one registration below the line, in place: every seated entry
+    becomes a substitute placement, every team is waitlisted, and any payment
+    window is closed, because the queue holds no money (design D5). The
+    registration stays RESERVED and keeps its VS — it is queued, not expired.
+
+    False when there was nothing above the line to move, so a registration
+    already fully queued is neither counted nor audited twice."""
+    seated = [entry for entry in registration.entries if not entry.is_substitute]
+    seated_teams = [team for team in registration.teams if not team.waitlisted]
+    if not seated and not seated_teams:
+        return False
+    for entry in seated:
+        entry.is_substitute = True
+    for team in seated_teams:
+        team.waitlisted = True
+    registration.expires_at = None
+    return True
+
+
+def pending_demotions(session: Session, tournament: Tournament) -> int:
+    """How many registrations `settle_seating` would move below the line right
+    now — what the console states before asking the organizer to confirm an
+    irreversible settlement."""
+    reserved = session.scalars(
+        select(Registration).where(
+            Registration.tournament_id == tournament.id,
+            Registration.state == RegistrationState.RESERVED,
+        )
+    ).all()
+    return sum(
+        1
+        for registration in reserved
+        if any(not entry.is_substitute for entry in registration.entries)
+        or any(not team.waitlisted for team in registration.teams)
+    )
+
+
+def settle_seating(session: Session, tournament: Tournament) -> int:
+    """Close the tournament's seating: every registration still owing money —
+    that is, still RESERVED — is moved to the substitute queue in place, and
+    the tournament is stamped as settled. Returns how many were demoted.
+
+    A pure pass with no trigger condition of its own, so the deadline tick and
+    the organizer's settle-early action are literally the same operation
+    (design D6); the caller decides when. `queue_position` ranks by
+    `Registration.registered_at`, so demotion places each registration in the
+    queue in registration order with no sorting here.
+
+    The stamp is what makes settlement one-shot. Its demotion predicate is
+    "reserved and seated", which is exactly what `admit_substitute` produces,
+    so without the stamp every later tick would silently unwind the
+    organizer's promotions."""
+    reserved = session.scalars(
+        select(Registration).where(
+            Registration.tournament_id == tournament.id,
+            Registration.state == RegistrationState.RESERVED,
+        )
+    ).all()
+    demoted = 0
+    for registration in reserved:
+        if not _demote(registration):
+            continue
+        demoted += 1
+        session.add(
+            PaymentEvent(
+                tournament_id=tournament.id,
+                registration_id=registration.id,
+                kind="seating_demoted",
+                detail=f"VS {registration.vs}",
+            )
+        )
+    tournament.seating_settled_at = _now()
+    session.commit()
+    return demoted
+
+
+def settle_seating_if_due(session: Session, tournament: Tournament) -> int:
+    """Run the settlement pass if the deadline has passed and it has not run
+    yet. The one place that decides *when* seating settles by itself — the
+    organizer's settle-early action deliberately does not go through it, and
+    every lifecycle pass does, so a manual `process` run and a scheduler tick
+    can never disagree about whether seating has closed."""
+    if tournament.seating_settled_at is not None:
+        return 0
+    if date.today() <= seating_deadline_for(tournament):
+        return 0
+    return settle_seating(session, tournament)
 
 
 def process_composition_reminders(session: Session, tournament: Tournament, mailer: Mailer) -> int:
@@ -148,7 +291,13 @@ def run_tournament_tick(
         matched = matching.match_new_transactions(session, tournament, mailer)
         matching.apply_payment_links(session, tournament, mailer)
         result |= {"polled_new": ingested.new, "matched": matched.matched}
-    # Expire first: a reservation past its window must not receive a reminder.
+    # Settle before expiring, and the order is load-bearing (design Decision
+    # 1): in deposit mode a registration can be under both clocks at once, and
+    # without a fixed order whether an unpaid deposit expiring on the deadline
+    # date is queued or expired would come down to tick timing. Settling first
+    # makes it uniform — everything still reserved at the deadline is queued.
+    result["seating_demoted"] = settle_seating_if_due(session, tournament)
+    # Expire second: a reservation past its window must not receive a reminder.
     result["expired"] = process_expiries(session, tournament, mailer)
     result["reminders"] = process_reminders(session, tournament, mailer)
     result["composition_reminders"] = process_composition_reminders(session, tournament, mailer)

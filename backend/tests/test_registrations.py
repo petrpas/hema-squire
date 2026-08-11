@@ -425,6 +425,24 @@ def test_payment_instructions_return_amount_iban_vs_qr(client, auth_headers):
     assert body["expires_at"] == registered["expires_at"]
     assert f"X-VS:{registered['vs']}" in body["spayd"]
     assert len(body["qr_png_base64"]) > 0
+    assert body["account_domestic"] == "19-2000145399/0800"
+
+
+def test_payment_instructions_account_domestic_null_for_foreign_iban(client, auth_headers):
+    organizer = auth_headers()
+    setup_tournament(client, organizer)
+    client.patch(
+        "/api/tournaments/cup", json={"bank_account": "DE89370400440532013000"}, headers=organizer
+    )
+    fencer = auth_headers(email="f1@example.com", name="F1")
+    register(client, fencer, disciplines=["LS"])
+
+    payment = client.get("/api/tournaments/cup/my-registration/payment", headers=fencer)
+    assert payment.status_code == 200
+    body = payment.json()
+    assert body["iban"] == "DE89370400440532013000"
+    assert body["account_domestic"] is None
+    assert "ACC:DE89370400440532013000" in body["spayd"]
 
 
 def test_payment_instructions_denied_for_other_account(client, auth_headers):

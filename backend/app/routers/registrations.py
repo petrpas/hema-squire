@@ -1,5 +1,5 @@
 import base64
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime, time, timedelta
 from decimal import ROUND_HALF_UP, Decimal
 from typing import Annotated
 
@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import delete, func, select, update
 from sqlalchemy.exc import IntegrityError
 
-from app import emails, pricing, setup, spayd
+from app import accounts, emails, pricing, setup, spayd
 from app.auth import require_console_access
 from app.availability import queue_length, taken_seats, taken_team_slots, team_queue_length
 from app.mail import Mailer, get_mailer
@@ -16,6 +16,7 @@ from app.models import (
     DisciplineKind,
     ExtraItem,
     PaymentEvent,
+    PaymentMode,
     RefundState,
     Registration,
     RegistrationDiscipline,
@@ -421,14 +422,20 @@ def register(
         raise HTTPException(status_code=422, detail="no_disciplines_or_teams")
     team_entries = _resolve_teams(tournament, data.teams)
     _validate_options(data.extras, {item.id: item for item in tournament.extra_items})
-    full = [d.slug for d in selected if taken_seats(session, d) >= d.capacity]
-
-    if full and not data.wait_for_all:
-        # The fencer chooses: trim the selection to open disciplines, or resubmit
-        # with wait_for_all to queue the whole registration (Decision 7).
-        raise HTTPException(status_code=409, detail={"full_disciplines": full})
-
-    as_substitute = bool(full)
+    # Once seating has settled, capacity stops deciding anything: every
+    # placement joins the queue whether or not seats are free (spec
+    # "Registration after seating has settled"), so the fencer is never asked
+    # to choose between trimming and waiting — there is nothing to trim to.
+    settled = setup.seating_has_settled(tournament, _now().date())
+    if settled:
+        as_substitute = True
+    else:
+        full = [d.slug for d in selected if taken_seats(session, d) >= d.capacity]
+        if full and not data.wait_for_all:
+            # The fencer chooses: trim the selection to open disciplines, or resubmit
+            # with wait_for_all to queue the whole registration (Decision 7).
+            raise HTTPException(status_code=409, detail={"full_disciplines": full})
+        as_substitute = bool(full)
 
     # `next_vs` durably commits its own counter bump, so a rollback below
     # (retrying after a `Registration.vs` collision) cannot also undo the
@@ -504,7 +511,11 @@ def register(
         # team-disciplines 4.2); waitlisting is decided per team, in entry
         # order, never rejecting the submission (spec: "Team entered into a
         # full team discipline")
-        team_flags = _team_waitlist_flags(session, team_entries)
+        team_flags = (
+            [True] * len(team_entries)
+            if settled
+            else _team_waitlist_flags(session, team_entries)
+        )
         for (discipline, team_in), waitlisted in zip(team_entries, team_flags):
             registration.teams.append(
                 Team(tournament_id=tournament.id, discipline=discipline, name=team_in.name, waitlisted=waitlisted)
@@ -520,14 +531,39 @@ def register(
     totals = pricing.registration_total(registration, tournament)
     registration.total_amount = totals.local
     registration.total_eur = totals.eur
-    registration.expires_at = (
-        None
-        if as_substitute
-        else registration.registered_at + timedelta(days=tournament.reservation_validity_days)
-    )
+    registration.expires_at = _initial_expires_at(tournament, registration, as_substitute)
     session.commit()
     emails.send_registration_confirmation(mailer, tournament, fencer, registration)
     return registration_out(session, registration, tournament)
+
+
+def _initial_expires_at(
+    tournament: Tournament, registration: Registration, as_substitute: bool
+) -> datetime | None:
+    """The payment window a fresh registration starts under — the interval
+    between money being requested and money being due, so it exists exactly
+    where money is requested at registration (Decision 2).
+
+    A substitute is never billed, so no window opens for one. In `reservation`
+    mode nothing is owed until the seating deadline, so none opens there
+    either; `taken_seats` already reads a null `expires_at` as holding, so the
+    seat is held correctly with no change to the capacity predicate."""
+    if as_substitute or tournament.payment_mode == PaymentMode.RESERVATION:
+        return None
+    return registration.registered_at + timedelta(days=tournament.reservation_validity_days)
+
+
+def _promotion_expires_at(tournament: Tournament) -> datetime:
+    """The payment window a promotion opens, clamped to the tournament itself
+    (Decision 8). Both rules apply at once: money requested always gets a
+    payment window, and no reservation outlives the event it is for — a fencer
+    promoted three days out on a seven-day window would otherwise be holding a
+    seat past the tournament."""
+    window = _now() + timedelta(days=tournament.reservation_validity_days)
+    end_of_tournament = datetime.combine(
+        tournament.date + timedelta(days=1), time.min, tzinfo=UTC
+    )
+    return min(window, end_of_tournament)
 
 
 def get_my_registration(session, tournament: Tournament, fencer) -> Registration:
@@ -685,13 +721,7 @@ def my_registration_payment(tournament: TournamentDep, session: SessionDep, fenc
     registration = get_my_registration(session, tournament, fencer)
     if registration.state != RegistrationState.RESERVED:
         raise HTTPException(status_code=409, detail="not_unpaid")
-    # nothing owed when every individual entry is queued and every team is
-    # waitlisted — vacuously true on whichever axis carries nothing, so a
-    # team-only registration is judged on its teams alone (design
-    # team-disciplines: a team-only registration is priced like any other)
-    if all(e.is_substitute for e in registration.entries) and all(
-        t.waitlisted for t in registration.teams
-    ):
+    if registration.fully_queued:
         raise HTTPException(status_code=409, detail="no_payment_due")
     if not tournament.bank_account:
         raise HTTPException(status_code=404, detail="no_bank_account")
@@ -704,6 +734,7 @@ def my_registration_payment(tournament: TournamentDep, session: SessionDep, fenc
         amount=registration.total_amount,
         currency=tournament.local_currency,
         iban=tournament.bank_account,
+        account_domestic=accounts.to_domestic(tournament.bank_account),
         vs=registration.vs,
         message=message,
         expires_at=registration.expires_at,
@@ -772,10 +803,68 @@ def admit_substitute(
     totals = pricing.registration_total(registration, tournament)
     registration.total_amount = totals.local
     registration.total_eur = totals.eur
-    registration.expires_at = _now() + timedelta(days=tournament.reservation_validity_days)
+    registration.expires_at = _promotion_expires_at(tournament)
     session.commit()
     # Admission opens the payment window: send the payment instructions now.
     emails.send_registration_confirmation(mailer, tournament, registration.fencer, registration)
+    return registration_out(session, registration, tournament)
+
+
+@router.post(
+    "/registrations/{registration_id}/return-to-queue/{discipline_slug}",
+    response_model=RegistrationOut,
+)
+def return_to_queue(
+    registration_id: int,
+    discipline_slug: str,
+    tournament: TournamentDep,
+    session: SessionDep,
+    fencer: FencerDep,
+):
+    """The inverse of `admit_substitute`: put a seated placement back below the
+    line, freeing its seat and closing any payment window the registration was
+    under. `queue_position` ranks by `Registration.registered_at`, so the
+    fencer returns to the place they always had rather than the back of the
+    queue.
+
+    Refused on a paid registration: demoting one would leave money in the
+    queue, which the queue deliberately never holds (design D5). The
+    organizer's route for a paid registration is cancellation, which carries
+    the refund path."""
+    require_console_access(session, tournament, fencer)
+    registration = session.get(Registration, registration_id)
+    if registration is None or registration.tournament_id != tournament.id:
+        raise HTTPException(status_code=404, detail="registration_not_found")
+    entry = next(
+        (
+            e
+            for e in registration.entries
+            if e.discipline.slug == discipline_slug and not e.is_substitute
+        ),
+        None,
+    )
+    if entry is None:
+        raise HTTPException(status_code=404, detail="no_seated_entry")
+    if registration.state == RegistrationState.PAID:
+        raise HTTPException(status_code=409, detail="registration_paid_cancel_instead")
+    if registration.state != RegistrationState.RESERVED:
+        raise HTTPException(status_code=409, detail="registration_not_active")
+
+    entry.is_substitute = True
+    totals = pricing.registration_total(registration, tournament)
+    registration.total_amount = totals.local
+    registration.total_eur = totals.eur
+    # nothing is owed from the queue, so no window may keep running against it
+    registration.expires_at = None
+    session.add(
+        PaymentEvent(
+            tournament_id=tournament.id,
+            registration_id=registration.id,
+            kind="returned_to_queue",
+            detail=f"VS {registration.vs}: {discipline_slug}",
+        )
+    )
+    session.commit()
     return registration_out(session, registration, tournament)
 
 

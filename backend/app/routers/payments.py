@@ -70,12 +70,17 @@ def fio_poll(
 def process_lifecycle(
     tournament: TournamentDep, session: SessionDep, fencer: FencerDep, mailer: MailerDep
 ) -> dict[str, int]:
-    """Run reminders and expiries for this tournament now (also runs periodically)."""
+    """Run the lifecycle passes for this tournament now (also runs
+    periodically). Same passes in the same order as the scheduler's tick,
+    settlement included — running it by hand must not decide anything
+    differently from letting the tick reach it."""
     require_console_access(session, tournament, fencer)
+    demoted = scheduler.settle_seating_if_due(session, tournament)
     expired = scheduler.process_expiries(session, tournament, mailer)
     return {
         "reminders": scheduler.process_reminders(session, tournament, mailer),
         "expired": expired,
+        "seating_demoted": demoted,
     }
 
 

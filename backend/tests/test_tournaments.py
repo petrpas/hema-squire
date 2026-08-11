@@ -50,6 +50,7 @@ def test_setup_fields_patch_round_trip_and_detail(client, auth_headers):
         ],
         "registration_opens": "2026-01-01",
         "registration_closes": "2026-09-01",
+        "bank_account": "CZ6508000000192000145399",
         "discounts": [
             {
                 "name": "2 disciplines",
@@ -280,11 +281,11 @@ def test_creator_becomes_organizer_and_can_configure(client, auth_headers):
 
     response = client.patch(
         "/api/tournaments/na-duel-2026",
-        json={"reservation_validity_days": 10, "reminder_day": 5},
+        json={"reservation_validity_days": 7, "reminder_day": 5},
         headers=headers,
     )
     assert response.status_code == 200
-    assert response.json()["reservation_validity_days"] == 10
+    assert response.json()["reservation_validity_days"] == 7
 
 
 def test_reminder_day_at_or_after_validity_rejected(client, auth_headers):
@@ -296,7 +297,7 @@ def test_reminder_day_at_or_after_validity_rejected(client, auth_headers):
 
     response = client.patch(
         "/api/tournaments/na-duel-2026",
-        json={"reservation_validity_days": 10, "reminder_day": 10},
+        json={"reservation_validity_days": 5, "reminder_day": 5},
         headers=headers,
     )
     assert response.status_code == 422
@@ -311,13 +312,13 @@ def test_reminder_day_shortened_validity_rejected(client, auth_headers):
     make_tournament(client, headers)
     assert client.patch(
         "/api/tournaments/na-duel-2026",
-        json={"reservation_validity_days": 10, "reminder_day": 7},
+        json={"reservation_validity_days": 7, "reminder_day": 6},
         headers=headers,
     ).status_code == 200
 
     response = client.patch(
         "/api/tournaments/na-duel-2026",
-        json={"reservation_validity_days": 5},
+        json={"reservation_validity_days": 4},
         headers=headers,
     )
     assert response.status_code == 422

@@ -138,7 +138,8 @@
     "dedup": "Deduplikace",
     "payments": "Platby",
     "export": "Export",
-    "teams": "Týmy"
+    "teams": "Týmy",
+    "queue": "Fronta"
   },
   "console": {
     "title": "Registrovaní šermíři",
@@ -191,13 +192,27 @@
     "registration_closes": "Registrace do",
     "subtitle": "Podtitul",
     "description": "Popis",
-    "registration_instructions": "Pokyny k registraci"
+    "registration_instructions": "Pokyny k registraci",
+    "payment_mode": "Režim platby",
+    "payment_mode.immediate": "Platba ihned",
+    "payment_mode.deposit": "Rezervace se zálohou",
+    "payment_mode.reservation": "Rezervace bez zálohy",
+    "seating_deadline": "Uzávěrka míst",
+    "deposit_amount": "Záloha ({{currency}})",
+    "deposit_amount_eur": "Záloha (EUR)",
+    "hint.payment_mode": "Čím je místo drženo: celou platbou, zálohou s doplatkem do uzávěrky míst, nebo ničím až do té uzávěrky.",
+    "hint.seating_deadline": "Není to konec registrace: po tomto datu zůstává registrace otevřená, ale dává jen místo ve frontě, a dlužné peníze jsou po splatnosti. Bez vyplnění padne na konec registrace.",
+    "hint.reservation_validity_days": "Kolik dní má šermíř na zaplacení od chvíle, kdy jsou peníze vyžádány, 2 až 7. Je to splatnost, ne datum.",
+    "team_composition_deadline": "Uzávěrka soupisek",
+    "unpaid_list_treatment": "Nezaplacené přihlášky ve veřejném seznamu",
+    "unpaid_list_treatment.greyed": "zobrazit šedě",
+    "unpaid_list_treatment.hidden": "skrýt do zaplacení",
+    "hint.unpaid_list_treatment": "Jak se ve veřejném seznamu účastníků zobrazí šermíř, který zatím nezaplatil.",
+    "weapon_rental_fee_early": "Cena zapůjčení, early bird ({{currency}})",
+    "afterparty_fee_early": "Cena afterparty, early bird ({{currency}})"
   },
   "rail": {
     "operations": "Operace",
-    "generalRules": "Obecná pravidla",
-    "rulesHint": "Tato fáze zatím nemá parametry.",
-    "parameters": "Parametry",
     "save": "Uložit",
     "columnsForStep": "Sloupce kroku",
     "manualEdits": "Ruční úpravy",
@@ -216,6 +231,7 @@
       "tournament": "turnaj",
       "disciplines": "disciplíny",
       "extra": "doplňky",
+      "timeline": "termíny",
       "payments": "platby",
       "other": "ostatní",
       "publish": "Zveřejnění",
@@ -248,7 +264,9 @@
       "discipline_prices": "Chybí cena u některé disciplíny",
       "extra_item_prices": "Chybí eurová cena u některé doplňkové služby",
       "discount_prices": "Chybí eurová částka u některé pevné slevy",
-      "legacy_fixed_fees_block_eur": "Turnaj používá staré pevné poplatky za zapůjčení zbraně nebo afterparty, které nemají eurový protějšek — přejdi na položkové doplňkové služby, aby šlo zapnout eura"
+      "legacy_fixed_fees_block_eur": "Turnaj používá staré pevné poplatky za zapůjčení zbraně nebo afterparty, které nemají eurový protějšek — přejdi na položkové doplňkové služby, aby šlo zapnout eura",
+      "bank_account": "Chybí bankovní účet, na který se vybírají platby",
+      "deposit_amount": "Chybí záloha na turnaji, který zálohu vybírá"
     },
     "priceChangeWarning": {
       "title": "Změna cen na turnaji s otevřenou registrací",
@@ -402,6 +420,11 @@
       "cancelButton": "Zrušit turnaj",
       "failed": "Akce se nezdařila. Zkus to prosím znovu."
     },
+    "bankAccount": {
+      "title": "Bankovní účet",
+      "label": "Účet",
+      "hint": "Zadej číslo účtu nebo IBAN. Nepovinné, pokud je turnaj bezplatný."
+    },
     "currency": {
       "title": "Měna",
       "mode": {
@@ -414,6 +437,32 @@
       "rateWarning": "Kurz vypadá nepravděpodobně. Zkontroluj směr: jednotek místní měny za 1 EUR.",
       "rateNote": "Kurz slouží jen jako pomůcka pro doplnění chybějících cen — uložené ceny, součty ani platební údaje se změnou kurzu nezmění.",
       "legacyFixedFeesBlockEur": "Turnaj používá staré pevné poplatky za zapůjčení zbraně nebo afterparty, které nemají eurový protějšek — přejdi na položkové doplňkové služby, aby šlo zapnout eura."
+    },
+    "timeline": {
+      "title": "Termíny",
+      "opensHint": "Přihlašování se otevře v tento den. Do té doby je turnaj vidět, ale přihlásit se nelze. Nevyplněno: otevře se hned po zveřejnění.",
+      "seatingHint": "Není to uzávěrka přihlášek. Po tomto dni zůstává přihlašování otevřené, ale nově příchozí jdou rovnou mezi náhradníky a rezervace, které dosud nezaplatily, se přesunou pod čáru. Nevyplněno: platí uzávěrka přihlášek.",
+      "closesHint": "Po tomto dni systém nepřijme žádnou další přihlášku. Nevyplněno: platí datum turnaje.",
+      "compositionHint": "Do tohoto dne mají mít týmy naplněný minimální počet členů. Slouží jen k připomenutí — žádný tým se nezamyká, neruší ani nepřesouvá mezi náhradníky. Nevyplněno: uzávěrka není a připomínky se neposílají.",
+      "anchor": "Turnaj: {{date}} — nastavuje se na kartě turnaje."
+    },
+    "paymentMode": {
+      "title": "Jak se platí",
+      "effect.immediate": "Plná částka je splatná do {{days}} dnů od přihlášení. Bez zaplacení se místo uvolní.",
+      "effect.deposit": "Záloha je splatná do {{days}} dnů, zbytek do {{deadline}}.",
+      "effect.reservation": "Místo drží zdarma do {{deadline}}. Pokud do té doby nezaplatí, šermíř se přesune mezi náhradníky.",
+      "deadline.own": "{{date}}",
+      "deadline.close": "{{date}} (uzávěrka přihlášek)",
+      "deadline.date": "{{date}} (datum turnaje)"
+    },
+    "legacyFees": {
+      "title": "Staré pevné poplatky",
+      "explanation": "Tento turnaj stále počítá cenu přes staré pevné poplatky za zapůjčení zbraně a afterparty. Nemají protějšek v EUR, takže dokud jsou nastavené, nelze zapnout EUR, a už se nedají upravovat — nahrazují je položky doplňkových služeb. Vymazáním se níže uvedené částky zahodí.",
+      "clear": "Vymazat staré poplatky"
+    },
+    "exportSheet": {
+      "title": "Export do tabulky",
+      "hint": "Google tabulka, do které export zapisuje."
     }
   },
   "preview": {
@@ -583,13 +632,19 @@
   "payment": {
     "title": "Platební instrukce",
     "amount": "Částka",
-    "iban": "Účet (IBAN)",
+    "account": "Účet",
+    "ibanLabel": "IBAN",
     "vs": "Variabilní symbol",
     "expiresAt": "Rezervace platí do",
     "vsInMessage": "Pokud tvůj platební příkaz nemá pole VS, uveď variabilní symbol {{vs}} do zprávy pro příjemce.",
     "eurAmount": "Částka v EUR",
     "eurTitle": "Platba v eurech",
-    "eurHint": "QR kód v eurech platí tutéž registraci na stejný účet."
+    "eurHint": "QR kód v eurech platí tutéž registraci na stejný účet.",
+    "reason": {
+      "no_bank_account": "Platební údaje zatím nejsou k dispozici — pořadatel je doplní.",
+      "not_unpaid": "Tato rezervace už nečeká na platbu.",
+      "generic": "Platební instrukce se nepodařilo načíst (chyba {{status}}). Zkus stránku znovu načíst."
+    }
   },
   "registration": {
     "title": "Tvoje registrace",
@@ -639,8 +694,7 @@
   "cancel": {
     "button": "Zrušit registraci",
     "confirm": "Opravdu chceš registraci zrušit?",
-    "refundable": "Poplatek je vratný. Opravdu chceš registraci zrušit?",
-    "notRefundable": "Poplatek už není vratný. Opravdu chceš registraci zrušit?",
+    "paidConfirm": "Opravdu chceš registraci zrušit? Případné vrácení poplatku řeší organizátor.",
     "confirmButton": "Ano, zrušit registraci"
   },
   "payments": {
@@ -662,7 +716,11 @@
         "registration_cancelled": "registrace zrušena"
       }
     },
-    "setAside": "{{count}} patřilo jinému turnaji na tomto účtu — není třeba nic dělat, spáruje je jeho vlastní konzole."
+    "setAside": "{{count}} patřilo jinému turnaji na tomto účtu — není třeba nic dělat, spáruje je jeho vlastní konzole.",
+    "tolerance": {
+      "title": "Tolerance párování",
+      "hint": "O kolik se smí poslaná částka lišit od dlužné a přesto se počítat jako zaplaceno. Projeví se při dalším spuštění."
+    }
   },
   "validation": {
     "required": "toto pole je povinné",
@@ -686,6 +744,36 @@
     "qualification_criteria_required": "je potřeba doplnit kritéria kvalifikace",
     "amendments_close_after_registration_closes": "uzávěrka změn nesmí být po uzávěrce registrace",
     "legacy_fixed_fees_block_eur": "staré pevné poplatky nemají eurový protějšek — nejdřív přejdi na položkové doplňkové služby",
+    "iban_checksum": "kontrolní číslice tohoto IBANu neodpovídají zbytku účtu — zkontroluj překlep",
+    "account_checksum": "toto číslo účtu neprochází kontrolním součtem — zkontroluj překlep",
     "fieldsNeedAttention": "{{count}} polí potřebuje opravu"
+  },
+  "queue": {
+    "title": "Místa a fronta",
+    "deadline": "Uzávěrka míst {{date}}",
+    "settledOn": "Místa uzavřena {{date}}",
+    "notSettled": "Místa zatím nejsou uzavřena.",
+    "freePlaces": "volných míst {{free}} z {{capacity}}",
+    "seated": "Na místě",
+    "queued": "Fronta",
+    "emptyQueue": "Na tuto disciplínu nikdo nečeká.",
+    "noneSeated": "V této disciplíně nikdo nedrží místo.",
+    "position": "{{position}}.",
+    "registeredAt": "registrace {{date}}",
+    "promote": "posunout na místo",
+    "returnToQueue": "vrátit do fronty",
+    "noDisciplines": "Turnaj nenabízí žádnou individuální disciplínu.",
+    "error": "Frontu se nepodařilo načíst. Jsi organizátor tohoto turnaje?",
+    "actionFailed": "Neprošlo to: {{reason}}",
+    "settle": "Uzavřít místa",
+    "settleTitle": "uzavřít místa",
+    "settleBody_one": "{{count}} registrace stále dluží peníze a přesune se do fronty. Registrace odeslané potom míří do fronty místo na místo.",
+    "settleBody_few": "{{count}} registrace stále dluží peníze a přesunou se do fronty. Registrace odeslané potom míří do fronty místo na místo.",
+    "settleBody_other": "{{count}} registrací stále dluží peníze a přesune se do fronty. Registrace odeslané potom míří do fronty místo na místo.",
+    "settleIrreversible": "Tuto akci nelze vzít zpět. Jednotlivé případy se opravují posunutím z fronty.",
+    "settleConfirm": "uzavřít místa",
+    "settleDone_one": "{{count}} registrace přesunuta do fronty.",
+    "settleDone_few": "{{count}} registrace přesunuty do fronty.",
+    "settleDone_other": "{{count}} registrací přesunuto do fronty."
   }
 }

@@ -12,7 +12,7 @@ from pydantic import (
     model_validator,
 )
 
-from app import constraints
+from app import accounts, constraints
 from app.errors import FieldValueError
 from app.fieldtypes import (
     DisciplineSlugStr,
@@ -27,6 +27,7 @@ from app.models import (
     Currency,
     DisciplineKind,
     ExtraCategory,
+    PaymentMode,
     RefundState,
     RegistrationState,
     RequestState,
@@ -383,7 +384,23 @@ class TournamentUpdate(BaseModel):
     # validated only as a date on or before the tournament date (router-checked)
     team_composition_deadline: datetime.date | None = None
     discounts: list[DiscountIn] | None = None
-    reservation_validity_days: int | None = Field(default=None, gt=0)
+    # how a seat is held until the seating deadline; unset leaves the stored
+    # mode alone, and a tournament that never chose one is `immediate`
+    payment_mode: PaymentMode | None = None
+    # the date seating settles: a soft boundary inside registration_closes,
+    # not the hard close. Unset it resolves to registration_closes
+    # (setup.seating_deadline_for); must not fall after it (router-checked)
+    seating_deadline: datetime.date | None = None
+    # flat deposit owed at registration in deposit mode, local-currency money
+    # with its independent EUR counterpart; required and positive in that mode,
+    # ignored in the others (router-checked)
+    deposit_amount: TolerantInt | None = Field(default=None, ge=0)
+    deposit_amount_eur: TolerantInt | None = Field(default=None, ge=0)
+    reservation_validity_days: int | None = Field(
+        default=None,
+        ge=constraints.RESERVATION_VALIDITY_DAYS_MIN,
+        le=constraints.RESERVATION_VALIDITY_DAYS_MAX,
+    )
     reminder_day: int | None = Field(default=None, gt=0)
     amount_tolerance_percent: int | None = Field(default=None, ge=0, le=constraints.PERCENT_MAX)
     refundable_until: datetime.date | None = None
@@ -429,6 +446,16 @@ class TournamentUpdate(BaseModel):
             return None
         return value.quantize(decimal.Decimal("0.01"), rounding=decimal.ROUND_HALF_UP)
 
+    # accepts either form and stores the canonical IBAN (design Decision 1);
+    # runs after SingleLineStr's length/shape bound, which only catches
+    # something that is not plausibly an account at all
+    @field_validator("bank_account")
+    @classmethod
+    def _normalize_bank_account(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        return accounts.parse(value)
+
 
 # the three currency modes a tournament can be in (design Decision 2):
 # "local" — a single local currency; "local_eur" — local plus EUR as an
@@ -457,6 +484,11 @@ class TournamentOut(BaseModel):
     owner_id: int | None
     cancelled_at: datetime.datetime | None
     published_at: datetime.datetime | None
+    payment_mode: PaymentMode
+    seating_deadline: datetime.date | None
+    seating_settled_at: datetime.datetime | None
+    deposit_amount: int | None
+    deposit_amount_eur: int | None
     reservation_validity_days: int
     reminder_day: int
     amount_tolerance_percent: int
@@ -737,6 +769,10 @@ class PaymentInstructionsOut(BaseModel):
     amount: int
     currency: Currency = Currency.CZK
     iban: str
+    # the domestic form for a Czech account, so a Czech payer is not made to
+    # read an IBAN; absent for any other country (design
+    # accept-czech-account-format Decision 2)
+    account_domestic: str | None = None
     vs: int
     message: str
     expires_at: datetime.datetime | None
@@ -903,6 +939,48 @@ class ConsoleTeamDisciplineOut(BaseModel):
     team_min: int
     team_max: int
     teams: list[ConsoleTeamOut] = []
+
+
+class QueueEntryOut(BaseModel):
+    """One fencer's placement in one individual discipline, above or below the
+    line, as the organizer's queue view presents it."""
+
+    registration_id: int
+    fencer: str
+    club: str | None
+    vs: int | None
+    registered_at: datetime.datetime
+    # place in the substitute queue by registration time; None when seated
+    queue_position: int | None = None
+
+
+class QueueDisciplineOut(BaseModel):
+    slug: str
+    name: str
+    capacity: int
+    taken: int
+    free: int
+    seated: list[QueueEntryOut] = []
+    queued: list[QueueEntryOut] = []
+
+
+class QueueOut(BaseModel):
+    """The seating picture for the whole tournament: where the line falls in
+    every individual discipline, and whether it has been drawn yet."""
+
+    # the resolved deadline, falling back to registration close and then the
+    # tournament date (setup.seating_deadline_for) — never the raw column
+    seating_deadline: datetime.date
+    seating_settled_at: datetime.datetime | None
+    # how many registrations settling now would move below the line; what the
+    # console states before asking to confirm an irreversible settlement
+    pending_demotions: int
+    disciplines: list[QueueDisciplineOut] = []
+
+
+class SettleSeatingOut(BaseModel):
+    demoted: int
+    seating_settled_at: datetime.datetime
 
 
 class ParticipantOut(BaseModel):

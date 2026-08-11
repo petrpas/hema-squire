@@ -15,7 +15,11 @@ def make_tournament(client, organizer, slug="cup", **patch):
         json={"slug": slug, "display_name": "Cup", "date": str(TODAY + timedelta(days=30))},
         headers=organizer,
     )
-    base = {"location": "Brno", "organizers": [{"name": "Cup Org", "link": None}]}
+    base = {
+        "location": "Brno",
+        "organizers": [{"name": "Cup Org", "link": None}],
+        "bank_account": "CZ6508000000192000145399",
+    }
     client.patch(f"/api/tournaments/{slug}", json=base | patch, headers=organizer)
     return slug
 
@@ -242,6 +246,96 @@ def test_enabling_eur_with_unpriced_extra_item_on_published_tournament_rejected(
     detail = client.get(f"/api/tournaments/{slug}", headers=organizer).json()
     assert detail["eur_payments_enabled"] is False
     assert detail["extra_items"][0]["id"] == item["id"]
+
+
+def test_publishing_priced_tournament_without_bank_account_refused(client, auth_headers):
+    organizer = auth_headers()
+    slug = make_tournament(client, organizer, bank_account=None)
+    add_priced_discipline(client, organizer, slug)
+
+    response = client.post(f"/api/tournaments/{slug}/publish", headers=organizer)
+    assert response.status_code == 422
+    assert response.json()["detail"] == {"reason": "setup_incomplete", "missing": ["bank_account"]}
+
+
+def test_publishing_succeeds_once_bank_account_set(client, auth_headers):
+    organizer = auth_headers()
+    slug = make_tournament(client, organizer, bank_account=None)
+    add_priced_discipline(client, organizer, slug)
+
+    client.patch(
+        f"/api/tournaments/{slug}",
+        json={"bank_account": "CZ6508000000192000145399"},
+        headers=organizer,
+    )
+    response = client.post(f"/api/tournaments/{slug}/publish", headers=organizer)
+    assert response.status_code == 200, response.text
+
+
+def test_all_zero_price_tournament_publishes_with_no_bank_account(client, auth_headers):
+    organizer = auth_headers()
+    slug = make_tournament(client, organizer, bank_account=None)
+    add_priced_discipline(client, organizer, slug, fee=0)
+
+    response = client.post(f"/api/tournaments/{slug}/publish", headers=organizer)
+    assert response.status_code == 200, response.text
+
+
+def test_clearing_bank_account_on_published_priced_tournament_rejected(client, auth_headers):
+    organizer = auth_headers()
+    slug = make_tournament(client, organizer)
+    add_priced_discipline(client, organizer, slug)
+    publish(client, organizer, slug)
+
+    response = client.patch(
+        f"/api/tournaments/{slug}", json={"bank_account": None}, headers=organizer
+    )
+    assert response.status_code == 422
+    assert response.json()["detail"] == {
+        "reason": "setup_incomplete",
+        "missing": ["bank_account"],
+    }
+
+    detail = client.get(f"/api/tournaments/{slug}", headers=organizer).json()
+    assert detail["bank_account"] == "CZ6508000000192000145399"
+
+
+def test_draft_may_be_saved_without_bank_account(client, auth_headers):
+    organizer = auth_headers()
+    slug = make_tournament(client, organizer, bank_account=None)
+    add_priced_discipline(client, organizer, slug)
+
+    response = client.patch(
+        f"/api/tournaments/{slug}", json={"location": "Praha"}, headers=organizer
+    )
+    assert response.status_code == 200
+    assert response.json()["bank_account"] is None
+
+
+def test_published_free_tournament_gaining_a_price_refused_until_bank_account_set(
+    client, auth_headers
+):
+    organizer = auth_headers()
+    slug = make_tournament(client, organizer, bank_account=None)
+    add_priced_discipline(client, organizer, slug, fee=0)
+    # a free tournament publishes with no account (Decision 2) — bypasses
+    # the shared `publish` helper, which would fill one in
+    published = client.post(f"/api/tournaments/{slug}/publish", headers=organizer)
+    assert published.status_code == 200, published.text
+
+    response = client.patch(
+        f"/api/tournaments/{slug}/disciplines/LS",
+        json={"slug": "LS", "weapon": "LS", "capacity": 10, "fee": 800},
+        headers=organizer,
+    )
+    assert response.status_code == 422
+    assert response.json()["detail"] == {
+        "reason": "setup_incomplete",
+        "missing": ["bank_account"],
+    }
+
+    detail = client.get(f"/api/tournaments/{slug}", headers=organizer).json()
+    assert detail["disciplines"][0]["fee"] == 0
 
 
 def test_same_operations_succeed_on_a_draft(client, auth_headers):

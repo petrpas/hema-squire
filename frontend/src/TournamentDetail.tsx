@@ -9,6 +9,7 @@ import TeamsTab from "./TeamsTab";
 import { type HomeTab } from "./FencerShell";
 import { home } from "./routes";
 import {
+  ApiError,
   type Availability,
   type PaymentInstructions,
   type RegistrationDetail,
@@ -26,16 +27,57 @@ import {
   registrationStatus,
 } from "./TournamentFace";
 
+// the endpoint's three named refusals, plus a catch-all for anything else
+// (network error, unexpected status) — every case is shown, never silently
+// dropped (design fix-payment-instructions-visibility)
+type PaymentRefusal = "no_payment_due" | "no_bank_account" | "not_unpaid" | "generic";
+
+type PaymentPanelState =
+  | { kind: "loading" }
+  | { kind: "ready"; payment: PaymentInstructions }
+  | { kind: "refused"; reason: PaymentRefusal; status?: number };
+
 function PaymentPanel({ slug }: { slug: string }) {
   const { t } = useTranslation();
-  const [payment, setPayment] = useState<PaymentInstructions | null>(null);
+  const [state, setState] = useState<PaymentPanelState>({ kind: "loading" });
 
   useEffect(() => {
-    api.paymentInstructions(slug).then(setPayment, () => setPayment(null));
+    setState({ kind: "loading" });
+    api.paymentInstructions(slug).then(
+      (payment) => setState({ kind: "ready", payment }),
+      (err) => {
+        const detail = err instanceof ApiError ? err.detail : null;
+        if (detail === "no_payment_due" || detail === "no_bank_account" || detail === "not_unpaid") {
+          setState({ kind: "refused", reason: detail });
+        } else {
+          setState({
+            kind: "refused",
+            reason: "generic",
+            status: err instanceof ApiError ? err.status : undefined,
+          });
+        }
+      },
+    );
   }, [slug]);
 
-  if (!payment) return null;
+  if (state.kind === "loading") return null;
 
+  if (state.kind === "refused") {
+    if (state.reason === "generic") {
+      return (
+        <p className="login-error">
+          {t("payment.reason.generic", { status: state.status ?? "?" })}
+        </p>
+      );
+    }
+    // no_payment_due keeps registration.fullyQueuedHint's key so the Czech
+    // translation moves with the behaviour rather than being re-authored
+    const key =
+      state.reason === "no_payment_due" ? "registration.fullyQueuedHint" : `payment.reason.${state.reason}`;
+    return <p className="rail-hint">{t(key)}</p>;
+  }
+
+  const payment = state.payment;
   return (
     <section className="payment-slip">
       <h2 className="payment-slip-title">{t("payment.title")}</h2>
@@ -51,8 +93,14 @@ function PaymentPanel({ slug }: { slug: string }) {
             {formatMoney(payment.amount, payment.currency)}
           </strong>
         </div>
+        {payment.account_domestic && (
+          <div className="param-field">
+            <span>{t("payment.account")}</span>
+            <strong className="data-value">{payment.account_domestic}</strong>
+          </div>
+        )}
         <div className="param-field">
-          <span>{t("payment.iban")}</span>
+          <span>{payment.account_domestic ? t("payment.ibanLabel") : t("payment.account")}</span>
           <strong className="data-value">{payment.iban}</strong>
         </div>
         <div className="param-field">
@@ -234,8 +282,10 @@ function RegistrationSummary({
   const { t } = useTranslation();
   return (
     <section className="rail-card">
-      <h2>{t("registration.title")}</h2>
-      <RegistrationStateTag registration={registration} />
+      <div className="rail-card-heading">
+        <h2>{t("registration.title")}</h2>
+        <RegistrationStateTag registration={registration} />
+      </div>
       <RegistrationLines registration={registration} detail={detail} />
     </section>
   );
@@ -262,10 +312,6 @@ function RegistrationPanel({
   const [confirming, setConfirming] = useState<"amend" | "cancel" | null>(null);
   const [busy, setBusy] = useState(false);
 
-  const active = registration.entries.filter((e) => !e.is_substitute);
-  const substitutes = registration.entries.filter((e) => e.is_substitute);
-  const fullyQueued = active.length === 0 && substitutes.length > 0;
-
   async function cancel() {
     setBusy(true);
     try {
@@ -277,22 +323,16 @@ function RegistrationPanel({
     }
   }
 
-  const refundable =
-    registration.state === "paid" &&
-    detail.refundable_until !== null &&
-    new Date().toISOString().slice(0, 10) <= detail.refundable_until;
-
   return (
     <section className="rail-card">
-      <h2>{t("registration.title")}</h2>
-      <RegistrationStateTag registration={registration} />
+      <div className="rail-card-heading">
+        <h2>{t("registration.title")}</h2>
+        <RegistrationStateTag registration={registration} />
+      </div>
 
       <RegistrationLines registration={registration} detail={detail} />
 
-      {registration.state === "reserved" && !fullyQueued && <PaymentPanel slug={slug} />}
-      {registration.state === "reserved" && fullyQueued && (
-        <p className="rail-hint">{t("registration.fullyQueuedHint")}</p>
-      )}
+      {registration.state === "reserved" && <PaymentPanel slug={slug} />}
 
       {/* amend and cancel both rewrite something the fencer already holds, so
           both are destructive controls behind a confirmation, standing as one
@@ -300,12 +340,14 @@ function RegistrationPanel({
       {confirming !== null ? (
         <div className="rail-card dashed">
           <p>
+            {/* a paid cancellation says neither that the fee is refundable nor
+                that it is not: refunds are settled with the organizer outside
+                the system, and `refundable_until` is no longer settable, so
+                asserting either way would be a promise (design Risks) */}
             {confirming === "amend"
               ? t("registration.amendConfirm")
               : registration.state === "paid"
-                ? refundable
-                  ? t("cancel.refundable")
-                  : t("cancel.notRefundable")
+                ? t("cancel.paidConfirm")
                 : t("cancel.confirm")}
           </p>
           <div className="modal-actions">

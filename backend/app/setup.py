@@ -8,7 +8,7 @@ import datetime
 
 from fastapi import HTTPException
 
-from app.models import DisciplineKind, Tournament
+from app.models import DisciplineKind, PaymentMode, Tournament
 
 # distinct 4xx reasons a registration submission can be rejected with
 NOT_PUBLISHED = "not_published"
@@ -28,6 +28,12 @@ MISSING_DISCOUNT_PRICES = "discount_prices"
 MISSING_LEGACY_BLOCKS_EUR = "legacy_fixed_fees_block_eur"
 # a team discipline lacking valid roster bounds (design team-disciplines 3.2)
 MISSING_TEAM_BOUNDS = "team_bounds"
+# the account payments are collected into, mandatory only once the
+# tournament can produce a nonzero total (design Decision 2)
+MISSING_BANK_ACCOUNT = "bank_account"
+# the flat deposit, mandatory only in deposit mode — where it is a price like
+# any other, EUR figure included (design add-payment-modes D4)
+MISSING_DEPOSIT_AMOUNT = "deposit_amount"
 
 
 def uses_legacy_fixed_fees(tournament: Tournament) -> bool:
@@ -38,6 +44,32 @@ def uses_legacy_fixed_fees(tournament: Tournament) -> bool:
         or tournament.weapon_rental_fee_early is not None
         or bool(tournament.afterparty_fee)
         or tournament.afterparty_fee_early is not None
+    )
+
+
+def charges_money(tournament: Tournament) -> bool:
+    """Whether the tournament can produce a nonzero total from any priced
+    field, in either currency — the bank account is mandatory only when this
+    is true (design Decision 2). Discounts are excluded: they only reduce a
+    total, so they cannot make a free tournament charge."""
+    if any(
+        (d.fee or 0) > 0
+        or (d.fee_early or 0) > 0
+        or (d.fee_eur or 0) > 0
+        or (d.fee_early_eur or 0) > 0
+        for d in tournament.disciplines
+    ):
+        return True
+    if any(
+        (item.price or 0) > 0 or (item.price_eur or 0) > 0
+        for item in tournament.extra_items
+    ):
+        return True
+    return (
+        (tournament.weapon_rental_fee or 0) > 0
+        or (tournament.weapon_rental_fee_early or 0) > 0
+        or (tournament.afterparty_fee or 0) > 0
+        or (tournament.afterparty_fee_early or 0) > 0
     )
 
 
@@ -87,6 +119,15 @@ def setup_missing(tournament: Tournament) -> list[str]:
             missing.append(MISSING_DISCOUNT_PRICES)
         if uses_legacy_fixed_fees(tournament):
             missing.append(MISSING_LEGACY_BLOCKS_EUR)
+
+    if tournament.payment_mode == PaymentMode.DEPOSIT and (
+        not tournament.deposit_amount
+        or (tournament.shows_eur and not tournament.deposit_amount_eur)
+    ):
+        missing.append(MISSING_DEPOSIT_AMOUNT)
+
+    if charges_money(tournament) and not (tournament.bank_account or "").strip():
+        missing.append(MISSING_BANK_ACCOUNT)
     return missing
 
 
@@ -125,6 +166,31 @@ def registration_availability(tournament: Tournament, today: datetime.date) -> s
     if today > closes:
         return CLOSED
     return None
+
+
+def seating_deadline_for(tournament: Tournament) -> datetime.date:
+    """The date this tournament's seating settles on. Unset, `seating_deadline`
+    resolves to `registration_closes`, which itself resolves to the tournament
+    date (Decision 7) — a tournament with no explicit deadline settles when
+    registration closes and has no organizer-managed tail. The chain lives
+    here alone; no caller spells it out a second time."""
+    if tournament.seating_deadline is not None:
+        return tournament.seating_deadline
+    return tournament.registration_closes or tournament.date
+
+
+def seating_has_settled(tournament: Tournament, today: datetime.date) -> bool:
+    """Whether seating is closed — asked by post-deadline registration, the
+    reminder anchor, and the expiry branch alike (Decision 6a).
+
+    Both disjuncts are needed. The stamp alone leaves the gap between the
+    deadline passing at midnight and the next scheduler tick, during which
+    registrations would still be seated; the deadline alone ignores an
+    organizer who settled early by hand."""
+    return (
+        tournament.seating_settled_at is not None
+        or today > seating_deadline_for(tournament)
+    )
 
 
 def amendment_availability(tournament: Tournament, today: datetime.date) -> str | None:

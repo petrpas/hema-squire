@@ -16,8 +16,6 @@ const IDENTITY_FIELDS = [
   { key: "date", type: "date" },
   { key: "location", type: "text" },
   { key: "description", type: "textarea", markdown: true },
-  { key: "registration_opens", type: "date" },
-  { key: "registration_closes", type: "date" },
   // shown only on the registration form, unlike description
   {
     key: "registration_instructions",
@@ -28,10 +26,11 @@ const IDENTITY_FIELDS = [
 ] as const;
 
 // rendered as three runs — [display_name, subtitle], [date, location, description],
-// [registration_opens, registration_closes, registration_instructions] — with the
-// logo block after the first and the qualification block after the second, so the
-// section reads name, subtitle, logo, date, location, description, qualification,
-// reg. opens, reg. closes, reg. instructions (design D5).
+// [registration_instructions] — with the logo block after the first and the
+// qualification block after the second, so the section reads name, subtitle,
+// logo, date, location, description, qualification, reg. instructions (design
+// D5). The registration window moved to TIMELINE (regroup-setup-parameters);
+// the tournament's own date stays here, its only editor.
 const IDENTITY_RUN_1 = IDENTITY_FIELDS.slice(0, 2);
 const IDENTITY_RUN_2 = IDENTITY_FIELDS.slice(2, 5);
 const IDENTITY_RUN_3 = IDENTITY_FIELDS.slice(5);

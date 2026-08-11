@@ -8,7 +8,7 @@ from PIL import Image, UnidentifiedImageError
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session, selectinload
 
-from app import money_bounds, setup, taxonomy
+from app import money_bounds, scheduler, setup, taxonomy
 from app.auth import (
     current_fencer,
     require_console_access,
@@ -37,6 +37,7 @@ from app.models import (
     ImportDecision,
     ImportedRow,
     PaymentEvent,
+    PaymentMode,
     Registration,
     RegistrationDiscipline,
     RegistrationState,
@@ -58,6 +59,10 @@ from app.schemas import (
     OpenDisciplineOut,
     OpenTournamentOut,
     OwnerTransferIn,
+    QueueDisciplineOut,
+    QueueEntryOut,
+    QueueOut,
+    SettleSeatingOut,
     TeamAdd,
     TeamMemberOut,
     TournamentCreate,
@@ -411,6 +416,29 @@ def update_tournament(
         # only the tournament date bounds it, since a deadline after the event
         # could never be meaningfully checked
         raise HTTPException(status_code=422, detail="composition_deadline_after_tournament_date")
+    if tournament.seating_deadline is not None:
+        # the seating deadline is a soft boundary *inside* the hard close: one
+        # set later than registration_closes could never be reached, and the
+        # two are easy to conflate (design Risks), so the message names both
+        closes = tournament.registration_closes or tournament.date
+        if tournament.seating_deadline > closes:
+            raise HTTPException(
+                status_code=422,
+                detail=(
+                    f"seating_deadline_after_registration_closes: "
+                    f"seating_deadline={tournament.seating_deadline} "
+                    f"registration_closes={closes}"
+                ),
+            )
+    if tournament.payment_mode == PaymentMode.DEPOSIT:
+        # a deposit mode with no deposit holds seats with nothing while
+        # claiming to hold them with money. The EUR figure is required
+        # alongside it on the same terms as every other price — independent,
+        # never derived (design D4)
+        if not tournament.deposit_amount:
+            raise HTTPException(status_code=422, detail="deposit_amount_required")
+        if tournament.shows_eur and not tournament.deposit_amount_eur:
+            raise HTTPException(status_code=422, detail="deposit_amount_eur_required")
     if updates.get("hr_category_map") is not None:
         team_codes = {
             d.taxonomy_code for d in tournament.disciplines if d.kind == DisciplineKind.TEAM
@@ -443,6 +471,7 @@ def update_tournament(
             "weapon_rental_fee_early",
             "afterparty_fee",
             "afterparty_fee_early",
+            "deposit_amount",
         )
         if field in updates
     }
@@ -789,6 +818,87 @@ def console_teams(tournament: TournamentDep, session: SessionDep, fencer: Fencer
             )
         )
     return result
+
+
+@router.get("/{slug}/queue", response_model=QueueOut)
+def console_queue(tournament: TournamentDep, session: SessionDep, fencer: FencerDep):
+    """Where the line falls in every individual discipline: who is seated, who
+    is queued and in what order, and how many places are free.
+
+    Nothing here promotes anyone. After the seating deadline the system shows
+    the data and the organizer decides (design Non-Goals), so the view's job is
+    to make the pending work obvious. A discipline with an empty queue is still
+    listed, stated as empty rather than hidden."""
+    require_console_access(session, tournament, fencer)
+    result = []
+    for discipline in tournament.disciplines:
+        if discipline.kind != DisciplineKind.INDIVIDUAL:
+            continue
+        entries = session.scalars(
+            select(RegistrationDiscipline)
+            .join(Registration)
+            .where(
+                RegistrationDiscipline.discipline_id == discipline.id,
+                Registration.state.in_(
+                    [RegistrationState.RESERVED, RegistrationState.PAID]
+                ),
+            )
+            .options(selectinload(RegistrationDiscipline.registration))
+            .order_by(Registration.registered_at)
+        ).all()
+        seated, queued = [], []
+        for entry in entries:
+            registration = entry.registration
+            row = QueueEntryOut(
+                registration_id=registration.id,
+                fencer=registration.fencer.display_name,
+                club=registration.fencer.club,
+                vs=registration.vs,
+                registered_at=registration.registered_at,
+                # the query is already ordered by registration time, which is
+                # exactly what queue_position ranks by, so position is the
+                # running count rather than a per-row subquery
+                queue_position=len(queued) + 1 if entry.is_substitute else None,
+            )
+            (queued if entry.is_substitute else seated).append(row)
+        taken = taken_seats(session, discipline)
+        result.append(
+            QueueDisciplineOut(
+                slug=discipline.slug,
+                name=discipline.name,
+                capacity=discipline.capacity,
+                taken=taken,
+                free=max(discipline.capacity - taken, 0),
+                seated=seated,
+                queued=queued,
+            )
+        )
+    return QueueOut(
+        seating_deadline=setup.seating_deadline_for(tournament),
+        seating_settled_at=tournament.seating_settled_at,
+        pending_demotions=scheduler.pending_demotions(session, tournament),
+        disciplines=result,
+    )
+
+
+@router.post("/{slug}/settle-seating", response_model=SettleSeatingOut)
+def settle_seating(tournament: TournamentDep, session: SessionDep, fencer: FencerDep):
+    """Close seating early, once the roster looks the way the organizer wants
+    it. The same pass the deadline runs, through the same stamp, so a manual
+    settlement and a scheduled one can never both happen — whichever fires
+    first is the one that ever runs (design D6).
+
+    Available in every mode, including `immediate`, where it demotes nobody but
+    still closes seating so later registrations join the queue instead of
+    taking seats. Not reversible: the organizer's route to correct an
+    individual case afterwards is promotion."""
+    require_console_access(session, tournament, fencer)
+    if tournament.seating_settled_at is not None:
+        raise HTTPException(status_code=409, detail="seating_already_settled")
+    demoted = scheduler.settle_seating(session, tournament)
+    return SettleSeatingOut(
+        demoted=demoted, seating_settled_at=tournament.seating_settled_at
+    )
 
 
 def _normalized_extra_item_fields(data: ExtraItemIn) -> dict:

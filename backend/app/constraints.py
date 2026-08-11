@@ -33,8 +33,10 @@ TOURNAMENT_SLUG_PATTERN = r"^[a-z0-9][a-z0-9-]{1,98}$"
 # runs (app/fieldtypes.py) — see 8a.1.
 DISCIPLINE_SLUG_PATTERN = r"^[A-Za-z0-9-]{1,30}$"
 DISCIPLINE_SLUG_MAX_LENGTH = 30
-# a loose IBAN shape: two letters, two check digits, up to 30 alphanumerics
-BANK_ACCOUNT_PATTERN = r"^[A-Z]{2}[0-9]{2}[A-Za-z0-9]{10,30}$"
+# a loose shape only: an IBAN, or the Czech domestic form
+# [prefix-]number/bankcode — checksum validation (accounts.parse) is what
+# actually decides validity (design accept-czech-account-format D5)
+BANK_ACCOUNT_PATTERN = r"^([A-Z]{2}[0-9]{2}[A-Za-z0-9]{10,30}|[0-9]{1,6}-?[0-9]{2,10}/[0-9]{4})$"
 
 # ---- SignupIn / AccountUpdate ----
 PASSWORD_MIN_LENGTH = 8
@@ -111,6 +113,14 @@ HR_CATEGORY_MAP_KEY_MAX_LENGTH = SHORT
 HR_CATEGORY_MAP_VALUE_MAX_LENGTH = SHORT
 VS_SERIES_MIN = 1
 VS_SERIES_MAX = 99
+# the payment window: the interval between money being requested and money
+# being due. Its floor is a bank transfer's settlement time, its ceiling is
+# how long a tournament can afford to hold a seat on trust. Enforced on write
+# only (design add-payment-modes Decision 9) — the shipped default was 10 and
+# live tournaments carry it, so stored values are left alone and validated on
+# the next edit rather than clamped to satisfy a UI range.
+RESERVATION_VALIDITY_DAYS_MIN = 2
+RESERVATION_VALIDITY_DAYS_MAX = 7
 
 # ---- RuleIn ----
 RULE_PHASE_MAX_LENGTH = 20

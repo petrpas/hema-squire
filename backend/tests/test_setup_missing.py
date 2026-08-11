@@ -15,6 +15,7 @@ def make_tournament(**kwargs) -> Tournament:
         organizers=[{"name": "Duelanti od sv. Rocha", "link": None}],
         vs_year=2026,
         vs_series=1,
+        bank_account="CZ6508000000192000145399",
     )
     tournament = Tournament(**{**defaults, **kwargs})
     if "disciplines" not in kwargs:
@@ -138,3 +139,59 @@ def test_legacy_fixed_fees_do_not_block_single_currency():
 def test_currency_untouched_tournament_is_complete():
     """The default combination must never appear in the checklist."""
     assert setup_missing(make_tournament()) == []
+
+
+def test_priced_tournament_without_bank_account_blocks():
+    tournament = make_tournament(bank_account=None)
+    assert setup_missing(tournament) == ["bank_account"]
+
+
+def test_priced_tournament_with_blank_bank_account_blocks():
+    tournament = make_tournament(bank_account="   ")
+    assert setup_missing(tournament) == ["bank_account"]
+
+
+def test_all_zero_price_tournament_needs_no_bank_account():
+    tournament = make_tournament(bank_account=None)
+    tournament.disciplines[0].fee = 0
+    assert setup_missing(tournament) == []
+
+
+def test_discount_alone_does_not_require_bank_account():
+    tournament = make_tournament(
+        bank_account=None,
+        discounts=[
+            {
+                "name": "early",
+                "condition": {"kind": "discipline_count", "count": 1},
+                "effect": {"kind": "fixed", "value": 200},
+                "scope": ["discipline"],
+            }
+        ],
+    )
+    tournament.disciplines[0].fee = 0
+    assert setup_missing(tournament) == []
+
+
+def test_extra_item_price_requires_bank_account():
+    tournament = make_tournament(bank_account=None)
+    tournament.disciplines[0].fee = 0
+    tournament.extra_items = [
+        ExtraItem(
+            tournament=tournament, name="t-shirt", category=ExtraCategory.MERCH, price=300
+        )
+    ]
+    assert setup_missing(tournament) == ["bank_account"]
+
+
+def test_legacy_fixed_fee_requires_bank_account():
+    tournament = make_tournament(bank_account=None, weapon_rental_fee=50)
+    tournament.disciplines[0].fee = 0
+    assert setup_missing(tournament) == ["bank_account"]
+
+
+def test_eur_only_price_requires_bank_account():
+    tournament = make_tournament(bank_account=None, eur_payments_enabled=True)
+    tournament.disciplines[0].fee = 0
+    tournament.disciplines[0].fee_eur = 32
+    assert setup_missing(tournament) == ["bank_account"]

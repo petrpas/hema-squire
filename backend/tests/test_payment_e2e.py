@@ -83,7 +83,7 @@ def setup(client, organizer, capacity=10):
     client.patch(
         "/api/tournaments/cup",
         json={"bank_account": IBAN, "fio_token": "test-token",
-              "reservation_validity_days": 10, "reminder_day": 5,
+              "reservation_validity_days": 7, "reminder_day": 5,
               "amount_tolerance_percent": 5,
               "location": "Brno", "organizers": [{"name": "Cup Org", "link": None}]},
         headers=organizer,
@@ -100,7 +100,7 @@ def age_registration(vs, days):
     session = next(app.dependency_overrides[get_session]())
     registration = session.scalar(select(Registration).where(Registration.vs == vs))
     registration.registered_at = datetime.datetime.now(UTC) - timedelta(days=days)
-    registration.expires_at = registration.registered_at + timedelta(days=10)
+    registration.expires_at = registration.registered_at + timedelta(days=7)
     session.commit()
 
 
@@ -118,7 +118,7 @@ def test_happy_path_reserve_qr_match_paid(client, auth_headers, mailbox, fio):
     assert amount == 1000
     expires = datetime.datetime.fromisoformat(registration["expires_at"])
     registered = datetime.datetime.fromisoformat(registration["registered_at"])
-    assert (expires - registered).days == 10
+    assert (expires - registered).days == 7
 
     # confirmation email carries the SPAYD QR for exactly this payment
     (confirmation,) = mailbox.to("jan@example.com")
@@ -178,13 +178,13 @@ def test_expiry_path_reminder_expire_free_capacity_flag_late_payment(
 
     # day 5: one reminder, not repeated
     age_registration(vs, days=5)
-    assert process() == {"reminders": 1, "expired": 0}
-    assert process() == {"reminders": 0, "expired": 0}
+    assert process() == {"reminders": 1, "expired": 0, "seating_demoted": 0}
+    assert process() == {"reminders": 0, "expired": 0, "seating_demoted": 0}
     assert len(mailbox.to("jan@example.com")) == 2  # confirmation + reminder
 
-    # day 11: reservation expires, fencer notified
-    age_registration(vs, days=11)
-    assert process() == {"reminders": 0, "expired": 1}
+    # day 8: reservation expires, fencer notified
+    age_registration(vs, days=8)
+    assert process() == {"reminders": 0, "expired": 1, "seating_demoted": 0}
     registration = client.get(
         "/api/tournaments/cup/my-registration", headers=fencer
     ).json()

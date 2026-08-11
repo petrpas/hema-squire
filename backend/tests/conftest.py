@@ -44,8 +44,21 @@ def publish(client, headers, slug):
     """Publish a tournament so it reaches fencers: setup-complete alone no
     longer does (design add-explicit-publishing). Every test that expects a
     tournament in /open, /held, /mine, or accepting registrations must call
-    this after completing its mandatory setup."""
+    this after completing its mandatory setup.
+
+    Retries once with a filled-in bank account if that is the only thing
+    missing: most callers are indifferent to it, and a priced tournament
+    cannot publish without it (fix-payment-instructions-visibility)."""
     response = client.post(f"/api/tournaments/{slug}/publish", headers=headers)
+    if response.status_code == 422 and "bank_account" in response.json()["detail"].get(
+        "missing", []
+    ):
+        client.patch(
+            f"/api/tournaments/{slug}",
+            json={"bank_account": "CZ6508000000192000145399"},
+            headers=headers,
+        )
+        response = client.post(f"/api/tournaments/{slug}/publish", headers=headers)
     assert response.status_code == 200, response.text
     return response.json()
 

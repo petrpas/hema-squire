@@ -2,18 +2,23 @@ import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { useTranslation } from "react-i18next";
 
 import { type Account, type TournamentDetail, api } from "./api";
+import { BankAccountSection } from "./setup/BankAccountSection";
 import { CurrencySection } from "./setup/CurrencySection";
 import { DangerZoneSection } from "./setup/DangerZoneSection";
 import { DiscountsSection } from "./setup/DiscountsSection";
 import { DisciplinesSection } from "./setup/DisciplinesSection";
+import { ExportSheetSection } from "./setup/ExportSheetSection";
 import { ExtraItemsSection } from "./setup/ExtraItemsSection";
 import { IdentitySection, VsSeriesSection } from "./setup/IdentitySection";
+import { LegacyFeesSection } from "./setup/LegacyFeesSection";
 import { OrganizersSection } from "./setup/OrganizersSection";
+import { PaymentModeSection } from "./setup/PaymentModeSection";
 import { PublishSection } from "./setup/PublishSection";
 import { MISSING_TAB, SaverRegistry, SETUP_TABS, type SetupTab } from "./setup/shared";
 import { SetupSaveBar } from "./setup/SetupSaveBar";
 import { SetupTabBar } from "./setup/SetupTabBar";
 import { TeamSection } from "./setup/TeamSection";
+import { TimelineSection } from "./setup/TimelineSection";
 import SetupPreview from "./SetupPreview";
 
 export default function SetupPanel({
@@ -36,6 +41,13 @@ export default function SetupPanel({
   const [tab, setTab] = useState<SetupTab>("tournament");
   const registry = useRef(new SaverRegistry()).current;
   useSyncExternalStore(registry.subscribe, registry.getVersion);
+  // Whether a team discipline exists in the DISCIPLINES draft, reported up by
+  // that section so TIMELINE can offer the composition deadline before the
+  // table is saved (design Decision 3a). Seeded from saved state so the first
+  // render is right even before the section reports.
+  const [hasTeamDiscipline, setHasTeamDiscipline] = useState(
+    () => detail?.disciplines.some((discipline) => discipline.kind === "team") ?? false,
+  );
 
   useEffect(() => {
     api.account().then(setAccount, () => setAccount(null));
@@ -92,6 +104,7 @@ export default function SetupPanel({
               slug={slug}
               pricingWarning={hasRegistrations}
               registry={registry}
+              onTeamKindChange={setHasTeamDiscipline}
             />
           </div>
           <div
@@ -110,11 +123,27 @@ export default function SetupPanel({
           </div>
           <div
             className="setup-tabpanel"
+            id="setup-tabpanel-timeline"
+            role="tabpanel"
+            aria-labelledby="setup-tab-timeline"
+            hidden={tab !== "timeline"}
+          >
+            <TimelineSection
+              detail={detail}
+              slug={slug}
+              registry={registry}
+              hasTeamDiscipline={hasTeamDiscipline}
+            />
+          </div>
+          <div
+            className="setup-tabpanel"
             id="setup-tabpanel-payments"
             role="tabpanel"
             aria-labelledby="setup-tab-payments"
             hidden={tab !== "payments"}
           >
+            <PaymentModeSection detail={detail} slug={slug} registry={registry} />
+            <BankAccountSection detail={detail} slug={slug} registry={registry} />
             <CurrencySection detail={detail} slug={slug} registry={registry} />
             <VsSeriesSection detail={detail} />
             <DiscountsSection
@@ -123,6 +152,7 @@ export default function SetupPanel({
               pricingWarning={hasRegistrations}
               registry={registry}
             />
+            <LegacyFeesSection detail={detail} slug={slug} onSaved={onSaved} />
           </div>
           {isOwner && (
             <div
@@ -133,6 +163,7 @@ export default function SetupPanel({
               hidden={tab !== "other"}
             >
               <TeamSection slug={slug} />
+              <ExportSheetSection detail={detail} slug={slug} registry={registry} />
               <DangerZoneSection
                 slug={slug}
                 hasRegistrations={hasRegistrations}

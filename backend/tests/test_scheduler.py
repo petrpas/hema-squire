@@ -6,7 +6,7 @@ from sqlalchemy import select
 from app.db import get_session
 from app.mail import get_mailer
 from app.main import app
-from app.models import PaymentEvent, Registration
+from app.models import PaymentEvent, Registration, Tournament
 from tests.conftest import publish
 
 
@@ -39,7 +39,7 @@ def setup(client, organizer):
     client.patch(
         "/api/tournaments/cup",
         json={
-            "reservation_validity_days": 10,
+            "reservation_validity_days": 7,
             "reminder_day": 5,
             "location": "Brno",
             "organizers": [{"name": "Cup Org", "link": None}],
@@ -52,6 +52,12 @@ def setup(client, organizer):
         headers=organizer,
     )
     publish(client, organizer, "cup")
+    # simulate a tournament published before the bank account became
+    # mandatory (design Decision 4) — the API guard cannot reach it
+    session = db_session()
+    tournament = session.scalar(select(Tournament).where(Tournament.slug == "cup"))
+    tournament.bank_account = None
+    session.commit()
 
 
 def enroll(client, auth_headers, email="jan@example.com"):
@@ -67,7 +73,7 @@ def age_registration(vs, days):
     session = db_session()
     registration = session.scalar(select(Registration).where(Registration.vs == vs))
     registration.registered_at = datetime.now(UTC) - timedelta(days=days)
-    registration.expires_at = registration.registered_at + timedelta(days=10)
+    registration.expires_at = registration.registered_at + timedelta(days=7)
     session.commit()
 
 
@@ -81,15 +87,15 @@ def test_reminder_on_reminder_day_once(client, auth_headers, mailbox):
     enroll(client, auth_headers)
     mailbox.sent.clear()
 
-    assert process(client, organizer) == {"reminders": 0, "expired": 0}
+    assert process(client, organizer) == {"reminders": 0, "expired": 0, "seating_demoted": 0}
 
     age_registration(2601001, days=6)
-    assert process(client, organizer) == {"reminders": 1, "expired": 0}
+    assert process(client, organizer) == {"reminders": 1, "expired": 0, "seating_demoted": 0}
     assert "Připomínka platby" in mailbox.sent[-1]["Subject"]
     assert len(list(mailbox.sent[-1].iter_attachments())) == 0  # no bank account set -> no QR
 
     # second run: already reminded, nothing happens
-    assert process(client, organizer) == {"reminders": 0, "expired": 0}
+    assert process(client, organizer) == {"reminders": 0, "expired": 0, "seating_demoted": 0}
     assert len(mailbox.sent) == 1
 
     session = db_session()
@@ -103,9 +109,9 @@ def test_expiry_frees_capacity_and_notifies(client, auth_headers, mailbox):
     fencer = enroll(client, auth_headers)
     mailbox.sent.clear()
 
-    age_registration(2601001, days=11)  # past the 10-day window
+    age_registration(2601001, days=8)  # past the 7-day window
     result = process(client, organizer)
-    assert result == {"reminders": 0, "expired": 1}
+    assert result == {"reminders": 0, "expired": 1, "seating_demoted": 0}
     assert "Rezervace vypršela" in mailbox.sent[-1]["Subject"]
 
     state = client.get("/api/tournaments/cup/my-registration", headers=fencer).json()
@@ -131,11 +137,11 @@ def test_paid_registrations_never_reminded_or_expired(client, auth_headers, mail
     from app.models import RegistrationState
 
     registration.registered_at = datetime.now(UTC) - timedelta(days=20)
-    registration.expires_at = registration.registered_at + timedelta(days=10)
+    registration.expires_at = registration.registered_at + timedelta(days=7)
     registration.state = RegistrationState.PAID
     session.commit()
 
-    assert process(client, organizer) == {"reminders": 0, "expired": 0}
+    assert process(client, organizer) == {"reminders": 0, "expired": 0, "seating_demoted": 0}
     assert mailbox.sent == []
 
 
@@ -157,6 +163,6 @@ def test_queued_substitutes_untouched_by_lifecycle(client, auth_headers, mailbox
     session.commit()
 
     # no expires_at on queued substitutes -> neither reminded nor expired
-    assert process(client, organizer) == {"reminders": 0, "expired": 0}
+    assert process(client, organizer) == {"reminders": 0, "expired": 0, "seating_demoted": 0}
     state = client.get("/api/tournaments/cup/my-registration", headers=waiting).json()
     assert state["state"] == "reserved"

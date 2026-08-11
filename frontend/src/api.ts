@@ -245,7 +245,23 @@ export interface Organizer {
   link: string | null;
 }
 
+/** How a seat is held until the seating deadline. `immediate` is what every
+ *  tournament created before the mode existed does. */
+export type PaymentMode = "immediate" | "deposit" | "reservation";
+
 export interface TournamentDetail extends Tournament {
+  payment_mode: PaymentMode;
+  /** The date seating settles — a soft boundary inside registration_closes,
+   *  not the hard close. Unset it resolves to the registration close, which
+   *  itself resolves to the tournament date. */
+  seating_deadline: string | null;
+  /** Set once seating has settled, by the deadline or by the organizer;
+   *  settlement never runs twice. */
+  seating_settled_at: string | null;
+  /** Flat deposit owed at registration in deposit mode, with its independent
+   *  EUR counterpart — never derived from it (design D4). */
+  deposit_amount: number | null;
+  deposit_amount_eur: number | null;
   reservation_validity_days: number;
   reminder_day: number;
   amount_tolerance_percent: number;
@@ -507,6 +523,37 @@ export interface ConsoleTeamDiscipline {
   teams: ConsoleTeam[];
 }
 
+/** One fencer's placement in one individual discipline, above or below the
+ *  line, as the organizer's queue view presents it. */
+export interface QueueEntry {
+  registration_id: number;
+  fencer: string;
+  club: string | null;
+  vs: number | null;
+  registered_at: string;
+  /** Place in the queue by registration time; null when seated. */
+  queue_position: number | null;
+}
+
+export interface QueueDiscipline {
+  slug: string;
+  name: string;
+  capacity: number;
+  taken: number;
+  free: number;
+  seated: QueueEntry[];
+  queued: QueueEntry[];
+}
+
+export interface Queue {
+  /** The resolved deadline, never the raw column. */
+  seating_deadline: string;
+  seating_settled_at: string | null;
+  /** How many registrations settling now would move below the line. */
+  pending_demotions: number;
+  disciplines: QueueDiscipline[];
+}
+
 export interface DiscountBreakdown {
   name: string;
   effect: DiscountEffect;
@@ -555,6 +602,8 @@ export interface PaymentInstructions {
   amount: number;
   currency: Currency;
   iban: string;
+  /** The domestic form for a Czech account; null for any other country. */
+  account_domestic: string | null;
   vs: number;
   message: string;
   expires_at: string | null;
@@ -802,6 +851,28 @@ export const api = {
     }),
   consoleTeams: (slug: string) =>
     request<ConsoleTeamDiscipline[]>(`/api/tournaments/${slug}/teams`),
+  queue: (slug: string) => request<Queue>(`/api/tournaments/${slug}/queue`),
+  /** Promote one queued placement into a free seat: bills it, opens a payment
+   *  window and sends instructions. */
+  admitSubstitute: (slug: string, registrationId: number, disciplineSlug: string) =>
+    request<RegistrationDetail>(
+      `/api/tournaments/${slug}/registrations/${registrationId}/admit/${disciplineSlug}`,
+      { method: "POST" },
+    ),
+  /** The inverse: free the seat and close any payment window. Refused on a
+   *  paid registration, whose route is cancellation. */
+  returnToQueue: (slug: string, registrationId: number, disciplineSlug: string) =>
+    request<RegistrationDetail>(
+      `/api/tournaments/${slug}/registrations/${registrationId}/return-to-queue/${disciplineSlug}`,
+      { method: "POST" },
+    ),
+  /** Close seating early. Not reversible, and refused once seating has
+   *  settled however it was triggered. */
+  settleSeating: (slug: string) =>
+    request<{ demoted: number; seating_settled_at: string }>(
+      `/api/tournaments/${slug}/settle-seating`,
+      { method: "POST" },
+    ),
   unmatchedTransactions: (slug: string) =>
     request<Transaction[]>(`/api/tournaments/${slug}/payments/unmatched`),
   reinstateTransaction: (slug: string, transactionId: number) =>

@@ -85,7 +85,7 @@ export function CurrencySection({
     <section className="rail-card">
       <h2>{t("setup.currency.title")}</h2>
       <div className="form-fields">
-        <div className="qualification-control">
+        <div className="qualification-control currency-mode-control">
           {CURRENCY_MODES.map((m) => (
             <label key={m} className="qualification-option">
               <input

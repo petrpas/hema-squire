@@ -66,6 +66,26 @@ class RegistrationState(enum.StrEnum):
     CANCELLED = "cancelled"
 
 
+class PaymentMode(enum.StrEnum):
+    """How a tournament's seat is held until the seating deadline.
+
+    `immediate` is the behaviour every tournament had before the mode existed —
+    the full amount is owed at registration and an unpaid reservation expires
+    when its payment window closes — so it is the default and the value every
+    pre-mode tournament carries.
+
+    `deposit` holds the seat with a flat deposit: the deposit opens a payment
+    window, crediting it closes that window (app.matching), and the balance is
+    owed by the seating deadline. `reservation` holds the seat with nothing at
+    all: no money is owed and no payment window opens until the seating
+    deadline, by which the full amount is due.
+    """
+
+    IMMEDIATE = "immediate"
+    DEPOSIT = "deposit"
+    RESERVATION = "reservation"
+
+
 class DisciplineKind(enum.StrEnum):
     """Whether a discipline is entered by one fencer or by a team (design
     team-disciplines D1). Frozen once any registration references it."""
@@ -203,6 +223,29 @@ class Tournament(Base):
     team_composition_deadline: Mapped[date | None]
 
     # payment and reservation parameters
+    # how a seat is held (see PaymentMode); `immediate` is what every
+    # tournament created before the mode existed does, so it is the default
+    payment_mode: Mapped[PaymentMode] = mapped_column(
+        str_enum(PaymentMode), default=PaymentMode.IMMEDIATE
+    )
+    # the date the tournament's seating settles: after it, registration is
+    # still accepted but grants only a queue position, and money still owed on
+    # a seated registration is overdue. Optional — unset it resolves to
+    # registration_closes, which itself resolves to `date`
+    # (setup.seating_deadline_for), mirroring amendments_close
+    seating_deadline: Mapped[date | None]
+    # flat deposit owed at registration in `deposit` mode, in whole units of
+    # local_currency, with the independent EUR figure alongside it like every
+    # other price. Never a percentage: a percentage would move when a
+    # registration is amended, after it had already been paid (design D4)
+    deposit_amount: Mapped[int | None]
+    deposit_amount_eur: Mapped[int | None]
+    # set by the settlement pass, by the deadline tick or by the organizer
+    # settling early. Settlement is one-shot: its predicate is "reserved and
+    # seated", which is exactly what admit_substitute produces, so without
+    # this stamp every later tick would demote the fencers the organizer had
+    # just promoted (design D6)
+    seating_settled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     reservation_validity_days: Mapped[int] = mapped_column(default=10)
     reminder_day: Mapped[int] = mapped_column(default=5)
     amount_tolerance_percent: Mapped[int] = mapped_column(default=5)
@@ -465,6 +508,21 @@ class Registration(Base):
     # when either currency's credit covers that currency's own total (design
     # Decision 5); see matching.match_new_transactions.
     amount_paid_eur_cents: Mapped[int] = mapped_column(default=0)
+
+    @property
+    def fully_queued(self) -> bool:
+        """Whether this registration sits entirely below the line — every
+        individual entry a substitute placement and every team waitlisted.
+        Vacuously true on whichever axis carries nothing, so a team-only
+        registration is judged on its teams alone (design team-disciplines
+        task 5.2).
+
+        Nothing is owed from the queue (design add-payment-modes D5), so this
+        is what the confirmation email, the payment-instructions endpoint and
+        the reminder pass all ask before offering or chasing money."""
+        return all(entry.is_substitute for entry in self.entries) and all(
+            team.waitlisted for team in self.teams
+        )
 
     @property
     def outstanding_cents(self) -> int:

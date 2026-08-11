@@ -32,6 +32,7 @@ from app.models import (
     Currency,
     Fencer,
     PaymentEvent,
+    PaymentMode,
     RefundState,
     Registration,
     RegistrationState,
@@ -180,6 +181,42 @@ def _credit(registration: Registration, which: MatchCurrency, amount_cents: int)
         registration.amount_paid_eur_cents += amount_cents
 
 
+def _apply_deposit_threshold(
+    session: Session,
+    tournament: Tournament,
+    transaction: BankTransaction,
+    registration: Registration,
+    which: MatchCurrency,
+    vs: int,
+) -> None:
+    """Reaching the tournament's deposit closes the payment window rather than
+    extending it (design add-payment-modes Decision 3).
+
+    `harden-payment-matching` Decision 3 — that a partial payment never extends
+    a validity window — stands unmodified: a deposit is a threshold the
+    organizer published, not an arbitrary amount the fencer chose, so it cannot
+    renew a hold by dribbling money, and the mechanism here is discharge rather
+    than extension. Past the deposit the seating deadline is the only remaining
+    obligation, so no window may keep running against it. Each currency lane is
+    judged against its own deposit figure, never summed, exactly as totals are."""
+    if tournament.payment_mode != PaymentMode.DEPOSIT:
+        return
+    if registration.state != RegistrationState.RESERVED or registration.expires_at is None:
+        return
+    if which == "local":
+        deposit, credited = tournament.deposit_amount, registration.amount_paid_cents
+    else:
+        deposit, credited = tournament.deposit_amount_eur, registration.amount_paid_eur_cents
+    if deposit is None or credited < deposit * 100:
+        return
+    registration.expires_at = None
+    _event(
+        session, transaction, "deposit_settled",
+        f"VS {vs}: deposit of {deposit} reached, payment window closed",
+        registration,
+    )
+
+
 def _settle(
     session: Session,
     tournament: Tournament,
@@ -205,6 +242,7 @@ def _settle(
             f"VS {vs}: {amount_cents} cents {currency_code}, {remaining} cents still outstanding",
             registration,
         )
+        _apply_deposit_threshold(session, tournament, transaction, registration, which, vs)
         session.flush()
         emails.send_partial_payment_received(
             mailer, tournament, registration.fencer, registration, which

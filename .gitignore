@@ -225,4 +225,5 @@ node_modules/
 
 # Local data
 *.sqlite
+*.sqlite.bak-*
 outbox/
