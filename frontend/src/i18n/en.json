@@ -15,7 +15,8 @@
   "actions": {
     "delete": "Delete row (reversible)",
     "restore": "Restore row",
-    "removeRule": "Remove rule"
+    "removeRule": "Remove rule",
+    "moveUp": "Move up"
   },
   "import": {
     "title": "Table import",
@@ -672,8 +673,6 @@
     "namePlaceholder": "Name",
     "add": "Add member",
     "search": "Search HR",
-    "moveUp": "Move up",
-    "moveDown": "Move down",
     "rebind": "Bind to an HR profile",
     "saveAll": "Save rosters",
     "saveFailedTeams": "Could not save: {{teams}}.",

@@ -128,6 +128,10 @@ class DisciplineIn(BaseModel):
     # its own pattern (design add-field-validation D6) — see fieldtypes.py.
     slug: DisciplineSlugStr() = None
     name: SingleLineStr(constraints.DISCIPLINE_NAME_MAX_LENGTH) | None = None
+    # display order among the tournament's disciplines; omitted means "leave
+    # the current position alone" on update, "append at the end" on create
+    # (the ORM column default), since most callers never touch ordering
+    ordinal: int | None = None
     # the five taxonomy weapons are offered as suggestions, but any weapon is
     # accepted (design discipline-identity D4); gender and material stay
     # closed sets
@@ -186,6 +190,7 @@ class DisciplineOut(BaseModel):
 
     slug: str
     name: str
+    ordinal: int
     weapon: str
     gender: str
     material: str

@@ -329,7 +329,9 @@ class Tournament(Base):
         return self.eur_payments_enabled and self.local_currency != Currency.EUR
 
     owner: Mapped[Fencer | None] = relationship(foreign_keys=[owner_id])
-    disciplines: Mapped[list[Discipline]] = relationship(back_populates="tournament")
+    disciplines: Mapped[list[Discipline]] = relationship(
+        back_populates="tournament", order_by=lambda: [Discipline.ordinal, Discipline.id]
+    )
     extra_items: Mapped[list[ExtraItem]] = relationship(back_populates="tournament")
     registrations: Mapped[list[Registration]] = relationship(back_populates="tournament")
     # account-based console access rows (exposed via the /team API); distinct
@@ -355,6 +357,10 @@ class Discipline(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     tournament_id: Mapped[int] = mapped_column(ForeignKey("tournaments.id"))
+    # display order among the tournament's disciplines, organizer-set via the
+    # Setup table's up arrow; ties (e.g. a row created without one) fall back
+    # to `id`, which is what an unordered tournament already sorted by
+    ordinal: Mapped[int] = mapped_column(default=0)
     slug: Mapped[str] = mapped_column(String(30))
     name: Mapped[str] = mapped_column(String(100))
     # classification: the five taxonomy weapons are offered as suggestions,
