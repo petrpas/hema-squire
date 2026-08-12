@@ -1726,7 +1726,32 @@ label.checkbox-chip,
   color: var(--ink-faded);
 }
 
+.payment-slip-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+}
+
+.registration-lines + .payment-slip {
+  margin-top: 1rem;
+}
+
+.payment-block {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1.2rem;
+}
+
+.payment-block .param-fields {
+  flex: 1;
+  min-width: 0;
+}
+
 .payment-qr {
+  flex-shrink: 0;
   width: 10rem;
   height: 10rem;
   align-self: flex-start;

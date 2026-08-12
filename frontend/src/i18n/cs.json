@@ -685,6 +685,7 @@
     "vs": "Variabilní symbol",
     "expiresAt": "Rezervace platí do",
     "vsInMessage": "Pokud tvůj platební příkaz nemá pole VS, uveď variabilní symbol {{vs}} do zprávy pro příjemce.",
+    "message": "Zpráva pro příjemce",
     "eurAmount": "Částka v EUR",
     "eurTitle": "Platba v eurech",
     "eurHint": "QR kód v eurech platí tutéž registraci na stejný účet.",

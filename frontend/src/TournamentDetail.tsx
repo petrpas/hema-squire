@@ -5,18 +5,12 @@ import { useLocation, useNavigate, useParams } from "react-router-dom";
 
 import NotFound from "./NotFound";
 import PaidStamp from "./PaidStamp";
+import PaymentPanel from "./PaymentPanel";
 import TeamsTab from "./TeamsTab";
 import { type HomeTab } from "./FencerShell";
 import { home } from "./routes";
-import {
-  ApiError,
-  type Availability,
-  type PaymentInstructions,
-  type RegistrationDetail,
-  type TournamentDetail as TournamentDetailData,
-  api,
-} from "./api";
-import { formatMoney, formatMoneyWithEur } from "./money";
+import { type Availability, type RegistrationDetail, type TournamentDetail as TournamentDetailData, api } from "./api";
+import { formatMoneyWithEur } from "./money";
 import {
   DiscountList,
   DisciplinesInfo,
@@ -26,113 +20,6 @@ import {
   amendmentOpen,
   registrationStatus,
 } from "./TournamentFace";
-
-// the endpoint's three named refusals, plus a catch-all for anything else
-// (network error, unexpected status) — every case is shown, never silently
-// dropped (design fix-payment-instructions-visibility)
-type PaymentRefusal = "no_payment_due" | "no_bank_account" | "not_unpaid" | "generic";
-
-type PaymentPanelState =
-  | { kind: "loading" }
-  | { kind: "ready"; payment: PaymentInstructions }
-  | { kind: "refused"; reason: PaymentRefusal; status?: number };
-
-function PaymentPanel({ slug }: { slug: string }) {
-  const { t } = useTranslation();
-  const [state, setState] = useState<PaymentPanelState>({ kind: "loading" });
-
-  useEffect(() => {
-    setState({ kind: "loading" });
-    api.paymentInstructions(slug).then(
-      (payment) => setState({ kind: "ready", payment }),
-      (err) => {
-        const detail = err instanceof ApiError ? err.detail : null;
-        if (detail === "no_payment_due" || detail === "no_bank_account" || detail === "not_unpaid") {
-          setState({ kind: "refused", reason: detail });
-        } else {
-          setState({
-            kind: "refused",
-            reason: "generic",
-            status: err instanceof ApiError ? err.status : undefined,
-          });
-        }
-      },
-    );
-  }, [slug]);
-
-  if (state.kind === "loading") return null;
-
-  if (state.kind === "refused") {
-    if (state.reason === "generic") {
-      return (
-        <p className="login-error">
-          {t("payment.reason.generic", { status: state.status ?? "?" })}
-        </p>
-      );
-    }
-    // no_payment_due keeps registration.fullyQueuedHint's key so the Czech
-    // translation moves with the behaviour rather than being re-authored
-    const key =
-      state.reason === "no_payment_due" ? "registration.fullyQueuedHint" : `payment.reason.${state.reason}`;
-    return <p className="rail-hint">{t(key)}</p>;
-  }
-
-  const payment = state.payment;
-  return (
-    <section className="payment-slip">
-      <h2 className="payment-slip-title">{t("payment.title")}</h2>
-      <img
-        className="payment-qr"
-        src={`data:image/png;base64,${payment.qr_png_base64}`}
-        alt={t("payment.title")}
-      />
-      <div className="param-fields">
-        <div className="param-field">
-          <span>{t("payment.amount")}</span>
-          <strong className="data-value">
-            {formatMoney(payment.amount, payment.currency)}
-          </strong>
-        </div>
-        {payment.account_domestic && (
-          <div className="param-field">
-            <span>{t("payment.account")}</span>
-            <strong className="data-value">{payment.account_domestic}</strong>
-          </div>
-        )}
-        <div className="param-field">
-          <span>{payment.account_domestic ? t("payment.ibanLabel") : t("payment.account")}</span>
-          <strong className="data-value">{payment.iban}</strong>
-        </div>
-        <div className="param-field">
-          <span>{t("payment.vs")}</span>
-          <strong className="data-value">{payment.vs}</strong>
-        </div>
-        <div className="param-field">
-          <span>{t("payment.expiresAt")}</span>
-          <strong>{new Date(payment.expires_at ?? "").toLocaleDateString("cs")}</strong>
-        </div>
-      </div>
-      <p className="rail-hint">{t("payment.vsInMessage", { vs: payment.vs })}</p>
-
-      {/* the same registration, payable in EUR against the same account */}
-      {payment.eur_amount !== null && payment.eur_qr_png_base64 && (
-        <>
-          <h3 className="register-section">{t("payment.eurTitle")}</h3>
-          <img
-            className="payment-qr"
-            src={`data:image/png;base64,${payment.eur_qr_png_base64}`}
-            alt={t("payment.eurTitle")}
-          />
-          <div className="param-field">
-            <span>{t("payment.eurAmount")}</span>
-            <strong className="data-value">{formatMoney(payment.eur_amount, "EUR")}</strong>
-          </div>
-          <p className="rail-hint">{t("payment.eurHint")}</p>
-        </>
-      )}
-    </section>
-  );
-}
 
 function RegistrationStateTag({
   registration,

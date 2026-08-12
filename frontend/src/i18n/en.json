@@ -685,6 +685,7 @@
     "vs": "Variable symbol",
     "expiresAt": "Reservation valid until",
     "vsInMessage": "If your bank transfer has no VS field, put variable symbol {{vs}} in the payment message instead.",
+    "message": "Payment message",
     "eurAmount": "Amount in EUR",
     "eurTitle": "Pay in EUR",
     "eurHint": "The EUR code pays the same registration against the same account.",
