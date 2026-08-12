@@ -7,7 +7,7 @@ import { useAuth } from "./RequireAuth";
 import { consolePath } from "./routes";
 import { ApiError, type Account, type Tournament, type TournamentDetail, api } from "./api";
 import FieldError, { invalidProps } from "./FieldError";
-import TournamentModeDialog from "./TournamentModeDialog";
+import { TournamentModeFields } from "./TournamentModeDialog";
 import { useFieldValidation } from "./useFieldValidation";
 import { apiErrors, checkString } from "./validation";
 
@@ -32,14 +32,22 @@ function deriveSlug(name: string, dateValue: string): string {
   return YEAR_TOKEN.test(base) ? base : `${base}-${year}`;
 }
 
-function NewTournamentDialog({
-  onCreated,
+// Creating a tournament and choosing its mode used to be two modals popped
+// one after the other; they are now one window whose content swaps once the
+// tournament exists, so the organizer never sees a second window appear
+// (openspec/settings_modes.md). The tournament is still created (a real,
+// persisted record) before the mode step is shown, so a failure or dismissal
+// of the mode step can never lose it (design tournament-modes D11) — dismissal
+// just leaves it in the easy mode it was created in, same as confirming does.
+function TournamentCreateDialog({
+  onDone,
   onClose,
 }: {
-  onCreated: (tournament: TournamentDetail) => void;
+  onDone: (tournament: TournamentDetail) => void;
   onClose: () => void;
 }) {
   const { t } = useTranslation();
+  const [created, setCreated] = useState<TournamentDetail | null>(null);
   const [displayName, setDisplayName] = useState("");
   const [date, setDate] = useState("");
   const [slug, setSlug] = useState("");
@@ -67,12 +75,13 @@ function NewTournamentDialog({
     setBusy(true);
     setError(null);
     try {
-      const tournament = await api.createTournament({
-        slug,
-        display_name: displayName,
-        date,
-      });
-      onCreated(tournament);
+      setCreated(
+        await api.createTournament({
+          slug,
+          display_name: displayName,
+          date,
+        }),
+      );
     } catch (err) {
       const fieldErrors = apiErrors(err);
       if (fieldErrors.length > 0) {
@@ -90,62 +99,73 @@ function NewTournamentDialog({
   }
 
   return (
-    <div className="modal-backdrop" onClick={onClose}>
-      <form className="modal" onClick={(event) => event.stopPropagation()} onSubmit={submit}>
-        <h2>{t("picker.newTournament")}</h2>
-        <p className="tiskopis-number">{t("picker.formNumber")}</p>
-        <div className="form-fields">
-          <label className="form-field">
-            <span>{t("picker.displayName")}</span>
-            <input
-              value={displayName}
-              onChange={(event) => {
-                setDisplayName(event.target.value);
-                validation.clearIfValid("display_name", displayNameCheck);
-              }}
-              onBlur={() => validation.touch("display_name", displayNameCheck)}
-              required
-              autoFocus
-              {...invalidProps("display_name", validation.errors.display_name)}
-            />
-            <FieldError field="display_name" error={validation.errors.display_name} />
-          </label>
-          <label className="form-field">
-            <span>{t("picker.date")}</span>
-            <input
-              type="date"
-              value={date}
-              onChange={(event) => setDate(event.target.value)}
-              required
-            />
-          </label>
-          <label className="form-field">
-            <span>{t("picker.slug")}</span>
-            <input
-              value={slug}
-              onChange={(event) => {
-                setSlug(event.target.value);
-                setSlugEdited(true);
-                validation.clearIfValid("slug", slugCheck);
-              }}
-              onBlur={() => validation.touch("slug", slugCheck)}
-              pattern="[a-z0-9][a-z0-9-]{1,98}"
-              required
-              {...invalidProps("slug", validation.errors.slug)}
-            />
-            <FieldError field="slug" error={validation.errors.slug} />
-          </label>
+    <div className="modal-backdrop" onClick={created ? () => onDone(created) : onClose}>
+      {created ? (
+        <div className="modal" onClick={(event) => event.stopPropagation()}>
+          <h2>{t("setup.mode.title")}</h2>
+          <TournamentModeFields
+            detail={created}
+            onApplied={onDone}
+            onClose={() => onDone(created)}
+          />
         </div>
-        {error && <p className="login-error">{error}</p>}
-        <div className="modal-actions">
-          <button type="button" className="secondary" onClick={onClose}>
-            {t("common.cancel")}
-          </button>
-          <button type="submit" className="btn-primary" disabled={busy || !slug}>
-            {t("picker.create")}
-          </button>
-        </div>
-      </form>
+      ) : (
+        <form className="modal" onClick={(event) => event.stopPropagation()} onSubmit={submit}>
+          <h2>{t("picker.newTournament")}</h2>
+          <p className="tiskopis-number">{t("picker.formNumber")}</p>
+          <div className="form-fields">
+            <label className="form-field">
+              <span>{t("picker.displayName")}</span>
+              <input
+                value={displayName}
+                onChange={(event) => {
+                  setDisplayName(event.target.value);
+                  validation.clearIfValid("display_name", displayNameCheck);
+                }}
+                onBlur={() => validation.touch("display_name", displayNameCheck)}
+                required
+                autoFocus
+                {...invalidProps("display_name", validation.errors.display_name)}
+              />
+              <FieldError field="display_name" error={validation.errors.display_name} />
+            </label>
+            <label className="form-field">
+              <span>{t("picker.date")}</span>
+              <input
+                type="date"
+                value={date}
+                onChange={(event) => setDate(event.target.value)}
+                required
+              />
+            </label>
+            <label className="form-field">
+              <span>{t("picker.slug")}</span>
+              <input
+                value={slug}
+                onChange={(event) => {
+                  setSlug(event.target.value);
+                  setSlugEdited(true);
+                  validation.clearIfValid("slug", slugCheck);
+                }}
+                onBlur={() => validation.touch("slug", slugCheck)}
+                pattern="[a-z0-9][a-z0-9-]{1,98}"
+                required
+                {...invalidProps("slug", validation.errors.slug)}
+              />
+              <FieldError field="slug" error={validation.errors.slug} />
+            </label>
+          </div>
+          {error && <p className="login-error">{error}</p>}
+          <div className="modal-actions">
+            <button type="button" className="secondary" onClick={onClose}>
+              {t("common.cancel")}
+            </button>
+            <button type="submit" className="btn-primary" disabled={busy || !slug}>
+              {t("picker.create")}
+            </button>
+          </div>
+        </form>
+      )}
     </div>
   );
 }
@@ -156,11 +176,6 @@ export default function TournamentPicker() {
   const { onLogout } = useAuth();
   const [tournaments, setTournaments] = useState<Tournament[] | null>(null);
   const [creating, setCreating] = useState(false);
-  // The tournament the mode dialog is open on: creation takes two dialogs,
-  // and the second only opens once the tournament exists, so a failure to
-  // choose a mode can never lose a successfully created tournament
-  // (design tournament-modes D11).
-  const [choosingMode, setChoosingMode] = useState<TournamentDetail | null>(null);
   const [account, setAccount] = useState<Account | null>(null);
 
   useEffect(() => {
@@ -207,21 +222,12 @@ export default function TournamentPicker() {
         )}
       </div>
       {creating && (
-        <NewTournamentDialog
+        <TournamentCreateDialog
           onClose={() => setCreating(false)}
-          onCreated={(tournament) => {
+          onDone={(tournament) => {
             setCreating(false);
-            setChoosingMode(tournament);
+            navigate(consolePath(tournament.slug, "setup"));
           }}
-        />
-      )}
-      {choosingMode && (
-        <TournamentModeDialog
-          detail={choosingMode}
-          // dismissing leaves the tournament in the easy mode it was created
-          // in and opens Setup exactly as confirming does
-          onClose={() => navigate(consolePath(choosingMode.slug, "setup"))}
-          onApplied={() => navigate(consolePath(choosingMode.slug, "setup"))}
         />
       )}
     </div>

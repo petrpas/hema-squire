@@ -645,6 +645,7 @@ button.secondary:disabled {
 
   .setup-panel-body {
     overflow-y: visible;
+    overflow-x: visible;
   }
 
   .setup-preview {
@@ -946,8 +947,9 @@ button.secondary:disabled {
   display: none;
   position: absolute;
   z-index: 5;
-  bottom: calc(100% + 0.3rem);
-  left: 0;
+  top: calc(100% + 0.3rem);
+  left: 50%;
+  transform: translateX(-50%);
   width: max-content;
   max-width: 16rem;
   padding: 0.5rem 0.6rem;
@@ -967,14 +969,19 @@ button.secondary:disabled {
   display: block;
 }
 
-/* Inside a sticky table header the box has no room above it — open it over
-   the rows instead, and lift its cell clear of the sibling headers' shared
-   z-index while it is open (design refine-detail-and-setup-ui D6). */
-.sheet-table thead .help-hint-box {
-  top: calc(100% + 0.3rem);
-  bottom: auto;
+/* Centered under the marker, the box can still reach past a narrow scrolling
+   container at either edge; clip rather than grow a horizontal scrollbar over
+   it, which otherwise shakes the container's content in and out as hints
+   open and close (openspec/settings_modes.md). Both containers scroll
+   vertically only, so clipping the horizontal axis loses nothing. */
+.modal,
+.setup-panel-body {
+  overflow-x: hidden;
 }
 
+/* Lift a sticky table header's cell clear of the sibling headers' shared
+   z-index while its hint is open, so the box isn't cut off by the next
+   header (design refine-detail-and-setup-ui D6). */
 .sheet-table thead th:has(.help-hint-marker:hover),
 .sheet-table thead th:has(.help-hint-marker:focus-within) {
   z-index: 2;

@@ -54,7 +54,11 @@ function inUse(usage: FeatureUsage, feature: keyof TournamentMode): boolean {
   return usage[FEATURE_NAMES[feature] as "schedule" | "teams" | "extras"] > 0;
 }
 
-export default function TournamentModeDialog({
+/** The mode picker itself, with no modal shell of its own: used standalone
+ *  by {@link TournamentModeDialog} below and embedded directly into the
+ *  tournament creation dialog's own shell, so creating a tournament never
+ *  pops a second window over the first (openspec/settings_modes.md). */
+export function TournamentModeFields({
   detail,
   onApplied,
   onClose,
@@ -112,10 +116,8 @@ export default function TournamentModeDialog({
   }
 
   return (
-    <div className="modal-backdrop" onClick={onClose}>
-      <div className="modal" onClick={(event) => event.stopPropagation()}>
-        <h2>{t("setup.mode.title")}</h2>
-        {confirming ? (
+    <>
+      {confirming ? (
           <>
             <p>{t("setup.mode.confirmIntro")}</p>
             <ul className="detail-list">
@@ -184,9 +186,11 @@ export default function TournamentModeDialog({
                       <HelpHint text={t(`setup.mode.hint.${FEATURE_NAMES[feature]}`)} />
                     </label>
                   ))}
-                  {isEasyMode(features) && (
-                    <p className="rail-hint">{t("setup.mode.nothingChosen")}</p>
-                  )}
+                  {/* shown regardless of which boxes are ticked, not just when
+                      none are: toggling it in and out with the selection
+                      resized the modal on every click and read as flicker
+                      (openspec/settings_modes.md) */}
+                  <p className="rail-hint">{t("setup.mode.nothingChosen")}</p>
                 </div>
               )}
             </div>
@@ -205,6 +209,27 @@ export default function TournamentModeDialog({
             {confirming ? t("setup.mode.confirm") : t("setup.mode.apply")}
           </button>
         </div>
+    </>
+  );
+}
+
+/** Standalone mode dialog, opened from Settings (`OTHER > TOURNAMENT SETTINGS
+ *  MODE`) once a tournament already exists. */
+export default function TournamentModeDialog({
+  detail,
+  onApplied,
+  onClose,
+}: {
+  detail: TournamentDetail;
+  onApplied: (updated: TournamentDetail) => void;
+  onClose: () => void;
+}) {
+  const { t } = useTranslation();
+  return (
+    <div className="modal-backdrop" onClick={onClose}>
+      <div className="modal" onClick={(event) => event.stopPropagation()}>
+        <h2>{t("setup.mode.title")}</h2>
+        <TournamentModeFields detail={detail} onApplied={onApplied} onClose={onClose} />
       </div>
     </div>
   );
