@@ -1,0 +1,25 @@
+Production deployment for HEMA Squire — a single Hetzner CX23 running the app,
+Caddy and Litestream under docker compose. The reasoning behind that shape is in
+openspec/changes/add-deployment/design.md; the operational steps are in tasks.md
+of the same directory.
+
+Files
+  Dockerfile          three stages: frontend build, backend, Caddy with the SPA
+  docker-compose.yml  app + web + litestream; only `app` sees the full .env
+  Caddyfile           TLS, SPA fallback, /api/* proxied
+  litestream.yml      continuous WAL replication, 28-day retention
+  cloud-init.yaml     host bootstrap (SSH hardening, Docker, unattended upgrades)
+  deploy.sh           git pull && docker compose up -d --build, over SSH
+  restore.sh          restore from the replica (drill and real recovery)
+  .env.example        every variable; the filled copy also lives in a password
+                      manager, because a new host needs it to come up
+  secrets/            service-account JSON for the Sheets export; may be empty
+
+Restore drill log
+  A restore is a hypothesis until it has been performed on a machine other than
+  production. Record each drill here, and repeat it when the stack changes
+  materially (Litestream version, storage provider, database layout).
+
+  date        performed by   restored to   result
+  ----------  -------------  ------------  ---------------------------------
+  (pending — task 5.1)

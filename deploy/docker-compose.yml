@@ -1,0 +1,68 @@
+# Run from the repo root or via:  docker compose -f deploy/docker-compose.yml <cmd>
+# Expects deploy/.env (see .env.example). Compose loads that file for ${...}
+# interpolation because the project directory is deploy/.
+#
+# Only `app` reads the whole environment file. Caddy and Litestream get the
+# handful of variables they actually need, so the token-signing key and the
+# SMTP password stay in one container instead of three.
+
+services:
+  app:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+      target: backend
+    env_file: .env
+    volumes:
+      - data:/data
+      # service-account JSON for the Sheets export; the directory is created by
+      # task 4.1 and may stay empty, which leaves the export disabled.
+      - ./secrets:/secrets:ro
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health')"]
+      interval: 30s
+      timeout: 5s
+      start_period: 60s
+    # No ports: only Caddy and Litestream ever touch this container.
+
+  web:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+      target: web
+    environment:
+      SITE_ADDRESS: ${SITE_ADDRESS:-localhost}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - caddy_data:/data      # certificates survive rebuilds
+      - caddy_config:/config
+    depends_on:
+      - app
+    restart: unless-stopped
+
+  litestream:
+    # Pinned exactly, and litestream.yml is written for this line: 0.5 replaced
+    # the remote format (LTX) and the config shape, so image and config move
+    # together — and restore.sh must use the same tag.
+    image: docker.io/litestream/litestream:0.5.16
+    command: replicate
+    environment:
+      REPLICA_ENDPOINT: ${REPLICA_ENDPOINT}
+      REPLICA_BUCKET: ${REPLICA_BUCKET}
+      REPLICA_REGION: ${REPLICA_REGION:-auto}
+      LITESTREAM_ACCESS_KEY_ID: ${LITESTREAM_ACCESS_KEY_ID}
+      LITESTREAM_SECRET_ACCESS_KEY: ${LITESTREAM_SECRET_ACCESS_KEY}
+    volumes:
+      - data:/data
+      - ./litestream.yml:/etc/litestream.yml:ro
+    depends_on:
+      - app
+    restart: unless-stopped
+
+volumes:
+  data:
+  caddy_data:
+  caddy_config:

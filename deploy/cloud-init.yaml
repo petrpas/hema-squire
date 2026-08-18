@@ -1,0 +1,40 @@
+#cloud-config
+# Hetzner user data for the production host. Pair it with a Hetzner Cloud
+# Firewall admitting only 22/80/443 — the firewall lives outside the host, so
+# Docker's iptables rewriting cannot widen the perimeter.
+
+# cloud-init does not create groups implicitly, and Docker (which would create
+# `docker`) is installed later in runcmd — so the group is declared here first.
+# Getting this wrong makes useradd fail, and on a key-only host with root login
+# disabled that means no SSH at all: recoverable only through the web console.
+groups:
+  - docker
+
+users:
+  - name: squire
+    groups: [sudo, docker]
+    shell: /bin/bash
+    sudo: ["ALL=(ALL) NOPASSWD:ALL"]
+    ssh_authorized_keys:
+      - "REPLACE_WITH_YOUR_SSH_PUBLIC_KEY"
+
+package_update: true
+package_upgrade: true
+packages:
+  - unattended-upgrades
+  - git
+
+write_files:
+  - path: /etc/ssh/sshd_config.d/99-hardening.conf
+    content: |
+      PasswordAuthentication no
+      PermitRootLogin no
+      KbdInteractiveAuthentication no
+
+runcmd:
+  - curl -fsSL https://get.docker.com | sh
+  - systemctl enable --now docker
+  - dpkg-reconfigure -f noninteractive unattended-upgrades
+  - systemctl restart ssh
+  # left empty: task 4.1 clones into it, and git refuses a non-empty target
+  - mkdir -p /opt/hema-squire && chown squire:squire /opt/hema-squire

@@ -1,0 +1,27 @@
+{$SITE_ADDRESS:localhost} {
+	encode zstd gzip
+
+	handle /api/* {
+		reverse_proxy app:8000 {
+			# Overwrite rather than append: a client that sends its own
+			# X-Forwarded-For must not be able to choose the address the
+			# login throttle counts against. Caddy's default is to append the
+			# peer to whatever the client sent, leaving two values and making
+			# the real one depend on which end uvicorn reads.
+			#
+			# `caddy validate` warns this is unnecessary — that lint fires on
+			# any header_up of X-Forwarded-For and assumes the goal is
+			# passthrough. Here the goal is replacement, so the warning is
+			# expected. Deleting the line to silence it restores the appended,
+			# client-influenced header.
+			header_up X-Forwarded-For {remote_host}
+		}
+	}
+
+	handle {
+		root * /srv
+		# client-side routing: unknown paths fall back to the SPA shell
+		try_files {path} /index.html
+		file_server
+	}
+}

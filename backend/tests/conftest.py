@@ -2,6 +2,12 @@ import os
 
 os.environ["HEMA_SQUIRE_SCHEDULER_ENABLED"] = "false"
 os.environ["HEMA_SQUIRE_HR_AUTO_REFRESH"] = "false"
+# every test boots the app through TestClient, which runs the lifespan; without
+# this the dev-secret refusal in app.main fails the whole suite
+os.environ["HEMA_SQUIRE_DEBUG"] = "true"
+# the suite signs up and logs in far more often than a minute's throttle allows,
+# all from one address; test_auth_throttle enables the limiter deliberately
+os.environ["HEMA_SQUIRE_RATE_LIMIT_ENABLED"] = "false"
 
 import pytest
 from fastapi.testclient import TestClient
@@ -9,7 +15,7 @@ from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session
 from sqlalchemy.pool import StaticPool
 
-from app.db import Base, get_session
+from app.db import Base, apply_sqlite_pragmas, get_session
 from app.hr_index import get_hr_index, stub_index
 from app.main import app
 from app.models import Fencer, Role
@@ -20,6 +26,9 @@ def engine():
     engine = create_engine(
         "sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool
     )
+    # the same pragmas production runs on — notably foreign_keys=ON, so an
+    # orphan write fails here rather than on the deployment
+    apply_sqlite_pragmas(engine)
     Base.metadata.create_all(engine)
     return engine
 

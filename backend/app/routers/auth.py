@@ -1,6 +1,6 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -8,13 +8,16 @@ from app.auth import create_token, hash_password, verify_password
 from app.db import get_session
 from app.hr_index import HRIndex, get_hr_index
 from app.models import Fencer
+from app.ratelimit import limiter
 from app.schemas import LoginIn, SignupIn, TokenOut
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
 
 @router.post("/signup", response_model=TokenOut, status_code=201)
+@limiter.limit("3/minute")
 def signup(
+    request: Request,
     data: SignupIn,
     session: Annotated[Session, Depends(get_session)],
     hr: Annotated[HRIndex, Depends(get_hr_index)],
@@ -53,7 +56,10 @@ def signup(
 
 
 @router.post("/login", response_model=TokenOut)
-def login(data: LoginIn, session: Annotated[Session, Depends(get_session)]):
+@limiter.limit("5/minute")
+def login(
+    request: Request, data: LoginIn, session: Annotated[Session, Depends(get_session)]
+):
     fencer = session.scalar(select(Fencer).where(Fencer.email == data.email))
     if fencer is None or not fencer.password_hash or not verify_password(
         data.password, fencer.password_hash

@@ -1,0 +1,32 @@
+# Docker does not honour .gitignore: without this file the build context
+# carries the host virtualenv over the image's own (breaking the interpreter
+# paths), and bakes local databases and secrets into the image.
+
+# environments and dependency trees — rebuilt inside the image
+**/.venv
+**/node_modules
+**/dist
+
+# local state
+**/*.sqlite
+**/*.sqlite.bak-*
+**/outbox
+**/.env
+
+# caches and tooling
+**/__pycache__
+**/*.pyc
+**/.pytest_cache
+**/.ruff_cache
+**/.mypy_cache
+.git
+.github
+.idea
+.claude
+
+# not part of any image
+openspec
+docs
+v1_spec
+scripts
+*.md
