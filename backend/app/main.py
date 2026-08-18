@@ -4,14 +4,17 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException
 from fastapi.exceptions import RequestValidationError
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
 
-from app.config import settings
+from app.config import DEV_SECRET_KEY, settings
 from app.errors import (
     FieldValidationError,
     field_validation_error_handler,
     http_exception_handler,
     validation_exception_handler,
 )
+from app.ratelimit import limiter
 from app.routers import (
     accounts,
     admin,
@@ -28,6 +31,21 @@ from app.routers import (
 from app.scheduler import scheduler_loop
 
 logger = logging.getLogger(__name__)
+
+
+def _refuse_dev_secret_key() -> None:
+    """Refuse to serve tokens signed with the published development key.
+
+    A missing HEMA_SQUIRE_SECRET_KEY is silent by nature: everything works, and
+    the only symptom is that anyone can mint a token for any account, Owner
+    included. So it is a refusal to start rather than a warning, and debug mode
+    — dev.sh and the test suite — is the single explicit exemption.
+    """
+    if settings.secret_key == DEV_SECRET_KEY and not settings.debug:
+        raise RuntimeError(
+            "HEMA_SQUIRE_SECRET_KEY is still the published development default. "
+            "Set it (openssl rand -hex 32), or set HEMA_SQUIRE_DEBUG=1 for local work."
+        )
 
 
 def _warn_when_owner_unmatched() -> None:
@@ -69,6 +87,7 @@ def _populate_hr_index_if_empty() -> None:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    _refuse_dev_secret_key()
     _warn_when_owner_unmatched()
     tasks = []
     if settings.scheduler_enabled:
@@ -83,6 +102,10 @@ async def lifespan(app: FastAPI):
 
 def create_app() -> FastAPI:
     app = FastAPI(title="HEMA Squire", lifespan=lifespan)
+    # slowapi reads the limiter off app.state and needs its own handler for the
+    # 429; the decorated routes are in routers/auth.py
+    app.state.limiter = limiter
+    app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
     app.add_exception_handler(RequestValidationError, validation_exception_handler)
     app.add_exception_handler(HTTPException, http_exception_handler)
     app.add_exception_handler(FieldValidationError, field_validation_error_handler)

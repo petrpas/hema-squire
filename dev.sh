@@ -15,6 +15,9 @@ set -euo pipefail
 cd "$(dirname "$0")"
 
 export HEMA_SQUIRE_OWNER_EMAIL="${HEMA_SQUIRE_OWNER_EMAIL:-petr.pascenko@gmail.com}"
+# local work runs on the repository's published dev signing key, which the app
+# otherwise refuses to start on (app.main._refuse_dev_secret_key)
+export HEMA_SQUIRE_DEBUG="${HEMA_SQUIRE_DEBUG:-1}"
 
 SEED=false
 [[ "${1:-}" == "--seed" ]] && SEED=true

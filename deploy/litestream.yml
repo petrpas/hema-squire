@@ -1,0 +1,28 @@
+# Continuous replication of the production database to S3-compatible storage.
+# Written for Litestream 0.5.x (the maintained line): one `replica` per db, and
+# retention lives in the global `snapshot` block — the 0.3 shape (`replicas:`
+# list, per-replica duration `retention:`) is not read by 0.5.
+#
+# Retention is deliberately short (28 days = 672h; days are not a valid unit):
+# point-in-time history retains deleted rows, so backup retention is part of
+# the data-deletion story.
+snapshot:
+  interval: 24h
+  retention: 672h
+
+# Reports gaps or unsorted transaction files to the log. The alert that actually
+# pages is the snapshot-age check in task 5.2; this catches quieter corruption.
+validation:
+  interval: 6h
+
+dbs:
+  - path: /data/hema_squire.sqlite
+    replica:
+      type: s3
+      endpoint: ${REPLICA_ENDPOINT}
+      bucket: ${REPLICA_BUCKET}
+      region: ${REPLICA_REGION}
+      path: hema-squire
+      access-key-id: ${LITESTREAM_ACCESS_KEY_ID}
+      secret-access-key: ${LITESTREAM_SECRET_ACCESS_KEY}
+      sync-interval: 1s
