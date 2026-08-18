@@ -10,7 +10,6 @@ turn into positive coverage there; that coverage is added fresh here.
 
 import io
 from datetime import UTC, datetime, timedelta
-from decimal import Decimal
 
 import pytest
 from sqlalchemy import select
@@ -18,7 +17,7 @@ from sqlalchemy import select
 from app.db import get_session
 from app.mail import get_mailer
 from app.main import app
-from app.models import PaymentEvent, RefundState, Registration, RegistrationState, Tournament
+from app.models import PaymentEvent, RefundState, Registration, RegistrationState
 from tests.conftest import enable_payments, publish
 
 IBAN = "CZ6508000000192000145399"
@@ -368,7 +367,7 @@ def test_payment_inside_grace_with_seat_taken_stays_flagged_no_substitute_displa
     expire(initial["vs"], hours_ago=12)
 
     other = auth_headers(email="f2@example.com", name="F2")
-    other_reg = register(client, other).json()  # takes the freed seat
+    register(client, other)  # takes the freed seat
 
     fio.transactions = [transfer(initial["vs"], 1000)]
     poll = client.post("/api/tournaments/cup/payments/fio-poll", headers=organizer).json()

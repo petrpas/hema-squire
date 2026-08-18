@@ -7,7 +7,7 @@ from sqlalchemy import select
 from app.db import get_session
 from app.mail import get_mailer
 from app.main import app
-from app.models import PaymentEvent, RefundState, Registration, RegistrationState, Rule
+from app.models import PaymentEvent, Registration, RegistrationState
 from tests.conftest import enable_payments, publish
 
 
@@ -285,7 +285,7 @@ def test_manual_link_credits_the_transactions_own_currency(client, auth_headers,
     setup_with_eur(client, organizer)
     fencer, vs = enroll(client, auth_headers)
 
-    csv = make_csv([f"1;01.08.2026;40,00;EUR;;;;;MUELLER;DE99"])
+    csv = make_csv(["1;01.08.2026;40,00;EUR;;;;;MUELLER;DE99"])
     client.post(
         "/api/tournaments/cup/payments/import-statement",
         files={"file": ("v.csv", io.BytesIO(csv), "text/csv")},
@@ -437,8 +437,14 @@ def test_labelled_vs_matches_outside_and_inside_message(client, auth_headers, ma
         headers=organizer,
     ).json()
     assert result["matched"] == 2
-    assert client.get("/api/tournaments/cup/my-registration", headers=fencer_a).json()["state"] == "paid"
-    assert client.get("/api/tournaments/cup/my-registration", headers=fencer_b).json()["state"] == "paid"
+    assert (
+        client.get("/api/tournaments/cup/my-registration", headers=fencer_a).json()["state"]
+        == "paid"
+    )
+    assert (
+        client.get("/api/tournaments/cup/my-registration", headers=fencer_b).json()["state"]
+        == "paid"
+    )
 
 
 def test_bare_vs_matches_only_when_amount_covers_outstanding(client, auth_headers, mailbox):
@@ -558,7 +564,8 @@ def test_organizer_resolved_transaction_untouched_by_later_pass(client, auth_hea
     fencer, vs = enroll(client, auth_headers)
 
     import_rows(client, organizer, [f"1;01.08.2026;1 000,00;CZK;{vs};;;;;"])  # paid
-    import_rows(client, organizer, [f"2;02.08.2026;1 000,00;CZK;{vs};;;;;"])  # flagged: registration_paid
+    # flagged: registration_paid
+    import_rows(client, organizer, [f"2;02.08.2026;1 000,00;CZK;{vs};;;;;"])
     transaction_id = client.get(
         "/api/tournaments/cup/payments/unmatched", headers=organizer
     ).json()[0]["id"]
@@ -573,7 +580,10 @@ def test_organizer_resolved_transaction_untouched_by_later_pass(client, auth_hea
     # a later pass (any ingest triggers one) must not reconsider it
     import_rows(client, organizer, [f"2;02.08.2026;1,00;CZK;{vs};;;;;"])
     after = [
-        t for t in client.get("/api/tournaments/cup/payments/transactions", headers=organizer).json()
+        t
+        for t in client.get(
+            "/api/tournaments/cup/payments/transactions", headers=organizer
+        ).json()
         if t["id"] == transaction_id
     ][0]
     assert after == before
@@ -611,12 +621,12 @@ def test_reevaluated_flagged_transaction_not_credited_twice(client, auth_headers
     session.commit()
 
     # any ingest call re-runs the matching pass over what's still flagged
-    reeval = import_rows(client, organizer, [f"2;02.08.2026;1,00;CZK;9999999;;;;;"])
+    reeval = import_rows(client, organizer, ["2;02.08.2026;1,00;CZK;9999999;;;;;"])
     assert reeval["matched"] == 1
     state = client.get("/api/tournaments/cup/my-registration", headers=fencer).json()
     assert state["state"] == "paid"
 
     # a further pass must not re-credit the now-matched transaction
-    import_rows(client, organizer, [f"3;03.08.2026;1,00;CZK;9999998;;;;;"])
+    import_rows(client, organizer, ["3;03.08.2026;1,00;CZK;9999998;;;;;"])
     state_after = client.get("/api/tournaments/cup/my-registration", headers=fencer).json()
     assert state_after == state

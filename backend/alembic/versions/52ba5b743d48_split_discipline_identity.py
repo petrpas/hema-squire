@@ -19,9 +19,8 @@ Create Date: 2026-08-02
 """
 
 import sqlalchemy as sa
-from sqlalchemy import column, table
-
 from alembic import op
+from sqlalchemy import column, table
 
 revision = "52ba5b743d48"
 down_revision = "a3f7c9d21e08"

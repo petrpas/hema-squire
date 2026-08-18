@@ -334,7 +334,11 @@ def selection_discounts(
     breakdown = []
     for i, outcome in enumerate(local_outcomes):
         is_fixed = outcome.effect.get("kind") == "fixed"
-        deducted_eur = eur_outcomes[i].deducted if outcome.applied and is_fixed and eur_outcomes else None
+        deducted_eur = (
+            eur_outcomes[i].deducted
+            if outcome.applied and is_fixed and eur_outcomes
+            else None
+        )
         breakdown.append(
             DiscountBreakdown(
                 name=outcome.name,

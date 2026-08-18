@@ -12,7 +12,6 @@ legacy pricing behavior.
 """
 
 import sqlalchemy as sa
-
 from alembic import op
 
 revision = "a7c41e90d2b5"

@@ -29,8 +29,8 @@ total typed by an organizer after this deploys is lost on downgrade, so
 downgrade is safe only immediately after deploying — never once organizers
 have started pricing in EUR.
 """
+from collections.abc import Sequence
 from decimal import ROUND_HALF_UP, Decimal
-from typing import Sequence, Union
 
 import sqlalchemy as sa
 from alembic import op
@@ -38,9 +38,9 @@ from sqlalchemy import column, table
 
 # revision identifiers, used by Alembic.
 revision: str = '3ebc04d896eb'
-down_revision: Union[str, Sequence[str], None] = 'df6a74c06dfa'
-branch_labels: Union[str, Sequence[str], None] = None
-depends_on: Union[str, Sequence[str], None] = None
+down_revision: str | Sequence[str] | None = 'df6a74c06dfa'
+branch_labels: str | Sequence[str] | None = None
+depends_on: str | Sequence[str] | None = None
 
 _CURRENCY_TYPE = sa.Enum('CZK', 'EUR', name='currency', native_enum=False, length=30)
 

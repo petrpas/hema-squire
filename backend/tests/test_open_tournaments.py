@@ -124,8 +124,12 @@ def test_open_registration_status_opens_on_and_closed(client, auth_headers):
     organizer = auth_headers()
     fencer = auth_headers(email="f1@example.com", name="F1")
 
-    make_open_tournament(client, organizer, "future-open", registration_opens=str(TODAY + timedelta(days=1)))
-    make_open_tournament(client, organizer, "past-close", registration_closes=str(TODAY - timedelta(days=1)))
+    make_open_tournament(
+        client, organizer, "future-open", registration_opens=str(TODAY + timedelta(days=1))
+    )
+    make_open_tournament(
+        client, organizer, "past-close", registration_closes=str(TODAY - timedelta(days=1))
+    )
 
     listed = client.get("/api/tournaments/open", headers=fencer).json()
     future_open = next(t for t in listed if t["slug"] == "future-open")

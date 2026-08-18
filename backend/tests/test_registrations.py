@@ -269,7 +269,14 @@ def test_price_preview_fixed_discount_reported_in_both_currencies(client, auth_h
     # then enable EUR mode as a separate, already-complete step
     client.patch(
         "/api/tournaments/cup/disciplines/LS",
-        json={"slug": "LS", "weapon": "LS", "capacity": 2, "fee": 800, "fee_early": 600, "fee_eur": 32},
+        json={
+            "slug": "LS",
+            "weapon": "LS",
+            "capacity": 2,
+            "fee": 800,
+            "fee_early": 600,
+            "fee_eur": 32,
+        },
         headers=organizer,
     )
     client.patch(
@@ -320,7 +327,14 @@ def test_price_preview_percentage_discount_carries_no_eur_value(client, auth_hea
     # (design D3 of add-explicit-publishing)
     client.patch(
         "/api/tournaments/cup/disciplines/LS",
-        json={"slug": "LS", "weapon": "LS", "capacity": 2, "fee": 800, "fee_early": 600, "fee_eur": 32},
+        json={
+            "slug": "LS",
+            "weapon": "LS",
+            "capacity": 2,
+            "fee": 800,
+            "fee_early": 600,
+            "fee_eur": 32,
+        },
         headers=organizer,
     )
     client.patch(

@@ -168,7 +168,11 @@ def test_qualification_requires_criteria_when_not_open(client, auth_headers):
     assert rejected.status_code == 422
     assert rejected.json()["detail"] == {
         "errors": [
-            {"field": "qualification_criteria", "code": "qualification_criteria_required", "params": {}}
+            {
+                "field": "qualification_criteria",
+                "code": "qualification_criteria_required",
+                "params": {},
+            }
         ]
     }
 

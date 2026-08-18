@@ -23,6 +23,7 @@ from app.hr_match import HRMatchResult, get_hr_matcher
 from app.importer import ParsedFencer, get_import_parser
 from app.main import app
 
+
 # the v1 archive predates slugs: `disciplines` entries are {weapon, gender,
 # material} dicts. This reproduces the taxonomy code they described (the old
 # importer.ParsedDiscipline.code property) purely to replay/compare archived

@@ -37,9 +37,7 @@ from app.schemas import (
     PricePreviewOut,
     RegisterIn,
     RegistrationOut,
-    RosterMemberOut,
     RosterUpdateIn,
-    TeamEntryIn,
     TeamEntryOut,
 )
 from app.taxonomy import WEAPONS
@@ -306,7 +304,10 @@ def _resolve_teams(tournament: Tournament, entries) -> list[tuple[Discipline, ob
 
 
 def _team_waitlist_flags(
-    session, team_entries: list[tuple[Discipline, object]], *, exclude_registration_id: int | None = None
+    session,
+    team_entries: list[tuple[Discipline, object]],
+    *,
+    exclude_registration_id: int | None = None,
 ) -> list[bool]:
     """One waitlisted flag per team entry, in submission order, assigning
     remaining capacity sequentially so two teams entered into the same
@@ -441,7 +442,7 @@ def register(
     # (retrying after a `Registration.vs` collision) cannot also undo the
     # allocation and hand out the same number twice. Each attempt therefore
     # starts from a session with nothing else pending (design Decision 3).
-    for attempt in range(3):
+    for _attempt in range(3):
         vs = next_vs(session, tournament)
 
         if existing is not None:
@@ -516,9 +517,14 @@ def register(
             if settled
             else _team_waitlist_flags(session, team_entries)
         )
-        for (discipline, team_in), waitlisted in zip(team_entries, team_flags):
+        for (discipline, team_in), waitlisted in zip(team_entries, team_flags, strict=True):
             registration.teams.append(
-                Team(tournament_id=tournament.id, discipline=discipline, name=team_in.name, waitlisted=waitlisted)
+                Team(
+                    tournament_id=tournament.id,
+                    discipline=discipline,
+                    name=team_in.name,
+                    waitlisted=waitlisted,
+                )
             )
         try:
             session.flush()
@@ -687,7 +693,7 @@ def amend_registration(
                 option_value=value or None,
             )
         )
-    for (discipline, team_in), waitlisted in zip(team_entries, team_flags):
+    for (discipline, team_in), waitlisted in zip(team_entries, team_flags, strict=True):
         if team_in.id is not None and team_in.id in keep_ids:
             team = existing_teams[team_in.id]
             team.discipline = discipline
@@ -695,7 +701,12 @@ def amend_registration(
             team.waitlisted = waitlisted
         else:
             registration.teams.append(
-                Team(tournament_id=tournament.id, discipline=discipline, name=team_in.name, waitlisted=waitlisted)
+                Team(
+                    tournament_id=tournament.id,
+                    discipline=discipline,
+                    name=team_in.name,
+                    waitlisted=waitlisted,
+                )
             )
     session.flush()
 

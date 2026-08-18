@@ -102,7 +102,9 @@ def _clean_multiline(value: object) -> object:
     return _clean_string(value, collapse_whitespace=False)
 
 
-def SingleLineStr(max_length: int, *, min_length: int | None = None, pattern: str | None = None) -> type:
+def SingleLineStr(
+    max_length: int, *, min_length: int | None = None, pattern: str | None = None
+) -> type:
     """A trimmed, whitespace-collapsed, control-character-free string bounded
     to `max_length` (design D4). Used for every single-line editable field.
     Every constraint is a single `Field(...)` call — stacking a second one at

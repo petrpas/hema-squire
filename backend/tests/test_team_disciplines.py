@@ -133,7 +133,16 @@ def test_discipline_scoped_discount_reaches_team_fee():
     # one individual discipline entry (satisfies the count condition) plus one team
     from app.models import RegistrationDiscipline
 
-    individual = Discipline(tournament=tournament, slug="SB", name="SB", weapon="SB", gender="", material="", capacity=10, fee=1000)
+    individual = Discipline(
+        tournament=tournament,
+        slug="SB",
+        name="SB",
+        weapon="SB",
+        gender="",
+        material="",
+        capacity=10,
+        fee=1000,
+    )
     team = Team(discipline=discipline, name="Wolves", waitlisted=False)
     registration = Registration(
         tournament=tournament,
@@ -160,7 +169,16 @@ def test_team_entry_does_not_satisfy_discipline_count_condition():
     discipline = team_discipline(tournament, fee=3000)
     from app.models import RegistrationDiscipline
 
-    individual = Discipline(tournament=tournament, slug="SB", name="SB", weapon="SB", gender="", material="", capacity=10, fee=1000)
+    individual = Discipline(
+        tournament=tournament,
+        slug="SB",
+        name="SB",
+        weapon="SB",
+        gender="",
+        material="",
+        capacity=10,
+        fee=1000,
+    )
     team = Team(discipline=discipline, name="Wolves", waitlisted=False)
     registration = Registration(
         tournament=tournament,
@@ -334,7 +352,10 @@ def test_full_individual_discipline_unaffected_by_teams(client, auth_headers):
         json={"disciplines": [], "teams": [{"slug": "LS", "name": "Wolves"}]},
         headers=b,
     )
-    availability = {row["slug"]: row for row in client.get("/api/tournaments/cup/availability").json()}
+    availability = {
+        row["slug"]: row
+        for row in client.get("/api/tournaments/cup/availability").json()
+    }
     assert availability["SB"]["free"] == 0
     assert availability["LS"]["taken"] == 1
     assert availability["LS"]["free"] == 4
@@ -682,8 +703,8 @@ def fresh_deployment(client, auth_headers):
     — the only way to restore a document beside its original, since VS is
     unique across the deployment (mirrors tests/test_export_json.py)."""
     from sqlalchemy import create_engine
-    from sqlalchemy.pool import StaticPool
     from sqlalchemy.orm import Session as OrmSession
+    from sqlalchemy.pool import StaticPool
 
     from app.db import Base
 
@@ -716,7 +737,12 @@ def test_v6_roundtrip_with_teams_and_rosters(client, auth_headers):
     team_id = created["teams"][0]["id"]
     client.put(
         f"/api/tournaments/cup/my-registration/teams/{team_id}/roster",
-        json={"members": [{"name": "A", "hr_id": 111, "club": "Brno HEMA", "nationality": "CZE"}, {"name": "B"}]},
+        json={
+            "members": [
+                {"name": "A", "hr_id": 111, "club": "Brno HEMA", "nationality": "CZE"},
+                {"name": "B"},
+            ]
+        },
         headers=fencer,
     )
     register_team(client, waiting, name="Bears")  # waitlisted (capacity 1)

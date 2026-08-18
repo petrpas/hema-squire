@@ -227,7 +227,13 @@ def test_two_tiers_produce_two_worksheets(client, auth_headers):
     )
     client.post(
         "/api/tournaments/tiers/disciplines",
-        json={"slug": "LS-B", "weapon": "LS", "name": "Longsword Open", "capacity": 10, "fee": 1000},
+        json={
+            "slug": "LS-B",
+            "weapon": "LS",
+            "name": "Longsword Open",
+            "capacity": 10,
+            "fee": 1000,
+        },
         headers=organizer,
     )
     client.patch(

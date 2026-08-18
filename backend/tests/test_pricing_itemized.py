@@ -296,7 +296,10 @@ def test_breakdown_lists_applied_and_unapplied_in_configured_order():
         discounts=[count_discount(2, 10), count_discount(3, 20)]
     )
     breakdown = pricing.selection_discounts(
-        tournament, disciplines=[Discipline(fee=30), Discipline(fee=30)], extras=[], at=REGISTERED_AT.date()
+        tournament,
+        disciplines=[Discipline(fee=30), Discipline(fee=30)],
+        extras=[],
+        at=REGISTERED_AT.date(),
     )
     assert [d.applied for d in breakdown] == [True, False]
     assert [d.name for d in breakdown] == ["2 disciplines", "3 disciplines"]

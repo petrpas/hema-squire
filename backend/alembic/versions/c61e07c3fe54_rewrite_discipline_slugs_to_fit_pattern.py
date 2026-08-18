@@ -28,9 +28,8 @@ import re
 import unicodedata
 
 import sqlalchemy as sa
-from sqlalchemy import column, table
-
 from alembic import op
+from sqlalchemy import column, table
 
 revision = "c61e07c3fe54"
 down_revision = "52ba5b743d48"

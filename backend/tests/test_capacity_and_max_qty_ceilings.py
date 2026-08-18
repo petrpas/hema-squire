@@ -123,7 +123,9 @@ def test_other_item_max_qty_over_100_rejected(client, auth_headers):
     ]
 
 
-def test_action_category_max_qty_has_no_ceiling_before_router_forces_it_to_one(client, auth_headers):
+def test_action_category_max_qty_has_no_ceiling_before_router_forces_it_to_one(
+    client, auth_headers
+):
     """seminar/afterparty/other_action are always forced to max_qty=1 by the
     router regardless of what is submitted, so a high value here is not a
     validation failure — it is simply overridden after."""

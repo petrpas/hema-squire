@@ -554,7 +554,7 @@ async def upload_logo(
         image.load()
     except (UnidentifiedImageError, OSError, Image.DecompressionBombError) as exc:
         logger.warning("logo upload could not be decoded as an image", exc_info=exc)
-        raise HTTPException(status_code=422, detail="logo_not_an_image")
+        raise HTTPException(status_code=422, detail="logo_not_an_image") from exc
     image = image.convert("RGBA")
     # downscale in place so the longest side is at most LOGO_MAX_DIMENSION
     image.thumbnail((LOGO_MAX_DIMENSION, LOGO_MAX_DIMENSION))
@@ -631,7 +631,9 @@ def add_discipline(
         # the schema's own BeforeValidator already normalized an override, and
         # maps an empty result to None (design D6, task 8a.1) — this branch is
         # therefore "no override given" or "override normalized to nothing"
-        discipline_slug = generate_slug(tournament, data.kind, data.weapon, data.gender, data.material)
+        discipline_slug = generate_slug(
+            tournament, data.kind, data.weapon, data.gender, data.material
+        )
     else:
         if any(d.slug == data.slug for d in tournament.disciplines):
             raise HTTPException(status_code=409, detail=f"discipline_slug_taken: {data.slug}")

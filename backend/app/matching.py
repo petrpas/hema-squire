@@ -166,7 +166,9 @@ def seats_free(session: Session, registration: Registration) -> bool:
     )
 
 
-def _tolerance_cents(registration: Registration, tournament: Tournament, which: MatchCurrency) -> float:
+def _tolerance_cents(
+    registration: Registration, tournament: Tournament, which: MatchCurrency
+) -> float:
     """Tolerance as a percentage of the registration's stable total in this
     currency lane — not of a shrinking remainder, which would tighten with
     every partial payment already credited."""
@@ -232,7 +234,11 @@ def _settle(
     """Decide the registration's resulting state from `which`'s outstanding
     balance, after that lane has already been credited (Decision 1), and send
     exactly the notification the outcome calls for."""
-    remaining = registration.outstanding_cents if which == "local" else registration.outstanding_eur_cents
+    remaining = (
+        registration.outstanding_cents
+        if which == "local"
+        else registration.outstanding_eur_cents
+    )
     tolerance = _tolerance_cents(registration, tournament, which)
     currency_code = tournament.local_currency if which == "local" else Currency.EUR
 
@@ -589,7 +595,16 @@ def apply_payment_links(session: Session, tournament: Tournament, mailer: Mailer
             remaining -= amount
             credited[str(registration.vs)] = amount
             _credit(registration, which, amount)
-            _settle(session, tournament, mailer, transaction, registration, which, registration.vs, amount)
+            _settle(
+                session,
+                tournament,
+                mailer,
+                transaction,
+                registration,
+                which,
+                registration.vs,
+                amount,
+            )
         rule.payload = {**rule.payload, "credited": credited}
         transaction.status = "matched"
         transaction.status_reason = "manual_link"

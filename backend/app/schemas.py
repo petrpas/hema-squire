@@ -136,7 +136,8 @@ class DisciplineIn(BaseModel):
     # accepted (design discipline-identity D4); gender and material stay
     # closed sets
     weapon: SingleLineStr(
-        constraints.DISCIPLINE_WEAPON_MAX_LENGTH, min_length=constraints.DISCIPLINE_WEAPON_MIN_LENGTH
+        constraints.DISCIPLINE_WEAPON_MAX_LENGTH,
+        min_length=constraints.DISCIPLINE_WEAPON_MIN_LENGTH,
     )
     gender: Literal["", "W", "M"] = ""
     material: Literal["", "Plastic"] = ""
@@ -257,7 +258,9 @@ class ExtraItemIn(BaseModel):
         ceiling = constraints.EXTRA_ITEM_MAX_QTY_CEILING.get(str(self.category))
         if ceiling is not None and self.max_qty > ceiling:
             raise FieldValueError(
-                "max_qty", "out_of_range", {"min": constraints.EXTRA_ITEM_MAX_QTY_MIN, "max": ceiling}
+                "max_qty",
+                "out_of_range",
+                {"min": constraints.EXTRA_ITEM_MAX_QTY_MIN, "max": ceiling},
             )
         return self
 
@@ -650,7 +653,8 @@ class PreviewTeamIn(BaseModel):
 
 class RosterMemberIn(BaseModel):
     name: SingleLineStr(
-        constraints.ROSTER_MEMBER_NAME_MAX_LENGTH, min_length=constraints.ROSTER_MEMBER_NAME_MIN_LENGTH
+        constraints.ROSTER_MEMBER_NAME_MAX_LENGTH,
+        min_length=constraints.ROSTER_MEMBER_NAME_MIN_LENGTH,
     )
     hr_id: int | None = None
     club: SingleLineStr(constraints.ROSTER_MEMBER_CLUB_MAX_LENGTH) | None = None

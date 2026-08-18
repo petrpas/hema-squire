@@ -79,7 +79,7 @@ def test_migration_assigns_a_series_to_every_tournament(migrated_db):
     ).fetchall()
     conn.close()
     assert len(rows) == 2
-    for _id, vs_year, vs_series, vs_next_seq in rows:
+    for _id, vs_year, _vs_series, vs_next_seq in rows:
         assert vs_year == 2026
         assert vs_next_seq == 1
     series = {row[2] for row in rows}

@@ -151,7 +151,9 @@ async def http_exception_handler(request: Request, exc: HTTPException) -> JSONRe
             params = {"value": conflict} if conflict is not None else {}
             content = {"detail": {"errors": [{"field": field, "code": code, "params": params}]}}
             return JSONResponse(status_code=exc.status_code, content=content, headers=exc.headers)
-    return JSONResponse(status_code=exc.status_code, content={"detail": detail}, headers=exc.headers)
+    return JSONResponse(
+        status_code=exc.status_code, content={"detail": detail}, headers=exc.headers
+    )
 
 
 class FieldValidationError(Exception):

@@ -73,7 +73,12 @@ _REQUEST_MODELS = [
     "RosterMemberIn",
 ]
 
-_RAW_ALIASES = {"ge": "minimum", "le": "maximum", "gt": "exclusiveMinimum", "lt": "exclusiveMaximum"}
+_RAW_ALIASES = {
+    "ge": "minimum",
+    "le": "maximum",
+    "gt": "exclusiveMinimum",
+    "lt": "exclusiveMaximum",
+}
 _BOUND_KEYS = {
     "minLength",
     "maxLength",
@@ -204,8 +209,14 @@ def test_hr_category_map_keys_and_values_are_bounded(openapi_schemas, mirror):
     prop = dict(_iter_model_fields(openapi_schemas, "TournamentUpdate"))["hr_category_map"]
     for branch in prop["anyOf"]:
         if branch.get("type") == "object":
-            assert branch["propertyNames"]["maxLength"] == mirror["TournamentUpdate.hr_category_map_key"]["maxLength"]
-            assert branch["additionalProperties"]["maxLength"] == mirror["TournamentUpdate.hr_category_map_value"]["maxLength"]
+            assert (
+                branch["propertyNames"]["maxLength"]
+                == mirror["TournamentUpdate.hr_category_map_key"]["maxLength"]
+            )
+            assert (
+                branch["additionalProperties"]["maxLength"]
+                == mirror["TournamentUpdate.hr_category_map_value"]["maxLength"]
+            )
             return
     pytest.fail("hr_category_map has no object branch")
 
