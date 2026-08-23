@@ -226,4 +226,7 @@ node_modules/
 # Local data
 *.sqlite
 *.sqlite.bak-*
+# WAL mode (apply_sqlite_pragmas) leaves these beside the database file
+*.sqlite-wal
+*.sqlite-shm
 outbox/
