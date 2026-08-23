@@ -69,27 +69,69 @@
       `/app` holds only the venv, `alembic/`, `app/`, `tests/` and the manifests, and
       `/app/.venv/bin/python` resolves to the image's own `/usr/local/bin/python3.14` — a
       host-copied venv would point into `/home/` and fail to import
-- [ ] 2.3 Review `docker-compose.yml` (not yet exercised: the local runtime is podman, which has no
-      `docker compose` plugin, so the first run of this file is the server): `app` (internal :8000, `/data` volume, `/secrets` read-only,
+- [x] 2.3 Review `docker-compose.yml`: `app` (internal :8000, `/data` volume, `/secrets` read-only,
       healthcheck on `/api/health`), `web` (Caddy, 80/443, cert volume), `litestream` (shares
       `/data`, config mounted read-only); all `restart: unless-stopped`. Only `app` takes the full
       `env_file`; Caddy and Litestream receive the two and five variables they need, so the signing
       key and SMTP password stay in one container. Litestream is pinned to `0.5.16` and
       `restore.sh` uses the same tag: 0.5 replaced the remote format, so a 0.3 binary cannot read a
-      0.5 replica
+      0.5 replica.
+      The task's premise — that the first run of this file would be the server — turned out to be
+      wrong, so the file was exercised locally instead of read: `podman-compose` 1.0.6 brought all
+      three services up against a MinIO container standing in for the replica bucket. Confirmed
+      running: alembic migrated the fresh volume and uvicorn served; `podman inspect` shows the app
+      with no published ports, `/secrets` mounted read-only, `unless-stopped` on all three; Caddy
+      served the SPA (including the deep-path fallback) and proxied `/api/health` and
+      `/api/tournaments`; litestream replicated the real 1.4 MB migrated database. The compose file
+      itself was also validated by the genuine Compose v2 binary (`docker compose config`, v5.5.0):
+      no warnings, `.env` interpolated from the project directory as the header claims, `./secrets`
+      resolved relative to `deploy/`, healthcheck preserved as a `CMD` array.
+      Two deviations, both local-only and neither a defect in the file: the published ports had to
+      be remapped off 80/443 (rootless podman, `ip_unprivileged_port_start = 1024`), and
+      podman-compose flattens the healthcheck's `CMD` array through `sh`, which mangles its
+      quoting and reports the container as never becoming healthy — the same command run directly
+      in the container exits 0, and Compose v2 keeps the array form
 - [x] 2.4 Review `Caddyfile`: site address from `$SITE_ADDRESS`, `/api/*` proxied, SPA fallback,
       `X-Forwarded-For` overwritten rather than appended (a client must not choose the address the
       throttle counts against). `caddy validate` reports the config valid with one warning calling
       that `header_up` unnecessary; the warning assumes passthrough is the intent and is expected
       here — removing the line to silence it reintroduces the appended, client-influenced header,
       and with a single value the address is correct whichever end of the list uvicorn reads
-- [ ] 2.5 Review `litestream.yml`: written for Litestream 0.5.x — single `replica`, retention in the
+- [x] 2.5 Review `litestream.yml`: written for Litestream 0.5.x — single `replica`, retention in the
       global `snapshot` block (672h; days are not a valid unit), periodic validation, credentials and
       region from environment. The 0.3-era shape (`replicas:` list with a per-replica `retention:`)
-      is silently not read by 0.5, so config and image version move together
-- [ ] 2.6 Review `cloud-init.yaml` and fill the SSH public key placeholder. Note the top-level
+      is silently not read by 0.5, so config and image version move together.
+      Verified against the pinned 0.5.16 image rather than against the documentation, because that
+      image ignores unknown config keys outright — a clean parse proves nothing about whether a key
+      is read. Each field was probed by giving it an invalid duration: `snapshot.interval`,
+      `snapshot.retention` and `validation.interval` all fail with `cannot unmarshal into
+      time.Duration`, so all three are genuinely parsed, and `28d` fails the same way, confirming
+      the comment about days. The 6 h validation monitor also appears in the daemon's startup log.
+      Then the whole loop was rehearsed end to end against a local MinIO: replicate with this exact
+      file, restore with `restore.sh`'s exact URL and flags, `-integrity-check full` passed, and the
+      restored copy held the row written after the snapshot. Repeated afterwards against the real
+      migrated schema from the compose stack — 26 tables, alembic head `b3d1f0a72c45`,
+      `PRAGMA integrity_check` ok and `PRAGMA foreign_key_check` empty (task 4.2 rehearsed early).
+      One finding that changes tasks 4.3 and 5.2, recorded there: `litestream snapshots` does not
+      exist in 0.5.x
+- [x] 2.6 Review `cloud-init.yaml` and fill the SSH public key placeholder. Note the top-level
       `groups: [docker]`: cloud-init creates no groups implicitly and Docker is installed later, so
-      removing it makes `useradd` fail — no SSH on a key-only host
+      removing it makes `useradd` fail — no SSH on a key-only host.
+      Reviewed; `cloud-init schema --config-file` (cloud-init 26.1 on Ubuntu 24.04) reports the file
+      valid. The review changed two things. The hardening drop-in was renamed from
+      `99-hardening.conf` to `00-hardening.conf`: sshd keeps the FIRST value it reads for a keyword
+      and reads `sshd_config.d/*.conf` in lexical order, so a `50-cloud-init.conf` — which
+      cloud-init writes whenever `ssh_pwauth` is set, by this file or by the provider's vendor-data
+      — silently wins over a 99- file. Verified on 24.04 with a competing 50- drop-in: `sshd -T`
+      reports `passwordauthentication yes` at 99- and `no` at 00-, so the file as originally written
+      could have left password login enabled on a host whose whole point is key-only access.
+      `ssh_pwauth: false` was added alongside it so cloud-init's own drop-in agrees rather than
+      competes, and `curl` was added to `packages:` since `runcmd` pipes get.docker.com through it.
+      The placeholder is filled with a fresh ed25519 key generated for this purpose
+      (`~/.ssh/hemasquire_deploy`), since the workstation had no key at all. Its private half exists
+      on that one machine and nowhere else, so it joins `deploy/.env` in the password manager —
+      by the same argument as Decision 7: material that survives only on the host you might be
+      replacing is not backed up. Without it the way in is the Hetzner web console
 - [ ] 2.7 Copy `.env.example` → `.env` on the server (`chmod 600`) and fill: `HEMA_SQUIRE_SECRET_KEY`
       (`openssl rand -hex 32`), `HEMA_SQUIRE_OWNER_EMAIL`, SMTP credentials, R2/B2 endpoint,
       bucket, region and scoped keys, `SITE_ADDRESS=hemasquire.eu`. Store the filled file in the
@@ -112,7 +154,9 @@
 - [ ] 4.2 Run `PRAGMA foreign_key_check` against the production DB once (empty result expected on
       a fresh DB; on any migrated data, resolve findings before proceeding)
 - [ ] 4.3 Verify: HTTPS answers on the domain, `/api/tournaments` responds, a signup round-trips,
-      a reminder email arrives via SMTP, `litestream snapshots` lists a generation in the bucket.
+      a reminder email arrives via SMTP, and the replica is live — `litestream snapshots` is a 0.3
+      command that 0.5.x does not have; use `litestream ltx s3://$REPLICA_BUCKET/hema-squire?...`
+      (or `litestream status`) and expect the daemon's log to show `replica sync` lines advancing.
       Confirm the throttle keys on the client by exceeding the login limit from one address and
       succeeding from another. First boot also populates the fighters index in the background
       (`hr_auto_refresh`), which takes a while and is not a failure
@@ -128,7 +172,11 @@
 - [ ] 5.2 Register `/api/health` with an uptime monitor; add a Hetzner console CPU alert (sustained
       high load on an idle-by-design machine is the compromise signature); and add a replication
       check — a Litestream that dies or meets a rotated key fails silently, and neither uptime nor
-      CPU moves. A daily `litestream snapshots` whose newest generation is older than a day, or an
-      alert on the container's restart count, is enough
+      CPU moves. "Silently" is literal, and worse than the sentence assumed: with an unreachable
+      endpoint the 0.5.16 daemon logs `replicating to ...` and then nothing at all — no error, no
+      exit, the container stays up. So the restart-count alarm suggested here would never fire and
+      is not an acceptable substitute; the check must look at the replica. Use the age of the newest
+      LTX file (`litestream ltx` against the replica URL — `snapshots` is a 0.3 command that 0.5
+      does not have), daily, alerting when it is older than a day
 - [ ] 5.3 Add a calendar rule, not a technical control: no deploys during a tournament's opening
       window

@@ -15,17 +15,34 @@ users:
     groups: [sudo, docker]
     shell: /bin/bash
     sudo: ["ALL=(ALL) NOPASSWD:ALL"]
+    # Private half: ~/.ssh/hemasquire_deploy on the build machine. It exists
+    # nowhere else, so it belongs in the password manager beside deploy/.env —
+    # losing it leaves the Hetzner web console as the only way back in.
     ssh_authorized_keys:
-      - "REPLACE_WITH_YOUR_SSH_PUBLIC_KEY"
+      - "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIORGTAnjlf5MkbSJx7bUytTREiXwsYKTpN/n4DR2mY0r squire@hemasquire.eu deploy key (generated 2026-08-23)"
 
 package_update: true
 package_upgrade: true
 packages:
   - unattended-upgrades
   - git
+  # get.docker.com is fetched with curl in runcmd; the Ubuntu cloud image ships
+  # it, but packages: run first and this makes the dependency explicit.
+  - curl
+
+# Redundant with the drop-in below, deliberately: setting this makes cloud-init
+# write its own 50-cloud-init.conf saying the same thing, so the two sources of
+# password-auth policy on the host agree instead of racing.
+ssh_pwauth: false
 
 write_files:
-  - path: /etc/ssh/sshd_config.d/99-hardening.conf
+  # 00-, not 99-: sshd reads sshd_config.d/*.conf in lexical order and keeps the
+  # FIRST value for each keyword, so a numerically later file loses. cloud-init
+  # writes 50-cloud-init.conf whenever ssh_pwauth is set (by this file or by the
+  # provider's vendor-data), which would silently override a 99- drop-in.
+  # Verified on Ubuntu 24.04: with a competing 50-cloud-init.conf, `sshd -T`
+  # reports passwordauthentication yes at 99- and no at 00-.
+  - path: /etc/ssh/sshd_config.d/00-hardening.conf
     content: |
       PasswordAuthentication no
       PermitRootLogin no
