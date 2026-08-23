@@ -24,7 +24,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app import taxonomy
+from app import constraints, taxonomy
 from app.db import Base
 
 
@@ -260,7 +260,14 @@ class Tournament(Base):
     # this stamp every later tick would demote the fencers the organizer had
     # just promoted (design D6)
     seating_settled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
-    reservation_validity_days: Mapped[int] = mapped_column(default=10)
+    # the shipped default was 10, before the 2-7 range existed; live
+    # tournaments that predate it still carry 10 (design add-payment-modes
+    # Decision 9, enforced on write only). A tournament created since then
+    # gets the range's max instead, so the field it lands on already matches
+    # the hint text a new organizer reads next to it.
+    reservation_validity_days: Mapped[int] = mapped_column(
+        default=constraints.RESERVATION_VALIDITY_DAYS_MAX
+    )
     reminder_day: Mapped[int] = mapped_column(default=5)
     amount_tolerance_percent: Mapped[int] = mapped_column(default=5)
     refundable_until: Mapped[date | None]

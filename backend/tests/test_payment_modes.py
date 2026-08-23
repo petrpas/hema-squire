@@ -133,8 +133,9 @@ def test_pre_mode_tournament_is_immediate_with_no_deposit(client, auth_headers):
     assert detail["seating_settled_at"] is None
     assert detail["deposit_amount"] is None
     assert detail["deposit_amount_eur"] is None
-    # the stored window is untouched by the new 2-7 range
-    assert detail["reservation_validity_days"] == 10
+    # a tournament created since the 2-7 range shipped lands on its max, not
+    # the pre-range default of 10 that only pre-existing tournaments carry
+    assert detail["reservation_validity_days"] == 7
 
 
 # ------------------------------------------------- 2. seating deadline helpers
