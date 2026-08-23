@@ -142,8 +142,42 @@
 - [ ] 3.1 Create the object-storage bucket (Cloudflare R2 or Backblaze B2), private, with an API
       key scoped to that bucket only. Note the region value the provider expects (`auto` for R2) —
       it goes in `REPLICA_REGION` and into the restore URL
-- [ ] 3.2 Create the CX23 (Falkenstein/Nuremberg) with `cloud-init.yaml` as user data
-- [ ] 3.3 Attach a Hetzner Cloud Firewall: inbound 22/80/443, nothing else
+- [x] 3.2 Create the CX23 (Falkenstein/Nuremberg) with `cloud-init.yaml` as user data.
+      Done, with two deviations on the record. The location is `hel1-dc2` — Helsinki, not
+      Falkenstein or Nuremberg; still Hetzner, still the EU, so nothing in Decision 1 or the
+      data-residency posture changes, but the task text said Germany and the machine is in Finland.
+      And the first attempt was created *without* the user data: `cloud-init status` cheerfully
+      reported `done` over an empty `/var/lib/cloud/instance/user-data.txt`, leaving a bare host
+      with no `squire`, no Docker and `passwordauthentication yes`. Hetzner accepts user data only
+      at creation and offers no way to attach it afterwards, so the fix was to destroy and recreate
+      — the reason to check `/var/lib/cloud/instance/user-data.txt` on any new host before trusting
+      that the file ran.
+      The recreate then used the pre-review copy of `cloud-init.yaml` (the working tree was on
+      `main`, which did not yet carry the fix) with the SSH key pasted in by hand, so the host came
+      up with `99-hardening.conf`. Corrected in place afterwards by renaming the drop-in to
+      `00-hardening.conf` and reloading sshd — verified before and after with `sshd -T`, and by
+      opening a fresh connection rather than trusting the session already held.
+      Final state, verified over SSH: instance `<INSTANCE_ID>`, 2 vCPU / 3.7 GiB / 38 GB (the CX23
+      shape), Ubuntu 26.04 LTS, `cloud-init status: done` with zero errors in its log; Docker 29.7.2
+      active with `squire` able to reach the socket, the Compose v2 plugin at v5.5.0 — the same
+      version that validated `docker-compose.yml` in task 2.3; `unattended-upgrades` active; git
+      2.53.0; `/opt/hema-squire` present, owned by `squire` and empty, so 4.1's clone will not be
+      refused; `:22` the only listening socket. Access is `ssh hemasquire` — an `~/.ssh/config`
+      alias for `squire@<SERVER_IP>` using `~/.ssh/hemasquire_deploy`; root login is refused
+- [x] 3.3 Attach a Hetzner Cloud Firewall: inbound 22/80/443, nothing else.
+      Verified from outside the host rather than by reading the console back, because the console
+      shows what was saved and not what is enforced. The evidence is the difference between a
+      refusal and a silence: 22 accepts; 80 and 443 answer RST, meaning the packet reached the host
+      and found nothing listening yet, so the rule admits them; 8080 and 3306 time out, dropped
+      before the host. Prior to attaching, 3306 answered RST like the rest, which is what makes the
+      timeout proof that the rule set is live.
+      One deliberate departure from "nothing else": the ICMP rule is kept. Path MTU Discovery is
+      carried by ICMP type 3 code 4, and dropping it produces exactly the failure that is hardest to
+      attribute — a connection that establishes and then stalls on the first large response, only
+      for clients behind a lower-MTU path. On IPv6 it is worse than a degradation, since neighbour
+      discovery rides on ICMPv6. The security it would buy is nil against Decision 5's threat model:
+      untargeted scanners find hosts over TCP, and 22/80/443 already answer. Keep the rule; it is
+      not an oversight
 - [ ] 3.4 Point `hemasquire.eu` A/AAAA records at the server
 
 ## 4. First deploy
