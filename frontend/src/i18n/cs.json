@@ -123,6 +123,7 @@
     "pleaMessagePlaceholder": "Volitelná zpráva pro adminy…",
     "pleaSubmit": "Odeslat žádost",
     "pleaPending": "Tvoje žádost o roli organizátora čeká na posouzení.",
+    "pleaCancel": "Zrušit žádost",
     "pleaDenied": "Předchozí žádost byla zamítnuta. Můžeš požádat znovu.",
     "adminPanel": "Admin panel",
     "draft": "koncept"

@@ -139,7 +139,7 @@ function RoleSection({ account }: { account: Account }) {
   return (
     <section className="rail-card">
       <h2>{t("profile.role.title")}</h2>
-      <p className="tag tag-file-blue">{roleLabel}</p>
+      <p className="tag tag-file-blue role-section-tag">{roleLabel}</p>
       {isPlainFencer && plea && <PleaSection plea={plea} onPleaChange={setPlea} />}
     </section>
   );

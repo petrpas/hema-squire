@@ -186,6 +186,31 @@ def test_deny_and_replea(client, auth_headers):
     assert mine["state"] == "pending"  # latest plea, not the denied one
 
 
+def test_cancel_and_replea(client, auth_headers):
+    fencer = auth_headers(email="f@example.com", role=Role.FENCER)
+    admin = auth_headers(email="admin@example.com", role=Role.ADMIN)
+
+    client.post("/api/account/plea", json={"message": "please"}, headers=fencer)
+    cancelled = client.post("/api/account/plea/cancel", headers=fencer)
+    assert cancelled.status_code == 200
+    assert cancelled.json()["state"] == "cancelled"
+
+    # no longer shows up in the admin queue
+    assert client.get("/api/admin/pleas", headers=admin).json() == []
+
+    # a cancelled account may plead again
+    replea = client.post("/api/account/plea", json={}, headers=fencer)
+    assert replea.status_code == 201
+    assert replea.json()["state"] == "pending"
+
+
+def test_cancel_without_pending_plea_rejected(client, auth_headers):
+    fencer = auth_headers(email="f@example.com", role=Role.FENCER)
+    response = client.post("/api/account/plea/cancel", headers=fencer)
+    assert response.status_code == 409
+    assert response.json()["detail"] == "plea_not_pending"
+
+
 def test_deciding_a_non_pending_plea_rejected(client, auth_headers):
     fencer = auth_headers(email="f@example.com", role=Role.FENCER)
     admin = auth_headers(email="admin@example.com", role=Role.ADMIN)

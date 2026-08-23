@@ -27,8 +27,25 @@ export default function PleaSection({
     }
   }
 
+  async function cancel() {
+    setBusy(true);
+    try {
+      const result = await api.cancelPlea();
+      onPleaChange(result);
+    } finally {
+      setBusy(false);
+    }
+  }
+
   if (plea.state === "pending") {
-    return <p className="plea-status">{t("picker.pleaPending")}</p>;
+    return (
+      <div className="plea-pending">
+        <p className="plea-status">{t("picker.pleaPending")}</p>
+        <button type="button" className="secondary" disabled={busy} onClick={() => void cancel()}>
+          {t("picker.pleaCancel")}
+        </button>
+      </div>
+    );
   }
 
   if (showForm) {

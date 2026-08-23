@@ -1367,9 +1367,20 @@ tr.row-deleted td.col-actions {
   gap: 1rem;
 }
 
+.role-section-tag {
+  margin-bottom: 0.5rem;
+}
+
 .plea-status {
   color: var(--ink-faded);
   font-size: 12px;
+}
+
+.plea-pending {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  align-items: flex-start;
 }
 
 .plea-form {

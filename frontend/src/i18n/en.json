@@ -123,6 +123,7 @@
     "pleaMessagePlaceholder": "Optional message to the admins…",
     "pleaSubmit": "Send request",
     "pleaPending": "Your request for the organizer role is pending review.",
+    "pleaCancel": "Cancel request",
     "pleaDenied": "Your previous request was denied. You may ask again.",
     "adminPanel": "Admin panel",
     "draft": "draft"

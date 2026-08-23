@@ -130,6 +130,22 @@ def submit_plea(data: PleaIn, session: SessionDep, fencer: FencerDep):
     return _plea_out(plea)
 
 
+@router.post("/api/account/plea/cancel", response_model=PleaOut)
+def cancel_plea(session: SessionDep, fencer: FencerDep):
+    plea = session.scalar(
+        select(OrganizerRequest).where(
+            OrganizerRequest.fencer_id == fencer.id,
+            OrganizerRequest.state == RequestState.PENDING,
+        )
+    )
+    if plea is None:
+        raise HTTPException(status_code=409, detail="plea_not_pending")
+    plea.state = RequestState.CANCELLED
+    session.commit()
+    session.refresh(plea)
+    return _plea_out(plea)
+
+
 @router.get("/api/account/plea", response_model=PleaOut)
 def my_plea(session: SessionDep, fencer: FencerDep):
     plea = session.scalar(

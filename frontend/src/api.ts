@@ -112,7 +112,7 @@ export interface Account {
   is_deployment_owner: boolean;
 }
 
-export type PleaState = "pending" | "granted" | "denied" | null;
+export type PleaState = "pending" | "granted" | "denied" | "cancelled" | null;
 
 export interface Plea {
   state: PleaState;
@@ -824,6 +824,7 @@ export const api = {
       body: JSON.stringify({ message }),
     }),
   myPlea: () => request<Plea>("/api/account/plea"),
+  cancelPlea: () => request<Plea>("/api/account/plea/cancel", { method: "POST" }),
   team: (slug: string) => request<TeamMember[]>(`/api/tournaments/${slug}/team`),
   addTeamMember: (slug: string, email: string) =>
     request<TeamMember>(`/api/tournaments/${slug}/team`, {

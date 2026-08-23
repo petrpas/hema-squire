@@ -41,6 +41,7 @@ class RequestState(enum.StrEnum):
     PENDING = "pending"
     GRANTED = "granted"
     DENIED = "denied"
+    CANCELLED = "cancelled"
 
 
 class UnpaidListTreatment(enum.StrEnum):
