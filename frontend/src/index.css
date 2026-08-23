@@ -948,8 +948,7 @@ button.secondary:disabled {
   position: absolute;
   z-index: 5;
   top: calc(100% + 0.3rem);
-  left: 50%;
-  transform: translateX(-50%);
+  left: 0;
   width: max-content;
   max-width: 16rem;
   padding: 0.5rem 0.6rem;
@@ -969,11 +968,17 @@ button.secondary:disabled {
   display: block;
 }
 
-/* Centered under the marker, the box can still reach past a narrow scrolling
-   container at either edge; clip rather than grow a horizontal scrollbar over
-   it, which otherwise shakes the container's content in and out as hints
-   open and close (openspec/settings_modes.md). Both containers scroll
-   vertically only, so clipping the horizontal axis loses nothing. */
+/* Anchored to the marker's left edge rather than centered under it: every
+   label + marker pair leads its row (design D3), so the marker sits near the
+   row's own left edge, and a box centered on it routinely hung half past the
+   left edge of a narrow modal (e.g. the Slug field in Add discipline) —
+   visibly outside the modal rather than merely clipped. Opening rightward
+   from the marker keeps the box within the row's own width instead. It can
+   still reach past a narrow scrolling container's right edge; clip rather
+   than grow a horizontal scrollbar over it, which otherwise shakes the
+   container's content in and out as hints open and close
+   (openspec/settings_modes.md). Both containers scroll vertically only, so
+   clipping the horizontal axis loses nothing. */
 .modal,
 .setup-panel-body {
   overflow-x: hidden;
