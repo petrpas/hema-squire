@@ -204,10 +204,18 @@ answers `connection refused`: the firewall passes the packet and nothing is
 listening yet, which is exactly the pre-deploy state — and it is the same
 signal that will become a served page once the stack is up.
 
-One consequence to decide before the first deploy: `www` resolves, but
-`SITE_ADDRESS=hemasquire.eu` gives Caddy a single site block, so a visitor
-typing `www.` reaches the server and gets a TLS failure rather than a redirect.
-Either drop the `www` record or give the Caddyfile a redirect block for it.
+That consequence is now handled in the Caddyfile: a `www.{$SITE_ADDRESS}` block
+redirects to the canonical host with `redir … permanent`, keeping path and
+query. Tested against the real Caddy binary rather than reasoned about —
+`caddy validate` passes (the only warning is the documented `header_up` lint),
+and a container run with `SITE_ADDRESS=localhost`, so nothing touched Let's
+Encrypt, answered `301` to `https://localhost/tournaments/abc?x=1&y=2` for the
+deep path with query, and `308` from plain HTTP up to HTTPS first.
+
+It is a 301, cached by browsers indefinitely, which is right for a canonical
+host but awkward to walk back. It also means Caddy now requests a certificate
+for `www.hemasquire.eu` as well, so **the `www` record has to keep resolving**;
+removing it without removing this block leaves issuance retrying forever.
 
 Ordering note: 3.4 gates the first deploy more tightly than it looks.
 `SITE_ADDRESS=hemasquire.eu` makes Caddy request a certificate at startup, and

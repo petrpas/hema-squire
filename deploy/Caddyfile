@@ -1,3 +1,12 @@
+# Canonical host. www resolves to this server, so without this block a visitor
+# typing www. reaches Caddy, finds no site for that name and gets a TLS error
+# rather than a redirect. Caddy obtains a certificate for this name too, which
+# needs the www record to keep resolving — drop the record and this block has
+# to go with it, or issuance will retry forever.
+www.{$SITE_ADDRESS:localhost} {
+	redir https://{$SITE_ADDRESS:localhost}{uri} permanent
+}
+
 {$SITE_ADDRESS:localhost} {
 	encode zstd gzip
 
