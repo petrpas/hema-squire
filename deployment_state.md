@@ -193,8 +193,21 @@ working tree is not a staging area for either: the root `.gitignore` now
 carries key and archive patterns so a copy left there cannot be staged by
 accident.
 
-Remaining in group 3: **3.1**, the object-storage bucket. Then 2.7 (the filled
-`.env` on the server) and groups 4 and 5.
+Remaining in group 3: **3.1**, the object-storage bucket — **deliberately
+deferred on 2026-08-24** for the roughly one-month testing period, so the first
+deploy brings up `app` and `web` only. Nothing depends on `litestream`, so the
+site is identical without it; what is absent is the safety net. Two things make
+that a decision rather than a postponement worth forgetting:
+
+- A test month still accumulates real accounts and a real test tournament, and
+  testing periods rarely end with a ceremony that reminds anyone to revisit
+  this. Losing the disk during it loses everything written since the deploy.
+- Litestream's failure mode is silence (see below), so switching it on later is
+  not self-verifying. `deploy/verify-replica.sh` exists to check the bucket
+  before Litestream is pointed at it, and task 5.2's freshness alert is what
+  proves it stayed working.
+
+Then 2.7 (the filled `.env` on the server) and groups 4 and 5.
 
 **3.4 is done as of 2026-08-24.** `hemasquire.eu` and `www.hemasquire.eu` both
 resolve to the server with TTL 300, neither has a AAAA, and four independent

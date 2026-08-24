@@ -139,9 +139,15 @@
 
 ## 3. Provider setup (console clicking, ~30 minutes)
 
-- [ ] 3.1 Create the object-storage bucket (Cloudflare R2 or Backblaze B2), private, with an API
-      key scoped to that bucket only. Note the region value the provider expects (`auto` for R2) —
-      it goes in `REPLICA_REGION` and into the restore URL
+- [ ] 3.1 **Deferred 2026-08-24 for the ~1 month testing period; due before real use.**
+      Create the object-storage bucket (Backblaze B2, or Cloudflare R2), private, with an API
+      key scoped to that bucket only. Note the region value the provider expects (`auto` for R2,
+      a real region such as `eu-central-003` for B2) — it goes in `REPLICA_REGION` and into the
+      restore URL. Not Hetzner's own object storage: a replica sharing the server's account
+      dies with it. Turning it on later is `docker compose up -d litestream` once the five
+      REPLICA_/LITESTREAM_ variables are filled; it snapshots the database as it then stands,
+      so nothing needs migrating — but everything written before that moment was never backed up.
+      `deploy/verify-replica.sh` checks the bucket before Litestream is pointed at it.
 - [x] 3.2 Create the CX23 (Falkenstein/Nuremberg) with `cloud-init.yaml` as user data.
       Done, with two deviations on the record. The location is `hel1-dc2` — Helsinki, not
       Falkenstein or Nuremberg; still Hetzner, still the EU, so nothing in Decision 1 or the
@@ -194,7 +200,10 @@
 
 - [ ] 4.1 Clone the repo to `/opt/hema-squire`, place `.env`, `mkdir -p deploy/secrets` (with the
       Google service-account JSON if the Sheets export is wanted; an empty directory disables it),
-      run `docker compose -f deploy/docker-compose.yml up -d --build`
+      run `docker compose -f deploy/docker-compose.yml up -d --build app web` — naming the two
+      services while 3.1 is deferred. Starting all three with the REPLICA_ variables empty leaves
+      Litestream restarting forever under `unless-stopped`, which trains you to ignore a failing
+      container. Nothing depends on `litestream`, so the site is unaffected by its absence.
 - [ ] 4.2 Run `PRAGMA foreign_key_check` against the production DB once (empty result expected on
       a fresh DB; on any migrated data, resolve findings before proceeding)
 - [ ] 4.3 Verify: HTTPS answers on the domain, `/api/tournaments` responds, a signup round-trips,
