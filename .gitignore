@@ -230,3 +230,20 @@ node_modules/
 *.sqlite-wal
 *.sqlite-shm
 outbox/
+
+# Keys and key archives — the deploy key belongs in the password manager, never
+# in the working tree (see deployment_state.md)
+*.pem
+*.key
+*.p12
+*.pfx
+id_rsa*
+id_ecdsa*
+id_ed25519*
+hemasquire_deploy*
+*.7z
+*.zip
+*.tar.gz
+*.gpg
+# ...but this one is a deliberate part of the repo
+!v1_spec/hema-squire-openspec.zip
