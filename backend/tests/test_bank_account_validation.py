@@ -35,6 +35,20 @@ def test_valid_iban_is_stored_unchanged(client, auth_headers):
     assert response.json()["bank_account"] == CZ_IBAN
 
 
+def test_iban_grouped_with_spaces_is_accepted(client, auth_headers):
+    """An IBAN typed as conventionally displayed, grouped in 4s, normalizes
+    to the same compact form as the ungrouped input."""
+    organizer = auth_headers()
+    slug = make_tournament(client, organizer)
+    response = client.patch(
+        f"/api/tournaments/{slug}",
+        json={"bank_account": "CZ65 0800 0000 1920 0014 5399"},
+        headers=organizer,
+    )
+    assert response.status_code == 200, response.text
+    assert response.json()["bank_account"] == CZ_IBAN
+
+
 def test_bad_iban_checksum_refused(client, auth_headers):
     organizer = auth_headers()
     slug = make_tournament(client, organizer)
