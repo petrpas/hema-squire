@@ -178,7 +178,11 @@
       discovery rides on ICMPv6. The security it would buy is nil against Decision 5's threat model:
       untargeted scanners find hosts over TCP, and 22/80/443 already answer. Keep the rule; it is
       not an oversight
-- [ ] 3.4 Point `hemasquire.eu` A/AAAA records at the server
+- [ ] 3.4 Point the `hemasquire.eu` **A** record at the server. No AAAA: Docker on
+      this host has IPv6 disabled (no `daemon.json`, bridge `EnableIPv6: false`,
+      empty ip6tables DOCKER chains), so a published container binds IPv4 only.
+      A AAAA would break HTTP-01 issuance, since Let's Encrypt prefers IPv6.
+      See deployment_state.md.
 
 ## 4. First deploy
 

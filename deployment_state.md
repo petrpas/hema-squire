@@ -191,6 +191,39 @@ pointed and propagated when the stack first comes up, the certificate fails and
 the first thing you see is a retry loop rather than a site. 3.1 carries no such
 constraint; Litestream simply has nowhere to write until the bucket exists.
 
+### 3.4 should publish an A record only — no AAAA
+
+The host's IPv6 is real: cloud-init configured `<SERVER_IPV6>/64` on
+`eth0`, the default route via `fe80::1` works, outbound reaches the internet
+(1.7-7.7 ms to `2606:4700:4700::1111`) and sshd listens on `[::]:22`. So the
+usual Hetzner trap — a /64 is routed to the machine but no address is
+configured on it — does not apply here.
+
+What does apply is the second half of that warning: whether the *application*
+listens on it. Caddy will not. There is no `/etc/docker/daemon.json`, the
+default bridge reports `EnableIPv6: false`, and both ip6tables DOCKER chains
+are empty (the filter chain has zero references). A container published as
+`80:80` therefore binds IPv4 only, and an AAAA record would point at an address
+where nothing answers on 80 or 443.
+
+That is worse than having no AAAA at all, and it fails closed in the least
+obvious place: Let's Encrypt prefers IPv6 when a AAAA exists, so HTTP-01
+validation would be attempted against a dead address and the certificate would
+never issue — presenting as exactly the retry loop the ordering note above
+describes, while `curl -4` against the same host looks perfect.
+
+So publish the A record, leave AAAA unset, and treat dual-stack as separate
+later work: `daemon.json` with `"ipv6": true` and `"ip6tables": true`, a fixed
+CIDR out of the /64, then verify from a v6-capable vantage point before the
+record goes in.
+
+**Untested:** whether the Hetzner firewall passes IPv6 at all. Its rules carry
+explicit source CIDRs, so a rule set written only with `0.0.0.0/0` drops v6
+regardless of what the host does. The build machine has no IPv6 (no global
+address, no default route), so the earlier port probes were IPv4-only and this
+could not be checked from here. It needs a v6-capable vantage point — and it
+only becomes relevant if dual-stack is pursued.
+
 Nothing is left behind on the build machine from any of the testing:
 `deploy/.env` and `deploy/secrets/` were created for the compose run and
 removed, and the test containers, volumes and networks are torn down.
