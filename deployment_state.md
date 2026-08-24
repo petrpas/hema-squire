@@ -14,6 +14,12 @@ so the app never will until someone deliberately enables it. Publishing a AAAA
 would break Let's Encrypt before it broke anything visible. Full reasoning and
 evidence under "3.4 should publish an A record only" below.
 
+This file is public, so host identifiers appear as placeholders:
+`<SERVER_IP>`, `<SERVER_IPV6>` and `<INSTANCE_ID>`. The real values are in the
+Hetzner console and in `~/.ssh/config` on the build machine, which is where the
+`ssh hemasquire` alias resolves them. Keep it that way when editing — the
+reasoning here is worth publishing, the coordinates are not.
+
 ## Production host — live, bootstrapped, empty
 
 `<SERVER_IP>`, reachable as `ssh hemasquire` (an `~/.ssh/config` alias for
