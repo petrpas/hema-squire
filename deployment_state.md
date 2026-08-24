@@ -193,9 +193,21 @@ working tree is not a staging area for either: the root `.gitignore` now
 carries key and archive patterns so a copy left there cannot be staged by
 accident.
 
-Remaining in group 3: **3.1**, the object-storage bucket, and **3.4**, the
-`hemasquire.eu` A/AAAA records. Then 2.7 (the filled `.env` on the server) and
-groups 4 and 5.
+Remaining in group 3: **3.1**, the object-storage bucket. Then 2.7 (the filled
+`.env` on the server) and groups 4 and 5.
+
+**3.4 is done as of 2026-08-24.** `hemasquire.eu` and `www.hemasquire.eu` both
+resolve to the server with TTL 300, neither has a AAAA, and four independent
+resolvers agree, so it has propagated rather than merely been saved. There is
+no CAA record, so nothing constrains which CA may issue. From outside, port 80
+answers `connection refused`: the firewall passes the packet and nothing is
+listening yet, which is exactly the pre-deploy state — and it is the same
+signal that will become a served page once the stack is up.
+
+One consequence to decide before the first deploy: `www` resolves, but
+`SITE_ADDRESS=hemasquire.eu` gives Caddy a single site block, so a visitor
+typing `www.` reaches the server and gets a TLS failure rather than a redirect.
+Either drop the `www` record or give the Caddyfile a redirect block for it.
 
 Ordering note: 3.4 gates the first deploy more tightly than it looks.
 `SITE_ADDRESS=hemasquire.eu` makes Caddy request a certificate at startup, and

@@ -178,11 +178,17 @@
       discovery rides on ICMPv6. The security it would buy is nil against Decision 5's threat model:
       untargeted scanners find hosts over TCP, and 22/80/443 already answer. Keep the rule; it is
       not an oversight
-- [ ] 3.4 Point the `hemasquire.eu` **A** record at the server. No AAAA: Docker on
+- [x] 3.4 Point the `hemasquire.eu` **A** record at the server. No AAAA: Docker on
       this host has IPv6 disabled (no `daemon.json`, bridge `EnableIPv6: false`,
       empty ip6tables DOCKER chains), so a published container binds IPv4 only.
       A AAAA would break HTTP-01 issuance, since Let's Encrypt prefers IPv6.
       See deployment_state.md.
+      Done and verified 2026-08-24: apex and `www` both resolve to the server,
+      TTL 300, no AAAA at either name, and 1.1.1.1 / 8.8.8.8 / 9.9.9.9 /
+      208.67.222.222 agree, so it has propagated. No CAA record exists, so
+      nothing blocks Let's Encrypt. Port 80 answers `connection refused` from
+      outside — the firewall passes it and nothing is listening yet, which is
+      the expected pre-deploy state.
 
 ## 4. First deploy
 
