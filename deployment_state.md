@@ -7,6 +7,13 @@ of this evening. The app is not deployed to it yet.
 Everything below is on `main`: the artifact review merged at `bfb423a`, the
 provisioning record at `f03bcfb`. No branches are outstanding.
 
+**DNS is IPv4-only by decision: publish the A record, never a AAAA.** IPv6 is
+not deactivated anywhere — it is simply never advertised, which is what keeps
+clients off it. The host speaks IPv6 and sshd answers on it; Docker does not,
+so the app never will until someone deliberately enables it. Publishing a AAAA
+would break Let's Encrypt before it broke anything visible. Full reasoning and
+evidence under "3.4 should publish an A record only" below.
+
 ## Production host — live, bootstrapped, empty
 
 `<SERVER_IP>`, reachable as `ssh hemasquire` (an `~/.ssh/config` alias for
