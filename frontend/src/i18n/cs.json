@@ -404,6 +404,7 @@
     },
     "team": {
       "title": "Organizační tým",
+      "hint": "Každý zde uvedený má plný přístup do konzole tohoto turnaje, stejně jako vlastník. Novým vlastníkem se může stát jen ten, kdo je už v tomto seznamu.",
       "email": "E-mail",
       "displayName": "Jméno",
       "addPlaceholder": "Přidat člena týmu podle e-mailu",

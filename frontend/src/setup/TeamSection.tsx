@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { ApiError, type TeamMember, api } from "../api";
+import HelpHint from "../HelpHint";
 
 export function TeamSection({ slug }: { slug: string }) {
   const { t } = useTranslation();
@@ -70,7 +71,10 @@ export function TeamSection({ slug }: { slug: string }) {
 
   return (
     <section className="rail-card">
-      <h2>{t("setup.team.title")}</h2>
+      <h2>
+        {t("setup.team.title")}
+        <HelpHint text={t("setup.team.hint")} />
+      </h2>
       {error && <p className="login-error">{error}</p>}
       <table className="sheet-table">
         <thead>

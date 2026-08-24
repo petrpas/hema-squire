@@ -403,7 +403,8 @@
       "add": "Add discount"
     },
     "team": {
-      "title": "Team",
+      "title": "Organizing team",
+      "hint": "Everyone listed here gets full console access to this tournament, the same as the owner. Only someone already on this list can become the new owner.",
       "email": "E-mail",
       "displayName": "Name",
       "addPlaceholder": "Add a team member by e-mail",
