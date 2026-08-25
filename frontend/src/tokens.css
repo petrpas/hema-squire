@@ -30,6 +30,11 @@
   --font-ui: 'IBM Plex Sans', system-ui, sans-serif;
   --font-data: 'IBM Plex Mono', monospace;
   --font-doc: 'IBM Plex Serif', serif; /* document H1s ONLY */
+  /* The uppercase label device (spec 3: 10.5-11px). 11, not 10.5, because the
+     caron grid-fits badly below it: hinting snaps the accent's strokes onto
+     whole pixels over some base letters and straddles them over others, so
+     the R in PRIHLASKA reads a size heavier than the S beside it. */
+  --label-size: 11px;
 
   /* Geometry */
   --radius: 2px; /* app-wide maximum; table cells get 0 */

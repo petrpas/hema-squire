@@ -9,6 +9,11 @@ body {
   line-height: 1.5;
   color: var(--ink);
   background: var(--paper);
+  /* Grayscale, not subpixel: RGB antialiasing puts a colour cast on every
+     stroke, which on the carons of R/Z/N/E is a large fraction of the mark
+     and reads as uneven weight. Ink on paper does not fringe. */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 button {
@@ -213,7 +218,7 @@ button.secondary:disabled {
   display: flex;
   flex-direction: column;
   gap: 0.3rem;
-  font-size: 10.5px;
+  font-size: var(--label-size);
   text-transform: uppercase;
   letter-spacing: 0.12em;
   font-weight: 500;
@@ -320,7 +325,7 @@ button.secondary:disabled {
 
 .picker-draft {
   color: var(--ink-faded);
-  font-size: 10.5px;
+  font-size: var(--label-size);
   text-transform: uppercase;
   letter-spacing: 0.1em;
 }
@@ -373,7 +378,7 @@ button.secondary:disabled {
   background: transparent;
   color: var(--ink-faded);
   padding: 0.45rem 1.1rem;
-  font-size: 10.5px;
+  font-size: var(--label-size);
   text-transform: uppercase;
   letter-spacing: 0.1em;
   font-weight: 500;
@@ -488,7 +493,7 @@ button.secondary:disabled {
 }
 
 .step-label {
-  font-size: 10.5px;
+  font-size: var(--label-size);
   text-transform: uppercase;
   letter-spacing: 0.1em;
 }
@@ -624,7 +629,7 @@ button.secondary:disabled {
 }
 
 .setup-preview-heading {
-  font-size: 10.5px;
+  font-size: var(--label-size);
   color: var(--ink-faded);
   text-transform: uppercase;
   letter-spacing: 0.12em;
@@ -716,7 +721,7 @@ button.secondary:disabled {
   position: sticky;
   top: 0;
   z-index: 1;
-  font-size: 10.5px;
+  font-size: var(--label-size);
   text-transform: uppercase;
   letter-spacing: 0.12em;
   font-weight: 500;
@@ -763,7 +768,7 @@ button.secondary:disabled {
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
-  font-size: 10.5px;
+  font-size: var(--label-size);
   text-transform: uppercase;
   letter-spacing: 0.12em;
   font-weight: 500;
@@ -1025,7 +1030,7 @@ button.secondary:disabled {
 }
 
 .rail-title {
-  font-size: 10.5px;
+  font-size: var(--label-size);
   color: var(--ink-faded);
   text-transform: uppercase;
   letter-spacing: 0.12em;
@@ -1598,7 +1603,7 @@ tr.row-deleted td.col-actions {
   margin-top: 0.6rem;
   padding-top: 0.4rem;
   border-top: var(--border-w) solid var(--hairline);
-  font-size: 10.5px;
+  font-size: var(--label-size);
   text-transform: uppercase;
   letter-spacing: 0.12em;
   font-weight: 500;
@@ -1735,7 +1740,7 @@ label.checkbox-chip,
 }
 
 .payment-slip-title {
-  font-size: 10.5px;
+  font-size: var(--label-size);
   text-transform: uppercase;
   letter-spacing: 0.12em;
   font-weight: 500;
@@ -1806,7 +1811,7 @@ label.checkbox-chip,
 /* ===== form section numbering (tiskopis) ===== */
 
 .form-section-title {
-  font-size: 10.5px;
+  font-size: var(--label-size);
   text-transform: uppercase;
   letter-spacing: 0.12em;
   font-weight: 500;
@@ -2113,7 +2118,7 @@ label.checkbox-chip,
   border-bottom: var(--border-w) solid var(--hairline);
   text-transform: uppercase;
   letter-spacing: 0.12em;
-  font-size: 11px;
+  font-size: var(--label-size);
   font-weight: 500;
   color: var(--ink-faded);
 }
@@ -2198,7 +2203,7 @@ label.checklist-row > input[type="checkbox"] {
   display: inline-flex;
   align-items: baseline;
   gap: 0.4rem;
-  font-size: 10.5px;
+  font-size: var(--label-size);
   text-transform: uppercase;
   letter-spacing: 0.12em;
   font-weight: 500;
@@ -2344,7 +2349,7 @@ label.checklist-row > input[type="checkbox"] {
 .logo-control-label {
   text-transform: uppercase;
   letter-spacing: 0.12em;
-  font-size: 10.5px;
+  font-size: var(--label-size);
   font-weight: 500;
   color: var(--ink-faded);
 }
