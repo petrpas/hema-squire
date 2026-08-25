@@ -35,14 +35,16 @@ DISCIPLINE_SLUG_PATTERN = r"^[A-Za-z0-9-]{1,30}$"
 DISCIPLINE_SLUG_MAX_LENGTH = 30
 # a loose shape only: an IBAN, or the Czech domestic form
 # [prefix-]number/bankcode — checksum validation (accounts.parse) is what
-# actually decides validity (design accept-czech-account-format D5). The IBAN
-# alternative tolerates a single space before any BBAN character, since
-# accounts.parse strips them before checksum validation and IBANs are
-# conventionally displayed grouped in 4s (e.g. "CZ65 0800 0000 1920 0014
-# 5399") — SingleLineStr has already collapsed runs of whitespace to one
-# space by the time this pattern runs, but does not remove it.
+# actually decides validity (design accept-czech-account-format D5). Both
+# alternatives tolerate a single space around the separators people type them
+# with, since accounts.parse strips every space before checksum validation:
+# an IBAN is conventionally displayed grouped in 4s ("CZ65 0800 0000 1920
+# 0014 5399") and a domestic account is written around its slash and dash
+# ("2403029704 / 2010", "19 - 2000145399/0800"). SingleLineStr has already
+# collapsed runs of whitespace to one space by the time this pattern runs,
+# but does not remove it.
 BANK_ACCOUNT_PATTERN = (
-    r"^([A-Z]{2}[0-9]{2}(?: ?[A-Za-z0-9]){10,30}|[0-9]{1,6}-?[0-9]{2,10}/[0-9]{4})$"
+    r"^([A-Z]{2}[0-9]{2}(?: ?[A-Za-z0-9]){10,30}|[0-9]{1,6}(?: ?- ?)?[0-9]{2,10} ?/ ?[0-9]{4})$"
 )
 
 # ---- SignupIn / AccountUpdate ----

@@ -73,7 +73,7 @@ export const FIELD_CONSTRAINTS: Record<string, FieldConstraint> = {
   "TournamentUpdate.deposit_amount": { "minimum": 0 },
   "TournamentUpdate.deposit_amount_eur": { "minimum": 0 },
   "TournamentUpdate.amount_tolerance_percent": { "minimum": 0, "maximum": 100 },
-  "TournamentUpdate.bank_account": { "maxLength": 50, "pattern": "^([A-Z]{2}[0-9]{2}(?: ?[A-Za-z0-9]){10,30}|[0-9]{1,6}-?[0-9]{2,10}/[0-9]{4})$" },
+  "TournamentUpdate.bank_account": { "maxLength": 50, "pattern": "^([A-Z]{2}[0-9]{2}(?: ?[A-Za-z0-9]){10,30}|[0-9]{1,6}(?: ?- ?)?[0-9]{2,10} ?/ ?[0-9]{4})$" },
   "TournamentUpdate.expiry_grace_hours": { "minimum": 0 },
   "TournamentUpdate.fio_token": { "maxLength": 200 },
   "TournamentUpdate.output_sheet_url": { "maxLength": 500 },

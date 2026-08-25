@@ -49,6 +49,33 @@ def test_iban_grouped_with_spaces_is_accepted(client, auth_headers):
     assert response.json()["bank_account"] == CZ_IBAN
 
 
+def test_domestic_account_spaced_around_the_slash_is_accepted(client, auth_headers):
+    """The domestic form as people write it, with spaces around the slash —
+    accounts.parse strips them, and the loose pattern in front of it tolerates
+    them rather than rejecting the account before it is ever parsed."""
+    organizer = auth_headers()
+    slug = make_tournament(client, organizer)
+    response = client.patch(
+        f"/api/tournaments/{slug}",
+        json={"bank_account": "2403029704 / 2010"},
+        headers=organizer,
+    )
+    assert response.status_code == 200, response.text
+    assert response.json()["bank_account"] == "CZ9620100000002403029704"
+
+
+def test_domestic_account_spaced_around_the_prefix_dash_is_accepted(client, auth_headers):
+    organizer = auth_headers()
+    slug = make_tournament(client, organizer)
+    response = client.patch(
+        f"/api/tournaments/{slug}",
+        json={"bank_account": "19 - 2000145399 / 0800"},
+        headers=organizer,
+    )
+    assert response.status_code == 200, response.text
+    assert response.json()["bank_account"] == CZ_IBAN
+
+
 def test_bad_iban_checksum_refused(client, auth_headers):
     organizer = auth_headers()
     slug = make_tournament(client, organizer)

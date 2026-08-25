@@ -44,6 +44,13 @@ def test_round_trip_domestic_to_iban_to_domestic():
         assert accounts.to_domestic(iban) == domestic
 
 
+def test_spaces_around_the_separators_are_stripped():
+    """Every space goes before the checksums run, so the domestic form typed
+    with spaces parses identically to the compact one."""
+    for spaced in ("19 - 2000145399 / 0800", "19-2000145399 / 0800", "19- 2000145399/0800"):
+        assert accounts.parse(spaced) == CZ_IBAN
+
+
 def test_to_domestic_none_for_non_czech_iban():
     assert accounts.to_domestic(DE_IBAN) is None
 

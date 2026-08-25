@@ -24,6 +24,26 @@ describe("checkString", () => {
   });
 });
 
+describe("bank account pattern", () => {
+  // the loose shape only; the checksum is the backend's word (design
+  // `accept-czech-account-format` D5)
+  const check = (value: string) => checkString("bank_account", "TournamentUpdate.bank_account", value);
+
+  it.each([
+    "CZ6508000000192000145399",
+    "CZ65 0800 0000 1920 0014 5399",
+    "19-2000145399/0800",
+    "2403029704 / 2010",
+    "19 - 2000145399 / 0800",
+  ])("accepts %s", (value) => {
+    expect(check(value)).toBeNull();
+  });
+
+  it.each(["2403029704", "2403029704 // 2010", "not an account"])("rejects %s", (value) => {
+    expect(check(value)?.code).toBe("bad_pattern");
+  });
+});
+
 describe("checkMoney", () => {
   it("accepts a value at the CZK ceiling", () => {
     expect(checkMoney("fee", "10000", "CZK")).toBeNull();
