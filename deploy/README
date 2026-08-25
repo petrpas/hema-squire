@@ -9,7 +9,8 @@ Files
   Caddyfile           TLS, SPA fallback, /api/* proxied
   litestream.yml      continuous WAL replication, 28-day retention
   cloud-init.yaml     host bootstrap (SSH hardening, Docker, unattended upgrades)
-  deploy.sh           git pull && docker compose up -d --build, over SSH
+  deploy.sh           git pull && docker compose up -d --build, over SSH;
+                      brings up litestream only when .env names a replica
   restore.sh          restore from the replica (drill and real recovery)
   .env.example        every variable; the filled copy also lives in a password
                       manager, because a new host needs it to come up
