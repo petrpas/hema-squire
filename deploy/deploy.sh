@@ -3,6 +3,8 @@
 #   ./deploy/deploy.sh [ssh-host]        default host: hemasquire
 # The default is the ~/.ssh/config alias, not squire@hemasquire.eu: the alias
 # is what resolves the deploy key, and spelling the host out bypasses it.
+# Exits non-zero if the app does not come up healthy, so a failed deploy is
+# a failed command rather than a cheerful message over a crash loop.
 # Rollback = git checkout <previous tag> on the server and rerun.
 set -euo pipefail
 
@@ -11,6 +13,8 @@ HOST="${1:-hemasquire}"
 ssh "$HOST" bash -s <<'REMOTE'
 set -euo pipefail
 cd /opt/hema-squire
+
+compose="docker compose -f deploy/docker-compose.yml"
 
 [ -f deploy/.env ] || {
   echo "deploy/.env is missing — see deploy/.env.example (task 2.7)" >&2
@@ -38,7 +42,53 @@ else
 fi
 
 echo "starting: $services"
-docker compose -f deploy/docker-compose.yml up -d --build $services
+$compose up -d --build $services
+
+# Compose returns once the containers are *started*, which is before alembic
+# has migrated and uvicorn has answered anything. Reporting a deploy at that
+# moment announces success over a container that may already be crash-looping,
+# so wait for the healthcheck the compose file already defines. Only `app`
+# has one; web and litestream are judged by app coming up behind them.
+# The compose healthcheck allows a 60s start_period, so the ceiling is well
+# clear of a cold start that has migrations to run.
+cid=$($compose ps -q app)
+[ -n "$cid" ] || { echo "app: no container after up" >&2; exit 1; }
+
+started=$SECONDS
+deadline=$((SECONDS + 240))
+while :; do
+  state=$(docker inspect -f '{{.State.Status}}' "$cid" 2>/dev/null || echo gone)
+  health=$(docker inspect \
+    -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' \
+    "$cid" 2>/dev/null || echo gone)
+
+  if [ "$health" = healthy ]; then
+    echo "app: healthy after $((SECONDS - started))s"
+    break
+  fi
+
+  # A container with no healthcheck can never report healthy; treat running as
+  # the best available answer rather than looping to the deadline.
+  if [ "$health" = none ] && [ "$state" = running ]; then
+    echo "app: running (no healthcheck defined)"
+    break
+  fi
+
+  if [ "$health" = unhealthy ] || [ "$state" != running ]; then
+    echo "app: $state/$health — deploy failed" >&2
+    $compose logs --tail 40 app >&2
+    exit 1
+  fi
+
+  if [ "$SECONDS" -ge "$deadline" ]; then
+    echo "app: still '$health' after $((SECONDS - started))s — giving up" >&2
+    $compose logs --tail 40 app >&2
+    exit 1
+  fi
+
+  sleep 3
+done
+
 docker image prune -f
 echo "Deployed $(git rev-parse --short HEAD)"
 REMOTE
