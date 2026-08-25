@@ -1,18 +1,23 @@
 # Deployment state
 
-Checked 2026-08-23. Two machines are in scope now: the Linux Mint 22.3
-workstation the images are built on, and the production host, which exists as
-of this evening. The app is not deployed to it yet.
+Checked 2026-08-25. Two machines are in scope: the Linux Mint 22.3 workstation
+the images are built on, and the production host — **which is now serving the
+site at https://hemasquire.eu.** The first deploy ran on 2026-08-25; see "First
+deploy — live" below for what is up and what is deliberately not.
 
 Everything below is on `main`: the artifact review merged at `bfb423a`, the
 provisioning record at `f03bcfb`. No branches are outstanding.
 
 **DNS is IPv4-only by decision: publish the A record, never a AAAA.** IPv6 is
 not deactivated anywhere — it is simply never advertised, which is what keeps
-clients off it. The host speaks IPv6 and sshd answers on it; Docker does not,
-so the app never will until someone deliberately enables it. Publishing a AAAA
-would break Let's Encrypt before it broke anything visible. Full reasoning and
-evidence under "3.4 should publish an A record only" below.
+clients off it. The host speaks IPv6, sshd answers on it, and — contrary to
+what this file argued before the deploy — **so does the app**: `docker-proxy`
+binds `[::]:80` and `[::]:443` whatever the bridge and ip6tables say. What is
+still unknown is whether the Hetzner firewall passes IPv6 at all, and that
+uncertainty is now the whole reason to keep the record IPv4-only. Both the
+correction and what a AAAA would actually take are under "Docker does answer on
+IPv6" below; the superseded reasoning is under "3.4 should publish an A record
+only".
 
 This file is public, so host identifiers appear as placeholders:
 `<SERVER_IP>`, `<SERVER_IPV6>` and `<INSTANCE_ID>`. The real values are in the
@@ -20,7 +25,7 @@ Hetzner console and in `~/.ssh/config` on the build machine, which is where the
 `ssh hemasquire` alias resolves them. Keep it that way when editing — the
 reasoning here is worth publishing, the coordinates are not.
 
-## Production host — live, bootstrapped, empty
+## Production host — live, bootstrapped, serving
 
 `<SERVER_IP>`, reachable as `ssh hemasquire` (an `~/.ssh/config` alias for
 `squire@<SERVER_IP>` using `~/.ssh/hemasquire_deploy`). Root login is
@@ -39,7 +44,7 @@ promises is present:
                         docker-compose.yml locally (see below)
     unattended-upgrades active
     git                 2.53.0
-    /opt/hema-squire    exists, owned by squire, empty (4.1's clone will work)
+    /opt/hema-squire    owned by squire; empty at provisioning, now the clone
     listening           :22 only, plus the local DNS stub
 
 sshd reports `passwordauthentication no`, `permitrootlogin no`,
@@ -87,6 +92,94 @@ stalls on the first large response, only for clients behind a lower-MTU path.
 On IPv6 it is worse than a degradation — neighbour discovery rides on ICMPv6.
 The security it would buy is nil against Decision 5's threat model, since
 scanners find hosts over TCP and 22/80/443 already answer.
+
+## First deploy — live
+
+`app` and `web` are up under `docker compose`, built from `bca17d6` cloned to
+`/opt/hema-squire` over HTTPS (the repo is public, so the host holds no deploy
+key). `litestream` is **not** started, because 3.1 is deferred — naming the two
+services keeps an unconfigurable container from restarting forever and teaching
+everyone to ignore a red line in `docker compose ps`.
+
+    app    healthy 5 s after start, no published ports, /secrets read-only
+    web    :80 and :443, certificates for both names on first boot
+    both   unless-stopped; docker is enabled at boot, so a reboot self-heals
+
+The database is `/data/hema_squire.sqlite` — **not** `/data/squire.db`, a guess
+that cost a stray 0-byte file, since `sqlite3.connect` creates whatever it
+cannot find. Open it through a `mode=ro`/`mode=rw` URI so a wrong path fails
+instead of quietly succeeding. Migrations ran the full chain to head
+`b3d1f0a72c45`; `foreign_key_check` is empty, `integrity_check` is `ok`, and
+the file is in `wal` mode, which is task 1.1 confirmed in production rather
+than in a test. The schema is 24 tables: the 23 the models declare plus
+`alembic_version`. That corrects the "26 tables" figure from the local
+rehearsal below, which counted something else.
+
+Certificates issued over **`tls-alpn-01`**, not HTTP-01. The ordering note
+further down is still right that DNS has to be pointed before first boot, but
+port 80 is the fallback path rather than the one that actually ran.
+
+Verified from outside: 200 on the apex, 308 from plain HTTP, 301 from `www`
+preserving a deep path and its query, `/api/health` `ok`, `/api/tournaments`
+`[]`, and an unknown deep path served the SPA. A signup round-tripped — 201
+with a token, that token read `/api/account`, login returned another — and the
+probe account was deleted afterwards, so the owner address is still unclaimed
+and `fencers` is empty.
+
+The login throttle was confirmed in both directions, which is the part worth
+having evidence for: the sixth attempt from one address returned 429 while a
+login from a **different** address succeeded inside the same window, so the
+bucket is per-client rather than one global bucket keyed on Caddy's container
+address. The app logs the caller's real public address, and a forged
+`X-Forwarded-For` was still counted against the caller — task 2.4's overwrite
+working. One trap: a malformed body answers 422 *before* the limiter runs, so a
+probe using a reserved address like `@example.invalid` never reaches the
+throttle and looks like a broken limit.
+
+First boot populated the fighters index by itself — 20,339 fighters, refresh
+status `ok`, about a minute in — which incidentally proves outbound HTTPS from
+the container.
+
+What is deliberately absent: SMTP (no credentials, so `OutboxMailer` records
+mail instead of sending it), the Anthropic key (LLM table import), the Google
+service-account JSON over an empty `deploy/secrets/` (Sheets export), and the
+replica. Each disables a feature; none breaks one.
+
+### The one thing still owed from the deploy
+
+`deploy/.env` exists on the server, `chmod 600`, with the signing key generated
+on the host so it never touched the build machine. **It is not in the password
+manager yet, and that is the half of task 2.7 that makes it a backup.** Right
+now the signing key exists on exactly one disk. Losing the host invalidates
+every token ever issued — the part of a restore the replica cannot carry — and
+task 5.1's drill stays blocked, because a drill that uses the production host's
+own copy proves nothing about recovering from its loss.
+
+    ssh hemasquire cat /opt/hema-squire/deploy/.env
+
+## Docker does answer on IPv6 — the 3.4 reasoning was right by accident
+
+The argument recorded below for publishing no AAAA says a container published
+as `80:80` binds IPv4 only, on the evidence of `EnableIPv6: false` and empty
+ip6tables DOCKER chains. **That premise is wrong**, and the running stack shows
+it: `docker-proxy` listens on `[::]:80` and `[::]:443`, and a request to the
+host's own global IPv6 address answered 308 on port 80 and 200 on 443 with the
+right certificate. Userland proxying binds a dual-stack wildcard socket no
+matter what the bridge and ip6tables do; the ip6tables reasoning governs the
+routed path, not the proxy.
+
+The decision does not change, for a reason the original argument never reached:
+**whether the Hetzner firewall passes IPv6 at all is still untested.** Its
+rules carry explicit source CIDRs, and a rule set written only with `0.0.0.0/0`
+drops v6 regardless of what the host does. The test above ran from the host
+itself and so never crossed the firewall, and the build machine has no IPv6 to
+test from. Publishing a AAAA on that uncertainty risks exactly the failure the
+original note feared, so: still A only.
+
+What it changes is the work a AAAA would take. It is no longer "enable IPv6 in
+`daemon.json`, pick a CIDR, then verify" — the serving side already works.
+It is: check the firewall from a v6-capable vantage point, confirm 80 and 443
+answer from off-host, and only then publish the record.
 
 ## Build machine — images build, verified
 
@@ -193,7 +286,7 @@ working tree is not a staging area for either: the root `.gitignore` now
 carries key and archive patterns so a copy left there cannot be staged by
 accident.
 
-Remaining in group 3: **3.1**, the object-storage bucket — **deliberately
+Group 3 is closed except **3.1**, the object-storage bucket — **deliberately
 deferred on 2026-08-24** for the roughly one-month testing period, so the first
 deploy brings up `app` and `web` only. Nothing depends on `litestream`, so the
 site is identical without it; what is absent is the safety net. Two things make
@@ -207,7 +300,10 @@ that a decision rather than a postponement worth forgetting:
   before Litestream is pointed at it, and task 5.2's freshness alert is what
   proves it stayed working.
 
-Then 2.7 (the filled `.env` on the server) and groups 4 and 5.
+Group 4 is done apart from the two checks in 4.3 that the deferrals block —
+the SMTP reminder email and the replica being live. What is left is the
+password-manager copy of `.env` (the open half of 2.7, above) and group 5,
+whose restore drill is blocked on that copy.
 
 **3.4 is done as of 2026-08-24.** `hemasquire.eu` and `www.hemasquire.eu` both
 resolve to the server with TTL 300, neither has a AAAA, and four independent
@@ -239,6 +335,13 @@ constraint; Litestream simply has nowhere to write until the bucket exists.
 
 ### 3.4 should publish an A record only — no AAAA
 
+**Superseded in its reasoning, not in its conclusion.** The claim below that a
+published container binds IPv4 only was disproved by the running stack — see
+"Docker does answer on IPv6" above. The record stays A-only for a different
+reason: the firewall's v6 behaviour is untested. The rest of this section is
+kept because the Let's Encrypt failure mode it describes is what makes an
+unverified AAAA expensive.
+
 The host's IPv6 is real: cloud-init configured `<SERVER_IPV6>/64` on
 `eth0`, the default route via `fe80::1` works, outbound reaches the internet
 (1.7-7.7 ms to `2606:4700:4700::1111`) and sshd listens on `[::]:22`. So the
@@ -258,10 +361,11 @@ validation would be attempted against a dead address and the certificate would
 never issue — presenting as exactly the retry loop the ordering note above
 describes, while `curl -4` against the same host looks perfect.
 
-So publish the A record, leave AAAA unset, and treat dual-stack as separate
-later work: `daemon.json` with `"ipv6": true` and `"ip6tables": true`, a fixed
-CIDR out of the /64, then verify from a v6-capable vantage point before the
-record goes in.
+So publish the A record and leave AAAA unset. The dual-stack work this
+paragraph originally prescribed — `daemon.json` with `"ipv6": true` and
+`"ip6tables": true`, a fixed CIDR out of the /64 — turns out not to be needed
+for the serving side, which already works; what remains is verifying from a
+v6-capable vantage point before the record goes in.
 
 **Untested:** whether the Hetzner firewall passes IPv6 at all. Its rules carry
 explicit source CIDRs, so a rule set written only with `0.0.0.0/0` drops v6
@@ -272,4 +376,5 @@ only becomes relevant if dual-stack is pursued.
 
 Nothing is left behind on the build machine from any of the testing:
 `deploy/.env` and `deploy/secrets/` were created for the compose run and
-removed, and the test containers, volumes and networks are torn down.
+removed, and the test containers, volumes and networks are torn down. The
+production `.env` was written on the server and has never existed here.

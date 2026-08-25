@@ -135,7 +135,19 @@
 - [ ] 2.7 Copy `.env.example` → `.env` on the server (`chmod 600`) and fill: `HEMA_SQUIRE_SECRET_KEY`
       (`openssl rand -hex 32`), `HEMA_SQUIRE_OWNER_EMAIL`, SMTP credentials, R2/B2 endpoint,
       bucket, region and scoped keys, `SITE_ADDRESS=hemasquire.eu`. Store the filled file in the
-      password manager at the same time — a new host cannot boot without it
+      password manager at the same time — a new host cannot boot without it.
+      The file exists as of 2026-08-25: `chmod 600`, owned by `squire`, with the signing key
+      generated *on the server*, so it has never touched the build machine. Three groups are
+      deliberately empty, and each disables a feature rather than breaking one — SMTP (so
+      `get_mailer()` returns `OutboxMailer`: mail is recorded and not sent), the Anthropic key
+      (the LLM table-import path), and `HEMA_SQUIRE_GOOGLE_CREDENTIALS_PATH` over an empty
+      `deploy/secrets/` (the Sheets export). The five REPLICA_/LITESTREAM_ variables are empty
+      because 3.1 is deferred.
+      **Left open deliberately: the password-manager copy, which is the half of this task that
+      makes it a backup.** Until it exists the signing key lives on exactly one disk, and losing
+      the host invalidates every token ever issued — the part of a restore the replica does not
+      carry. Task 5.1's drill is blocked on it too, since the drill is only a drill if it uses
+      material that survives the host
 
 ## 3. Provider setup (console clicking, ~30 minutes)
 
@@ -195,24 +207,73 @@
       nothing blocks Let's Encrypt. Port 80 answers `connection refused` from
       outside — the firewall passes it and nothing is listening yet, which is
       the expected pre-deploy state.
+      **Correction after the first deploy (2026-08-25): the stated reason is
+      wrong, the decision is not.** A published container does *not* bind IPv4
+      only — `docker-proxy` listens on `[::]:80` and `[::]:443` whatever the
+      bridge and ip6tables do, and the host answered 308 on 80 and 200 on 443
+      over its own global v6 address. Keep the record A-only anyway, for the
+      reason the original argument never reached: whether the Hetzner firewall
+      passes IPv6 at all is still untested, and its rules carry explicit source
+      CIDRs. See deployment_state.md, "Docker does answer on IPv6".
 
 ## 4. First deploy
 
-- [ ] 4.1 Clone the repo to `/opt/hema-squire`, place `.env`, `mkdir -p deploy/secrets` (with the
+- [x] 4.1 Clone the repo to `/opt/hema-squire`, place `.env`, `mkdir -p deploy/secrets` (with the
       Google service-account JSON if the Sheets export is wanted; an empty directory disables it),
       run `docker compose -f deploy/docker-compose.yml up -d --build app web` — naming the two
       services while 3.1 is deferred. Starting all three with the REPLICA_ variables empty leaves
       Litestream restarting forever under `unless-stopped`, which trains you to ignore a failing
       container. Nothing depends on `litestream`, so the site is unaffected by its absence.
-- [ ] 4.2 Run `PRAGMA foreign_key_check` against the production DB once (empty result expected on
-      a fresh DB; on any migrated data, resolve findings before proceeding)
+      Done 2026-08-25 at `bca17d6`, cloned over HTTPS (the repo is public, so the host needs no
+      deploy key). Both images built on the host; `docker compose config` reported no warnings
+      against the real `.env` before anything was started. `app` migrated the fresh volume through
+      the whole chain to head `b3d1f0a72c45` and was healthy within 5 s of start; `web` obtained
+      certificates for both names on first boot. Confirmed on the running stack: `app` publishes
+      no ports, `/secrets` is mounted read-only, both carry `unless-stopped`, and `docker` is
+      enabled at boot, so a reboot brings the site back unattended.
+      One surprise worth carrying forward: `docker-proxy` listens on `[::]:80` and `[::]:443`, not
+      IPv4 only — see the IPv6 note under 3.4 in deployment_state.md
+- [x] 4.2 Run `PRAGMA foreign_key_check` against the production DB once (empty result expected on
+      a fresh DB; on any migrated data, resolve findings before proceeding).
+      Empty, as expected on a fresh database; `integrity_check` returns `ok`, the file is in `wal`
+      mode (task 1.1 confirmed in production rather than in a test), the head is `b3d1f0a72c45`,
+      and the schema holds 24 tables — the 23 declared by the models plus `alembic_version`. Note
+      that the count corrects the "26 tables" recorded from the local rehearsal, which counted
+      something else; 24 is the whole schema at this head.
+      The database is `/data/hema_squire.sqlite`, from `settings.database_url` — **not**
+      `/data/squire.db`. Guessing that name once created a stray 0-byte file there, since
+      `sqlite3.connect` makes what it cannot find; it was removed. Open the production file with
+      `mode=rw`/`mode=ro` URIs so a wrong path fails loudly instead of silently succeeding
 - [ ] 4.3 Verify: HTTPS answers on the domain, `/api/tournaments` responds, a signup round-trips,
       a reminder email arrives via SMTP, and the replica is live — `litestream snapshots` is a 0.3
       command that 0.5.x does not have; use `litestream ltx s3://$REPLICA_BUCKET/hema-squire?...`
       (or `litestream status`) and expect the daemon's log to show `replica sync` lines advancing.
       Confirm the throttle keys on the client by exceeding the login limit from one address and
       succeeding from another. First boot also populates the fighters index in the background
-      (`hr_auto_refresh`), which takes a while and is not a failure
+      (`hr_auto_refresh`), which takes a while and is not a failure.
+      **Passed 2026-08-25**, everything the two deferrals allow:
+      HTTPS answers 200 on the apex with a valid Let's Encrypt certificate (issued over
+      `tls-alpn-01`, not HTTP-01 — worth knowing, because the ordering note's "validates over port
+      80" is the fallback, not what actually ran); plain HTTP answers 308 to HTTPS; `www` answers
+      301 to the canonical host preserving a deep path and its query. `/api/health` returns
+      `{"status":"ok"}`, `/api/tournaments` returns `[]`, and an unknown deep path returns the
+      SPA's `index.html` rather than a 404.
+      Signup round-tripped: 201 with a token, that token read `/api/account`, and login with the
+      same credentials returned another. The probe account was deleted afterwards so the owner
+      address stays unclaimed and the fencers table is empty for real use.
+      The throttle was confirmed in both directions, which matters more than the 429 alone. The
+      sixth login from one address returned 429 while a login from a *different* address succeeded
+      in the same window — so the bucket is per-client and not one global bucket keyed on Caddy's
+      container address. The app's logs record the real public address of the caller, and a request
+      carrying a forged `X-Forwarded-For` was still counted against the caller's own bucket, which
+      is task 2.4's overwrite doing its job. (Note that malformed bodies answer 422 *before* the
+      limiter runs, the same ordering task 1.5 documents, so a probe with an invalid address never
+      reaches the throttle and looks like a broken limit.)
+      The fighters index populated on first boot: 20,339 fighters, `hr_index_refreshes` status
+      `ok`, about a minute after start — which also proves outbound HTTPS from the container.
+      **Outstanding, both blocked on deliberate deferrals rather than on defects:** the SMTP
+      reminder email (no credentials filled; `OutboxMailer` is in use, so nothing leaves the host),
+      and the replica being live (3.1). Both need this task reopened when their deferral ends
 
 ## 5. Restore drill and monitoring (definition of done)
 
