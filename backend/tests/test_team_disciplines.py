@@ -13,6 +13,7 @@ from sqlalchemy import select
 
 from app import pricing
 from app.db import get_session
+from app.export_json import SCHEMA_VERSION
 from app.mail import get_mailer
 from app.main import app
 from app.models import (
@@ -750,7 +751,7 @@ def test_v6_roundtrip_with_teams_and_rosters(client, auth_headers):
     export = client.get("/api/tournaments/cup/export/json", headers=organizer)
     assert export.status_code == 200, export.text
     doc = export.json()
-    assert doc["schema_version"] == 7
+    assert doc["schema_version"] == SCHEMA_VERSION
     assert doc["disciplines"][0]["kind"] == "team"
     assert doc["disciplines"][0]["team_min"] == 3
 

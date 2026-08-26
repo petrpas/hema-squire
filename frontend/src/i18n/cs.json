@@ -212,7 +212,9 @@
     "unpaid_list_treatment.hidden": "skrýt do zaplacení",
     "hint.unpaid_list_treatment": "Jak se ve veřejném seznamu účastníků zobrazí šermíř, který zatím nezaplatil.",
     "weapon_rental_fee_early": "Cena zapůjčení, early bird ({{currency}})",
-    "afterparty_fee_early": "Cena afterparty, early bird ({{currency}})"
+    "afterparty_fee_early": "Cena afterparty, early bird ({{currency}})",
+    "registration_opens_time": "Čas otevření",
+    "timezone": "Časové pásmo"
   },
   "rail": {
     "operations": "Operace",
@@ -447,11 +449,12 @@
     },
     "timeline": {
       "title": "Termíny",
-      "opensHint": "Přihlašování se otevře v tento den. Do té doby je turnaj vidět, ale přihlásit se nelze. Nevyplněno: otevře se hned po zveřejnění.",
+      "opensHint": "Přihlašování se otevře v tento den. Do té doby je turnaj vidět, ale přihlásit se nelze. Nevyplněno: otevře se hned po zveřejnění. Když k němu vyplníte i čas, otevře se v tuto hodinu místo na začátku dne.",
       "seatingHint": "Není to uzávěrka přihlášek. Po tomto dni zůstává přihlašování otevřené, ale nově příchozí jdou rovnou mezi náhradníky a rezervace, které dosud nezaplatily, se přesunou pod čáru. Nevyplněno: platí uzávěrka přihlášek.",
       "closesHint": "Po tomto dni systém nepřijme žádnou další přihlášku. Nevyplněno: platí datum turnaje.",
       "compositionHint": "Do tohoto dne mají mít týmy naplněný minimální počet členů. Slouží jen k připomenutí — žádný tým se nezamyká, neruší ani nepřesouvá mezi náhradníky. Nevyplněno: uzávěrka není a připomínky se neposílají.",
-      "anchor": "Turnaj: {{date}} — nastavuje se na kartě turnaje."
+      "anchor": "Turnaj: {{date}} — nastavuje se na kartě turnaje.",
+      "timezoneHint": "Místní čas turnaje. V něm se čtou všechna data a časy na této časové ose."
     },
     "paymentMode": {
       "title": "Jak se platí",
@@ -610,7 +613,8 @@
     "status": {
       "open": "Registrace otevřena",
       "opensOn": "Registrace od {{date}}",
-      "closed": "Registrace uzavřena"
+      "closed": "Registrace uzavřena",
+      "opensAt": "Registrace od {{date}} v {{time}}"
     }
   },
   "detail": {
@@ -638,7 +642,11 @@
     "rosterBounds": "soupiska {{min}}–{{max}} členů",
     "compositionDeadline": "uzávěrka soupisek: {{date}}",
     "qualificationOpen": "Otevřeno pro všechny",
-    "qualificationRequired": "Kvalifikace: {{criteria}}"
+    "qualificationRequired": "Kvalifikace: {{criteria}}",
+    "opensAt": "registrace od {{date}} v {{time}} {{zone}}",
+    "opensAtNotice": "Přihlašování se otevře {{date}} v {{time}} {{zone}}.",
+    "opensOnNotice": "Přihlašování se otevře {{date}}.",
+    "opensIn": "otevře se za {{countdown}}"
   },
   "form": {
     "title": "Registrace",
@@ -795,7 +803,10 @@
     "legacy_fixed_fees_block_eur": "staré pevné poplatky nemají eurový protějšek — nejdřív přejdi na položkové doplňkové služby",
     "iban_checksum": "kontrolní číslice tohoto IBANu neodpovídají zbytku účtu — zkontroluj překlep",
     "account_checksum": "toto číslo účtu neprochází kontrolním součtem — zkontroluj překlep",
-    "fieldsNeedAttention": "{{count}} polí potřebuje opravu"
+    "fieldsNeedAttention": "{{count}} polí potřebuje opravu",
+    "opening_time_without_date": "Čas otevření potřebuje datum otevření.",
+    "opening_time_does_not_exist": "Tento čas v daný den neexistuje — posouvají se hodiny.",
+    "unknown_timezone": "Neznámé časové pásmo."
   },
   "queue": {
     "title": "Místa a fronta",

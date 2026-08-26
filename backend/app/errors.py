@@ -80,6 +80,9 @@ _ROUTER_CODE_FIELDS = {
     "discipline_kind_frozen": "kind",
     "discipline_name_required": "name",
     "amendments_close_after_registration_closes": "amendments_close",
+    "opening_time_without_date": "registration_opens_time",
+    "opening_time_does_not_exist": "registration_opens_time",
+    "unknown_timezone": "timezone",
     "legacy_fixed_fees_block_eur": "eur_payments_enabled",
 }
 

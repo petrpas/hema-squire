@@ -747,6 +747,18 @@ button.secondary:disabled {
   width: 4rem;
 }
 
+/* A column whose width is set by a bounded numeric field — on its own, with a
+   unit label, or under the select that names it — takes what that content
+   needs and no more. Without a width, auto table layout hands the column a
+   share of the row's slack in proportion to its content, and that share comes
+   out of the name and slug columns, which then wrap a name that would
+   otherwise sit on one line. The width is nominal: a table column is never
+   laid out below its min-content, so the declaration reads as "shrink to
+   fit". */
+.col-num {
+  width: 1px;
+}
+
 .sheet-table thead th.col-phase {
   background: var(--file-blue);
   color: var(--file-blue-ink);
@@ -777,6 +789,7 @@ button.secondary:disabled {
 
 .form-field input,
 .form-field textarea,
+.form-field select,
 .param-field input,
 .param-field select {
   font: 14px var(--font-ui);
@@ -788,6 +801,41 @@ button.secondary:disabled {
   color: var(--ink);
   text-transform: none;
   letter-spacing: normal;
+}
+
+/* two controls that are one field: the registration-opens date and the hour it
+   opens at. The time qualifies the date rather than standing beside it as
+   another date, so they share one label and sit on one line (spec:
+   setup-navigation). The date takes the slack; the time takes what it needs. */
+.field-pair {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+}
+
+.field-pair input[type="date"] {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.field-pair .field-time {
+  flex: 0 0 auto;
+}
+
+/* A countdown to the moment registration opens. A measured figure rendered as
+   text: tabular numerals at a fixed width so the line does not reflow as the
+   digits change — the jitter, not the ticking, is what would read as an
+   animation. No animation and no transition is attached to it (spec:
+   design-system). */
+.opening-countdown {
+  font-family: var(--font-data);
+  font-variant-numeric: tabular-nums;
+}
+
+/* the zone the timeline as a whole is read in — set below the anchor, apart
+   from the sequence of dates so it does not read as another deadline */
+.timeline-zone {
+  margin-top: 0.9rem;
 }
 
 .form-field textarea {
@@ -1197,12 +1245,27 @@ tr.row-deleted td.col-actions {
   display: flex;
   align-items: center;
   gap: 0.3rem;
+  /* the unit label reads as one word with the field; broken over two lines
+     ("za" / "tým") it reads as two, and it deepens the row */
+  white-space: nowrap;
 }
 
 .cell-input-row .cell-input {
   width: auto;
   flex: 1;
   min-width: 0;
+}
+
+/* A numeric cell field holds a few digits, but an <input> with no size claims
+   the browser's 20-character default as its min-content width, and a table
+   cannot lay a column out narrower than that. Three of them in one discipline
+   row (capacity, local fee, EUR fee) pushed the sheet past the setup panel,
+   which clips horizontally — the row's actions were cut off. Bounding the
+   numeric fields keeps the sheet inside the panel and leaves the slack to the
+   name and slug columns. */
+.cell-input[inputmode="numeric"] {
+  width: 5rem;
+  flex: 0 1 auto;
 }
 
 .dedup-actions {

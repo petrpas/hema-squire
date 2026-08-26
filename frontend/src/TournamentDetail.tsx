@@ -4,11 +4,14 @@ import { useTranslation } from "react-i18next";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 
 import NotFound from "./NotFound";
+import OpeningNotice from "./OpeningNotice";
 import PaidStamp from "./PaidStamp";
 import PaymentPanel from "./PaymentPanel";
 import TeamsTab from "./TeamsTab";
 import { type HomeTab } from "./FencerShell";
 import { home } from "./routes";
+import { amendmentOpen, registrationStatus } from "./openingMoment";
+import { useOpeningMoment } from "./useOpeningMoment";
 import { type Availability, type RegistrationDetail, type TournamentDetail as TournamentDetailData, api } from "./api";
 import { formatMoneyWithEur } from "./money";
 import {
@@ -17,8 +20,6 @@ import {
   InfoHeader,
   OtherActionsInfo,
   RegistrationForm,
-  amendmentOpen,
-  registrationStatus,
 } from "./TournamentFace";
 
 function RegistrationStateTag({
@@ -335,6 +336,11 @@ export default function TournamentDetail() {
 
   useEffect(refresh, [slug]);
 
+  // the wait for registration to open: no polling, one scheduled unlock, and
+  // a refresh at the moment so the seat counts the form opens on are current
+  // (design add-registration-open-time D8)
+  const opening = useOpeningMoment(detail, refresh);
+
   // the close control returns to the list the page was opened from (the tab
   // carried in the Link's navigation state), or to Fencer Home's default
   // Open tab when the page was reached by URL rather than from a list
@@ -354,14 +360,14 @@ export default function TournamentDetail() {
     !readOnly &&
     !hasActive &&
     detail !== null &&
-    registrationStatus(detail) === "open" &&
+    registrationStatus(detail, opening.now) === "open" &&
     hasOpenSlot;
   const canAmend =
     !readOnly &&
     detail !== null &&
     registration !== null &&
     (registration.state === "reserved" || registration.state === "paid") &&
-    amendmentOpen(detail);
+    amendmentOpen(detail, opening.now);
   const secondTabOffered = hasActive || canRegister;
   // offered only alongside a held team, on a registration that is still
   // active and a tournament not yet held (design team-disciplines D5)
@@ -442,15 +448,19 @@ export default function TournamentDetail() {
               <DisciplinesInfo detail={detail} availability={availability} />
               <DiscountList detail={detail} />
               <OtherActionsInfo detail={detail} />
-              {!readOnly && !secondTabOffered && (
-                <section className="rail-card dashed">
-                  <p className="rail-hint">
-                    {registrationStatus(detail) === "opens_on"
-                      ? t("detail.notYetOpen")
-                      : t("detail.closedNotice")}
-                  </p>
-                </section>
-              )}
+              {!readOnly &&
+                !secondTabOffered &&
+                (registrationStatus(detail, opening.now) === "opens_on" ? (
+                  <OpeningNotice
+                    detail={detail}
+                    remainingMs={opening.remainingMs}
+                    counting={opening.counting}
+                  />
+                ) : (
+                  <section className="rail-card dashed">
+                    <p className="rail-hint">{t("detail.closedNotice")}</p>
+                  </section>
+                ))}
             </>
           ) : tab === "teams" && registration ? (
             <TeamsTab
@@ -505,6 +515,12 @@ export default function TournamentDetail() {
                 onRegistered: (r) => {
                   setRegistration(r);
                   setTab("registration");
+                },
+                // back to the information screen, which re-derives the wait
+                // from a fresh payload — the countdown included
+                onNotYetOpen: () => {
+                  setTab("tournament");
+                  refresh();
                 },
               }}
             />

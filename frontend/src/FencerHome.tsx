@@ -5,6 +5,7 @@ import { Link, useOutletContext } from "react-router-dom";
 import { type HomeTab } from "./FencerShell";
 import { detail } from "./routes";
 import { type OpenTournament, api, logoUrl } from "./api";
+import { openingHourIn } from "./openingMoment";
 
 /** What `FencerLayout` provides its two child routes through the outlet
  *  (design D4): the resolved filter tab and the upcoming lists it fetches
@@ -21,13 +22,19 @@ function StatusBadge({ tournament }: { tournament: OpenTournament }) {
     return <span className="chip status-open">{t("home.status.open")}</span>;
   }
   if (tournament.registration_status === "opens_on") {
+    // the status itself is the server's, computed against the same resolved
+    // moment the detail page reads, so the card, the tabs and the page cannot
+    // disagree at the boundary. The hour is stated only where the organizer
+    // set one (change add-registration-open-time)
+    const date = tournament.registration_opens_on
+      ? new Date(tournament.registration_opens_on).toLocaleDateString("cs")
+      : "";
+    const hour = openingHourIn(tournament.registration_opens_at, tournament.timezone);
     return (
       <span className="chip">
-        {t("home.status.opensOn", {
-          date: tournament.registration_opens_on
-            ? new Date(tournament.registration_opens_on).toLocaleDateString("cs")
-            : "",
-        })}
+        {hour
+          ? t("home.status.opensAt", { date, time: hour })
+          : t("home.status.opensOn", { date })}
       </span>
     );
   }

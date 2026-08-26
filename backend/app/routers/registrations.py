@@ -56,6 +56,20 @@ def _now() -> datetime:
     return datetime.now(UTC)
 
 
+def _unavailable(tournament: Tournament, reason: str, now: datetime) -> HTTPException:
+    """The 403 a closed window is refused with. A not-yet-open refusal carries
+    the opening moment and this server's clock, so a client that jumped the
+    gate — a fast finger, a wrong device clock — can go back to presenting the
+    wait rather than showing a generic failure (spec: registration,
+    fencer-home)."""
+    detail: dict[str, object] = {"reason": reason}
+    if reason == setup.NOT_YET_OPEN:
+        opens_at = setup.registration_opens_at(tournament)
+        detail["opens_at"] = opens_at.isoformat() if opens_at is not None else None
+        detail["server_time"] = now.isoformat()
+    return HTTPException(status_code=403, detail=detail)
+
+
 def queue_position(session, entry: RegistrationDiscipline) -> int:
     earlier = session.scalar(
         select(func.count())
@@ -402,9 +416,10 @@ def register(
     fencer: FencerDep,
     mailer: MailerDep,
 ):
-    reason = setup.registration_availability(tournament, _now().date())
+    now = _now()
+    reason = setup.registration_availability(tournament, now)
     if reason is not None:
-        raise HTTPException(status_code=403, detail={"reason": reason})
+        raise _unavailable(tournament, reason, now)
 
     existing = session.scalar(
         select(Registration).where(
@@ -611,9 +626,10 @@ def amend_registration(
     fencer: FencerDep,
     mailer: MailerDep,
 ):
-    reason = setup.amendment_availability(tournament, _now().date())
+    now = _now()
+    reason = setup.amendment_availability(tournament, now)
     if reason is not None:
-        raise HTTPException(status_code=403, detail={"reason": reason})
+        raise _unavailable(tournament, reason, now)
 
     registration = get_my_registration(session, tournament, fencer)
     if registration.state not in (RegistrationState.RESERVED, RegistrationState.PAID):

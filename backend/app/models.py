@@ -7,7 +7,7 @@ Fencer accounts are global; everything else is tournament-scoped.
 """
 
 import enum
-from datetime import date, datetime
+from datetime import date, datetime, time
 from decimal import Decimal
 
 from sqlalchemy import (
@@ -213,6 +213,12 @@ class Tournament(Base):
     # restored-from-old-export deployment; read via organizers_list().
     organizers: Mapped[list] = mapped_column(JSON, default=list)
     registration_opens: Mapped[date | None]
+    # the wall-clock time registration opens on `registration_opens`, read in
+    # this tournament's `timezone`. Unset means the start of that local day,
+    # which is what a tournament carrying only the date has always meant. It is
+    # a child of the date, never a value of its own: clearing the date clears
+    # it (design add-registration-open-time D9)
+    registration_opens_time: Mapped[time | None]
     registration_closes: Mapped[date | None]
     # freezes the roster for amendments independently of registration close;
     # unset means "same window as registration" (setup.amendment_availability)
@@ -222,6 +228,14 @@ class Tournament(Base):
     # never enforces — no roster is locked, no team is cancelled or waitlisted,
     # and no capacity is freed on account of it (design team-disciplines D7)
     team_composition_deadline: Mapped[date | None]
+
+    # this tournament's own local zone, as an IANA identifier. Every date on
+    # the timeline is read as a day in it and the opening time as a wall clock
+    # in it — not just the opening, or a tournament would open at 18:00 local
+    # and close at 01:59 local (design add-registration-open-time D2). Non-null
+    # with a default: a nullable zone would leave every read site to decide
+    # what NULL means, and they would drift
+    timezone: Mapped[str] = mapped_column(String(64), default=constraints.DEFAULT_TIMEZONE)
 
     # the four advanced features this tournament uses (design tournament-modes
     # D1). Easy mode is the absence of all four — there is no separate stored

@@ -455,9 +455,11 @@ export function DisciplinesSection({
               {t("setup.disciplines.slug")}
               <HelpHint text={t("setup.disciplines.slugHint")} />
             </th>
-            <th>{t("setup.disciplines.capacity")}</th>
-            <th>{t("setup.disciplines.fee", { currency: detail.local_currency })}</th>
-            {eur && <th>{t("setup.disciplines.feeEur")}</th>}
+            <th className="col-num">{t("setup.disciplines.capacity")}</th>
+            <th className="col-num">
+              {t("setup.disciplines.fee", { currency: detail.local_currency })}
+            </th>
+            {eur && <th className="col-num">{t("setup.disciplines.feeEur")}</th>}
             <th className="col-actions" />
           </tr>
         </thead>
@@ -489,7 +491,7 @@ export function DisciplinesSection({
                 <td>
                   <span className="muted">{row.slug}</span>
                 </td>
-                <td>
+                <td className="col-num">
                   <div className="cell-input-row">
                     <input
                       className="cell-input"
@@ -505,7 +507,7 @@ export function DisciplinesSection({
                   </div>
                   <FieldError field={`capacity-${row.rowId}`} error={validation.errors[`capacity-${row.rowId}`]} />
                 </td>
-                <td>
+                <td className="col-num">
                   <div className="cell-input-row">
                     <input
                       className="cell-input"
@@ -520,7 +522,7 @@ export function DisciplinesSection({
                   <FieldError field={`fee-${row.rowId}`} error={validation.errors[`fee-${row.rowId}`]} />
                 </td>
                 {eur && (
-                  <td>
+                  <td className="col-num">
                     <div className="cell-input-row">
                       <input
                         className="cell-input"

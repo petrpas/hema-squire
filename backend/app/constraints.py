@@ -116,6 +116,13 @@ TOURNAMENT_DESCRIPTION_MAX_LENGTH = MARKDOWN
 TOURNAMENT_QUALIFICATION_CRITERIA_MAX_LENGTH = MARKDOWN
 TOURNAMENT_REGISTRATION_INSTRUCTIONS_MAX_LENGTH = MARKDOWN
 TOURNAMENT_BANK_ACCOUNT_MAX_LENGTH = 50  # matches the String(50) column
+# the tournament's own local zone, as an IANA identifier. The ceiling matches
+# the String(64) column; validity is decided by the zone database, not by the
+# length (setup.resolve_timezone). The default is the launch market's zone,
+# given to every new tournament and backfilled onto every tournament created
+# before the field existed (design add-registration-open-time D1)
+TOURNAMENT_TIMEZONE_MAX_LENGTH = 64
+DEFAULT_TIMEZONE = "Europe/Prague"
 TOURNAMENT_FIO_TOKEN_MAX_LENGTH = SHORT
 TOURNAMENT_OUTPUT_SHEET_URL_MAX_LENGTH = 500
 HR_CATEGORY_MAP_KEY_MAX_LENGTH = SHORT

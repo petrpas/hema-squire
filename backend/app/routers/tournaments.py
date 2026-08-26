@@ -208,14 +208,18 @@ def _fencer_tournament_out(
     so drafts and organizer-only config never leak, with per-discipline counts
     and the caller's own bonds folded in to avoid N+1 calls from the
     frontend."""
-    today = datetime.now(UTC).date()
-    reason = setup.registration_availability(tournament, today)
+    reason = setup.registration_availability(tournament, datetime.now(UTC))
     if reason == setup.NOT_YET_OPEN:
-        status_, opens_on = "opens_on", tournament.registration_opens
+        # the day and the moment: the first for a client written before the
+        # opening hour existed, the second so no client has to resolve this
+        # tournament's zone itself (design add-registration-open-time D6)
+        status_ = "opens_on"
+        opens_on = tournament.registration_opens
+        opens_at = setup.registration_opens_at(tournament)
     elif reason == setup.CLOSED:
-        status_, opens_on = "closed", None
+        status_, opens_on, opens_at = "closed", None, None
     else:
-        status_, opens_on = "open", None
+        status_, opens_on, opens_at = "open", None, None
 
     return OpenTournamentOut(
         slug=tournament.slug,
@@ -231,6 +235,8 @@ def _fencer_tournament_out(
         organizers=tournament.organizers,
         registration_status=status_,
         registration_opens_on=opens_on,
+        registration_opens_at=opens_at,
+        timezone=tournament.timezone,
         disciplines=[_open_discipline_out(session, d) for d in tournament.disciplines],
         my_registration_state=_my_registration_state(session, tournament, fencer),
         organized=organized,
@@ -362,6 +368,36 @@ def _apply_currency_invariants(tournament: Tournament) -> None:
         raise HTTPException(status_code=422, detail="legacy_fixed_fees_block_eur")
 
 
+def _apply_opening_moment_rules(tournament: Tournament, updates: dict) -> None:
+    """The three rules the opening moment is written under (design
+    add-registration-open-time D4, D9), run on the merged state so that a date
+    and a time arriving in separate requests are still judged together.
+
+    The opening time is a child of its date: clearing the date clears the time
+    in the same save, and a time left standing with no date is refused rather
+    than stored where the organizer can neither see nor correct it.
+    """
+    if not setup.is_known_timezone(tournament.timezone):
+        raise HTTPException(status_code=422, detail="unknown_timezone")
+
+    if tournament.registration_opens is None:
+        if "registration_opens" in updates:
+            # the date was explicitly cleared: the time goes with it, even if
+            # this same request also sent one
+            tournament.registration_opens_time = None
+        elif tournament.registration_opens_time is not None:
+            raise HTTPException(status_code=422, detail="opening_time_without_date")
+        return
+
+    if tournament.registration_opens_time is not None and not setup.local_time_exists(
+        tournament.timezone, tournament.registration_opens, tournament.registration_opens_time
+    ):
+        # the hour the zone skips on a spring-forward morning. Resolving it
+        # forward would announce an hour the organizer did not choose, on the
+        # one day they are least likely to expect it
+        raise HTTPException(status_code=422, detail="opening_time_does_not_exist")
+
+
 @router.patch("/{slug}", response_model=TournamentOut)
 def update_tournament(
     data: TournamentUpdate, tournament: TournamentDep, session: SessionDep, fencer: FencerDep
@@ -402,6 +438,7 @@ def update_tournament(
         tournament.qualification_criteria = None
     if not tournament.qualification_open and not (tournament.qualification_criteria or "").strip():
         raise HTTPException(status_code=422, detail="qualification_criteria_required")
+    _apply_opening_moment_rules(tournament, updates)
     if (
         tournament.amendments_close is not None
         and tournament.registration_closes is not None

@@ -19,6 +19,7 @@ import {
 import { FIELD_CONSTRAINTS } from "./constraints";
 import { formatMoneyWithEur } from "./money";
 import { parseInteger } from "./numeric";
+import { openingMomentMs } from "./openingMoment";
 import Prose from "./Prose";
 
 export const LEGACY_WEAPONS: Record<string, string> = {
@@ -115,24 +116,22 @@ function DotJoined({
   );
 }
 
-type RegistrationStatus = "open" | "opens_on" | "closed";
-
-export function registrationStatus(detail: TournamentDetailData): RegistrationStatus {
-  const today = new Date().toISOString().slice(0, 10);
-  if (detail.registration_opens && today < detail.registration_opens) return "opens_on";
-  const closes = detail.registration_closes ?? detail.date;
-  if (today > closes) return "closed";
-  return "open";
-}
-
-/** Amendment is closed by every reason registration is, plus its own,
- * earlier `amendments_close` boundary when set (mirrors
- * setup.amendment_availability on the backend). */
-export function amendmentOpen(detail: TournamentDetailData): boolean {
-  if (registrationStatus(detail) !== "open") return false;
-  if (!detail.amendments_close) return true;
-  const today = new Date().toISOString().slice(0, 10);
-  return today <= detail.amendments_close;
+/** How the tournament's zone is named beside its opening hour — the short
+ *  form the zone itself uses on that date ("SELČ", "CEST"), which is what a
+ *  reader recognizes, falling back to the identifier when the browser cannot
+ *  produce one. */
+export function zoneAbbreviation(detail: TournamentDetailData): string {
+  const at = openingMomentMs(detail.registration_opens_at);
+  if (at === null) return detail.timezone;
+  try {
+    const parts = new Intl.DateTimeFormat(undefined, {
+      timeZone: detail.timezone,
+      timeZoneName: "short",
+    }).formatToParts(new Date(at));
+    return parts.find((part) => part.type === "timeZoneName")?.value ?? detail.timezone;
+  } catch {
+    return detail.timezone;
+  }
 }
 
 export function InfoHeader({ detail }: { detail: TournamentDetailData }) {
@@ -163,9 +162,18 @@ export function InfoHeader({ detail }: { detail: TournamentDetailData }) {
           className="rail-hint"
           parts={[
             detail.registration_opens &&
-              t("detail.opensOn", {
-                date: new Date(detail.registration_opens).toLocaleDateString("cs"),
-              }),
+              (detail.registration_opens_time
+                ? // the hour the organizer named, with the zone it is named in:
+                  // without the zone the hour is only true where the tournament
+                  // is (spec: fencer-home)
+                  t("detail.opensAt", {
+                    date: new Date(detail.registration_opens).toLocaleDateString("cs"),
+                    time: detail.registration_opens_time.slice(0, 5),
+                    zone: zoneAbbreviation(detail),
+                  })
+                : t("detail.opensOn", {
+                    date: new Date(detail.registration_opens).toLocaleDateString("cs"),
+                  })),
             detail.registration_closes &&
               t("detail.closesOn", {
                 date: new Date(detail.registration_closes).toLocaleDateString("cs"),
@@ -502,7 +510,15 @@ export function ItemControls({
  *  existing one, or previewed from the console — explorable but unable to
  *  submit, so "no interaction creates a registration" is a type-level fact. */
 export type FormMode =
-  | { kind: "register"; onRegistered: (registration: RegistrationDetail) => void }
+  | {
+      kind: "register";
+      onRegistered: (registration: RegistrationDetail) => void;
+      /** The gate refused the submission as not yet open — a fast finger, or a
+       *  device clock the correction could not save. The page returns to
+       *  presenting the wait rather than showing a generic failure (spec:
+       *  registration, fencer-home). */
+      onNotYetOpen: () => void;
+    }
   | { kind: "amend"; initial: RegistrationDetail; onRegistered: (registration: RegistrationDetail) => void }
   | { kind: "preview" };
 
@@ -759,6 +775,16 @@ export function RegistrationForm({
         : await api.registerForTournament(detail.slug, payload);
       mode.onRegistered(registration);
     } catch (err) {
+      // the gate is the authority, and it may still refuse: registration had
+      // not opened when the submission landed. The page goes back to stating
+      // the moment, with the countdown recomputed from the fresh response
+      if (err instanceof ApiError && err.status === 403 && mode.kind === "register") {
+        const refusal = err.detail as { reason?: string } | null;
+        if (refusal?.reason === "not_yet_open") {
+          mode.onNotYetOpen();
+          return;
+        }
+      }
       // a discipline can fill between page load and submit; the row-level
       // choice is gone by then, so the fencer re-checks their selection
       if (err instanceof ApiError && err.status === 409) {

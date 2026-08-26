@@ -1,7 +1,8 @@
 """Task 1.4/1.5 — the fencer-facing open-tournaments list: publication/date
 filtering, per-discipline counts, registration status, and own state."""
 
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
+from zoneinfo import ZoneInfo
 
 from tests.conftest import publish
 
@@ -138,6 +139,67 @@ def test_open_registration_status_opens_on_and_closed(client, auth_headers):
 
     past_close = next(t for t in listed if t["slug"] == "past-close")
     assert past_close["registration_status"] == "closed"
+
+
+def test_open_entry_carries_the_opening_moment(client, auth_headers):
+    """A not-yet-open entry states the moment as a resolved, offset-bearing
+    instant beside the day, so no client resolves this tournament's zone
+    itself (change add-registration-open-time D6)."""
+    organizer = auth_headers()
+    fencer = auth_headers(email="f1@example.com", name="F1")
+    opens = TODAY + timedelta(days=10)
+    make_open_tournament(
+        client,
+        organizer,
+        "evening-open",
+        registration_opens=str(opens),
+        registration_opens_time="18:00:00",
+        timezone="Europe/Prague",
+    )
+
+    entry = next(
+        t
+        for t in client.get("/api/tournaments/open", headers=fencer).json()
+        if t["slug"] == "evening-open"
+    )
+    assert entry["registration_status"] == "opens_on"
+    assert entry["registration_opens_on"] == str(opens)
+    assert entry["timezone"] == "Europe/Prague"
+    opens_at = datetime.fromisoformat(entry["registration_opens_at"])
+    assert opens_at.utcoffset() is not None
+    assert opens_at.astimezone(ZoneInfo("Europe/Prague")).strftime("%H:%M") == "18:00"
+
+
+def test_every_entry_states_the_servers_clock(client, auth_headers):
+    """What lets a client measure its own clock against the system's rather
+    than counting down on a clock that may be wrong (D6)."""
+    organizer = auth_headers()
+    fencer = auth_headers(email="f1@example.com", name="F1")
+    make_open_tournament(client, organizer, "cup")
+
+    for entry in client.get("/api/tournaments/open", headers=fencer).json():
+        assert datetime.fromisoformat(entry["server_time"]).utcoffset() is not None
+
+    detail = client.get("/api/tournaments/cup", headers=fencer).json()
+    assert datetime.fromisoformat(detail["server_time"]).utcoffset() is not None
+
+
+def test_open_entry_without_an_opening_time_has_no_moment_but_a_day(client, auth_headers):
+    organizer = auth_headers()
+    fencer = auth_headers(email="f1@example.com", name="F1")
+    make_open_tournament(
+        client, organizer, "day-open", registration_opens=str(TODAY + timedelta(days=10))
+    )
+
+    entry = next(
+        t
+        for t in client.get("/api/tournaments/open", headers=fencer).json()
+        if t["slug"] == "day-open"
+    )
+    # still a moment — the start of the local day, which is what a date-only
+    # tournament has always meant
+    opens_at = datetime.fromisoformat(entry["registration_opens_at"])
+    assert opens_at.astimezone(ZoneInfo("Europe/Prague")).strftime("%H:%M") == "00:00"
 
 
 def test_open_counts_team_disciplines_in_teams(client, auth_headers):

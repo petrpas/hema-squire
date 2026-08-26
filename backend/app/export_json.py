@@ -17,6 +17,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
 from app import taxonomy
+from app.constraints import DEFAULT_TIMEZONE
 from app.models import (
     BankTransaction,
     Discipline,
@@ -36,7 +37,7 @@ from app.models import (
 )
 from app.routers.tournaments import _lowest_free_series
 
-SCHEMA_VERSION = 7
+SCHEMA_VERSION = 8
 
 _TOURNAMENT_FIELDS = [
     "slug", "display_name", "date", "language",
@@ -48,7 +49,8 @@ _TOURNAMENT_FIELDS = [
     "registration_instructions",
     "local_currency", "eur_payments_enabled", "eur_rate",
     "organizers", "discounts",
-    "registration_opens", "registration_closes",
+    "registration_opens", "registration_opens_time", "registration_closes",
+    "timezone",
     "vs_year", "vs_series", "vs_next_seq",
     "team_composition_deadline",
 ]
@@ -56,6 +58,15 @@ _TOURNAMENT_FIELDS = [
 # v6 addition, defaulted when restoring an older file so a v1-v5 export lands
 # with no composition deadline (design team-disciplines D8)
 _V6_TOURNAMENT_DEFAULTS = {"team_composition_deadline": None}
+
+# v8 additions. A v1-v7 export carries no opening time — it was written when
+# the only opening moment was the start of a day — and no zone, so it lands
+# with the default one, exactly as the migration backfilled the tournaments
+# that file was taken from (change add-registration-open-time)
+_V7_TOURNAMENT_DEFAULTS = {
+    "registration_opens_time": None,
+    "timezone": DEFAULT_TIMEZONE,
+}
 
 # v3 additions, defaulted when restoring an older file so a v1/v2 export lands
 # as the CZK, EUR-off, option-less tournament it was
@@ -245,9 +256,13 @@ def _parse_date(value: str | None) -> datetime.date | None:
     return datetime.date.fromisoformat(value) if value else None
 
 
+def _parse_time(value: str | None) -> datetime.time | None:
+    return datetime.time.fromisoformat(value) if value else None
+
+
 def restore_tournament(session: Session, data: dict, actor: Fencer) -> Tournament:
     version = data.get("schema_version")
-    if version not in (1, 2, 3, 4, 5, 6, SCHEMA_VERSION):
+    if version not in (1, 2, 3, 4, 5, 6, 7, SCHEMA_VERSION):
         raise HTTPException(status_code=422, detail="unsupported_schema_version")
     doc = dict(data["tournament"])
     if version == 1:
@@ -266,6 +281,9 @@ def restore_tournament(session: Session, data: dict, actor: Fencer) -> Tournamen
         doc["local_currency"] = doc.pop("primary_currency")
     if version < 6:
         for field, default in _V6_TOURNAMENT_DEFAULTS.items():
+            doc.setdefault(field, default)
+    if version < 8:
+        for field, default in _V7_TOURNAMENT_DEFAULTS.items():
             doc.setdefault(field, default)
     if session.scalar(select(Tournament).where(Tournament.slug == doc["slug"])):
         raise HTTPException(status_code=409, detail="slug_taken")
@@ -287,6 +305,7 @@ def restore_tournament(session: Session, data: dict, actor: Fencer) -> Tournamen
             "refundable_until": _parse_date(doc.get("refundable_until")),
             "early_bird_until": _parse_date(doc.get("early_bird_until")),
             "registration_opens": _parse_date(doc.get("registration_opens")),
+            "registration_opens_time": _parse_time(doc.get("registration_opens_time")),
             "registration_closes": _parse_date(doc.get("registration_closes")),
             "team_composition_deadline": _parse_date(doc.get("team_composition_deadline")),
         }

@@ -212,7 +212,9 @@
     "unpaid_list_treatment.hidden": "hidden until paid",
     "hint.unpaid_list_treatment": "How a fencer who has not yet paid appears on the public participant list.",
     "weapon_rental_fee_early": "Weapon rental fee, early bird ({{currency}})",
-    "afterparty_fee_early": "Afterparty fee, early bird ({{currency}})"
+    "afterparty_fee_early": "Afterparty fee, early bird ({{currency}})",
+    "registration_opens_time": "Opening time",
+    "timezone": "Time zone"
   },
   "rail": {
     "operations": "Operations",
@@ -447,11 +449,12 @@
     },
     "timeline": {
       "title": "Dates",
-      "opensHint": "Registration opens on this day. Before it the tournament is visible but nobody can enter. Unset, it opens as soon as the tournament is published.",
+      "opensHint": "Registration opens on this day. Before it the tournament is visible but nobody can enter. Unset, it opens as soon as the tournament is published. Set an opening time beside it and it opens at that hour instead of at the start of the day.",
       "seatingHint": "Not the registration close. After this day registration stays open but grants only a place in the queue, and any reservation that still owes money moves below the line. Unset, it falls on the registration close.",
       "closesHint": "The hard close: after this day no entry is accepted at all. Unset, it falls on the tournament date.",
       "compositionHint": "The day by which teams should have reached their discipline's minimum size. It only reminds — no roster is locked, no team is cancelled or moved to the queue, and no capacity is freed. Unset, there is no deadline and no reminders.",
-      "anchor": "Tournament: {{date}} — set on the tournament tab."
+      "anchor": "Tournament: {{date}} — set on the tournament tab.",
+      "timezoneHint": "The tournament's local time. Every date and time on this timeline is read in it."
     },
     "paymentMode": {
       "title": "How fencers pay",
@@ -610,7 +613,8 @@
     "status": {
       "open": "Registration open",
       "opensOn": "Registration opens {{date}}",
-      "closed": "Registration closed"
+      "closed": "Registration closed",
+      "opensAt": "Registration opens {{date}} at {{time}}"
     }
   },
   "detail": {
@@ -638,7 +642,11 @@
     "rosterBounds": "roster {{min}}–{{max}} members",
     "compositionDeadline": "composition deadline: {{date}}",
     "qualificationOpen": "Open to everyone",
-    "qualificationRequired": "Qualification: {{criteria}}"
+    "qualificationRequired": "Qualification: {{criteria}}",
+    "opensAt": "registration opens {{date}} at {{time}} {{zone}}",
+    "opensAtNotice": "Registration opens {{date}} at {{time}} {{zone}}.",
+    "opensOnNotice": "Registration opens {{date}}.",
+    "opensIn": "opens in {{countdown}}"
   },
   "form": {
     "title": "Registration",
@@ -795,7 +803,10 @@
     "legacy_fixed_fees_block_eur": "the legacy fixed fees have no EUR counterpart — switch to itemized extra services first",
     "iban_checksum": "this IBAN's check digits do not agree with the rest of the account — check for a typo",
     "account_checksum": "this account number does not pass its checksum — check for a typo",
-    "fieldsNeedAttention": "{{count}} fields need attention"
+    "fieldsNeedAttention": "{{count}} fields need attention",
+    "opening_time_without_date": "An opening time needs an opening date.",
+    "opening_time_does_not_exist": "That time does not exist on that day — the clocks go forward.",
+    "unknown_timezone": "Unknown time zone."
   },
   "queue": {
     "title": "Seating and queue",

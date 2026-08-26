@@ -545,3 +545,76 @@ def test_pre_version_document_restores_with_code_as_slug(client, auth_headers):
     assert discipline["weapon"] == "SA"
     assert discipline["gender"] == "W"
     assert discipline["material"] == "Plastic"
+
+
+def test_opening_moment_round_trips(client, auth_headers):
+    """The opening time and the zone survive an export and its reimport, so a
+    tournament restored from a file opens at the same instant it did before
+    (change add-registration-open-time)."""
+    organizer = auth_headers()
+    client.post(
+        "/api/tournaments",
+        json={"slug": "evening", "display_name": "Evening", "date": "2026-12-05"},
+        headers=organizer,
+    )
+    client.patch(
+        "/api/tournaments/evening",
+        json={
+            "location": "Brno",
+            "organizers": [{"name": "Org", "link": None}],
+            "registration_opens": "2026-09-01",
+            "registration_opens_time": "18:00:00",
+            "timezone": "Europe/Prague",
+        },
+        headers=organizer,
+    )
+    before = client.get("/api/tournaments/evening", headers=organizer).json()
+    assert before["registration_opens_at"] == "2026-09-01T16:00:00Z"
+
+    document = client.get("/api/tournaments/evening/export/json", headers=organizer).json()
+    assert document["tournament"]["registration_opens_time"] == "18:00:00"
+    assert document["tournament"]["timezone"] == "Europe/Prague"
+
+    fresh_organizer, restore_client = fresh_deployment(client, auth_headers)
+    restore = restore_client.post(
+        "/api/tournaments/restore", json=document, headers=fresh_organizer
+    )
+    assert restore.status_code == 201, restore.text
+    after = restore_client.get("/api/tournaments/evening", headers=fresh_organizer).json()
+    assert after["registration_opens_time"] == "18:00:00"
+    assert after["timezone"] == "Europe/Prague"
+    assert after["registration_opens_at"] == before["registration_opens_at"]
+
+
+def test_document_without_an_opening_time_restores_with_the_default_zone(client, auth_headers):
+    """A file written before the opening moment existed carries neither field;
+    it lands with no time and the default zone, exactly as the migration
+    backfilled the tournaments it was taken from."""
+    organizer = auth_headers()
+    client.post(
+        "/api/tournaments",
+        json={"slug": "older", "display_name": "Older", "date": "2026-12-05"},
+        headers=organizer,
+    )
+    client.patch(
+        "/api/tournaments/older",
+        json={
+            "location": "Brno",
+            "organizers": [{"name": "Org", "link": None}],
+            "registration_opens": "2026-09-01",
+        },
+        headers=organizer,
+    )
+    document = client.get("/api/tournaments/older/export/json", headers=organizer).json()
+    document["schema_version"] = 7
+    del document["tournament"]["registration_opens_time"]
+    del document["tournament"]["timezone"]
+
+    fresh_organizer, restore_client = fresh_deployment(client, auth_headers)
+    restore = restore_client.post(
+        "/api/tournaments/restore", json=document, headers=fresh_organizer
+    )
+    assert restore.status_code == 201, restore.text
+    after = restore_client.get("/api/tournaments/older", headers=fresh_organizer).json()
+    assert after["registration_opens_time"] is None
+    assert after["timezone"] == "Europe/Prague"

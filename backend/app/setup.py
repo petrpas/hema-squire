@@ -5,9 +5,11 @@ record instead, since a published tournament is guaranteed complete (see
 guard_published_completeness)."""
 
 import datetime
+import zoneinfo
 
 from fastapi import HTTPException
 
+from app.constraints import DEFAULT_TIMEZONE
 from app.models import DisciplineKind, PaymentMode, Tournament
 
 # distinct 4xx reasons a registration submission can be rejected with
@@ -164,12 +166,115 @@ def guard_published_completeness(tournament: Tournament) -> None:
         )
 
 
-def registration_availability(tournament: Tournament, today: datetime.date) -> str | None:
+def is_known_timezone(name: str | None) -> bool:
+    """Whether the zone database knows this identifier. The write path's test
+    (routers.tournaments); reads use `_zone`, which never rejects. A missing
+    name is not known: the column is non-null, so clearing it is refused on
+    the same terms as naming a zone that does not exist."""
+    if not isinstance(name, str):
+        return False
+    try:
+        zoneinfo.ZoneInfo(name)
+    except (zoneinfo.ZoneInfoNotFoundError, ValueError):
+        return False
+    return True
+
+
+def _zone(name: str | None) -> zoneinfo.ZoneInfo:
+    """A zone to read a stored value in. Reads never fail on it: the write path
+    is what validates the name (routers.tournaments), so an unresolvable one
+    here means the zone database dropped an identifier that was valid when it
+    was saved — a reason to fall back to the default and keep serving, not to
+    fail every fencer's tournament list with a 500."""
+    try:
+        return zoneinfo.ZoneInfo(name or DEFAULT_TIMEZONE)
+    except (zoneinfo.ZoneInfoNotFoundError, ValueError):
+        return zoneinfo.ZoneInfo(DEFAULT_TIMEZONE)
+
+
+def zone_for(tournament: Tournament) -> zoneinfo.ZoneInfo:
+    """This tournament's own zone."""
+    return _zone(tournament.timezone)
+
+
+def local_time_exists(timezone: str, day: datetime.date, clock: datetime.time) -> bool:
+    """Whether that wall clock occurs at all on that day in that zone. False on
+    the spring-forward morning for the hour the zone skips — the one case the
+    write path refuses rather than resolving to an hour the organizer did not
+    choose (design add-registration-open-time D4).
+
+    A time that occurs *twice* (the autumn repeat) exists, and is accepted:
+    `opening_instant` takes the first of the two.
+    """
+    zone = _zone(timezone)
+    naive = datetime.datetime.combine(day, clock)
+    aware = naive.replace(tzinfo=zone)
+    # PEP 495: a skipped local time is exactly one that does not survive the
+    # round trip through UTC
+    return aware.astimezone(datetime.UTC).astimezone(zone).replace(tzinfo=None) == naive
+
+
+def local_date(tournament: Tournament, now: datetime.datetime) -> datetime.date:
+    """`now` as a calendar day in the tournament's own zone. Every whole-day
+    boundary in the registration path is measured with this and never against
+    a UTC day: a tournament that closes on the 30th is open until the end of
+    the 30th where it is held (design add-registration-open-time D2)."""
+    return now.astimezone(zone_for(tournament)).date()
+
+
+def opening_instant(
+    opens: datetime.date | None,
+    opens_time: datetime.time | None,
+    timezone: str,
+) -> datetime.datetime | None:
+    """The instant registration opens, in UTC — the single place the opening
+    date, the opening time and the zone are folded together (design
+    add-registration-open-time D1). None when no opening date is set, which
+    means registration opens on publication.
+
+    An unset time means the start of the local day, which is what a tournament
+    carrying only a date has always meant. `fold=0` takes the *first* of an
+    ambiguous local time (the hour the autumn clock change repeats): opening a
+    little early is harmless, opening an hour after the announced time is the
+    failure that matters (D4). A local time the zone skips cannot be stored —
+    the write path rejects it — so this never has to resolve one.
+
+    Takes the three values rather than a tournament so that the DTOs can fold
+    their own fields with it (app.schemas) without a second implementation.
+    """
+    if opens is None:
+        return None
+    local = datetime.datetime.combine(
+        opens, opens_time or datetime.time(0, 0), tzinfo=_zone(timezone)
+    )
+    return local.astimezone(datetime.UTC)
+
+
+def registration_opens_at(tournament: Tournament) -> datetime.datetime | None:
+    """This tournament's opening instant — `opening_instant` over its own
+    stored values."""
+    return opening_instant(
+        tournament.registration_opens,
+        tournament.registration_opens_time,
+        tournament.timezone,
+    )
+
+
+def registration_availability(tournament: Tournament, now: datetime.datetime) -> str | None:
     """None when a new registration submission may proceed; otherwise the
     reason it is rejected (gate order: cancelled -> published -> opens ->
     closes — design D2 of add-explicit-publishing). Completeness is not
     re-checked here: a published tournament is guaranteed complete by
     guard_published_completeness.
+
+    The two edges are measured differently, and the asymmetry is the point
+    (design add-registration-open-time D3). Opening is a starting gun — an
+    instant, to the minute the organizer named. Closing is a deadline — the
+    whole of its local day, so every stored close keeps meaning what it meant
+    before an opening time existed.
+
+    Takes an instant rather than a date so that no caller can pass a UTC day
+    and get the old, subtly-wrong answer.
 
     Applies only to new submissions — never to cancellation, payment
     matching, or admission of substitutes on existing registrations.
@@ -178,10 +283,11 @@ def registration_availability(tournament: Tournament, today: datetime.date) -> s
         return CLOSED
     if tournament.published_at is None:
         return NOT_PUBLISHED
-    if tournament.registration_opens is not None and today < tournament.registration_opens:
+    opens_at = registration_opens_at(tournament)
+    if opens_at is not None and now < opens_at:
         return NOT_YET_OPEN
     closes = tournament.registration_closes or tournament.date
-    if today > closes:
+    if local_date(tournament, now) > closes:
         return CLOSED
     return None
 
@@ -211,14 +317,20 @@ def seating_has_settled(tournament: Tournament, today: datetime.date) -> bool:
     )
 
 
-def amendment_availability(tournament: Tournament, today: datetime.date) -> str | None:
+def amendment_availability(tournament: Tournament, now: datetime.datetime) -> str | None:
     """None when an amendment submission may proceed; otherwise the reason it
     is rejected. Amendment is closed by every reason registration is, plus its
     own `amendments_close` boundary when set — unset means "same window as
-    registration" (Decision 4), which this reduces to exactly."""
-    reason = registration_availability(tournament, today)
+    registration" (Decision 4), which this reduces to exactly.
+
+    `amendments_close` stays a whole day, like the registration close it
+    mirrors, and is measured in the tournament's own zone."""
+    reason = registration_availability(tournament, now)
     if reason is not None:
         return reason
-    if tournament.amendments_close is not None and today > tournament.amendments_close:
+    if (
+        tournament.amendments_close is not None
+        and local_date(tournament, now) > tournament.amendments_close
+    ):
         return CLOSED
     return None

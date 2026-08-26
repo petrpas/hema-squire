@@ -12,7 +12,8 @@ from pydantic import (
     model_validator,
 )
 
-from app import accounts, constraints
+from app import accounts, constraints, setup
+from app.constraints import DEFAULT_TIMEZONE
 from app.errors import FieldValueError
 from app.fieldtypes import (
     DisciplineSlugStr,
@@ -382,6 +383,17 @@ class TournamentUpdate(BaseModel):
     eur_rate: TolerantDecimal | None = Field(default=None, gt=0)
     organizers: list[OrganizerIn] | None = None
     registration_opens: datetime.date | None = None
+    # the wall clock registration opens on `registration_opens`, in the
+    # tournament's `timezone`. A child of the date: clearing the date clears
+    # it, and one sent without a date is refused (router-checked), as is one
+    # the zone skips on that day (design add-registration-open-time D4, D9)
+    registration_opens_time: datetime.time | None = None
+    # the tournament's own local zone as an IANA identifier; every date on the
+    # timeline is read as a day in it. Validity is decided by the zone
+    # database, not by the length (router-checked)
+    timezone: str | None = Field(
+        default=None, max_length=constraints.TOURNAMENT_TIMEZONE_MAX_LENGTH
+    )
     registration_closes: datetime.date | None = None
     # unset means "same window as registration"; when both this and
     # registration_closes are set, this must not fall after it (router-checked)
@@ -541,6 +553,8 @@ class TournamentOut(BaseModel):
     eur_rate: decimal.Decimal | None
     organizers: list[OrganizerOut]
     registration_opens: datetime.date | None
+    registration_opens_time: datetime.time | None
+    timezone: str
     registration_closes: datetime.date | None
     amendments_close: datetime.date | None
     team_composition_deadline: datetime.date | None
@@ -567,6 +581,16 @@ class TournamentOut(BaseModel):
     # False once the tournament has a first registration (design Decision 2);
     # filled explicitly by endpoints that know the answer, True elsewhere
     vs_series_editable: bool = True
+    # the moment registration opens, resolved from the three fields above so
+    # that no consumer has to know this zone's daylight-saving rules to display
+    # it or to compare against it (design add-registration-open-time D6).
+    # Derived, never stored and never accepted on a write
+    registration_opens_at: datetime.datetime | None = None
+    # this response's own instant. What lets a client measure its clock against
+    # the system's, rather than counting down on a clock that may be wrong (D6)
+    server_time: datetime.datetime = Field(
+        default_factory=lambda: datetime.datetime.now(datetime.UTC)
+    )
 
     @field_validator("organizers", mode="before")
     @classmethod
@@ -576,6 +600,15 @@ class TournamentOut(BaseModel):
     @model_validator(mode="after")
     def _derive_currency_mode(self) -> TournamentOut:
         self.currency_mode = currency_mode(self.local_currency, self.eur_payments_enabled)
+        return self
+
+    @model_validator(mode="after")
+    def _resolve_opening_instant(self) -> TournamentOut:
+        # folded here rather than by each endpoint, so every response carrying
+        # the parts carries the resolved moment with them
+        self.registration_opens_at = setup.opening_instant(
+            self.registration_opens, self.registration_opens_time, self.timezone
+        )
         return self
 
 
@@ -850,7 +883,18 @@ class OpenTournamentOut(BaseModel):
     local_currency: Currency = Currency.CZK
     organizers: list[OrganizerOut]
     registration_status: RegistrationStatus
+    # the opening *day*, kept as it was so a client written before the opening
+    # moment existed still reads this list
     registration_opens_on: datetime.date | None = None
+    # the opening *moment*: resolved, absolute, offset-bearing (design
+    # add-registration-open-time D6). Set only while the status is opens_on
+    registration_opens_at: datetime.datetime | None = None
+    # the zone the opening hour is stated in, so a consumer can name it
+    timezone: str = DEFAULT_TIMEZONE
+    # this response's own instant, for the same reason as on TournamentOut
+    server_time: datetime.datetime = Field(
+        default_factory=lambda: datetime.datetime.now(datetime.UTC)
+    )
     disciplines: list[OpenDisciplineOut]
     my_registration_state: MyRegistrationState
     # the caller's other bond to the tournament: owner or console team member.

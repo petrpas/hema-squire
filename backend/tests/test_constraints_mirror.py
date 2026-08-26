@@ -135,10 +135,12 @@ def _prop_type(prop: dict) -> str | None:
     return None
 
 
-def _is_date(prop: dict) -> bool:
-    if prop.get("format") in ("date", "date-time"):
+def _is_temporal(prop: dict) -> bool:
+    """A date, an instant, or a time of day. Its format is its bound: there is
+    no length or range for the design to declare on top of it."""
+    if prop.get("format") in ("date", "date-time", "time"):
         return True
-    return any(_is_date(branch) for branch in prop.get("anyOf", []))
+    return any(_is_temporal(branch) for branch in prop.get("anyOf", []))
 
 
 def _load_mirror() -> dict:
@@ -194,7 +196,7 @@ def test_every_editable_scalar_field_has_a_bound(openapi_schemas, mirror):
         for field, prop in _iter_model_fields(openapi_schemas, model):
             if (model, field) in _NO_BOUND_NEEDED:
                 continue
-            if _is_date(prop):
+            if _is_temporal(prop):
                 continue
             prop_type = _prop_type(prop)
             if prop_type not in ("string", "integer", "number"):

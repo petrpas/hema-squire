@@ -98,7 +98,13 @@ def test_before_opening_date_rejects_registration(client, auth_headers):
     fencer = auth_headers(email="f1@example.com", name="F1")
     response = register(client, fencer, slug=slug)
     assert response.status_code == 403
-    assert response.json()["detail"] == {"reason": "not_yet_open"}
+    detail = response.json()["detail"]
+    assert detail["reason"] == "not_yet_open"
+    # the refusal carries the moment and this server's clock, so a client that
+    # jumped the gate can go back to presenting the wait rather than a generic
+    # failure (change add-registration-open-time)
+    assert detail["opens_at"] is not None
+    assert detail["server_time"] < detail["opens_at"]
 
 
 def test_after_closing_date_rejects_registration(client, auth_headers):

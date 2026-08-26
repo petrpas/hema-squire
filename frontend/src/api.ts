@@ -323,6 +323,19 @@ export interface TournamentDetail extends Tournament {
   eur_rate: string | null;
   organizers: Organizer[];
   registration_opens: string | null;
+  /** The wall clock registration opens on `registration_opens`, read in
+   *  `timezone`. Null means the start of that local day. */
+  registration_opens_time: string | null;
+  /** The tournament's own zone as an IANA identifier; every date and time on
+   *  its timeline is read in it. */
+  timezone: string;
+  /** The opening moment resolved to an absolute instant — null when no
+   *  opening date is set. Derived by the server so no client resolves this
+   *  tournament's daylight-saving rules itself (design D6). */
+  registration_opens_at: string | null;
+  /** This response's own instant, for measuring the device clock against the
+   *  server's rather than counting down on a clock that may be wrong. */
+  server_time: string;
   registration_closes: string | null;
   /** Unset means "same window as registration" (Decision 4). */
   amendments_close: string | null;
@@ -413,7 +426,15 @@ export interface OpenTournament {
   local_currency: Currency;
   organizers: Organizer[];
   registration_status: RegistrationStatus;
+  /** The opening *day*, as it always was. */
   registration_opens_on: string | null;
+  /** The opening *moment*: absolute and offset-bearing, set only while the
+   *  status is `opens_on` (design D6). */
+  registration_opens_at: string | null;
+  /** The zone the opening hour is stated in. */
+  timezone: string;
+  /** This response's own instant (see TournamentDetail.server_time). */
+  server_time: string;
   disciplines: OpenDiscipline[];
   my_registration_state: MyRegistrationState;
   /** The caller's other bond: owner or console team member. Independent of

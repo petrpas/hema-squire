@@ -153,8 +153,8 @@ export function DiscountsSection({
         <thead>
           <tr>
             <th>{t("setup.discounts.name")}</th>
-            <th>{t("setup.discounts.condition")}</th>
-            <th>{t("setup.discounts.effect")}</th>
+            <th className="col-num">{t("setup.discounts.condition")}</th>
+            <th className="col-num">{t("setup.discounts.effect")}</th>
             <th className="col-actions" />
           </tr>
         </thead>
@@ -197,7 +197,7 @@ export function DiscountsSection({
                 />
                 <FieldError field={`name-${index}`} error={validation.errors[`name-${index}`]} />
               </td>
-              <td>
+              <td className="col-num">
                 <div className="param-fields">
                   <select
                     value={discount.condition.kind}
@@ -241,7 +241,7 @@ export function DiscountsSection({
                   )}
                 </div>
               </td>
-              <td>
+              <td className="col-num">
                 <div className="param-fields">
                   <select
                     value={discount.effect.kind}

@@ -297,9 +297,11 @@ export function ExtraItemsSection({
           <tr>
             <th>{t("setup.extras.name")}</th>
             <th>{t("setup.extras.category")}</th>
-            <th>{t("setup.extras.price", { currency: detail.local_currency })}</th>
-            {eur && <th>{t("setup.extras.priceEur")}</th>}
-            <th>{t("setup.extras.maxQty")}</th>
+            <th className="col-num">
+              {t("setup.extras.price", { currency: detail.local_currency })}
+            </th>
+            {eur && <th className="col-num">{t("setup.extras.priceEur")}</th>}
+            <th className="col-num">{t("setup.extras.maxQty")}</th>
             <th className="col-actions" />
           </tr>
         </thead>
@@ -355,7 +357,7 @@ export function ExtraItemsSection({
                     ))}
                   </select>
                 </td>
-                <td>
+                <td className="col-num">
                   <input
                     className="cell-input"
                     type="text"
@@ -367,7 +369,7 @@ export function ExtraItemsSection({
                   <FieldError field={`price-${row.rowId}`} error={validation.errors[`price-${row.rowId}`]} />
                 </td>
                 {eur && (
-                  <td>
+                  <td className="col-num">
                     <input
                       className="cell-input"
                       type="text"
@@ -379,7 +381,7 @@ export function ExtraItemsSection({
                     <FieldError field={`price_eur-${row.rowId}`} error={validation.errors[`price_eur-${row.rowId}`]} />
                   </td>
                 )}
-                <td>
+                <td className="col-num">
                   {!isActionCategory(row.category) && (
                     <>
                       <input

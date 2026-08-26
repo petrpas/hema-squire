@@ -67,6 +67,7 @@ export const FIELD_CONSTRAINTS: Record<string, FieldConstraint> = {
   "TournamentUpdate.description": { "maxLength": 5000 },
   "TournamentUpdate.qualification_criteria": { "maxLength": 5000 },
   "TournamentUpdate.registration_instructions": { "maxLength": 5000 },
+  "TournamentUpdate.timezone": { "maxLength": 64 },
   "TournamentUpdate.eur_rate": { "exclusiveMinimum": 0 },
   "TournamentUpdate.reservation_validity_days": { "minimum": 2, "maximum": 7 },
   "TournamentUpdate.reminder_day": { "exclusiveMinimum": 0 },

@@ -17,6 +17,9 @@ dependencies = [
     "qrcode[pil]>=8.2",
     "slowapi>=0.1.10",
     "sqlalchemy>=2.0.51",
+    # the IANA zone database, so `zoneinfo` resolves a tournament's timezone on
+    # a container carrying no system zone data (design add-registration-open-time D4)
+    "tzdata>=2025.2",
     "uvicorn[standard]>=0.51.0",
 ]
 

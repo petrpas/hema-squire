@@ -458,7 +458,13 @@ The public participant list SHALL show confirmed (paid) registrations only. Unpa
 - **THEN** unpaid reservations never appear as confirmed participants
 
 ### Requirement: Registration availability
-The system SHALL accept a registration only when the tournament has been published and the current date is within the registration window: on or after the registration-opens date when set, and on or before the registration-closes date when set (otherwise up to the tournament date). When registration is unavailable, the rejection SHALL carry a distinct reason — not yet published, not yet open, or closed — so clients can present it (with the opening date where applicable). The gate SHALL NOT re-check mandatory setup completeness: publication already guarantees it, and a published tournament cannot be edited into incompleteness.
+The system SHALL accept a registration only when the tournament has been published and the current moment is within the registration window: at or after the tournament's opening moment when an opens date is set, and on or before the registration-closes date when set (otherwise up to the tournament date). When registration is unavailable, the rejection SHALL carry a distinct reason — not yet published, not yet open, or closed — so clients can present it (with the opening moment where applicable). The gate SHALL NOT re-check mandatory setup completeness: publication already guarantees it, and a published tournament cannot be edited into incompleteness.
+
+The two edges of the window SHALL be evaluated differently, because they mean different things. The opening edge is an **instant**: the tournament's opens date, its opening time when set (the start of the day otherwise), read in the tournament's timezone as fixed by `tournament-admin`. The closing edge remains a **whole day**: registration is accepted through the end of the closing date in the tournament's timezone. No edge SHALL be evaluated against a day boundary in any other zone, so a tournament announced as opening at a given hour opens at that hour for every caller, wherever the system or the caller happens to run.
+
+Amendment availability SHALL follow the same evaluation: it is closed by every reason registration is, plus its own amendments-close boundary when set, which is a whole day in the tournament's timezone.
+
+The gate SHALL remain the sole authority on whether a registration may be created. A client MAY present the window and MAY reveal its registration form when the opening moment passes, but a submission that arrives before the opening moment SHALL still be rejected with the not-yet-open reason, and that rejection SHALL carry the opening moment so the client can return to presenting the wait rather than a generic failure.
 
 #### Scenario: Not published
 - **WHEN** a fencer attempts to register for a tournament that has not been published
@@ -467,6 +473,22 @@ The system SHALL accept a registration only when the tournament has been publish
 #### Scenario: After close
 - **WHEN** a fencer attempts to register after the registration-closes date
 - **THEN** the registration is rejected with the closed reason
+
+#### Scenario: Before the opening hour
+- **WHEN** a fencer submits a registration one minute before the tournament's opening moment
+- **THEN** the registration is rejected with the not-yet-open reason, and the rejection states the opening moment
+
+#### Scenario: At the opening hour
+- **WHEN** a fencer submits a registration at the tournament's opening moment
+- **THEN** the registration is accepted
+
+#### Scenario: Opening is not a UTC day boundary
+- **WHEN** a tournament in a zone ahead of UTC opens registration on a given date with no opening time, and a fencer submits during the hour after midnight UTC but before midnight locally
+- **THEN** the registration is rejected with the not-yet-open reason
+
+#### Scenario: Closing runs to the end of the local day
+- **WHEN** a fencer submits a registration late in the evening, local to the tournament, on the registration-closes date
+- **THEN** the registration is accepted
 
 ### Requirement: Cancellation and refund policy
 A fencer SHALL be able to cancel a registration. The freed spot SHALL be offered to substitutes, whatever the cancellation's refund standing.
@@ -600,7 +622,11 @@ A fencer holding a reservation SHALL be told either how to pay or why they canno
 - **THEN** the fencer is told the reservation is no longer awaiting payment rather than being shown an empty panel
 
 ### Requirement: Fencer-facing tournament list
-The system SHALL expose a tournament list for fencers containing only published, non-cancelled tournaments, each with its public information — including its subtitle and a reference to its logo when set, and its local currency — its per-discipline registered numbers (seats taken per capacity, counting confirmed registrations and unexpired reservations), the registration availability status (open, not yet open with the opening date, or closed), and whether the requesting account has an active registration. The subtitle and logo reference SHALL be omitted (null/absent) when not set, and their absence SHALL NOT change the rest of the payload.
+The system SHALL expose a tournament list for fencers containing only published, non-cancelled tournaments, each with its public information — including its subtitle and a reference to its logo when set, and its local currency — its per-discipline registered numbers (seats taken per capacity, counting confirmed registrations and unexpired reservations), the registration availability status (open, not yet open with the opening moment, or closed), and whether the requesting account has an active registration. The subtitle and logo reference SHALL be omitted (null/absent) when not set, and their absence SHALL NOT change the rest of the payload.
+
+A not-yet-open entry SHALL carry the opening moment as a **resolved absolute instant bearing its offset**, not as a bare date, so that no consumer has to know the tournament's timezone rules to display it or to compare against it. The tournament's timezone identifier SHALL be carried alongside it, so a consumer can name the zone the hour is stated in. The same resolved instant and identifier SHALL appear on the fencer-facing tournament detail payload.
+
+Every response carrying an opening moment SHALL also carry the **server's own current instant**, so that a consumer can measure its own clock against the system's rather than counting down against a clock that may be wrong.
 
 The list SHALL be served in three scopes, carrying the same entry shape so one presentation serves all three:
 
@@ -651,3 +677,11 @@ A per-discipline count SHALL be stated in the unit its discipline is entered in:
 #### Scenario: Setup-complete draft still excluded
 - **WHEN** a tournament's mandatory setup is complete but nobody has published it
 - **THEN** it is absent from the fencer-facing list
+
+#### Scenario: Opening moment carried as an instant
+- **WHEN** a fencer lists tournaments and one of them opens registration at 18:00 local time on a future date
+- **THEN** that entry's status is not-yet-open and its opening moment is an absolute instant carrying its offset, alongside the tournament's timezone identifier
+
+#### Scenario: Response states the server's clock
+- **WHEN** any fencer-facing tournament list or detail is fetched
+- **THEN** the response states the server's current instant

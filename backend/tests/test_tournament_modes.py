@@ -182,8 +182,11 @@ def test_mode_write_leaves_every_concealed_setting_untouched(client, auth_header
     set_mode(client, headers, "na-duel-2026")
     after = client.get("/api/tournaments/na-duel-2026").json()
 
-    assert {k: v for k, v in after.items() if k not in FLAGS} == {
-        k: v for k, v in before.items() if k not in FLAGS
+    # `server_time` is this response's own clock, not a setting — it differs
+    # between any two responses by design (change add-registration-open-time)
+    per_response = {*FLAGS, "server_time"}
+    assert {k: v for k, v in after.items() if k not in per_response} == {
+        k: v for k, v in before.items() if k not in per_response
     }
 
 
