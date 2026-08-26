@@ -153,7 +153,7 @@ def test_queued_substitutes_untouched_by_lifecycle(client, auth_headers, mailbox
     waiting = auth_headers(email="b@example.com", name="B")
     client.post(
         "/api/tournaments/cup/register",
-        json={"disciplines": ["LS"], "wait_for_all": True},
+        json={"disciplines": ["LS"]},
         headers=waiting,
     )
     mailbox.sent.clear()

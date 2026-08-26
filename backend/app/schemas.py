@@ -743,7 +743,6 @@ class RegisterIn(BaseModel):
     aftersparring: bool = False
     accommodation: str | None = None
     notes: str | None = None
-    wait_for_all: bool = False
     extras: list[ExtraSelectionIn] = []
     teams: list[TeamEntryIn] = []
 

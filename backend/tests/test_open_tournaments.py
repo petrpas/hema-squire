@@ -89,7 +89,7 @@ def test_open_reports_substitute_paid_and_cancelled_states(client, auth_headers)
     second = auth_headers(email="b@example.com", name="B")
     client.post(
         "/api/tournaments/cup/register",
-        json={"disciplines": ["LS"], "wait_for_all": True},
+        json={"disciplines": ["LS"]},
         headers=second,
     )
 

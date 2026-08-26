@@ -678,9 +678,9 @@ def test_returned_registration_keeps_its_place_in_the_queue(client, auth_headers
     make_tournament(client, organizer, capacity=1)
     _, early = enroll(client, auth_headers, email="a@example.com", name="A")
     _, middle = enroll(
-        client, auth_headers, email="b@example.com", name="B", wait_for_all=True
+        client, auth_headers, email="b@example.com", name="B"
     )
-    _, late = enroll(client, auth_headers, email="c@example.com", name="C", wait_for_all=True)
+    _, late = enroll(client, auth_headers, email="c@example.com", name="C")
 
     session = db_session()
     for offset, entry in enumerate((early, middle, late)):
@@ -880,8 +880,8 @@ def test_queue_view_numbers_the_queue_in_registration_order(client, auth_headers
     organizer = auth_headers()
     make_tournament(client, organizer, mode="reservation", capacity=1)
     enroll(client, auth_headers, email="a@example.com", name="A")
-    enroll(client, auth_headers, email="b@example.com", name="B", wait_for_all=True)
-    enroll(client, auth_headers, email="c@example.com", name="C", wait_for_all=True)
+    enroll(client, auth_headers, email="b@example.com", name="B")
+    enroll(client, auth_headers, email="c@example.com", name="C")
 
     queue = client.get("/api/tournaments/cup/queue", headers=organizer).json()
     (discipline,) = queue["disciplines"]

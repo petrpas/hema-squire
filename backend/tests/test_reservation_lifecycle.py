@@ -184,7 +184,7 @@ def test_reregistration_after_expiry_into_full_discipline_queues(client, auth_he
     other = auth_headers(email="f2@example.com", name="F2")
     register(client, other)  # takes the only seat
 
-    second = register(client, fencer, wait_for_all=True).json()
+    second = register(client, fencer).json()
     assert second["entries"][0]["is_substitute"] is True
 
 

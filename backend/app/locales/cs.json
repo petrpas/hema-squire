@@ -72,6 +72,15 @@
     "amendmentNoPayment": {
       "subject": "Změna registrace na {tournament}",
       "body": "Ahoj {name},\n\nupravili jsme tvou registraci na {tournament}:\n\n{summary}\n\nCelkem: {total}\n\nČástka je informativní — platbu vyřizuje pořadatel mimo tento systém.\n\nTým {tournament}"
+    },
+    "promoted": {
+      "subject": "Uvolnilo se místo — {tournament}",
+      "body": "Ahoj {name},\n\nv disciplíně {discipline} na {tournament} se pro tebe uvolnilo místo — už nejsi náhradník.\n\nDoplatit zbývá {amount}, a to do {due}.\n\nÚčet: {account}\nVariabilní symbol: {vs}\n\nZaplatit můžeš naskenováním přiloženého QR kódu — je vystavený přesně na tuto částku.\n\nTým {tournament}",
+      "noDeadline": "co nejdříve"
+    },
+    "promotedNoPayment": {
+      "subject": "Uvolnilo se místo — {tournament}",
+      "body": "Ahoj {name},\n\nv disciplíně {discipline} na {tournament} se pro tebe uvolnilo místo — už nejsi náhradník.\n\nTvá registrace vychází na {total}. Částka je pro informaci — platbu řeší organizátor mimo tento systém.\n\nTým {tournament}"
     }
   }
 }

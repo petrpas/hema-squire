@@ -78,6 +78,14 @@ def _total_text(tournament: Tournament, registration: Registration) -> str:
     )
 
 
+def _due_text(registration: Registration, lang: str) -> str:
+    """The date money is due by, for the one mail that states a deadline. The
+    window is stored as an instant; the fencer needs the day."""
+    if registration.expires_at is None:
+        return t("email.promoted.noDeadline", lang)
+    return registration.expires_at.strftime("%d.%m.%Y")
+
+
 def _account_text(tournament: Tournament) -> str:
     """The account in the form its payer can use — both forms for a Czech
     account, the IBAN alone otherwise (design accept-czech-account-format
@@ -425,6 +433,81 @@ def send_surcharge_due(
     mailer.send(
         build_message(
             fencer.email, settings.email_sender, subject, body, qr=qr, qr_eur=qr_eur
+        )
+    )
+
+
+def send_promoted(
+    mailer: Mailer,
+    tournament: Tournament,
+    fencer: Fencer,
+    registration: Registration,
+    discipline_name: str,
+) -> None:
+    """A queued placement promoted into a seat: the news is that the fencer got
+    in, so the mail leads with the discipline whose place opened rather than
+    with the bill.
+
+    The amount is what is *now* due — `outstanding_cents` against what has
+    already been credited — not the registration's total. A registration that
+    was fully queued owes its whole total and the two coincide; one that had
+    already paid for a seat beside this queued placement owes only the
+    difference, and must not be sent a demand reading as though nothing had
+    been paid (spec: seating-queue, "Organizer promotion from the queue").
+
+    With payments off no window opens and nothing is due, so the same news is
+    sent with the registration's total stated as information — the shape
+    `send_surcharge_due` has no room for."""
+    lang = tournament.language
+    if not tournament.feature_payments:
+        mailer.send(
+            build_message(
+                fencer.email,
+                settings.email_sender,
+                t("email.promotedNoPayment.subject", lang, tournament=tournament.display_name),
+                t(
+                    "email.promotedNoPayment.body",
+                    lang,
+                    name=fencer.display_name,
+                    tournament=tournament.display_name,
+                    discipline=discipline_name,
+                    total=_total_text(tournament, registration),
+                ),
+            )
+        )
+        return
+
+    outstanding_local = (Decimal(registration.outstanding_cents) / 100).quantize(
+        Decimal("0.01"), rounding=ROUND_HALF_UP
+    )
+    outstanding_eur = None
+    if registration.outstanding_eur_cents is not None:
+        outstanding_eur = (Decimal(registration.outstanding_eur_cents) / 100).quantize(
+            Decimal("0.01"), rounding=ROUND_HALF_UP
+        )
+
+    body = t(
+        "email.promoted.body",
+        lang,
+        name=fencer.display_name,
+        tournament=tournament.display_name,
+        discipline=discipline_name,
+        amount=_amount_text(tournament, lang, outstanding_local, outstanding_eur),
+        due=_due_text(registration, lang),
+        account=_account_text(tournament),
+        vs=registration.vs,
+    )
+    qr, qr_eur = payment_qrs(
+        tournament, registration, local_amount=outstanding_local, eur_amount=outstanding_eur
+    )
+    mailer.send(
+        build_message(
+            fencer.email,
+            settings.email_sender,
+            t("email.promoted.subject", lang, tournament=tournament.display_name),
+            body,
+            qr=qr,
+            qr_eur=qr_eur,
         )
     )
 

@@ -94,7 +94,14 @@ def process_expiries(session: Session, tournament: Tournament, mailer: Mailer) -
     registration to the queue instead of expiring it (design Decision 8). The
     only registrations under a window then are ones the organizer promoted
     deliberately, and EXPIRED would discard them along with the registration
-    order they would never get back."""
+    order they would never get back.
+
+    A registration still holding a substitute placement is demoted rather than
+    expired whether or not seating has settled (design place-substitutes-per-
+    discipline D5). Its queue place was never what the money was for: expiring
+    it would make an unpaid seat cost a queue position the fencer owed nothing
+    for. Returns how many registrations were expired; a demoted one is not
+    among them, because it still exists."""
     overdue = session.scalars(
         select(Registration).where(
             Registration.tournament_id == tournament.id,
@@ -120,8 +127,26 @@ def process_expiries(session: Session, tournament: Tournament, mailer: Mailer) -
             )
         session.commit()
         return returned
+    expired = 0
     for registration in overdue:
+        if registration.holds_queued_placement:
+            # The seat it did not pay for is given up; the queue place it never
+            # owed for is kept, in its original registration order. A distinct
+            # kind from `promotion_lapsed`: the cause is an unpaid seat, not an
+            # unpaid promotion.
+            registration.expires_at = None
+            _demote(registration)
+            session.add(
+                PaymentEvent(
+                    tournament_id=tournament.id,
+                    registration_id=registration.id,
+                    kind="seat_lapsed_to_queue",
+                    detail=f"VS {registration.vs}",
+                )
+            )
+            continue
         registration.state = RegistrationState.EXPIRED
+        expired += 1
         holding_payment = (
             registration.amount_paid_cents > 0 or (registration.amount_paid_eur_cents or 0) > 0
         )
@@ -138,7 +163,7 @@ def process_expiries(session: Session, tournament: Tournament, mailer: Mailer) -
             holding_payment=holding_payment,
         )
     session.commit()
-    return len(overdue)
+    return expired
 
 
 def _demote(registration: Registration) -> bool:

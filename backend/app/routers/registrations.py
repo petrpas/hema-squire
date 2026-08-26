@@ -9,7 +9,14 @@ from sqlalchemy.exc import IntegrityError
 
 from app import accounts, emails, pricing, setup, spayd
 from app.auth import require_console_access
-from app.availability import queue_length, taken_seats, taken_team_slots, team_queue_length
+from app.availability import (
+    full_disciplines,
+    live_registration,
+    queue_length,
+    taken_seats,
+    taken_team_slots,
+    team_queue_length,
+)
 from app.mail import Mailer, get_mailer
 from app.models import (
     Discipline,
@@ -78,7 +85,7 @@ def queue_position(session, entry: RegistrationDiscipline) -> int:
         .where(
             RegistrationDiscipline.discipline_id == entry.discipline_id,
             RegistrationDiscipline.is_substitute.is_(True),
-            Registration.state == RegistrationState.RESERVED,
+            live_registration(),
             Registration.registered_at < entry.registration.registered_at,
         )
     )
@@ -240,11 +247,7 @@ def participants(tournament: TournamentDep, session: SessionDep):
         select(Registration)
         .where(
             Registration.tournament_id == tournament.id,
-            (Registration.state == RegistrationState.PAID)
-            | (
-                (Registration.state == RegistrationState.RESERVED)
-                & ((Registration.expires_at.is_(None)) | (Registration.expires_at > _now()))
-            ),
+            live_registration(),
         )
         .order_by(Registration.registered_at)
     ).all()
@@ -438,20 +441,15 @@ def register(
         raise HTTPException(status_code=422, detail="no_disciplines_or_teams")
     team_entries = _resolve_teams(tournament, data.teams)
     _validate_options(data.extras, {item.id: item for item in tournament.extra_items})
-    # Once seating has settled, capacity stops deciding anything: every
-    # placement joins the queue whether or not seats are free (spec
-    # "Registration after seating has settled"), so the fencer is never asked
-    # to choose between trimming and waiting — there is nothing to trim to.
+    # Each discipline is placed against its own capacity, so a full one never
+    # costs the fencer a seat in an open one (spec: "Capacity and substitutes").
+    # The placement follows from capacity alone — there is nothing to negotiate,
+    # and the fencer is told per discipline what was seated and what was queued.
+    # Once seating has settled capacity stops deciding anything and every
+    # placement joins the queue, free seats or not (spec: "Registration after
+    # seating has settled").
     settled = setup.seating_has_settled(tournament, _now().date())
-    if settled:
-        as_substitute = True
-    else:
-        full = [d.slug for d in selected if taken_seats(session, d) >= d.capacity]
-        if full and not data.wait_for_all:
-            # The fencer chooses: trim the selection to open disciplines, or resubmit
-            # with wait_for_all to queue the whole registration (Decision 7).
-            raise HTTPException(status_code=409, detail={"full_disciplines": full})
-        as_substitute = bool(full)
+    full = {d.slug for d in selected} if settled else full_disciplines(session, selected)
 
     # `next_vs` durably commits its own counter bump, so a rollback below
     # (retrying after a `Registration.vs` collision) cannot also undo the
@@ -511,7 +509,9 @@ def register(
         registration.notes = data.notes
         for discipline in selected:
             registration.entries.append(
-                RegistrationDiscipline(discipline=discipline, is_substitute=as_substitute)
+                RegistrationDiscipline(
+                    discipline=discipline, is_substitute=discipline.slug in full
+                )
             )
         for selection in data.extras:
             value = (selection.option_value or "").strip()
@@ -552,20 +552,23 @@ def register(
     totals = pricing.registration_total(registration, tournament)
     registration.total_amount = totals.local
     registration.total_eur = totals.eur
-    registration.expires_at = _initial_expires_at(tournament, registration, as_substitute)
+    registration.expires_at = _initial_expires_at(tournament, registration)
     session.commit()
     emails.send_registration_confirmation(mailer, tournament, fencer, registration)
     return registration_out(session, registration, tournament)
 
 
-def _initial_expires_at(
-    tournament: Tournament, registration: Registration, as_substitute: bool
-) -> datetime | None:
+def _initial_expires_at(tournament: Tournament, registration: Registration) -> datetime | None:
     """The payment window a fresh registration starts under — the interval
     between money being requested and money being due, so it exists exactly
     where money is requested at registration (Decision 2).
 
-    A substitute is never billed, so no window opens for one. In `reservation`
+    A substitute placement is never billed, so a registration sitting entirely
+    in the queue opens no window — `fully_queued` is the same question the
+    confirmation email and the reminder pass ask, and it accounts for teams as
+    well as individual entries. A registration holding a seat alongside a queued
+    placement owes for the seat, so it opens a window like any other. In
+    `reservation`
     mode nothing is owed until the seating deadline, so none opens there
     either; `taken_seats` already reads a null `expires_at` as holding, so the
     seat is held correctly with no change to the capacity predicate.
@@ -577,7 +580,7 @@ def _initial_expires_at(
     makes the registration inert to expiry rather than a new state."""
     if not tournament.feature_payments:
         return None
-    if as_substitute or tournament.payment_mode == PaymentMode.RESERVATION:
+    if registration.fully_queued or tournament.payment_mode == PaymentMode.RESERVATION:
         return None
     return registration.registered_at + timedelta(days=tournament.reservation_validity_days)
 
@@ -684,7 +687,7 @@ def amend_registration(
     # waitlist"). `exclude_registration_id` keeps this registration's own
     # (soon-to-be-replaced) teams out of the capacity count, so a kept team is
     # not counted against itself.
-    full = {d.slug for d in selected if taken_seats(session, d) >= d.capacity}
+    full = full_disciplines(session, selected)
     team_flags = _team_waitlist_flags(
         session, team_entries, exclude_registration_id=registration.id
     )
@@ -837,25 +840,46 @@ def admit_substitute(
     )
     if entry is None:
         raise HTTPException(status_code=404, detail="no_substitute_entry")
-    if registration.state != RegistrationState.RESERVED:
+    # Cancelled and expired registrations cannot hold a seat. Having been paid
+    # is not such a state: a registration that settled a seated placement may
+    # still hold a queued one beside it, and refusing that would leave the one
+    # action that resolves it upward permanently unavailable (design D4).
+    if registration.state in (RegistrationState.CANCELLED, RegistrationState.EXPIRED):
         raise HTTPException(status_code=409, detail="registration_not_active")
     if taken_seats(session, entry.discipline) >= entry.discipline.capacity:
         raise HTTPException(status_code=409, detail="discipline_full")
 
+    was_paid = registration.state == RegistrationState.PAID
+    previous_total = registration.total_amount
+
     entry.is_substitute = False
     # Fees are frozen to the original registration date; admission bills the
-    # admitted discipline (plus extras on first admission) and opens a fresh window.
+    # admitted discipline (plus extras on first admission) and opens a fresh
+    # window. The state is left alone: a paid registration that now owes more
+    # stays paid and owes the difference through `outstanding_cents`, exactly
+    # as an amendment leaves it, rather than reverting to unpaid.
     totals = pricing.registration_total(registration, tournament)
     registration.total_amount = totals.local
     registration.total_eur = totals.eur
     registration.expires_at = _promotion_expires_at(tournament)
+    if was_paid:
+        session.add(
+            PaymentEvent(
+                tournament_id=tournament.id,
+                registration_id=registration.id,
+                kind="registration_promoted",
+                detail=f"VS {registration.vs}: {previous_total} -> {registration.total_amount}",
+            )
+        )
     session.commit()
-    # Admission opens the payment window: send the payment instructions now.
-    # With payments off it opens none, so the same mail tells the fencer they
-    # have a place and states the amount as information (seating-queue): a
-    # promotion that opens no window cannot lapse, so such a registration
-    # never returns to the queue on a clock.
-    emails.send_registration_confirmation(mailer, tournament, registration.fencer, registration)
+    # The news is the place, not the bill: the mail names the discipline that
+    # opened and states what is due *now* rather than the registration's total.
+    # With payments off it opens no window, so the same mail states the total as
+    # information (seating-queue) — a promotion that opens no window cannot
+    # lapse, so such a registration never returns to the queue on a clock.
+    emails.send_promoted(
+        mailer, tournament, registration.fencer, registration, entry.discipline.name
+    )
     return registration_out(session, registration, tournament)
 
 

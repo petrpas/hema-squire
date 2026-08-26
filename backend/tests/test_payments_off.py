@@ -237,7 +237,7 @@ def test_promotion_opens_no_payment_window(client, auth_headers, mailbox):
     setup(client, organizer, capacity=1)
     publish(client, organizer, "cup")
     enroll(client, auth_headers, email="first@example.com")
-    _, queued = enroll(client, auth_headers, email="second@example.com", wait_for_all=True)
+    _, queued = enroll(client, auth_headers, email="second@example.com")
     assert queued["entries"][0]["is_substitute"] is True
 
     session = db_session()

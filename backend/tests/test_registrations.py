@@ -83,34 +83,43 @@ def test_double_registration_rejected(client, auth_headers):
     assert register(client, fencer).status_code == 409
 
 
-def test_full_discipline_forces_choice(client, auth_headers):
+def test_full_discipline_is_placed_not_refused(client, auth_headers):
+    """A full discipline no longer refuses the submission to ask the fencer to
+    choose between trimming it and queueing everything: it is queued, the open
+    discipline beside it is seated, and both are reported per discipline."""
     organizer = auth_headers()
     setup_tournament(client, organizer)
     register(client, auth_headers(email="a@example.com", name="A"), disciplines=["SB"])
 
     late = auth_headers(email="b@example.com", name="B")
     response = register(client, late, disciplines=["LS", "SB"])
-    assert response.status_code == 409
-    assert response.json()["detail"] == {"full_disciplines": ["SB"]}
+    assert response.status_code == 201
 
-    trimmed = register(client, late, disciplines=["LS"])
-    assert trimmed.status_code == 201
+    entries = {e["slug"]: e for e in response.json()["entries"]}
+    assert entries["LS"]["is_substitute"] is False
+    assert entries["SB"]["is_substitute"] is True
+    assert entries["SB"]["queue_position"] == 1
+    assert entries["LS"]["queue_position"] is None
 
 
-def test_wait_for_all_queues_everything_unbilled(client, auth_headers):
+def test_mixed_selection_bills_the_seat_and_queues_the_rest(client, auth_headers):
+    """The successor to the all-or-nothing rule: a full discipline no longer
+    costs the fencer the open one beside it. The seat is billed with the
+    extras and opens a window; the queued placement adds nothing."""
     organizer = auth_headers()
     setup_tournament(client, organizer)
     register(client, auth_headers(email="a@example.com", name="A"), disciplines=["SB"])
 
     waiting = auth_headers(email="b@example.com", name="B")
-    body = register(
-        client, waiting, disciplines=["LS", "SB"], afterparty=True, wait_for_all=True
-    ).json()
-    assert all(e["is_substitute"] for e in body["entries"])
-    assert body["total_amount"] == 0
-    assert body["expires_at"] is None
-    sb_entry = next(e for e in body["entries"] if e["slug"] == "SB")
-    assert sb_entry["queue_position"] == 1
+    body = register(client, waiting, disciplines=["LS", "SB"], afterparty=True).json()
+
+    entries = {e["slug"]: e for e in body["entries"]}
+    assert entries["LS"]["is_substitute"] is False
+    assert entries["SB"]["is_substitute"] is True
+    assert entries["SB"]["queue_position"] == 1
+    # LS's fee and the afterparty; SB is queued and unpriced
+    assert body["total_amount"] == 800 + 300
+    assert body["expires_at"] is not None
 
     availability = client.get("/api/tournaments/cup/availability").json()
     sb = next(a for a in availability if a["slug"] == "SB")
@@ -124,6 +133,8 @@ def test_wait_for_all_queues_everything_unbilled(client, auth_headers):
         "team_min": None,
         "team_max": None,
     }
+    ls = next(a for a in availability if a["slug"] == "LS")
+    assert (ls["taken"], ls["free"], ls["queue_length"]) == (1, 1, 0)
 
 
 def test_cancel_frees_spot_and_admit_bills_frozen_prices(client, auth_headers):
@@ -134,7 +145,7 @@ def test_cancel_frees_spot_and_admit_bills_frozen_prices(client, auth_headers):
 
     waiting = auth_headers(email="b@example.com", name="B")
     waiting_body = register(
-        client, waiting, disciplines=["SB"], afterparty=True, wait_for_all=True
+        client, waiting, disciplines=["SB"], afterparty=True
     ).json()
     assert waiting_body["total_amount"] == 0
 
@@ -501,7 +512,7 @@ def test_payment_instructions_rejected_when_fully_queued(client, auth_headers):
     client.patch("/api/tournaments/cup", json={"bank_account": IBAN}, headers=organizer)
     register(client, auth_headers(email="a@example.com", name="A"), disciplines=["SB"])
     waiting = auth_headers(email="b@example.com", name="B")
-    register(client, waiting, disciplines=["SB"], wait_for_all=True)
+    register(client, waiting, disciplines=["SB"])
 
     response = client.get("/api/tournaments/cup/my-registration/payment", headers=waiting)
     assert response.status_code == 409
@@ -514,7 +525,7 @@ def test_admit_requires_organizer_and_capacity(client, auth_headers):
     first = auth_headers(email="a@example.com", name="A")
     register(client, first, disciplines=["SB"])
     waiting = auth_headers(email="b@example.com", name="B")
-    register(client, waiting, disciplines=["SB"], wait_for_all=True)
+    register(client, waiting, disciplines=["SB"])
 
     from sqlalchemy import select
 
@@ -752,7 +763,7 @@ def test_substitute_entry_freezes(client, auth_headers):
     setup_tournament(client, organizer)
     register(client, auth_headers(email="a@example.com", name="A"), disciplines=["SB"])
     waiting = auth_headers(email="b@example.com", name="B")
-    body = register(client, waiting, disciplines=["SB"], wait_for_all=True).json()
+    body = register(client, waiting, disciplines=["SB"]).json()
     assert all(e["is_substitute"] for e in body["entries"])
 
     assert _identity_frozen(client, organizer, slug="SB") is True

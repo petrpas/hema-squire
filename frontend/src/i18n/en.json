@@ -675,7 +675,6 @@
     "freePlaces": "{{free}} of {{capacity}} places free",
     "chooseOption": "choose",
     "optionRequired": "Choose {{label}} for {{item}}.",
-    "nowFull": "These disciplines filled up in the meantime: {{codes}}. Check your selection and submit again.",
     "amendTitle": "Amend registration",
     "amendSubmit": "Save amendment",
     "totalLabel": "Total"

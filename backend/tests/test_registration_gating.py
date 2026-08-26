@@ -176,7 +176,7 @@ def test_gate_does_not_block_cancellation_or_admission_on_incomplete_setup(
     assert register(client, fencer, slug=slug).status_code == 201
 
     waiting = auth_headers(email="f2@example.com", name="F2")
-    waiting_body = register(client, waiting, slug=slug, wait_for_all=True).json()
+    waiting_body = register(client, waiting, slug=slug).json()
     assert waiting_body["entries"][0]["is_substitute"] is True
 
     # rejected outright: the published tournament would lose its only organizer

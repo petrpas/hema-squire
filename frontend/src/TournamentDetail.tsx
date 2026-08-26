@@ -98,6 +98,9 @@ function RegistrationLines({
           amount={disciplineFee(e.slug)}
         />
       ))}
+      {/* A queued placement carries no amount: the queue holds no money, and a
+          fee beside it would not be in the total below — on a registration that
+          holds a seat as well as a queue place, the lines would not sum. */}
       {substitutes.map((e) => (
         <AmountLine
           key={e.slug}
@@ -105,7 +108,6 @@ function RegistrationLines({
           label={`${discipline.get(e.slug)?.name ?? e.slug} — ${t("registration.queuePosition", {
             position: e.queue_position,
           })}`}
-          amount={disciplineFee(e.slug)}
         />
       ))}
       {registration.teams.map((team) => (
@@ -116,7 +118,9 @@ function RegistrationLines({
           label={`${discipline.get(team.slug)?.name ?? team.slug}: ${team.name}${
             team.waitlisted ? ` (${t("registration.teamWaitlisted")})` : ""
           }`}
-          amount={formatMoneyWithEur(team.fee, team.fee_eur, detail)}
+          amount={
+            team.waitlisted ? undefined : formatMoneyWithEur(team.fee, team.fee_eur, detail)
+          }
         >
           {team.members.length > 0 && (
             <ul className="detail-list">

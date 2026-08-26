@@ -139,7 +139,7 @@ def test_queued_email_has_no_qr_and_no_amount(client, auth_headers, mailbox):
     )
     response = client.post(
         "/api/tournaments/cup/register",
-        json={"disciplines": ["LS"], "wait_for_all": True},
+        json={"disciplines": ["LS"]},
         headers=auth_headers(email="b@example.com", name="B"),
     )
     assert response.status_code == 201
@@ -156,7 +156,7 @@ def test_admission_sends_payment_email(client, auth_headers, mailbox):
     client.post("/api/tournaments/cup/register", json={"disciplines": ["LS"]}, headers=first)
     client.post(
         "/api/tournaments/cup/register",
-        json={"disciplines": ["LS"], "wait_for_all": True},
+        json={"disciplines": ["LS"]},
         headers=auth_headers(email="b@example.com", name="B"),
     )
     client.post("/api/tournaments/cup/my-registration/cancel", headers=first)
@@ -174,8 +174,12 @@ def test_admission_sends_payment_email(client, auth_headers, mailbox):
     )
     assert admitted.status_code == 200
 
+    # the news is the place, not the bill: the subject names the opening and the
+    # body still carries the VS and its QR (spec: seating-queue)
     payment_message = mailbox.sent[-1]
     assert payment_message["To"] == "b@example.com"
-    assert "pokyny k platbě" in payment_message["Subject"]
-    assert "Variabilní symbol: 2601002" in payment_message.get_body(("plain",)).get_content()
+    assert "Uvolnilo se místo" in payment_message["Subject"]
+    body = payment_message.get_body(("plain",)).get_content()
+    assert "Variabilní symbol: 2601002" in body
+    assert "Longsword" in body
     assert len(list(payment_message.iter_attachments())) == 1

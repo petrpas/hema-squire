@@ -542,7 +542,6 @@ export interface RegisterPayload {
   aftersparring?: boolean;
   accommodation?: string | null;
   notes?: string | null;
-  wait_for_all?: boolean;
   extras?: ExtraSelectionPayload[];
   teams?: TeamEntryPayload[];
 }

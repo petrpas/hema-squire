@@ -41,6 +41,15 @@
     "amendmentNoPayment": {
       "subject": "Registration amendment for {tournament}",
       "body": "Hi {name},\n\nwe've updated your registration for {tournament}:\n\n{summary}\n\nTotal: {total}\n\nThe amount is for your information — payment is settled by the organizer outside this system.\n\n{tournament} team"
+    },
+    "promoted": {
+      "subject": "A place has opened — {tournament}",
+      "body": "Hi {name},\n\na place has opened for you in {discipline} at {tournament} — you are no longer a substitute.\n\n{amount} is now due, by {due}.\n\nAccount: {account}\nVariable symbol: {vs}\n\nYou can pay by scanning the attached QR code — it's made out for exactly this amount.\n\n{tournament} team",
+      "noDeadline": "as soon as possible"
+    },
+    "promotedNoPayment": {
+      "subject": "A place has opened — {tournament}",
+      "body": "Hi {name},\n\na place has opened for you in {discipline} at {tournament} — you are no longer a substitute.\n\nYour registration comes to {total}. The amount is for your information — payment is settled by the organizer outside this system.\n\n{tournament} team"
     }
   }
 }

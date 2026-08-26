@@ -197,10 +197,14 @@ A registration SHALL store a total per configured currency, computed when the re
 ### Requirement: Reservation lifecycle
 A reservation's lifecycle SHALL depend on the tournament's payment mode, and SHALL be governed by two independent clocks that produce two different outcomes:
 
-- The **payment window** is the interval between money being requested and money being due, configured per tournament in days. It belongs to one registration. A reservation whose payment window passes unpaid SHALL expire, freeing any capacity it held and leaving the fencer outside the substitute queue.
+- The **payment window** is the interval between money being requested and money being due, configured per tournament in days. It belongs to one registration. A reservation whose payment window passes unpaid SHALL expire, freeing any capacity it held and leaving the fencer outside the substitute queue — **except where the registration also holds a substitute placement**, in which case it SHALL be demoted rather than expired, as fixed below.
 - The **seating deadline** is a single date for the whole tournament, on which seating settles. A reservation still owing money when the seating deadline passes SHALL be moved to the substitute queue — it SHALL NOT expire, and it SHALL keep its place in registration order.
 
 The seating deadline SHALL NOT be expressed as a payment window on individual registrations, so that the expiry of a payment window can never release a seat that the seating deadline would have queued.
+
+**A registration holding a substitute placement SHALL NOT expire.** When its payment window passes unpaid, it SHALL be demoted instead: every seated placement becomes a substitute placement, every seated team is waitlisted, the payment window closes, and the registration stays reserved in its original registration order. It loses the seat it did not pay for and keeps the queue place it never owed for. A queue place SHALL NOT be forfeited for money owed on a different placement, for the same reason a lapsed promotion after seating settles returns to the queue rather than expiring out of it (`seating-queue`): the fencer's place in line was never what the money was for.
+
+A registration holding no substitute placement SHALL expire on a lapsed payment window exactly as it does today.
 
 **Both clocks SHALL be dormant while the tournament's payments feature is off.** Such a registration SHALL be seated on the same capacity terms as any other, SHALL carry no due date, SHALL open no payment window, and SHALL never expire for non-payment. Its total SHALL still be computed and presented, as a statement of what the tournament costs rather than a demand, and it SHALL be presented to the fencer as confirmed rather than as awaiting payment. No payment mode SHALL apply to it: the mode describes how money is collected, and no money is being collected.
 
@@ -219,6 +223,14 @@ An expired reservation SHALL NOT bar the fencer from the tournament. A fencer wh
 #### Scenario: Reservation expires unpaid
 - **WHEN** the payment window passes with no matched payment
 - **THEN** the reservation expires automatically, its discipline capacity is freed, and the fencer is notified
+
+#### Scenario: Mixed registration demoted rather than expired
+- **WHEN** the payment window passes unpaid on a registration holding one seated placement and one queued placement
+- **THEN** the seated placement becomes a substitute placement, its capacity is freed, the registration stays reserved, and its queue place is kept in its original registration order
+
+#### Scenario: Queue place survives money owed elsewhere
+- **WHEN** a fencer never pays for the discipline they were seated in
+- **THEN** they remain in the queue for the discipline they were queued in, at the position their registration time gives them, owing nothing
 
 #### Scenario: Payment arrives in time
 - **WHEN** a matching payment is ingested before the payment window closes
@@ -442,6 +454,12 @@ The account SHALL be stated in the same form as the in-app instructions: a Czech
 ### Requirement: Capacity and substitutes
 Discipline capacity SHALL be consumed by confirmed registrations and by reservations within their validity window. When an individual discipline is full, further registrations SHALL join a substitute queue in registration order. When a team discipline is full, further teams SHALL join a team waitlist in entry order, counted in teams rather than fencers, as fixed by `team-disciplines`. When a spot frees through expiry or cancellation, the organizer SHALL be able to admit substitutes from the individual queue; admitting a waitlisted team is not offered.
 
+**Each discipline in a submission SHALL be placed against its own capacity**, independently of every other discipline in the same submission. A selection mixing full and open disciplines SHALL seat the open ones and queue the full ones, in one operation. A full discipline SHALL NOT cost the fencer a seat in an open one, and an open discipline SHALL NOT seat a fencer in a full one. Teams follow the same rule per team, as they already do.
+
+The system SHALL NOT ask the fencer to choose between trimming a full discipline from their selection and waiting for all of them. The placement follows from capacity alone, and the fencer SHALL be told, per discipline, which of their choices were seated and which were queued.
+
+A registration holding both seated and queued placements SHALL be billed for its seated placements only, on the ordinary terms of the tournament's payment mode. Its queued placements SHALL remain unpriced, as `seating-queue` fixes for every substitute placement.
+
 #### Scenario: Discipline full
 - **WHEN** a fencer registers for a discipline at capacity
 - **THEN** the registration enters the substitute queue and the fencer is informed of their position
@@ -449,6 +467,22 @@ Discipline capacity SHALL be consumed by confirmed registrations and by reservat
 #### Scenario: Team discipline full
 - **WHEN** a fencer enters a team into a team discipline holding teams to capacity
 - **THEN** the team is waitlisted in entry order, its fee is not charged, and the fencer is informed
+
+#### Scenario: Mixed selection placed per discipline
+- **WHEN** a fencer submits one registration for a full discipline and a discipline with free places
+- **THEN** the open discipline is seated and the full one is queued, in the same registration
+
+#### Scenario: Mixed registration billed for its seat only
+- **WHEN** a registration holds one seated placement and one queued placement
+- **THEN** its total covers the seated placement and its extras, the queued placement adds nothing, and a payment window opens on the ordinary terms of the tournament's payment mode
+
+#### Scenario: Fencer told what was seated and what was queued
+- **WHEN** a submission mixing full and open disciplines is accepted
+- **THEN** the response and the confirmation state, per discipline, which placements are seated and which are queued, with the queue position of each queued placement
+
+#### Scenario: No trim-or-wait choice is demanded
+- **WHEN** a fencer submits a selection containing a full discipline
+- **THEN** the submission is accepted and placed, and is never refused in order to ask the fencer to choose between trimming the selection and queueing all of it
 
 ### Requirement: Public participant list
 The public participant list SHALL show confirmed (paid) registrations only. Unpaid reservations SHALL be either hidden or shown greyed as unconfirmed, according to the tournament setting; the default for a new tournament is greyed.

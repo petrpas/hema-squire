@@ -567,6 +567,20 @@ class Registration(Base):
         )
 
     @property
+    def holds_queued_placement(self) -> bool:
+        """Whether any part of this registration sits below the line — one
+        substitute entry or one waitlisted team is enough.
+
+        Distinct from `fully_queued`, which asks whether *everything* is below
+        it. This is the question a lapsing payment window asks: a registration
+        with anything in the queue is demoted rather than expired, so that
+        money owed for a seat never costs a queue place that owed nothing
+        (spec: registration, "Reservation lifecycle")."""
+        return any(entry.is_substitute for entry in self.entries) or any(
+            team.waitlisted for team in self.teams
+        )
+
+    @property
     def outstanding_cents(self) -> int:
         return self.total_amount * 100 - self.amount_paid_cents
 

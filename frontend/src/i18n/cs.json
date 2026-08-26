@@ -675,7 +675,6 @@
     "freePlaces": "volných míst {{free}} z {{capacity}}",
     "chooseOption": "vyber",
     "optionRequired": "Vyber {{label}} u položky {{item}}.",
-    "nowFull": "Tyto disciplíny se mezitím zaplnily: {{codes}}. Zkontroluj výběr a odešli znovu.",
     "amendTitle": "Úprava registrace",
     "amendSubmit": "Uložit úpravu",
     "totalLabel": "Celkem"

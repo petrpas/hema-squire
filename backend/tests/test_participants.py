@@ -82,7 +82,6 @@ def test_substitutes_and_cancelled_never_listed(client, auth_headers):
         client,
         auth_headers(email="b@example.com", name="Boris"),
         disciplines=("SB",),
-        wait_for_all=True,
     )
     cancelled = auth_headers(email="c@example.com", name="Cyril")
     register(client, cancelled)

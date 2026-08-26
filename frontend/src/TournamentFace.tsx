@@ -698,12 +698,6 @@ export function RegistrationForm({
   );
   const teamDisciplines = detail.disciplines.filter((d) => d.kind === "team");
 
-  // a full discipline is registered for as a substitute, chosen on its own row
-  const selectedFull = detail.disciplines
-    .filter((d) => disciplines.has(d.slug))
-    .filter((d) => freePlaces(d.slug) <= 0)
-    .map((d) => d.slug);
-
   /** Rows whose option is declared but unanswered block submission. */
   const unanswered = optionalItems
     .concat(programmeItems)
@@ -761,8 +755,6 @@ export function RegistrationForm({
         aftersparring: false,
         accommodation: null,
         notes: notes.trim() === "" ? null : notes,
-        // full rows were chosen knowingly, so substitute placement is accepted
-        wait_for_all: selectedFull.length > 0,
         extras: extrasPayload(),
         teams: teams.map((team) => ({
           ...(team.id ? { id: team.id } : {}),
@@ -782,17 +774,6 @@ export function RegistrationForm({
         const refusal = err.detail as { reason?: string } | null;
         if (refusal?.reason === "not_yet_open") {
           mode.onNotYetOpen();
-          return;
-        }
-      }
-      // a discipline can fill between page load and submit; the row-level
-      // choice is gone by then, so the fencer re-checks their selection
-      if (err instanceof ApiError && err.status === 409) {
-        const detailBody = err.detail as { full_disciplines?: string[] } | null;
-        if (detailBody?.full_disciplines) {
-          const byDisciplineSlug = new Map(detail.disciplines.map((d) => [d.slug, d.name]));
-          const names = detailBody.full_disciplines.map((s) => byDisciplineSlug.get(s) ?? s);
-          setError(t("form.nowFull", { codes: names.join(", ") }));
           return;
         }
       }
