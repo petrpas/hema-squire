@@ -94,7 +94,7 @@ export function SetupSaveBar({
       {confirming && <PriceChangeWarning onConfirm={confirm} onCancel={cancel} />}
       {invalidCount > 0 && (
         <button type="button" className="save-bar-error" onClick={focusFirstInvalid}>
-          {t("validation.fieldsNeedAttention", { count: invalidCount })}
+          {t("setup.saveBar.fieldsNeedAttention", { count: invalidCount })}
         </button>
       )}
       {report && report.failures.length > 0 && (

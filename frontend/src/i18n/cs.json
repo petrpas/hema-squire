@@ -248,7 +248,10 @@
       "save": "Uložit změny ({{count}})",
       "nothingToSave": "Není co ukládat",
       "partial": "Uloženo {{written}} z {{total}} změn, {{pending}} zbývá neuloženo",
-      "genericError": "Změnu se nepodařilo uložit (chyba {{status}})."
+      "genericError": "Změnu se nepodařilo uložit (chyba {{status}}).",
+      "fieldsNeedAttention_one": "{{count}} pole potřebuje opravu",
+      "fieldsNeedAttention_few": "{{count}} pole potřebují opravu",
+      "fieldsNeedAttention_other": "{{count}} polí potřebuje opravu"
     },
     "publish": {
       "draftStatement": "Tento turnaj není zveřejněný — šermířům je neviditelný a registrace je uzavřená.",
@@ -682,7 +685,9 @@
   },
   "discounts": {
     "title": "Slevy",
-    "conditionDisciplineCount": "při registraci na {{count}} disciplín",
+    "conditionDisciplineCount_one": "při registraci na {{count}} disciplínu",
+    "conditionDisciplineCount_few": "při registraci na {{count}} disciplíny",
+    "conditionDisciplineCount_other": "při registraci na {{count}} disciplín",
     "conditionEarly": "při registraci do {{date}}",
     "percentValue": "−{{value}} %",
     "amountValue": "−{{amount}}"
@@ -803,7 +808,6 @@
     "legacy_fixed_fees_block_eur": "staré pevné poplatky nemají eurový protějšek — nejdřív přejdi na položkové doplňkové služby",
     "iban_checksum": "kontrolní číslice tohoto IBANu neodpovídají zbytku účtu — zkontroluj překlep",
     "account_checksum": "toto číslo účtu neprochází kontrolním součtem — zkontroluj překlep",
-    "fieldsNeedAttention": "{{count}} polí potřebuje opravu",
     "opening_time_without_date": "Čas otevření potřebuje datum otevření.",
     "opening_time_does_not_exist": "Tento čas v daný den neexistuje — posouvají se hodiny.",
     "unknown_timezone": "Neznámé časové pásmo."

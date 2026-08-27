@@ -248,7 +248,9 @@
       "save": "Save changes ({{count}})",
       "nothingToSave": "Nothing to save",
       "partial": "{{written}} of {{total}} changes written, {{pending}} still unsaved",
-      "genericError": "The change could not be saved (error {{status}})."
+      "genericError": "The change could not be saved (error {{status}}).",
+      "fieldsNeedAttention_one": "{{count}} field needs attention",
+      "fieldsNeedAttention_other": "{{count}} fields need attention"
     },
     "publish": {
       "draftStatement": "This tournament is not published — it is invisible to fencers and closed to registration.",
@@ -682,7 +684,8 @@
   },
   "discounts": {
     "title": "Discounts",
-    "conditionDisciplineCount": "when registered for {{count}} disciplines",
+    "conditionDisciplineCount_one": "when registered for {{count}} discipline",
+    "conditionDisciplineCount_other": "when registered for {{count}} disciplines",
     "conditionEarly": "when registered by {{date}}",
     "percentValue": "−{{value}} %",
     "amountValue": "−{{amount}}"
@@ -803,7 +806,6 @@
     "legacy_fixed_fees_block_eur": "the legacy fixed fees have no EUR counterpart — switch to itemized extra services first",
     "iban_checksum": "this IBAN's check digits do not agree with the rest of the account — check for a typo",
     "account_checksum": "this account number does not pass its checksum — check for a typo",
-    "fieldsNeedAttention": "{{count}} fields need attention",
     "opening_time_without_date": "An opening time needs an opening date.",
     "opening_time_does_not_exist": "That time does not exist on that day — the clocks go forward.",
     "unknown_timezone": "Unknown time zone."
