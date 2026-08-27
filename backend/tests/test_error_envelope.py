@@ -67,11 +67,11 @@ def test_unconverted_bare_string_detail_round_trips(client, auth_headers):
 def test_pydantic_error_field_path_drops_body_prefix(client, auth_headers):
     headers = auth_headers()
     make_tournament(client, headers)
-    response = client.post(
-        "/api/tournaments/cup/disciplines",
-        json={"weapon": "LS", "capacity": 10, "ruleset_url": "javascript:x"},
+    response = client.patch(
+        "/api/tournaments/cup",
+        json={"organizers": [{"name": "Duelanti", "link": "javascript:x"}]},
         headers=headers,
     )
     assert response.status_code == 422
     errors = response.json()["detail"]["errors"]
-    assert errors == [{"field": "ruleset_url", "code": "bad_link_scheme", "params": {}}]
+    assert errors == [{"field": "organizers.0.link", "code": "bad_link_scheme", "params": {}}]

@@ -20,7 +20,7 @@ import HelpHint from "../HelpHint";
 import { showsEur } from "../money";
 import { parseInteger } from "../numeric";
 import { useFieldValidation } from "../useFieldValidation";
-import { apiErrors, checkMoney, checkNumeric, checkString, checkUrl, type FieldError as FieldErrorValue } from "../validation";
+import { apiErrors, checkMoney, checkNumeric, checkString, type FieldError as FieldErrorValue } from "../validation";
 import {
   _int,
   recalculateMissing,
@@ -48,8 +48,7 @@ type DisciplineDraft = {
   fee_eur: string;
   schedule_when: string;
   schedule_where: string;
-  ruleset_name: string;
-  ruleset_url: string;
+  ruleset: string;
 };
 
 type DisciplineRow = DisciplineDraft & {
@@ -88,8 +87,7 @@ function disciplineToRow(d: Discipline): DisciplineRow {
     fee_eur: d.fee_eur === null ? "" : String(d.fee_eur),
     schedule_when: d.schedule_when ?? "",
     schedule_where: d.schedule_where ?? "",
-    ruleset_name: d.ruleset_name ?? "",
-    ruleset_url: d.ruleset_url ?? "",
+    ruleset: d.ruleset ?? "",
   };
 }
 
@@ -111,8 +109,7 @@ function disciplineRowDirty(row: DisciplineRow, detail: TournamentDetail): boole
     (original.fee_eur === null ? "" : String(original.fee_eur)) !== row.fee_eur ||
     (original.schedule_when ?? "") !== row.schedule_when ||
     (original.schedule_where ?? "") !== row.schedule_where ||
-    (original.ruleset_name ?? "") !== row.ruleset_name ||
-    (original.ruleset_url ?? "") !== row.ruleset_url
+    (original.ruleset ?? "") !== row.ruleset
   );
 }
 
@@ -132,8 +129,7 @@ function disciplineRowInput(row: DisciplineRow): DisciplineInput {
     fee_eur: row.fee_eur === "" ? null : _int(row.fee_eur),
     schedule_when: row.schedule_when || null,
     schedule_where: row.schedule_where || null,
-    ruleset_name: row.ruleset_name || null,
-    ruleset_url: row.ruleset_url || null,
+    ruleset: row.ruleset || null,
   };
 }
 
@@ -182,9 +178,7 @@ function disciplineRowChecks(
       checkString(scoped("schedule_when"), "DisciplineIn.schedule_when", row.schedule_when),
     schedule_where: () =>
       checkString(scoped("schedule_where"), "DisciplineIn.schedule_where", row.schedule_where),
-    ruleset_name: () =>
-      checkString(scoped("ruleset_name"), "DisciplineIn.ruleset_name", row.ruleset_name),
-    ruleset_url: () => checkUrl(scoped("ruleset_url"), "DisciplineIn.ruleset_url", row.ruleset_url),
+    ruleset: () => checkString(scoped("ruleset"), "DisciplineIn.ruleset", row.ruleset),
   };
 }
 
@@ -223,8 +217,7 @@ function blankDisciplineRow(rowId: string, ordinal: number): DisciplineRow {
     fee_eur: "",
     schedule_when: "",
     schedule_where: "",
-    ruleset_name: "",
-    ruleset_url: "",
+    ruleset: "",
   };
 }
 
@@ -618,19 +611,13 @@ export function DisciplinesSection({
                     )}
                     <label className="param-field">
                       <span>
-                        {t("setup.disciplines.rulesetName")}
-                        <HelpHint text={t("setup.disciplines.rulesetNameHint")} />
+                        {t("setup.disciplines.ruleset")}
+                        <HelpHint text={t("setup.disciplines.rulesetHint")} />
                       </span>
-                      <input {...fieldProps("ruleset_name", "ruleset_name")} />
-                      <FieldError field={`ruleset_name-${row.rowId}`} error={validation.errors[`ruleset_name-${row.rowId}`]} />
-                    </label>
-                    <label className="param-field">
-                      <span>
-                        {t("setup.disciplines.rulesetUrl")}
-                        <HelpHint text={t("setup.disciplines.rulesetUrlHint")} />
-                      </span>
-                      <input {...fieldProps("ruleset_url", "ruleset_url")} />
-                      <FieldError field={`ruleset_url-${row.rowId}`} error={validation.errors[`ruleset_url-${row.rowId}`]} />
+                      <input {...fieldProps("ruleset", "ruleset")} />
+                      {/* inline markdown, like the tournament's location */}
+                      <span className="markdown-hint">{t("setup.inlineMarkdownHint")}</span>
+                      <FieldError field={`ruleset-${row.rowId}`} error={validation.errors[`ruleset-${row.rowId}`]} />
                     </label>
                   </div>
                   {row.error && <span className="login-error">{row.error}</span>}

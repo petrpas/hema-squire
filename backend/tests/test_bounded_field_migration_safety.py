@@ -63,24 +63,25 @@ def test_over_long_discipline_field_still_renders_but_blocks_the_rows_next_save(
     )
     assert created.status_code == 201, created.text
     slug = created.json()["slug"]
-    over_long_url = "https://example.com/" + "x" * 500
+    over_long_where = "Main Hall, " + "x" * 400
     with Session(engine) as session:
         discipline = session.scalar(select(Discipline).where(Discipline.slug == slug))
-        discipline.ruleset_url = over_long_url
+        discipline.schedule_where = over_long_where
         session.commit()
 
     detail = client.get("/api/tournaments/cup", headers=headers)
     assert detail.status_code == 200
     row = next(d for d in detail.json()["disciplines"] if d["slug"] == slug)
-    assert row["ruleset_url"] == over_long_url
+    assert row["schedule_where"] == over_long_where
 
     # the Setup discipline table resubmits the whole row on every save (task
-    # 0.1/0.3), so even an edit that does not touch ruleset_url is blocked
+    # 0.1/0.3), so even an edit that does not touch schedule_where is blocked
     # until it is fixed
     blocked = client.patch(
         f"/api/tournaments/cup/disciplines/{slug}",
         json={
-            "weapon": "LS", "capacity": 12, "fee": 800, "ruleset_url": over_long_url,
+            "weapon": "LS", "capacity": 12, "fee": 800,
+            "schedule_where": over_long_where,
         },
         headers=headers,
     )

@@ -2,9 +2,10 @@ import { useMemo } from "react";
 import { renderMarkdown } from "./markdown";
 
 /**
- * Renders organizer-authored markdown as sanitized HTML. The only component in
- * the codebase using `dangerouslySetInnerHTML` — every prose field reaches the
- * DOM through here, so the sanitizer in `markdown.ts` is never bypassed.
+ * Renders organizer-authored markdown as sanitized HTML. With `InlineProse`, one
+ * of the only two components in the codebase using `dangerouslySetInnerHTML` —
+ * every prose field reaches the DOM through one of them, so the sanitizer in
+ * `markdown.ts` is never bypassed.
  */
 export default function Prose({
   source,

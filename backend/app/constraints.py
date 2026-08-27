@@ -64,8 +64,10 @@ DISCIPLINE_WEAPON_MAX_LENGTH = 30
 DISCIPLINE_NAME_MAX_LENGTH = 100  # matches the String(100) column
 DISCIPLINE_SCHEDULE_WHEN_MAX_LENGTH = SHORT
 DISCIPLINE_SCHEDULE_WHERE_MAX_LENGTH = 300
-DISCIPLINE_RULESET_NAME_MAX_LENGTH = 100
-DISCIPLINE_RULESET_URL_MAX_LENGTH = 500
+# one inline-markdown field holding the ruleset's name and, when the organizer
+# writes them, links to its text in one or more languages — hence the room a
+# bare name would not need
+DISCIPLINE_RULESET_MAX_LENGTH = 500
 TEAM_BOUND_MIN = 1
 # capacity's ceiling depends on kind (an owner decision, not a tier): a team
 # discipline's capacity counts teams, an individual's counts fencers, so the

@@ -14,7 +14,8 @@ const IDENTITY_FIELDS = [
   { key: "display_name", type: "text" },
   { key: "subtitle", type: "text" },
   { key: "date", type: "date" },
-  { key: "location", type: "text" },
+  // one line, so the inline markdown subset only — links and emphasis
+  { key: "location", type: "text", inlineMarkdown: true },
   { key: "description", type: "textarea", markdown: true },
   // shown only on the registration form, unlike description
   {
@@ -228,6 +229,9 @@ export function IdentitySection({
           }}
           {...invalidProps(field.key, error)}
         />
+        {"inlineMarkdown" in field && field.inlineMarkdown && (
+          <span className="markdown-hint">{t("setup.inlineMarkdownHint")}</span>
+        )}
         <FieldError field={field.key} error={error} />
       </label>
     );

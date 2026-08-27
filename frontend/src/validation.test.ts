@@ -78,17 +78,17 @@ describe("checkPercent", () => {
 
 describe("checkUrl", () => {
   it("accepts an https link", () => {
-    expect(checkUrl("ruleset_url", "DisciplineIn.ruleset_url", "https://example.com/rules")).toBeNull();
+    expect(checkUrl("link", "OrganizerIn.link", "https://example.com/club")).toBeNull();
   });
 
   it("rejects a javascript: scheme", () => {
-    const error = checkUrl("ruleset_url", "DisciplineIn.ruleset_url", "javascript:alert(1)");
-    expect(error).toEqual({ field: "ruleset_url", code: "bad_link_scheme", params: {} });
+    const error = checkUrl("link", "OrganizerIn.link", "javascript:alert(1)");
+    expect(error).toEqual({ field: "link", code: "bad_link_scheme", params: {} });
   });
 
   it("rejects a link without a scheme", () => {
-    const error = checkUrl("ruleset_url", "DisciplineIn.ruleset_url", "example.com/rules");
-    expect(error).toEqual({ field: "ruleset_url", code: "bad_url", params: {} });
+    const error = checkUrl("link", "OrganizerIn.link", "example.com/club");
+    expect(error).toEqual({ field: "link", code: "bad_url", params: {} });
   });
 });
 

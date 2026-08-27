@@ -162,8 +162,8 @@ class DisciplineIn(BaseModel):
     # optional schedule + ruleset reference; informational, never affect pricing
     schedule_when: SingleLineStr(constraints.DISCIPLINE_SCHEDULE_WHEN_MAX_LENGTH) | None = None
     schedule_where: SingleLineStr(constraints.DISCIPLINE_SCHEDULE_WHERE_MAX_LENGTH) | None = None
-    ruleset_name: SingleLineStr(constraints.DISCIPLINE_RULESET_NAME_MAX_LENGTH) | None = None
-    ruleset_url: HttpUrlStr(constraints.DISCIPLINE_RULESET_URL_MAX_LENGTH) | None = None
+    # inline markdown, not a URL: parsing it as one would refuse `[EN](...)`
+    ruleset: SingleLineStr(constraints.DISCIPLINE_RULESET_MAX_LENGTH) | None = None
 
     @model_validator(mode="after")
     def _team_bounds(self) -> DisciplineIn:
@@ -206,8 +206,7 @@ class DisciplineOut(BaseModel):
     fee_early_eur: int | None
     schedule_when: str | None
     schedule_where: str | None
-    ruleset_name: str | None
-    ruleset_url: str | None
+    ruleset: str | None
     # not an ORM attribute; filled explicitly by every construction site from
     # a per-tournament grouped query (design discipline-identity-modal D6) —
     # never inferred from availability.taken_seats, which excludes cancelled

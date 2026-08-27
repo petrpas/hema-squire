@@ -1,5 +1,5 @@
 import { IconX } from "@tabler/icons-react";
-import { Fragment, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import {
@@ -17,6 +17,8 @@ import {
   logoUrl,
 } from "./api";
 import { FIELD_CONSTRAINTS } from "./constraints";
+import DotJoined from "./DotJoined";
+import InlineProse from "./InlineProse";
 import { formatMoneyWithEur } from "./money";
 import { parseInteger } from "./numeric";
 import { openingMomentMs } from "./openingMoment";
@@ -87,35 +89,6 @@ export function normalizeSlug(value: string): string {
   return collapsed.replace(/^-+|-+$/g, "");
 }
 
-// extra breathing room around inline "·" separators — several sit right
-// next to numerals/currency and read as cramped without it
-const DOT = "  ·  ";
-
-/** Joins non-empty parts (strings or nodes, e.g. a ruleset link) with `DOT`,
- * rendering nothing when every part is empty. */
-function DotJoined({
-  parts,
-  className = "muted",
-}: {
-  parts: React.ReactNode[];
-  className?: string;
-}) {
-  const visible = parts.filter(
-    (part) => part !== null && part !== undefined && part !== false && part !== "",
-  );
-  if (visible.length === 0) return null;
-  return (
-    <span className={className}>
-      {visible.map((part, index) => (
-        <Fragment key={index}>
-          {index > 0 && DOT}
-          {part}
-        </Fragment>
-      ))}
-    </span>
-  );
-}
-
 /** How the tournament's zone is named beside its opening hour — the short
  *  form the zone itself uses on that date ("SELČ", "CEST"), which is what a
  *  reader recognizes, falling back to the identifier when the browser cannot
@@ -152,7 +125,7 @@ export function InfoHeader({ detail }: { detail: TournamentDetailData }) {
           className="detail-facts"
           parts={[
             new Date(detail.date).toLocaleDateString("cs"),
-            detail.location,
+            detail.location?.trim() ? <InlineProse source={detail.location} /> : null,
             detail.qualification_open
               ? t("detail.qualificationOpen")
               : t("detail.qualificationRequired", { criteria: detail.qualification_criteria }),
@@ -247,20 +220,13 @@ export function DisciplinesInfo({
           const a = bySlug.get(d.slug);
           const taken = a ? a.taken : 0;
           const free = a ? a.free : d.capacity;
-          const ruleset = d.ruleset_name
-            ? d.ruleset_url
-              ? (
-                  <a
-                    className="detail-inline-link"
-                    href={d.ruleset_url}
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    {t("detail.rulesetLabel")}: {d.ruleset_name}
-                  </a>
-                )
-              : `${t("detail.rulesetLabel")}: ${d.ruleset_name}`
-            : null;
+          // the label stays plain text beside the field: the ruleset is inline
+          // markdown and carries its own links, one per language it names
+          const ruleset = d.ruleset?.trim() ? (
+            <>
+              {t("detail.rulesetLabel")}: <InlineProse source={d.ruleset} />
+            </>
+          ) : null;
           const hasExtra = Boolean(d.schedule_when || d.schedule_where || ruleset);
           const isTeam = d.kind === "team";
           return (

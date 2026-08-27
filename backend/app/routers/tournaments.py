@@ -692,8 +692,7 @@ def add_discipline(
         fee_early_eur=data.fee_early_eur,
         schedule_when=data.schedule_when,
         schedule_where=data.schedule_where,
-        ruleset_name=data.ruleset_name,
-        ruleset_url=data.ruleset_url,
+        ruleset=data.ruleset,
     )
     if data.ordinal is not None:
         discipline.ordinal = data.ordinal
@@ -810,8 +809,7 @@ def update_discipline(
     discipline.fee_early_eur = data.fee_early_eur
     discipline.schedule_when = data.schedule_when
     discipline.schedule_where = data.schedule_where
-    discipline.ruleset_name = data.ruleset_name
-    discipline.ruleset_url = data.ruleset_url
+    discipline.ruleset = data.ruleset
     setup.guard_published_completeness(tournament)
     session.commit()
     session.refresh(discipline)

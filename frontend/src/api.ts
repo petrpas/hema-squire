@@ -183,8 +183,7 @@ export interface Discipline {
   fee_early_eur: number | null;
   schedule_when: string | null;
   schedule_where: string | null;
-  ruleset_name: string | null;
-  ruleset_url: string | null;
+  ruleset: string | null;
   /** Whether slug, classification, and kind are frozen — derived from
    *  whether any entry or team references the discipline, not from occupied
    *  seats (design discipline-identity-modal D6). The name is never covered. */
@@ -209,8 +208,7 @@ export interface DisciplineInput {
   fee_eur?: number | null;
   schedule_when?: string | null;
   schedule_where?: string | null;
-  ruleset_name?: string | null;
-  ruleset_url?: string | null;
+  ruleset?: string | null;
 }
 
 export type ExtraCategory =

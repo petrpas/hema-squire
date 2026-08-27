@@ -56,6 +56,21 @@ A discipline on a card SHALL be labelled by its name, never by its slug (`discip
 - **WHEN** the fencer already has an active (reserved or paid) registration for a listed upcoming tournament
 - **THEN** that tournament shows Manage registration instead of Register
 
+### Requirement: Location presentation on cards and the information line
+The tournament location SHALL be presented as an inline markdown field (`organizer-prose`) everywhere a fencer reads it. On the tournament information screen it SHALL render on the `date · place · qualification` line, a location link appearing there as a link. On a Fencer Home card it SHALL render on the bold date-and-place line as label text only, because the card is itself a link. In both places the rendered location SHALL stay on the line it belongs to — it SHALL NOT introduce a block, a line break, or a heading — SHALL wrap rather than overflow on a narrow screen, and SHALL leave no stray middle dot when the location is absent.
+
+#### Scenario: Linked place on the information screen
+- **WHEN** a tournament whose location is `[ZŠ Bílá](https://osm.org/go/0J0ajlLg8?m=)` is opened
+- **THEN** the identity line reads date · ZŠ Bílá · qualification, with `ZŠ Bílá` a link opening in a new tab, and no markup characters visible
+
+#### Scenario: Same place on a home card
+- **WHEN** the same tournament is listed on Fencer Home
+- **THEN** the bold date-and-place line reads date · ZŠ Bílá as text, and selecting anywhere on the card still opens the tournament
+
+#### Scenario: Absent location leaves no separator
+- **WHEN** a listed tournament has no location
+- **THEN** the date stands alone on its line with no middle dot before or after it, on the card and on the information screen alike
+
 ### Requirement: Fencer identity header
 The Fencer Home top bar SHALL show, left to right: the Hema Squire logo, the four tournament filter tabs, the fencer's display name with their hemaratings identity, and the account menu (⋯). WHEN the account has a bound hemaratings profile, the identity SHALL read "HRID: <id>" and link to the fighter's hemaratings.com profile page in a new browser tab. WHEN no hemaratings profile is bound, the identity SHALL read "no hemaratings" and navigate to the Profile page, where binding is offered.
 
@@ -276,13 +291,13 @@ The tournament detail page SHALL open, from the list, on an information screen t
 
 The opening moment SHALL be stated with its time of day whenever the tournament sets one, and with the zone that time is stated in. Where the tournament sets no opening time, the opening SHALL be stated as a date alone exactly as before, with no invented hour and no zone.
 
-Below them the screen SHALL show three grouped sections. The disciplines section SHALL list each discipline by its name — never its slug (`discipline-identity`) — with its entry fee, its registered count as registered/capacity (or substitute-queue length when full), its optional when/where, and its optional ruleset shown as a short style name linking to the external ruleset document when a link is set. Several disciplines classified alike SHALL each be listed on their own line under their own name, with their own fee and their own count. A team discipline SHALL be listed in the same section, marked as a team event, with its per-team fee, its roster bounds, and its count stated in teams as entered/capacity (or waitlist length when full); the team-event marker SHALL be set off from the discipline's name by horizontal space rather than sitting flush against it. When the tournament sets a team composition deadline and offers at least one team discipline, the deadline SHALL be stated in this section. The discounts section SHALL follow the disciplines section and SHALL list every discount the tournament configures, in configured order, each with its name, its condition stated as text, and its configured value — a fixed amount in each configured currency, or a percentage. The discounts section SHALL NOT show selection markers, since the information screen carries no selection, and SHALL be omitted entirely when the tournament configures no discounts. The other-actions section SHALL list non-purchasable activities — seminars, afterparties, after-sparrings, and accommodation — each with its optional when/where and remark. The information screen SHALL NOT mention gear lending or merch, and SHALL NOT show prices or quantity selectors for the other-actions section. When registration is available, it SHALL be reached through the page's `Register` tab rather than through a control on the information screen itself.
+Below them the screen SHALL show three grouped sections. The disciplines section SHALL list each discipline by its name — never its slug (`discipline-identity`) — with its entry fee, its registered count as registered/capacity (or substitute-queue length when full), its optional when/where, and its optional ruleset rendered as an inline markdown field (`organizer-prose`), so that a ruleset naming versions in more than one language presents each version as its own link. Several disciplines classified alike SHALL each be listed on their own line under their own name, with their own fee and their own count. A team discipline SHALL be listed in the same section, marked as a team event, with its per-team fee, its roster bounds, and its count stated in teams as entered/capacity (or waitlist length when full); the team-event marker SHALL be set off from the discipline's name by horizontal space rather than sitting flush against it. When the tournament sets a team composition deadline and offers at least one team discipline, the deadline SHALL be stated in this section. The discounts section SHALL follow the disciplines section and SHALL list every discount the tournament configures, in configured order, each with its name, its condition stated as text, and its configured value — a fixed amount in each configured currency, or a percentage. The discounts section SHALL NOT show selection markers, since the information screen carries no selection, and SHALL be omitted entirely when the tournament configures no discounts. The other-actions section SHALL list non-purchasable activities — seminars, afterparties, after-sparrings, and accommodation — each with its optional when/where and remark. The information screen SHALL NOT mention gear lending or merch, and SHALL NOT show prices or quantity selectors for the other-actions section. When registration is available, it SHALL be reached through the page's `Register` tab rather than through a control on the information screen itself.
 
 Where a discipline or an action carries any of its optional when/where/ruleset/remark text, that text SHALL be presented as a subordinate line beneath the row, one size down and in faded ink, with its parts separated by the spaced middle dot used elsewhere. The line SHALL NOT be introduced by a leading dash or any other bullet character: its indentation and weight already mark it as subordinate.
 
 #### Scenario: Fencer reviews a tournament
 - **WHEN** a fencer opens a tournament's detail from Fencer Home
-- **THEN** they read the title, the subtitle, the date · place · qualification line, the registration window line, the organizers and the description in that order, followed by each discipline under its name with its fee, registered/capacity count, and any when/where and ruleset link
+- **THEN** they read the title, the subtitle, the date · place · qualification line, the registration window line, the organizers and the description in that order, followed by each discipline under its name with its fee, registered/capacity count, and any when/where and ruleset
 
 #### Scenario: Absent parts collapse
 - **WHEN** a tournament has no subtitle, no location and no registration dates
@@ -311,6 +326,14 @@ Where a discipline or an action carries any of its optional when/where/ruleset/r
 #### Scenario: Detail line carries no leading dash
 - **WHEN** a discipline with a when, a where and a ruleset is presented on the information screen
 - **THEN** its subordinate line begins with the when value, with no dash, hyphen or bullet before it, and the three parts are separated by the spaced middle dot
+
+#### Scenario: Rules in two languages
+- **WHEN** a discipline's ruleset reads `[Barbasetti Right of Way](https://example.com/cz.pdf) (CZ) · [EN](https://example.com/en.pdf)`
+- **THEN** the subordinate line presents the ruleset label followed by both names as separate links to their own documents, with no markup characters visible, and the label itself is not a link
+
+#### Scenario: Ruleset without a link
+- **WHEN** a discipline's ruleset reads `Right of Way` with no link syntax
+- **THEN** it is presented as plain text after the ruleset label, exactly as it was before the field accepted markdown
 
 #### Scenario: Discounts listed below the disciplines
 - **WHEN** a fencer opens the information screen of a tournament offering −500 Kč for 2 disciplines and −10 % for early registration

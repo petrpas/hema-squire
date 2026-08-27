@@ -2030,12 +2030,14 @@ label.checkbox-chip,
   padding-left: 1.4em;
 }
 
-.prose a {
+.prose a,
+.prose-inline a {
   color: var(--ink);
   text-decoration: underline;
 }
 
-.prose a:hover {
+.prose a:hover,
+.prose-inline a:hover {
   color: var(--stamp);
 }
 
@@ -2046,13 +2048,15 @@ label.checkbox-chip,
 }
 
 .prose code,
-.prose pre {
+.prose pre,
+.prose-inline code {
   font-family: var(--font-data);
   background: var(--paper-shade);
   border-radius: var(--radius);
 }
 
-.prose code {
+.prose code,
+.prose-inline code {
   padding: 0.1em 0.3em;
 }
 

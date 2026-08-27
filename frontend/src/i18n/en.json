@@ -286,6 +286,7 @@
       "badPractice": "Changing prices mid-registration is bad practice. Continue?",
       "proceed": "Continue"
     },
+    "inlineMarkdownHint": "supports markdown: **strong**, *emphasis*, [link](https://...)",
     "identity": {
       "title": "Basic information",
       "subtitle": "Subtitle",
@@ -350,12 +351,10 @@
       "add": "Add discipline",
       "when": "When (optional)",
       "where": "Where (optional)",
-      "rulesetName": "Ruleset (optional)",
-      "rulesetUrl": "Ruleset link (optional)",
+      "ruleset": "Ruleset (optional)",
       "whenHint": "A rough time, for example \"Saturday morning\".",
       "whereHint": "A place within the venue, for example \"Main Hall\".",
-      "rulesetNameHint": "A short ruleset name, for example \"Right of Way\".",
-      "rulesetUrlHint": "A link to the full ruleset text, if one exists.",
+      "rulesetHint": "The ruleset's name, and a link to its text when one is published — several links when the rules exist in more than one language.",
       "rowInvalid": "Enter a weapon, capacity, and (for a team discipline) roster bounds for this row; a weapon outside the taxonomy also needs a name.",
       "compositionDeadline": "Composition deadline (optional)",
       "compositionDeadlineHint": "The date by which team rosters are expected to be complete. Locks nothing — it only flags short rosters for the organizer after this date."

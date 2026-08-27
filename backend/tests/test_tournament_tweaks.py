@@ -46,8 +46,8 @@ def test_discipline_schedule_and_ruleset_round_trip(client, auth_headers):
         "fee": 300,
         "schedule_when": "Saturday",
         "schedule_where": "Main Hall — Kurtzstrasse 21",
-        "ruleset_name": "Right of Way",
-        "ruleset_url": "https://example.org/ruleset.pdf",
+        "ruleset": "[Barbasetti Right of Way](https://example.org/cz.pdf) (CZ)"
+        " · [EN](https://example.org/en.pdf)",
     }
     response = client.post(
         "/api/tournaments/na-duel-2026/disciplines", json=body, headers=headers
@@ -56,8 +56,8 @@ def test_discipline_schedule_and_ruleset_round_trip(client, auth_headers):
     out = response.json()
     assert out["schedule_when"] == "Saturday"
     assert out["schedule_where"] == "Main Hall — Kurtzstrasse 21"
-    assert out["ruleset_name"] == "Right of Way"
-    assert out["ruleset_url"] == "https://example.org/ruleset.pdf"
+    # stored verbatim as the organizer's markdown source (`organizer-prose`)
+    assert out["ruleset"] == body["ruleset"]
 
     # empty fields on a second discipline stay null
     plain = client.post(
@@ -67,7 +67,7 @@ def test_discipline_schedule_and_ruleset_round_trip(client, auth_headers):
     )
     assert plain.status_code == 201, plain.text
     assert plain.json()["schedule_when"] is None
-    assert plain.json()["ruleset_name"] is None
+    assert plain.json()["ruleset"] is None
 
 
 def test_extra_item_descriptive_fields_do_not_change_price(client, auth_headers):

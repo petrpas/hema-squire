@@ -2,6 +2,8 @@ import { type ReactNode, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useOutletContext } from "react-router-dom";
 
+import DotJoined from "./DotJoined";
+import InlineProse from "./InlineProse";
 import { type HomeTab } from "./FencerShell";
 import { detail } from "./routes";
 import { type OpenTournament, api, logoUrl } from "./api";
@@ -67,11 +69,6 @@ function CardHeading({
   tournament: OpenTournament;
   badge: ReactNode;
 }) {
-  const dateAndPlace = [
-    new Date(tournament.date).toLocaleDateString("cs"),
-    tournament.location,
-  ].filter(Boolean);
-
   return (
     <div className="home-card-header">
       {tournament.has_logo && (
@@ -82,7 +79,17 @@ function CardHeading({
         {tournament.subtitle && (
           <p className="home-card-subtitle">{tournament.subtitle}</p>
         )}
-        <p className="home-card-when">{dateAndPlace.join(" · ")}</p>
+        {/* the card itself is the link to the tournament, so a location
+            written as a markdown link contributes its label only */}
+        <DotJoined
+          className="home-card-when"
+          parts={[
+            new Date(tournament.date).toLocaleDateString("cs"),
+            tournament.location?.trim() ? (
+              <InlineProse source={tournament.location} links={false} />
+            ) : null,
+          ]}
+        />
         {tournament.organizers.length > 0 && (
           <p className="home-card-organizers">
             {tournament.organizers.map((organizer, index) => (

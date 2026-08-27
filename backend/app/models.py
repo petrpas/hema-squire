@@ -425,11 +425,12 @@ class Discipline(Base):
     fee_eur: Mapped[int | None]
     fee_early_eur: Mapped[int | None]
     # optional schedule (mainly multi-day events) and ruleset reference; purely
-    # informational, never touches pricing
+    # informational, never touches pricing. The ruleset is inline markdown
+    # (`organizer-prose`), so one field carries the name and any links to the
+    # rules — several, when they are published in several languages.
     schedule_when: Mapped[str | None] = mapped_column(String(200))
     schedule_where: Mapped[str | None] = mapped_column(String(300))
-    ruleset_name: Mapped[str | None] = mapped_column(String(100))
-    ruleset_url: Mapped[str | None] = mapped_column(String(500))
+    ruleset: Mapped[str | None] = mapped_column(String(500))
 
     @property
     def taxonomy_code(self) -> str:

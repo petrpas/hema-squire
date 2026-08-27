@@ -287,6 +287,7 @@
       "badPractice": "Měnit ceny během registrace není dobrý zvyk. Pokračovat?",
       "proceed": "Pokračovat"
     },
+    "inlineMarkdownHint": "podporuje markdown: **tučně**, *kurzíva*, [odkaz](https://...)",
     "identity": {
       "title": "Základní údaje",
       "subtitle": "Podtitul",
@@ -351,12 +352,10 @@
       "add": "Přidat disciplínu",
       "when": "Kdy (nepovinné)",
       "where": "Kde (nepovinné)",
-      "rulesetName": "Pravidla (nepovinné)",
-      "rulesetUrl": "Odkaz na pravidla (nepovinné)",
+      "ruleset": "Pravidla (nepovinné)",
       "whenHint": "Přibližný čas, například \"sobota dopoledne\".",
       "whereHint": "Místo v rámci areálu, například \"Hlavní sál\".",
-      "rulesetNameHint": "Krátký název pravidel, například \"Right of Way\".",
-      "rulesetUrlHint": "Odkaz na úplné znění pravidel, pokud existuje.",
+      "rulesetHint": "Název pravidel a odkaz na jejich znění, pokud je zveřejněné — víc odkazů, pokud pravidla existují ve víc jazycích.",
       "rowInvalid": "Zadej zbraň, kapacitu a (u týmové disciplíny) meze soupisky pro tento řádek; zbraň mimo taxonomii navíc vyžaduje název.",
       "compositionDeadline": "Uzávěrka soupisek (nepovinné)",
       "compositionDeadlineHint": "Datum, do kterého mají být soupisky týmů kompletní. Nic neuzamyká — jen po tomto datu označí neúplné týmy organizátorovi."

@@ -16,10 +16,12 @@ const marked = new Marked({
   },
 });
 
-const ALLOWED_TAGS = [
-  "p", "br", "strong", "em", "del", "ul", "ol", "li",
-  "h3", "h4", "a", "blockquote", "code", "pre", "hr",
-];
+// The inline tags are the whole vocabulary of a one-line field; the block tags
+// are what long-form prose adds on top. Written as base + block rather than as
+// two literal lists so the two allowlists cannot drift apart.
+const INLINE_TAGS = ["strong", "em", "del", "code", "a"];
+const BLOCK_TAGS = ["p", "br", "ul", "ol", "li", "h3", "h4", "blockquote", "pre", "hr"];
+const ALLOWED_TAGS = [...INLINE_TAGS, ...BLOCK_TAGS];
 const ALLOWED_ATTR = ["href"];
 const ALLOWED_URI_REGEXP = /^(https?:|mailto:|#)/i;
 
@@ -36,4 +38,23 @@ DOMPurify.addHook("afterSanitizeAttributes", (node) => {
 export function renderMarkdown(src: string): string {
   const html = marked.parse(src, { async: false }) as string;
   return DOMPurify.sanitize(html, { ALLOWED_TAGS, ALLOWED_ATTR, ALLOWED_URI_REGEXP });
+}
+
+/**
+ * The same for a field that has to stay on one line. `parseInline` tokenizes the
+ * source as inline content, so a heading or a list is never a token to begin
+ * with and comes out as the characters the organizer typed — no block markup to
+ * strip and no `breaks` line break to suppress.
+ *
+ * `links: false` is for a field rendered inside a region that is itself a link:
+ * dropping `a` from the allowlist leaves DOMPurify to keep the anchor's own text,
+ * so the label survives and no link is ever nested inside another.
+ */
+export function renderInline(src: string, { links = true }: { links?: boolean } = {}): string {
+  const html = marked.parseInline(src, { async: false }) as string;
+  return DOMPurify.sanitize(html, {
+    ALLOWED_TAGS: links ? INLINE_TAGS : INLINE_TAGS.filter((tag) => tag !== "a"),
+    ALLOWED_ATTR,
+    ALLOWED_URI_REGEXP,
+  });
 }
