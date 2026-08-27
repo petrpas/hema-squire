@@ -661,7 +661,11 @@
       "tournament": "Tournament",
       "teams": "Teams",
       "programme": "Optional programme",
-      "items": "Optional items",
+      "goods": {
+        "rental": "Equipment rental",
+        "merch": "Merch",
+        "other_item": "Other goods"
+      },
       "other": "Other"
     },
     "teams": {

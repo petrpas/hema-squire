@@ -662,7 +662,11 @@
       "tournament": "Turnaj",
       "teams": "Týmy",
       "programme": "Volitelný program",
-      "items": "Volitelné položky",
+      "goods": {
+        "rental": "Zapůjčení vybavení",
+        "merch": "Merch",
+        "other_item": "Ostatní zboží"
+      },
       "other": "Ostatní"
     },
     "teams": {

@@ -1,5 +1,5 @@
 import { IconX } from "@tabler/icons-react";
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import {
@@ -18,6 +18,7 @@ import {
 } from "./api";
 import { FIELD_CONSTRAINTS } from "./constraints";
 import DotJoined from "./DotJoined";
+import { groupGoods, isAction } from "./extraItems";
 import InlineProse from "./InlineProse";
 import { formatMoneyWithEur } from "./money";
 import { parseInteger } from "./numeric";
@@ -180,12 +181,6 @@ export function InfoHeader({ detail }: { detail: TournamentDetailData }) {
   );
 }
 
-// the time-and-place ("action") categories, mirroring the backend's
-// ACTION_CATEGORIES: shown as informational "other actions" on the information
-// screen — where gear lending and merch are deliberately omitted — and grouped
-// as the optional programme on the register screen
-export const ACTION_CATEGORIES = ["seminar", "afterparty", "other_action"] as const;
-
 /** Optional when/where/remark line shared by discipline and action rows. The
  * caller decides how it's set off (the tournament face wraps it in a
  * `.detail-extra` line; the registration form's checklist already has its
@@ -282,9 +277,7 @@ export function DisciplinesInfo({
 
 export function OtherActionsInfo({ detail }: { detail: TournamentDetailData }) {
   const { t } = useTranslation();
-  const actions = detail.extra_items.filter((item) =>
-    ACTION_CATEGORIES.includes(item.category as (typeof ACTION_CATEGORIES)[number]),
-  );
+  const actions = detail.extra_items.filter(isAction);
   if (actions.length === 0) return null;
   return (
     <section className="rail-card">
@@ -655,18 +648,15 @@ export function RegistrationForm({
     setExtraQty((prev) => ({ ...prev, [item.id]: prev[item.id] > 0 ? 0 : 1 }));
   }
 
-  // sections follow the action/item category split, so membership is data
-  const programmeItems = detail.extra_items.filter((i) =>
-    ACTION_CATEGORIES.includes(i.category as (typeof ACTION_CATEGORIES)[number]),
-  );
-  const optionalItems = detail.extra_items.filter(
-    (i) => !ACTION_CATEGORIES.includes(i.category as (typeof ACTION_CATEGORIES)[number]),
-  );
+  // sections follow the item categories, so membership is data: the actions
+  // gather into the one optional programme, the goods head a section each
+  const programmeItems = detail.extra_items.filter(isAction);
+  const goods = groupGoods(detail.extra_items);
   const teamDisciplines = detail.disciplines.filter((d) => d.kind === "team");
 
-  /** Rows whose option is declared but unanswered block submission. */
-  const unanswered = optionalItems
-    .concat(programmeItems)
+  /** Rows whose option is declared but unanswered block submission — every
+   *  extra item is a candidate, wherever on the form it renders. */
+  const unanswered = detail.extra_items
     .filter((item) => (extraQty[item.id] ?? 0) > 0 && item.option_label)
     .find((item) => (extraOption[item.id] ?? "").trim() === "");
 
@@ -857,12 +847,12 @@ export function RegistrationForm({
         </>
       )}
 
-      {optionalItems.length > 0 && (
-        <>
-          <h3 className="register-section">{t("form.sections.items")}</h3>
-          <div className="checklist">{optionalItems.map(itemRow)}</div>
-        </>
-      )}
+      {goods.map((group) => (
+        <Fragment key={group.category}>
+          <h3 className="register-section">{t(`form.sections.goods.${group.category}`)}</h3>
+          <div className="checklist">{group.items.map(itemRow)}</div>
+        </Fragment>
+      ))}
 
       <DiscountList detail={detail} breakdown={discounts} />
 
