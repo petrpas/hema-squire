@@ -155,6 +155,8 @@ export function DiscountsSection({
             <th>{t("setup.discounts.name")}</th>
             <th className="col-num">{t("setup.discounts.condition")}</th>
             <th className="col-num">{t("setup.discounts.effect")}</th>
+            <th className="col-num">{t("setup.discounts.value")}</th>
+            {eur && <th className="col-num">{t("setup.discounts.valueEur")}</th>}
             <th className="col-actions" />
           </tr>
         </thead>
@@ -242,43 +244,46 @@ export function DiscountsSection({
                 </div>
               </td>
               <td className="col-num">
-                <div className="param-fields">
-                  <select
-                    value={discount.effect.kind}
-                    onChange={(event) => {
-                      const kind = event.target.value as DiscountEffect["kind"];
-                      // a percent effect is currency-neutral and carries no
-                      // second value (design Decision 1)
-                      updateEffect(index, { kind, value_eur: kind === "fixed" ? discount.effect.value_eur : null });
-                    }}
-                  >
-                    <option value="fixed">
-                      {t("setup.discounts.fixed", { currency: detail.local_currency })}
-                    </option>
-                    <option value="percent">{t("setup.discounts.percent")}</option>
-                  </select>
-                  <input
-                    ref={fieldRef("value")}
-                    className="cell-input"
-                    type="text"
-                    inputMode="numeric"
-                    value={discount.effect.value}
-                    onChange={(event) => {
-                      updateEffect(index, { value: _int(event.target.value) ?? 0 });
-                      clearIfValid("value")();
-                    }}
-                    onBlur={touch("value")}
-                    {...fieldErrorProps("value")}
-                  />
-                  <FieldError field={`value-${index}`} error={validation.errors[`value-${index}`]} />
-                  {eur && discount.effect.kind === "fixed" && (
+                <select
+                  value={discount.effect.kind}
+                  onChange={(event) => {
+                    const kind = event.target.value as DiscountEffect["kind"];
+                    // a percent effect is currency-neutral and carries no
+                    // second value (design Decision 1)
+                    updateEffect(index, { kind, value_eur: kind === "fixed" ? discount.effect.value_eur : null });
+                  }}
+                >
+                  <option value="fixed">
+                    {t("setup.discounts.fixed", { currency: detail.local_currency })}
+                  </option>
+                  <option value="percent">{t("setup.discounts.percent")}</option>
+                </select>
+              </td>
+              <td className="col-num">
+                <input
+                  ref={fieldRef("value")}
+                  className="cell-input"
+                  type="text"
+                  inputMode="numeric"
+                  value={discount.effect.value}
+                  onChange={(event) => {
+                    updateEffect(index, { value: _int(event.target.value) ?? 0 });
+                    clearIfValid("value")();
+                  }}
+                  onBlur={touch("value")}
+                  {...fieldErrorProps("value")}
+                />
+                <FieldError field={`value-${index}`} error={validation.errors[`value-${index}`]} />
+              </td>
+              {eur && (
+                <td className="col-num">
+                  {discount.effect.kind === "fixed" && (
                     <>
                       <input
                         ref={fieldRef("value_eur")}
                         className="cell-input"
                         type="text"
                         inputMode="numeric"
-                        placeholder={t("setup.discounts.fixedEur")}
                         value={discount.effect.value_eur ?? ""}
                         onChange={(event) => {
                           updateEffect(index, {
@@ -292,8 +297,8 @@ export function DiscountsSection({
                       <FieldError field={`value_eur-${index}`} error={validation.errors[`value_eur-${index}`]} />
                     </>
                   )}
-                </div>
-              </td>
+                </td>
+              )}
               <td className="col-actions">
                 <button
                   className="row-action"

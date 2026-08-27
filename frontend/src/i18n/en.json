@@ -399,8 +399,9 @@
       "conditionCount": "Discipline count",
       "conditionEarly": "Registered before date",
       "effect": "Effect",
-      "fixed": "unit price ({{currency}})",
-      "fixedEur": "unit price (EUR)",
+      "value": "Value",
+      "valueEur": "Value (EUR)",
+      "fixed": "Fixed amount ({{currency}})",
       "percent": "Percent (%)",
       "add": "Add discount"
     },

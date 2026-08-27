@@ -399,8 +399,9 @@
       "conditionCount": "Počet disciplín",
       "conditionEarly": "Registrace do data",
       "effect": "Efekt",
-      "fixed": "jednotková cena ({{currency}})",
-      "fixedEur": "jednotková cena (EUR)",
+      "value": "Hodnota",
+      "valueEur": "Hodnota (EUR)",
+      "fixed": "Pevná částka ({{currency}})",
       "percent": "Procenta (%)",
       "add": "Přidat slevu"
     },
