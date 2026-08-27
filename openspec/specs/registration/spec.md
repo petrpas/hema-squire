@@ -57,7 +57,7 @@ The registration form SHALL present everything a tournament offers as a single o
 
 A discipline row SHALL be labelled by the discipline's name alone. A discipline's slug SHALL NOT appear on the registration form or anywhere else a fencer reads, as fixed by `discipline-identity`; it is the identifier the form submits, never text the form shows. Where a tournament offers several disciplines classified alike, their names are what distinguish them, and the form SHALL present those names as the organizer wrote them without prefixing, suffixing, or otherwise decorating them to mark the distinction.
 
-Sections SHALL be derived from item categories, not from a separate list: the tournament's individual disciplines; the tournament's team disciplines; the optional programme (`seminar`, `afterparty`, `other_action`); and optional items (`rental`, `merch`, `other_item`). A section with no rows SHALL be omitted entirely. The form SHALL show the tournament's display name, its subtitle when set, and its registration instructions when set, above the first section, and the running total below the last.
+Sections SHALL be derived from item categories, not from a separate list: the tournament's individual disciplines; the tournament's team disciplines; the optional programme, one section covering `seminar`, `afterparty`, and `other_action` together; and the goods, one section per item category — `rental`, then `merch`, then `other_item`, in that order. Each goods section SHALL be headed by the name of the category it holds, so the heading states what the rows are rather than that they are optional; no section SHALL pool the three item categories under one shared heading. A section with no rows SHALL be omitted entirely, so a tournament that only lends gear shows exactly one goods section. Within a section, rows SHALL keep the order the tournament states them in. The form SHALL show the tournament's display name, its subtitle when set, and its registration instructions when set, above the first section, and the running total below the last.
 
 A team-discipline row SHALL NOT be a checkbox. It SHALL state the discipline, its roster bounds, and its per-team price, and SHALL offer an action that adds a team, which requires a team name. Each team the fencer has added SHALL appear as its own line beneath the discipline, showing the team name and the per-team price, and SHALL be removable. Adding a second team to the same discipline SHALL be offered, and each added team SHALL be priced separately rather than as a quantity. The composition deadline, when the tournament sets one, SHALL be stated in the team section together with the statement that rosters may be filled in later.
 
@@ -67,7 +67,15 @@ Below the total the form SHALL offer exactly one non-billable field: a free-text
 
 #### Scenario: Sections rendered from categories
 - **WHEN** a tournament offers two disciplines, one seminar, one afterparty, and one merch item and a fencer opens the registration form
-- **THEN** the disciplines appear in the tournament section, the seminar and afterparty in the optional programme, the merch item in optional items, and each row shows its price
+- **THEN** the disciplines appear in the tournament section, the seminar and afterparty together in the optional programme, the merch item under a section headed for merch, and each row shows its price
+
+#### Scenario: Goods headed by their own category
+- **WHEN** a tournament lends three weapons as rentals and sells one shirt as merch
+- **THEN** the form shows two goods sections, the rental one first holding the three weapons and the merch one after it holding the shirt, each under its own category's heading
+
+#### Scenario: Lending only, one section
+- **WHEN** a tournament's only goods are three weapons offered as rentals
+- **THEN** the form shows exactly one goods section, headed as equipment rental, and no heading naming the rows merely as optional appears anywhere on the form
 
 #### Scenario: Discipline rows carry names, not slugs
 - **WHEN** a fencer opens the registration form of a tournament whose disciplines have slugs
