@@ -831,7 +831,7 @@
     "emptyQueue": "Na tuto disciplínu nikdo nečeká.",
     "noneSeated": "V této disciplíně nikdo nedrží místo.",
     "position": "{{position}}.",
-    "registeredAt": "registrace {{date}}",
+    "registeredAt": "registrace {{moment}}",
     "promote": "posunout na místo",
     "returnToQueue": "vrátit do fronty",
     "noDisciplines": "Turnaj nenabízí žádnou individuální disciplínu.",

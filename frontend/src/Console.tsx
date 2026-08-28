@@ -18,6 +18,7 @@ import { useAuth } from "./RequireAuth";
 import * as routes from "./routes";
 import SetupPanel from "./SetupPanel";
 import TeamsPanel from "./TeamsPanel";
+import { registeredMoment } from "./momentText";
 import { parseInteger } from "./numeric";
 import { checkNumeric, checkString, type FieldError } from "./validation";
 import {
@@ -90,7 +91,19 @@ function StateBadge({ id, state }: { id: string; state: string }) {
   return <span className="state-text">{state}</span>;
 }
 
-function CellDisplay({ row, column }: { row: SheetRow; column: string }) {
+/** `timezone` is the tournament's own zone, the frame every moment in the
+ *  table is read in; it is null until the tournament detail has arrived
+ *  beside the sheet, and the moment falls back to the reader's zone until it
+ *  does (design show-register-times D5). */
+export function CellDisplay({
+  row,
+  column,
+  timezone,
+}: {
+  row: SheetRow;
+  column: string;
+  timezone: string | null;
+}) {
   switch (column) {
     case "state":
       return <StateBadge id={row.id} state={row.state} />;
@@ -108,9 +121,7 @@ function CellDisplay({ row, column }: { row: SheetRow; column: string }) {
     case "afterparty":
       return <>{row.afterparty ? "✓" : "—"}</>;
     case "registered_at":
-      return (
-        <>{row.registered_at ? new Date(row.registered_at).toLocaleDateString("cs") : "—"}</>
-      );
+      return <>{registeredMoment(row.registered_at, timezone)}</>;
     case "expires_at":
     case "paid_at": {
       const value = row[column];
@@ -277,7 +288,7 @@ export default function Console({
         ) : phase === "teams" ? (
           <TeamsPanel slug={tournament.slug} />
         ) : phase === "queue" ? (
-          <QueuePanel slug={tournament.slug} />
+          <QueuePanel slug={tournament.slug} timezone={detail?.timezone ?? null} />
         ) : (
           <>
         <main className="sheet-area">
@@ -347,13 +358,23 @@ export default function Console({
                               </button>
                             ) : editable ? (
                               <EditableCell
-                                display={<CellDisplay row={row} column={column} />}
+                                display={
+                                  <CellDisplay
+                                    row={row}
+                                    column={column}
+                                    timezone={detail?.timezone ?? null}
+                                  />
+                                }
                                 value={row[column]}
                                 onSave={(raw) => saveEdit(row, column, raw)}
                                 validate={(raw) => cellCheck(column, raw)}
                               />
                             ) : (
-                              <CellDisplay row={row} column={column} />
+                              <CellDisplay
+                                row={row}
+                                column={column}
+                                timezone={detail?.timezone ?? null}
+                              />
                             )}
                           </td>
                         );

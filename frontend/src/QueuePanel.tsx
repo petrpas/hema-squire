@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { ApiError, type Queue, type QueueEntry, api } from "./api";
+import { ApiError, type Queue, api } from "./api";
+import QueueEntryLine from "./QueueEntryLine";
 
 /** The organizer's view of where the line falls in every individual
  *  discipline, and the only place `admit_substitute` and its inverse are
@@ -11,7 +12,15 @@ import { ApiError, type Queue, type QueueEntry, api } from "./api";
  *  system shows the data and the organizer decides (design Non-Goals), so the
  *  view's job is to make the pending work obvious. A discipline whose queue is
  *  empty is stated as empty rather than hidden. */
-export default function QueuePanel({ slug }: { slug: string }) {
+export default function QueuePanel({
+  slug,
+  timezone,
+}: {
+  slug: string;
+  /** The tournament's own zone, the frame each entry's registration moment is
+   *  read in; null until the console's tournament detail has arrived. */
+  timezone: string | null;
+}) {
   const { t } = useTranslation();
   const [queue, setQueue] = useState<Queue | null | "error">(null);
   const [failure, setFailure] = useState<string | null>(null);
@@ -53,22 +62,6 @@ export default function QueuePanel({ slug }: { slug: string }) {
 
   const isSettled = queue.seating_settled_at !== null;
   const date = (value: string) => new Date(value).toLocaleDateString("cs");
-
-  function entryLine(entry: QueueEntry) {
-    return (
-      <>
-        <strong>
-          {entry.queue_position !== null &&
-            `${t("queue.position", { position: entry.queue_position })} `}
-          {entry.fencer}
-        </strong>{" "}
-        <span className="muted">
-          {entry.club && `${entry.club} · `}
-          {t("queue.registeredAt", { date: date(entry.registered_at) })}
-        </span>
-      </>
-    );
-  }
 
   return (
     <main className="sheet-area">
@@ -118,7 +111,9 @@ export default function QueuePanel({ slug }: { slug: string }) {
                   {discipline.seated.map((entry) => (
                     <li key={entry.registration_id}>
                       <div className="detail-row">
-                        <span>{entryLine(entry)}</span>
+                        <span>
+                          <QueueEntryLine entry={entry} timezone={timezone} />
+                        </span>
                         <button
                           className="link-button"
                           disabled={busy}
@@ -144,7 +139,9 @@ export default function QueuePanel({ slug }: { slug: string }) {
                   {discipline.queued.map((entry) => (
                     <li key={entry.registration_id}>
                       <div className="detail-row">
-                        <span>{entryLine(entry)}</span>
+                        <span>
+                          <QueueEntryLine entry={entry} timezone={timezone} />
+                        </span>
                         <button
                           className="link-button"
                           disabled={busy || discipline.free === 0}

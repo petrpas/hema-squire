@@ -829,7 +829,7 @@
     "emptyQueue": "Nobody is waiting for this discipline.",
     "noneSeated": "Nobody holds a place in this discipline.",
     "position": "{{position}}.",
-    "registeredAt": "registered {{date}}",
+    "registeredAt": "registered {{moment}}",
     "promote": "promote",
     "returnToQueue": "return to queue",
     "noDisciplines": "This tournament offers no individual discipline.",
