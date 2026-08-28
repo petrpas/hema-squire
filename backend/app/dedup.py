@@ -12,16 +12,19 @@ accept, as a dedup_decision rule that performs the merge at replay time.
 
 import hashlib
 import json
-from typing import Protocol
+from typing import TYPE_CHECKING, Protocol
 
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app import rules
-from app.config import settings
 from app.importer import get_decision, store_decision
+from app.llm import get_model, llm_configured
 from app.models import Fencer, Tournament
 from app.rules import Row
+
+if TYPE_CHECKING:
+    from pydantic_ai.models import Model
 
 
 class MergeProposal(BaseModel):
@@ -85,16 +88,14 @@ Return the three lists of id groups.
 
 
 class LLMDedup:
-    def __init__(self, model: str):
+    def __init__(self, model: Model):
         self._model = model
 
     def _agent(self, output_type, prompt: str):
         from pydantic_ai import Agent
-        from pydantic_ai.settings import ModelSettings
 
         return Agent(
             model=self._model,
-            model_settings=ModelSettings(temperature=0.0),
             output_type=output_type,
             system_prompt=prompt,
             retries=3,
@@ -116,12 +117,9 @@ class LLMDedup:
 
 
 def get_dedup_llm() -> DedupLLM | None:
-    if not settings.anthropic_api_key:
+    if not llm_configured():
         return None
-    import os
-
-    os.environ.setdefault("ANTHROPIC_API_KEY", settings.anthropic_api_key)
-    return LLMDedup(settings.llm_model)
+    return LLMDedup(get_model())
 
 
 MERGE_FIELDS = [

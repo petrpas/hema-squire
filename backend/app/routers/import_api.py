@@ -1,6 +1,7 @@
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile
+from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel
 
 from app import dedup, hr_match, importer, rules, sheet
@@ -33,8 +34,15 @@ async def import_table(
     require_console_access(session, tournament, fencer)
     data = await file.read()
     try:
-        return importer.import_table(
-            session, tournament, parser, file.filename or "upload.csv", data, fencer.id
+        # the parser's LLM call is sync; off the loop thread so it can drive its own
+        return await run_in_threadpool(
+            importer.import_table,
+            session,
+            tournament,
+            parser,
+            file.filename or "upload.csv",
+            data,
+            fencer.id,
         )
     except importer.UnsupportedFormatError:
         raise HTTPException(status_code=422, detail="unsupported_format") from None

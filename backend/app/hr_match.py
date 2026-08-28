@@ -8,15 +8,18 @@ match_resolution rules and always win over the cached LLM proposal.
 
 import hashlib
 import json
-from typing import Protocol
+from typing import TYPE_CHECKING, Protocol
 
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from app.config import settings
 from app.hr_index import HRIndex, HRProfile
 from app.importer import get_decision, store_decision
+from app.llm import get_model, llm_configured
 from app.models import Tournament
+
+if TYPE_CHECKING:
+    from pydantic_ai.models import Model
 
 
 class HRMatchResult(BaseModel):
@@ -63,18 +66,16 @@ class _MatchBatch(BaseModel):
 
 
 class LLMHRMatcher:
-    def __init__(self, model: str):
+    def __init__(self, model: Model):
         self._model = model
 
     def match(
         self, fencers: list[dict], candidates: list[HRProfile]
     ) -> list[HRMatchResult]:
         from pydantic_ai import Agent
-        from pydantic_ai.settings import ModelSettings
 
         agent = Agent(
             model=self._model,
-            model_settings=ModelSettings(temperature=0.0),
             output_type=_MatchBatch,
             system_prompt=_SYSTEM_PROMPT,
             retries=3,
@@ -91,12 +92,9 @@ class LLMHRMatcher:
 
 
 def get_hr_matcher() -> HRMatcher | None:
-    if not settings.anthropic_api_key:
+    if not llm_configured():
         return None
-    import os
-
-    os.environ.setdefault("ANTHROPIC_API_KEY", settings.anthropic_api_key)
-    return LLMHRMatcher(settings.llm_model)
+    return LLMHRMatcher(get_model())
 
 
 def identity_key(name: str | None, club: str | None) -> str:

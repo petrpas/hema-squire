@@ -20,7 +20,7 @@ CSV = (
 
 
 class FakeParser(ImportParser):
-    def parse(self, rows, disciplines):
+    def parse(self, rows, disciplines, rentals):
         parsed = []
         for index, raw in enumerate(rows):
             hr = raw.get("HRID", "")

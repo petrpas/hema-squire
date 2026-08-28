@@ -14,19 +14,33 @@ import csv
 import hashlib
 import io
 import json
-from typing import Literal, Protocol
+from typing import TYPE_CHECKING, Literal, Protocol
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.config import settings
-from app.models import ImportBatch, ImportDecision, ImportedRow, Tournament
+from app.llm import get_model, llm_configured
+from app.models import (
+    ExtraCategory,
+    ImportBatch,
+    ImportDecision,
+    ImportedRow,
+    Tournament,
+)
+
+if TYPE_CHECKING:
+    from pydantic_ai.models import Model
 
 # an offered discipline as handed to the parser: (slug, name) — the name is
 # where a tier, a bracket, or a weapon the taxonomy does not know lives, so it
 # is what the model actually matches on (design discipline-identity D7)
 OfferedDiscipline = tuple[str, str]
+
+# an item the tournament lends, by the name the sheet shows it under. Free of
+# the weapon taxonomy on purpose: an organizer lends whatever they own, and a
+# buckler or a mask is no weapon (models.ExtraCategory.RENTAL)
+OfferedRental = str
 
 PARSE_BATCH_SIZE = 20
 
@@ -84,7 +98,9 @@ class ParsedFencer(BaseModel):
     disciplines: list[str] = Field(
         default=[], description="Slugs chosen from the tournament's offered disciplines."
     )
-    borrow: list[Literal["LS", "SA", "RA", "RD", "SB"]] = []
+    borrow: list[str] = Field(
+        default=[], description="Names chosen from the tournament's offered rentals."
+    )
     after_party: Literal["Yes", "No", "Oth"] | None = None
     aftersparring: Literal["Yes", "No", "Oth"] | None = None
     accommodation: str | None = None
@@ -95,10 +111,21 @@ class ParsedFencer(BaseModel):
         default=None, description="Parsing doubts, listed for organizer review."
     )
 
+    @field_validator("disciplines", "borrow")
+    @classmethod
+    def _entered_once(cls, values: list[str]) -> list[str]:
+        """Both fields are sets: a fencer enters a discipline once and borrows
+        one of an item. A source row repeats itself easily — it names the
+        weapon it lends per discipline — and the repeat means nothing here."""
+        return list(dict.fromkeys(values))
+
 
 class ImportParser(Protocol):
     def parse(
-        self, rows: list[dict[str, str]], disciplines: list[OfferedDiscipline]
+        self,
+        rows: list[dict[str, str]],
+        disciplines: list[OfferedDiscipline],
+        rentals: list[OfferedRental],
     ) -> list[ParsedFencer]: ...
 
 
@@ -108,18 +135,23 @@ You receive a batch of records from a registration table and must output a clean
 structured fencer record for each. Return exactly one record per input row, in order.
 
 Disciplines offered by this tournament (slug — name): {disciplines}
+Items this tournament lends, by name: {rentals}
 
 Rules:
 1. hr_id: a plain integer as-is; empty or any non-numeric text ("N/A", "Don't have") -> null.
 2. disciplines: choose the slug of the matching offered discipline. Match on the name,
    which is where a tier, a bracket, or a weapon not in the usual HEMA taxonomy is named.
-   Only use slugs from the offered list, nothing else.
+   Only use slugs from the offered list, nothing else, and each slug at most once.
 3. If a row's content could match more than one offered discipline and does not say which
    (for example it names only a weapon that the tournament splits into several brackets),
    do not guess: leave that discipline out of the row and note the ambiguity in problems.
 4. Content that fits no field goes to notes. Parsing doubts go to problems.
 5. after_party / aftersparring: map local phrasing to Yes/No/Oth; null if the column is absent.
 6. accommodation: copy free text; null if absent or empty.
+7. borrow: the lent items the row asks for, named exactly as the offered list names
+   them. One of each is lent, so name an item once however often the row repeats it —
+   a row entered in two disciplines commonly asks for the same weapon in each. An item
+   asked for that this tournament does not lend goes to problems, not to borrow.
 """
 
 
@@ -130,22 +162,24 @@ class _ParsedBatch(BaseModel):
 class LLMImportParser:
     """pydantic-ai parser over Anthropic; the only LLM call site on this path."""
 
-    def __init__(self, model: str, batch_size: int = PARSE_BATCH_SIZE):
+    def __init__(self, model: Model, batch_size: int = PARSE_BATCH_SIZE):
         self._model = model
         self._batch_size = batch_size
 
     def parse(
-        self, rows: list[dict[str, str]], disciplines: list[OfferedDiscipline]
+        self,
+        rows: list[dict[str, str]],
+        disciplines: list[OfferedDiscipline],
+        rentals: list[OfferedRental],
     ) -> list[ParsedFencer]:
         from pydantic_ai import Agent
-        from pydantic_ai.settings import ModelSettings
 
         offered = ", ".join(f"{slug} — {name}" for slug, name in disciplines)
+        lent = ", ".join(rentals) if rentals else "nothing — leave borrow empty"
         agent = Agent(
             model=self._model,
-            model_settings=ModelSettings(temperature=0.0),
             output_type=_ParsedBatch,
-            system_prompt=_SYSTEM_PROMPT.format(disciplines=offered),
+            system_prompt=_SYSTEM_PROMPT.format(disciplines=offered, rentals=lent),
             retries=3,
         )
         parsed: list[ParsedFencer] = []
@@ -161,12 +195,9 @@ class LLMImportParser:
 
 
 def get_import_parser() -> ImportParser | None:
-    if not settings.anthropic_api_key:
+    if not llm_configured():
         return None
-    import os
-
-    os.environ.setdefault("ANTHROPIC_API_KEY", settings.anthropic_api_key)
-    return LLMImportParser(settings.llm_model)
+    return LLMImportParser(get_model())
 
 
 def latest_batch(session: Session, tournament: Tournament) -> ImportBatch | None:
@@ -264,7 +295,12 @@ def import_table(
                 "detail": "llm_not_configured",
             }
         offered = [(d.slug, d.name) for d in tournament.disciplines]
-        parsed = parser.parse([row.raw for row in undecided], offered)
+        lent = [
+            item.name
+            for item in tournament.extra_items
+            if item.category == ExtraCategory.RENTAL
+        ]
+        parsed = parser.parse([row.raw for row in undecided], offered, lent)
         for row, record in zip(undecided, parsed, strict=True):
             store_decision(session, tournament, "parse", row.key, record.model_dump())
         parsed_count = len(parsed)

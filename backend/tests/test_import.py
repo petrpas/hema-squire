@@ -22,7 +22,7 @@ class FakeParser:
     def __init__(self):
         self.calls = 0
 
-    def parse(self, rows, disciplines):
+    def parse(self, rows, disciplines, rentals):
         self.calls += 1
         parsed = []
         for raw in rows:
@@ -235,7 +235,7 @@ class BracketAwareParser:
     problem (design D8) — the offered `disciplines` argument is exactly the
     `(slug, name)` pairs the real prompt is built from."""
 
-    def parse(self, rows, disciplines):
+    def parse(self, rows, disciplines, rentals):
         parsed = []
         for raw in rows:
             text = raw.get("row", "")
@@ -327,3 +327,59 @@ def test_old_shape_decision_ambiguous_after_split():
     )
     assert slugs == []
     assert len(problems) == 1
+
+
+# ---------------------------------------------------------------------------
+# What the tournament lends is offered to the parser, and borrowed once
+# ---------------------------------------------------------------------------
+
+
+class RentalParser(ImportParser):
+    """Stands in for the LLM: echoes back what it was offered, and repeats an
+    item the way a source row does — once per discipline entered."""
+
+    def __init__(self):
+        self.offered_rentals = None
+
+    def parse(self, rows, disciplines, rentals):
+        self.offered_rentals = rentals
+        return [
+            ParsedFencer(
+                registration_time="2026-04-01T14:15:27",
+                name=raw["Jméno / Full Name"].strip(),
+                disciplines=["SA", "SB", "SA"],
+                borrow=["Sabre", "Sabre", "Buckler"],
+            )
+            for raw in rows
+        ]
+
+
+def test_offered_rentals_reach_the_parser_and_are_borrowed_once(client, auth_headers):
+    organizer = auth_headers()
+    setup(client, organizer)
+    client.post(
+        "/api/tournaments/cup/disciplines",
+        json={"slug": "SB", "weapon": "SB", "capacity": 20, "fee": 800},
+        headers=organizer,
+    )
+    for name in ("Sabre", "Buckler"):
+        client.post(
+            "/api/tournaments/cup/extra-items",
+            json={"name": name, "category": "rental", "price": 50, "max_qty": 1},
+            headers=organizer,
+        )
+    client.post(
+        "/api/tournaments/cup/extra-items",
+        json={"name": "T-shirt", "category": "merch", "price": 250, "max_qty": 1},
+        headers=organizer,
+    )
+    parser = RentalParser()
+    override_parser(parser)
+
+    assert upload(client, organizer).status_code == 200
+    # what the tournament lends, and nothing it merely sells
+    assert parser.offered_rentals == ["Sabre", "Buckler"]
+
+    row = next(r for r in get_sheet(client, organizer)["rows"] if r["id"].startswith("imp:"))
+    assert row["weapon_rentals"] == ["Sabre", "Buckler"]
+    assert row["disciplines"] == ["SA", "SB"]

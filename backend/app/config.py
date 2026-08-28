@@ -34,6 +34,9 @@ class Settings(BaseSettings):
     scheduler_interval_seconds: int = 300
     # LLM is used only on the table-import path (parse, match, dedup)
     anthropic_api_key: str = ""
+    # an identity-linked key acts inside one workspace and the API demands its
+    # id on every request (app.llm); an organisation key needs no id
+    anthropic_workspace_id: str = ""
     llm_model: str = "anthropic:claude-sonnet-5"
     # service-account JSON for the Google Sheets export
     google_credentials_path: str = ""
