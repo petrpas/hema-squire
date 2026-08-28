@@ -1,21 +1,22 @@
-import { IconX } from "@tabler/icons-react";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { ApiError, type Organizer, type TournamentDetail, api } from "../api";
-import FieldError, { invalidProps } from "../FieldError";
+import { ApiError, type Organizer, type SetupSuggestions, type TournamentDetail, api } from "../api";
 import { useFieldValidation } from "../useFieldValidation";
 import { apiErrors, checkString, checkUrl, type FieldError as FieldErrorValue } from "../validation";
+import OrganizerRow from "./OrganizerRow";
 import { type SaverRegistry, useSectionSaver } from "./shared";
 
 export function OrganizersSection({
   detail,
   slug,
   registry,
+  suggestions,
 }: {
   detail: TournamentDetail;
   slug: string;
   registry: SaverRegistry;
+  suggestions: SetupSuggestions;
 }) {
   const { t } = useTranslation();
   const [organizers, setOrganizers] = useState<Organizer[]>(detail.organizers);
@@ -96,54 +97,25 @@ export function OrganizersSection({
       <table className="sheet-table">
         <tbody>
           {organizers.map((organizer, index) => (
-            <tr key={index}>
-              <td>
-                <input
-                  ref={(el) => {
-                    fieldRefs.current[`name-${index}`] = el;
-                  }}
-                  className="cell-input"
-                  value={organizer.name}
-                  placeholder={t("setup.organizers.placeholder")}
-                  onChange={(event) => {
-                    patch(index, { name: event.target.value });
-                    validation.clearIfValid(`name-${index}`, () => nameCheck(index, event.target.value));
-                  }}
-                  onBlur={(event) => validation.touch(`name-${index}`, () => nameCheck(index, event.target.value))}
-                  {...invalidProps(`name-${index}`, validation.errors[`name-${index}`])}
-                />
-                <FieldError field={`name-${index}`} error={validation.errors[`name-${index}`]} />
-              </td>
-              <td>
-                <input
-                  ref={(el) => {
-                    fieldRefs.current[`link-${index}`] = el;
-                  }}
-                  className="cell-input"
-                  value={organizer.link ?? ""}
-                  placeholder={t("setup.organizers.linkPlaceholder")}
-                  onChange={(event) => {
-                    patch(index, { link: event.target.value });
-                    validation.clearIfValid(`link-${index}`, () => linkCheck(index, event.target.value));
-                  }}
-                  onBlur={(event) => validation.touch(`link-${index}`, () => linkCheck(index, event.target.value))}
-                  {...invalidProps(`link-${index}`, validation.errors[`link-${index}`])}
-                />
-                <FieldError field={`link-${index}`} error={validation.errors[`link-${index}`]} />
-              </td>
-              <td className="col-actions">
-                <button
-                  className="row-action"
-                  title={t("actions.delete")}
-                  onClick={() => {
-                    setOrganizers(organizers.filter((_, i) => i !== index));
-                    setDirty(true);
-                  }}
-                >
-                  <IconX size={16} stroke={1.5} />
-                </button>
-              </td>
-            </tr>
+            <OrganizerRow
+              key={index}
+              organizer={organizer}
+              index={index}
+              candidates={suggestions.organizers}
+              errors={validation.errors}
+              registerRef={(key, el) => {
+                fieldRefs.current[key] = el;
+              }}
+              onPatch={patch}
+              onRemove={(at) => {
+                setOrganizers(organizers.filter((_, i) => i !== at));
+                setDirty(true);
+              }}
+              onTouch={validation.touch}
+              onClearIfValid={validation.clearIfValid}
+              nameCheck={nameCheck}
+              linkCheck={linkCheck}
+            />
           ))}
         </tbody>
       </table>

@@ -319,6 +319,11 @@
       "placeholder": "Název klubu nebo subjektu",
       "linkPlaceholder": "Odkaz (nepovinné)"
     },
+    "suggestions": {
+      "locations": "dříve použitá místa konání",
+      "bankAccounts": "dříve použité účty",
+      "organizers": "dříve uvedení pořadatelé"
+    },
     "disciplines": {
       "title": "Disciplíny",
       "weapon": "Zbraň",

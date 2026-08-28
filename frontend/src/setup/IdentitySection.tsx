@@ -1,10 +1,14 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { ApiError, type TournamentDetail, api, logoUrl } from "../api";
+import { ApiError, type SetupSuggestions, type TournamentDetail, api, logoUrl } from "../api";
 import FieldError, { invalidProps } from "../FieldError";
 import HelpHint from "../HelpHint";
+import SuggestionAnchor from "../SuggestionAnchor";
+import SuggestionList from "../SuggestionList";
+import { plainEntries } from "../suggestions";
 import { useFieldValidation } from "../useFieldValidation";
+import { useSuggestions } from "../useSuggestions";
 import { apiErrors, checkString, type FieldError as FieldErrorValue } from "../validation";
 import { type SaverRegistry, useSectionSaver } from "./shared";
 
@@ -57,11 +61,13 @@ export function IdentitySection({
   slug,
   onSaved,
   registry,
+  suggestions,
 }: {
   detail: TournamentDetail;
   slug: string;
   onSaved: () => void;
   registry: SaverRegistry;
+  suggestions: SetupSuggestions;
 }) {
   const { t } = useTranslation();
   const [values, setValues] = useState<Record<string, string>>({});
@@ -74,6 +80,19 @@ export function IdentitySection({
   const [logoVersion, setLogoVersion] = useState(0);
   const validation = useFieldValidation();
   const fieldRefs = useRef<Record<string, HTMLInputElement | HTMLTextAreaElement | null>>({});
+
+  // LOCATION recalls the venues this organizer has used before. Choosing sets
+  // the value through the same path typing does, so the dirty flag and the
+  // field's own validation behave identically either way.
+  const locationSuggestions = useSuggestions(
+    plainEntries(suggestions.locations),
+    values.location ?? "",
+    (entry) => {
+      setValues((current) => ({ ...current, location: entry.value }));
+      setDirty(true);
+      validation.clearIfValid("location", () => IDENTITY_TEXT_CHECKS.location(entry.value));
+    },
+  );
 
   function qualificationCriteriaCheck(): FieldErrorValue | null {
     if (!qualificationOpen && qualificationCriteria.trim() === "") {
@@ -213,22 +232,34 @@ export function IdentitySection({
     ) : (
       <label key={field.key} className="form-field">
         <span>{t(`param.${field.key}`)}</span>
-        <input
-          ref={(el) => {
-            fieldRefs.current[field.key] = el;
-          }}
-          type={field.type}
-          value={values[field.key] ?? ""}
-          onChange={(event) => {
-            setValues({ ...values, [field.key]: event.target.value });
-            setDirty(true);
-            if (check) validation.clearIfValid(field.key, () => check(event.target.value));
-          }}
-          onBlur={(event) => {
-            if (check) validation.touch(field.key, () => check(event.target.value));
-          }}
-          {...invalidProps(field.key, error)}
-        />
+        {/* LOCATION is the one field here that recalls prior values; the anchor
+            positions its list, and the combobox props ride on the same input */}
+        <SuggestionAnchor active={field.key === "location"}>
+          <input
+            ref={(el) => {
+              fieldRefs.current[field.key] = el;
+            }}
+            type={field.type}
+            value={values[field.key] ?? ""}
+            onChange={(event) => {
+              setValues({ ...values, [field.key]: event.target.value });
+              setDirty(true);
+              if (check) validation.clearIfValid(field.key, () => check(event.target.value));
+            }}
+            onBlur={(event) => {
+              if (field.key === "location") locationSuggestions.close();
+              if (check) validation.touch(field.key, () => check(event.target.value));
+            }}
+            {...(field.key === "location" ? locationSuggestions.inputProps : {})}
+            {...invalidProps(field.key, error)}
+          />
+          {field.key === "location" && (
+            <SuggestionList
+              suggestions={locationSuggestions}
+              label={t("setup.suggestions.locations")}
+            />
+          )}
+        </SuggestionAnchor>
         {"inlineMarkdown" in field && field.inlineMarkdown && (
           <span className="markdown-hint">{t("setup.inlineMarkdownHint")}</span>
         )}

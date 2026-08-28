@@ -318,6 +318,11 @@
       "placeholder": "Club or entity name",
       "linkPlaceholder": "Link (optional)"
     },
+    "suggestions": {
+      "locations": "previously used venues",
+      "bankAccounts": "previously used accounts",
+      "organizers": "previously named organizers"
+    },
     "disciplines": {
       "title": "Disciplines",
       "weapon": "Weapon",

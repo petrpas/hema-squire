@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { useTranslation } from "react-i18next";
 
-import { type Account, type TournamentDetail, api } from "./api";
+import { type Account, type SetupSuggestions, type TournamentDetail, api } from "./api";
 import { BankAccountSection } from "./setup/BankAccountSection";
 import { CurrencySection } from "./setup/CurrencySection";
 import { DangerZoneSection } from "./setup/DangerZoneSection";
@@ -21,6 +21,7 @@ import { SetupTabBar } from "./setup/SetupTabBar";
 import { TeamSection } from "./setup/TeamSection";
 import { TimelineSection } from "./setup/TimelineSection";
 import SetupPreview from "./SetupPreview";
+import { EMPTY_SUGGESTIONS } from "./suggestions";
 
 export default function SetupPanel({
   detail,
@@ -53,8 +54,16 @@ export default function SetupPanel({
     () => detail?.disciplines.some((discipline) => discipline.kind === "team") ?? false,
   );
 
+  // Values this organizer has used on their own earlier tournaments, fetched
+  // once for the whole panel: the payload is bounded and the matching is done
+  // in the browser, so there is nothing to re-request as they type. A failure
+  // falls back to the empty set, which renders plain fields — indistinguishable
+  // from an organizer who has no history yet.
+  const [suggestions, setSuggestions] = useState<SetupSuggestions>(EMPTY_SUGGESTIONS);
+
   useEffect(() => {
     api.account().then(setAccount, () => setAccount(null));
+    api.setupSuggestions().then(setSuggestions, () => setSuggestions(EMPTY_SUGGESTIONS));
   }, []);
 
   const totalPending = registry
@@ -110,8 +119,19 @@ export default function SetupPanel({
             aria-labelledby="setup-tab-tournament"
             hidden={selected !== "tournament"}
           >
-            <IdentitySection detail={detail} slug={slug} onSaved={onSaved} registry={registry} />
-            <OrganizersSection detail={detail} slug={slug} registry={registry} />
+            <IdentitySection
+              detail={detail}
+              slug={slug}
+              onSaved={onSaved}
+              registry={registry}
+              suggestions={suggestions}
+            />
+            <OrganizersSection
+              detail={detail}
+              slug={slug}
+              registry={registry}
+              suggestions={suggestions}
+            />
           </div>
           <div
             className="setup-tabpanel"
@@ -175,7 +195,12 @@ export default function SetupPanel({
             {detail.feature_payments && (
               <>
                 <PaymentModeSection detail={detail} slug={slug} registry={registry} />
-                <BankAccountSection detail={detail} slug={slug} registry={registry} />
+                <BankAccountSection
+                  detail={detail}
+                  slug={slug}
+                  registry={registry}
+                  suggestions={suggestions}
+                />
               </>
             )}
             <CurrencySection detail={detail} slug={slug} registry={registry} />

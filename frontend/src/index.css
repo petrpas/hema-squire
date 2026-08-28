@@ -2458,3 +2458,70 @@ label.checklist-row > input[type="checkbox"] {
 .detail-subrow .param-fields {
   gap: 0.75rem 1.25rem;
 }
+
+/* Values a Setup field recalls from the organizer's own earlier tournaments.
+   Treated as the help hint's box is — static paper under a single ink rule, no
+   shadow, no blur, no entrance animation — so a list that appears mid-typing
+   reads as part of the sheet rather than as a floating widget. */
+.suggestion-anchor {
+  position: relative;
+  display: block;
+}
+
+/* the wrapped input is no longer a flex item of the field, so it no longer
+   stretches on its own; the anchor hands the width back */
+.suggestion-anchor > input {
+  width: 100%;
+}
+
+.suggestion-list {
+  position: absolute;
+  z-index: 5;
+  top: calc(100% + 0.2rem);
+  left: 0;
+  right: 0;
+  max-height: 14rem;
+  overflow-y: auto;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  background: var(--paper-raised);
+  border: 1px solid var(--ink);
+  border-radius: var(--radius);
+  text-transform: none;
+  letter-spacing: normal;
+  font-weight: 400;
+}
+
+.suggestion-option {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  padding: 0.35rem 0.5rem;
+  color: var(--ink);
+  font-size: 13px;
+  cursor: default;
+}
+
+.suggestion-option + .suggestion-option {
+  border-top: 1px solid var(--hairline);
+}
+
+/* the active entry is marked by a rule on its leading edge, not by a fill:
+   one saturated color, used the way every other emphasis in the app uses it */
+.suggestion-option.is-active {
+  border-left: 2px solid var(--stamp);
+  padding-left: calc(0.5rem - 2px);
+}
+
+.suggestion-value {
+  font-size: 13px;
+}
+
+/* the organizer's link, riding along beneath its name so one club used with two
+   links can be told apart */
+.suggestion-secondary {
+  font-size: 11px;
+  color: var(--ink-faded);
+  word-break: break-all;
+}

@@ -337,12 +337,24 @@ class OrganizerOut(BaseModel):
     link: str | None = None
 
 
-def _tolerant_organizers(value: Any) -> Any:
+def tolerant_organizers(value: Any) -> Any:
     """Normalize bare-string organizer entries left by a partially-migrated
     or restored-from-old-export deployment into name+link dicts."""
     if not isinstance(value, list):
         return value
     return [{"name": entry, "link": None} if isinstance(entry, str) else entry for entry in value]
+
+
+class SetupSuggestionsOut(BaseModel):
+    """Values the signed-in account has used on its own earlier tournaments,
+    offered back on the Setup fields that recall them. Derived per request from
+    those tournaments' current values — nothing here is stored, so a value
+    corrected at its source stops being suggested."""
+
+    locations: list[str] = []
+    bank_accounts: list[str] = []
+    # name and link travel together: choosing a remembered club fills both
+    organizers: list[OrganizerOut] = []
 
 
 class TournamentCreate(BaseModel):
@@ -594,7 +606,7 @@ class TournamentOut(BaseModel):
     @field_validator("organizers", mode="before")
     @classmethod
     def _normalize_organizers(cls, value: Any) -> Any:
-        return _tolerant_organizers(value)
+        return tolerant_organizers(value)
 
     @model_validator(mode="after")
     def _derive_currency_mode(self) -> TournamentOut:
@@ -902,7 +914,7 @@ class OpenTournamentOut(BaseModel):
     @field_validator("organizers", mode="before")
     @classmethod
     def _normalize_organizers(cls, value: Any) -> Any:
-        return _tolerant_organizers(value)
+        return tolerant_organizers(value)
 
 
 class TransactionOut(BaseModel):

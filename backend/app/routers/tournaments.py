@@ -1,11 +1,12 @@
 import io
 import logging
+from collections.abc import Iterable
 from datetime import UTC, datetime
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Response, UploadFile
 from PIL import Image, UnidentifiedImageError
-from sqlalchemy import delete, select
+from sqlalchemy import delete, false, or_, select
 from sqlalchemy.orm import Session, selectinload
 
 from app import money_bounds, scheduler, setup, taxonomy
@@ -63,6 +64,7 @@ from app.schemas import (
     QueueEntryOut,
     QueueOut,
     SettleSeatingOut,
+    SetupSuggestionsOut,
     TeamAdd,
     TeamMemberOut,
     TournamentCreate,
@@ -70,6 +72,7 @@ from app.schemas import (
     TournamentModeOut,
     TournamentOut,
     TournamentUpdate,
+    tolerant_organizers,
 )
 
 router = APIRouter(prefix="/api/tournaments", tags=["tournaments"])
@@ -331,6 +334,101 @@ def my_tournaments(session: SessionDep, fencer: FencerDep):
             _fencer_tournament_out(session, tournament, fencer, organized=organized)
         )
     return result
+
+
+# how many values one Setup field offers at once. Bounded so an organizer with a
+# long history gets a list that is read at a glance rather than scrolled.
+SUGGESTION_CAP = 8
+
+
+def _suggestion_scope(session: Session, fencer: Fencer) -> list[Tournament]:
+    """The caller's own tournaments, most recent first. Ownership and console
+    membership both count, checked as the pair the rest of this module uses
+    (`_organized_tournament_ids` deliberately holds only the latter). Drafts and
+    cancelled tournaments are included: they are still the organizer's own work,
+    and a draft is exactly where a value about to be reused tends to sit.
+
+    Ordered by `Tournament.date` descending — the tournament carries no creation
+    stamp, so the date of the event is the available proxy for "used recently"."""
+    organizer_ids = _organized_tournament_ids(session, fencer)
+    return list(
+        session.scalars(
+            select(Tournament)
+            .where(
+                or_(
+                    Tournament.owner_id == fencer.id,
+                    Tournament.id.in_(organizer_ids) if organizer_ids else false(),
+                )
+            )
+            .order_by(Tournament.date.desc())
+        ).all()
+    )
+
+
+def _distinct_recent(values: Iterable[str | None], cap: int = SUGGESTION_CAP) -> list[str]:
+    """Distinct non-empty values in the order given, capped. The caller supplies
+    them most-recent-first, so the first occurrence is the one that survives."""
+    seen: set[str] = set()
+    result: list[str] = []
+    for value in values:
+        if value is None:
+            continue
+        value = value.strip()
+        if not value or value in seen:
+            continue
+        seen.add(value)
+        result.append(value)
+        if len(result) == cap:
+            break
+    return result
+
+
+def _distinct_organizers(tournaments: list[Tournament], cap: int = SUGGESTION_CAP) -> list[dict]:
+    """Distinct organizer name+link pairs, most recent first. The pair is the
+    identity: one club used with two links is two entries, so the organizer can
+    tell them apart. An absent link and an empty one are the same thing, so a
+    club never appears twice over that difference alone.
+
+    Entries pass through `tolerant_organizers` because `Tournament.organizers`
+    may still hold bare strings on a restored-from-old-export deployment
+    (models.py:210); a bare string yields the name with no link."""
+    seen: set[tuple[str, str | None]] = set()
+    result: list[dict] = []
+    for tournament in tournaments:
+        for entry in tolerant_organizers(tournament.organizers or []):
+            if not isinstance(entry, dict):
+                continue
+            name = (entry.get("name") or "").strip()
+            if not name:
+                continue
+            link = (entry.get("link") or "").strip() or None
+            key = (name, link)
+            if key in seen:
+                continue
+            seen.add(key)
+            result.append({"name": name, "link": link})
+            if len(result) == cap:
+                return result
+    return result
+
+
+@router.get("/suggestions", response_model=SetupSuggestionsOut)
+def setup_suggestions(session: SessionDep, fencer: FencerDep):
+    """The values this account has used on its own earlier tournaments, offered
+    back on the three Setup fields that recall them. Read-only and derived per
+    request — nothing is stored, so correcting a value at its source is all it
+    takes to stop it being suggested.
+
+    Scoped to the caller's tournaments, which is what keeps one organizer's
+    venues and account numbers away from another's. Carries no slug: these
+    belong to the account, not to the tournament being edited. Declared ahead of
+    `/{slug}` so "suggestions" is never captured as a slug."""
+    tournaments = _suggestion_scope(session, fencer)
+    return SetupSuggestionsOut(
+        locations=_distinct_recent(t.location for t in tournaments),
+        bank_accounts=_distinct_recent(t.bank_account for t in tournaments),
+        organizers=_distinct_organizers(tournaments),
+    )
 
 
 @router.get("/{slug}", response_model=TournamentOut)

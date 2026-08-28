@@ -279,6 +279,18 @@ export interface Organizer {
   link: string | null;
 }
 
+/** Values the signed-in account has used on its own earlier tournaments, offered
+ *  back on the three Setup fields that recall them. Derived per request from
+ *  those tournaments — nothing is stored, so a value corrected at its source
+ *  stops being offered. Empty lists mean an organizer with no history yet, which
+ *  renders no affordance at all. */
+export interface SetupSuggestions {
+  locations: string[];
+  bank_accounts: string[];
+  // name and link travel together: choosing a remembered club fills both
+  organizers: Organizer[];
+}
+
 /** How a seat is held until the seating deadline. `immediate` is what every
  *  tournament created before the mode existed does. */
 export type PaymentMode = "immediate" | "deposit" | "reservation";
@@ -693,6 +705,8 @@ export const api = {
       method: "POST",
       body: JSON.stringify(data),
     }),
+  // no slug: these belong to the account, not to the tournament being edited
+  setupSuggestions: () => request<SetupSuggestions>("/api/tournaments/suggestions"),
   updateTournament: (slug: string, patch: Record<string, unknown>) =>
     request<TournamentDetail>(`/api/tournaments/${slug}`, {
       method: "PATCH",
