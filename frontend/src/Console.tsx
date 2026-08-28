@@ -1,4 +1,4 @@
-import { IconArrowBackUp, IconTrash, IconX } from "@tabler/icons-react";
+import { IconArrowBackUp, IconTrash } from "@tabler/icons-react";
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useNavigate } from "react-router-dom";
@@ -10,6 +10,7 @@ import ExportPanel from "./ExportPanel";
 import ImportPanel from "./ImportPanel";
 import MatchDialog from "./MatchDialog";
 import MatchPanel from "./MatchPanel";
+import ManualEditsRail from "./ManualEditsRail";
 import PaidStamp from "./PaidStamp";
 import TolerancePanel from "./TolerancePanel";
 import PaymentsPanel from "./PaymentsPanel";
@@ -204,8 +205,13 @@ export default function Console({
     void addRule("field_edit", row.id, { field, value });
   }
 
-  async function removeRule(ruleId: number) {
-    await api.deleteRule(tournament.slug, ruleId);
+  /** Undoing a log entry removes every rule behind it, so the cell returns to
+   *  its source value in one action (spec `edit-rules`, Audit of applied
+   *  changes). */
+  async function undoEdit(ruleIds: number[]) {
+    for (const ruleId of ruleIds) {
+      await api.deleteRule(tournament.slug, ruleId);
+    }
     refresh();
   }
 
@@ -450,41 +456,12 @@ export default function Console({
             </div>
           </section>
 
-          <section className="rail-card plain">
-            <h2>
-              {t("rail.manualEdits")}{" "}
-              <span className="rail-count">({phaseEdits.length})</span>
-            </h2>
-            {phaseEdits.length === 0 ? (
-              <p className="rail-hint">{t("rail.noEdits")}</p>
-            ) : (
-              <ul className="edits-list">
-                {phaseEdits.map((edit, index) => (
-                  <li key={index} className="edit-entry">
-                    <div className="edit-body">
-                      <div>
-                        {edit.field}: {String(edit.before ?? "—")} → {String(edit.after)}
-                      </div>
-                      <div className="edit-meta">
-                        {edit.target} · {edit.actor} ·{" "}
-                        {new Date(edit.at).toLocaleTimeString("cs", {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
-                      </div>
-                    </div>
-                    <button
-                      className="row-action"
-                      title={t("actions.removeRule")}
-                      onClick={() => void removeRule(edit.rule_id)}
-                    >
-                      <IconX size={16} stroke={1.5} />
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </section>
+          <ManualEditsRail
+            entries={phaseEdits}
+            rows={rows}
+            timezone={detail?.timezone ?? null}
+            onUndo={(ruleIds) => void undoEdit(ruleIds)}
+          />
         </aside>
           </>
         )}

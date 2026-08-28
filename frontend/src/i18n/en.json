@@ -16,7 +16,7 @@
   "actions": {
     "delete": "Delete row (reversible)",
     "restore": "Restore row",
-    "removeRule": "Remove rule",
+    "removeRule": "Undo this change",
     "moveUp": "Move up"
   },
   "import": {
@@ -173,7 +173,11 @@
     "problems": "Problems",
     "total_amount": "Amount",
     "expires_at": "Valid until",
-    "paid_at": "Paid at"
+    "paid_at": "Paid at",
+    "email": "E-mail",
+    "reg_name": "Name as registered",
+    "match_verdict": "Match",
+    "merge_note": "Merge note"
   },
   "param": {
     "early_bird_until": "Early bird until",
@@ -221,7 +225,18 @@
     "save": "Save",
     "columnsForStep": "Columns for step",
     "manualEdits": "Manual edits",
-    "noEdits": "No manual edits yet."
+    "noEdits": "No manual edits yet.",
+    "edit": {
+      "row": "#{{number}} {{name}}",
+      "entry": "{{row}} — {{change}}",
+      "assignment": "{{field}}: {{before}} → {{after}}",
+      "deleted": "row deleted",
+      "restored": "row restored",
+      "mergedInto": "merged into {{row}}",
+      "meta": "{{actor}} · {{time}}",
+      "empty": "—",
+      "unknownRow": "row no longer in the table"
+    }
   },
   "sheet": {
     "empty": "No fencers yet. Data will appear after registrations or a table import."

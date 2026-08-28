@@ -102,7 +102,7 @@ def test_audit_shows_actor_and_before_after(client, auth_headers):
     edits = get_sheet(client, organizer)["edits"]
     assert len(edits) == 1
     entry = edits[0]
-    assert entry["rule_id"] == rule_id
+    assert entry["rule_ids"] == [rule_id]
     assert entry["field"] == "club"
     assert entry["before"] is None
     assert entry["after"] == "SK Praha"
@@ -189,3 +189,138 @@ def test_validation_and_authorization(client, auth_headers):
         headers=outsider,
     )
     assert denied.status_code == 403
+
+
+def post_rule(client, organizer, kind, target, payload, phase="parsing"):
+    response = client.post(
+        "/api/tournaments/cup/rules",
+        json={"phase": phase, "kind": kind, "target": target, "payload": payload},
+        headers=organizer,
+    )
+    assert response.status_code == 201, response.text
+    return response.json()["id"]
+
+
+def test_edit_chain_reads_as_one_net_entry(client, auth_headers):
+    """Two edits of a cell are one difference from the source, stated once."""
+    organizer = auth_headers()
+    setup(client, organizer)
+    enroll(client, auth_headers, "a@example.com", "Jan Novak")
+
+    first = add_rule(client, organizer, "reg:1", "name", "Jan Novák")
+    second = add_rule(client, organizer, "reg:1", "name", "Honza Novák")
+
+    edits = get_sheet(client, organizer)["edits"]
+    assert len(edits) == 1
+    assert edits[0]["before"] == "Jan Novak"
+    assert edits[0]["after"] == "Honza Novák"
+    assert edits[0]["rule_ids"] == [first, second]
+
+
+def test_cancelling_operations_leave_no_entry(client, auth_headers):
+    organizer = auth_headers()
+    setup(client, organizer)
+    enroll(client, auth_headers, "a@example.com", "Jan")
+
+    add_rule(client, organizer, "reg:1", "", "", kind="row_delete")
+    add_rule(client, organizer, "reg:1", "", "", kind="row_restore")
+
+    sheet = get_sheet(client, organizer)
+    assert sheet["edits"] == []
+    assert not row_by_id(sheet, "reg:1")["_deleted"]
+
+    # the journal keeps what the log no longer shows
+    journal = client.get("/api/tournaments/cup/rules/journal", headers=organizer).json()
+    assert [e["action"] for e in journal] == ["created", "created"]
+    assert [e["content"]["kind"] for e in journal] == ["row_delete", "row_restore"]
+
+
+def test_repeated_operations_do_not_stack(client, auth_headers):
+    organizer = auth_headers()
+    setup(client, organizer)
+    enroll(client, auth_headers, "a@example.com", "Jan")
+
+    add_rule(client, organizer, "reg:1", "", "", kind="row_delete")
+    add_rule(client, organizer, "reg:1", "", "", kind="row_restore")
+    third = add_rule(client, organizer, "reg:1", "", "", kind="row_delete")
+
+    edits = get_sheet(client, organizer)["edits"]
+    assert len(edits) == 1
+    assert (edits[0]["field"], edits[0]["before"], edits[0]["after"]) == (
+        "_deleted",
+        False,
+        True,
+    )
+    assert edits[0]["rule_ids"][-1] == third
+
+
+def test_entry_sits_in_the_phase_of_its_newest_rule(client, auth_headers):
+    organizer = auth_headers()
+    setup(client, organizer)
+    enroll(client, auth_headers, "a@example.com", "Jan")
+
+    add_rule(client, organizer, "reg:1", "club", "A", phase="parsing")
+    add_rule(client, organizer, "reg:1", "club", "B", phase="matching")
+
+    edits = get_sheet(client, organizer)["edits"]
+    assert [e["phase"] for e in edits] == ["matching"]
+
+
+def test_match_verdict_folds_into_its_hr_id_entry(client, auth_headers):
+    organizer = auth_headers()
+    setup(client, organizer)
+    enroll(client, auth_headers, "a@example.com", "Jan")
+
+    add_rule(client, organizer, "reg:1", "hr_id", 4711, kind="match_resolution")
+    edits = get_sheet(client, organizer)["edits"]
+    assert [e["field"] for e in edits] == ["hr_id"]
+
+    # resolved back to the source id, the verdict alone still stands
+    add_rule(client, organizer, "reg:1", "hr_id", None, kind="match_resolution")
+    edits = get_sheet(client, organizer)["edits"]
+    assert [e["field"] for e in edits] == ["match_verdict"]
+    assert edits[0]["after"] == "none_found"
+
+
+def test_merge_reads_as_one_entry_per_absorbed_row(client, auth_headers):
+    organizer = auth_headers()
+    setup(client, organizer)
+    enroll(client, auth_headers, "a@example.com", "Jan Novak")
+    enroll(client, auth_headers, "b@example.com", "Jan Novák")
+
+    post_rule(
+        client,
+        organizer,
+        "dedup_decision",
+        "reg:1",
+        {"absorb": ["reg:2"], "fields": {"club": "SK Praha"}},
+        phase="dedup",
+    )
+
+    sheet = get_sheet(client, organizer)
+    absorbed = [e for e in sheet["edits"] if e["target"] == "reg:2"]
+    assert [e["field"] for e in absorbed] == ["_merged_into"]
+    assert absorbed[0]["after"] == "reg:1"
+    assert row_by_id(sheet, "reg:2")["_deleted"] is True
+
+
+def test_undoing_an_entry_reverts_the_cell(client, auth_headers):
+    """An entry carries every rule behind it, so removing them all is what the
+    console's undo does — one action back to the source value."""
+    organizer = auth_headers()
+    setup(client, organizer)
+    enroll(client, auth_headers, "a@example.com", "Jan Novak")
+
+    add_rule(client, organizer, "reg:1", "name", "Jan Novák")
+    add_rule(client, organizer, "reg:1", "name", "Honza Novák")
+
+    entry = get_sheet(client, organizer)["edits"][0]
+    for rule_id in entry["rule_ids"]:
+        assert (
+            client.delete(f"/api/tournaments/cup/rules/{rule_id}", headers=organizer).status_code
+            == 204
+        )
+
+    sheet = get_sheet(client, organizer)
+    assert row_by_id(sheet, "reg:1")["name"] == "Jan Novak"
+    assert sheet["edits"] == []

@@ -392,20 +392,22 @@ export interface SheetRow {
   [key: string]: unknown;
 }
 
-export interface AppliedChange {
-  rule_id: number;
+/** One entry of the manual-edits log: a cell's difference from the source
+ *  data, carrying every rule behind it so it can be undone whole. */
+export interface NetChange {
   phase: string;
   target: string;
   field: string;
   before: unknown;
   after: unknown;
+  rule_ids: number[];
   actor: string;
   at: string;
 }
 
 export interface Sheet {
   rows: SheetRow[];
-  edits: AppliedChange[];
+  edits: NetChange[];
 }
 
 export type RegistrationStatus = "open" | "opens_on" | "closed";

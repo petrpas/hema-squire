@@ -989,20 +989,23 @@ class RuleOut(BaseModel):
     created_at: datetime.datetime
 
 
-class AppliedChangeOut(BaseModel):
-    rule_id: int
+class NetChangeOut(BaseModel):
+    """One entry of the manual-edits log: a cell's difference from the source
+    data, carrying every rule behind it so the console can undo it whole."""
+
     phase: str
     target: str
     field: str
     before: Any
     after: Any
+    rule_ids: list[int]
     actor: str
     at: datetime.datetime
 
 
 class SheetOut(BaseModel):
     rows: list[dict]
-    edits: list[AppliedChangeOut]
+    edits: list[NetChangeOut]
 
 
 class ConsoleTeamOut(BaseModel):

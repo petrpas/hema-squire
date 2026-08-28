@@ -110,6 +110,54 @@ class AppliedChange:
     at: datetime
 
 
+@dataclass
+class NetChange:
+    """One cell's difference from the source data, whatever it took to get
+    there. Attribution is the newest contributing rule's: it is the operation
+    that put the cell in the state now on screen."""
+
+    phase: str
+    target: str
+    field: str
+    before: Any
+    after: Any
+    rule_ids: list[int]
+    actor: str
+    at: datetime
+
+
+def net_changes(audit: list[AppliedChange]) -> list[NetChange]:
+    """Collapse the applied-change history into what differs from the source.
+
+    Changes to one cell chain: the first before is that cell's source-derived
+    value, the last after its current one. A chain that returns to where it
+    started leaves nothing behind, so operations that undo one another cancel
+    instead of stacking.
+    """
+    groups: dict[tuple[str, str], list[AppliedChange]] = {}
+    for change in audit:
+        groups.setdefault((change.target, change.field), []).append(change)
+
+    changed = {key: chain for key, chain in groups.items() if chain[0].before != chain[-1].after}
+    net = [
+        NetChange(
+            phase=chain[-1].phase,
+            target=target,
+            field=field,
+            before=chain[0].before,
+            after=chain[-1].after,
+            rule_ids=[change.rule_id for change in chain],
+            actor=chain[-1].actor,
+            at=chain[-1].at,
+        )
+        for (target, field), chain in changed.items()
+        # A match resolution states its verdict alongside the id it resolved;
+        # while both stand, as two entries they say the same thing twice.
+        if not (field == "match_verdict" and (target, "hr_id") in changed)
+    ]
+    return sorted(net, key=lambda change: change.rule_ids[-1])
+
+
 def active_rules(session: Session, tournament: Tournament, kind: str | None = None) -> list[Rule]:
     query = (
         select(Rule)

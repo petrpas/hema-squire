@@ -16,7 +16,7 @@
   "actions": {
     "delete": "Smazat řádek (vratné)",
     "restore": "Obnovit řádek",
-    "removeRule": "Odstranit pravidlo",
+    "removeRule": "Vrátit tuto úpravu",
     "moveUp": "Posunout výš"
   },
   "import": {
@@ -173,7 +173,11 @@
     "problems": "Problémy",
     "total_amount": "Částka",
     "expires_at": "Platí do",
-    "paid_at": "Zaplaceno"
+    "paid_at": "Zaplaceno",
+    "email": "E-mail",
+    "reg_name": "Jméno z přihlášky",
+    "match_verdict": "Spárování",
+    "merge_note": "Poznámka ke sloučení"
   },
   "param": {
     "early_bird_until": "Early bird do",
@@ -221,7 +225,18 @@
     "save": "Uložit",
     "columnsForStep": "Sloupce kroku",
     "manualEdits": "Ruční úpravy",
-    "noEdits": "Zatím žádné ruční úpravy."
+    "noEdits": "Zatím žádné ruční úpravy.",
+    "edit": {
+      "row": "#{{number}} {{name}}",
+      "entry": "{{row}} — {{change}}",
+      "assignment": "{{field}}: {{before}} → {{after}}",
+      "deleted": "řádek smazán",
+      "restored": "řádek obnoven",
+      "mergedInto": "sloučeno do {{row}}",
+      "meta": "{{actor}} · {{time}}",
+      "empty": "—",
+      "unknownRow": "řádek už v tabulce není"
+    }
   },
   "sheet": {
     "empty": "Zatím žádní šermíři. Data se objeví po registracích nebo importu tabulky."

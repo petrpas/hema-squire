@@ -5,7 +5,7 @@ from app import matching, rules, sheet
 from app.auth import require_console_access
 from app.models import Rule, RuleJournalEntry
 from app.routers.tournaments import FencerDep, SessionDep, TournamentDep
-from app.schemas import AppliedChangeOut, RuleIn, RuleOut, RulePayloadIn, SheetOut
+from app.schemas import NetChangeOut, RuleIn, RuleOut, RulePayloadIn, SheetOut
 
 router = APIRouter(prefix="/api/tournaments/{slug}", tags=["rules"])
 
@@ -88,7 +88,8 @@ def rule_journal(tournament: TournamentDep, session: SessionDep, fencer: FencerD
 @router.get("/sheet", response_model=SheetOut)
 def sheet_view(tournament: TournamentDep, session: SessionDep, fencer: FencerDep):
     """The fencer table: base rows with all active rules replayed, plus the
-    audit of applied changes (the manual-edits log)."""
+    manual-edits log — what differs from the source data, not the history of
+    how it got there, so operations that undo one another leave nothing."""
     require_console_access(session, tournament, fencer)
     base = sheet.base_rows(session, tournament)
     rows, audit = rules.replay(base, rules.active_rules(session, tournament))
@@ -96,5 +97,5 @@ def sheet_view(tournament: TournamentDep, session: SessionDep, fencer: FencerDep
     # them greyed with a restore action; exports are where they disappear.
     return SheetOut(
         rows=list(rows.values()),
-        edits=[AppliedChangeOut(**change.__dict__) for change in audit],
+        edits=[NetChangeOut(**change.__dict__) for change in rules.net_changes(audit)],
     )
