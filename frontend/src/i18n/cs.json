@@ -246,7 +246,6 @@
   "rail": {
     "operations": "Operace",
     "save": "Uložit",
-    "columnsForStep": "Sloupce kroku",
     "manualEdits": "Ruční úpravy",
     "noEdits": "Zatím žádné ruční úpravy.",
     "edit": {

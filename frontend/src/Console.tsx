@@ -554,17 +554,6 @@ export default function Console({
           )}
           {phase === "export" && <ExportPanel slug={tournament.slug} />}
 
-          <section className="rail-card dashed">
-            <h2>{t("rail.columnsForStep")}</h2>
-            <div className="chips">
-              {PHASE_COLUMNS[phase].map((column) => (
-                <span key={column} className="chip">
-                  {t(`column.${column}`)}
-                </span>
-              ))}
-            </div>
-          </section>
-
           <ManualEditsRail
             entries={phaseEdits}
             rows={rows}

@@ -242,7 +242,6 @@
   "rail": {
     "operations": "Operations",
     "save": "Save",
-    "columnsForStep": "Columns for step",
     "manualEdits": "Manual edits",
     "noEdits": "No manual edits yet.",
     "edit": {
