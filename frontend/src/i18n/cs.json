@@ -25,7 +25,22 @@
     "upload": "Nahrát soubor…",
     "failed": "Import se nezdařil.",
     "result": "{{rows}} řádků · {{parsed}} nově zpracováno · {{reused}} beze změny · {{problems}} k prověření",
-    "notConfigured": "{{rows}} řádků nahráno, ale LLM parser není nakonfigurován."
+    "notConfigured": "{{rows}} řádků nahráno, ale LLM parser není nakonfigurován.",
+    "clear": "Vymazat tabulku…",
+    "clearConfirm": {
+      "title": "vymazání importované tabulky",
+      "rows_one": "{{count}} importovaný řádek",
+      "rows_few": "{{count}} importované řádky",
+      "rows_many": "{{count}} importovaného řádku",
+      "rows_other": "{{count}} importovaných řádků",
+      "files_one": "{{count}} nahraného souboru",
+      "files_few": "{{count}} nahraných souborů",
+      "files_many": "{{count}} nahraného souboru",
+      "files_other": "{{count}} nahraných souborů",
+      "body": "odstraní {{rows}} z {{files}}, spolu s každou opravou a rozhodnutím, které se jich týkalo.",
+      "final": "registrace a ručně zadaní šermíři zůstávají. odstranění nelze vzít zpět.",
+      "confirm": "trvale odstranit"
+    }
   },
   "match": {
     "title": "Párování na HEMA Ratings",
@@ -870,5 +885,19 @@
     "settleDone_one": "{{count}} registrace přesunuta do fronty.",
     "settleDone_few": "{{count}} registrace přesunuty do fronty.",
     "settleDone_other": "{{count}} registrací přesunuto do fronty."
+  },
+  "manualEntry": {
+    "title": "Ruční zadání",
+    "hint": "Šermíř, který se přihlásil papírově, poštou nebo na místě.",
+    "open": "Přidat šermíře…",
+    "email": "E-mail",
+    "submit": "přidat do seznamu",
+    "refusal": {
+      "no_disciplines": "vyberte alespoň jednu disciplínu.",
+      "unknown_disciplines": "tuto disciplínu turnaj nenabízí.",
+      "team_discipline_not_individual": "týmová disciplína se zadává na kartě týmů, ne zde.",
+      "unknown_rentals": "tuto věc turnaj nepůjčuje.",
+      "failed": "zadání nebylo přijato."
+    }
   }
 }

@@ -63,9 +63,9 @@ def restore(session: Session, tournament: Tournament, pairs: list[tuple[str, int
 def arrival_order(session: Session, tournament: Tournament) -> list[str]:
     """The order rows would have been numbered in, for a document that records
     no numbers: registrations by registration moment, then the latest imported
-    batch in file order."""
+    batch in file order, then the hand-entered rows as they were entered."""
     from app import importer
-    from app.models import ImportedRow, Registration
+    from app.models import ImportedRow, ManualRow, Registration
 
     row_ids = [
         f"reg:{row_id}"
@@ -85,4 +85,12 @@ def arrival_order(session: Session, tournament: Tournament) -> list[str]:
                 .order_by(ImportedRow.row_number)
             )
         ]
+    row_ids += [
+        f"man:{row_id}"
+        for row_id in session.scalars(
+            select(ManualRow.id)
+            .where(ManualRow.tournament_id == tournament.id)
+            .order_by(ManualRow.id)
+        )
+    ]
     return row_ids

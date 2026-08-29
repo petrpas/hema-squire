@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile
 from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel
 
-from app import dedup, hr_match, importer, rules, sheet
+from app import dedup, hr_match, importclear, importer, rules, sheet
 from app.auth import require_console_access
 from app.hr_index import HRIndex, get_hr_index
 from app.routers.tournaments import FencerDep, SessionDep, TournamentDep
@@ -18,9 +18,15 @@ HRIndexDep = Annotated[HRIndex, Depends(get_hr_index)]
 
 
 def _replayed_import_rows(session, tournament) -> list[dict]:
+    """The rows matching and deduplication work on: the ones that entered
+    unmatched. An in-app registration is HR-bound at birth and stays out of it;
+    an imported row and a hand-entered one both traverse the two operations
+    (spec etl-console, Per-row phase status)."""
     base = sheet.base_rows(session, tournament)
     rows, _ = rules.replay(base, rules.active_rules(session, tournament))
-    return [row for row in rows.values() if row["id"].startswith("imp:")]
+    return [
+        row for row in rows.values() if row["id"].startswith(("imp:", "man:"))
+    ]
 
 
 @router.post("")
@@ -46,6 +52,15 @@ async def import_table(
         )
     except importer.UnsupportedFormatError:
         raise HTTPException(status_code=422, detail="unsupported_format") from None
+
+
+@router.delete("")
+def clear_import(tournament: TournamentDep, session: SessionDep, fencer: FencerDep):
+    """Remove everything the tournament ever imported. Hard, total and final —
+    the console confirms it before calling (spec table-import, Clearing is
+    warned about and irreversible)."""
+    require_console_access(session, tournament, fencer)
+    return importclear.clear_imports(session, tournament)
 
 
 @router.post("/match")
@@ -112,13 +127,18 @@ def dedup_decide(
 def import_status(tournament: TournamentDep, session: SessionDep, fencer: FencerDep):
     require_console_access(session, tournament, fencer)
     batch = importer.latest_batch(session, tournament)
+    # what a clear would remove, which is everything ever imported and not the
+    # latest batch alone — the console states these counts before it clears
+    # (spec table-import, Confirmation states the cost)
+    total = importclear.imported_totals(session, tournament)
     if batch is None:
-        return {"batch": None}
+        return {"batch": None, "total": total}
     return {
         "batch": {
             "id": batch.id,
             "filename": batch.filename,
             "uploaded_at": batch.uploaded_at,
             "rows": batch.row_count,
-        }
+        },
+        "total": total,
     }

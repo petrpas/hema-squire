@@ -4,7 +4,8 @@ The versioned document carries everything the replay architecture needs to
 reconstruct the fencer table on an empty deployment: source records
 (registrations, import batches), cached decisions, and the rule set. Fencers
 travel by email; registration ids are remapped on restore, and rule targets
-"reg:<id>" are rewritten accordingly (imp:* targets are content-stable).
+"reg:<id>" and "man:<id>" are rewritten accordingly (imp:* targets are
+content-stable).
 Password hashes never leave the deployment.
 """
 
@@ -26,6 +27,7 @@ from app.models import (
     ImportBatch,
     ImportDecision,
     ImportedRow,
+    ManualRow,
     Registration,
     RegistrationDiscipline,
     RegistrationExtra,
@@ -38,7 +40,7 @@ from app.models import (
 )
 from app.routers.tournaments import _lowest_free_series
 
-SCHEMA_VERSION = 9
+SCHEMA_VERSION = 10
 
 _TOURNAMENT_FIELDS = [
     "slug", "display_name", "date", "language",
@@ -90,6 +92,17 @@ _TRANSACTION_FIELDS = [
 ]
 
 
+_MANUAL_ROW_FIELDS = [
+    "name", "nationality", "club", "hr_id", "email", "registered_at",
+    "disciplines", "weapon_rentals", "afterparty", "notes", "created_at",
+]
+
+
+def _author_email(session: Session, fencer_id: int) -> str | None:
+    author = session.get(Fencer, fencer_id)
+    return author.email if author else None
+
+
 def _plain(value: Any) -> Any:
     if isinstance(value, datetime.datetime | datetime.date):
         return value.isoformat()
@@ -132,6 +145,11 @@ def export_tournament(session: Session, tournament: Tournament) -> dict:
         select(ImportedRow)
         .where(ImportedRow.tournament_id == tournament.id)
         .order_by(ImportedRow.id)
+    ).all()
+    manual = session.scalars(
+        select(ManualRow)
+        .where(ManualRow.tournament_id == tournament.id)
+        .order_by(ManualRow.id)
     ).all()
     decisions = session.scalars(
         select(ImportDecision)
@@ -242,6 +260,16 @@ def export_tournament(session: Session, tournament: Tournament) -> dict:
             }
             for b in batches
         ],
+        # the hand-entered fencers, by the id their row id is built from, so
+        # their numbers and the rules over them can be rewritten on restore (v10)
+        "manual_rows": [
+            {
+                "ref": m.id,
+                **_record(m, _MANUAL_ROW_FIELDS),
+                "author_email": _author_email(session, m.created_by),
+            }
+            for m in manual
+        ],
         "decisions": [
             _record(d, ["kind", "key", "payload", "source"]) for d in decisions
         ],
@@ -274,7 +302,7 @@ def _parse_time(value: str | None) -> datetime.time | None:
 
 def restore_tournament(session: Session, data: dict, actor: Fencer) -> Tournament:
     version = data.get("schema_version")
-    if version not in (1, 2, 3, 4, 5, 6, 7, 8, SCHEMA_VERSION):
+    if version not in (1, 2, 3, 4, 5, 6, 7, 8, 9, SCHEMA_VERSION):
         raise HTTPException(status_code=422, detail="unsupported_schema_version")
     doc = dict(data["tournament"])
     if version == 1:
@@ -467,6 +495,20 @@ def restore_tournament(session: Session, data: dict, actor: Fencer) -> Tournamen
             session.add(
                 ImportedRow(batch_id=batch.id, tournament_id=tournament.id, **row)
             )
+    man_map: dict[int, ManualRow] = {}
+    for entry in data.get("manual_rows", []):
+        fields = {field: entry[field] for field in _MANUAL_ROW_FIELDS if field in entry}
+        fields["registered_at"] = _parse_dt(fields.get("registered_at"))
+        fields["created_at"] = _parse_dt(fields.get("created_at"))
+        author = fencers.get(entry.get("author_email")) or session.scalar(
+            select(Fencer).where(Fencer.email == entry.get("author_email"))
+        )
+        row = ManualRow(
+            tournament_id=tournament.id, created_by=(author or actor).id, **fields
+        )
+        session.add(row)
+        session.flush()
+        man_map[entry["ref"]] = row
     session.flush()
 
     if "row_numbers" in data:
@@ -481,6 +523,11 @@ def restore_tournament(session: Session, data: dict, actor: Fencer) -> Tournamen
                 if ref not in reg_map:
                     continue  # a number for a registration this document omits
                 row_id = f"reg:{reg_map[ref].id}"
+            elif row_id.startswith("man:"):
+                ref = int(row_id.removeprefix("man:"))
+                if ref not in man_map:
+                    continue  # a number for a manual row this document omits
+                row_id = f"man:{man_map[ref].id}"
             pairs.append((row_id, entry["number"]))
         rownumbers.restore(session, tournament, pairs)
     else:
@@ -498,6 +545,11 @@ def restore_tournament(session: Session, data: dict, actor: Fencer) -> Tournamen
             if ref not in reg_map:
                 continue  # rule over a registration absent from the document
             target = f"reg:{reg_map[ref].id}"
+        elif target.startswith("man:"):
+            ref = int(target.removeprefix("man:"))
+            if ref not in man_map:
+                continue  # rule over a manual row absent from the document
+            target = f"man:{man_map[ref].id}"
         author = fencers.get(entry["author_email"]) or session.scalar(
             select(Fencer).where(Fencer.email == entry["author_email"])
         )

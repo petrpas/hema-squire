@@ -153,6 +153,15 @@ ROSTER_MEMBER_NAME_MAX_LENGTH = SHORT
 ROSTER_MEMBER_CLUB_MAX_LENGTH = SHORT
 ROSTER_MEMBER_NATIONALITY_MAX_LENGTH = 100
 
+# ---- ManualEntryIn ----
+# a hand-entered fencer states the same things about themselves an imported
+# row does, so the bounds are the columns' own (models.ManualRow)
+MANUAL_ENTRY_NAME_MIN_LENGTH = 1
+MANUAL_ENTRY_NAME_MAX_LENGTH = SHORT
+MANUAL_ENTRY_CLUB_MAX_LENGTH = SHORT
+MANUAL_ENTRY_NATIONALITY_MAX_LENGTH = 100
+MANUAL_ENTRY_NOTES_MAX_LENGTH = 2000
+
 # ---- ExtraSelectionIn ----
 EXTRA_SELECTION_QTY_MIN = 1
 

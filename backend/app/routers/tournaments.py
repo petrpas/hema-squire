@@ -37,6 +37,7 @@ from app.models import (
     ImportBatch,
     ImportDecision,
     ImportedRow,
+    ManualRow,
     PaymentEvent,
     PaymentMode,
     Registration,
@@ -45,6 +46,7 @@ from app.models import (
     Role,
     Rule,
     RuleJournalEntry,
+    SheetRowNumber,
     Team,
     Tournament,
     TournamentOrganizer,
@@ -1308,6 +1310,9 @@ def _cascade_delete(session: Session, tournament: Tournament) -> None:
     session.execute(delete(BankTransaction).where(BankTransaction.tournament_id == tid))
     session.execute(delete(RuleJournalEntry).where(RuleJournalEntry.tournament_id == tid))
     session.execute(delete(Rule).where(Rule.tournament_id == tid))
+    session.execute(delete(ManualRow).where(ManualRow.tournament_id == tid))
+    # the numbers those rows held; a tournament being deleted keeps none of them
+    session.execute(delete(SheetRowNumber).where(SheetRowNumber.tournament_id == tid))
     session.execute(delete(TournamentOrganizer).where(TournamentOrganizer.tournament_id == tid))
     session.execute(delete(ExtraItem).where(ExtraItem.tournament_id == tid))
     session.execute(delete(Discipline).where(Discipline.tournament_id == tid))

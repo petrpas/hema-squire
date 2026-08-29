@@ -853,6 +853,19 @@ button.secondary:disabled {
   color: var(--ink-faded);
 }
 
+/* a group of checkboxes is a fieldset, and a fieldset carries browser chrome
+   this design has no room for: the border and inset padding go, the legend
+   sits where a .form-field's own label sits */
+fieldset.form-field {
+  border: none;
+  margin: 0;
+  padding: 0;
+}
+
+fieldset.form-field > legend {
+  padding: 0;
+}
+
 .form-field input,
 .form-field textarea,
 .form-field select,

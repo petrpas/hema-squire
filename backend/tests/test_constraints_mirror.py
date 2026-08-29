@@ -52,6 +52,9 @@ _NO_BOUND_NEEDED = {
     ("TeamEntryIn", "slug"),
     ("DisciplineIn", "ordinal"),
     ("RosterMemberIn", "hr_id"),
+    ("ManualEntryIn", "hr_id"),
+    ("ManualEntryIn", "email"),
+    ("ManualEntryIn", "registered_at"),
     ("ExtraSelectionIn", "extra_item_id"),
 }
 
@@ -71,6 +74,7 @@ _REQUEST_MODELS = [
     "RuleIn",
     "TeamEntryIn",
     "RosterMemberIn",
+    "ManualEntryIn",
 ]
 
 _RAW_ALIASES = {

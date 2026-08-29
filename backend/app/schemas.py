@@ -758,6 +758,53 @@ class RegisterIn(BaseModel):
     teams: list[TeamEntryIn] = []
 
 
+class ManualEntryIn(BaseModel):
+    """A fencer the organizer enters by hand (spec etl-console, Strict
+    validation of a manual entry).
+
+    Shape only: that a discipline is one the tournament offers, and a rental one
+    it lends, is decided in the router, where the tournament is visible. Empty
+    optional text arrives as absent rather than as an empty value — `""` is not
+    a club anyone is a member of.
+    """
+
+    name: SingleLineStr(
+        constraints.MANUAL_ENTRY_NAME_MAX_LENGTH,
+        min_length=constraints.MANUAL_ENTRY_NAME_MIN_LENGTH,
+    )
+    nationality: SingleLineStr(constraints.MANUAL_ENTRY_NATIONALITY_MAX_LENGTH) | None = None
+    club: SingleLineStr(constraints.MANUAL_ENTRY_CLUB_MAX_LENGTH) | None = None
+    hr_id: TolerantInt | None = None
+    email: EmailStr | None = None
+    # absent means now, read in the tournament's own zone by the router
+    registered_at: datetime.datetime | None = None
+    disciplines: list[str] = []
+    weapon_rentals: list[str] = []
+    afterparty: bool = False
+    notes: MultilineStr(constraints.MANUAL_ENTRY_NOTES_MAX_LENGTH) | None = None
+
+    @field_validator("nationality", "club", "notes")
+    @classmethod
+    def _empty_is_absent(cls, value: str | None) -> str | None:
+        return value or None
+
+
+class ManualRowOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    name: str
+    nationality: str | None
+    club: str | None
+    hr_id: int | None
+    email: str | None
+    registered_at: datetime.datetime
+    disciplines: list[str]
+    weapon_rentals: list[str]
+    afterparty: bool
+    notes: str | None
+
+
 class RegistrationEntryOut(BaseModel):
     slug: str
     is_substitute: bool

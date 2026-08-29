@@ -1,7 +1,8 @@
 """Base projection of the fencer table: source records as rows, before rules.
 
 Row ids are stable references: in-app registrations are "reg:<id>", imported
-rows are "imp:<fingerprint>" (stable across re-uploads of unchanged rows).
+rows are "imp:<fingerprint>" (stable across re-uploads of unchanged rows), and
+fencers the organizer entered by hand are "man:<id>".
 Phase views select columns over this same projection; the Import view selects
 the "imp:" rows of it.
 
@@ -10,7 +11,7 @@ deleted or absorbed it. It is a replay product, not a base field: this module
 never writes it, and it lives exactly as long as its causing rule.
 
 The projection is returned in the order the fencer list displays: by
-registration moment across both populations together, rows without a readable
+registration moment across all three populations together, rows without a readable
 moment last (spec etl-console, Order of the fencer list). Each row carries the
 fixed number allocated to it, or None where none has been.
 """
@@ -21,10 +22,11 @@ from collections import defaultdict
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
-from app import hr_match, importer, rownumbers, setup, taxonomy
+from app import hr_match, importer, manualrows, rownumbers, setup, taxonomy
 from app.models import (
     ExtraCategory,
     ImportedRow,
+    ManualRow,
     Registration,
     RegistrationExtra,
     RegistrationState,
@@ -78,7 +80,7 @@ def _wall_clock(value: object, zone: datetime.tzinfo) -> str | None:
 
 
 def _display_order(rows: dict[str, Row], zone: datetime.tzinfo) -> dict[str, Row]:
-    """Both populations interleaved by registration moment, earliest first;
+    """Every population interleaved by registration moment, earliest first;
     rows stating none after them, in the order they were numbered — which for
     an imported batch is the order of its file."""
 
@@ -146,6 +148,7 @@ def base_rows(session: Session, tournament: Tournament) -> dict[str, Row]:
             "_deleted": False,
         }
     rows.update(_imported_rows(session, tournament))
+    rows.update(_manual_rows(session, tournament))
     numbers = rownumbers.numbers_for(session, tournament)
     for row_id, row in rows.items():
         # None rather than a positional fallback: a visible gap beats a number
@@ -294,5 +297,48 @@ def _unparsed_row(row_id: str, row: ImportedRow) -> Row:
         "notes": None,
         "problems": "unparsed",
         "_source": {"file": row.batch.filename, "row": row.row_number},
+        "_deleted": False,
+    }
+
+
+def _manual_rows(session: Session, tournament: Tournament) -> dict[str, Row]:
+    """The fencers the organizer entered by hand.
+
+    Structured at birth — every field was chosen from the tournament's own
+    structure — but unmatched unless the organizer supplied an hr_id, the same
+    rule an imported row's fencer-provided id follows (spec etl-console, Per-row
+    phase status). No `_source`: nothing here came from a file.
+    """
+    rows: dict[str, Row] = {}
+    for row in manualrows.rows_for(session, tournament):
+        rows[manualrows.row_id(row)] = _manual_row(row)
+    return rows
+
+
+def _manual_row(row: ManualRow) -> Row:
+    return {
+        "id": f"man:{row.id}",
+        "name": row.name,
+        "reg_name": None,
+        "nationality": row.nationality,
+        "club": row.club,
+        "hr_id": row.hr_id,
+        "match_verdict": "confirmed" if row.hr_id is not None else "unknown",
+        "email": row.email,
+        "disciplines": list(row.disciplines),
+        "substitute_for": [],
+        "state": "manual",
+        "vs": None,
+        "paid": False,
+        "registered_at": row.registered_at.isoformat(),
+        "total_amount": None,
+        "expires_at": None,
+        "paid_at": None,
+        "weapon_rentals": list(row.weapon_rentals),
+        "afterparty": row.afterparty,
+        "aftersparring": False,
+        "accommodation": None,
+        "notes": row.notes,
+        "problems": None,
         "_deleted": False,
     }

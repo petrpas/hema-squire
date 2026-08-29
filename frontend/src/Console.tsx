@@ -12,6 +12,7 @@ import MatchDialog from "./MatchDialog";
 import MatchPanel from "./MatchPanel";
 import NoteMarker from "./NoteMarker";
 import ManualEditsRail from "./ManualEditsRail";
+import ManualEntryPanel from "./manual/ManualEntryPanel";
 import PaidStamp from "./PaidStamp";
 import TolerancePanel from "./TolerancePanel";
 import PaymentsPanel from "./PaymentsPanel";
@@ -540,6 +541,9 @@ export default function Console({
               configuration is Setup's, and a phase with none shows no panel
               (spec etl-console: "Operation parameters") */}
           {phase === "import" && <ImportPanel slug={tournament.slug} onImported={refresh} />}
+          {phase === "fencers" && (
+            <ManualEntryPanel detail={detail} slug={tournament.slug} onEntered={refresh} />
+          )}
           {phase === "matching" && <MatchPanel slug={tournament.slug} onChanged={refresh} />}
           {phase === "dedup" && <DedupPanel slug={tournament.slug} onChanged={refresh} />}
           {phase === "payments" && (

@@ -25,7 +25,18 @@
     "upload": "Upload file…",
     "failed": "Import failed.",
     "result": "{{rows}} rows · {{parsed}} newly parsed · {{reused}} unchanged · {{problems}} to review",
-    "notConfigured": "{{rows}} rows uploaded, but the LLM parser is not configured."
+    "notConfigured": "{{rows}} rows uploaded, but the LLM parser is not configured.",
+    "clear": "Clear table…",
+    "clearConfirm": {
+      "title": "clear the imported table",
+      "rows_one": "{{count}} imported row",
+      "rows_other": "{{count}} imported rows",
+      "files_one": "{{count}} uploaded file",
+      "files_other": "{{count}} uploaded files",
+      "body": "this removes {{rows}} from {{files}}, together with every correction and decision made about them.",
+      "final": "registrations and hand-entered fencers stay. the removal cannot be undone.",
+      "confirm": "remove permanently"
+    }
   },
   "match": {
     "title": "Matching on HEMA Ratings",
@@ -866,5 +877,19 @@
     "settleConfirm": "settle seating",
     "settleDone_one": "{{count}} registration moved to the queue.",
     "settleDone_other": "{{count}} registrations moved to the queue."
+  },
+  "manualEntry": {
+    "title": "Manual entry",
+    "hint": "A fencer who registered on paper, by mail, or at the door.",
+    "open": "Add a fencer…",
+    "email": "E-mail",
+    "submit": "add to the list",
+    "refusal": {
+      "no_disciplines": "choose at least one discipline.",
+      "unknown_disciplines": "that discipline is not one this tournament offers.",
+      "team_discipline_not_individual": "a team discipline is entered through the teams tab, not here.",
+      "unknown_rentals": "that item is not one this tournament lends.",
+      "failed": "the entry was not accepted."
+    }
   }
 }

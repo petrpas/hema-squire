@@ -813,6 +813,18 @@ export const api = {
     if (!response.ok) throw new ApiError(response.status, null);
     return response.json();
   },
+  /** Hard, total and final: everything the tournament ever imported. The
+   *  console confirms before calling (spec table-import, Clearing is warned
+   *  about and irreversible). */
+  clearImports: (slug: string) =>
+    request<ClearResult>(`/api/tournaments/${slug}/import`, { method: "DELETE" }),
+  importStatus: (slug: string) =>
+    request<ImportStatus>(`/api/tournaments/${slug}/import/status`),
+  createManualRow: (slug: string, entry: ManualEntryIn) =>
+    request<ManualRow>(`/api/tournaments/${slug}/manual-rows`, {
+      method: "POST",
+      body: JSON.stringify(entry),
+    }),
   runMatching: (slug: string) =>
     request<{ matched: number; unmatched: number; reused: number }>(
       `/api/tournaments/${slug}/import/match`,
@@ -1004,6 +1016,40 @@ export interface ImportResult {
   unparsed: number;
   problems: { row: number; problems: string }[];
   detail?: string;
+}
+
+export interface ClearResult {
+  rows: number;
+  files: number;
+}
+
+export interface ImportStatus {
+  batch: { id: number; filename: string; uploaded_at: string; rows: number } | null;
+  /** Everything ever imported — what a clear would remove, which is more than
+   *  the latest batch alone. */
+  total: { rows: number; files: number };
+}
+
+/** A fencer entered by hand: the fields the tournament's own structure offers
+ *  (spec etl-console, Manual entry fields follow the tournament's structure). */
+export interface ManualEntryIn {
+  name: string;
+  nationality?: string | null;
+  club?: string | null;
+  hr_id?: number | null;
+  email?: string | null;
+  /** The moment the organizer states the fencer registered; absent means now,
+   *  read in the tournament's own zone by the server. */
+  registered_at?: string | null;
+  disciplines: string[];
+  weapon_rentals: string[];
+  afterparty: boolean;
+  notes?: string | null;
+}
+
+export interface ManualRow extends ManualEntryIn {
+  id: number;
+  registered_at: string;
 }
 
 export interface HRProfile {

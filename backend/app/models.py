@@ -869,6 +869,41 @@ class ImportDecision(Base):
     )
 
 
+class ManualRow(Base):
+    """A fencer the organizer entered by hand, from the console.
+
+    The third source population beside in-app registrations and imported rows
+    (spec etl-console, Manual entry of a fencer): an organizer-authored source
+    record, not a registration. It states who is competing; it enrols nobody,
+    so there is no account, no VS and no payment instruction behind it.
+
+    Disciplines are held as slugs and rentals as item names, the shape the
+    imported population already stores its selections in, so `sheet.py` resolves
+    both the same way. Its sheet row id is "man:<id>".
+    """
+
+    __tablename__ = "manual_rows"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    tournament_id: Mapped[int] = mapped_column(ForeignKey("tournaments.id"))
+    name: Mapped[str] = mapped_column(String(200))
+    nationality: Mapped[str | None] = mapped_column(String(100))
+    club: Mapped[str | None] = mapped_column(String(200))
+    hr_id: Mapped[int | None]
+    email: Mapped[str | None] = mapped_column(String(320))
+    # the moment the organizer states the fencer registered, which is what the
+    # fencer list sorts on — not the moment the row was typed
+    registered_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    disciplines: Mapped[list] = mapped_column(JSON, default=list)
+    weapon_rentals: Mapped[list] = mapped_column(JSON, default=list)
+    afterparty: Mapped[bool] = mapped_column(default=False)
+    notes: Mapped[str | None] = mapped_column(Text)
+    created_by: Mapped[int] = mapped_column(ForeignKey("fencers.id"))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+
+
 class SheetRowNumber(Base):
     """The fixed number a row carries in one tournament's fencer table.
 

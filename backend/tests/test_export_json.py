@@ -618,3 +618,102 @@ def test_document_without_an_opening_time_restores_with_the_default_zone(client,
     after = restore_client.get("/api/tournaments/older", headers=fresh_organizer).json()
     assert after["registration_opens_time"] is None
     assert after["timezone"] == "Europe/Prague"
+
+
+def test_manual_rows_round_trip_with_their_numbers(client, auth_headers):
+    """Hand-entered fencers survive export and restore whole, keeping the
+    numbers they were given (3.5)."""
+    organizer = auth_headers()
+    setup(client, organizer)
+    entered = client.post(
+        "/api/tournaments/cup/manual-rows",
+        json={
+            "name": "Hand Entered",
+            "club": "Twerchhau",
+            "nationality": "CZ",
+            "hr_id": 4321,
+            "disciplines": ["LS"],
+            "registered_at": "2026-05-01T10:00:00",
+            "notes": "paid at the door",
+        },
+        headers=organizer,
+    )
+    assert entered.status_code == 201, entered.text
+    row = next(
+        r
+        for r in client.get("/api/tournaments/cup/sheet", headers=organizer).json()["rows"]
+        if r["id"].startswith("man:")
+    )
+    client.post(
+        "/api/tournaments/cup/rules",
+        json={
+            "phase": "fencers",
+            "kind": "field_edit",
+            "target": row["id"],
+            "payload": {"field": "club", "value": "Mordschlag"},
+        },
+        headers=organizer,
+    )
+
+    document = client.get("/api/tournaments/cup/export/json", headers=organizer).json()
+    assert len(document["manual_rows"]) == 1
+    original = normalized_sheet(client, organizer, "cup")
+
+    new_organizer, _ = fresh_deployment(client, auth_headers)
+    restore = client.post("/api/tournaments/restore", json=document, headers=new_organizer)
+    assert restore.status_code == 201, restore.text
+
+    assert normalized_sheet(client, new_organizer, "cup") == original
+    restored = next(
+        r
+        for r in client.get("/api/tournaments/cup/sheet", headers=new_organizer).json()["rows"]
+        if r["id"].startswith("man:")
+    )
+    assert restored["number"] == row["number"]
+    assert restored["club"] == "Mordschlag"
+
+
+def test_document_without_manual_rows_restores(client, auth_headers):
+    """A document written before hand entry existed carries no such key (3.5)."""
+    organizer = auth_headers()
+    setup(client, organizer)
+    document = client.get("/api/tournaments/cup/export/json", headers=organizer).json()
+    document.pop("manual_rows")
+    document["schema_version"] = 9
+
+    new_organizer, _ = fresh_deployment(client, auth_headers)
+    assert (
+        client.post("/api/tournaments/restore", json=document, headers=new_organizer).status_code
+        == 201
+    )
+
+
+def test_arrival_order_numbers_a_numberless_document(client, auth_headers):
+    """A document recording no numbers is numbered in the order rows entered:
+    registrations, then the imported batch, then the hand-entered rows (3.4)."""
+    organizer = auth_headers()
+    setup(client, organizer)
+    client.post(
+        "/api/tournaments/cup/manual-rows",
+        json={
+            "name": "Hand Entered",
+            "disciplines": ["LS"],
+            "registered_at": "2020-01-01T10:00:00",
+        },
+        headers=organizer,
+    )
+    document = client.get("/api/tournaments/cup/export/json", headers=organizer).json()
+    document.pop("row_numbers")
+
+    new_organizer, _ = fresh_deployment(client, auth_headers)
+    assert (
+        client.post("/api/tournaments/restore", json=document, headers=new_organizer).status_code
+        == 201
+    )
+
+    rows = client.get("/api/tournaments/cup/sheet", headers=new_organizer).json()["rows"]
+    numbered = {row["id"].split(":")[0]: row["number"] for row in rows}
+    # the manual row states the earliest moment, so it is displayed first while
+    # carrying the highest number — arrival, not display, is what numbers
+    assert numbered["man"] == max(numbered.values())
+    assert [row["id"].split(":")[0] for row in rows][0] == "man"

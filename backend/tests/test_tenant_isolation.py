@@ -52,6 +52,10 @@ BODIES: dict[tuple[str, str], object] = {
         "price": 100,
     },
     ("POST", "/api/tournaments/{slug}/import/dedup/decide"): {"key": "k", "accept": True},
+    ("POST", "/api/tournaments/{slug}/manual-rows"): {
+        "name": "Hand Entered",
+        "disciplines": ["LS"],
+    },
     ("POST", "/api/tournaments/{slug}/payments/link"): {"transaction_id": 1, "vs": [1]},
     ("POST", "/api/tournaments/{slug}/rules"): {
         "phase": "arrival",

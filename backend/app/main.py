@@ -22,6 +22,7 @@ from app.routers import (
     export_api,
     hr_api,
     import_api,
+    manual_api,
     payments,
     registrations,
     rules_api,
@@ -122,6 +123,7 @@ def create_app() -> FastAPI:
     app.include_router(payments.router)
     app.include_router(rules_api.router)
     app.include_router(import_api.router)
+    app.include_router(manual_api.router)
     app.include_router(export_api.router)
     app.include_router(hr_api.router)
     app.include_router(hr_api.ratings_router)
