@@ -39,6 +39,14 @@ function cell(column: string, fields: Partial<SheetRow>, timezone: string | null
   );
 }
 
+/** An identity cell as a phase after matching draws it (spec `etl-console`,
+ *  HR identity in the phases after matching). */
+function identityCell(column: string, fields: Partial<SheetRow>): string {
+  return renderToStaticMarkup(
+    <CellDisplay row={row(fields)} column={column} timezone={null} hrIdentity />,
+  );
+}
+
 describe("registered cell", () => {
   it("states the day and the clock in the tournament's zone", () => {
     expect(
@@ -75,5 +83,31 @@ describe("an edited cell", () => {
     for (const column of ["name", "nationality", "club"]) {
       expect(ruleKindFor(column)).toBe("field_edit");
     }
+  });
+});
+
+describe("an identity cell after matching", () => {
+  const REGISTERED = { name: "Lukáš Müller", nationality: "DE", club: "Berlin" };
+  const PROFILE = {
+    hr_id: 8821,
+    hr_name: "Lukas Mueller",
+    hr_nationality: "DE",
+    hr_club: "Berlin Schwert",
+  };
+
+  it("states the fencer's own words in italic while no profile is bound", () => {
+    expect(identityCell("club", REGISTERED)).toBe(
+      '<span class="identity-declared">Berlin</span>',
+    );
+  });
+
+  it("states the profile's words, unmarked, once the match is resolved", () => {
+    // the same row after the organizer bound an id on Matching
+    expect(identityCell("club", { ...REGISTERED, ...PROFILE })).toBe("Berlin Schwert");
+    expect(identityCell("name", { ...REGISTERED, ...PROFILE })).toBe("Lukas Mueller");
+  });
+
+  it("draws no italic on a phase that identifies by the registered values", () => {
+    expect(cell("club", REGISTERED, null)).toBe("Berlin");
   });
 });

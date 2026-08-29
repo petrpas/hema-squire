@@ -2683,3 +2683,11 @@ label.checklist-row > input[type="checkbox"] {
   color: var(--ink-faded);
   margin-top: 0.1rem;
 }
+
+.identity-declared {
+  /* the value the fencer registered under, on a row no HR profile stands
+     behind (spec etl-console, HR identity in the phases after matching). The
+     italic is the whole of the marking: same ink, same weight — a registered
+     value is not a lesser value, it is a value with another source. */
+  font-style: italic;
+}

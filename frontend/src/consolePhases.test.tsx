@@ -6,6 +6,7 @@ import {
   DEFAULT_PHASE,
   absorbedInto,
   PHASES,
+  editableHere,
   editsForPhase,
   rowAction,
   rowsForPhase,
@@ -207,5 +208,39 @@ describe("what a row offers to have done to it", () => {
     expect(restorable("fencers")).toEqual(["reg:2", "reg:3"]);
     expect(restorable("payments")).toEqual(["reg:3"]);
     expect(restorable("export")).toEqual([]);
+  });
+});
+
+describe("which cells a phase opens for editing", () => {
+  const identity = ["name", "nationality", "club"];
+
+  it("holds identity read-only on the phases that read it off the profile", () => {
+    for (const phase of ["dedup", "payments", "export"] as Phase[]) {
+      for (const column of identity) {
+        expect(editableHere(column, phase)).toBe(false);
+      }
+    }
+  });
+
+  it("keeps identity editable where it is claimed", () => {
+    // Import, the fencer list, and Matching, where a correction belongs
+    for (const phase of ["import", "fencers", "matching"] as Phase[]) {
+      for (const column of identity) {
+        expect(editableHere(column, phase)).toBe(true);
+      }
+    }
+  });
+
+  it("leaves the HRID cell editable wherever its column is drawn", () => {
+    // a typed id is a verdict, and this change does not touch that
+    for (const phase of ["matching", "dedup", "export"] as Phase[]) {
+      expect(editableHere("hr_id", phase)).toBe(true);
+    }
+  });
+
+  it("opens no cell that was never editable", () => {
+    for (const column of ["notes", "problems", "state", "vs"]) {
+      expect(editableHere(column, "fencers")).toBe(false);
+    }
   });
 });

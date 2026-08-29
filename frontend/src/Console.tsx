@@ -7,6 +7,7 @@ import AccountMenu from "./AccountMenu";
 import DedupPanel from "./DedupPanel";
 import EditableCell from "./EditableCell";
 import ExportPanel from "./ExportPanel";
+import { IDENTITY_COLUMNS, identityValue, usesHRIdentity } from "./identity";
 import ImportPanel from "./ImportPanel";
 import MatchCell from "./MatchCell";
 import MatchDialog from "./MatchDialog";
@@ -100,6 +101,18 @@ const PHASE_COLUMNS: Record<Phase, string[]> = {
 // parser's report — neither is the organizer's to rewrite (spec etl-console,
 // Note and problem markers).
 const EDITABLE_COLUMNS = new Set(["name", "nationality", "club", "hr_id"]);
+
+/** Whether a cell opens for editing here. Identity is the organizer's to
+ *  correct where it is claimed — on Import, on the fencer list, or by rebinding
+ *  the id on Matching — and not on the phases that read it off the profile
+ *  (spec `etl-console`, HR identity in the phases after matching). An italic
+ *  cell is read-only there too: making only those editable would put the
+ *  affordance on exactly the rows that are hardest to identify, and the rule it
+ *  created would stop being displayed the moment the row was matched. */
+export function editableHere(column: string, phase: Phase): boolean {
+  if (IDENTITY_COLUMNS.includes(column)) return !usesHRIdentity(phase);
+  return EDITABLE_COLUMNS.has(column);
+}
 
 /** The rule an edited cell becomes. An id typed into the table is a verdict,
  *  carrying the same weight and the same consequences as one picked out of
@@ -195,11 +208,23 @@ export function CellDisplay({
   row,
   column,
   timezone,
+  hrIdentity = false,
 }: {
   row: SheetRow;
   column: string;
   timezone: string | null;
+  /** Whether this phase identifies a row by its HR profile (spec `etl-console`,
+   *  HR identity in the phases after matching). A flag rather than the phase
+   *  itself: the cell is a function of what it draws, not of where the console
+   *  is. */
+  hrIdentity?: boolean;
 }) {
+  if (IDENTITY_COLUMNS.includes(column)) {
+    const { text, declared } = identityValue(row, column, hrIdentity);
+    // the italic is the whole of the marking: no dash, no badge, no second
+    // column (spec `etl-console`, HR identity in the phases after matching)
+    return declared ? <span className="identity-declared">{text}</span> : <>{text}</>;
+  }
   switch (column) {
     case "state":
       return <StateBadge id={row.id} state={row.state} />;
@@ -362,6 +387,7 @@ export default function Console({
   // adds and removes phases at once rather than on the next load
   const phases = offeredPhases(detail ?? tournament);
   const columns = [...BASE_COLUMNS, ...PHASE_COLUMNS[phase]];
+  const hrIdentity = usesHRIdentity(phase);
   const phaseEdits = editsForPhase(sheet?.edits ?? [], phase);
 
   return (
@@ -471,7 +497,7 @@ export default function Console({
                       </td>
                       {columns.map((column) => {
                         const phaseOwned = PHASE_COLUMNS[phase].includes(column);
-                        const editable = EDITABLE_COLUMNS.has(column) && !row._deleted;
+                        const editable = editableHere(column, phase) && !row._deleted;
                         const isMatch = column === "match";
                         return (
                           <td
@@ -493,6 +519,7 @@ export default function Console({
                                     row={row}
                                     column={column}
                                     timezone={detail?.timezone ?? null}
+                                    hrIdentity={hrIdentity}
                                   />
                                 }
                                 value={row[column]}
@@ -504,6 +531,7 @@ export default function Console({
                                 row={row}
                                 column={column}
                                 timezone={detail?.timezone ?? null}
+                                hrIdentity={hrIdentity}
                               />
                             )}
                           </td>
