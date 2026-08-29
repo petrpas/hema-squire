@@ -13,7 +13,7 @@ from typing import TYPE_CHECKING, Protocol
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from app.hr_index import HRIndex, HRProfile
+from app.hr_index import HRIndex, HRProfile, fold
 from app.importer import get_decision, store_decision
 from app.llm import get_model, llm_configured
 from app.models import Tournament
@@ -65,30 +65,63 @@ class _MatchBatch(BaseModel):
     matches: list[HRMatchResult]
 
 
+# One result per fencer is ~70 output tokens; a whole import at once overruns
+# the model's output budget and comes back truncated, so the roster goes out in
+# batches the way parsing does (importer.PARSE_BATCH_SIZE).
+MATCH_BATCH_SIZE = 20
+MATCH_MAX_TOKENS = 8192
+
+
+def _batch_candidates(
+    batch: list[dict], candidates: list[HRProfile]
+) -> list[HRProfile]:
+    """The slice of the pre-filtered union that shares a name token with this
+    batch — the other batches' candidates are noise in this prompt."""
+    tokens = {
+        token
+        for fencer in batch
+        for token in fold(fencer.get("name") or "").split()
+        if len(token) >= 3
+    }
+    return [
+        profile
+        for profile in candidates
+        if any(token in fold(profile.name) for token in tokens)
+    ]
+
+
 class LLMHRMatcher:
-    def __init__(self, model: Model):
+    def __init__(self, model: Model, batch_size: int = MATCH_BATCH_SIZE):
         self._model = model
+        self._batch_size = batch_size
 
     def match(
         self, fencers: list[dict], candidates: list[HRProfile]
     ) -> list[HRMatchResult]:
         from pydantic_ai import Agent
+        from pydantic_ai.settings import ModelSettings
 
         agent = Agent(
             model=self._model,
             output_type=_MatchBatch,
             system_prompt=_SYSTEM_PROMPT,
             retries=3,
+            model_settings=ModelSettings(max_tokens=MATCH_MAX_TOKENS),
         )
-        candidate_lines = "\n".join(
-            f"{p.hr_id};{p.name};{p.nationality or ''};{p.club or ''}" for p in candidates
-        )
-        result = agent.run_sync(
-            f"Unmatched fencers:\n```json\n{json.dumps(fencers, ensure_ascii=False)}\n```\n\n"
-            f"Candidate fighters:\n```\n{candidate_lines}\n```\n\n"
-            f"Return exactly {len(fencers)} results in the same order."
-        )
-        return result.output.matches
+        results: list[HRMatchResult] = []
+        for start in range(0, len(fencers), self._batch_size):
+            batch = fencers[start : start + self._batch_size]
+            candidate_lines = "\n".join(
+                f"{p.hr_id};{p.name};{p.nationality or ''};{p.club or ''}"
+                for p in _batch_candidates(batch, candidates)
+            )
+            result = agent.run_sync(
+                f"Unmatched fencers:\n```json\n{json.dumps(batch, ensure_ascii=False)}\n```\n\n"
+                f"Candidate fighters:\n```\n{candidate_lines}\n```\n\n"
+                f"Return exactly {len(batch)} results in the same order."
+            )
+            results.extend(result.output.matches)
+        return results
 
 
 def get_hr_matcher() -> HRMatcher | None:
@@ -142,23 +175,32 @@ def run_matching(
     if not pending:
         return {"matched": 0, "unmatched": 0, "reused": len(rows) - len(pending)}
 
+    # A verdict is cached per identity, so rows that share a name and club are
+    # one question, asked once and stored once — an import with the same fencer
+    # twice is what deduplication is for, not a reason to pay for the match
+    # twice or to write the same decision key twice.
+    by_identity: dict[str, list[dict]] = {}
+    for row in pending:
+        by_identity.setdefault(
+            identity_key(row.get("name"), row.get("club")), []
+        ).append(row)
+
     fencers = [
         {
-            "name": row["name"],
-            "club": row.get("club"),
-            "nationality": row.get("nationality"),
+            "name": same[0]["name"],
+            "club": same[0].get("club"),
+            "nationality": same[0].get("nationality"),
         }
-        for row in pending
+        for same in by_identity.values()
     ]
     candidates = candidate_profiles(index, fencers)
     results = matcher.match(fencers, candidates)
 
     matched = 0
-    for row, result in zip(pending, results, strict=True):
-        key = identity_key(row.get("name"), row.get("club"))
+    for (key, same), result in zip(by_identity.items(), results, strict=True):
         store_decision(session, tournament, "hr_match", key, result.model_dump())
         if result.hr_id is not None:
-            matched += 1
+            matched += len(same)
     session.commit()
     return {
         "matched": matched,
