@@ -10,6 +10,7 @@ import unicodedata
 from difflib import SequenceMatcher
 from typing import Annotated, Protocol
 
+import pycountry
 from fastapi import Depends
 from pydantic import BaseModel
 from sqlalchemy import func, or_, select
@@ -39,12 +40,85 @@ class HRIndex(Protocol):
 
     def get(self, hr_id: int) -> HRProfile | None: ...
 
+    def by_name_key(self, name: str) -> list[HRProfile]: ...
+
     def nationalities(self) -> list[str]: ...
 
 
 def fold(text: str) -> str:
     decomposed = unicodedata.normalize("NFKD", text.lower())
     return "".join(c for c in decomposed if not unicodedata.combining(c))
+
+
+def name_key(text: str) -> tuple[str, ...]:
+    """A name reduced to its folded words, order disregarded: "Jan Novák" and
+    "Novák Jan" are one person under two conventions and share a key.
+
+    Not a subset test — a word one name carries and the other does not makes
+    two keys, so "Jan Petr Novák" and "Jan Novák" do not agree (spec
+    table-import, LLM matching to HEMA Ratings).
+    """
+    return tuple(sorted(word for word in fold(text or "").split() if word))
+
+
+# The registration and the index name a country in different vocabularies: a
+# registration writes an ISO code ("CZ", "DE"), the index writes an English name
+# ("Czech Republic", "Germany"). Nothing compares them as strings — "DE" is not a
+# prefix of "Germany" — so both sides resolve to a country first.
+#
+# Names ISO 3166 records differently from the way the index spells them. Kept as
+# an explicit list rather than reached for by fuzzy search: a wrongly resolved
+# country quietly demotes a good match.
+_COUNTRY_ALIASES = {
+    "russia": "RU",
+    "turkey": "TR",
+    "palestine": "PS",
+    # ISO 3166 knows one country here and it is GB. The index's own flag code
+    # spells it "UK", and a fencer writes whichever of these they think of;
+    # none of them may read as a different country from the others.
+    "uk": "GB",
+    "great britain": "GB",
+    "england": "GB",
+    "scotland": "GB",
+    "wales": "GB",
+    "northern ireland": "GB",
+}
+
+
+def country_code(text: str | None) -> str | None:
+    """The ISO 3166 alpha-2 of a country named in any vocabulary — either code,
+    English name, or official name — or None where the text names no country we
+    can identify.
+
+    Two characters, the vocabulary registrations are written in.
+    """
+    if not text or not text.strip():
+        return None
+    folded = fold(text).strip()
+    for candidate in (text.strip(), folded):
+        try:
+            return pycountry.countries.lookup(candidate).alpha_2
+        except LookupError:
+            pass
+    return _COUNTRY_ALIASES.get(folded)
+
+
+def evidence_fields(profile: HRProfile | None) -> dict[str, str | None]:
+    """A profile as the evidence register carries it.
+
+    The nationality is stated as its two-letter ISO code rather than in the
+    index's own English spelling: the register sits beside a claim written in
+    those codes, and a reader comparing "PL" against "Poland" is reading a
+    difference that is not there. Where no country can be identified the index's own words stand — a
+    spelling we cannot read is still the evidence we have.
+    """
+    if profile is None:
+        return {"hr_name": None, "hr_nationality": None, "hr_club": None}
+    return {
+        "hr_name": profile.name,
+        "hr_nationality": country_code(profile.nationality) or profile.nationality,
+        "hr_club": profile.club,
+    }
 
 
 def _similarity(needle: str, name_folded: str) -> float:
@@ -93,6 +167,20 @@ class DbHRIndex:
         fighter = self._session.get(HRFighter, hr_id)
         return _profile(fighter) if fighter else None
 
+    def by_name_key(self, name: str) -> list[HRProfile]:
+        """Every fighter carrying this name key. The substring conditions only
+        narrow the scan — a token is a substring of longer names too — and the
+        key comparison decides."""
+        key = name_key(name)
+        if not key:
+            return []
+        stmt = select(HRFighter)
+        for token in key:
+            stmt = stmt.where(HRFighter.name_folded.contains(token))
+        return [
+            _profile(f) for f in self._session.scalars(stmt) if name_key(f.name) == key
+        ]
+
     def nationalities(self) -> list[str]:
         rows = self._session.scalars(
             select(HRFighter.nationality)
@@ -129,6 +217,10 @@ class StubHRIndex:
 
     def get(self, hr_id: int) -> HRProfile | None:
         return next((p for p in self._profiles if p.hr_id == hr_id), None)
+
+    def by_name_key(self, name: str) -> list[HRProfile]:
+        key = name_key(name)
+        return [p for p in self._profiles if key and name_key(p.name) == key]
 
     def nationalities(self) -> list[str]:
         return sorted({p.nationality for p in self._profiles if p.nationality})

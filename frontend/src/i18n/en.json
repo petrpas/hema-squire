@@ -54,10 +54,14 @@
     "indexRefreshFailed": "Refresh rejected — previous index kept (source format drift suspected).",
     "verdict": {
       "confirmed": "confirmed",
+      "found": "found match",
       "noneFound": "no match",
       "proposed": "proposed match",
       "unknown": "unmatched"
-    }
+    },
+    "pending": "{{count}} awaiting a verdict",
+    "ratify": "Confirm this match",
+    "search": "Search for another profile"
   },
   "export": {
     "title": "Export",
@@ -181,6 +185,9 @@
     "nationality": "Nat.",
     "club": "Club",
     "hr_id": "HRID",
+    "hr_name": "HR_Name",
+    "hr_nationality": "HR_Nat",
+    "hr_club": "HR_Club",
     "disciplines": "Disciplines",
     "vs": "VS",
     "state": "State",

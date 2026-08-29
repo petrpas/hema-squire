@@ -58,10 +58,14 @@
     "indexRefreshFailed": "Obnovení odmítnuto — původní index zachován (podezření na změnu formátu stránky).",
     "verdict": {
       "confirmed": "potvrzeno",
+      "found": "nalezená shoda",
       "noneFound": "bez shody",
       "proposed": "navržená shoda",
       "unknown": "nespárováno"
-    }
+    },
+    "pending": "{{count}} k rozhodnutí",
+    "ratify": "Potvrdit shodu",
+    "search": "Hledat jiný profil"
   },
   "export": {
     "title": "Export",
@@ -185,6 +189,9 @@
     "nationality": "Nár.",
     "club": "Klub",
     "hr_id": "HRID",
+    "hr_name": "HR_Jméno",
+    "hr_nationality": "HR_Nár.",
+    "hr_club": "HR_Klub",
     "disciplines": "Disciplíny",
     "vs": "VS",
     "state": "Stav",

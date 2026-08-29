@@ -141,10 +141,18 @@ def test_matching_verdicts_and_decision_reuse(client, auth_headers):
     assert matcher.calls == 1
 
     rows = get_rows(client, organizer)
-    jan = by_name(rows, "Jan Novák")  # canonical HR name applied
+    # the proposal binds the id and fills the evidence register; the claim
+    # register stays the fencer's words until a verdict (spec etl-console, The
+    # ledger idiom)
+    jan = by_name(rows, "Jan Novak")
     assert jan["hr_id"] == 10234
-    assert jan["match_verdict"] == "proposed"
-    assert jan["reg_name"] == "Jan Novak"  # original registration name retained
+    assert jan["name"] == "Jan Novak"
+    assert jan["reg_name"] is None
+    assert jan["hr_name"] == "Jan Novák"
+    assert jan["hr_nationality"] == "CZ"
+    assert jan["hr_club"] == "Prague HEMA"
+    # same name key, unambiguous in the index, nationality does not contradict
+    assert jan["match_verdict"] == "found"
     marie = by_name(rows, "Marie Nova")
     assert marie["match_verdict"] == "none_found"
     petra = by_name(rows, "Petra Dvorakova")
@@ -162,9 +170,10 @@ def test_matching_verdicts_and_decision_reuse(client, auth_headers):
               "payload": {"field": "hr_id", "value": None}},
         headers=organizer,
     )
-    jan = by_name(get_rows(client, organizer), "Jan Novák")
+    jan = by_name(get_rows(client, organizer), "Jan Novak")
     assert jan["hr_id"] is None
     assert jan["match_verdict"] == "none_found"
+    assert jan["hr_name"] is None
 
 
 def test_same_hr_id_queues_and_merges_on_confirm(client, auth_headers):

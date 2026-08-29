@@ -384,7 +384,13 @@ export interface SheetRow {
   registered_at: string | null;
   total_amount: number | null;
   problems: string | null;
-  match_verdict?: "confirmed" | "proposed" | "none_found" | "unknown";
+  match_verdict?: "confirmed" | "found" | "proposed" | "none_found" | "unknown";
+  /** The evidence register: what HEMA Ratings holds for this row's hr_id.
+   *  Empty where there is no id, or the fighters index does not know it — an
+   *  absence is stated, not omitted (spec `etl-console`, The ledger idiom). */
+  hr_name: string | null;
+  hr_nationality: string | null;
+  hr_club: string | null;
   merge_note?: string | null;
   _merged_into?: string;
   /** True once a deletion or a merge has taken the row out of the table. */

@@ -1,13 +1,18 @@
-from fastapi import APIRouter, HTTPException
+from typing import Annotated
+
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
 
 from app import matching, rules, sheet
 from app.auth import require_console_access
+from app.hr_index import HRIndex, get_hr_index
 from app.models import Rule, RuleJournalEntry
 from app.routers.tournaments import FencerDep, SessionDep, TournamentDep
 from app.schemas import NetChangeOut, RuleIn, RuleOut, RulePayloadIn, SheetOut
 
 router = APIRouter(prefix="/api/tournaments/{slug}", tags=["rules"])
+
+HRIndexDep = Annotated[HRIndex, Depends(get_hr_index)]
 
 
 @router.get("/rules", response_model=list[RuleOut])
@@ -26,11 +31,22 @@ def list_rules(
 
 @router.post("/rules", response_model=RuleOut, status_code=201)
 def create_rule(
-    data: RuleIn, tournament: TournamentDep, session: SessionDep, fencer: FencerDep
+    data: RuleIn,
+    tournament: TournamentDep,
+    session: SessionDep,
+    fencer: FencerDep,
+    index: HRIndexDep,
 ):
     require_console_access(session, tournament, fencer)
     return rules.create_rule(
-        session, tournament, fencer, data.phase, data.kind, data.target, data.payload
+        session,
+        tournament,
+        fencer,
+        data.phase,
+        data.kind,
+        data.target,
+        data.payload,
+        index,
     )
 
 
@@ -86,12 +102,17 @@ def rule_journal(tournament: TournamentDep, session: SessionDep, fencer: FencerD
 
 
 @router.get("/sheet", response_model=SheetOut)
-def sheet_view(tournament: TournamentDep, session: SessionDep, fencer: FencerDep):
+def sheet_view(
+    tournament: TournamentDep,
+    session: SessionDep,
+    fencer: FencerDep,
+    index: HRIndexDep,
+):
     """The fencer table: base rows with all active rules replayed, plus the
     manual-edits log — what differs from the source data, not the history of
     how it got there, so operations that undo one another leave nothing."""
     require_console_access(session, tournament, fencer)
-    base = sheet.base_rows(session, tournament)
+    base = sheet.base_rows(session, tournament, index)
     rows, audit = rules.replay(base, rules.active_rules(session, tournament))
     # Deleted rows are included with _deleted=True so the console can render
     # them greyed with a restore action; exports are where they disappear.

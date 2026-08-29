@@ -8,6 +8,7 @@ import DedupPanel from "./DedupPanel";
 import EditableCell from "./EditableCell";
 import ExportPanel from "./ExportPanel";
 import ImportPanel from "./ImportPanel";
+import MatchCell from "./MatchCell";
 import MatchDialog from "./MatchDialog";
 import MatchPanel from "./MatchPanel";
 import NoteMarker from "./NoteMarker";
@@ -86,7 +87,7 @@ const PHASE_COLUMNS: Record<Phase, string[]> = {
   setup: [],
   import: ["disciplines", "problems", "notes"],
   fencers: ["disciplines", "weapon_rentals", "afterparty", "registered_at", "notes"],
-  matching: ["hr_id", "match"],
+  matching: ["hr_id", "hr_name", "hr_nationality", "hr_club", "match"],
   dedup: ["hr_id", "state"],
   payments: ["vs", "total_amount", "expires_at", "paid_at", "state"],
   export: ["hr_id", "disciplines", "state"],
@@ -99,6 +100,15 @@ const PHASE_COLUMNS: Record<Phase, string[]> = {
 // parser's report — neither is the organizer's to rewrite (spec etl-console,
 // Note and problem markers).
 const EDITABLE_COLUMNS = new Set(["name", "nationality", "club", "hr_id"]);
+
+/** The rule an edited cell becomes. An id typed into the table is a verdict,
+ *  carrying the same weight and the same consequences as one picked out of
+ *  search — an emptied cell says the fencer has no profile (spec
+ *  `etl-console`, A typed id is a verdict). Every other cell is the
+ *  organizer's correction of what the fencer told us. */
+export function ruleKindFor(field: string): "match_resolution" | "field_edit" {
+  return field === "hr_id" ? "match_resolution" : "field_edit";
+}
 
 /** The number the leftmost column shows. On the fencer list it is the fencer's
  *  fixed number; on Import it is the row's line in the uploaded file, a number
@@ -300,7 +310,7 @@ export default function Console({
         : raw === ""
           ? null
           : raw;
-    void addRule("field_edit", row.id, { field, value });
+    void addRule(ruleKindFor(field), row.id, { field, value });
   }
 
   /** Undoing a log entry removes every rule behind it, so the cell returns to
@@ -318,6 +328,13 @@ export default function Console({
     void addRule("match_resolution", row.id, { field: "hr_id", value: hrId });
   }
 
+  /** Accepting the machine's proposal, which is the same verdict as picking
+   *  the profile out of search — the organizer has simply not had to go
+   *  looking for what the row already shows them. */
+  function ratifyMatch(row: SheetRow) {
+    void addRule("match_resolution", row.id, { field: "hr_id", value: row.hr_id });
+  }
+
   // Leaving Setup dirty is confirmed (spec: setup-navigation); switching
   // between Setup's own tabs never goes through this, since it isn't a phase change.
   function requestPhase(next: Phase) {
@@ -330,6 +347,15 @@ export default function Console({
 
   const rows = sheet?.rows ?? [];
   const visibleRows = rowsForPhase(rows, phase);
+  // The rows Matching still owes a verdict: a machine's proposal is not a
+  // verdict, and neither is the absence of one (spec etl-console, The ledger
+  // idiom).
+  const pendingVerdicts = rows.filter(
+    (row) =>
+      !row._deleted &&
+      (row.match_verdict === undefined ||
+        !["confirmed", "none_found"].includes(row.match_verdict)),
+  ).length;
   const activeRows = rows.filter((row) => !row._deleted);
   const paidCount = activeRows.filter((row) => row.paid).length;
   // from the refreshed detail where there is one, so applying a mode in Setup
@@ -451,30 +477,15 @@ export default function Console({
                           <td
                             key={column}
                             className={`${phaseOwned ? "col-phase" : ""} ${
-                              isMatch ? "col-state" : ""
+                              isMatch ? "col-verdict" : ""
                             } ${MARKER_COLUMNS.has(column) ? "col-marker" : ""}`}
                           >
                             {isMatch ? (
-                              <button
-                                className="badge-button"
-                                title={t("match.title")}
-                                onClick={() => setMatchRow(row)}
-                                disabled={row._deleted === true}
-                              >
-                                {row.match_verdict === "confirmed" ? (
-                                  <span className="tag tag-seal-green">
-                                    {t("match.verdict.confirmed")}
-                                  </span>
-                                ) : row.match_verdict === "none_found" ? (
-                                  <span className="state-text">{t("match.verdict.noneFound")}</span>
-                                ) : row.match_verdict === "proposed" ? (
-                                  <span className="tag tag-form-yellow">
-                                    {t("match.verdict.proposed")}
-                                  </span>
-                                ) : (
-                                  <span className="state-text">{t("match.verdict.unknown")}</span>
-                                )}
-                              </button>
+                              <MatchCell
+                                row={row}
+                                onRatify={() => ratifyMatch(row)}
+                                onSearch={() => setMatchRow(row)}
+                              />
                             ) : editable ? (
                               <EditableCell
                                 display={
@@ -561,6 +572,7 @@ export default function Console({
             <MatchPanel
               slug={tournament.slug}
               operations={operations}
+              pending={pendingVerdicts}
               onChanged={refresh}
             />
           )}

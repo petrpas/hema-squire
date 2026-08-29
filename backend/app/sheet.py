@@ -23,6 +23,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
 from app import hr_match, importer, manualrows, rownumbers, setup, taxonomy
+from app.hr_index import DbHRIndex, HRIndex, evidence_fields
 from app.models import (
     ExtraCategory,
     ImportedRow,
@@ -94,7 +95,39 @@ def _display_order(rows: dict[str, Row], zone: datetime.tzinfo) -> dict[str, Row
     return {row["id"]: row for row in sorted(rows.values(), key=key)}
 
 
-def base_rows(session: Session, tournament: Tournament) -> dict[str, Row]:
+def _evidence(index: HRIndex | None, hr_id: int | None, payload: dict | None = None) -> Row:
+    """The evidence register: what HEMA Ratings holds for this id.
+
+    Every row carries the three fields, empty where there is no id or the index
+    does not know it — an absence is stated, not omitted (spec etl-console, The
+    ledger idiom).
+
+    The index is authoritative. A stored match payload answers only where the
+    index cannot, and only for the name and the club: its `nationality` is the
+    registration's own where the registration had one, so carrying it here
+    would show the claim register's value back as though the profile had
+    confirmed it.
+    """
+    profile = index.get(hr_id) if index is not None and hr_id is not None else None
+    if profile is not None:
+        return evidence_fields(profile)
+    if payload is not None:
+        return {
+            "hr_name": payload.get("matched_name"),
+            "hr_nationality": None,
+            "hr_club": payload.get("matched_club"),
+        }
+    return evidence_fields(None)
+
+
+def base_rows(
+    session: Session, tournament: Tournament, index: HRIndex | None = None
+) -> dict[str, Row]:
+    # The evidence register needs the fighters index. Callers holding the
+    # request's own index pass it, so a test's stub reaches the rows; the rest
+    # get the deployment's (spec etl-console, The ledger idiom).
+    if index is None:
+        index = DbHRIndex(session)
     registrations = session.scalars(
         select(Registration)
         .where(
@@ -123,6 +156,7 @@ def base_rows(session: Session, tournament: Tournament) -> dict[str, Row]:
             "nationality": registration.fencer.nationality,
             "club": registration.fencer.club,
             "hr_id": registration.fencer.hr_id,
+            **_evidence(index, registration.fencer.hr_id),
             "match_verdict": "confirmed" if registration.fencer.hr_id else "unknown",
             "email": registration.fencer.email,
             "disciplines": [
@@ -147,8 +181,8 @@ def base_rows(session: Session, tournament: Tournament) -> dict[str, Row]:
             "problems": None,
             "_deleted": False,
         }
-    rows.update(_imported_rows(session, tournament))
-    rows.update(_manual_rows(session, tournament))
+    rows.update(_imported_rows(session, tournament, index))
+    rows.update(_manual_rows(session, tournament, index))
     numbers = rownumbers.numbers_for(session, tournament)
     for row_id, row in rows.items():
         # None rather than a positional fallback: a visible gap beats a number
@@ -192,7 +226,9 @@ def _resolve_discipline_slugs(tournament: Tournament, entries: list) -> tuple[li
     return slugs, problems
 
 
-def _imported_rows(session: Session, tournament: Tournament) -> dict[str, Row]:
+def _imported_rows(
+    session: Session, tournament: Tournament, index: HRIndex | None = None
+) -> dict[str, Row]:
     batch = importer.latest_batch(session, tournament)
     if batch is None:
         return {}
@@ -219,22 +255,22 @@ def _imported_rows(session: Session, tournament: Tournament) -> dict[str, Row]:
         club = record.get("club")
         nationality = record.get("nationality") or None
         hr_id = record.get("hr_id")
-        # fencer-provided hr_id counts as confirmed; otherwise overlay the
-        # cached LLM match proposal for the organizer to review
+        # A fencer-provided hr_id is a verdict at birth. A cached match binds
+        # its id and fills the evidence register, and nothing else: the name,
+        # club and nationality on this row stay the fencer's words until an
+        # organizer reaches a verdict, or the review has nothing to compare
+        # against (spec etl-console, The ledger idiom).
         verdict = "confirmed" if hr_id is not None else "unknown"
+        payload = None
         if hr_id is None and name:
             match = importer.get_decision(
                 session, tournament, "hr_match", hr_match.identity_key(name, club)
             )
             if match is not None:
                 if match.payload.get("hr_id") is not None:
-                    hr_id = match.payload["hr_id"]
-                    verdict = "proposed"
-                    if match.payload.get("matched_name") and match.payload["matched_name"] != name:
-                        reg_name = reg_name or name
-                        name = match.payload["matched_name"]
-                    club = match.payload.get("matched_club") or club
-                    nationality = match.payload.get("nationality") or nationality
+                    payload = match.payload
+                    hr_id = payload["hr_id"]
+                    verdict = hr_match.derive_tier(name, nationality, hr_id, index)
                 else:
                     verdict = "none_found"
         problems = record.get("problems")
@@ -248,6 +284,7 @@ def _imported_rows(session: Session, tournament: Tournament) -> dict[str, Row]:
             "nationality": nationality,
             "club": club,
             "hr_id": hr_id,
+            **_evidence(index, hr_id, payload),
             "match_verdict": verdict,
             "email": record.get("email"),
             "disciplines": disciplines,
@@ -279,6 +316,7 @@ def _unparsed_row(row_id: str, row: ImportedRow) -> Row:
         "nationality": None,
         "club": None,
         "hr_id": None,
+        **_evidence(None, None),
         "match_verdict": "unknown",
         "email": None,
         "disciplines": [],
@@ -301,7 +339,9 @@ def _unparsed_row(row_id: str, row: ImportedRow) -> Row:
     }
 
 
-def _manual_rows(session: Session, tournament: Tournament) -> dict[str, Row]:
+def _manual_rows(
+    session: Session, tournament: Tournament, index: HRIndex | None = None
+) -> dict[str, Row]:
     """The fencers the organizer entered by hand.
 
     Structured at birth — every field was chosen from the tournament's own
@@ -311,11 +351,11 @@ def _manual_rows(session: Session, tournament: Tournament) -> dict[str, Row]:
     """
     rows: dict[str, Row] = {}
     for row in manualrows.rows_for(session, tournament):
-        rows[manualrows.row_id(row)] = _manual_row(row)
+        rows[manualrows.row_id(row)] = _manual_row(row, index)
     return rows
 
 
-def _manual_row(row: ManualRow) -> Row:
+def _manual_row(row: ManualRow, index: HRIndex | None = None) -> Row:
     return {
         "id": f"man:{row.id}",
         "name": row.name,
@@ -323,6 +363,7 @@ def _manual_row(row: ManualRow) -> Row:
         "nationality": row.nationality,
         "club": row.club,
         "hr_id": row.hr_id,
+        **_evidence(index, row.hr_id),
         "match_verdict": "confirmed" if row.hr_id is not None else "unknown",
         "email": row.email,
         "disciplines": list(row.disciplines),

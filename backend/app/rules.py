@@ -17,6 +17,7 @@ from fastapi import HTTPException
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.hr_index import country_code, evidence_fields
 from app.models import Fencer, Rule, RuleJournalEntry, Tournament
 
 Row = dict[str, Any]
@@ -35,13 +36,45 @@ def _apply_field_edit(rows: dict[str, Row], target: str, payload: dict):
 
 
 def _apply_match_resolution(rows: dict[str, Row], target: str, payload: dict):
-    """An organizer's HR verdict: sets hr_id (or its confirmed absence)."""
+    """An organizer's HR verdict: sets hr_id (or its confirmed absence), moves
+    the evidence register onto the profile decided upon, and promotes the HR
+    canonical name to the display name.
+
+    Promotion belongs here rather than to the match proposal: a fencer becomes
+    HR-bound by a verdict, not by a machine's guess (spec hr-integration,
+    Canonical naming). The profile travels in the payload, recorded when the
+    rule was created, so a replay states the name that was bound at the moment
+    of the decision and needs no index of its own.
+    """
     changes = _apply_field_edit(rows, target, payload)
     row = rows[target]
-    verdict = "confirmed" if payload["value"] is not None else "none_found"
+    bound = payload["value"] is not None
+    verdict = "confirmed" if bound else "none_found"
     before = row.get("match_verdict")
     row["match_verdict"] = verdict
     changes.append((target, "match_verdict", before, verdict))
+
+    # The evidence register is a lookup, not the organizer's edit: it moves
+    # with the id without an audit line of its own. The nationality is resolved
+    # again on the way out rather than trusted as stored: a rule recorded before
+    # the register spoke in ISO codes still carries the index's English spelling,
+    # and one row reading "France" beside another reading "FRA" is a difference
+    # the organizer would have to explain to themselves.
+    nationality = payload.get("hr_nationality") if bound else None
+    row["hr_name"] = payload.get("hr_name") if bound else None
+    row["hr_nationality"] = country_code(nationality) or nationality
+    row["hr_club"] = payload.get("hr_club") if bound else None
+
+    # Promotion is the verdict's consequence, not a second decision, so it
+    # leaves no audit line of its own: one decision reads as one entry in the
+    # log, the way a resolution's verdict and the id it resolved already do
+    # (spec etl-console, HR matching review). The organizer sees the promoted
+    # name on the row, and the name they registered under stays beside it.
+    canonical = payload.get("hr_name") if bound else None
+    if canonical and canonical != row.get("name"):
+        if not row.get("reg_name"):
+            row["reg_name"] = row.get("name")
+        row["name"] = canonical
     return changes
 
 
@@ -250,6 +283,7 @@ def create_rule(
     kind: str,
     target: str,
     payload: dict,
+    index: object | None = None,
 ) -> Rule:
     if kind not in HANDLERS:
         raise HTTPException(status_code=422, detail="unknown_rule_kind")
@@ -257,6 +291,15 @@ def create_rule(
         isinstance(payload, dict) and "field" in payload and "value" in payload
     ):
         raise HTTPException(status_code=422, detail="payload_requires_field_and_value")
+    if kind == "match_resolution" and payload.get("value") is not None and index is not None:
+        # The profile is read once, here, and stored with the rule: a verdict
+        # says which fighter was bound, and replaying it must not depend on an
+        # index that may since have been refreshed out from under it. This is
+        # also what lets an id typed into the table carry the same consequences
+        # as one picked from search (spec etl-console, A typed id is a verdict).
+        profile = index.get(payload["value"])
+        if profile is not None:
+            payload = {**payload, **evidence_fields(profile)}
     rule = Rule(
         tournament_id=tournament.id,
         phase=phase,

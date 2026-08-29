@@ -129,6 +129,7 @@ describe("a phase panel", () => {
       <MatchPanel
         slug="cup"
         operations={view({ running: operation({ kind: "parse" }) })}
+        pending={0}
         onChanged={() => {}}
       />,
     );
@@ -152,6 +153,7 @@ describe("a phase panel", () => {
             }),
           },
         })}
+        pending={0}
         onChanged={() => {}}
       />,
     );

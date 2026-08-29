@@ -3,7 +3,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
 import type { SheetRow } from "./api";
-import { CellDisplay } from "./Console";
+import { CellDisplay, ruleKindFor } from "./Console";
 
 // What the fencer table's Registered column states (spec `etl-console`,
 // Registration moment in the fencer table). The neighbouring day columns are
@@ -63,5 +63,17 @@ describe("registered cell", () => {
     expect(cell("expires_at", { expires_at: "2026-03-21T13:32:52+00:00" }, "Europe/Prague")).toBe(
       "21. 3. 2026",
     );
+  });
+});
+
+describe("an edited cell", () => {
+  it("records a typed HR id as a verdict, not as a correction", () => {
+    expect(ruleKindFor("hr_id")).toBe("match_resolution");
+  });
+
+  it("records every other cell as the organizer's correction", () => {
+    for (const column of ["name", "nationality", "club"]) {
+      expect(ruleKindFor(column)).toBe("field_edit");
+    }
   });
 });

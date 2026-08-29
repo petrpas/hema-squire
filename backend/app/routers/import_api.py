@@ -19,12 +19,12 @@ DedupDep = Annotated[dedup.DedupLLM | None, Depends(dedup.get_dedup_llm)]
 HRIndexDep = Annotated[HRIndex, Depends(get_hr_index)]
 
 
-def _replayed_import_rows(session, tournament) -> list[dict]:
+def _replayed_import_rows(session, tournament, index=None) -> list[dict]:
     """The rows matching and deduplication work on: the ones that entered
     unmatched. An in-app registration is HR-bound at birth and stays out of it;
     an imported row and a hand-entered one both traverse the two operations
     (spec etl-console, Per-row phase status)."""
-    base = sheet.base_rows(session, tournament)
+    base = sheet.base_rows(session, tournament, index)
     rows, _ = rules.replay(base, rules.active_rules(session, tournament))
     return [
         row for row in rows.values() if row["id"].startswith(("imp:", "man:"))
@@ -139,7 +139,7 @@ async def run_matching(
     require_console_access(session, tournament, fencer)
     if matcher is None:
         raise HTTPException(status_code=503, detail="llm_not_configured")
-    rows = _replayed_import_rows(session, tournament)
+    rows = _replayed_import_rows(session, tournament, index)
     total = hr_match.pending_count(session, tournament, rows)
     operation = _start(session, tournament, fencer, OperationKind.MATCH, total)
 
@@ -150,7 +150,7 @@ async def run_matching(
             work_tournament,
             matcher,
             index,
-            _replayed_import_rows(work_session, work_tournament),
+            _replayed_import_rows(work_session, work_tournament, index),
             progress=lambda session, units: operations.advance(session, work_operation, units),
         )
 

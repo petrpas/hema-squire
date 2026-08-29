@@ -14,7 +14,7 @@ from typing import TYPE_CHECKING, Protocol
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from app.hr_index import HRIndex, HRProfile, fold
+from app.hr_index import HRIndex, HRProfile, country_code, fold
 from app.importer import get_decision, store_decision
 from app.llm import get_model, llm_configured
 from app.models import Tournament
@@ -131,6 +131,56 @@ def get_hr_matcher() -> HRMatcher | None:
     return LLMHRMatcher(get_model())
 
 
+def _nationality_contradicts(registered: str | None, profile: str | None) -> bool:
+    """Whether two nationalities disagree about the same person.
+
+    Absent on either side contradicts nothing, and neither does a country we
+    cannot identify: an unreadable spelling is our failure to interpret it, not
+    the fencer's disagreement with their profile, and demoting a match for a
+    reason invisible on the row is what the ledger idiom forbids.
+    """
+    a, b = country_code(registered), country_code(profile)
+    if a is None or b is None:
+        return False
+    return a != b
+
+
+def derive_tier(
+    name: str | None,
+    nationality: str | None,
+    hr_id: int,
+    index: HRIndex | None,
+) -> str:
+    """`found` or `proposed` for a match decision that bound an hr_id.
+
+    `found` is reserved for what the system merely looked up: the registration
+    and the profile carry the same name key, that key is answered by exactly one
+    fighter in the index, and that fighter is the one the model chose. Anything
+    the model had to judge — a differing spelling, a nickname, an extra word, a
+    name several fighters answer to — is `proposed` and owes the organizer a
+    look (spec table-import, LLM matching to HEMA Ratings).
+
+    One lookup settles both the agreement and the ambiguity, and it settles
+    them by the same key, so two fighters indexed as "Jan Novák" and "Novák
+    Jan" count as the one ambiguity they are.
+
+    Without an index — or with a profile missing from it — the answer is
+    `proposed`: asking for a look that was not needed costs less than skipping
+    one that was.
+    """
+    if index is None or not name:
+        return "proposed"
+    same_key = index.by_name_key(name)
+    if len(same_key) != 1:
+        return "proposed"
+    profile = same_key[0]
+    if profile.hr_id != hr_id:
+        return "proposed"
+    if _nationality_contradicts(nationality, profile.nationality):
+        return "proposed"
+    return "found"
+
+
 def identity_key(name: str | None, club: str | None) -> str:
     canonical = f"{(name or '').strip().lower()}|{(club or '').strip().lower()}"
     return hashlib.sha256(canonical.encode()).hexdigest()[:16]
@@ -157,7 +207,7 @@ def _pending_rows(session: Session, tournament: Tournament, rows: list[dict]) ->
         for row in rows
         if row.get("hr_id") is None
         and not row.get("_deleted")
-        and row.get("match_verdict") not in ("confirmed", "none_found")
+        and row.get("match_verdict") not in ("confirmed", "found", "none_found")
         and get_decision(
             session, tournament, "hr_match", identity_key(row.get("name"), row.get("club"))
         )

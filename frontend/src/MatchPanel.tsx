@@ -8,10 +8,14 @@ import type { OperationsView } from "./useOperations";
 export default function MatchPanel({
   slug,
   operations,
+  pending,
   onChanged,
 }: {
   slug: string;
   operations: OperationsView;
+  /** Rows still owing the organizer a verdict — the queue this phase holds
+   *  (spec `etl-console`, The ledger idiom). */
+  pending: number;
   onChanged: () => void;
 }) {
   const { t } = useTranslation();
@@ -61,7 +65,9 @@ export default function MatchPanel({
 
   return (
     <section className="rail-card">
-      <h2>{t("match.runTitle")}</h2>
+      <h2>
+        {t("match.runTitle")} <span className="rail-count">({pending})</span>
+      </h2>
       <p className="rail-hint">{t("match.runHint")}</p>
       <button
         className="secondary param-save"

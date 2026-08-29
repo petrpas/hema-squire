@@ -14,6 +14,7 @@ type Translate = (key: string, options?: Record<string, unknown>) => string;
 
 const VERDICT_KEYS: Record<string, string> = {
   confirmed: "match.verdict.confirmed",
+  found: "match.verdict.found",
   none_found: "match.verdict.noneFound",
   proposed: "match.verdict.proposed",
   unknown: "match.verdict.unknown",

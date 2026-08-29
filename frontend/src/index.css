@@ -747,6 +747,14 @@ button.secondary:disabled {
   width: 4rem;
 }
 
+/* The verdict register: a word and, where there is something to ratify, the
+   search beside it. Wider than the marker columns .col-state serves, and
+   centred on the word rather than on the pair. */
+.col-verdict {
+  text-align: center;
+  min-width: 8rem;
+}
+
 /* A column whose width is set by a bounded numeric field — on its own, with a
    unit label, or under the select that names it — takes what that content
    needs and no more. Without a width, auto table layout hands the column a
@@ -1375,6 +1383,16 @@ tr.row-deleted td.col-actions {
   background: transparent;
   padding: 0;
   border-radius: 0;
+}
+
+/* The verdict register: the badge ratifies, the control beside it goes
+   looking for an alternative. The search sits close enough to read as the
+   badge's second action, not as a column of its own. */
+.match-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  justify-content: center;
 }
 
 /* ===== modal ===== */
