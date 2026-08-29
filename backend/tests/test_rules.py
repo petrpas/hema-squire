@@ -324,3 +324,91 @@ def test_undoing_an_entry_reverts_the_cell(client, auth_headers):
     sheet = get_sheet(client, organizer)
     assert row_by_id(sheet, "reg:1")["name"] == "Jan Novak"
     assert sheet["edits"] == []
+
+
+def removed_in(sheet, target):
+    """Where a row says it was removed, absent on a row still in the table."""
+    return row_by_id(sheet, target).get("_removed_in")
+
+
+def test_a_deletion_states_the_phase_it_was_made_on(client, auth_headers):
+    """The console lists a removed row on the phases before the one that
+    removed it, so a removal has to say which phase that was."""
+    organizer = auth_headers()
+    setup(client, organizer)
+    enroll(client, auth_headers, "a@example.com", "Jan")
+    enroll(client, auth_headers, "b@example.com", "Petra")
+
+    add_rule(client, organizer, "reg:2", "", "", kind="row_delete", phase="payments")
+
+    sheet = get_sheet(client, organizer)
+    assert row_by_id(sheet, "reg:2")["_deleted"] is True
+    assert removed_in(sheet, "reg:2") == "payments"
+    # a row nobody removed says nothing at all: absence is what "still here" means
+    assert "_removed_in" not in row_by_id(sheet, "reg:1")
+
+
+def test_a_restoration_clears_the_removing_phase(client, auth_headers):
+    organizer = auth_headers()
+    setup(client, organizer)
+    enroll(client, auth_headers, "a@example.com", "Jan")
+
+    add_rule(client, organizer, "reg:1", "", "", kind="row_delete", phase="fencers")
+    add_rule(client, organizer, "reg:1", "", "", kind="row_restore", phase="fencers")
+
+    sheet = get_sheet(client, organizer)
+    assert row_by_id(sheet, "reg:1")["_deleted"] is False
+    assert "_removed_in" not in row_by_id(sheet, "reg:1")
+
+
+def test_the_latest_removal_states_the_phase(client, auth_headers):
+    """Deleted, brought back, deleted again elsewhere: the removal standing is
+    the one the table has to place, not the one that was undone."""
+    organizer = auth_headers()
+    setup(client, organizer)
+    enroll(client, auth_headers, "a@example.com", "Jan")
+
+    add_rule(client, organizer, "reg:1", "", "", kind="row_delete", phase="import")
+    add_rule(client, organizer, "reg:1", "", "", kind="row_restore", phase="import")
+    add_rule(client, organizer, "reg:1", "", "", kind="row_delete", phase="dedup")
+
+    assert removed_in(get_sheet(client, organizer), "reg:1") == "dedup"
+
+
+def test_a_merge_states_the_phase_it_was_decided_on(client, auth_headers):
+    """A merge removes the absorbed row without ever reporting a deletion, so
+    the phase has to be read off the merge itself."""
+    organizer = auth_headers()
+    setup(client, organizer)
+    enroll(client, auth_headers, "a@example.com", "Jan Novak")
+    enroll(client, auth_headers, "b@example.com", "Jan Novák")
+
+    post_rule(
+        client,
+        organizer,
+        "dedup_decision",
+        "reg:1",
+        {"absorb": ["reg:2"], "fields": {}},
+        phase="dedup",
+    )
+
+    sheet = get_sheet(client, organizer)
+    assert row_by_id(sheet, "reg:2")["_merged_into"] == "reg:1"
+    assert removed_in(sheet, "reg:2") == "dedup"
+    assert "_removed_in" not in row_by_id(sheet, "reg:1")
+
+
+def test_withdrawing_the_rule_withdraws_the_removing_phase(client, auth_headers):
+    """Derived on every replay and stored nowhere: nothing to clean up."""
+    organizer = auth_headers()
+    setup(client, organizer)
+    enroll(client, auth_headers, "a@example.com", "Jan")
+
+    rule_id = add_rule(client, organizer, "reg:1", "", "", kind="row_delete", phase="fencers")
+    assert removed_in(get_sheet(client, organizer), "reg:1") == "fencers"
+
+    client.delete(f"/api/tournaments/cup/rules/{rule_id}", headers=organizer)
+
+    sheet = get_sheet(client, organizer)
+    assert row_by_id(sheet, "reg:1")["_deleted"] is False
+    assert "_removed_in" not in row_by_id(sheet, "reg:1")

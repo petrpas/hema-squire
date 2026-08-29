@@ -6,8 +6,9 @@ import { registeredMoment } from "./momentText";
 
 /** The manual-edits log: what the phase's rules made the table differ from the
  *  source data, one entry per changed cell (spec `edit-rules`, Audit of applied
- *  changes). Entries read in the organizer's words, naming rows the way the
- *  table numbers them (spec `etl-console`, Readable manual-edits log). */
+ *  changes). Entries read in the organizer's words, naming rows by the fixed
+ *  number the table gives them (spec `etl-console`, Readable manual-edits
+ *  log). */
 
 type Translate = (key: string, options?: Record<string, unknown>) => string;
 
@@ -18,12 +19,15 @@ const VERDICT_KEYS: Record<string, string> = {
   unknown: "match.verdict.unknown",
 };
 
-/** A row as the table names it: its number there and the fencer on it. A row
- *  the table no longer holds is said to be gone rather than shown by its id. */
+/** A row as the table names it: its fixed number and the fencer on it. The
+ *  number comes off the row, never off its position in the list, so an entry
+ *  keeps naming the same fencer after a deletion or a merge moves rows about
+ *  (spec `etl-console`, Readable manual-edits log). A row the table no longer
+ *  holds is said to be gone rather than shown by its id. */
 export function rowText(target: unknown, rows: SheetRow[], t: Translate): string {
-  const index = rows.findIndex((row) => row.id === target);
-  if (index < 0) return t("rail.edit.unknownRow");
-  return t("rail.edit.row", { number: index + 1, name: rows[index].name });
+  const row = rows.find((candidate) => candidate.id === target);
+  if (row === undefined) return t("rail.edit.unknownRow");
+  return t("rail.edit.row", { number: row.number ?? "—", name: row.name });
 }
 
 /** One side of an assignment, formatted as the table's cell formats it. */

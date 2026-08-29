@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import delete, func, select, update
 from sqlalchemy.exc import IntegrityError
 
-from app import accounts, emails, pricing, setup, spayd
+from app import accounts, emails, pricing, rownumbers, setup, spayd
 from app.auth import require_console_access
 from app.availability import (
     full_disciplines,
@@ -553,6 +553,10 @@ def register(
     registration.total_amount = totals.local
     registration.total_eur = totals.eur
     registration.expires_at = _initial_expires_at(tournament, registration)
+    # the row enters the tournament's table here and takes its fixed number,
+    # which it keeps for good (spec etl-console, Fixed fencer number). A
+    # re-registration reuses the cancelled row's id, so it keeps its number too.
+    rownumbers.allocate(session, tournament, [f"reg:{registration.id}"])
     session.commit()
     emails.send_registration_confirmation(mailer, tournament, fencer, registration)
     return registration_out(session, registration, tournament)

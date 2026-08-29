@@ -368,6 +368,10 @@ export interface TournamentDetail extends Tournament {
 
 export interface SheetRow {
   id: string;
+  /** The fixed number this row carries in the tournament, allocated once and
+   *  never reissued; null where none has been (spec `etl-console`, Fixed
+   *  fencer number). Never derived from the row's position in the list. */
+  number: number | null;
   name: string;
   nationality: string | null;
   club: string | null;
@@ -383,6 +387,14 @@ export interface SheetRow {
   match_verdict?: "confirmed" | "proposed" | "none_found" | "unknown";
   merge_note?: string | null;
   _merged_into?: string;
+  /** True once a deletion or a merge has taken the row out of the table. */
+  _deleted?: boolean;
+  /** The phase whose rule removed the row, absent while no rule has. Derived
+   *  on every replay and stored nowhere, so it is never a column of the row
+   *  (spec `edit-rules`, A removed row states where it was removed). */
+  _removed_in?: string;
+  /** Provenance of an imported row: the file it came from and its line there. */
+  _source?: { file: string; row: number };
   expires_at: string | null;
   paid_at: string | null;
   weapon_rentals: string[];

@@ -10,6 +10,7 @@ import ExportPanel from "./ExportPanel";
 import ImportPanel from "./ImportPanel";
 import MatchDialog from "./MatchDialog";
 import MatchPanel from "./MatchPanel";
+import NoteMarker from "./NoteMarker";
 import ManualEditsRail from "./ManualEditsRail";
 import PaidStamp from "./PaidStamp";
 import TolerancePanel from "./TolerancePanel";
@@ -24,6 +25,7 @@ import { parseInteger } from "./numeric";
 import { checkNumeric, checkString, type FieldError } from "./validation";
 import {
   type Account,
+  type NetChange,
   type Sheet,
   type SheetRow,
   type Tournament,
@@ -39,8 +41,8 @@ const STAGES = ["pre", "in", "post"] as const;
 // on at the end — neither is part of the ETL sequence.
 export const PHASES = [
   "setup",
-  "load",
-  "parsing",
+  "import",
+  "fencers",
   "matching",
   "dedup",
   "payments",
@@ -51,8 +53,10 @@ export const PHASES = [
 export type Phase = (typeof PHASES)[number];
 
 /** The phase the console opens on when the URL names none, and where a URL
- *  naming a phase the mode does not offer lands. */
-export const DEFAULT_PHASE: Phase = "load";
+ *  naming a phase the mode does not offer lands. The fencer list, not Import:
+ *  an organizer who never imports anything would otherwise land on a
+ *  permanently empty tab. */
+export const DEFAULT_PHASE: Phase = "fencers";
 
 /** Which phases the tournament's mode offers, in the fixed order above — the
  *  mode removes phases, it never reorders them (spec: etl-console). The rest
@@ -71,10 +75,14 @@ export function offeredPhases(mode: TournamentMode): Phase[] {
 // columns.
 const BASE_COLUMNS = ["name", "nationality", "club"];
 
+// Columns whose cell is a marker rather than a value: as wide as the marker,
+// and empty on most rows.
+const MARKER_COLUMNS = new Set(["notes", "problems"]);
+
 const PHASE_COLUMNS: Record<Phase, string[]> = {
   setup: [],
-  load: ["disciplines", "weapon_rentals", "afterparty", "registered_at"],
-  parsing: ["disciplines", "notes", "problems"],
+  import: ["disciplines", "problems", "notes"],
+  fencers: ["disciplines", "weapon_rentals", "afterparty", "registered_at", "notes"],
   matching: ["hr_id", "match"],
   dedup: ["hr_id", "state"],
   payments: ["vs", "total_amount", "expires_at", "paid_at", "state"],
@@ -83,8 +91,82 @@ const PHASE_COLUMNS: Record<Phase, string[]> = {
   queue: [],
 };
 
-// Manual edits on these columns become field_edit rules.
-const EDITABLE_COLUMNS = new Set(["name", "nationality", "club", "notes", "hr_id"]);
+// Manual edits on these columns become field_edit rules. Notes are not among
+// them: a note is the fencer's words or the parser's, and a problem is the
+// parser's report — neither is the organizer's to rewrite (spec etl-console,
+// Note and problem markers).
+const EDITABLE_COLUMNS = new Set(["name", "nationality", "club", "hr_id"]);
+
+/** The number the leftmost column shows. On the fencer list it is the fencer's
+ *  fixed number; on Import it is the row's line in the uploaded file, a number
+ *  meaningful only within that batch (spec etl-console, Fixed fencer number).
+ *  Neither is ever the row's position in the list. */
+export function rowNumber(row: SheetRow, phase: Phase): string {
+  const number = phase === "import" ? row._source?.row : row.number;
+  return number === null || number === undefined ? "—" : String(number);
+}
+
+/** Whether a phase still lists a row a removal has taken out of the table.
+ *
+ *  A deletion is a decision taken at one step: the steps that follow stand
+ *  after it and do not list the row, while the steps before it have not handled
+ *  anything yet and still do, struck through and restorable. A merge is not a
+ *  step's decision but a statement that two rows are one fencer, as true on the
+ *  fencer list as on Export, so an absorbed row is listed nowhere but Import
+ *  (spec etl-console, Reversible row deletion).
+ *
+ *  A removing phase that cannot be placed in the order hides the row from
+ *  nothing: a row no phase lists is a row no phase can restore. */
+function listsRemovedRow(row: SheetRow, phase: Phase): boolean {
+  if (row._merged_into !== undefined) return false;
+  const removedIn = PHASES.indexOf(row._removed_in as Phase);
+  return removedIn === -1 || removedIn >= PHASES.indexOf(phase);
+}
+
+/** The rows a phase lists. Import shows one file, whole: every row it brought,
+ *  absorbed and deleted ones included, since the view is a record of what the
+ *  file contained and how it was understood. Every other phase shows the fencer
+ *  list as the removals before it left it (spec etl-console, Import view of one
+ *  batch / Reversible row deletion). */
+export function rowsForPhase(rows: SheetRow[], phase: Phase): SheetRow[] {
+  if (phase !== "import") {
+    return rows.filter((row) => !row._deleted || listsRemovedRow(row, phase));
+  }
+  // in the order of the file, not of the fencer list: the fencer list is
+  // ordered by registration moment, which scatters a batch's lines and sends
+  // the ones stating no moment to the end, where a reader checking an import
+  // against its source cannot follow them
+  return rows
+    .filter((row) => row.id.startsWith("imp:"))
+    .sort((a, b) => (a._source?.row ?? 0) - (b._source?.row ?? 0));
+}
+
+/** What the actions column offers on a row. A listed removed row offers to
+ *  come back, which is why it is listed at all — except an absorbed one, whose
+ *  removal is not its own to reverse: a merge is undone by withdrawing the
+ *  merge, and restoring the row alone would leave it un-deleted and still
+ *  merged (spec etl-console, Reversible row deletion). */
+export function rowAction(row: SheetRow): "delete" | "restore" | null {
+  if (row._merged_into !== undefined) return null;
+  return row._deleted ? "restore" : "delete";
+}
+
+/** The manual-edits log belonging to a phase. Import's holds corrections to how
+ *  a file was read; the fencer list's and those after it hold the organizer's
+ *  decisions about fencers (spec etl-console, Two manual-edits logs with two
+ *  meanings). */
+export function editsForPhase(edits: NetChange[], phase: Phase): NetChange[] {
+  return edits.filter((edit) => edit.phase === phase);
+}
+
+/** The number of the row a merge folded this one into, where one did. An
+ *  absorbed row stays listed in the Import view — the view records what a file
+ *  contained — so it says where it went rather than merely appearing struck
+ *  out (spec etl-console, Import view of one batch). */
+export function absorbedInto(row: SheetRow, rows: SheetRow[]): number | null {
+  if (row._merged_into === undefined) return null;
+  return rows.find((candidate) => candidate.id === row._merged_into)?.number ?? null;
+}
 
 function StateBadge({ id, state }: { id: string; state: string }) {
   const { t } = useTranslation();
@@ -117,6 +199,14 @@ export function CellDisplay({
           )}
         </>
       );
+    case "notes":
+    case "problems": {
+      // nothing at all on a row that carries none: not a dash, not an empty
+      // marker (spec etl-console, Note and problem markers)
+      const value = row[column];
+      if (typeof value !== "string" || value.trim() === "") return null;
+      return <NoteMarker kind={column === "notes" ? "note" : "problem"} text={value} />;
+    }
     case "weapon_rentals":
       return <>{row.weapon_rentals.length > 0 ? row.weapon_rentals.join(", ") : "—"}</>;
     case "afterparty":
@@ -231,14 +321,14 @@ export default function Console({
   }
 
   const rows = sheet?.rows ?? [];
-  const visibleRows = rows;
+  const visibleRows = rowsForPhase(rows, phase);
   const activeRows = rows.filter((row) => !row._deleted);
   const paidCount = activeRows.filter((row) => row.paid).length;
   // from the refreshed detail where there is one, so applying a mode in Setup
   // adds and removes phases at once rather than on the next load
   const phases = offeredPhases(detail ?? tournament);
   const columns = [...BASE_COLUMNS, ...PHASE_COLUMNS[phase]];
-  const phaseEdits = (sheet?.edits ?? []).filter((edit) => edit.phase === phase);
+  const phaseEdits = editsForPhase(sheet?.edits ?? [], phase);
 
   return (
     <div className="app">
@@ -299,7 +389,9 @@ export default function Console({
           <>
         <main className="sheet-area">
           <div className="sheet-header">
-            <h1>{t("console.title")}</h1>
+            {/* the Import view is a record of one uploaded file, not the
+                tournament's list of fencers, and says so */}
+            <h1>{t(phase === "import" ? "console.titleImport" : "console.title")}</h1>
             <button className="secondary" onClick={refresh}>
               {t("console.refresh")}
             </button>
@@ -318,7 +410,12 @@ export default function Console({
                     {columns.map((column) => (
                       <th
                         key={column}
-                        className={PHASE_COLUMNS[phase].includes(column) ? "col-phase" : ""}
+                        className={[
+                          PHASE_COLUMNS[phase].includes(column) ? "col-phase" : "",
+                          MARKER_COLUMNS.has(column) ? "col-marker" : "",
+                        ]
+                          .filter(Boolean)
+                          .join(" ")}
                       >
                         {t(`column.${column}`)}
                       </th>
@@ -327,9 +424,17 @@ export default function Console({
                   </tr>
                 </thead>
                 <tbody>
-                  {visibleRows.map((row, index) => (
+                  {visibleRows.map((row) => (
                     <tr key={row.id} className={row._deleted ? "row-deleted" : ""}>
-                      <td className="col-index">{index + 1}</td>
+                      <td className="col-index">
+                        {rowNumber(row, phase)}
+                        {absorbedInto(row, rows) !== null && (
+                          <span className="row-absorbed" title={t("row.absorbed")}>
+                            {" \u2192 #"}
+                            {absorbedInto(row, rows)}
+                          </span>
+                        )}
+                      </td>
                       {columns.map((column) => {
                         const phaseOwned = PHASE_COLUMNS[phase].includes(column);
                         const editable = EDITABLE_COLUMNS.has(column) && !row._deleted;
@@ -339,7 +444,7 @@ export default function Console({
                             key={column}
                             className={`${phaseOwned ? "col-phase" : ""} ${
                               isMatch ? "col-state" : ""
-                            }`}
+                            } ${MARKER_COLUMNS.has(column) ? "col-marker" : ""}`}
                           >
                             {isMatch ? (
                               <button
@@ -386,7 +491,7 @@ export default function Console({
                         );
                       })}
                       <td className="col-actions">
-                        {row._deleted ? (
+                        {rowAction(row) === null ? null : rowAction(row) === "restore" ? (
                           <button
                             className="row-action"
                             title={t("actions.restore")}
@@ -434,7 +539,7 @@ export default function Console({
           {/* a phase carries only its own operation's parameters; tournament
               configuration is Setup's, and a phase with none shows no panel
               (spec etl-console: "Operation parameters") */}
-          {phase === "load" && <ImportPanel slug={tournament.slug} onImported={refresh} />}
+          {phase === "import" && <ImportPanel slug={tournament.slug} onImported={refresh} />}
           {phase === "matching" && <MatchPanel slug={tournament.slug} onChanged={refresh} />}
           {phase === "dedup" && <DedupPanel slug={tournament.slug} onChanged={refresh} />}
           {phase === "payments" && (

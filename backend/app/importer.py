@@ -20,6 +20,7 @@ from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app import rownumbers
 from app.llm import get_model, llm_configured
 from app.models import (
     ExtraCategory,
@@ -277,6 +278,10 @@ def import_table(
         )
         session.add(row)
         imported.append(row)
+
+    # in file order, and only for keys not already numbered: a re-upload of an
+    # unchanged row keeps its fingerprint, so it keeps its number
+    rownumbers.allocate(session, tournament, [f"imp:{row.key}" for row in imported])
 
     undecided = [
         row for row in imported if get_decision(session, tournament, "parse", row.key) is None

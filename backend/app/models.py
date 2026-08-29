@@ -869,6 +869,28 @@ class ImportDecision(Base):
     )
 
 
+class SheetRowNumber(Base):
+    """The fixed number a row carries in one tournament's fencer table.
+
+    Keyed by the sheet row id ("reg:<id>" or "imp:<fingerprint>"), which is
+    stable across reruns and re-uploads, so an unchanged imported row keeps its
+    number with no special case. Allocated once, when the row enters the
+    tournament, and never reissued: the number of a row deleted or merged away
+    stays retired (spec etl-console, Fixed fencer number).
+    """
+
+    __tablename__ = "sheet_row_numbers"
+    __table_args__ = (
+        UniqueConstraint("tournament_id", "row_id"),
+        UniqueConstraint("tournament_id", "number"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    tournament_id: Mapped[int] = mapped_column(ForeignKey("tournaments.id"))
+    row_id: Mapped[str] = mapped_column(String(50))
+    number: Mapped[int]
+
+
 class RegistrationDiscipline(Base):
     """A registration's entry into one discipline; substitutes queue by registration time."""
 

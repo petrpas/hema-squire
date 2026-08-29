@@ -135,8 +135,8 @@
   },
   "phase": {
     "setup": "Nastavení",
-    "load": "Načtení",
-    "parsing": "Parsování",
+    "import": "Import",
+    "fencers": "Šermíři",
     "matching": "Párování na HR",
     "dedup": "Deduplikace",
     "payments": "Platby",
@@ -146,6 +146,7 @@
   },
   "console": {
     "title": "Registrovaní šermíři",
+    "titleImport": "Nahraná tabulka",
     "refresh": "obnovit",
     "error": "Data se nepodařilo načíst. Jsi organizátorem tohoto turnaje?",
     "footerStats": "{{rows}} registrací · {{paid}} zaplaceno",
@@ -156,6 +157,13 @@
       "body": "opuštěním nastavení teď se neuložené změny na této záložce zahodí.",
       "confirm": "zahodit a odejít"
     }
+  },
+  "row": {
+    "absorbed": "Sloučeno do tohoto řádku"
+  },
+  "marker": {
+    "note": "Poznámka",
+    "problem": "Problém parsování"
   },
   "column": {
     "name": "Jméno",

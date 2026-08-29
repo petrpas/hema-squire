@@ -16,7 +16,7 @@ from fastapi import HTTPException
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
-from app import taxonomy
+from app import rownumbers, taxonomy
 from app.constraints import DEFAULT_TIMEZONE
 from app.models import (
     BankTransaction,
@@ -30,6 +30,7 @@ from app.models import (
     RegistrationDiscipline,
     RegistrationExtra,
     Rule,
+    SheetRowNumber,
     Team,
     TeamMember,
     Tournament,
@@ -37,7 +38,7 @@ from app.models import (
 )
 from app.routers.tournaments import _lowest_free_series
 
-SCHEMA_VERSION = 8
+SCHEMA_VERSION = 9
 
 _TOURNAMENT_FIELDS = [
     "slug", "display_name", "date", "language",
@@ -144,6 +145,12 @@ def export_tournament(session: Session, tournament: Tournament) -> dict:
         .order_by(Rule.id)
     ).all()
 
+    row_numbers = session.scalars(
+        select(SheetRowNumber)
+        .where(SheetRowNumber.tournament_id == tournament.id)
+        .order_by(SheetRowNumber.number)
+    ).all()
+
     fencers = {r.fencer.email: r.fencer for r in registrations}
     reg_by_id = {r.id: r for r in registrations}
 
@@ -238,6 +245,11 @@ def export_tournament(session: Session, tournament: Tournament) -> dict:
         "decisions": [
             _record(d, ["kind", "key", "payload", "source"]) for d in decisions
         ],
+        # the fixed numbers, so a restored tournament keeps the numbers its
+        # fencers were given rather than renumbering everyone (v9)
+        "row_numbers": [
+            {"row_id": n.row_id, "number": n.number} for n in row_numbers
+        ],
         "rules": [
             {
                 **_record(r, ["phase", "kind", "target", "payload", "created_at"]),
@@ -262,7 +274,7 @@ def _parse_time(value: str | None) -> datetime.time | None:
 
 def restore_tournament(session: Session, data: dict, actor: Fencer) -> Tournament:
     version = data.get("schema_version")
-    if version not in (1, 2, 3, 4, 5, 6, 7, SCHEMA_VERSION):
+    if version not in (1, 2, 3, 4, 5, 6, 7, 8, SCHEMA_VERSION):
         raise HTTPException(status_code=422, detail="unsupported_schema_version")
     doc = dict(data["tournament"])
     if version == 1:
@@ -455,6 +467,26 @@ def restore_tournament(session: Session, data: dict, actor: Fencer) -> Tournamen
             session.add(
                 ImportedRow(batch_id=batch.id, tournament_id=tournament.id, **row)
             )
+    session.flush()
+
+    if "row_numbers" in data:
+        # registration ids are remapped on restore, so their row ids are
+        # rewritten the way rules over them are; imported keys are content
+        # fingerprints and carry over as they stand
+        pairs = []
+        for entry in data["row_numbers"]:
+            row_id = entry["row_id"]
+            if row_id.startswith("reg:"):
+                ref = int(row_id.removeprefix("reg:"))
+                if ref not in reg_map:
+                    continue  # a number for a registration this document omits
+                row_id = f"reg:{reg_map[ref].id}"
+            pairs.append((row_id, entry["number"]))
+        rownumbers.restore(session, tournament, pairs)
+    else:
+        # a document written before numbers existed: allocate in the order the
+        # rows would have arrived in
+        rownumbers.allocate(session, tournament, rownumbers.arrival_order(session, tournament))
 
     for entry in data.get("decisions", []):
         session.add(ImportDecision(tournament_id=tournament.id, **entry))

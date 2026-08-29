@@ -2,15 +2,26 @@
 
 Row ids are stable references: in-app registrations are "reg:<id>", imported
 rows are "imp:<fingerprint>" (stable across re-uploads of unchanged rows).
-Phase views (task 4.3) select columns over this same projection.
+Phase views select columns over this same projection; the Import view selects
+the "imp:" rows of it.
+
+A row the rules removed carries "_removed_in", the phase of the rule that
+deleted or absorbed it. It is a replay product, not a base field: this module
+never writes it, and it lives exactly as long as its causing rule.
+
+The projection is returned in the order the fencer list displays: by
+registration moment across both populations together, rows without a readable
+moment last (spec etl-console, Order of the fencer list). Each row carries the
+fixed number allocated to it, or None where none has been.
 """
 
+import datetime
 from collections import defaultdict
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
-from app import hr_match, importer, taxonomy
+from app import hr_match, importer, rownumbers, setup, taxonomy
 from app.models import (
     ExtraCategory,
     ImportedRow,
@@ -42,6 +53,43 @@ def _extras_summary(registration: Registration) -> tuple[list[str], bool, list[s
         else:
             other.append(label)
     return rentals, afterparty, other
+
+
+def _wall_clock(value: object, zone: datetime.tzinfo) -> str | None:
+    """A registration moment as the wall clock the table shows it as, in a form
+    two rows can be compared by.
+
+    An in-app registration states an instant with a zone and is read in the
+    tournament's own; an imported row states whatever clock its file did and is
+    shown unshifted (spec etl-console, Registration moment in the fencer table).
+    Comparing them raw would rank the two kinds against different frames. A
+    moment the parser produced that does not read as one is treated as absent —
+    it sorts with the rows that state none, rather than somewhere arbitrary.
+    """
+    if not isinstance(value, str) or not value:
+        return None
+    try:
+        moment = datetime.datetime.fromisoformat(value)
+    except ValueError:
+        return None
+    if moment.tzinfo is not None:
+        moment = moment.astimezone(zone).replace(tzinfo=None)
+    return moment.isoformat()
+
+
+def _display_order(rows: dict[str, Row], zone: datetime.tzinfo) -> dict[str, Row]:
+    """Both populations interleaved by registration moment, earliest first;
+    rows stating none after them, in the order they were numbered — which for
+    an imported batch is the order of its file."""
+
+    def key(row: Row) -> tuple:
+        moment = _wall_clock(row.get("registered_at"), zone)
+        number = row.get("number")
+        # an unnumbered row cannot jump ahead of numbered ones on the tiebreak
+        rank = number if number is not None else float("inf")
+        return (moment is None, moment or "", rank, row["id"])
+
+    return {row["id"]: row for row in sorted(rows.values(), key=key)}
 
 
 def base_rows(session: Session, tournament: Tournament) -> dict[str, Row]:
@@ -98,7 +146,12 @@ def base_rows(session: Session, tournament: Tournament) -> dict[str, Row]:
             "_deleted": False,
         }
     rows.update(_imported_rows(session, tournament))
-    return rows
+    numbers = rownumbers.numbers_for(session, tournament)
+    for row_id, row in rows.items():
+        # None rather than a positional fallback: a visible gap beats a number
+        # that lies (design, Allocation happens where a row is born)
+        row["number"] = numbers.get(row_id)
+    return _display_order(rows, setup.zone_for(tournament))
 
 
 def _resolve_discipline_slugs(tournament: Tournament, entries: list) -> tuple[list[str], list[str]]:

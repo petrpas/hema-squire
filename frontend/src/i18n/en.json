@@ -135,8 +135,8 @@
   },
   "phase": {
     "setup": "Setup",
-    "load": "Load",
-    "parsing": "Parsing",
+    "import": "Import",
+    "fencers": "Fencers",
     "matching": "Matching on HR",
     "dedup": "Deduplication",
     "payments": "Payments",
@@ -146,6 +146,7 @@
   },
   "console": {
     "title": "Registered fencers",
+    "titleImport": "Imported table",
     "refresh": "refresh",
     "error": "Could not load data. Are you an organizer of this tournament?",
     "footerStats": "{{rows}} registered · {{paid}} paid",
@@ -156,6 +157,13 @@
       "body": "leaving setup now will discard the unsaved changes on this tab.",
       "confirm": "discard and leave"
     }
+  },
+  "row": {
+    "absorbed": "Merged into this row"
+  },
+  "marker": {
+    "note": "Note",
+    "problem": "Parse problem"
   },
   "column": {
     "name": "Name",

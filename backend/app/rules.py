@@ -169,6 +169,27 @@ def active_rules(session: Session, tournament: Tournament, kind: str | None = No
     return list(session.scalars(query))
 
 
+def _mark_removal(row: Row, phase: str, field: str, after: Any) -> None:
+    """Record on a row which phase took it out of the table, reading the change
+    a handler just made.
+
+    A deletion and a merge both remove a row, and either can be undone, so the
+    phase is derived afresh on every replay rather than stored: it lives exactly
+    as long as the rule that caused it (spec edit-rules, A removed row states
+    where it was removed). The console needs it to tell a deletion made on
+    Payments from one made on Import, since a phase lists the rows the phases
+    before it have not yet removed.
+    """
+    if field == "_deleted":
+        if after is True:
+            row["_removed_in"] = phase
+        else:
+            row.pop("_removed_in", None)
+    elif field == "_merged_into":
+        # a merge reports where the row went, never that it deleted it
+        row["_removed_in"] = phase
+
+
 def replay(base: dict[str, Row], rules: list[Rule]) -> tuple[dict[str, Row], list[AppliedChange]]:
     """Pure function: identical inputs produce identical state and audit."""
     rows = copy.deepcopy(base)
@@ -178,6 +199,7 @@ def replay(base: dict[str, Row], rules: list[Rule]) -> tuple[dict[str, Row], lis
             continue  # target vanished from source data; rule is inert, not an error
         handler = HANDLERS[rule.kind]
         for target, field, before, after in handler(rows, rule.target, rule.payload):
+            _mark_removal(rows[target], rule.phase, field, after)
             audit.append(
                 AppliedChange(
                     rule_id=rule.id,

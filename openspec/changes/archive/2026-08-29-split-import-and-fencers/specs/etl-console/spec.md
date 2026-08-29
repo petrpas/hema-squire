@@ -1,16 +1,11 @@
-# etl-console Specification
-
-## Purpose
-Provide the organizer console: a phase-tabbed fencer table with per-row status, HR matching review, deterministic reruns, operation parameters, and reversible row deletion.
-
-## Requirements
+## MODIFIED Requirements
 
 ### Requirement: Phase-tabbed fencer table
 The organizer console SHALL present phase tabs in the fixed order Setup, Import, Fencers, Matching on HR, Deduplication, Payments, Export, Teams, Queue. Every tab, including Setup, SHALL be clickable from every other tab. Selecting a phase tab SHALL change the console's URL to that phase and push a browser history entry, so that Back returns to the previously open phase and a reload reopens the phase on display. The Setup tab (step 0) SHALL present the tournament configuration — identity fields, titular organizers, disciplines, registration window, pricing, and the completeness checklist — instead of a fencer table. Teams and Queue SHALL likewise replace the fencer table with their own views, as fixed by `team-disciplines` and `seating-queue`.
 
 **The Import tab SHALL show imported rows alone.** In-app registrations SHALL NOT appear there, whatever their state.
 
-**The Fencers tab and every processing tab after it SHALL show one and the same set of fencers** — every fencer the tournament knows, from in-app registration and from import together — as that set stands at the moment of viewing, minus the rows a removal earlier in the phase order has already taken out of it (Reversible row deletion). A phase tab SHALL NOT present a state frozen as of some earlier operation; what distinguishes one from another is the columns it shows, the parameter panel of the operation it runs (general rules), the log of manual edits belonging to that phase, and the removals it stands after. A phase whose operation has already run and one whose operation has not therefore differ in what the rows say, never in which fencers are listed.
+**The Fencers tab and every processing tab after it SHALL show one and the same set of rows** — every fencer the tournament knows, from in-app registration and from import together — as that set stands at the moment of viewing. A phase tab SHALL NOT present a state frozen as of some earlier operation; what distinguishes one from another is the columns it shows, the parameter panel of the operation it runs (general rules), and the log of manual edits belonging to that phase. A phase whose operation has already run and one whose operation has not therefore differ in what the rows say, never in which rows are listed.
 
 Which phases are offered SHALL follow the tournament's features, as fixed by `tournament-modes`. The Payments phase SHALL be offered only while the payments feature is on, and the Teams phase only while the team disciplines feature is on. The remaining phases SHALL always be offered, since they are what every tournament is made of. Whichever phases are offered SHALL keep the fixed order above; the mode removes phases, it never reorders them.
 
@@ -27,10 +22,6 @@ A phase the mode does not offer SHALL NOT be reachable by its URL either. Addres
 #### Scenario: Fencers shows both populations
 - **WHEN** the same organizer opens Fencers
 - **THEN** all fifteen rows are listed together
-
-#### Scenario: A phase after a deletion lists fewer rows
-- **WHEN** the organizer deletes one of those fifteen rows on Fencers and then opens Payments
-- **THEN** fourteen rows are listed there, and Fencers still lists fifteen
 
 #### Scenario: Duplicates stand until deduplication
 - **WHEN** one fencer is present once as an in-app registration and twice in the imported batch, and deduplication has not yet run
@@ -113,112 +104,6 @@ The two populations SHALL coexist in one table without being separated: a phase 
 - **WHEN** a fencer registers in the application while an imported batch is present
 - **THEN** their row joins the fencer list and the Import view is unchanged
 
-### Requirement: HR matching review
-The Matching phase SHALL show HR columns (HRID, HR_Name, HR_Nat, HR_Club) and a per-row match verdict: confirmed (✓), uncertain (?), or no match (✗). The organizer SHALL resolve ? and ✗ rows by accepting a candidate, searching and selecting a profile, or marking the fencer as having no HR profile. Each resolution SHALL persist as a rule.
-
-#### Scenario: Resolving an uncertain match
-- **WHEN** the organizer confirms the suggested profile on a row marked ?
-- **THEN** the row becomes ✓, the hr_id is bound, and the decision survives future reruns
-
-### Requirement: Rerun
-The organizer SHALL be able to rerun processing at any time. A rerun SHALL recompute the table deterministically from source records, the persisted rule set, and current operation parameters. Previously materialized LLM decisions SHALL NOT be re-invoked; only rows without decisions may trigger LLM processing.
-
-#### Scenario: Rerun after new import
-- **WHEN** the organizer imports additional rows and reruns
-- **THEN** existing rows keep their decisions and edits, and only the new rows are processed
-
-### Requirement: Operation parameters
-An operation whose behaviour the organizer tunes SHALL expose its own parameters in the phase that runs it — the matching similarity threshold in the matching phase, the amount-matching tolerance in the payments phase. Parameter changes SHALL be audited and take effect on the next rerun.
-
-A phase panel SHALL carry only parameters of the operation that phase runs. **Configuration of the tournament itself SHALL NOT be offered in any phase panel**: what the tournament costs, when it happens, and how fencers pay are decisions taken in Setup before publication, and offering them in a phase panel puts a second editor on a field Setup is responsible for. A phase that has no parameters of its own SHALL show no parameter panel rather than an empty one.
-
-#### Scenario: Threshold change
-- **WHEN** the organizer lowers the matching similarity threshold and reruns
-- **THEN** undecided rows are re-evaluated under the new threshold while resolved rows keep their rules
-
-#### Scenario: Tolerance belongs to the payments phase
-- **WHEN** the organizer opens the payments phase during reconciliation
-- **THEN** the amount-matching tolerance is offered there and takes effect on the next rerun
-
-#### Scenario: No tournament configuration in a phase panel
-- **WHEN** the organizer looks for the payment mode, the deposit, a tournament date, or a price in any console phase panel
-- **THEN** none is offered, and Setup is the only place each can be edited
-
-#### Scenario: A phase with no parameters shows no panel
-- **WHEN** the organizer opens a phase whose operation has no tunable parameters
-- **THEN** no parameter panel is shown for it
-
-### Requirement: Reversible row deletion
-Deleting a row SHALL be a manual, reversible operation: the row is excluded from active views and exports but remains restorable. Both deletion and restoration SHALL persist as rules.
-
-A deleted row SHALL be listed on the phase whose deletion removed it and on every phase before that one in the fixed phase order, marked as deleted; the phases after it SHALL NOT list the row at all. The deletion is a decision taken at one step, and the steps that follow stand after it.
-
-The offer to restore a row SHALL be made wherever the row is listed and nowhere else, so that a row can always be brought back from the phase that removed it. Removing the deletion from that phase's manual-edits log SHALL restore the row equally.
-
-A row a merge absorbed SHALL NOT be listed on any phase but Import, whatever phase the merge was decided on: a merge states that two rows are one fencer, which is true of every phase, and it is undone by withdrawing the merge rather than by restoring the row.
-
-Whether a row is listed SHALL NOT change what the sheet holds: a hidden row remains in the projection, in the audit, and in the manual-edits log that names it.
-
-#### Scenario: Delete and restore
-- **WHEN** the organizer deletes a withdrawn fencer's row and later restores it
-- **THEN** the row disappears from views and exports, then returns with its full history intact
-
-#### Scenario: Gone from the phases that follow
-- **WHEN** the organizer deletes a row on Fencers and moves through Matching on HR, Deduplication, Payments and Export
-- **THEN** none of those tables lists the row
-
-#### Scenario: Still there where it was deleted
-- **WHEN** the organizer returns to Fencers after deleting a row there
-- **THEN** the row is listed, struck through, and offers to be restored
-
-#### Scenario: A late deletion leaves the earlier phases alone
-- **WHEN** the organizer deletes a row on Payments and then opens Fencers
-- **THEN** the row is listed there, struck through, and can be restored from there
-
-#### Scenario: Restoring returns it to every phase
-- **WHEN** the organizer restores a row deleted on Fencers
-- **THEN** every phase lists it again, unmarked
-
-#### Scenario: The edits log still names a hidden row
-- **WHEN** an entry of the Fencers log names a row deleted on Import
-- **THEN** the entry still names that row by its fixed number and the fencer's name, though no table on Fencers lists it
-
-#### Scenario: An absorbed row is not listed again
-- **WHEN** deduplication merges an imported row into an in-app registration and the organizer opens Fencers
-- **THEN** the absorbed row is not listed there, and the Import view still shows it marked as absorbed
-
-### Requirement: Registration moment in the fencer table
-The console's fencer table SHALL state each row's registration moment as a day
-and a clock time together, never as a day alone. The clock SHALL be shown on
-the 24-hour scale to the minute; seconds SHALL NOT be shown.
-
-The moment SHALL be read in the tournament's own zone — the same zone every
-other date and time on that tournament's timeline is read in — so that two
-organizers in different places read one registration as the same instant. A
-registration moment that carries no zone of its own, as an imported row's does,
-SHALL be shown as the wall clock it states, unshifted; it SHALL NOT be
-reinterpreted as an instant in the reader's zone or the tournament's.
-
-A row with no registration moment SHALL keep the em dash the table uses for an
-absent value. The column SHALL be set in tabular numerals so the moments align
-down the column.
-
-#### Scenario: Registration moment carries a zone
-- **WHEN** a registration recorded at 15:32 in the tournament's zone is shown in the fencer table
-- **THEN** its cell states that day and `15:32`, whatever zone the organizer's browser sits in
-
-#### Scenario: Two registrations on one day
-- **WHEN** two fencers registered on the same day, one in the morning and one in the evening
-- **THEN** their cells differ by their clock times, and the order the table is sorted in is visible in the column
-
-#### Scenario: Imported row states a bare local time
-- **WHEN** an imported row's registration time arrives as a date and time without a zone or offset
-- **THEN** its cell states that same date and time, shifted by no zone conversion
-
-#### Scenario: Row without a registration moment
-- **WHEN** a row carries no registration moment
-- **THEN** its cell shows the em dash, not a fallback date or an empty cell
-
 ### Requirement: Readable manual-edits log
 Every entry in the manual-edits log SHALL be readable without knowledge of the
 system's internals. An entry SHALL identify its row the way the table names that
@@ -250,6 +135,8 @@ the table renders them, with an empty value shown as a dash.
 #### Scenario: Both languages
 - **WHEN** the console is read in Czech
 - **THEN** every part of an entry — field labels, the deletion and merge sentences, and rendered values — is Czech
+
+## ADDED Requirements
 
 ### Requirement: Fixed fencer number
 Every row of the fencer list SHALL carry a number that identifies the fencer within the tournament. The number SHALL be allocated once, when the row first enters the tournament, and SHALL NOT change afterwards for any reason: not when the table is sorted, not when an earlier row is deleted or restored, not when a duplicate is merged away, and not when a further import arrives.

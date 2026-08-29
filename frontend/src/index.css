@@ -759,6 +759,72 @@ button.secondary:disabled {
   width: 1px;
 }
 
+/* A note or a parse problem: a marker only where there is one, and its text
+   disclosed in a bordered panel — no shadow, nothing that animates in. The
+   column is as narrow as the marker, since most rows show nothing in it. */
+.col-marker {
+  width: 2.5rem;
+  text-align: center;
+}
+
+.note-marker {
+  position: relative;
+  display: inline-block;
+}
+
+.note-marker-button {
+  padding: 0 2px;
+  border: none;
+  background: transparent;
+  color: var(--ink-faded);
+  font: 12px/1 var(--font-data);
+  cursor: pointer;
+}
+
+.note-marker-button:hover,
+.note-marker-button[aria-expanded="true"] {
+  color: var(--ink);
+}
+
+.note-marker-problem {
+  color: var(--stamp);
+}
+
+.note-marker-problem:hover,
+.note-marker-problem[aria-expanded="true"] {
+  color: var(--stamp-hover);
+}
+
+/* Opens leftward from the marker: the marker columns sit at the right edge of
+   the sheet, which scrolls, so a panel anchored to the marker's left edge is
+   cut off mid-sentence by the container rather than merely overhanging it. */
+.note-marker-panel {
+  position: absolute;
+  z-index: 5;
+  top: calc(100% + 0.3rem);
+  right: 0;
+  display: block;
+  width: max-content;
+  max-width: 22rem;
+  padding: 0.5rem 0.6rem;
+  background: var(--paper-raised);
+  border: 1px solid var(--ink);
+  border-radius: var(--radius);
+  color: var(--ink);
+  font: 12px/1.45 var(--font-ui);
+  text-align: left;
+  white-space: normal;
+}
+
+.note-marker-label {
+  display: block;
+  margin-bottom: 0.2rem;
+  color: var(--ink-faded);
+  font-size: var(--label-size);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+
 .sheet-table thead th.col-phase {
   background: var(--file-blue);
   color: var(--file-blue-ink);
@@ -1214,6 +1280,18 @@ button.secondary:disabled {
 tr.row-deleted td {
   opacity: 0.5;
   text-decoration: line-through;
+}
+
+/* Where an absorbed row went, said in the number column beside its own
+   number. Not struck out with the rest of the row: it is the one thing on the
+   row that is still true. */
+.row-absorbed {
+  text-decoration: none;
+  display: inline;
+}
+
+tr.row-deleted td .row-absorbed {
+  opacity: 1;
 }
 
 tr.row-deleted td.col-actions {
