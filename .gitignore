@@ -229,6 +229,8 @@ node_modules/
 # WAL mode (apply_sqlite_pragmas) leaves these beside the database file
 *.sqlite-wal
 *.sqlite-shm
+# scripts/reset_local_db.py — carries password hashes, never commit one
+*.reset-dump.json
 outbox/
 
 # Keys and key archives — the deploy key belongs in the password manager, never
