@@ -898,5 +898,28 @@
       "unknown_rentals": "tuto věc turnaj nepůjčuje.",
       "failed": "zadání nebylo přijato."
     }
+  },
+  "operation": {
+    "kind": {
+      "parse": "zpracování tabulky",
+      "match": "párování",
+      "dedup": "slučování duplicit"
+    },
+    "label": {
+      "parse": "zpracování",
+      "match": "párování",
+      "dedup": "slučování"
+    },
+    "progress_one": "{{done}} z {{count}} řádku",
+    "progress_few": "{{done}} ze {{count}} řádků",
+    "progress_other": "{{done}} z {{count}} řádků",
+    "questions_one": "{{done}} z {{count}} dotazu",
+    "questions_few": "{{done}} ze {{count}} dotazů",
+    "questions_other": "{{done}} z {{count}} dotazů",
+    "started": "začalo v {{time}}",
+    "busy": "čeká se, až doběhne {{kind}}.",
+    "failed": "{{kind}} skončilo dřív, než mělo: {{error}}",
+    "interrupted": "{{kind}} se zastavilo v půli, u {{done}} z {{total}}. dalším spuštěním se dokončí.",
+    "done": "hotovo"
   }
 }

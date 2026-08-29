@@ -15,6 +15,7 @@ from sqlalchemy import (
     DateTime,
     Enum,
     ForeignKey,
+    Index,
     LargeBinary,
     Numeric,
     String,
@@ -122,6 +123,29 @@ class ExtraCategory(enum.StrEnum):
 ACTION_CATEGORIES = frozenset(
     {ExtraCategory.SEMINAR, ExtraCategory.AFTERPARTY, ExtraCategory.OTHER_ACTION}
 )
+
+
+class OperationKind(enum.StrEnum):
+    """The kinds of console work that run as a recorded operation. Each is a
+    run of one LLM-backed step of the ETL console; the HR index refresh is not
+    among them, being a property of the deployment rather than of a
+    tournament."""
+
+    PARSE = "parse"
+    MATCH = "match"
+    DEDUP = "dedup"
+
+
+class OperationStatus(enum.StrEnum):
+    """DONE and FAILED are how work ends of its own accord. INTERRUPTED is how
+    it ends when the process running it did not survive: the startup sweep
+    writes it, and it is not an error — the work stopped partway and running it
+    again finishes it (design D5)."""
+
+    RUNNING = "running"
+    DONE = "done"
+    FAILED = "failed"
+    INTERRUPTED = "interrupted"
 
 
 def str_enum(enum_cls: type[enum.StrEnum]) -> Enum:
@@ -990,3 +1014,43 @@ class TeamMember(Base):
     nationality: Mapped[str | None] = mapped_column(String(100))
 
     team: Mapped[Team] = relationship(back_populates="members")
+
+
+class Operation(Base):
+    """One run of a long console operation, recorded so that it can be watched.
+
+    The console's report on running work comes from this row and from nothing
+    else — not from the response of the request that started it, which returns
+    long before the work does (spec console-operations, An operation is a
+    record, not a request). That is what lets a reload, a second tab, and a
+    second organizer all see the same thing.
+
+    `done` is a count of finished units, never a position in a sequence, so it
+    stays correct however units are ordered (design D6). `total` counts the work
+    the run will actually do: rows whose decision is already stored are reused,
+    not worked on, and are not counted.
+
+    `outcome` holds what the endpoint used to return synchronously, so the
+    panels render the same shape they always did.
+    """
+
+    __tablename__ = "operations"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    tournament_id: Mapped[int] = mapped_column(ForeignKey("tournaments.id"))
+    kind: Mapped[OperationKind] = mapped_column(str_enum(OperationKind))
+    status: Mapped[OperationStatus] = mapped_column(
+        str_enum(OperationStatus), default=OperationStatus.RUNNING
+    )
+    total: Mapped[int] = mapped_column(default=0)
+    done: Mapped[int] = mapped_column(default=0)
+    started_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+    # NULL is the running predicate, indexed with the tournament: every poll
+    # asks "what is unconcluded here", and the startup sweep asks it globally
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    started_by: Mapped[int] = mapped_column(ForeignKey("fencers.id"))
+    outcome: Mapped[dict] = mapped_column(JSON, default=dict)
+
+    __table_args__ = (Index("ix_operations_tournament_finished", "tournament_id", "finished_at"),)

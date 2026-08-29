@@ -3,6 +3,8 @@ validation that guards the way in (spec etl-console, Manual entry of a fencer)."
 
 import io
 
+from conftest import outcome
+
 from app.dedup import MergeProposal, ThreeBands, default_merge, get_dedup_llm
 from app.importer import ParsedFencer, get_import_parser
 from app.main import app
@@ -12,7 +14,7 @@ ENTRY = {"name": "Hand Entered", "disciplines": ["LS"], "nationality": "CZ"}
 
 
 class NameParser:
-    def parse(self, rows, disciplines, rentals):
+    def parse_batch(self, rows, disciplines, rentals):
         return [
             ParsedFencer(
                 registration_time=raw.get("When") or "2026-05-01T10:00:00",
@@ -189,9 +191,9 @@ def test_manual_row_reaches_deduplication(client, auth_headers):
     enter(client, organizer, hr_id=1234)
     app.dependency_overrides[get_dedup_llm] = lambda: FakeDedupLLM()
 
-    assert client.post("/api/tournaments/cup/import/dedup", headers=organizer).json()[
-        "proposals"
-    ] == 1
+    response = client.post("/api/tournaments/cup/import/dedup", headers=organizer)
+    assert response.status_code == 202, response.text
+    assert outcome(client, organizer, kind="dedup")["proposals"] == 1
 
     queue = client.get("/api/tournaments/cup/import/dedup/queue", headers=organizer).json()
     ids = {row["id"] for item in queue for row in item["rows"]}

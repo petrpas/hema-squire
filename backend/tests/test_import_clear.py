@@ -17,7 +17,7 @@ from app.models import (
     RuleJournalEntry,
     SheetRowNumber,
 )
-from tests.conftest import publish
+from tests.conftest import outcome, publish
 
 CSV = "Name,Club\nAnna Import,Twerchhau\nBoris Import,Mordschlag\n"
 OTHER_CSV = "Name,Club\nCyril Import,Fechtschule\n"
@@ -26,7 +26,7 @@ OTHER_CSV = "Name,Club\nCyril Import,Fechtschule\n"
 class NameParser:
     """The row as the file states it, so a test can name its own rows."""
 
-    def parse(self, rows, disciplines, rentals):
+    def parse_batch(self, rows, disciplines, rentals):
         return [
             ParsedFencer(
                 registration_time="2026-04-01T14:15:27",
@@ -279,7 +279,8 @@ def test_re_import_after_a_clear_starts_clean(client, auth_headers):
     )
 
     clear(client, organizer)
-    result = upload(client, organizer).json()
+    assert upload(client, organizer).status_code == 202
+    result = outcome(client, organizer)
 
     assert result["parsed"] == 2
     assert result["reused"] == 0
@@ -304,3 +305,29 @@ def test_clearing_releases_the_cleared_numbers(client, auth_headers):
 
     upload(client, organizer, content=OTHER_CSV, filename="more.csv")
     assert sorted(row["number"] for row in sheet_rows(client, organizer)) == [1, 2]
+
+
+def test_clearing_releases_numbers_the_survivors_sit_above(client, auth_headers):
+    """The release has to mean something when what survives holds the higher
+    numbers, which is the ordinary case: an organizer imports a table, adds a
+    fencer by hand afterwards, then clears and imports the corrected file.
+
+    Counting on from the highest ever allocated would number the new import
+    from 4 here and leave 1-2 permanently empty (spec table-import, Clearing
+    releases the cleared numbers)."""
+    organizer = auth_headers()
+    setup(client, organizer)
+    upload(client, organizer)  # two imported rows: 1 and 2
+    client.post(
+        "/api/tournaments/cup/manual-rows",
+        json={"name": "Hand Entered", "disciplines": ["LS"], "nationality": "CZ"},
+        headers=organizer,
+    )
+    assert sorted(row["number"] for row in sheet_rows(client, organizer)) == [1, 2, 3]
+
+    clear(client, organizer)
+    # the hand-entered row keeps its number: it is not the clear's to renumber
+    assert [row["number"] for row in sheet_rows(client, organizer)] == [3]
+
+    upload(client, organizer, content=CSV)
+    assert sorted(row["number"] for row in sheet_rows(client, organizer)) == [1, 2, 3]

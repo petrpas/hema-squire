@@ -8,6 +8,7 @@ match_resolution rules and always win over the cached LLM proposal.
 
 import hashlib
 import json
+from collections.abc import Callable
 from typing import TYPE_CHECKING, Protocol
 
 from pydantic import BaseModel
@@ -148,19 +149,10 @@ def candidate_profiles(index: HRIndex, fencers: list[dict]) -> list[HRProfile]:
     return list(profiles.values())
 
 
-def run_matching(
-    session: Session,
-    tournament: Tournament,
-    matcher: HRMatcher,
-    index: HRIndex,
-    rows: list[dict],
-) -> dict:
-    """Match every imported row without an hr_id and without a cached verdict.
-
-    `rows` are replayed sheet rows (imp:* only) — replay first means organizer
-    edits and confirmed resolutions are respected, not re-litigated.
-    """
-    pending = [
+def _pending_rows(session: Session, tournament: Tournament, rows: list[dict]) -> list[dict]:
+    """The rows this run will actually ask about: no hr_id, not removed, no
+    verdict already settled, and no cached decision for their identity."""
+    return [
         row
         for row in rows
         if row.get("hr_id") is None
@@ -172,6 +164,32 @@ def run_matching(
         is None
         and row.get("name")
     ]
+
+
+def pending_count(session: Session, tournament: Tournament, rows: list[dict]) -> int:
+    """What an operation's total counts — rows to be asked about, not rows on
+    the sheet (spec console-operations, Reused rows are not work)."""
+    return len(_pending_rows(session, tournament, rows))
+
+
+def run_matching(
+    session: Session,
+    tournament: Tournament,
+    matcher: HRMatcher,
+    index: HRIndex,
+    rows: list[dict],
+    progress: Callable[[Session, int], None] | None = None,
+) -> dict:
+    """Match every imported row without an hr_id and without a cached verdict.
+
+    `rows` are replayed sheet rows (imp:* only) — replay first means organizer
+    edits and confirmed resolutions are respected, not re-litigated.
+
+    `progress` commits, and is where the operation's count is raised — the
+    decision and the count of it travel together (design D4).
+    """
+    commit = progress or (lambda session, _units: session.commit())
+    pending = _pending_rows(session, tournament, rows)
     if not pending:
         return {"matched": 0, "unmatched": 0, "reused": len(rows) - len(pending)}
 
@@ -201,7 +219,9 @@ def run_matching(
         store_decision(session, tournament, "hr_match", key, result.model_dump())
         if result.hr_id is not None:
             matched += len(same)
-    session.commit()
+        # the rows this identity stands for, so the count is in rows the
+        # organizer recognises rather than in questions asked
+        commit(session, len(same))
     return {
         "matched": matched,
         "unmatched": len(pending) - matched,

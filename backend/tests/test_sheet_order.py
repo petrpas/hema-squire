@@ -20,7 +20,7 @@ class TimeParser:
     """Passes each row's stated time through untouched, so the test decides
     what the parser produced — including what it could not read."""
 
-    def parse(self, rows, disciplines, rentals):
+    def parse_batch(self, rows, disciplines, rentals):
         return [
             ParsedFencer(
                 registration_time=raw["When"],
@@ -74,7 +74,7 @@ def test_populations_interleave_and_timeless_rows_sort_last(client, auth_headers
             files={"file": ("regs.csv", io.BytesIO(CSV.encode()), "text/csv")},
             headers=organizer,
         )
-        assert response.status_code == 200, response.text
+        assert response.status_code == 202, response.text
     finally:
         app.dependency_overrides.pop(get_import_parser, None)
 

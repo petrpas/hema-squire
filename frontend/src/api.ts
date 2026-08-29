@@ -801,7 +801,10 @@ export const api = {
         (nationality ? `&nationality=${encodeURIComponent(nationality)}` : ""),
     ),
   hrNationalities: () => request<string[]>("/api/hr/nationalities"),
-  importTable: async (slug: string, file: File): Promise<ImportResult> => {
+  /** Records the batch and returns; the parse runs as an operation behind it,
+   *  reported by `operations` (spec console-operations). A file whose rows are
+   *  all already parsed starts no operation and comes back with its outcome. */
+  importTable: async (slug: string, file: File): Promise<ImportStarted> => {
     const body = new FormData();
     body.append("file", file);
     const token = getToken();
@@ -810,7 +813,15 @@ export const api = {
       headers: token ? { Authorization: `Bearer ${token}` } : {},
       body,
     });
-    if (!response.ok) throw new ApiError(response.status, null);
+    if (!response.ok) {
+      let detail: unknown = null;
+      try {
+        detail = (await response.json()).detail;
+      } catch {
+        /* non-JSON error body */
+      }
+      throw new ApiError(response.status, detail);
+    }
     return response.json();
   },
   /** Hard, total and final: everything the tournament ever imported. The
@@ -826,15 +837,13 @@ export const api = {
       body: JSON.stringify(entry),
     }),
   runMatching: (slug: string) =>
-    request<{ matched: number; unmatched: number; reused: number }>(
-      `/api/tournaments/${slug}/import/match`,
-      { method: "POST" },
-    ),
+    request<OperationStarted>(`/api/tournaments/${slug}/import/match`, { method: "POST" }),
   runDedup: (slug: string) =>
-    request<{ proposals: number; auto_merged: number; likely: number }>(
-      `/api/tournaments/${slug}/import/dedup`,
-      { method: "POST" },
-    ),
+    request<OperationStarted>(`/api/tournaments/${slug}/import/dedup`, { method: "POST" }),
+  /** What the console polls: the tournament's running operation and the most
+   *  recent concluded one of each kind (design D7). */
+  operations: (slug: string) =>
+    request<OperationsReport>(`/api/tournaments/${slug}/operations`),
   dedupQueue: (slug: string) =>
     request<DedupItem[]>(`/api/tournaments/${slug}/import/dedup/queue`),
   dedupDecide: (slug: string, key: string, accept: boolean) =>
@@ -1017,6 +1026,42 @@ export interface ImportResult {
   problems: { row: number; problems: string }[];
   detail?: string;
 }
+
+/** The kinds of console work that run as an operation. */
+export const OPERATION_KINDS = ["parse", "match", "dedup"] as const;
+export type OperationKind = (typeof OPERATION_KINDS)[number];
+
+/** `interrupted` is not a failure: the process running the work did not
+ *  survive, what it committed stands, and running it again finishes it
+ *  (spec console-operations, Work interrupted by a restart). */
+export type OperationStatus = "running" | "done" | "failed" | "interrupted";
+
+export interface Operation {
+  id: number;
+  kind: OperationKind;
+  status: OperationStatus;
+  /** Units of work this run will do — never the size of what it was pointed
+   *  at, since rows already decided are reused rather than worked on. */
+  total: number;
+  done: number;
+  started_at: string;
+  finished_at: string | null;
+  /** For a concluded run, what it produced; for a failed one, `{ error }`. */
+  outcome: Record<string, unknown>;
+}
+
+export interface OperationsReport {
+  running: Operation | null;
+  concluded: Operation[];
+}
+
+export interface OperationStarted {
+  operation_id: number;
+}
+
+/** An upload either starts a parse or, when every row is already decided,
+ *  comes back with the outcome outright. */
+export type ImportStarted = (OperationStarted & { batch_id: number; rows: number }) | ImportResult;
 
 export interface ClearResult {
   rows: number;

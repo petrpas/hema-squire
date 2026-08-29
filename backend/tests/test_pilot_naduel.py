@@ -65,7 +65,7 @@ class ArchiveParser:
         self.parsed = parsed
         self.calls = 0
 
-    def parse(self, rows, disciplines, rentals):
+    def parse_batch(self, rows, disciplines, rentals):
         self.calls += 1
         assert len(rows) == len(self.parsed)
         records = []

@@ -98,6 +98,16 @@ HANDLERS: dict[str, Handler] = {
 }
 
 
+def _utc(moment: datetime) -> datetime:
+    """Stamp UTC on an instant SQLite handed back naive.
+
+    Every stored instant is UTC, but SQLite drops tzinfo on round-trip even for
+    a `DateTime(timezone=True)` column. Serialized without a zone, the console
+    reads the instant as its own local time and states the wrong hour on every
+    entry of the manual-edits log."""
+    return moment if moment.tzinfo is not None else moment.replace(tzinfo=UTC)
+
+
 @dataclass
 class AppliedChange:
     rule_id: int
@@ -209,7 +219,7 @@ def replay(base: dict[str, Row], rules: list[Rule]) -> tuple[dict[str, Row], lis
                     before=before,
                     after=after,
                     actor=rule.author.display_name,
-                    at=rule.created_at,
+                    at=_utc(rule.created_at),
                 )
             )
     return rows, audit

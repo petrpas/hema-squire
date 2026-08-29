@@ -2,17 +2,27 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { type ImportResult, type ImportStatus, api } from "./api";
+import { conclusionText, kindName } from "./operationText";
+import type { OperationsView } from "./useOperations";
+
+/** Whether an upload came back with its outcome rather than starting a parse —
+ *  the case where every row of the file is already decided. */
+function isOutcome(started: object): started is ImportResult {
+  return "parsed" in started;
+}
 
 export default function ImportPanel({
   slug,
+  operations,
   onImported,
 }: {
   slug: string;
+  operations: OperationsView;
   onImported: () => void;
 }) {
   const { t } = useTranslation();
   const inputRef = useRef<HTMLInputElement>(null);
-  const [busy, setBusy] = useState(false);
+  const [clearing, setClearing] = useState(false);
   const [result, setResult] = useState<ImportResult | null>(null);
   const [failed, setFailed] = useState(false);
   const [status, setStatus] = useState<ImportStatus | null>(null);
@@ -24,18 +34,31 @@ export default function ImportPanel({
 
   useEffect(refreshStatus, [refreshStatus]);
 
+  // What the panel reports comes from the tournament's record of the work, not
+  // from what this component did, so it survives a remount (spec etl-console,
+  // Report survives leaving the phase).
+  const running = operations.running;
+  const parse = operations.concluded.parse;
+  const busy = running !== null || clearing;
+  const outcome =
+    result ?? (parse?.status === "done" ? (parse.outcome as unknown as ImportResult) : null);
+
+  useEffect(refreshStatus, [refreshStatus, parse?.id]);
+
   async function upload(file: File) {
-    setBusy(true);
     setFailed(false);
+    setResult(null);
     try {
-      const outcome = await api.importTable(slug, file);
-      setResult(outcome);
+      const started = await api.importTable(slug, file);
+      // an all-reused upload never starts an operation; its outcome is the
+      // response itself
+      if (isOutcome(started)) setResult(started);
+      operations.refresh();
       refreshStatus();
       onImported();
     } catch {
       setFailed(true);
     } finally {
-      setBusy(false);
       if (inputRef.current) inputRef.current.value = "";
     }
   }
@@ -43,7 +66,7 @@ export default function ImportPanel({
   /** Hard and final: the tournament asserts it never imported anything (spec
    *  table-import, Clearing the tournament's imported content). */
   async function clear() {
-    setBusy(true);
+    setClearing(true);
     setFailed(false);
     try {
       await api.clearImports(slug);
@@ -54,13 +77,14 @@ export default function ImportPanel({
     } catch {
       setFailed(true);
     } finally {
-      setBusy(false);
+      setClearing(false);
     }
   }
 
   // nothing to clear is nothing to offer
   const imported = status?.total ?? { rows: 0, files: 0 };
   const hasImports = imported.files > 0;
+  const conclusion = parse ? conclusionText(t, parse) : null;
 
   return (
     <>
@@ -82,7 +106,7 @@ export default function ImportPanel({
           disabled={busy}
           onClick={() => inputRef.current?.click()}
         >
-          {busy ? t("common.loading") : t("import.upload")}
+          {running?.kind === "parse" ? t("common.loading") : t("import.upload")}
         </button>
         {hasImports && (
           <button
@@ -93,16 +117,22 @@ export default function ImportPanel({
             {t("import.clear")}
           </button>
         )}
+        {/* work of another phase blocks this one, and says which */}
+        {running !== null && running.kind !== "parse" && (
+          <p className="rail-hint">{t("operation.busy", { kind: kindName(t, running.kind) })}</p>
+        )}
         {failed && <p className="login-error">{t("import.failed")}</p>}
-        {result && (
+        {parse?.status === "failed" && <p className="login-error">{conclusion}</p>}
+        {parse?.status === "interrupted" && <p className="rail-hint">{conclusion}</p>}
+        {outcome && (
           <p className="rail-hint">
-            {result.detail === "llm_not_configured"
-              ? t("import.notConfigured", { rows: result.rows })
+            {outcome.detail === "llm_not_configured"
+              ? t("import.notConfigured", { rows: outcome.rows })
               : t("import.result", {
-                  rows: result.rows,
-                  parsed: result.parsed,
-                  reused: result.reused,
-                  problems: result.problems.length,
+                  rows: outcome.rows,
+                  parsed: outcome.parsed,
+                  reused: outcome.reused,
+                  problems: outcome.problems.length,
                 })}
           </p>
         )}

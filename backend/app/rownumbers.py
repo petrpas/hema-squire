@@ -1,12 +1,19 @@
 """Allocation of the fixed number a row carries in a tournament's table.
 
 A number is allocated once, when the row enters the tournament, and never
-changes or is reissued afterwards — not on a deletion, a merge, a re-upload, or
-a re-sort (spec etl-console, Fixed fencer number). Allocation happens where a
-row is born, never while the sheet is read, so `GET /sheet` stays a read.
+changes afterwards — not on a deletion, a merge, a re-upload, or a re-sort
+(spec etl-console, Fixed fencer number). Allocation happens where a row is
+born, never while the sheet is read, so `GET /sheet` stays a read.
+
+A number a row still holds is never given to another row. Deleting a row from
+the table does not release its number: the deletion is a rule, the row keeps
+its `SheetRowNumber`, and restoring it restores its number with it. Only a
+clear releases numbers, by deleting those rows outright — the tournament is
+asserting the rows never existed — and what it releases is available again
+(spec table-import, Clearing releases the cleared numbers).
 """
 
-from sqlalchemy import func, select
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models import SheetRowNumber, Tournament
@@ -29,22 +36,25 @@ def allocate(session: Session, tournament: Tournament, row_ids: list[str]) -> di
     if not wanted:
         return {row_id: existing[row_id] for row_id in row_ids if row_id in existing}
 
-    highest = session.scalar(
-        select(func.max(SheetRowNumber.number)).where(
-            SheetRowNumber.tournament_id == tournament.id
-        )
-    )
-    # counts up from the highest ever allocated, never from the count of rows
-    # now present, so a freed number is not handed to someone else
-    next_number = (highest or 0) + 1
+    # The lowest numbers nothing currently holds. Counting from the highest ever
+    # allocated instead would make a clear's release meaningless: a tournament
+    # that cleared fifty-five imported rows and kept two hand-entered ones would
+    # start its next import at fifty-eight, and the table would be numbered from
+    # fifty-six with nothing above the gap to explain it.
+    #
+    # This can only fill a hole a clear left, since nothing else deletes a
+    # `SheetRowNumber` — a deleted row keeps its number and can come back to it,
+    # so its number is never a hole to fill.
+    taken = set(existing.values())
+    candidate = 1
     for row_id in dict.fromkeys(wanted):
+        while candidate in taken:
+            candidate += 1
         session.add(
-            SheetRowNumber(
-                tournament_id=tournament.id, row_id=row_id, number=next_number
-            )
+            SheetRowNumber(tournament_id=tournament.id, row_id=row_id, number=candidate)
         )
-        existing[row_id] = next_number
-        next_number += 1
+        existing[row_id] = candidate
+        taken.add(candidate)
     session.flush()
     return {row_id: existing[row_id] for row_id in row_ids if row_id in existing}
 

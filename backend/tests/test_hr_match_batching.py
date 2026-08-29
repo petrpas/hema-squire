@@ -8,6 +8,7 @@ retries, and a 500 on /import/match.
 import io
 import json
 
+from conftest import settle
 from pydantic_ai.messages import ModelResponse, ToolCallPart
 from pydantic_ai.models.function import AgentInfo, FunctionModel
 
@@ -92,7 +93,7 @@ DUPLICATE_CSV = (
 
 
 class TwoRowParser(ImportParser):
-    def parse(self, rows, disciplines, rentals):
+    def parse_batch(self, rows, disciplines, rentals):
         return [
             ParsedFencer(
                 name=raw["Name"],
@@ -145,11 +146,15 @@ def test_identical_rows_are_one_question_and_both_count_as_matched(
         "/api/tournaments/cup/import",
         files={"file": ("regs.csv", io.BytesIO(DUPLICATE_CSV.encode()), "text/csv")},
         headers=organizer,
-    ).status_code == 200
+    ).status_code == 202
 
     matcher = CountingMatcher()
     app.dependency_overrides[get_hr_matcher] = lambda: matcher
-    body = client.post("/api/tournaments/cup/import/match", headers=organizer).json()
+    response = client.post("/api/tournaments/cup/import/match", headers=organizer)
+    assert response.status_code == 202, response.text
+    concluded = settle(client, organizer, kind="match")
 
     assert matcher.asked == ["Jan Novak"]  # asked once, not twice
-    assert body == {"matched": 2, "unmatched": 0, "reused": 0}
+    assert concluded["outcome"] == {"matched": 2, "unmatched": 0, "reused": 0}
+    # the count is in rows, and both rows of the one question are counted
+    assert (concluded["total"], concluded["done"]) == (2, 2)

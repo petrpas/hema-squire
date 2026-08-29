@@ -14,6 +14,7 @@ import csv
 import hashlib
 import io
 import json
+from collections.abc import Callable
 from typing import TYPE_CHECKING, Literal, Protocol
 
 from pydantic import BaseModel, Field, field_validator
@@ -55,7 +56,15 @@ def read_table(filename: str, data: bytes) -> list[dict[str, str]]:
     name = filename.lower()
     if name.endswith(".csv"):
         text = data.decode("utf-8-sig")
-        return [dict(row) for row in csv.DictReader(io.StringIO(text))]
+        # a blank line is not a fencer. The XLSX reader below already skips
+        # them; without the same guard here a trailing empty line becomes a row,
+        # reaches the parser, and comes back named whatever the model invents
+        # for a record with nothing in it
+        return [
+            dict(row)
+            for row in csv.DictReader(io.StringIO(text))
+            if any((value or "").strip() for value in row.values())
+        ]
     if name.endswith(".xlsx"):
         import openpyxl
 
@@ -122,7 +131,12 @@ class ParsedFencer(BaseModel):
 
 
 class ImportParser(Protocol):
-    def parse(
+    """One batch per call. The loop over batches belongs to the caller, which
+    is what lets each batch's decisions and the progress they represent commit
+    together (design D4) — and what a concurrent parse would replace without
+    touching the parser."""
+
+    def parse_batch(
         self,
         rows: list[dict[str, str]],
         disciplines: list[OfferedDiscipline],
@@ -161,13 +175,16 @@ class _ParsedBatch(BaseModel):
 
 
 class LLMImportParser:
-    """pydantic-ai parser over Anthropic; the only LLM call site on this path."""
+    """pydantic-ai parser over Anthropic; the only LLM call site on this path.
 
-    def __init__(self, model: Model, batch_size: int = PARSE_BATCH_SIZE):
+    One call, one batch. Batching is the caller's, so a batch's decisions are
+    stored the moment they arrive rather than after the whole file (design D4).
+    """
+
+    def __init__(self, model: Model):
         self._model = model
-        self._batch_size = batch_size
 
-    def parse(
+    def parse_batch(
         self,
         rows: list[dict[str, str]],
         disciplines: list[OfferedDiscipline],
@@ -183,16 +200,12 @@ class LLMImportParser:
             system_prompt=_SYSTEM_PROMPT.format(disciplines=offered, rentals=lent),
             retries=3,
         )
-        parsed: list[ParsedFencer] = []
-        for start in range(0, len(rows), self._batch_size):
-            batch = rows[start : start + self._batch_size]
-            result = agent.run_sync(
-                f"Parse the following {len(batch)} registration rows in order:\n\n"
-                f"```json\n{json.dumps(batch, ensure_ascii=False)}\n```\n\n"
-                f"Return exactly {len(batch)} records in the same order."
-            )
-            parsed.extend(result.output.fencers)
-        return parsed
+        result = agent.run_sync(
+            f"Parse the following {len(rows)} registration rows in order:\n\n"
+            f"```json\n{json.dumps(rows, ensure_ascii=False)}\n```\n\n"
+            f"Return exactly {len(rows)} records in the same order."
+        )
+        return list(result.output.fencers)
 
 
 def get_import_parser() -> ImportParser | None:
@@ -241,16 +254,21 @@ def store_decision(
     return decision
 
 
-def import_table(
+def intake(
     session: Session,
     tournament: Tournament,
-    parser: ImportParser | None,
     filename: str,
     data: bytes,
     uploaded_by: int,
-) -> dict:
-    """File intake: persist the batch with provenance, then LLM-parse only the
-    rows without a stored parse decision."""
+) -> tuple[ImportBatch, list[ImportedRow]]:
+    """File intake: persist the batch with its provenance, its source rows and
+    their numbers, and commit.
+
+    This half runs inside the request, so a browser that abandons the upload
+    response still leaves a complete batch behind (spec table-import, Batch
+    survives an abandoned upload response). Only the parsing that follows is
+    background work.
+    """
     raw_rows = read_table(filename, data)
     batch = ImportBatch(
         tournament_id=tournament.id,
@@ -282,46 +300,105 @@ def import_table(
     # in file order, and only for keys not already numbered: a re-upload of an
     # unchanged row keeps its fingerprint, so it keeps its number
     rownumbers.allocate(session, tournament, [f"imp:{row.key}" for row in imported])
+    session.commit()
+    return batch, imported
 
-    undecided = [
+
+def batch_rows(session: Session, batch: ImportBatch) -> list[ImportedRow]:
+    return list(
+        session.scalars(
+            select(ImportedRow)
+            .where(ImportedRow.batch_id == batch.id)
+            .order_by(ImportedRow.row_number)
+        )
+    )
+
+
+def undecided_rows(
+    session: Session, tournament: Tournament, imported: list[ImportedRow]
+) -> list[ImportedRow]:
+    """The rows this run will actually parse. A row with a stored decision is
+    reused, not work, and is not counted towards an operation's total (spec
+    console-operations, Reused rows are not work)."""
+    return [
         row for row in imported if get_decision(session, tournament, "parse", row.key) is None
     ]
-    parsed_count = 0
-    if undecided:
-        if parser is None:
-            session.commit()
-            return {
-                "batch_id": batch.id,
-                "rows": len(imported),
-                "parsed": 0,
-                "reused": len(imported) - len(undecided),
-                "unparsed": len(undecided),
-                "problems": [],
-                "detail": "llm_not_configured",
-            }
-        offered = [(d.slug, d.name) for d in tournament.disciplines]
-        lent = [
-            item.name
-            for item in tournament.extra_items
-            if item.category == ExtraCategory.RENTAL
-        ]
-        parsed = parser.parse([row.raw for row in undecided], offered, lent)
-        for row, record in zip(undecided, parsed, strict=True):
-            store_decision(session, tournament, "parse", row.key, record.model_dump())
-        parsed_count = len(parsed)
 
-    session.commit()
 
+def batches(rows: list[ImportedRow], size: int = PARSE_BATCH_SIZE) -> list[list[ImportedRow]]:
+    return [rows[start : start + size] for start in range(0, len(rows), size)]
+
+
+def import_outcome(
+    session: Session,
+    tournament: Tournament,
+    batch: ImportBatch,
+    imported: list[ImportedRow],
+    parsed: int,
+    reused: int,
+    unparsed: int = 0,
+    detail: str | None = None,
+) -> dict:
+    """What the console reports about a run — the shape the endpoint used to
+    return synchronously, now stored on the operation."""
     problems = []
     for row in imported:
         decision = get_decision(session, tournament, "parse", row.key)
         if decision and decision.payload.get("problems"):
             problems.append({"row": row.row_number, "problems": decision.payload["problems"]})
-    return {
+    outcome = {
         "batch_id": batch.id,
         "rows": len(imported),
-        "parsed": parsed_count,
-        "reused": len(imported) - len(undecided),
-        "unparsed": 0,
+        "parsed": parsed,
+        "reused": reused,
+        "unparsed": unparsed,
         "problems": problems,
     }
+    if detail is not None:
+        outcome["detail"] = detail
+    return outcome
+
+
+def parse_undecided(
+    session: Session,
+    tournament: Tournament,
+    parser: ImportParser,
+    batch: ImportBatch,
+    imported: list[ImportedRow],
+    undecided: list[ImportedRow],
+    progress: Callable[[Session, int], None] | None = None,
+) -> dict:
+    """Parse the undecided rows, one batch at a time, storing as it goes.
+
+    Each batch's decisions and the progress they represent are committed
+    together, so a run that stops partway leaves what it had parsed standing and
+    a rerun does only the remainder (spec table-import, Partial parse survives
+    an interruption). `progress` is what commits — the caller passes the one
+    that also raises the operation's count.
+
+    The loop lives here rather than inside the parser so that making it
+    concurrent later touches this function and nothing else (design D6).
+    """
+    commit = progress or (lambda session, _units: session.commit())
+    offered = [(d.slug, d.name) for d in tournament.disciplines]
+    lent = [
+        item.name
+        for item in tournament.extra_items
+        if item.category == ExtraCategory.RENTAL
+    ]
+    parsed_count = 0
+    for group in batches(undecided):
+        records = parser.parse_batch([row.raw for row in group], offered, lent)
+        for row, record in zip(group, records, strict=True):
+            store_decision(session, tournament, "parse", row.key, record.model_dump())
+        parsed_count += len(group)
+        commit(session, len(group))
+
+    return import_outcome(
+        session,
+        tournament,
+        batch,
+        imported,
+        parsed=parsed_count,
+        reused=len(imported) - len(undecided),
+    )

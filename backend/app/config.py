@@ -32,6 +32,10 @@ class Settings(BaseSettings):
     rate_limit_enabled: bool = True
     scheduler_enabled: bool = True
     scheduler_interval_seconds: int = 300
+    # startup recovery of operations a dead process left running (design D5);
+    # off in the test suite, where the app boots against the configured
+    # database while the tests themselves run on an in-memory one
+    operations_sweep_enabled: bool = True
     # LLM is used only on the table-import path (parse, match, dedup)
     anthropic_api_key: str = ""
     # an identity-linked key acts inside one workspace and the API demands its

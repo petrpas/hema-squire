@@ -6,6 +6,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import ImportPanel from "./ImportPanel";
 import { api } from "./api";
 import i18n from "./i18n";
+import type { OperationsView } from "./useOperations";
+
+/** No work running and none ever concluded — the state the clear action is
+ *  read in. The panel takes its readiness from the tournament's record now,
+ *  so the tests hand it one. */
+const idle: OperationsView = { running: null, concluded: {}, refresh: () => {} };
 
 // the panel reads its words from the catalogue, so the test asks the catalogue
 // for the same ones rather than hard-coding a translation
@@ -67,7 +73,7 @@ describe("the clear action", () => {
       batch: null,
       total: { rows: 0, files: 0 },
     });
-    mount(<ImportPanel slug="cup" onImported={() => {}} />);
+    mount(<ImportPanel slug="cup" operations={idle} onImported={() => {}} />);
     await settle();
 
     expect(labelled(t("import.clear"))).toBeUndefined();
@@ -76,7 +82,7 @@ describe("the clear action", () => {
   it("states the rows, the files and the finality before acting", async () => {
     withImports();
     const clear = vi.spyOn(api, "clearImports");
-    mount(<ImportPanel slug="cup" onImported={() => {}} />);
+    mount(<ImportPanel slug="cup" operations={idle} onImported={() => {}} />);
     await settle();
 
     click(labelled(t("import.clear")));
@@ -92,7 +98,7 @@ describe("the clear action", () => {
     withImports();
     const clear = vi.spyOn(api, "clearImports");
     const onImported = vi.fn();
-    mount(<ImportPanel slug="cup" onImported={onImported} />);
+    mount(<ImportPanel slug="cup" operations={idle} onImported={onImported} />);
     await settle();
 
     click(labelled(t("import.clear")));
@@ -109,7 +115,7 @@ describe("the clear action", () => {
       .spyOn(api, "clearImports")
       .mockResolvedValue({ rows: 40, files: 2 });
     const onImported = vi.fn();
-    mount(<ImportPanel slug="cup" onImported={onImported} />);
+    mount(<ImportPanel slug="cup" operations={idle} onImported={onImported} />);
     await settle();
 
     click(labelled(t("import.clear")));

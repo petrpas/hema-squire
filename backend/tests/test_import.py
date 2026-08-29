@@ -2,6 +2,8 @@
 
 import io
 
+from conftest import outcome, settle
+
 from app.importer import ImportParser, ParsedFencer, get_import_parser
 from app.main import app
 
@@ -22,7 +24,7 @@ class FakeParser:
     def __init__(self):
         self.calls = 0
 
-    def parse(self, rows, disciplines, rentals):
+    def parse_batch(self, rows, disciplines, rentals):
         self.calls += 1
         parsed = []
         for raw in rows:
@@ -82,8 +84,11 @@ def test_import_creates_rows_with_provenance_and_problems(client, auth_headers):
     override_parser(parser)
 
     response = upload(client, organizer)
-    assert response.status_code == 200, response.text
-    body = response.json()
+    # the upload records the batch and returns; the parse runs behind it
+    assert response.status_code == 202, response.text
+    assert response.json()["rows"] == 2
+
+    body = outcome(client, organizer)
     assert body["rows"] == 2
     assert body["parsed"] == 2
     assert body["problems"] == [{"row": 1, "problems": "afterparty answer ambiguous"}]
@@ -106,12 +111,16 @@ def test_reupload_reuses_decisions_and_keeps_row_identity(client, auth_headers):
     override_parser(parser)
 
     upload(client, organizer)
+    settle(client, organizer)
     first_ids = sorted(
         r["id"] for r in get_sheet(client, organizer)["rows"] if r["id"].startswith("imp:")
     )
 
-    # identical re-upload: no LLM call, identical row keys
-    body = upload(client, organizer).json()
+    # identical re-upload: no LLM call, no operation to run at all, and the
+    # outcome comes straight back (spec, Reused rows are not work)
+    reuploaded = upload(client, organizer)
+    assert reuploaded.status_code == 202
+    body = reuploaded.json()
     assert body["parsed"] == 0
     assert body["reused"] == 2
     assert parser.calls == 1
@@ -135,7 +144,8 @@ def test_reupload_reuses_decisions_and_keeps_row_identity(client, auth_headers):
     grown = CSV + (
         "2.4.2026 09:00:00,jan@example.com,Jan Testovací,Praha,CZ,šavle / sabre,,Ne / No,\n"
     )
-    body = upload(client, organizer, content=grown).json()
+    assert upload(client, organizer, content=grown).status_code == 202
+    body = outcome(client, organizer)
     assert body["rows"] == 3
     assert body["parsed"] == 1  # only the new row hits the parser
     assert body["reused"] == 2
@@ -184,8 +194,27 @@ def test_xlsx_intake(client, auth_headers):
                         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")},
         headers=organizer,
     )
-    assert response.status_code == 200, response.text
+    assert response.status_code == 202, response.text
     assert response.json()["rows"] == 1
+    assert outcome(client, organizer)["rows"] == 1
+
+
+def test_blank_lines_are_not_fencers(client, auth_headers):
+    """A trailing empty line is what a spreadsheet export ends with; imported
+    as a row it reaches the parser, which has to name a record with nothing in
+    it, and the table gains a fencer nobody entered."""
+    organizer = auth_headers()
+    setup(client, organizer)
+    parser = FakeParser()
+    override_parser(parser)
+
+    padded = CSV + ",,,,,,,,\n" + "\n"
+    assert upload(client, organizer, content=padded).status_code == 202
+    body = outcome(client, organizer)
+
+    assert body["rows"] == 2
+    rows = [r for r in get_sheet(client, organizer)["rows"] if r["id"].startswith("imp:")]
+    assert len(rows) == 2
 
 
 def test_unsupported_format_rejected(client, auth_headers):
@@ -235,7 +264,7 @@ class BracketAwareParser:
     problem (design D8) — the offered `disciplines` argument is exactly the
     `(slug, name)` pairs the real prompt is built from."""
 
-    def parse(self, rows, disciplines, rentals):
+    def parse_batch(self, rows, disciplines, rentals):
         parsed = []
         for raw in rows:
             text = raw.get("row", "")
@@ -341,7 +370,7 @@ class RentalParser(ImportParser):
     def __init__(self):
         self.offered_rentals = None
 
-    def parse(self, rows, disciplines, rentals):
+    def parse_batch(self, rows, disciplines, rentals):
         self.offered_rentals = rentals
         return [
             ParsedFencer(
@@ -376,7 +405,8 @@ def test_offered_rentals_reach_the_parser_and_are_borrowed_once(client, auth_hea
     parser = RentalParser()
     override_parser(parser)
 
-    assert upload(client, organizer).status_code == 200
+    assert upload(client, organizer).status_code == 202
+    settle(client, organizer)
     # what the tournament lends, and nothing it merely sells
     assert parser.offered_rentals == ["Sabre", "Buckler"]
 

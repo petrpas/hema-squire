@@ -86,10 +86,32 @@ def _populate_hr_index_if_empty() -> None:
         logger.exception("HR index auto-population failed; serving without it")
 
 
+def _sweep_interrupted_operations() -> None:
+    """Conclude the operations the previous process left running.
+
+    An operation cannot outlive its process, so anything still unconcluded at
+    startup was interrupted (spec console-operations, Work interrupted by a
+    restart is recovered at startup). Sound only under `--workers 1`; see
+    `operations.sweep_interrupted`.
+    """
+    from sqlalchemy.orm import Session
+
+    from app import operations
+    from app.db import engine
+
+    try:
+        with Session(engine) as session:
+            operations.sweep_interrupted(session)
+    except Exception:
+        logger.exception("startup sweep of interrupted operations failed")
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     _refuse_dev_secret_key()
     _warn_when_owner_unmatched()
+    if settings.operations_sweep_enabled:
+        _sweep_interrupted_operations()
     tasks = []
     if settings.scheduler_enabled:
         tasks.append(asyncio.create_task(scheduler_loop()))
@@ -123,6 +145,7 @@ def create_app() -> FastAPI:
     app.include_router(payments.router)
     app.include_router(rules_api.router)
     app.include_router(import_api.router)
+    app.include_router(import_api.operations_router)
     app.include_router(manual_api.router)
     app.include_router(export_api.router)
     app.include_router(hr_api.router)

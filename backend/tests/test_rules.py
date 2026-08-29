@@ -1,3 +1,5 @@
+from datetime import datetime, timedelta
+
 from tests.conftest import publish
 
 
@@ -107,6 +109,12 @@ def test_audit_shows_actor_and_before_after(client, auth_headers):
     assert entry["before"] is None
     assert entry["after"] == "SK Praha"
     assert entry["actor"] == "Šéf"
+    # the moment carries its zone: SQLite hands stored instants back naive, and
+    # serialized that way the console reads a UTC instant as its own local time
+    # and stamps every log entry with the wrong hour
+    moment = datetime.fromisoformat(entry["at"])
+    assert moment.tzinfo is not None, entry["at"]
+    assert moment.utcoffset() == timedelta(0)
 
     # audit lives only as long as its causing rule
     client.delete(f"/api/tournaments/cup/rules/{rule_id}", headers=organizer)

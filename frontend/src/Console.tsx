@@ -11,6 +11,7 @@ import ImportPanel from "./ImportPanel";
 import MatchDialog from "./MatchDialog";
 import MatchPanel from "./MatchPanel";
 import NoteMarker from "./NoteMarker";
+import OperationsIndicator from "./OperationsIndicator";
 import ManualEditsRail from "./ManualEditsRail";
 import ManualEntryPanel from "./manual/ManualEntryPanel";
 import PaidStamp from "./PaidStamp";
@@ -21,6 +22,7 @@ import { useAuth } from "./RequireAuth";
 import * as routes from "./routes";
 import SetupPanel from "./SetupPanel";
 import TeamsPanel from "./TeamsPanel";
+import useOperations from "./useOperations";
 import { registeredMoment } from "./momentText";
 import { parseInteger } from "./numeric";
 import { checkNumeric, checkString, type FieldError } from "./validation";
@@ -260,6 +262,11 @@ export default function Console({
   }, [tournament.slug]);
 
   useEffect(refresh, [refresh]);
+
+  // One question about running work, asked once for the whole console: the
+  // panels and the indicator read the same answer, and a landing operation
+  // reloads the fencer list without the organizer refreshing (design D7).
+  const operations = useOperations(tournament.slug, refresh);
 
   async function addRule(kind: string, target: string, payload: Record<string, unknown>) {
     await api.createRule(tournament.slug, { phase, kind, target, payload });
@@ -540,12 +547,30 @@ export default function Console({
           {/* a phase carries only its own operation's parameters; tournament
               configuration is Setup's, and a phase with none shows no panel
               (spec etl-console: "Operation parameters") */}
-          {phase === "import" && <ImportPanel slug={tournament.slug} onImported={refresh} />}
+          {phase === "import" && (
+            <ImportPanel
+              slug={tournament.slug}
+              operations={operations}
+              onImported={refresh}
+            />
+          )}
           {phase === "fencers" && (
             <ManualEntryPanel detail={detail} slug={tournament.slug} onEntered={refresh} />
           )}
-          {phase === "matching" && <MatchPanel slug={tournament.slug} onChanged={refresh} />}
-          {phase === "dedup" && <DedupPanel slug={tournament.slug} onChanged={refresh} />}
+          {phase === "matching" && (
+            <MatchPanel
+              slug={tournament.slug}
+              operations={operations}
+              onChanged={refresh}
+            />
+          )}
+          {phase === "dedup" && (
+            <DedupPanel
+              slug={tournament.slug}
+              operations={operations}
+              onChanged={refresh}
+            />
+          )}
           {phase === "payments" && (
             <>
               <TolerancePanel detail={detail} slug={tournament.slug} onSaved={refresh} />
@@ -564,6 +589,9 @@ export default function Console({
           </>
         )}
       </div>
+
+      {/* the tournament's running work, wherever the organizer stands */}
+      <OperationsIndicator running={operations.running} />
 
       {matchRow && (
         <MatchDialog

@@ -2,6 +2,8 @@
 
 import io
 
+from conftest import outcome, settle
+
 from app.dedup import MergeProposal, ThreeBands, default_merge, get_dedup_llm
 from app.hr_match import HRMatchResult, get_hr_matcher
 from app.importer import ImportParser, ParsedFencer, get_import_parser
@@ -20,7 +22,7 @@ CSV = (
 
 
 class FakeParser(ImportParser):
-    def parse(self, rows, disciplines, rentals):
+    def parse_batch(self, rows, disciplines, rentals):
         parsed = []
         for index, raw in enumerate(rows):
             hr = raw.get("HRID", "")
@@ -101,7 +103,22 @@ def setup(client, organizer, parser=None):
         files={"file": ("regs.csv", io.BytesIO(CSV.encode()), "text/csv")},
         headers=organizer,
     )
-    assert response.status_code == 200, response.text
+    assert response.status_code == 202, response.text
+    settle(client, organizer)
+
+
+def run_match(client, organizer):
+    """Start matching and wait it out. The endpoint returns the moment the
+    record exists; the outcome is read off the record (conftest.settle)."""
+    response = client.post("/api/tournaments/cup/import/match", headers=organizer)
+    assert response.status_code == 202, response.text
+    return outcome(client, organizer, kind="match")
+
+
+def run_dedup(client, organizer):
+    response = client.post("/api/tournaments/cup/import/dedup", headers=organizer)
+    assert response.status_code == 202, response.text
+    return outcome(client, organizer, kind="dedup")
 
 
 def get_rows(client, organizer):
@@ -119,7 +136,7 @@ def test_matching_verdicts_and_decision_reuse(client, auth_headers):
     matcher = FakeMatcher()
     app.dependency_overrides[get_hr_matcher] = lambda: matcher
 
-    body = client.post("/api/tournaments/cup/import/match", headers=organizer).json()
+    body = run_match(client, organizer)
     assert body["matched"] == 1
     assert matcher.calls == 1
 
@@ -134,7 +151,7 @@ def test_matching_verdicts_and_decision_reuse(client, auth_headers):
     assert petra["match_verdict"] == "confirmed"  # fencer supplied the id
 
     # rerun: everything is decided, no LLM call
-    body = client.post("/api/tournaments/cup/import/match", headers=organizer).json()
+    body = run_match(client, organizer)
     assert matcher.calls == 1
     assert body["matched"] == 0
 
@@ -156,7 +173,7 @@ def test_same_hr_id_queues_and_merges_on_confirm(client, auth_headers):
     llm = FakeDedupLLM()
     app.dependency_overrides[get_dedup_llm] = lambda: llm
 
-    body = client.post("/api/tournaments/cup/import/dedup", headers=organizer).json()
+    body = run_dedup(client, organizer)
     assert body["proposals"] == 1
 
     queue = client.get("/api/tournaments/cup/import/dedup/queue", headers=organizer).json()
@@ -186,7 +203,7 @@ def test_same_hr_id_queues_and_merges_on_confirm(client, auth_headers):
     # the item left the queue; the proposal decision is not re-asked
     queue = client.get("/api/tournaments/cup/import/dedup/queue", headers=organizer).json()
     assert all(i["kind"] != "same_id" for i in queue)
-    client.post("/api/tournaments/cup/import/dedup", headers=organizer)
+    run_dedup(client, organizer)
     assert llm.merge_calls == 1
 
 
@@ -196,7 +213,7 @@ def test_three_band_classification(client, auth_headers):
     llm = FakeDedupLLM()
     app.dependency_overrides[get_dedup_llm] = lambda: llm
 
-    body = client.post("/api/tournaments/cup/import/dedup", headers=organizer).json()
+    body = run_dedup(client, organizer)
     assert body["auto_merged"] == 1  # surely: the two Karels
     assert body["likely"] == 1
 
@@ -224,7 +241,7 @@ def test_three_band_classification(client, auth_headers):
                 if (r["name"] or "").startswith("Marie") and not r["_deleted"]]) == 2
 
     # rerun with an unchanged candidate set does not re-classify
-    client.post("/api/tournaments/cup/import/dedup", headers=organizer)
+    run_dedup(client, organizer)
     assert llm.classify_calls == 1
 
 
@@ -233,7 +250,7 @@ def test_removing_merge_rule_reverts_the_merge(client, auth_headers):
     setup(client, organizer)
     llm = FakeDedupLLM()
     app.dependency_overrides[get_dedup_llm] = lambda: llm
-    client.post("/api/tournaments/cup/import/dedup", headers=organizer)
+    run_dedup(client, organizer)
 
     queue = client.get("/api/tournaments/cup/import/dedup/queue", headers=organizer).json()
     item = next(i for i in queue if i["kind"] == "same_id")

@@ -45,11 +45,16 @@ def test_allocation_is_stable_and_never_reissued(client, auth_headers, engine):
         session.commit()
         assert again == {"imp:aa": 3, "reg:1": 1}
 
-        # a row leaving the table is a rule, never a freed allocation: the next
-        # row minted counts on from the highest ever given out
+        # a row leaving the table is a rule, never a freed allocation: its
+        # allocation stands, so the next row minted takes the next free number
+        assert rownumbers.allocate(session, cup, ["reg:9"]) == {"reg:9": 4}
+
+        # only a clear deletes an allocation, and what it releases is available
+        # again — otherwise its release would mean nothing (spec table-import,
+        # Clearing releases the cleared numbers)
         session.delete(session.scalar(select(SheetRowNumber).where(SheetRowNumber.number == 2)))
         session.commit()
-        assert rownumbers.allocate(session, cup, ["reg:9"]) == {"reg:9": 4}
+        assert rownumbers.allocate(session, cup, ["reg:10"]) == {"reg:10": 2}
 
 
 def test_numbers_are_per_tournament(client, auth_headers, engine):
@@ -137,19 +142,19 @@ def test_import_numbers_new_fingerprints_only(client, auth_headers, engine):
                 headers=organizer,
             )
 
-        assert upload(CSV).status_code == 200
+        assert upload(CSV).status_code == 202
         with Session(engine) as session:
             first = rownumbers.numbers_for(session, tournament_of(session))
         assert sorted(first.values()) == [1, 2]
 
         # identical file: same fingerprints, so nothing new is minted
-        assert upload(CSV).status_code == 200
+        assert upload(CSV).status_code == 202
         with Session(engine) as session:
             assert rownumbers.numbers_for(session, tournament_of(session)) == first
 
         # one row corrected: a new fingerprint, and a number that counts on
         corrected = CSV.replace("Twerchhau", "Twerchhaw")
-        assert upload(corrected).status_code == 200
+        assert upload(corrected).status_code == 202
         with Session(engine) as session:
             after = rownumbers.numbers_for(session, tournament_of(session))
         assert len(after) == 3

@@ -890,5 +890,26 @@
       "unknown_rentals": "that item is not one this tournament lends.",
       "failed": "the entry was not accepted."
     }
+  },
+  "operation": {
+    "kind": {
+      "parse": "parsing the table",
+      "match": "matching",
+      "dedup": "deduplicating"
+    },
+    "label": {
+      "parse": "parsing",
+      "match": "matching",
+      "dedup": "deduplicating"
+    },
+    "progress_one": "{{done}} of {{count}} row",
+    "progress_other": "{{done}} of {{count}} rows",
+    "questions_one": "{{done}} of {{count}} question",
+    "questions_other": "{{done}} of {{count}} questions",
+    "started": "started {{time}}",
+    "busy": "waiting for {{kind}} to finish.",
+    "failed": "{{kind}} stopped before it finished: {{error}}",
+    "interrupted": "{{kind}} stopped partway, at {{done}} of {{total}}. run it again to finish it.",
+    "done": "finished"
   }
 }

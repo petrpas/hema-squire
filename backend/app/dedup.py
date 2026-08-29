@@ -12,6 +12,7 @@ accept, as a dedup_decision rule that performs the merge at replay time.
 
 import hashlib
 import json
+from collections.abc import Callable
 from typing import TYPE_CHECKING, Protocol
 
 from pydantic import BaseModel
@@ -169,15 +170,53 @@ def _sorted_group(rows_by_id: dict[str, Row], ids: list[str]) -> list[Row]:
     return sorted(members, key=lambda r: r.get("registered_at") or "")
 
 
+def _work_units(session: Session, tournament: Tournament, rows: list[Row]) -> tuple[int, int]:
+    """How many LLM questions this run will ask: one per undecided same-hr_id
+    group, plus one for the classification of the no-id set when it has unseen
+    rows in it. Returned as (groups, classifications)."""
+    active = {r["id"]: r for r in rows if not r.get("_deleted")}
+    by_hr: dict[int, list[Row]] = {}
+    for row in active.values():
+        if row.get("hr_id") is not None:
+            by_hr.setdefault(row["hr_id"], []).append(row)
+    groups = 0
+    for members in by_hr.values():
+        if len(members) < 2:
+            continue
+        key = group_key(sorted(r["id"] for r in members))
+        if get_decision(session, tournament, "merge", key) is None:
+            groups += 1
+
+    no_id = [row for row in active.values() if row.get("hr_id") is None]
+    unseen = [
+        r for r in no_id if get_decision(session, tournament, "dedup_seen", r["id"]) is None
+    ]
+    classifications = 1 if len(no_id) >= 2 and unseen else 0
+    return groups, classifications
+
+
+def pending_count(session: Session, tournament: Tournament, rows: list[Row]) -> int:
+    """What an operation's total counts — the questions to be asked, not the
+    rows on the sheet (spec console-operations, Reused rows are not work)."""
+    groups, classifications = _work_units(session, tournament, rows)
+    return groups + classifications
+
+
 def run_dedup(
     session: Session,
     tournament: Tournament,
     llm: DedupLLM,
     rows: list[Row],
     actor: Fencer,
+    progress: Callable[[Session, int], None] | None = None,
 ) -> dict:
     """Prepare merge proposals for same-hr_id groups and classify no-id
-    candidates. Surely groups auto-merge; everything else waits in the queue."""
+    candidates. Surely groups auto-merge; everything else waits in the queue.
+
+    `progress` commits, and is where the operation's count is raised — each
+    question's decision and the count of it travel together (design D4).
+    """
+    commit = progress or (lambda session, _units: session.commit())
     active = {r["id"]: r for r in rows if not r.get("_deleted")}
 
     by_hr: dict[int, list[Row]] = {}
@@ -205,6 +244,7 @@ def run_dedup(
             {"rows": ids, "fields": proposal.fields, "note": proposal.note},
         )
         proposals += 1
+        commit(session, 1)
 
     no_id = [row for row in active.values() if row.get("hr_id") is None]
     auto_merged = 0
@@ -239,8 +279,13 @@ def run_dedup(
                            {"accepted": True, "auto": True}, source="llm")
             auto_merged += 1
         likely = len(bands.likely)
+        commit(session, 1)
+    else:
+        # no classification to do. The proposal loop above commits per proposal,
+        # so there is nothing outstanding — this settles the session for the
+        # run that made no proposals either.
+        session.commit()
 
-    session.commit()
     return {"proposals": proposals, "auto_merged": auto_merged, "likely": likely}
 
 
