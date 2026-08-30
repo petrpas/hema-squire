@@ -212,14 +212,15 @@ def test_pilot_replay_reproduces_v1_final_state(client, auth_headers, archive):
         "/api/tournaments/na-duel-2026/import/dedup", headers=organizer
     ).json()
     assert result == {"proposals": 1, "auto_merged": 0, "likely": 1}
-    queue = client.get(
-        "/api/tournaments/na-duel-2026/import/dedup/queue", headers=organizer
+    groups = client.get(
+        "/api/tournaments/na-duel-2026/import/dedup/groups", headers=organizer
     ).json()
-    assert len(queue) == 2
-    florian_item = next(i for i in queue if i["kind"] == "same_id")
-    assert {r["name"] for r in florian_item["rows"]} == {"Florian Imhof"}
-    belina_item = next(i for i in queue if i["kind"] == "likely")
-    assert {r["name"] for r in belina_item["rows"]} == {
+    assert len(groups) == 2
+    assert all(g["verdict"] == "pending" for g in groups)
+    florian_item = next(g for g in groups if g["kind"] == "same_id")
+    assert {r["name"] for r in florian_item["members"]} == {"Florian Imhof"}
+    belina_item = next(g for g in groups if g["kind"] == "likely")
+    assert {r["name"] for r in belina_item["members"]} == {
         "Jan Sax Bělina", "Daniel Bělina",
     }
 
@@ -239,11 +240,13 @@ def test_pilot_replay_reproduces_v1_final_state(client, auth_headers, archive):
     # does the same via default_merge — compare full tuples
     assert ours == v1
 
-    # the Bělina pair stays pending, matching the archived likely-groups file
-    queue = client.get(
-        "/api/tournaments/na-duel-2026/import/dedup/queue", headers=organizer
+    # the Bělina pair stays pending, matching the archived likely-groups file;
+    # the Florian pair stays listed, now stating the merge the organizer made
+    groups = client.get(
+        "/api/tournaments/na-duel-2026/import/dedup/groups", headers=organizer
     ).json()
-    assert [i["kind"] for i in queue] == ["likely"]
+    verdicts = {g["kind"]: g["verdict"] for g in groups}
+    assert verdicts == {"same_id": "merged", "likely": "pending"}
 
     # 6. incrementality on real data: reruns of every stage cost nothing
     outcome = client.post(

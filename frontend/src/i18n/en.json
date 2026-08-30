@@ -77,14 +77,33 @@
     "failed": "Export failed."
   },
   "dedup": {
-    "title": "Duplicate queue",
+    "title": "Deduplication",
     "run": "Run deduplication",
-    "empty": "No duplicates to decide.",
+    "empty": "No duplicate candidates. Run deduplication again if you have just imported.",
     "accept": "Merge",
     "reject": "Keep separate",
-    "sameId": "Same HR ID",
-    "likely": "Likely duplicate",
-    "notConfigured": "LLM is not configured."
+    "reopen": "Edit the conclusion",
+    "conclusion": "Conclusion",
+    "settled": "Decided",
+    "editValue": "Choose or type a value",
+    "ownValue": "Own value",
+    "notConfigured": "LLM is not configured.",
+    "pending_one": "{{count}} candidate awaiting a decision",
+    "pending_other": "{{count}} candidates awaiting a decision",
+    "kind": {
+      "same_id": "Same HR ID",
+      "surely": "Certain duplicate",
+      "likely": "Likely duplicate"
+    },
+    "verdict": {
+      "pending": "awaiting a decision",
+      "merged": "merged",
+      "separate": "kept separate"
+    },
+    "by": {
+      "llm": "decided by the system",
+      "organizer": "decided by the organizer"
+    }
   },
   "login": {
     "subtitle": "Sign-in",

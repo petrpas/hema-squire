@@ -31,6 +31,25 @@ def _replayed_import_rows(session, tournament, index=None) -> list[dict]:
     ]
 
 
+def _premerge_import_rows(session, tournament, index=None) -> list[dict]:
+    """The same rows, replayed without their merges.
+
+    What a candidate group displays, and what its conclusion offers as choices,
+    is the records as they stood before anything was merged. Replayed with the
+    merges applied, a settled group would show its survivor already carrying the
+    merged values and its absorbed rows gone — the group could state neither
+    what it merged nor what it could merge instead (design D2).
+    """
+    base = sheet.base_rows(session, tournament, index)
+    kept = [
+        rule
+        for rule in rules.active_rules(session, tournament)
+        if rule.kind != "dedup_decision"
+    ]
+    rows, _ = rules.replay(base, kept)
+    return [row for row in rows.values() if row["id"].startswith(("imp:", "man:"))]
+
+
 def _refuse_while_busy(session: Session, tournament: Tournament) -> None:
     """One operation at a time for a tournament, whatever its kind. The record
     is what refuses, so this holds for a second tab and a second organizer, not
@@ -189,11 +208,13 @@ async def run_dedup(
     return {"operation_id": operation.id}
 
 
-@router.get("/dedup/queue")
-def dedup_queue(tournament: TournamentDep, session: SessionDep, fencer: FencerDep):
+@router.get("/dedup/groups")
+def dedup_groups(tournament: TournamentDep, session: SessionDep, fencer: FencerDep):
+    """Every candidate group with its verdict — the whole of the Deduplication
+    phase (spec etl-console, Deduplication candidate review)."""
     require_console_access(session, tournament, fencer)
-    rows = _replayed_import_rows(session, tournament)
-    return dedup.pending_queue(session, tournament, rows)
+    rows = _premerge_import_rows(session, tournament)
+    return dedup.candidate_groups(session, tournament, rows)
 
 
 class DedupDecisionIn(BaseModel):
@@ -211,12 +232,13 @@ def dedup_decide(
     fencer: FencerDep,
 ):
     require_console_access(session, tournament, fencer)
-    rows = _replayed_import_rows(session, tournament)
+    rows = _premerge_import_rows(session, tournament)
     outcome = dedup.decide(
         session, tournament, fencer, rows, data.key, data.accept, data.fields, data.note
     )
-    if outcome["status"] == "not_pending":
-        raise HTTPException(status_code=404, detail="not_pending")
+    # a settled group is decidable again; only a key no group answers to is gone
+    if outcome["status"] == "unknown_group":
+        raise HTTPException(status_code=404, detail="unknown_group")
     return outcome
 
 

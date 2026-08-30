@@ -81,14 +81,35 @@
     "failed": "Export se nezdařil."
   },
   "dedup": {
-    "title": "Fronta duplicit",
+    "title": "Deduplikace",
     "run": "Spustit deduplikaci",
-    "empty": "Žádné duplicity k rozhodnutí.",
+    "empty": "Žádní kandidáti na duplicitu. Nechte deduplikaci proběhnout znovu, pokud jste právě importovali.",
     "accept": "Sloučit",
     "reject": "Ponechat zvlášť",
-    "sameId": "Stejné HR ID",
-    "likely": "Pravděpodobná duplicita",
-    "notConfigured": "LLM není nakonfigurováno."
+    "reopen": "Upravit závěr",
+    "conclusion": "Závěr",
+    "settled": "Rozhodnuté",
+    "editValue": "Vybrat nebo zapsat hodnotu",
+    "ownValue": "Vlastní hodnota",
+    "notConfigured": "LLM není nakonfigurováno.",
+    "pending_one": "{{count}} kandidát čeká na rozhodnutí",
+    "pending_few": "{{count}} kandidáti čekají na rozhodnutí",
+    "pending_many": "{{count}} kandidáta čeká na rozhodnutí",
+    "pending_other": "{{count}} kandidátů čeká na rozhodnutí",
+    "kind": {
+      "same_id": "Stejné HR ID",
+      "surely": "Jistá duplicita",
+      "likely": "Pravděpodobná duplicita"
+    },
+    "verdict": {
+      "pending": "čeká na rozhodnutí",
+      "merged": "sloučeno",
+      "separate": "ponecháno zvlášť"
+    },
+    "by": {
+      "llm": "rozhodl systém",
+      "organizer": "rozhodl pořadatel"
+    }
   },
   "login": {
     "subtitle": "Přihlášení",

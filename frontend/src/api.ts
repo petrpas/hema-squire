@@ -850,12 +850,21 @@ export const api = {
    *  recent concluded one of each kind (design D7). */
   operations: (slug: string) =>
     request<OperationsReport>(`/api/tournaments/${slug}/operations`),
-  dedupQueue: (slug: string) =>
-    request<DedupItem[]>(`/api/tournaments/${slug}/import/dedup/queue`),
-  dedupDecide: (slug: string, key: string, accept: boolean) =>
+  dedupGroups: (slug: string) =>
+    request<DedupGroup[]>(`/api/tournaments/${slug}/import/dedup/groups`),
+  /** `fields` and `note` carry the conclusion as the organizer left it; omitted,
+   *  the recommendation stands in (spec `table-import`, The proposal is
+   *  corrected before it is confirmed). */
+  dedupDecide: (
+    slug: string,
+    key: string,
+    accept: boolean,
+    fields?: Record<string, unknown>,
+    note?: string,
+  ) =>
     request<{ status: string }>(`/api/tournaments/${slug}/import/dedup/decide`, {
       method: "POST",
-      body: JSON.stringify({ key, accept }),
+      body: JSON.stringify({ key, accept, fields, note }),
     }),
   exportSheet: (slug: string) =>
     request<{ worksheets: string[]; fencers: number }>(
@@ -1015,12 +1024,52 @@ export interface HRStatus {
   } | null;
 }
 
-export interface DedupItem {
-  key: string;
-  kind: "same_id" | "likely";
-  rows: { id: string; name: string; club: string | null; email: string | null }[];
+/** One record of a candidate duplicate group, as the console renders it: the
+ *  fields a merge decides, plus the number that names the row and the evidence
+ *  register it is identified by. A member is drawn from this alone — the
+ *  deduplication view joins nothing against the sheet (design D2). */
+export interface DedupMember {
+  id: string;
+  number: number | null;
+  name: string | null;
+  nationality: string | null;
+  email: string | null;
+  club: string | null;
+  hr_id: number | null;
+  hr_name: string | null;
+  hr_nationality: string | null;
+  hr_club: string | null;
+  disciplines: string[];
+  weapon_rentals: string[];
+  afterparty: boolean;
+  notes: string | null;
+  problems: string | null;
+  registered_at: string | null;
+  [key: string]: unknown;
+}
+
+/** A merged record and the note explaining it: what the system recommends, and
+ *  — once a merge stands — what the organizer confirmed. */
+export interface DedupConclusion {
   fields: Record<string, unknown>;
   note: string;
+}
+
+/** `merged` is true while the group's merge rule stands, so withdrawing the
+ *  merge from the manual-edits log returns the group to `pending` rather than
+ *  settling it unmerged (design D3). */
+export type DedupVerdict = "pending" | "merged" | "separate";
+
+export interface DedupGroup {
+  key: string;
+  kind: "same_id" | "surely" | "likely";
+  verdict: DedupVerdict;
+  /** Whose verdict it is, where one has been reached. A `surely` group merged
+   *  by the run reads `llm` until someone disagrees with it. */
+  decided_by: "llm" | "organizer" | null;
+  members: DedupMember[];
+  recommendation: DedupConclusion;
+  conclusion: DedupConclusion | null;
 }
 
 export interface ImportResult {

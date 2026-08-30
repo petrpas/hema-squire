@@ -3,7 +3,7 @@ import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import DedupPanel from "./DedupPanel";
+import DedupPanel from "./dedup/DedupPanel";
 import ImportPanel from "./ImportPanel";
 import MatchPanel from "./MatchPanel";
 import OperationsIndicator from "./OperationsIndicator";
@@ -75,7 +75,7 @@ beforeEach(() => {
     total: { rows: 0, files: 0 },
   });
   vi.spyOn(api, "hrStatus").mockResolvedValue({ fighters: 12, last_refresh: null });
-  vi.spyOn(api, "dedupQueue").mockResolvedValue([]);
+  vi.spyOn(api, "dedupGroups").mockResolvedValue([]);
 });
 
 afterEach(() => {

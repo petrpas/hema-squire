@@ -5,6 +5,7 @@ import type { NetChange, SheetRow } from "./api";
 import {
   DEFAULT_PHASE,
   absorbedInto,
+  PHASE_COLUMNS,
   PHASES,
   editableHere,
   editsForPhase,
@@ -211,6 +212,22 @@ describe("what a row offers to have done to it", () => {
   });
 });
 
+describe("the phases that draw no fencer table", () => {
+  it("counts Deduplication among them", () => {
+    // its work is a handful of rows out of fifty, and the table states it where
+    // it is hardest to see (spec etl-console, Deduplication candidate review)
+    for (const phase of ["setup", "dedup", "teams", "queue"] as Phase[]) {
+      expect(PHASE_COLUMNS[phase]).toEqual([]);
+    }
+  });
+
+  it("leaves every other processing phase its columns", () => {
+    for (const phase of ["import", "fencers", "matching", "payments", "export"] as Phase[]) {
+      expect(PHASE_COLUMNS[phase].length).toBeGreaterThan(0);
+    }
+  });
+});
+
 describe("which cells a phase opens for editing", () => {
   const identity = ["name", "nationality", "club"];
 
@@ -232,8 +249,9 @@ describe("which cells a phase opens for editing", () => {
   });
 
   it("leaves the HRID cell editable wherever its column is drawn", () => {
-    // a typed id is a verdict, and this change does not touch that
-    for (const phase of ["matching", "dedup", "export"] as Phase[]) {
+    // a typed id is a verdict, and this change does not touch that.
+    // Deduplication is not among them any more: it draws no columns at all.
+    for (const phase of ["matching", "export"] as Phase[]) {
       expect(editableHere("hr_id", phase)).toBe(true);
     }
   });

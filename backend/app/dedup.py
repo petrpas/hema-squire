@@ -5,9 +5,16 @@ Two lanes (owner decision: nothing with an identity merges silently):
 - no hr_id: an LLM classifies candidate groups into surely (auto-merged),
   likely (queued), possible (discarded).
 
-LLM outputs are cached decisions; organizer verdicts persist twice — as a
-resolution decision (so rejected items leave the queue for good) and, on
-accept, as a dedup_decision rule that performs the merge at replay time.
+Every group the operation raises — the two queued lanes and the auto-merged one
+— is a candidate the console lists with its verdict, so that a merge the machine
+performed is stated and one action from being withdrawn.
+
+LLM outputs are cached decisions. A verdict is recorded twice, and the two
+records answer different questions: the `dedup_resolution` decision says who
+decided and what they decided, and is what stops a run from acting on the group
+again; the `dedup_decision` rule performs the merge at replay time, and is what
+makes the group *merged*. Delete the rule and the group is unmerged and awaiting
+a decision again, whatever the resolution remembers.
 """
 
 import hashlib
@@ -158,16 +165,59 @@ def group_key(row_ids: list[str]) -> str:
     return hashlib.sha256(canonical.encode()).hexdigest()[:16]
 
 
+# What a group's member row states beside the fields a merge decides: the fixed
+# number that names it, and the evidence register the console identifies it by
+# (spec etl-console, HR identity in the phases after matching). The console
+# renders a member from this alone, so what it needs is projected here rather
+# than joined against the sheet (design D2).
+VIEW_FIELDS = ["id", "number", "registered_at", "hr_name", "hr_nationality", "hr_club"]
+
+
 def _record_view(row: Row) -> dict:
     view = {field: row.get(field) for field in MERGE_FIELDS}
+    view.update({field: row.get(field) for field in VIEW_FIELDS})
     view["id"] = row["id"]
-    view["registered_at"] = row.get("registered_at")
     return view
 
 
 def _sorted_group(rows_by_id: dict[str, Row], ids: list[str]) -> list[Row]:
     members = [rows_by_id[i] for i in ids if i in rows_by_id]
     return sorted(members, key=lambda r: r.get("registered_at") or "")
+
+
+def _group_members(rows_by_id: dict[str, Row], ids: list[str]) -> list[Row]:
+    """A candidate group's surviving members, oldest first.
+
+    `rows_by_id` is the table as it stands *before* any merge (design D2): a
+    group merged long ago must still be able to show what it merged, and to
+    offer each record's own values back when its conclusion is reopened. A
+    deletion is not excluded that way — a row taken out of the table is no
+    longer a duplicate of anything, and the group stands or falls on what is
+    left (spec etl-console, Reversible row deletion).
+    """
+    members = [
+        row
+        for row in (rows_by_id[i] for i in ids if i in rows_by_id)
+        if not row.get("_deleted")
+    ]
+    return sorted(members, key=lambda r: r.get("registered_at") or "")
+
+
+def merge_rule_for(session: Session, tournament: Tournament, key: str):
+    """The merge rule standing for a group, or None.
+
+    A group is merged while its rule is live and not because a decision record
+    says it was accepted: the rule is what performs the merge, and the
+    manual-edits log can remove it (design D3). The rule identifies its group by
+    the rows it names — target plus absorbed is the membership the key was
+    hashed from — so nothing had to be written into the payload for this to be
+    answerable about rules created before the question was asked.
+    """
+    for rule in rules.active_rules(session, tournament, "dedup_decision"):
+        ids = [rule.target, *rule.payload.get("absorb", [])]
+        if group_key(ids) == key:
+            return rule
+    return None
 
 
 def _work_units(session: Session, tournament: Tournament, rows: list[Row]) -> tuple[int, int]:
@@ -309,57 +359,96 @@ def _merge(
     )
 
 
-def pending_queue(session: Session, tournament: Tournament, rows: list[Row]) -> list[dict]:
-    """Decision queue: same-hr_id merge proposals and likely no-id groups the
-    organizer has not resolved yet."""
-    active = {r["id"]: r for r in rows if not r.get("_deleted")}
-    queue: list[dict] = []
+def _verdict(
+    session: Session, tournament: Tournament, key: str
+) -> tuple[str, str | None, dict | None]:
+    """A group's verdict, whose it is, and the conclusion it stands on.
+
+    Merged is read off the live rule and rejected off the resolution record: the
+    two answer different questions — "is this merged right now?" and "has anyone
+    decided this?" — and were one variable until they disagreed (design D3).
+    Withdrawing the merge from the manual-edits log therefore returns the group
+    to those awaiting a decision instead of settling it unmerged.
+    """
+    rule = merge_rule_for(session, tournament, key)
+    resolution = get_decision(session, tournament, "dedup_resolution", key)
+    if rule is not None:
+        conclusion = {
+            "fields": rule.payload.get("fields") or {},
+            "note": rule.payload.get("note") or "",
+        }
+        return "merged", (resolution.source if resolution is not None else None), conclusion
+    if resolution is not None and resolution.payload.get("accepted") is False:
+        return "separate", resolution.source, None
+    return "pending", None, None
+
+
+def candidate_groups(session: Session, tournament: Tournament, rows: list[Row]) -> list[dict]:
+    """Every candidate duplicate group the operation has raised, with its
+    verdict — the whole of what the Deduplication phase shows (spec etl-console,
+    Deduplication candidate review).
+
+    All three lanes are here: same-hr_id proposals, and both bands the
+    classifier acts on. The surely band is listed because it was merged, not
+    despite it — a machine's verdict is stated and reversible, never silent
+    (spec etl-console, The ledger idiom). The possible band is not listed: it
+    was discarded to keep false positives off the screen.
+
+    `rows` is the table replayed without its merges, so a settled group still
+    states the records it merged (design D2).
+    """
+    by_id = {r["id"]: r for r in rows}
+    groups: list[dict] = []
 
     from sqlalchemy import select
 
     from app.models import ImportDecision
 
     decisions = session.scalars(
-        select(ImportDecision).where(
+        select(ImportDecision)
+        .where(
             ImportDecision.tournament_id == tournament.id,
             ImportDecision.kind.in_(["merge", "dedup"]),
         )
+        .order_by(ImportDecision.id)
     ).all()
 
-    def resolved(key: str) -> bool:
-        return get_decision(session, tournament, "dedup_resolution", key) is not None
+    def group(key: str, kind: str, members: list[Row], fields: dict, note: str) -> dict:
+        verdict, decided_by, conclusion = _verdict(session, tournament, key)
+        return {
+            "key": key,
+            "kind": kind,
+            "verdict": verdict,
+            "decided_by": decided_by,
+            "members": [_record_view(r) for r in members],
+            "recommendation": {"fields": fields, "note": note},
+            "conclusion": conclusion,
+        }
 
     for decision in decisions:
         if decision.kind == "merge":
-            ids = decision.payload["rows"]
-            members = _sorted_group(active, ids)
-            if len(members) < 2 or resolved(decision.key):
+            members = _group_members(by_id, decision.payload["rows"])
+            if len(members) < 2:
                 continue
-            queue.append(
-                {
-                    "key": decision.key,
-                    "kind": "same_id",
-                    "rows": [_record_view(r) for r in members],
-                    "fields": decision.payload["fields"],
-                    "note": decision.payload["note"],
-                }
-            )
-        else:
-            for ids in ThreeBands(**decision.payload).likely:
-                members = _sorted_group(active, ids)
-                key = group_key([r["id"] for r in members])
-                if len(members) < 2 or resolved(key):
-                    continue
-                queue.append(
-                    {
-                        "key": key,
-                        "kind": "likely",
-                        "rows": [_record_view(r) for r in members],
-                        "fields": default_merge(members),
-                        "note": "",
-                    }
+            groups.append(
+                group(
+                    decision.key,
+                    "same_id",
+                    members,
+                    decision.payload["fields"],
+                    decision.payload["note"],
                 )
-    return queue
+            )
+            continue
+        bands = ThreeBands(**decision.payload)
+        for kind, band in (("surely", bands.surely), ("likely", bands.likely)):
+            for ids in band:
+                members = _group_members(by_id, ids)
+                if len(members) < 2:
+                    continue
+                key = group_key([r["id"] for r in members])
+                groups.append(group(key, kind, members, default_merge(members), ""))
+    return groups
 
 
 def decide(
@@ -372,20 +461,44 @@ def decide(
     fields: dict | None,
     note: str | None,
 ) -> dict:
-    item = next((i for i in pending_queue(session, tournament, rows) if i["key"] == key), None)
-    if item is None:
-        return {"status": "not_pending"}
+    """The organizer's verdict on a candidate group, whatever verdict it carried
+    before (design D4).
+
+    Total and idempotent: a group already merged can be kept separate, one kept
+    separate can be merged, and a merged group's conclusion can be corrected and
+    confirmed again. Re-confirming updates the standing rule rather than adding
+    a second one — two merges absorbing the same rows would be one decision
+    reported twice and undone once.
+    """
+    group = next(
+        (g for g in candidate_groups(session, tournament, rows) if g["key"] == key), None
+    )
+    if group is None:
+        return {"status": "unknown_group"}
+    rule = merge_rule_for(session, tournament, key)
     if accept:
-        active = {r["id"]: r for r in rows if not r.get("_deleted")}
-        members = _sorted_group(active, [r["id"] for r in item["rows"]])
-        _merge(
-            session,
-            tournament,
-            actor,
-            members,
-            fields if fields is not None else item["fields"],
-            note if note is not None else (item["note"] or "merged by organizer"),
-        )
+        ids = [member["id"] for member in group["members"]]
+        payload = {
+            "absorb": ids[1:],
+            "fields": fields if fields is not None else group["recommendation"]["fields"],
+            "note": note
+            if note is not None
+            else (group["recommendation"]["note"] or "merged by organizer"),
+        }
+        if rule is not None:
+            rules.update_rule(session, rule, actor, payload)
+        else:
+            rules.create_rule(
+                session,
+                tournament,
+                actor,
+                phase="dedup",
+                kind="dedup_decision",
+                target=ids[0],
+                payload=payload,
+            )
+    elif rule is not None:
+        rules.delete_rule(session, rule, actor)
     store_decision(
         session,
         tournament,

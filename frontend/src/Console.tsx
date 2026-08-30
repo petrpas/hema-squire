@@ -1,15 +1,13 @@
-import { IconArrowBackUp, IconTrash } from "@tabler/icons-react";
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useNavigate } from "react-router-dom";
 
 import AccountMenu from "./AccountMenu";
-import DedupPanel from "./DedupPanel";
-import EditableCell from "./EditableCell";
+import DedupPanel from "./dedup/DedupPanel";
+import DedupView from "./dedup/DedupView";
 import ExportPanel from "./ExportPanel";
 import { IDENTITY_COLUMNS, identityValue, usesHRIdentity } from "./identity";
 import ImportPanel from "./ImportPanel";
-import MatchCell from "./MatchCell";
 import MatchDialog from "./MatchDialog";
 import MatchPanel from "./MatchPanel";
 import NoteMarker from "./NoteMarker";
@@ -23,6 +21,7 @@ import QueuePanel from "./QueuePanel";
 import { useAuth } from "./RequireAuth";
 import * as routes from "./routes";
 import SetupPanel from "./SetupPanel";
+import SheetArea from "./SheetArea";
 import TeamsPanel from "./TeamsPanel";
 import useOperations from "./useOperations";
 import { registeredMoment } from "./momentText";
@@ -82,14 +81,15 @@ const BASE_COLUMNS = ["name", "nationality", "club"];
 
 // Columns whose cell is a marker rather than a value: as wide as the marker,
 // and empty on most rows.
-const MARKER_COLUMNS = new Set(["notes", "problems"]);
+export const MARKER_COLUMNS = new Set(["notes", "problems"]);
 
-const PHASE_COLUMNS: Record<Phase, string[]> = {
+export const PHASE_COLUMNS: Record<Phase, string[]> = {
   setup: [],
   import: ["disciplines", "problems", "notes"],
   fencers: ["disciplines", "weapon_rentals", "afterparty", "registered_at", "notes"],
   matching: ["hr_id", "hr_name", "hr_nationality", "hr_club", "match"],
-  dedup: ["hr_id", "state"],
+  // Deduplication shows candidate groups, not the fencer list (design D1)
+  dedup: [],
   payments: ["vs", "total_amount", "expires_at", "paid_at", "state"],
   export: ["hr_id", "disciplines", "state"],
   teams: [],
@@ -387,7 +387,6 @@ export default function Console({
   // adds and removes phases at once rather than on the next load
   const phases = offeredPhases(detail ?? tournament);
   const columns = [...BASE_COLUMNS, ...PHASE_COLUMNS[phase]];
-  const hrIdentity = usesHRIdentity(phase);
   const phaseEdits = editsForPhase(sheet?.edits ?? [], phase);
 
   return (
@@ -447,136 +446,36 @@ export default function Console({
           <QueuePanel slug={tournament.slug} timezone={detail?.timezone ?? null} />
         ) : (
           <>
-        <main className="sheet-area">
-          <div className="sheet-header">
-            {/* the Import view is a record of one uploaded file, not the
-                tournament's list of fencers, and says so */}
-            <h1>{t(phase === "import" ? "console.titleImport" : "console.title")}</h1>
-            <button className="secondary" onClick={refresh}>
-              {t("console.refresh")}
-            </button>
-          </div>
-
-          <div className="sheet-scroll">
-            {error ? (
-              <p className="sheet-empty">{t("console.error")}</p>
-            ) : visibleRows.length === 0 ? (
-              <p className="sheet-empty">{t("sheet.empty")}</p>
-            ) : (
-              <table className="sheet-table">
-                <thead>
-                  <tr>
-                    <th className="col-index">#</th>
-                    {columns.map((column) => (
-                      <th
-                        key={column}
-                        className={[
-                          PHASE_COLUMNS[phase].includes(column) ? "col-phase" : "",
-                          MARKER_COLUMNS.has(column) ? "col-marker" : "",
-                        ]
-                          .filter(Boolean)
-                          .join(" ")}
-                      >
-                        {t(`column.${column}`)}
-                      </th>
-                    ))}
-                    <th className="col-actions" />
-                  </tr>
-                </thead>
-                <tbody>
-                  {visibleRows.map((row) => (
-                    <tr key={row.id} className={row._deleted ? "row-deleted" : ""}>
-                      <td className="col-index">
-                        {rowNumber(row, phase)}
-                        {absorbedInto(row, rows) !== null && (
-                          <span className="row-absorbed" title={t("row.absorbed")}>
-                            {" \u2192 #"}
-                            {absorbedInto(row, rows)}
-                          </span>
-                        )}
-                      </td>
-                      {columns.map((column) => {
-                        const phaseOwned = PHASE_COLUMNS[phase].includes(column);
-                        const editable = editableHere(column, phase) && !row._deleted;
-                        const isMatch = column === "match";
-                        return (
-                          <td
-                            key={column}
-                            className={`${phaseOwned ? "col-phase" : ""} ${
-                              isMatch ? "col-verdict" : ""
-                            } ${MARKER_COLUMNS.has(column) ? "col-marker" : ""}`}
-                          >
-                            {isMatch ? (
-                              <MatchCell
-                                row={row}
-                                onRatify={() => ratifyMatch(row)}
-                                onSearch={() => setMatchRow(row)}
-                              />
-                            ) : editable ? (
-                              <EditableCell
-                                display={
-                                  <CellDisplay
-                                    row={row}
-                                    column={column}
-                                    timezone={detail?.timezone ?? null}
-                                    hrIdentity={hrIdentity}
-                                  />
-                                }
-                                value={row[column]}
-                                onSave={(raw) => saveEdit(row, column, raw)}
-                                validate={(raw) => cellCheck(column, raw)}
-                              />
-                            ) : (
-                              <CellDisplay
-                                row={row}
-                                column={column}
-                                timezone={detail?.timezone ?? null}
-                                hrIdentity={hrIdentity}
-                              />
-                            )}
-                          </td>
-                        );
-                      })}
-                      <td className="col-actions">
-                        {rowAction(row) === null ? null : rowAction(row) === "restore" ? (
-                          <button
-                            className="row-action"
-                            title={t("actions.restore")}
-                            onClick={() => void addRule("row_restore", row.id, {})}
-                          >
-                            <IconArrowBackUp size={16} stroke={1.5} />
-                          </button>
-                        ) : (
-                          <button
-                            className="row-action"
-                            title={t("actions.delete")}
-                            onClick={() => void addRule("row_delete", row.id, {})}
-                          >
-                            <IconTrash size={16} stroke={1.5} />
-                          </button>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-          </div>
-
-          {!error && visibleRows.length > 0 && (
-            <div className="doc-footer">
-              <span>
-                {t("console.footerStats", { rows: activeRows.length, paid: paidCount })}
-              </span>
-              <span>
-                {t("console.footerNote")}{" "}
-                <span className="doc-footer-revision">
-                  {t("console.footerRevision", { n: sheet?.edits.length ?? 0 })}
-                </span>
-              </span>
-            </div>
-          )}
-        </main>
+        {phase === "dedup" ? (
+          /* the phase's work is a handful of rows out of fifty, and the fencer
+             table states it where it is hardest to see (spec etl-console,
+             Deduplication candidate review) */
+          <DedupView
+            slug={tournament.slug}
+            operations={operations}
+            onChanged={refresh}
+            timezone={detail?.timezone ?? null}
+          />
+        ) : (
+          <SheetArea
+            phase={phase}
+            rows={rows}
+            visibleRows={visibleRows}
+            columns={columns}
+            activeRows={activeRows}
+            paidCount={paidCount}
+            revision={sheet?.edits.length ?? 0}
+            timezone={detail?.timezone ?? null}
+            error={error}
+            refresh={refresh}
+            onEdit={saveEdit}
+            onValidate={cellCheck}
+            onDelete={(row) => void addRule("row_delete", row.id, {})}
+            onRestore={(row) => void addRule("row_restore", row.id, {})}
+            onRatify={ratifyMatch}
+            onSearch={setMatchRow}
+          />
+        )}
 
         <aside className="rail">
           <div className="rail-title">

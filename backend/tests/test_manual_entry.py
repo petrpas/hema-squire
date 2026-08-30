@@ -195,8 +195,8 @@ def test_manual_row_reaches_deduplication(client, auth_headers):
     assert response.status_code == 202, response.text
     assert outcome(client, organizer, kind="dedup")["proposals"] == 1
 
-    queue = client.get("/api/tournaments/cup/import/dedup/queue", headers=organizer).json()
-    ids = {row["id"] for item in queue for row in item["rows"]}
+    groups = client.get("/api/tournaments/cup/import/dedup/groups", headers=organizer).json()
+    ids = {member["id"] for group in groups for member in group["members"]}
     assert any(row_id.startswith("man:") for row_id in ids)
     assert any(row_id.startswith("imp:") for row_id in ids)
 

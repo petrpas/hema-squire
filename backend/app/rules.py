@@ -94,18 +94,27 @@ def _apply_row_restore(rows: dict[str, Row], target: str, payload: dict):
 
 def _apply_dedup_decision(rows: dict[str, Row], target: str, payload: dict):
     """A confirmed merge: the target row takes the merged field values, the
-    absorbed rows disappear from the table (they stay visible in the audit)."""
+    absorbed rows disappear from the table (they stay visible in the audit).
+
+    **One decision, one entry.** Only the absorption is reported. The merged
+    values and the merge note are applied without appending to the audit, as a
+    match resolution's promoted name already is: they are consequences of one
+    click, and reporting each of them separately said a single decision five or
+    six times over — including, where a field merged one empty value onto
+    another, a line stating that nothing had changed (spec etl-console, A merge
+    reads as one entry).
+
+    Nothing is lost. Undo still works, since the surviving entry carries the
+    rule id and removing the rule reverses the whole merge. What the merge
+    decided is on the group's conclusion in the Deduplication view, which is
+    where a reader can compare it against the records it came from.
+    """
     changes = []
     survivor = rows[target]
     for field, value in payload.get("fields", {}).items():
-        before = survivor.get(field)
-        if before != value:
-            survivor[field] = value
-            changes.append((target, field, before, value))
+        survivor[field] = value
     if payload.get("note"):
-        before = survivor.get("merge_note")
         survivor["merge_note"] = payload["note"]
-        changes.append((target, "merge_note", before, payload["note"]))
     for absorbed_id in payload.get("absorb", []):
         absorbed = rows.get(absorbed_id)
         if absorbed is None:

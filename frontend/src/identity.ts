@@ -35,14 +35,23 @@ export function usesHRIdentity(phase: Phase): boolean {
  *  registered club — the profile is the authority, and its silence is an
  *  answer. Nothing is marked where there is nothing to mark: an em dash is not
  *  a value and is never set in italic. */
+/** Anything carrying a claim register, an evidence register and a binding: a
+ *  fencer-table row, or a member or conclusion of a deduplication candidate
+ *  group. The rule is about the record, not about the table it happens to sit
+ *  in (spec `etl-console`, HR identity in the phases after matching). */
+export interface IdentityRecord {
+  hr_id: number | null;
+  [key: string]: unknown;
+}
+
 export function identityValue(
-  row: SheetRow,
+  row: IdentityRecord,
   column: string,
   hrIdentity: boolean,
 ): { text: string; declared: boolean } {
   const bound = row.hr_id !== null && row.hr_id !== undefined;
   const source = hrIdentity && bound ? HR_FIELD[column] : column;
-  const value = row[source as keyof SheetRow];
+  const value = row[source as string];
   const text = value === null || value === undefined || value === "" ? "—" : String(value);
   return { text, declared: hrIdentity && !bound && text !== "—" };
 }
