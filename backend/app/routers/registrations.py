@@ -202,6 +202,16 @@ def registration_out(session, registration: Registration, tournament: Tournament
             for entry in registration.entries
         ],
         "teams": [_team_out(team, tournament, at) for team in registration.teams],
+        "discounts": [
+            {
+                "name": d.name,
+                "effect": d.effect,
+                "applied": d.applied,
+                "deducted": d.deducted,
+                "deducted_eur": d.deducted_eur,
+            }
+            for d in pricing.registration_discounts(registration, tournament)
+        ],
     }
 
 

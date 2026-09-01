@@ -549,6 +549,11 @@ export interface RegistrationDetail {
   extras: RegistrationExtraSelection[];
   entries: RegistrationEntry[];
   teams: TeamEntry[];
+  /** The breakdown behind `total_amount`, one entry per configured discount in
+   *  configured order — the lines of a registration state list prices, so the
+   *  applied ones are what makes the total add up. Empty for a tournament that
+   *  configures none. */
+  discounts: DiscountBreakdown[];
 }
 
 export interface ExtraSelectionPayload {

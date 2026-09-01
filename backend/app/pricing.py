@@ -351,13 +351,39 @@ def selection_discounts(
     return breakdown
 
 
+def _registration_selection(
+    registration: Registration,
+) -> tuple[list[Discipline], list[tuple[ExtraItem, int]], list[Discipline]]:
+    """What a persisted registration holds, in the shape the selection
+    functions price. Waitlisted teams are excluded exactly as substitute
+    discipline entries are (design team-disciplines D3)."""
+    return (
+        [e.discipline for e in registration.entries if not e.is_substitute],
+        [(s.item, s.qty) for s in registration.extra_selections],
+        [t.discipline for t in registration.teams if not t.waitlisted],
+    )
+
+
+def registration_discounts(
+    registration: Registration, tournament: Tournament
+) -> list[DiscountBreakdown]:
+    """The per-discount breakdown behind a persisted registration's stored
+    total — the same selection `registration_total` priced, evaluated at the
+    same date, so the two can never disagree about what applied."""
+    active, extras, team_disciplines = _registration_selection(registration)
+    return selection_discounts(
+        tournament,
+        disciplines=active,
+        extras=extras,
+        at=registration.registered_at.date(),
+        team_disciplines=team_disciplines,
+    )
+
+
 def registration_total(registration: Registration, tournament: Tournament) -> Totals:
     """Amount(s) due now for a persisted registration; delegates to
-    `selection_totals`. Waitlisted teams are excluded exactly as substitute
-    discipline entries are (design team-disciplines D3)."""
-    active = [e.discipline for e in registration.entries if not e.is_substitute]
-    extras = [(s.item, s.qty) for s in registration.extra_selections]
-    team_disciplines = [t.discipline for t in registration.teams if not t.waitlisted]
+    `selection_totals`."""
+    active, extras, team_disciplines = _registration_selection(registration)
     return selection_totals(
         tournament,
         disciplines=active,

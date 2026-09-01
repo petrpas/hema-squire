@@ -820,6 +820,18 @@ class RegistrationExtraOut(BaseModel):
     option_value: str | None = None
 
 
+class DiscountBreakdownOut(BaseModel):
+    name: str
+    effect: DiscountEffect
+    applied: bool
+    # what the discount deducted, read from the computation that produced the
+    # total alongside it — per currency for a fixed effect, local-only (design
+    # Decision 3) for a currency-neutral percentage effect; both None when the
+    # discount did not apply
+    deducted: int | None = None
+    deducted_eur: int | None = None
+
+
 class RegistrationOut(BaseModel):
     state: RegistrationState
     vs: int
@@ -844,6 +856,10 @@ class RegistrationOut(BaseModel):
     extras: list[RegistrationExtraOut] = []
     entries: list[RegistrationEntryOut]
     teams: list[TeamEntryOut] = []
+    # the same per-discount breakdown the price preview carries, for the
+    # selection this registration holds: the lines above are list prices, so
+    # without it a discounted total could not be shown to add up
+    discounts: list[DiscountBreakdownOut] = []
 
 
 class AvailabilityOut(BaseModel):
@@ -867,18 +883,6 @@ class PricePreviewIn(BaseModel):
     afterparty: bool = False
     extras: list[ExtraSelectionIn] = []
     teams: list[PreviewTeamIn] = []
-
-
-class DiscountBreakdownOut(BaseModel):
-    name: str
-    effect: DiscountEffect
-    applied: bool
-    # what the discount deducted, read from the computation that produced the
-    # total alongside it — per currency for a fixed effect, local-only (design
-    # Decision 3) for a currency-neutral percentage effect; both None when the
-    # discount did not apply
-    deducted: int | None = None
-    deducted_eur: int | None = None
 
 
 class PricePreviewOut(BaseModel):

@@ -232,6 +232,53 @@ def test_price_preview_matches_registration_total_itemized(client, auth_headers)
     assert preview.json()["total"] == (800 + 500 - 100) + 2 * 250
 
 
+def test_registration_carries_the_discounts_behind_its_total(client, auth_headers):
+    """The summary states every line at its list price, so the applied
+    discount is what makes the lines and the total agree — a registration
+    that does not carry it cannot be shown to add up."""
+    organizer = auth_headers()
+    setup_tournament(client, organizer)
+    client.patch(
+        "/api/tournaments/cup",
+        json={
+            "discounts": [
+                {
+                    "name": "2 disciplines",
+                    "condition": {"kind": "discipline_count", "count": 2},
+                    "effect": {"kind": "fixed", "value": 100},
+                    "scope": ["discipline"],
+                },
+                {
+                    "name": "3 disciplines",
+                    "condition": {"kind": "discipline_count", "count": 3},
+                    "effect": {"kind": "fixed", "value": 200},
+                    "scope": ["discipline"],
+                },
+            ]
+        },
+        headers=organizer,
+    )
+    fencer = auth_headers(email="f1@example.com", name="F1")
+
+    registered = register(client, fencer, disciplines=["LS", "SB"]).json()
+    assert registered["total_amount"] == 800 + 500 - 100
+    assert [(d["name"], d["applied"], d["deducted"]) for d in registered["discounts"]] == [
+        ("2 disciplines", True, 100),
+        ("3 disciplines", False, None),
+    ]
+
+    # and again when the registration is read back, not only as it is created
+    mine = client.get("/api/tournaments/cup/my-registration", headers=fencer).json()
+    assert mine["discounts"] == registered["discounts"]
+
+
+def test_registration_without_configured_discounts_carries_none(client, auth_headers):
+    organizer = auth_headers()
+    setup_tournament(client, organizer)
+    fencer = auth_headers(email="f1@example.com", name="F1")
+    assert register(client, fencer, disciplines=["LS"]).json()["discounts"] == []
+
+
 def test_price_preview_breakdown_lists_applied_and_unapplied(client, auth_headers):
     organizer = auth_headers()
     setup_tournament(client, organizer)

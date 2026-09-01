@@ -155,6 +155,31 @@ function RegistrationLines({
           />
         );
       })}
+      {/* what the discounts took off, between the priced lines and the total
+          they explain: every line above is a list price, so an applied
+          discount is the only thing that makes the two agree. A configured
+          discount the selection did not activate is not a line — it deducted
+          nothing and belongs to the tournament's information screen, not to
+          this statement of what was charged. */}
+      {registration.discounts
+        .filter((d) => d.applied)
+        .map((d, index) => (
+          <AmountLine
+            key={`discount-${index}`}
+            label={d.name}
+            amount={
+              d.deducted === null
+                ? undefined
+                : t("discounts.amountValue", {
+                    amount: formatMoneyWithEur(
+                      d.deducted,
+                      d.deducted_eur === null ? null : d.deducted_eur,
+                      detail,
+                    ),
+                  })
+            }
+          />
+        ))}
       <AmountLine
         className="amount-total"
         label={t("form.totalLabel")}
