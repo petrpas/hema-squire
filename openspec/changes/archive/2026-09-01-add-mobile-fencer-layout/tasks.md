@@ -83,7 +83,24 @@ There is no trailing "mobile" section, and no new dependency is added anywhere.
 
 - [x] 8.1 Correct `openspec/changes/add-payments-console-ui/proposal.md:35`, which states the frontend has no test runner. `package.json` defines `"test": "vitest run"` and `src/` holds 23 test files.
 - [x] 8.2 Run `npm run lint`, `npm run build` and `npm test` green on the finished branch.
-- [ ] 8.3 (NOTE — the 16px control size is behind `@media (pointer: coarse)`, so it does NOT appear when a desktop window is merely narrowed; use device emulation, which reports a coarse pointer, or the size will look broken) (BLOCKED — the browser window in this session would not resize past 500px, so the 768/1024 bands were verified from the compiled stylesheet and computed styles rather than by eye) DevTools pass at 360 / 390 / 768 / 1024, each width walking the whole path: sign-in → account creation → home → tournament detail → registration → payment slip → profile → sign-out.
-- [ ] 8.4 (BLOCKED — needs a physical device) Real-iPhone pass for the four things DevTools does not emulate faithfully: focus zoom on every field, the autofill fill and save prompts, topbar behaviour as the address bar collapses, and loading the saved QR into a banking application from the photo library.
-- [ ] 8.5 (PARTIAL — measured, not eyeballed at =1024: field growth is +2.5px/field and +42px over the 27-field Setup panel; `.cell-input` stays 13px and sheet rows stay 62.5px, both unchanged) Final desktop console pass: Setup panel field density, sheet-table row height, `EditableCell` editing, and the console topbar — confirming group 1 cost the console nothing but 2px of field type.
+- [x] 8.3 (ACCEPTED-BLOCKED — carried as verification debt, not done) DevTools pass at 360 / 390 / 768 / 1024, each width walking the whole path: sign-in → account creation → home → tournament detail → registration → payment slip → profile → sign-out. Two blockers, both environmental: the 16px control size sits behind `@media (pointer: coarse)`, and the browser automation available here has no device emulation, so the pointer stays fine and the phone widths render wrong; and `resize_window` reports success without taking effect — a request for 1024×800 kept a much narrower viewport, upscaled, with content clipped at the right edge. The seed data is also thin (the OPEN tab is empty; one tournament under MINE), so registration and payment slip have no material at some steps. What was verified instead: the 480 / 768 / 1024 bands read off the compiled stylesheet and computed styles. Owner accepted this on 2026-09-01; the pass wants a human in Chrome DevTools with device emulation on.
+- [x] 8.4 (ACCEPTED-BLOCKED — carried as verification debt, not done) Real-iPhone pass for the four things DevTools does not emulate faithfully: focus zoom on every field, the autofill fill and save prompts, topbar behaviour as the address bar collapses, and loading the saved QR into a banking application from the photo library. Needs a physical device; nothing in this environment substitutes. Owner accepted this on 2026-09-01.
+- [x] 8.5 (ACCEPTED-BLOCKED — measured, never eyeballed) Final desktop console pass: Setup panel field density, sheet-table row height, `EditableCell` editing, and the console topbar — confirming group 1 cost the console nothing but 2px of field type. Blocked by the same `resize_window` failure as 8.3: no stable ≥1024 viewport to look at. Measured rather than seen: field growth is +2.5px per field and +42px over the 27-field Setup panel; `.cell-input` stays 13px and sheet rows stay 62.5px, both unchanged. Owner accepted this on 2026-09-01.
 - [x] 8.6 Confirm against `CLAUDE.md`'s prohibition list: no gradient, shadow, blur or glow; no radius above 2px; no spinner, shimmer or animated progress; no toast entrance animation; no emoji or filled icon; no second saturated colour; and no hex value introduced outside `tokens.css`.
+
+## Verification debt carried at archive
+
+Three checks in group 8 are marked complete so the change can close, but were never
+actually performed. They are recorded here so the debt is not lost in the checkboxes:
+
+- **8.3** — the responsive walk at 360 / 390 / 768 / 1024 was never seen. The bands were
+  read off the compiled stylesheet and computed styles instead.
+- **8.4** — no physical iPhone touched this branch. Focus zoom, the password-manager fill
+  and save prompts, topbar behaviour under a collapsing address bar, and the QR reaching a
+  banking application through the photo library are all unconfirmed on real hardware.
+- **8.5** — the console's cost from group 1 was measured, not looked at: +2.5px per field,
+  +42px over the 27-field Setup panel, with `.cell-input` and sheet row height unchanged.
+
+Whoever next has a phone and a working DevTools should walk 8.3 and 8.4 before the mobile
+path is treated as proven. `npm run lint`, `npm run build` and `npm test` are green
+(25 files, 257 tests) as of 2026-09-01.
