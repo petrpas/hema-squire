@@ -1081,6 +1081,7 @@ fieldset.form-field > legend {
   text-transform: none;
   letter-spacing: normal;
   cursor: default;
+  user-select: none;
 }
 
 .help-hint-box {
