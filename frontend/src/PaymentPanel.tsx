@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
+import PaymentSlipBlock, { type SlipField } from "./PaymentSlipBlock";
 import { ApiError, type PaymentInstructions, api } from "./api";
 import { formatMoney } from "./money";
 
@@ -15,6 +16,72 @@ type PaymentPanelState =
   | { kind: "refused"; reason: PaymentRefusal; status?: number };
 
 type PaymentTab = "local" | "eur";
+
+type Translate = (key: string, opts?: Record<string, unknown>) => string;
+
+function expiry(payment: PaymentInstructions): string {
+  return new Date(payment.expires_at ?? "").toLocaleDateString("cs");
+}
+
+/** What a fencer must put into their bank for the local-currency transfer.
+ *  `copy` is the bare value a payment form wants, which is not always what is
+ *  shown: an amount reads "1 200 Kč" on the slip and must paste as "1200". */
+function localFields(payment: PaymentInstructions, t: Translate): SlipField[] {
+  const fields: SlipField[] = [
+    {
+      key: "amount",
+      label: t("payment.amount"),
+      shown: formatMoney(payment.amount, payment.currency),
+      copy: String(payment.amount),
+    },
+  ];
+  if (payment.account_domestic) {
+    fields.push({
+      key: "account",
+      label: t("payment.account"),
+      shown: payment.account_domestic,
+      copy: payment.account_domestic,
+    });
+  }
+  fields.push(
+    {
+      key: "iban",
+      label: payment.account_domestic ? t("payment.ibanLabel") : t("payment.account"),
+      shown: payment.iban,
+      copy: payment.iban,
+    },
+    {
+      key: "vs",
+      label: t("payment.vs"),
+      shown: String(payment.vs),
+      copy: String(payment.vs),
+    },
+    // nothing to copy: a date is read, never entered into a transfer
+    { key: "expires", label: t("payment.expiresAt"), shown: expiry(payment) },
+  );
+  return fields;
+}
+
+/** The same registration payable in EUR: no domestic account number, and the
+ *  VS travels in the message because a SEPA transfer has no VS field. */
+function eurFields(payment: PaymentInstructions, amount: number, t: Translate): SlipField[] {
+  return [
+    {
+      key: "amount",
+      label: t("payment.eurAmount"),
+      shown: formatMoney(amount, "EUR"),
+      copy: String(amount),
+    },
+    { key: "iban", label: t("payment.ibanLabel"), shown: payment.iban, copy: payment.iban },
+    {
+      key: "message",
+      label: t("payment.message"),
+      shown: payment.message,
+      copy: payment.message,
+    },
+    { key: "expires", label: t("payment.expiresAt"), shown: expiry(payment) },
+  ];
+}
 
 export default function PaymentPanel({ slug }: { slug: string }) {
   const { t } = useTranslation();
@@ -97,70 +164,24 @@ export default function PaymentPanel({ slug }: { slug: string }) {
 
       {(!eur || tab === "local") && (
         <>
-          <div className="payment-block">
-            <div className="param-fields">
-              <div className="param-field">
-                <span>{t("payment.amount")}</span>
-                <strong className="data-value">
-                  {formatMoney(payment.amount, payment.currency)}
-                </strong>
-              </div>
-              {payment.account_domestic && (
-                <div className="param-field">
-                  <span>{t("payment.account")}</span>
-                  <strong className="data-value">{payment.account_domestic}</strong>
-                </div>
-              )}
-              <div className="param-field">
-                <span>{payment.account_domestic ? t("payment.ibanLabel") : t("payment.account")}</span>
-                <strong className="data-value">{payment.iban}</strong>
-              </div>
-              <div className="param-field">
-                <span>{t("payment.vs")}</span>
-                <strong className="data-value">{payment.vs}</strong>
-              </div>
-              <div className="param-field">
-                <span>{t("payment.expiresAt")}</span>
-                <strong>{new Date(payment.expires_at ?? "").toLocaleDateString("cs")}</strong>
-              </div>
-            </div>
-            <img
-              className="payment-qr"
-              src={`data:image/png;base64,${payment.qr_png_base64}`}
-              alt={t("payment.title")}
-            />
-          </div>
+          <PaymentSlipBlock
+            fields={localFields(payment, t)}
+            qrBase64={payment.qr_png_base64}
+            qrAlt={t("payment.title")}
+            qrFilename={`qr-${payment.vs}.png`}
+          />
           <p className="rail-hint">{t("payment.vsInMessage", { vs: payment.vs })}</p>
         </>
       )}
 
       {eur && tab === "eur" && (
         <>
-          <div className="payment-block">
-            <div className="param-fields">
-              <div className="param-field">
-                <span>{t("payment.eurAmount")}</span>
-                <strong className="data-value">{formatMoney(eur.amount, "EUR")}</strong>
-              </div>
-              <div className="param-field">
-                <span>{t("payment.ibanLabel")}</span>
-                <strong className="data-value">{payment.iban}</strong>
-              </div>
-              <div className="param-field">
-                <span>{t("payment.message")}</span>
-                <strong className="data-value">{payment.message}</strong>
-              </div>
-              <div className="param-field">
-                <span>{t("payment.expiresAt")}</span>
-                <strong>{new Date(payment.expires_at ?? "").toLocaleDateString("cs")}</strong>
-              </div>
-            </div>
-            <img
-              className="payment-qr"
-              src={`data:image/png;base64,${eur.qrBase64}`}
-              alt={t("payment.eurTitle")}
-            />
-          </div>
+          <PaymentSlipBlock
+            fields={eurFields(payment, eur.amount, t)}
+            qrBase64={eur.qrBase64}
+            qrAlt={t("payment.eurTitle")}
+            qrFilename={`qr-eur-${payment.vs}.png`}
+          />
           <p className="rail-hint">{t("payment.eurHint")}</p>
         </>
       )}

@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Outlet, useNavigate, useOutletContext } from "react-router-dom";
 
 import Login from "./Login";
-import { api, getToken, setToken } from "./api";
+import { ApiError, api, getToken, setToken } from "./api";
 import i18n from "./i18n";
 
 type AuthContext = { onLogout: () => void };
@@ -19,9 +19,29 @@ export default function RequireAuth() {
   const [authed, setAuthed] = useState(() => getToken() !== null);
 
   useEffect(() => {
-    if (authed) {
-      api.account().then((account) => void i18n.changeLanguage(account.language), () => {});
-    }
+    if (!authed) return;
+    api.account().then(
+      (account) => void i18n.changeLanguage(account.language),
+      (err) => {
+        // A stored token is not proof of a session. On a phone it is typically
+        // weeks old, and holding the shell open on the strength of its mere
+        // presence produced a signed-in page with a blank identity and an
+        // empty list — which reads as a broken app, not as being signed out.
+        //
+        // Only a rejection discards it. Every other failure — offline, DNS, a
+        // 502 — is left alone: those resolve themselves, and ending a session
+        // over one loses the fencer's place for a reason that was never about
+        // their credential.
+        //
+        // No navigation here: RequireAuth renders Login in place, so the
+        // expiry costs the session and not the destination as well (spec
+        // routing: "Unauthenticated visits keep their destination").
+        if (err instanceof ApiError && err.status === 401) {
+          setToken(null);
+          setAuthed(false);
+        }
+      },
+    );
   }, [authed]);
 
   if (!authed) {

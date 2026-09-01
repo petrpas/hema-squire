@@ -3,9 +3,11 @@ import { useTranslation } from "react-i18next";
 
 import FieldError, { invalidProps } from "./FieldError";
 import HRSearchPicker from "./HRSearch";
+import HRSearchStep from "./HRSearchStep";
 import { ApiError, type HRProfile, api, setToken } from "./api";
 import i18n from "./i18n";
 import { useFieldValidation } from "./useFieldValidation";
+import { useWideViewport } from "./useWideViewport";
 import { apiErrors, checkPassword, checkString } from "./validation";
 
 const IMPLEMENTED_LANGUAGES = Object.keys(i18n.options.resources ?? {});
@@ -32,6 +34,7 @@ function SignupForm({ onSignedUp, onCancel }: { onSignedUp: () => void; onCancel
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const validation = useFieldValidation();
+  const wide = useWideViewport();
 
   function passwordCheck() {
     return checkPassword("password", "SignupIn.password", password);
@@ -90,8 +93,24 @@ function SignupForm({ onSignedUp, onCancel }: { onSignedUp: () => void; onCancel
     }
   }
 
+  // The HR picker, configured the way signup needs it. Built once here so the
+  // inline placement and the full-screen step below cannot drift apart.
+  const picker = (
+    <HRSearchPicker
+      onConfirm={setPendingHr}
+      onCancel={() => setShowHrSearch(false)}
+      lockedQuery={name}
+      requireNationality
+    />
+  );
+
   return (
-    <form className="login-card" onSubmit={submit}>
+    /* Its own <form>, with an id of its own: sign-in renders a different form
+       at this position, and while React already replaces the DOM node across
+       that switch (a component type against a host type never reconciles),
+       the stable id gives a password manager a durable identity for each and
+       stops one form's fields being attributed to the other. */
+    <form id="signup-form" className="login-card" onSubmit={submit}>
       <h1>{t("app.title")}</h1>
       <p className="login-subtitle">{t("signup.subtitle")}</p>
       <div className="tiskopis-row">
@@ -101,17 +120,28 @@ function SignupForm({ onSignedUp, onCancel }: { onSignedUp: () => void; onCancel
       <label>
         {t("login.email")}
         <input
+          name="email"
           type="email"
+          /* "username" on the signup form too: it is the signal that tells a
+             password manager this is the account identifier, and without it
+             no manager offers to save the new pair. */
+          autoComplete="username"
+          autoCapitalize="none"
+          autoCorrect="off"
+          spellCheck={false}
+          inputMode="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           required
-          autoFocus
+          autoFocus={wide}
         />
       </label>
       <label>
         {t("login.password")}
         <input
+          name="password"
           type="password"
+          autoComplete="new-password"
           value={password}
           onChange={(e) => {
             setPassword(e.target.value);
@@ -127,6 +157,9 @@ function SignupForm({ onSignedUp, onCancel }: { onSignedUp: () => void; onCancel
       <label>
         {t("signup.name")}
         <input
+          name="display_name"
+          autoComplete="name"
+          autoCapitalize="words"
           value={name}
           onChange={(e) => {
             setName(e.target.value);
@@ -193,24 +226,40 @@ function SignupForm({ onSignedUp, onCancel }: { onSignedUp: () => void; onCancel
           </div>
         </section>
       ) : showHrSearch ? (
-        <section className="rail-card">
-          <h2>{t("profile.hr.title")}</h2>
-          <HRSearchPicker
-            onConfirm={setPendingHr}
-            onCancel={() => setShowHrSearch(false)}
-            lockedQuery={name}
-            requireNationality
-          />
-        </section>
+        wide ? (
+          <section className="rail-card">
+            <h2>{t("profile.hr.title")}</h2>
+            {picker}
+          </section>
+        ) : (
+          /* Rendered here, inside the form's own component, so opening the
+             step unmounts nothing: e-mail, password, name and language are
+             all still held above and survive the round trip. A route of its
+             own would discard them. */
+          <HRSearchStep
+            title={t("profile.hr.title")}
+            /* The picker is locked to the form's name field and shows no
+               query input, so the step has to say what it is searching for. */
+            subtitle={t("signup.hr.searchingFor", { name })}
+            backLabel={t("signup.hr.stepBack")}
+            onBack={() => setShowHrSearch(false)}
+          >
+            {picker}
+          </HRSearchStep>
+        )
       ) : (
         <button type="button" className="secondary" onClick={() => setShowHrSearch(true)}>
           {t("signup.hr.find")}
         </button>
       )}
 
-      {error && <p className="login-error">{error}</p>}
+      {/* The slot is always in the layout, so a message arriving cannot push
+          the submit button out from under a thumb already on its way down. */}
+      <p className="login-error" role="alert">
+        {error}
+      </p>
       <button type="submit" disabled={busy}>
-        {t("signup.submit")}
+        {busy ? t("signup.submitting") : t("signup.submit")}
       </button>
       <button type="button" className="link-button" onClick={onCancel}>
         {t("signup.backToLogin")}
@@ -229,6 +278,7 @@ export default function Login({ onLogin }: { onLogin: () => void }) {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const wide = useWideViewport();
 
   if (mode === "signup") {
     return (
@@ -259,31 +309,42 @@ export default function Login({ onLogin }: { onLogin: () => void }) {
 
   return (
     <div className="login-page">
-      <form className="login-card" onSubmit={submit}>
+      <form id="login-form" className="login-card" onSubmit={submit}>
         <h1>{t("app.title")}</h1>
         <p className="login-subtitle">{t("login.subtitle")}</p>
         <label>
           {t("login.email")}
           <input
+            name="email"
             type="email"
+            autoComplete="username"
+            autoCapitalize="none"
+            autoCorrect="off"
+            spellCheck={false}
+            inputMode="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
-            autoFocus
+            autoFocus={wide}
           />
         </label>
         <label>
           {t("login.password")}
           <input
+            name="password"
             type="password"
+            autoComplete="current-password"
+            enterKeyHint="go"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
           />
         </label>
-        {error && <p className="login-error">{error}</p>}
+        <p className="login-error" role="alert">
+          {error}
+        </p>
         <button type="submit" disabled={busy}>
-          {t("login.submit")}
+          {busy ? t("login.submitting") : t("login.submit")}
         </button>
         <button type="button" className="link-button" onClick={() => setMode("signup")}>
           {t("login.createAccount")}

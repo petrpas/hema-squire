@@ -66,8 +66,10 @@ button.secondary {
   transition: background-color 120ms, border-color 120ms;
 }
 
-button.secondary:hover:not(:disabled) {
-  background: var(--paper-shade);
+@media (hover: hover) {
+  button.secondary:hover:not(:disabled) {
+    background: var(--paper-shade);
+  }
 }
 
 button.secondary:disabled {
@@ -88,8 +90,10 @@ button.secondary:disabled {
   transition: background-color 120ms;
 }
 
-.btn-primary:hover:not(:disabled) {
-  background: var(--stamp-hover);
+@media (hover: hover) {
+  .btn-primary:hover:not(:disabled) {
+    background: var(--stamp-hover);
+  }
 }
 
 .btn-primary:disabled {
@@ -113,8 +117,10 @@ button.secondary:disabled {
   transition: background-color 120ms;
 }
 
-.btn-danger:hover:not(:disabled) {
-  background: var(--paper-shade);
+@media (hover: hover) {
+  .btn-danger:hover:not(:disabled) {
+    background: var(--paper-shade);
+  }
 }
 
 .btn-danger:disabled {
@@ -138,6 +144,13 @@ button.secondary:disabled {
   text-decoration: underline;
   padding: 0.2rem;
   font-size: 13px;
+}
+
+@media (max-width: 768px) {
+  .link-button {
+    padding-top: 0.75rem;
+    padding-bottom: 0.75rem;
+  }
 }
 
 /* ===== tags and stamps ===== */
@@ -184,7 +197,12 @@ button.secondary:disabled {
 /* ===== login / picker ===== */
 
 .login-page {
-  min-height: 100vh;
+  /* dvh, not vh: on a mobile browser vh measures the viewport WITHOUT the
+     address bar, so a 100vh page runs past the bottom of the screen and its
+     lowest content cannot be reached. No vh fallback pair — every browser
+     lacking dvh also predates the collapsing-toolbar behaviour that makes vh
+     wrong, so the fallback would only serve browsers that don't need it. */
+  min-height: 100dvh;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -196,10 +214,24 @@ button.secondary:disabled {
   border: var(--border-w) solid var(--ink);
   border-radius: var(--radius);
   padding: 2rem;
-  width: 22rem;
+  /* 22rem is 352px, and .login-page adds 1rem of padding on each side: on a
+     360px Android the card overflowed and the page scrolled sideways. min()
+     rather than a media query — the card yields continuously and keeps doing
+     so whatever the layout around it becomes. */
+  width: min(22rem, 100%);
   display: flex;
   flex-direction: column;
   gap: 1rem;
+}
+
+@media (max-width: 480px) {
+  .login-page {
+    padding: 1.5rem 1rem;
+  }
+
+  .login-card {
+    padding: 1.5rem 1.25rem;
+  }
 }
 
 .login-card h1 {
@@ -227,7 +259,7 @@ button.secondary:disabled {
 
 .login-card input,
 .login-card select {
-  font: 14px var(--font-ui);
+  font: var(--field-size) var(--font-ui);
   padding: 0.5rem 0;
   border: none;
   border-bottom: var(--border-w) solid var(--ink);
@@ -275,8 +307,10 @@ button.secondary:disabled {
   transition: background-color 120ms;
 }
 
-.login-card button[type="submit"]:hover:not(:disabled) {
-  background: var(--stamp-hover);
+@media (hover: hover) {
+  .login-card button[type="submit"]:hover:not(:disabled) {
+    background: var(--stamp-hover);
+  }
 }
 
 .login-card button[type="submit"]:disabled {
@@ -287,6 +321,17 @@ button.secondary:disabled {
 .login-error {
   color: var(--stamp);
   font-size: 12px;
+}
+
+/* On the auth cards the slot is rendered whether or not it holds a message, so
+   the submit button below it never moves. A control that shifts between the
+   moment a finger aims and the moment it lands is a control that gets missed,
+   and a rejected sign-in is exactly when a second tap is most likely. One line
+   of its own 12px type is reserved; other .login-error call sites render only
+   when they have something to say and are unaffected. */
+.login-card > .login-error {
+  min-height: 1.5em;
+  margin: 0;
 }
 
 .picker-list {
@@ -313,8 +358,10 @@ button.secondary:disabled {
   color: var(--ink);
 }
 
-.picker-list a:hover {
-  background: var(--paper-shade);
+@media (hover: hover) {
+  .picker-list a:hover {
+    background: var(--paper-shade);
+  }
 }
 
 .picker-meta {
@@ -335,7 +382,7 @@ button.secondary:disabled {
 .app {
   display: flex;
   flex-direction: column;
-  height: 100vh;
+  height: 100dvh; /* see .login-page — vh runs under the address bar */
   background: var(--paper);
 }
 
@@ -343,9 +390,59 @@ button.secondary:disabled {
   display: flex;
   align-items: center;
   gap: 2rem;
-  padding: 0.7rem 1.5rem;
+  /* The top inset is added to, not substituted for, the bar's own padding, so
+     the declaration degrades to plain 0.7rem where env() is unknown.
+     NOTE: env(safe-area-inset-*) resolves to 0 unless the viewport meta carries
+     viewport-fit=cover, which this change deliberately does not add — without
+     it the browser insets the viewport itself and nothing lies under the notch
+     or the home indicator. This is the rule that keeps that true if the app
+     ever goes edge-to-edge; it is not doing work today. */
+  padding: calc(0.7rem + env(safe-area-inset-top, 0px)) 1.5rem 0.7rem;
   background: var(--paper-raised);
   border-bottom: 2px solid var(--rule-strong);
+  /* The bar is held at the top by .app's own layout: a 100dvh flex column whose
+     workspace is the scroller, so the document itself never scrolls and the bar
+     never moves. `sticky` therefore does no work today — it is here as the
+     guarantee, and never `fixed`, for the day the shell scrolls the document
+     instead: a fixed bar leaves the flow and, in mobile browsers that collapse
+     their address bar mid-scroll, detaches and judders against the content it
+     should sit above. */
+  position: sticky;
+  top: 0;
+  z-index: 5;
+}
+
+/* Below 768px the single row holds about 600px of content and cannot fit a
+   390px screen. It becomes two: logo and account menu, then the tab band
+   across the full width. Order and flex-basis do the whole job — the DOM is
+   unchanged and nothing re-renders on a resize. */
+@media (max-width: 768px) {
+  .topbar {
+    flex-wrap: wrap;
+    gap: 0.6rem 1rem;
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+
+  .topbar > .logo-button {
+    order: 1;
+  }
+
+  .topbar > .account-menu {
+    order: 2;
+    margin-left: auto;
+  }
+
+  /* flex-basis: 100% is what forces the band onto its own line */
+  .topbar > .stage-control {
+    order: 3;
+    flex-basis: 100%;
+  }
+
+  /* folded into the account menu instead — see .account-menu-identity */
+  .topbar > .identity-block {
+    display: none;
+  }
 }
 
 .logo-button {
@@ -371,6 +468,39 @@ button.secondary:disabled {
   overflow: hidden;
 }
 
+/* Below 768px a tab control wider than the screen becomes one scrolling band
+   rather than wrapping, shrinking its labels, or running off the edge.
+   Written once here and worn by both the fencer's four filter tabs and the
+   detail page's three — `.stage-control-band` is the modifier that asks for it.
+
+   overflow-x, not the block's own `overflow: hidden`, which would clip the
+   strip instead of scrolling it. The dividing rules between tabs and the outer
+   frame stay: this is a strip cut from a printed form, not a row of pills, and
+   dropping the frame is exactly the floating-card drift the prohibitions
+   exclude. .stage-control's own flex-shrink: 0 is correct inside a scroll
+   container and is left alone. */
+@media (max-width: 768px) {
+  .stage-control-band {
+    width: 100%;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scroll-snap-type: x proximity;
+    /* the band is the scroller; no scrollbar is drawn over the tabs */
+    scrollbar-width: none;
+  }
+
+  .stage-control-band::-webkit-scrollbar {
+    display: none;
+  }
+
+  .stage-control-band button,
+  .stage-control-band a {
+    scroll-snap-align: center;
+    /* a tab states its whole label or the band is not worth scrolling */
+    white-space: nowrap;
+  }
+}
+
 .stage-control button,
 .stage-control a {
   position: relative;
@@ -384,6 +514,19 @@ button.secondary:disabled {
   font-weight: 500;
   text-decoration: none;
   transition: background-color 120ms;
+}
+
+/* Touch: 0.45rem of vertical padding around an 11px label is roughly 26px,
+   well under the 44px a finger needs. Only the vertical padding grows — the
+   size and letter-spacing hold, because enlarging the type here would collapse
+   the 11px-label / 14px-body distinction the design rests on and widen a strip
+   that is already too wide for the screen. */
+@media (max-width: 768px) {
+  .stage-control button,
+  .stage-control a {
+    padding-top: 0.95rem;
+    padding-bottom: 0.95rem;
+  }
 }
 
 .stage-control button + button,
@@ -636,6 +779,10 @@ button.secondary:disabled {
   font-weight: 500;
 }
 
+/* 1300px is a content threshold, not a device breakpoint: it is the width at
+   which the console's two side-by-side panels stop fitting beside each other.
+   It is outside the canonical 480/768/1024 set in tokens.css on purpose, and
+   is not a precedent for inventing another. */
 @media (max-width: 1300px) {
   .setup-split {
     flex-direction: column;
@@ -732,8 +879,10 @@ button.secondary:disabled {
   transition: background-color 120ms;
 }
 
-.sheet-table tbody tr:hover {
-  background: var(--paper-shade);
+@media (hover: hover) {
+  .sheet-table tbody tr:hover {
+    background: var(--paper-shade);
+  }
 }
 
 .col-index {
@@ -789,18 +938,30 @@ button.secondary:disabled {
   cursor: pointer;
 }
 
-.note-marker-button:hover,
+/* The open state stays unconditional — it is what a tap produces, and it is
+   the state that carries meaning. Only the pointer acknowledgement is gated. */
 .note-marker-button[aria-expanded="true"] {
   color: var(--ink);
+}
+
+@media (hover: hover) {
+  .note-marker-button:hover {
+    color: var(--ink);
+  }
 }
 
 .note-marker-problem {
   color: var(--stamp);
 }
 
-.note-marker-problem:hover,
 .note-marker-problem[aria-expanded="true"] {
   color: var(--stamp-hover);
+}
+
+@media (hover: hover) {
+  .note-marker-problem:hover {
+    color: var(--stamp-hover);
+  }
 }
 
 /* Opens leftward from the marker: the marker columns sit at the right edge of
@@ -879,7 +1040,7 @@ fieldset.form-field > legend {
 .form-field select,
 .param-field input,
 .param-field select {
-  font: 14px var(--font-ui);
+  font: var(--field-size) var(--font-ui);
   padding: 0.4rem 0;
   border: none;
   border-bottom: var(--border-w) solid var(--ink);
@@ -1104,6 +1265,10 @@ fieldset.form-field > legend {
   white-space: normal;
 }
 
+/* Deliberately NOT gated behind @media (hover: hover): the :focus twin already
+   carries this on a touch screen, because the marker is a <button> and a tap
+   focuses it. Every HelpHint call site is a Setup section or an organizer
+   dialog, so it is console-only besides. */
 .help-hint-marker:hover + .help-hint-box,
 .help-hint-marker:focus + .help-hint-box {
   display: block;
@@ -1294,9 +1459,21 @@ fieldset.form-field > legend {
   transition: background-color 120ms, color 120ms;
 }
 
-.row-action:hover {
-  color: var(--stamp);
-  background: var(--stamp-tint);
+/* The tightest target in the app: 0.2rem around an 18px glyph is about 24px
+   square. Squared off to 44px on both axes — the icon itself is untouched. */
+@media (max-width: 768px) {
+  .row-action {
+    min-width: 44px;
+    min-height: 44px;
+    padding: 0.2rem;
+  }
+}
+
+@media (hover: hover) {
+  .row-action:hover {
+    color: var(--stamp);
+    background: var(--stamp-tint);
+  }
 }
 
 tr.row-deleted td {
@@ -1326,6 +1503,10 @@ tr.row-deleted td.col-actions {
   cursor: text;
 }
 
+/* Exempt from --field-size, deliberately: this field takes its size from the
+   sheet table it sits in, and raising it to 16px would deepen every console
+   row. The iOS focus-zoom that --field-size exists to prevent does not arise
+   here — the sheet is a desktop instrument, edited with a pointer. */
 .cell-input {
   font: inherit;
   width: 100%;
@@ -1405,11 +1586,34 @@ tr.row-deleted td.col-actions {
   border-radius: 0;
   padding: 1.4rem;
   width: 26rem;
-  max-height: 70vh;
+  max-height: 70dvh;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
   gap: 0.9rem;
+}
+
+/* On a phone a dialog is not a card resting on a backdrop — it is the screen.
+   The offset double frame goes with the inset: an outline drawn 3px outside a
+   full-bleed panel is simply cropped by the viewport, leaving a rule down one
+   or two edges that reads as a rendering fault rather than as framing. The
+   single ink rule under the heading carries the framing instead. */
+@media (max-width: 768px) {
+  .modal,
+  .wide-card {
+    width: 100%;
+    max-width: 100%;
+    max-height: 100dvh;
+    height: 100dvh;
+    border: none;
+    outline: none;
+    border-radius: 0;
+  }
+
+  .modal-backdrop {
+    align-items: stretch;
+    justify-content: stretch;
+  }
 }
 
 .modal h2 {
@@ -1426,7 +1630,7 @@ tr.row-deleted td.col-actions {
 }
 
 .modal input {
-  font: 14px var(--font-ui);
+  font: var(--field-size) var(--font-ui);
   padding: 0.5rem 0;
   border: none;
   border-bottom: var(--border-w) solid var(--ink);
@@ -1449,13 +1653,18 @@ tr.row-deleted td.col-actions {
   flex-direction: column;
 }
 
+/* Inverted from a min-width:640 pair to a max-width override on the desktop
+   base, so this block follows the one direction tokens.css sets out and its
+   breakpoint joins the canonical set. Consequence, accepted knowingly: a
+   candidate row is stacked from 640px up to 768px, where it used to be a
+   single line. It is one list, reached from signup and from Profile. */
 .match-results button {
   width: 100%;
   display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 0.1rem;
-  padding: 0.55rem 0.2rem;
+  flex-direction: row;
+  align-items: baseline;
+  gap: 0.6rem;
+  padding: 0.4rem 0.2rem;
   border: none;
   border-bottom: var(--border-w) solid var(--hairline);
   border-radius: 0;
@@ -1464,26 +1673,44 @@ tr.row-deleted td.col-actions {
   color: var(--ink);
 }
 
-.match-results button:hover {
-  background: var(--paper-shade);
+.match-results button strong {
+  white-space: nowrap;
 }
 
-@media (min-width: 640px) {
+.match-results button .muted {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (hover: hover) {
+  .match-results button:hover {
+    background: var(--paper-shade);
+  }
+}
+
+@media (max-width: 768px) {
   .match-results button {
-    flex-direction: row;
-    align-items: baseline;
-    gap: 0.6rem;
-    padding: 0.4rem 0.2rem;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.1rem;
+    padding: 0.55rem 0.2rem;
   }
 
-  .match-results button strong {
-    white-space: nowrap;
+  /* A candidate row is a borderless transparent button, and the hover
+     background was the only thing saying it could be pressed — which on a
+     touch screen says nothing at all. The hairline every row already carries
+     is joined by a --stamp rule down its leading edge: the same device the
+     sheet uses for an editable field, no new colour and no icon. */
+  .match-results button {
+    border-left: 2px solid var(--stamp);
+    padding-left: 0.5rem;
   }
 
+  .match-results button strong,
   .match-results button .muted {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    white-space: normal;
+    overflow: visible;
   }
 }
 
@@ -1507,6 +1734,28 @@ tr.row-deleted td.col-actions {
   justify-content: space-between;
   align-items: center;
   margin-top: 0.6rem;
+  /* Same caveat as .topbar: inert until viewport-fit=cover. Present so a
+     full-bleed dialog's actions clear the home indicator when it is. */
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* Under a thumb, two buttons side by side on a 360px screen are two small
+   targets adjacent to each other. Stacked full-width instead, and the
+   destructive one goes last, where it is hardest to hit on the way to
+   something else. Every call site in the app already writes the dialog's
+   cancel first and its committing action (.btn-primary or .btn-danger)
+   second, so a plain column keeps that order and needs no per-dialog rule. */
+@media (max-width: 480px) {
+  .modal-actions {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.5rem;
+  }
+
+  .modal-actions > button,
+  .modal-actions > a {
+    width: 100%;
+  }
 }
 
 /* ===== roles: plea, team, danger zone, admin panel ===== */
@@ -1517,7 +1766,7 @@ tr.row-deleted td.col-actions {
 .wide-card {
   width: 46rem;
   max-width: 92vw;
-  max-height: 88vh;
+  max-height: 88dvh;
   overflow: hidden;
 }
 
@@ -1557,7 +1806,7 @@ tr.row-deleted td.col-actions {
 }
 
 .plea-form textarea {
-  font: 14px var(--font-ui);
+  font: var(--field-size) var(--font-ui);
   padding: 0.5rem 0;
   border: none;
   border-bottom: var(--border-w) solid var(--ink);
@@ -1589,7 +1838,7 @@ tr.row-deleted td.col-actions {
 
 .inline-form input {
   flex: 1;
-  font: 14px var(--font-ui);
+  font: var(--field-size) var(--font-ui);
   padding: 0.4rem 0;
   border: none;
   border-bottom: var(--border-w) solid var(--ink);
@@ -1629,8 +1878,10 @@ tr.row-deleted td.col-actions {
   transition: background-color 120ms;
 }
 
-.account-menu-trigger:hover {
-  background: var(--paper-shade);
+@media (hover: hover) {
+  .account-menu-trigger:hover {
+    background: var(--paper-shade);
+  }
 }
 
 .menu-backdrop {
@@ -1655,6 +1906,21 @@ tr.row-deleted td.col-actions {
   z-index: 6;
 }
 
+/* The identity, folded into the menu below 768px. Above that the top bar
+   carries it and this copy is hidden — the two are one component
+   (FencerIdentity), so only their placement differs. */
+.account-menu-identity {
+  display: none;
+  padding: 0.6rem 0.9rem;
+  border-bottom: var(--border-w) solid var(--hairline);
+}
+
+@media (max-width: 768px) {
+  .account-menu-identity {
+    display: block;
+  }
+}
+
 .account-menu-dropdown button,
 .account-menu-dropdown a {
   display: block;
@@ -1675,9 +1941,11 @@ tr.row-deleted td.col-actions {
   border-bottom: none;
 }
 
-.account-menu-dropdown button:hover:not(:disabled),
-.account-menu-dropdown a:hover {
-  background: var(--paper-shade);
+@media (hover: hover) {
+  .account-menu-dropdown button:hover:not(:disabled),
+  .account-menu-dropdown a:hover {
+    background: var(--paper-shade);
+  }
 }
 
 .account-menu-dropdown button:disabled {
@@ -1717,8 +1985,10 @@ tr.row-deleted td.col-actions {
   transition: background-color 120ms;
 }
 
-.home-card:hover {
-  background: var(--paper-shade);
+@media (hover: hover) {
+  .home-card:hover {
+    background: var(--paper-shade);
+  }
 }
 
 .home-card-header {
@@ -1726,6 +1996,10 @@ tr.row-deleted td.col-actions {
   justify-content: space-between;
   align-items: flex-start;
   gap: 1rem;
+  /* Without this the 16px --font-doc heading is squeezed beside the logo on a
+     narrow card and sets two or three characters to the line. No media query:
+     it wraps when it has to and not before. */
+  flex-wrap: wrap;
 }
 
 .home-card-header h2 {
@@ -1817,8 +2091,10 @@ tr.row-deleted td.col-actions {
   padding: 0;
 }
 
-.identity-hrid:hover {
-  text-decoration: underline;
+@media (hover: hover) {
+  .identity-hrid:hover {
+    text-decoration: underline;
+  }
 }
 
 .organizer-chip {
@@ -1837,6 +2113,17 @@ tr.row-deleted td.col-actions {
   padding: 1.5rem;
   display: flex;
   justify-content: center;
+}
+
+/* 1.5rem each side takes 48px out of a 390px screen — 12% of the width spent
+   on margin. The card below carries its own 1rem, which is what keeps the
+   text off the edge; the workspace only needs to stop the card's rules from
+   touching it. */
+@media (max-width: 480px) {
+  .home-workspace,
+  .detail-workspace {
+    padding: 1rem 0.75rem;
+  }
 }
 
 .home-workspace > .home-list,
@@ -1864,6 +2151,18 @@ label.checkbox-chip,
   letter-spacing: normal;
   font-weight: 400;
   align-self: start;
+}
+
+/* The interactive chip, and the only one: .chip is always a <span> label, so
+   the 44px rule does not reach it and growing it would deepen every card for
+   nothing. */
+@media (max-width: 768px) {
+  label.checkbox-chip,
+  .checkbox-chip {
+    min-height: 44px;
+    padding-top: 0.55rem;
+    padding-bottom: 0.55rem;
+  }
 }
 
 .checkbox-chip > input[type="checkbox"] {
@@ -1939,6 +2238,83 @@ label.checkbox-chip,
   height: 10rem;
   align-self: flex-start;
   background: var(--paper-raised);
+}
+
+/* The actions that make the slip usable on the device displaying it. On a wide
+   screen they sit under the QR in the right-hand column; below 480px the whole
+   block stacks and they fall between the code and the fields. */
+.payment-slip-actions {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+/* A value and the action that copies it read as one line, and the confirmation
+   sits after them rather than displacing anything. */
+.slip-value-row {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0.2rem 0.6rem;
+  min-width: 0;
+}
+
+.slip-value-row .data-value {
+  overflow-wrap: anywhere;
+}
+
+.slip-copy {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--ink-faded);
+}
+
+/* Appears at once and leaves by fading out — the one departure the design
+   admits. Nothing animates in, and the note is out of the flow so its arrival
+   cannot move the value beside it. */
+.slip-copied {
+  font-size: 11px;
+  color: var(--ink-faded);
+  opacity: 0;
+  transition: opacity 400ms;
+}
+
+.slip-copied.is-shown {
+  opacity: 1;
+  transition: none;
+}
+
+/* On a 390px screen the row layout leaves 160px of QR and about 160px for the
+   fields. Stacked instead, in the order the fencer needs: the code first,
+   because saving it into a banking app is the fastest way to pay; then the
+   actions; then the details, for whoever is typing the transfer by hand. */
+@media (max-width: 480px) {
+  .payment-block {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.8rem;
+  }
+
+  .payment-qr {
+    align-self: center;
+    width: min(10rem, 60%);
+    height: auto;
+    aspect-ratio: 1;
+  }
+
+  .payment-slip-actions {
+    align-self: stretch;
+  }
+}
+
+/* Two currency tabs and a heading fit a 390px row, but a longer currency name
+   would not; the pair falls onto two lines rather than crushing the heading. */
+@media (max-width: 480px) {
+  .payment-slip-heading {
+    flex-wrap: wrap;
+  }
 }
 
 /* ===== document footer wink ===== */
@@ -2023,6 +2399,16 @@ label.checkbox-chip,
   height: 88px;
 }
 
+/* 88px is a third of a 360px card. Shrunk rather than dropped: it still says
+   which tournament this is at a glance, which is most of what a list card is
+   for. */
+@media (max-width: 480px) {
+  .home-card-logo {
+    width: 56px;
+    height: 56px;
+  }
+}
+
 .detail-logo {
   width: 128px;
   height: 128px;
@@ -2089,7 +2475,49 @@ label.checkbox-chip,
   flex: none;
 }
 
+/* Title and close on one row, tabs on the next as the same scrolling band the
+   top bar uses. The close control stays level with the title it closes — it
+   reads as belonging to the name, not to the tabs. */
+@media (max-width: 768px) {
+  .detail-header {
+    flex-wrap: wrap;
+    gap: 0.6rem 1rem;
+  }
+
+  .detail-header > h1 {
+    order: 1;
+    flex: 1;
+  }
+
+  .detail-header > .row-action {
+    order: 2;
+  }
+
+  .detail-header > .detail-tabs {
+    order: 3;
+    flex-basis: 100%;
+  }
+}
+
 /* organizer-authored markdown, rendered by Prose (frontend/src/Prose.tsx) */
+
+/* What actually overflows a 360px column here is an unbroken string — a bare
+   URL in a paragraph, or a URL used as its own link text. Break inside it
+   rather than let the page scroll sideways.
+   There is deliberately no `.prose img` or `.prose table` rule: markdown.ts
+   sanitises against an allowlist (strong, em, del, code, a, p, br, ul, ol, li,
+   h3, h4, blockquote, pre, hr) that contains neither, so images and tables are
+   stripped before they can reach the DOM and any rule for them would be dead
+   CSS that tells the next reader they are supported. Admitting them is a
+   change to the allowlist, with the security review that implies.
+   `.prose pre` already carries its own overflow-x: auto. */
+.prose p,
+.prose li,
+.prose blockquote,
+.prose a {
+  overflow-wrap: anywhere;
+}
+
 .prose > :first-child {
   margin-top: 0;
 }
@@ -2185,6 +2613,14 @@ label.checkbox-chip,
   color: var(--ink-faded);
 }
 
+/* A club name or a venue can arrive as one unbroken string longer than a
+   360px column — organizers write what they write. Break inside the word
+   rather than let it push the card sideways. */
+.home-card-when,
+.home-card-organizers {
+  overflow-wrap: anywhere;
+}
+
 /* the detail's own meta line: date · place · qualification, then the
    registration window, in the same faded ink as a card's organizers */
 .home-card-meta {
@@ -2220,6 +2656,13 @@ label.checkbox-chip,
   padding: 0.35rem 0;
   border-bottom: var(--border-w) solid var(--hairline);
   font-size: 13px;
+}
+
+/* The 1fr auto grid holds at any width, but a grid item's default min-width is
+   its min-content: a long Czech item name would refuse to shrink and push the
+   amount off the right edge. This lets the label wrap instead. */
+.amount-line > :first-child {
+  min-width: 0;
 }
 
 .amount-value {
@@ -2374,9 +2817,12 @@ label.checklist-row > input[type="checkbox"] {
   color: var(--ink-faded);
 }
 
+/* Was 13px — the smallest control in the app, and on the registration
+   checklist, where a fencer types quantities on a phone. It zoomed the
+   viewport mid-form. */
 .checklist-control input,
 .checklist-control select {
-  font: 13px var(--font-ui);
+  font: var(--field-size) var(--font-ui);
   padding: 0.2rem 0;
   width: auto;
   border: none;
@@ -2483,6 +2929,64 @@ label.checklist-row > input[type="checkbox"] {
 }
 
 /* signup HR ownership confirmation */
+/* The HR picker lifted onto a screen of its own below 768px (HRSearchStep).
+   Fixed rather than absolute: it covers the form completely, so the fencer is
+   answering one question and not scrolling a form they have lost their place
+   in. Paper, one ink rule under the head — the same framing as any other
+   sheet, no floating card and nothing that animates in. */
+.hr-step {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  background: var(--paper);
+  padding: calc(1.25rem + env(safe-area-inset-top, 0px)) 1rem
+    calc(1rem + env(safe-area-inset-bottom, 0px));
+}
+
+.hr-step-head {
+  flex: none;
+  padding-bottom: 0.7rem;
+  border-bottom: 2px solid var(--rule-strong);
+}
+
+.hr-step-head h2 {
+  font-family: var(--font-doc);
+  font-weight: 500;
+  font-size: 17px;
+}
+
+.hr-step-subtitle {
+  margin-top: 0.3rem;
+  font-size: 12px;
+  color: var(--ink-faded);
+}
+
+.hr-step-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+
+/* The picker caps its result list at 16rem so it cannot swallow the form it
+   sits in. On a screen of its own there is no form to protect, and the cap
+   would waste the room the step exists to provide. */
+.hr-step-body .match-results {
+  max-height: none;
+  overflow-y: visible;
+}
+
+.hr-step-foot {
+  flex: none;
+  padding-top: 0.8rem;
+  border-top: var(--border-w) solid var(--hairline);
+}
+
 .hr-confirm {
   display: flex;
   flex-direction: column;
@@ -2841,8 +3345,10 @@ label.checklist-row > input[type="checkbox"] {
   cursor: pointer;
 }
 
-.conclusion-choice:hover {
-  background: var(--paper-shade);
+@media (hover: hover) {
+  .conclusion-choice:hover {
+    background: var(--paper-shade);
+  }
 }
 
 .conclusion-input {

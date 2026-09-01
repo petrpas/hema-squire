@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 
+import FencerIdentity from "./FencerIdentity";
 import { type Account } from "./api";
 import * as routes from "./routes";
 
@@ -34,6 +35,11 @@ export default function AccountMenu({
         <>
           <div className="menu-backdrop" onClick={close} />
           <div className="account-menu-dropdown">
+            {/* Shown only below 768px, where the top bar folds the identity in
+                here rather than carrying it permanently in the bar. */}
+            <div className="account-menu-identity">
+              <FencerIdentity account={account} />
+            </div>
             <Link to={routes.profile()} onClick={close}>
               {t("menu.profile")}
             </Link>

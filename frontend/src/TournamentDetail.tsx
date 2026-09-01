@@ -12,6 +12,7 @@ import { type HomeTab } from "./FencerShell";
 import { home } from "./routes";
 import { amendmentOpen, registrationStatus } from "./openingMoment";
 import { useOpeningMoment } from "./useOpeningMoment";
+import { useTabBand } from "./useTabBand";
 import { type Availability, type RegistrationDetail, type TournamentDetail as TournamentDetailData, api } from "./api";
 import { formatMoneyWithEur } from "./money";
 import {
@@ -321,6 +322,8 @@ export default function TournamentDetail() {
   // third tab, offered only alongside a held team, carries every roster
   // editor (design team-disciplines D1)
   const [tab, setTab] = useState<"tournament" | "registration" | "teams">("tournament");
+  // keeps the selected tab visible when the three tabs scroll below 768px
+  const band = useTabBand(tab);
   const [amending, setAmending] = useState(false);
 
   function refresh() {
@@ -408,7 +411,7 @@ export default function TournamentDetail() {
           with this one (spec: "Tournament detail shares the home heading") */}
       <div className="detail-header">
         <h1>{detail?.display_name}</h1>
-        <nav className="stage-control detail-tabs">
+        <nav className="stage-control detail-tabs stage-control-band" ref={band}>
           <button
             className={tab === "tournament" ? "active" : ""}
             onClick={() => selectTab("tournament")}

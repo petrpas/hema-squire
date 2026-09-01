@@ -3,7 +3,9 @@ import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 
 import AccountMenu from "./AccountMenu";
-import { home, profile } from "./routes";
+import FencerIdentity from "./FencerIdentity";
+import { useTabBand } from "./useTabBand";
+import { home } from "./routes";
 import { type Account } from "./api";
 
 /** The four filter tabs the fencer's world is cut into. The first three
@@ -33,14 +35,19 @@ export default function FencerShell({
   children: ReactNode;
 }) {
   const { t } = useTranslation();
+  const band = useTabBand(tab);
 
   return (
     <div className="app">
+      {/* One flat row of four children. Below 768px the bar wraps and the tab
+          band is pushed onto a second line by CSS order and flex-basis alone —
+          no width branch in JavaScript, so nothing re-renders on a resize and
+          there is no first-paint flash of the wrong layout. */}
       <header className="topbar">
         <button className="logo-button" title={t("app.title")}>
           <span className="logo">{t("app.title")}</span>
         </button>
-        <nav className="stage-control">
+        <nav className="stage-control stage-control-band" ref={band}>
           {HOME_TABS.map((name) => {
             const count = counts?.[name];
             return (
@@ -51,22 +58,10 @@ export default function FencerShell({
             );
           })}
         </nav>
+        {/* Hidden below 768px, where the same identity is shown inside the
+            account menu instead — the bar has no room for it there. */}
         <div className="identity-block">
-          <div className="identity-name">{account?.display_name}</div>
-          {account && account.hr_id !== null ? (
-            <a
-              className="identity-hrid"
-              href={`https://hemaratings.com/fighters/details/${account.hr_id}/`}
-              target="_blank"
-              rel="noreferrer"
-            >
-              {t("home.identity.hrid", { id: account.hr_id })}
-            </a>
-          ) : (
-            <Link className="link-button identity-hrid" to={profile()}>
-              {t("home.identity.noHemaratings")}
-            </Link>
-          )}
+          <FencerIdentity account={account} />
         </div>
         <AccountMenu account={account} onLogout={onLogout} />
       </header>
