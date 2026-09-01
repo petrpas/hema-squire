@@ -86,7 +86,7 @@ Existing queries are reconciled:
   as a *content threshold* — the width at which the console's two side-by-side panels
   stop fitting — not a device breakpoint. It is console-only and out of scope.
 
-### D2 — `--field-size: 16px` on every control, at every width, not behind a query
+### D2 — `--field-size`: 14px at desktop widths, 16px below 768px
 
 iOS Safari zooms the viewport when a control smaller than 16px takes focus, and never
 zooms back out. The countermeasures are: raise the control to 16px, or add
@@ -94,10 +94,29 @@ zooms back out. The countermeasures are: raise the control to 16px, or add
 it disables zoom everywhere, including where a fencer genuinely needs it — and is
 rejected outright.
 
-16px is applied unconditionally rather than under `max-width: 768px` because a value
-that differs by viewport is a value that will drift, and because the optical
-difference between 14px and 16px in these bottom-ruled fields is negligible on
-desktop.
+The size is applied **under `max-width: 768px` only**, leaving desktop controls at the
+14px they have always been.
+
+This reverses the original decision here, which applied 16px unconditionally on the
+reasoning that a value differing by viewport drifts, and that 14px against 16px is
+optically negligible on a desktop. The owner saw the change in the console's Setup
+panel and said so, which settles the second half: it is not negligible. The measured
+cost had been +2.5px per field and +42px down the 27-field panel.
+
+The drift risk is answered by where the switch lives. `--field-size` is redefined once,
+in `tokens.css`, inside a `@media (max-width: 768px)` block; the six call sites keep
+reading the token and none carries a query of its own. There is one value in one place
+per width, so there is nothing for a component to disagree with.
+
+Redefining a custom property inside a media *block* is ordinary CSS and works. What
+does not work is `var()` inside a media *condition* (D1). The two are easy to conflate
+and the token file now says so at both sites.
+
+*Known gap:* the query is width-based, so a touch device wider than 768px — an iPad in
+landscape — takes the 14px branch and can still zoom on focus. A pointer-based
+condition (`@media (pointer: coarse)`) would follow the actual failure mode rather than
+a proxy for it, since focus-zoom is a property of touch, not of width. Left as-is
+because width is what was chosen; it is a one-line change if the iPad case matters.
 
 The token reaches **six** blocks, not the four the brief names:
 
@@ -119,10 +138,14 @@ sheet table. It is deliberately **left alone** — raising it would change every
 row's height. Console fields are edited with a mouse on a desktop; the zoom fault does
 not arise there.
 
-*Consequence to verify, not to assume:* `.form-field`/`.param-field` are shared with
-the console's Setup panel, so Setup's fields do grow by 2px. That is the cross-cutting
-cost the proposal accepts, and the desktop console pass in tasks exists to confirm it
-is only a cost of 2px.
+*Consequence:* `.form-field`/`.param-field` are shared with the console's Setup panel,
+which is why the unconditional version was visible there at all. Under the width-gated
+version the console is untouched at the widths it is actually used at, and the
+cross-cutting cost the proposal accepted is now paid only below 768px.
+
+`.checklist-control` gains 1px at desktop widths (13px → 14px) by joining the common
+token. That is deliberate: it was the one control set below the common size, for no
+reason recorded anywhere.
 
 The design-system spec's *Typography conventions* requirement is amended in the same
 change, with the rationale recorded, so a later audit reads the 16px as intentional

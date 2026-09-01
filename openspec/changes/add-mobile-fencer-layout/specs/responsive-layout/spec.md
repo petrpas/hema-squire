@@ -29,9 +29,10 @@ a device breakpoint.
 - **THEN** `tokens.css` states all three with what each stands for, and defines no breakpoint custom property
 
 ### Requirement: Form controls are sized so a mobile browser does not zoom
-Form controls — `input`, `select` and `textarea` — SHALL render at 16px, defined once
-as a token and applied at every viewport width rather than under a media query. Body
-text SHALL remain 14px.
+Form controls — `input`, `select` and `textarea` — SHALL render at 16px below 768px.
+The size SHALL be defined once as a token whose value is redefined in a single media
+block, so that call sites read the token and carry no media query of their own. At
+desktop widths the token SHALL resolve to the 14px of body text.
 
 A mobile browser that zooms the viewport when a control smaller than 16px takes focus
 does not zoom back out afterwards, leaving the rest of the form off-screen. The
@@ -44,12 +45,20 @@ than the 14px body size. A control whose size is inherited from a data table, an
 is edited only with a pointer on a desktop instrument, is exempt.
 
 #### Scenario: Focusing a field on a mobile browser
-- **WHEN** a fencer taps the e-mail field on the sign-in card on an iOS device
+- **WHEN** a fencer taps the e-mail field on the sign-in card on an iOS device below 768px
 - **THEN** the control is 16px, the viewport does not zoom, and the rest of the form stays visible
+
+#### Scenario: The same control on a desktop instrument
+- **WHEN** a control is rendered at a width above 768px, where no focus-zoom occurs
+- **THEN** it is 14px, and the density of the screen around it is unchanged
+
+#### Scenario: One value per width
+- **WHEN** the stylesheet is audited for the control size
+- **THEN** it is defined in one token and redefined in one media block, and no individual component sets a control size of its own
 
 #### Scenario: Registration checklist quantity field
 - **WHEN** a fencer types a quantity into the registration checklist on a phone
-- **THEN** that control is 16px and the viewport does not zoom
+- **THEN** that control is 16px and the viewport does not zoom, rather than the 13px it was set at
 
 #### Scenario: Viewport meta
 - **WHEN** the document's viewport meta tag is inspected

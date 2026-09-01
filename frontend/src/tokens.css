@@ -36,14 +36,10 @@
      the R in PRIHLASKA reads a size heavier than the S beside it. */
   --label-size: 11px;
 
-  /* Form controls are 16px, not the 14px of body text. A mobile browser zooms
-     the viewport when a control smaller than 16px takes focus and never zooms
-     back out, so the rest of the form ends up off-screen; the other cure —
-     user-scalable=no in the viewport meta — disables pinch-zoom everywhere and
-     is an accessibility regression. One value at every width, because a size
-     that differs by viewport drifts, and because 14px and 16px are optically
-     indistinguishable in these bottom-ruled fields on a desktop. */
-  --field-size: 16px;
+  /* The size of every form control, in one place. It matches the 14px body
+     text at desktop widths and grows to 16px below 768px — see the @media
+     that redefines it under the breakpoint list below. */
+  --field-size: 14px;
 
   /* Geometry */
   --radius: 2px; /* app-wide maximum; table cells get 0 */
@@ -77,3 +73,26 @@
        console's two side-by-side panels stop fitting), not a device
        breakpoint. Not a precedent for inventing more.
    Anything else belongs on one of the three above. */
+
+/* Below 768px every form control grows to 16px.
+
+   A mobile browser zooms the viewport when a control smaller than 16px takes
+   focus, and never zooms back out — tap the e-mail field and the rest of the
+   form is off-screen, to be pinched back by hand. The other cure,
+   user-scalable=no in the viewport meta, disables pinch-zoom everywhere and is
+   an accessibility regression, so it is not used.
+
+   Redefining a custom property inside a media BLOCK is ordinary and works;
+   what does not work is var() inside a media CONDITION, which is the trap the
+   breakpoint list above warns about. The two are easy to conflate.
+
+   Six blocks in index.css read --field-size and none of them needs a media
+   query of its own: .login-card, .form-field/.param-field, .modal input,
+   .plea-form, .inline-form and .checklist-control. The console sheet's
+   .cell-input deliberately does not read it — it takes its size from the table
+   it sits in, and raising it would deepen every row. */
+@media (max-width: 768px) {
+  :root {
+    --field-size: 16px;
+  }
+}

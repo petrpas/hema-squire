@@ -1,9 +1,11 @@
 ## MODIFIED Requirements
 
 ### Requirement: Typography conventions
-Body text SHALL use `--font-ui` at 14px/1.5 in `--ink`, weight 400 or 500 only. Form controls — `input`, `select` and `textarea` — SHALL use `--font-ui` at 16px, drawn from a single `--field-size` token, at every viewport width. Table headers and field labels SHALL be 10.5–11px uppercase with `letter-spacing: 0.12em`, weight 500, color `--ink-faded`. Data values (IDs, amounts, VS, revision numbers) SHALL use `--font-data` with `font-variant-numeric: tabular-nums` where numeric. Document titles (tournament name, form title) SHALL use `--font-doc` at 19–22px and appear nowhere else.
+Body text SHALL use `--font-ui` at 14px/1.5 in `--ink`, weight 400 or 500 only. Form controls — `input`, `select` and `textarea` — SHALL draw their size from a single `--field-size` token: 14px at desktop widths, and 16px below 768px. Table headers and field labels SHALL be 10.5–11px uppercase with `letter-spacing: 0.12em`, weight 500, color `--ink-faded`. Data values (IDs, amounts, VS, revision numbers) SHALL use `--font-data` with `font-variant-numeric: tabular-nums` where numeric. Document titles (tournament name, form title) SHALL use `--font-doc` at 19–22px and appear nowhere else.
 
-The 16px control size is deliberate and SHALL NOT be reverted to the 14px body size. A mobile browser zooms the viewport when a control smaller than 16px takes focus and does not zoom back out, which pushes the rest of a form off-screen; the alternative countermeasure, suppressing user scaling in the viewport meta, is an accessibility regression and is prohibited. The size is applied at every width rather than only on narrow screens, because a value that differs by viewport drifts, and because the optical difference between 14px and 16px in these bottom-ruled fields is negligible at desktop widths.
+The 16px narrow-viewport size is deliberate and SHALL NOT be reverted. A mobile browser zooms the viewport when a control smaller than 16px takes focus and does not zoom back out, which pushes the rest of a form off-screen; the alternative countermeasure, suppressing user scaling in the viewport meta, is an accessibility regression and is prohibited.
+
+The token SHALL be redefined in exactly one place — the token file, under one media block — and call sites SHALL read the token rather than carry media queries of their own, so that at any given width one value governs every control and no component can disagree with another.
 
 A control whose size is inherited from the density of a data table it sits in — the console sheet's editable cell — is exempt, since it is edited with a pointer on a desktop instrument and raising it would change every row's height.
 
@@ -15,12 +17,16 @@ A control whose size is inherited from the density of a data table it sits in �
 - **WHEN** an amount is displayed in a table or payment slip
 - **THEN** it uses `--font-data`, tabular numerals, is right-aligned, and shows currency after the number (e.g. "1 200 Kč")
 
-#### Scenario: Rendering a form control
-- **WHEN** a text input, select, or textarea is rendered on any screen at any viewport width
+#### Scenario: Rendering a form control on a narrow viewport
+- **WHEN** a text input, select, or textarea is rendered below 768px
 - **THEN** it is 16px from the `--field-size` token, while the body text around it stays 14px
 
+#### Scenario: Rendering a form control at a desktop width
+- **WHEN** the same control is rendered at 1024px
+- **THEN** it is 14px, matching the body text, and the sheet's own density is unchanged
+
 #### Scenario: Auditing a form against the body-text rule
-- **WHEN** an audit finds form controls set larger than the 14px body text
+- **WHEN** an audit finds form controls set larger than the 14px body text on a narrow viewport
 - **THEN** the difference is the recorded 16px control size, not drift, and is left in place
 
 ### Requirement: Interaction and accessibility baseline

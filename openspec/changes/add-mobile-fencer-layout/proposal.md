@@ -33,8 +33,9 @@ organizer console.
   comment in `tokens.css`. Breakpoints are *not* stored in custom properties:
   `@media (max-width: var(--bp-sm))` is silently ignored, so media queries take
   literals.
-- Introduce `--field-size: 16px` and apply it to every form control, at every width.
-  Body text stays 14px.
+- Introduce `--field-size` for every form control: 14px at desktop widths, 16px below
+  768px, switched once in `tokens.css` so no call site carries its own query. Body
+  text stays 14px.
 - `100vh` → `100dvh` on `.app` and `.login-page`; `70vh`/`88vh` → `dvh` on `.modal`
   and `.wide-card`.
 - Add `env(safe-area-inset-*)` padding to edge-pinned chrome.
@@ -126,8 +127,8 @@ tree at `14d9f6e`):
 ### Modified Capabilities
 
 - `design-system`: *Typography conventions* — form controls (`input`, `select`,
-  `textarea`) move from 14px to 16px at every width while body text stays 14px, with
-  the iOS focus-zoom rationale recorded so a later audit does not revert it.
+  `textarea`) move from 14px to 16px below 768px while body text stays 14px, with the
+  iOS focus-zoom rationale recorded so a later audit does not revert it.
 - `fencer-accounts`: sign-in and sign-up become fillable and savable by credential
   managers, report their in-flight state in the submit label, and hold layout steady
   when an error appears.

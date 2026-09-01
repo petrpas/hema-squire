@@ -2819,7 +2819,8 @@ label.checklist-row > input[type="checkbox"] {
 
 /* Was 13px — the smallest control in the app, and on the registration
    checklist, where a fencer types quantities on a phone. It zoomed the
-   viewport mid-form. */
+   viewport mid-form. Now on the common --field-size like every other control,
+   so it also gains 1px at desktop widths. */
 .checklist-control input,
 .checklist-control select {
   font: var(--field-size) var(--font-ui);
