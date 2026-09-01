@@ -32,4 +32,6 @@ Not in scope: any change to matching, crediting, expiry or refund behaviour — 
 
 **Design constraints**: all four cards and the modal are subject to `CLAUDE.md` / `openspec/squire-design-spec.md` — no gradients, shadows, radii > 2px, emoji, spinners, or hexes outside `tokens.css`; the modal follows the existing `.modal-backdrop` / `.modal` pattern.
 
-**Verification**: the frontend has no test runner (`npm run lint` is `tsc -b --noEmit`), so frontend work is verified by typecheck, build, and driving the console; the new endpoint and sheet fields are covered by `backend/tests/`.
+**Verification**: `npm run lint` (`tsc -b --noEmit`), `npm run build`, and `npm test` (`vitest run`), alongside driving the console; the new endpoint and sheet fields are covered by `backend/tests/`.
+
+> Corrected by `add-mobile-fencer-layout`: this line previously stated the frontend had no test runner. `frontend/package.json` defines `"test": "vitest run"` and `frontend/src/` holds two dozen `.test.ts(x)` files, several of them covering this console.

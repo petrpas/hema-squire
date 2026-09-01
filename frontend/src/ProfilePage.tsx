@@ -4,6 +4,8 @@ import { useTranslation } from "react-i18next";
 import AccountMenu from "./AccountMenu";
 import FieldError, { invalidProps } from "./FieldError";
 import HRSearchPicker from "./HRSearch";
+import HRSearchStep from "./HRSearchStep";
+import { useWideViewport } from "./useWideViewport";
 import PleaSection from "./PleaSection";
 import { useAuth } from "./RequireAuth";
 import { ApiError, type Account, type HRProfile, type Plea, api } from "./api";
@@ -191,6 +193,10 @@ function HRMatchSection({
   const [pending, setPending] = useState<HRProfile | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const wide = useWideViewport();
+  // below 768px the picker is opened as its own screen rather than sitting
+  // expanded in the section
+  const [searching, setSearching] = useState(false);
 
   function select(profile: HRProfile) {
     setPending(profile);
@@ -210,6 +216,10 @@ function HRMatchSection({
       setBusy(false);
     }
   }
+
+  const picker = (
+    <HRSearchPicker onConfirm={select} busy={busy} initialQuery={account.display_name} />
+  );
 
   return (
     <section className="rail-card">
@@ -238,10 +248,31 @@ function HRMatchSection({
             {t("common.cancel")}
           </button>
         </div>
+      ) : wide ? (
+        <>
+          <p className="rail-hint">{t("profile.hr.unboundHint")}</p>
+          {picker}
+        </>
+      ) : searching ? (
+        /* The same step signup uses, not a second implementation of it. The
+           two supply different pickers — signup locks the query to its form's
+           name field, this one carries its own seeded from the display name —
+           and the step passes that difference through rather than flattening
+           it. The step's own back control is the way out: this call site
+           gives HRSearchPicker no onCancel, so it renders none of its own. */
+        <HRSearchStep
+          title={t("profile.hr.title")}
+          backLabel={t("profile.hr.stepBack")}
+          onBack={() => setSearching(false)}
+        >
+          {picker}
+        </HRSearchStep>
       ) : (
         <>
           <p className="rail-hint">{t("profile.hr.unboundHint")}</p>
-          <HRSearchPicker onConfirm={select} busy={busy} initialQuery={account.display_name} />
+          <button type="button" className="secondary" onClick={() => setSearching(true)}>
+            {t("signup.hr.find")}
+          </button>
         </>
       )}
     </section>

@@ -118,7 +118,8 @@
     "submit": "Přihlásit se",
     "invalid": "Neplatný e-mail nebo heslo.",
     "failed": "Přihlášení se nezdařilo. Zkus to prosím znovu.",
-    "createAccount": "Vytvořit účet"
+    "createAccount": "Vytvořit účet",
+    "submitting": "Přihlašuji…"
   },
   "signup": {
     "subtitle": "Vytvoř si účet",
@@ -135,14 +136,17 @@
       "confirmTitle": "Potvrď svůj profil na HEMA Ratings",
       "confirmPrompt": "Propojení naváže tento účet na profil níže. Potvrď, že je tvůj.",
       "confirmButton": "Ano, to jsem já",
-      "viewProfile": "Zobrazit na hemaratings.com"
+      "viewProfile": "Zobrazit na hemaratings.com",
+      "searchingFor": "Hledám podle jména: {{name}}",
+      "stepBack": "Zpět na formulář"
     },
     "errors": {
       "emailTaken": "Tento e-mail už je zaregistrovaný.",
       "hrNotFound": "Tento profil na HEMA Ratings se nepodařilo najít.",
       "invalid": "Zkontroluj prosím formulář a zkus to znovu.",
       "failed": "Registrace se nezdařila. Zkus to prosím znovu."
-    }
+    },
+    "submitting": "Zakládám účet…"
   },
   "languages": {
     "cs": "Čeština",
@@ -660,7 +664,8 @@
       "search": "Hledat",
       "claimedNotice": "Už je spojen s jiným účtem. Pokud jsi to ty, klidně ho potvrď.",
       "confirmBind": "Potvrdit a spojit tento profil",
-      "bindFailed": "Spojení se nezdařilo."
+      "bindFailed": "Spojení se nezdařilo.",
+      "stepBack": "Zpět na profil"
     }
   },
   "home": {
@@ -781,7 +786,10 @@
       "no_bank_account": "Platební údaje zatím nejsou k dispozici — pořadatel je doplní.",
       "not_unpaid": "Tato rezervace už nečeká na platbu.",
       "generic": "Platební instrukce se nepodařilo načíst (chyba {{status}}). Zkus stránku znovu načíst."
-    }
+    },
+    "copy": "Kopírovat",
+    "copied": "Zkopírováno",
+    "saveQr": "Uložit QR kód"
   },
   "registration": {
     "title": "Tvoje registrace",

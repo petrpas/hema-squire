@@ -112,7 +112,8 @@
     "submit": "Sign in",
     "invalid": "Invalid e-mail or password.",
     "failed": "Sign-in failed. Please try again.",
-    "createAccount": "Create account"
+    "createAccount": "Create account",
+    "submitting": "Signing in…"
   },
   "signup": {
     "subtitle": "Create your account",
@@ -129,14 +130,17 @@
       "confirmTitle": "Confirm your HEMA Ratings profile",
       "confirmPrompt": "Linking binds this account to the profile below. Confirm it is yours.",
       "confirmButton": "Yes, this is me",
-      "viewProfile": "View on hemaratings.com"
+      "viewProfile": "View on hemaratings.com",
+      "searchingFor": "Searching by name: {{name}}",
+      "stepBack": "Back to the form"
     },
     "errors": {
       "emailTaken": "That e-mail is already registered.",
       "hrNotFound": "That HEMA Ratings profile could not be found.",
       "invalid": "Please check the form and try again.",
       "failed": "Sign-up failed. Please try again."
-    }
+    },
+    "submitting": "Creating account…"
   },
   "languages": {
     "cs": "Čeština",
@@ -653,7 +657,8 @@
       "search": "Search",
       "claimedNotice": "Already claimed by another account. You may still confirm it if it's you.",
       "confirmBind": "Confirm and link this profile",
-      "bindFailed": "Binding failed."
+      "bindFailed": "Binding failed.",
+      "stepBack": "Back to profile"
     }
   },
   "home": {
@@ -773,7 +778,10 @@
       "no_bank_account": "Payment details are not available yet — the organizer will supply them.",
       "not_unpaid": "This reservation is no longer awaiting payment.",
       "generic": "Payment instructions could not be loaded (error {{status}}). Try reloading the page."
-    }
+    },
+    "copy": "Copy",
+    "copied": "Copied",
+    "saveQr": "Save QR code"
   },
   "registration": {
     "title": "Your registration",

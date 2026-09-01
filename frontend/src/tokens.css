@@ -36,8 +36,44 @@
      the R in PRIHLASKA reads a size heavier than the S beside it. */
   --label-size: 11px;
 
+  /* Form controls are 16px, not the 14px of body text. A mobile browser zooms
+     the viewport when a control smaller than 16px takes focus and never zooms
+     back out, so the rest of the form ends up off-screen; the other cure —
+     user-scalable=no in the viewport meta — disables pinch-zoom everywhere and
+     is an accessibility regression. One value at every width, because a size
+     that differs by viewport drifts, and because 14px and 16px are optically
+     indistinguishable in these bottom-ruled fields on a desktop. */
+  --field-size: 16px;
+
   /* Geometry */
   --radius: 2px; /* app-wide maximum; table cells get 0 */
   --border-w: 1px;
   --focus: 2px solid var(--stamp);
 }
+
+/* ===== Breakpoints =====
+   The canonical set, and the whole of it:
+
+     480px   phone, portrait
+     768px   tablet, or phone in landscape
+     1024px  desktop
+
+   Written as literals at every call site. They are deliberately NOT custom
+   properties: a @media condition is resolved before the cascade, so var() is
+   not substituted inside one. `@media (max-width: var(--bp-sm))` raises no
+   error — it is dropped in silence, and the page renders as though the rule
+   had never been written.
+
+   Direction, so the two edges of a breakpoint can never contradict each other:
+   narrow-screen rules are written as `max-width` overrides on a desktop base,
+   never as a `min-width` pair. The breakpoint width itself therefore belongs to
+   the NARROWER band — at exactly 768px the narrow rules apply. A max/min pair
+   sharing one number would both match at that width; a pair split across two
+   numbers (767/768) would leave a fractional-viewport gap between them.
+
+   Two width queries in index.css sit outside this set on purpose, each
+   annotated at its own site:
+     .setup-split at 1300px — a content threshold (the width at which the
+       console's two side-by-side panels stop fitting), not a device
+       breakpoint. Not a precedent for inventing more.
+   Anything else belongs on one of the three above. */
