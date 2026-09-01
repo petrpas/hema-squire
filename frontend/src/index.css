@@ -2240,11 +2240,17 @@ label.checkbox-chip,
   background: var(--paper-raised);
 }
 
-/* The actions that make the slip usable on the device displaying it. On a wide
-   screen they sit under the QR in the right-hand column; below 480px the whole
-   block stacks and they fall between the code and the fields. */
-.payment-slip-actions {
+/* The code and the actions that make it usable on the device displaying it:
+   one column, the button under the image it saves and no wider than it. */
+.payment-qr-block {
   flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.5rem;
+}
+
+.payment-slip-actions {
   display: flex;
   flex-direction: column;
   gap: 0.4rem;
@@ -2264,11 +2270,10 @@ label.checkbox-chip,
   overflow-wrap: anywhere;
 }
 
+/* An icon button in a row whose items align on their baseline: centre it on
+   the value instead, so the glyph does not hang below the text it copies. */
 .slip-copy {
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  color: var(--ink-faded);
+  align-self: center;
 }
 
 /* Appears at once and leaves by fading out — the one departure the design
@@ -2297,15 +2302,15 @@ label.checkbox-chip,
     gap: 0.8rem;
   }
 
+  .payment-qr-block {
+    align-self: stretch;
+  }
+
   .payment-qr {
     align-self: center;
     width: min(10rem, 60%);
     height: auto;
     aspect-ratio: 1;
-  }
-
-  .payment-slip-actions {
-    align-self: stretch;
   }
 }
 

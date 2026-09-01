@@ -1,3 +1,4 @@
+import { IconCopy } from "@tabler/icons-react";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -55,9 +56,18 @@ function CopyableField({ field }: { field: SlipField }) {
       <span>{field.label}</span>
       <div className="slip-value-row">
         <strong className="data-value">{field.shown}</strong>
+        {/* The action names itself by its glyph: the row is a value and the
+            one thing to do with it, and a word there competed with the value
+            for the eye. Outline, never filled. */}
         {offered && (
-          <button type="button" className="link-button slip-copy" onClick={() => void copy()}>
-            {t("payment.copy")}
+          <button
+            type="button"
+            className="row-action slip-copy"
+            title={t("payment.copy")}
+            aria-label={t("payment.copy")}
+            onClick={() => void copy()}
+          >
+            <IconCopy size={16} stroke={1.5} />
           </button>
         )}
         {/* Static note, and it leaves by fading out — the design admits a
@@ -148,9 +158,13 @@ export default function PaymentSlipBlock({
 }) {
   return (
     <div className="payment-block">
-      <img className="payment-qr" src={`data:image/png;base64,${qrBase64}`} alt={qrAlt} />
-      <div className="payment-slip-actions">
-        <SaveQr base64={qrBase64} filename={qrFilename} />
+      {/* the code and the button that saves it are one thing, stacked: the
+          action belongs under what it acts on, not beside it */}
+      <div className="payment-qr-block">
+        <img className="payment-qr" src={`data:image/png;base64,${qrBase64}`} alt={qrAlt} />
+        <div className="payment-slip-actions">
+          <SaveQr base64={qrBase64} filename={qrFilename} />
+        </div>
       </div>
       <div className="param-fields">
         {fields.map((field) => (
