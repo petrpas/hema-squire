@@ -74,13 +74,26 @@
        breakpoint. Not a precedent for inventing more.
    Anything else belongs on one of the three above. */
 
-/* Below 768px every form control grows to 16px.
+/* On a touch device every form control grows to 16px.
 
    A mobile browser zooms the viewport when a control smaller than 16px takes
    focus, and never zooms back out — tap the e-mail field and the rest of the
    form is off-screen, to be pinched back by hand. The other cure,
    user-scalable=no in the viewport meta, disables pinch-zoom everywhere and is
    an accessibility regression, so it is not used.
+
+   Keyed on the pointer, NOT on a width, and deliberately outside the canonical
+   breakpoint set above — do not "correct" it into one. Focus-zoom is a
+   property of touch browsers, not of narrow windows: an iPad in landscape is
+   1366px wide and still zooms, while a 700px-wide desktop window never does. A
+   width query is a proxy for the real condition and it is wrong at both ends.
+   This is the same reasoning that puts decorative hover rules behind
+   @media (hover: hover) in index.css — capability, not size.
+
+   `pointer`, not `any-pointer`: the question is whether this device is driven
+   by touch, not whether a touchscreen happens to be attached to a machine with
+   a mouse. A touchscreen laptop keeps the 14px branch, correctly — its browser
+   does not focus-zoom.
 
    Redefining a custom property inside a media BLOCK is ordinary and works;
    what does not work is var() inside a media CONDITION, which is the trap the
@@ -90,8 +103,11 @@
    query of its own: .login-card, .form-field/.param-field, .modal input,
    .plea-form, .inline-form and .checklist-control. The console sheet's
    .cell-input deliberately does not read it — it takes its size from the table
-   it sits in, and raising it would deepen every row. */
-@media (max-width: 768px) {
+   it sits in, and raising it would deepen every row.
+
+   Testing note: narrowing a desktop window does NOT trigger this — the pointer
+   stays fine. Use the browser's device emulation, which reports coarse. */
+@media (pointer: coarse) {
   :root {
     --field-size: 16px;
   }

@@ -16,6 +16,11 @@ exists it SHALL either be moved onto the set or annotated at its site as a conte
 threshold — the width at which a specific layout stops fitting — naming why it is not
 a device breakpoint.
 
+Capability queries — `hover`, `pointer`, `prefers-reduced-motion` — are not width
+queries and this rule does not reach them. Where the real condition is what the input
+device can do, the query SHALL ask that directly rather than use a width as a proxy for
+it, and SHALL NOT be converted onto the breakpoint set by a later tidy-up.
+
 #### Scenario: Adding a responsive rule
 - **WHEN** a stylesheet rule needs to differ on a narrow viewport
 - **THEN** its media query uses one of 480px, 768px or 1024px as a literal length, not a custom property
@@ -29,10 +34,16 @@ a device breakpoint.
 - **THEN** `tokens.css` states all three with what each stands for, and defines no breakpoint custom property
 
 ### Requirement: Form controls are sized so a mobile browser does not zoom
-Form controls — `input`, `select` and `textarea` — SHALL render at 16px below 768px.
-The size SHALL be defined once as a token whose value is redefined in a single media
-block, so that call sites read the token and carry no media query of their own. At
-desktop widths the token SHALL resolve to the 14px of body text.
+Form controls — `input`, `select` and `textarea` — SHALL render at 16px wherever the
+pointing device is coarse. The size SHALL be defined once as a token whose value is
+redefined in a single media block, so that call sites read the token and carry no media
+query of their own. Everywhere else the token SHALL resolve to the 14px of body text.
+
+The condition SHALL be the pointer and SHALL NOT be a width. Focus-zoom is a property
+of touch browsers, not of narrow windows, and a width is wrong at both ends of it: a
+tablet held in landscape is wider than any phone breakpoint and still zooms, while a
+narrowed desktop window never does. This query therefore stands outside the canonical
+breakpoint set by design, and SHALL NOT be rewritten into it.
 
 A mobile browser that zooms the viewport when a control smaller than 16px takes focus
 does not zoom back out afterwards, leaving the rest of the form off-screen. The
@@ -45,14 +56,18 @@ than the 14px body size. A control whose size is inherited from a data table, an
 is edited only with a pointer on a desktop instrument, is exempt.
 
 #### Scenario: Focusing a field on a mobile browser
-- **WHEN** a fencer taps the e-mail field on the sign-in card on an iOS device below 768px
+- **WHEN** a fencer taps the e-mail field on the sign-in card on a touch device
 - **THEN** the control is 16px, the viewport does not zoom, and the rest of the form stays visible
 
+#### Scenario: A tablet too wide for any phone breakpoint
+- **WHEN** the same card is opened on a tablet held in landscape, wider than every breakpoint in the canonical set
+- **THEN** the control is still 16px, because the condition is the pointer and not the width
+
 #### Scenario: The same control on a desktop instrument
-- **WHEN** a control is rendered at a width above 768px, where no focus-zoom occurs
+- **WHEN** a control is rendered on a machine driven by a mouse, at any window width
 - **THEN** it is 14px, and the density of the screen around it is unchanged
 
-#### Scenario: One value per width
+#### Scenario: One value, in one place
 - **WHEN** the stylesheet is audited for the control size
 - **THEN** it is defined in one token and redefined in one media block, and no individual component sets a control size of its own
 

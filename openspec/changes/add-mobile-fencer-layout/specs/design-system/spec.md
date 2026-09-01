@@ -1,7 +1,7 @@
 ## MODIFIED Requirements
 
 ### Requirement: Typography conventions
-Body text SHALL use `--font-ui` at 14px/1.5 in `--ink`, weight 400 or 500 only. Form controls — `input`, `select` and `textarea` — SHALL draw their size from a single `--field-size` token: 14px at desktop widths, and 16px below 768px. Table headers and field labels SHALL be 10.5–11px uppercase with `letter-spacing: 0.12em`, weight 500, color `--ink-faded`. Data values (IDs, amounts, VS, revision numbers) SHALL use `--font-data` with `font-variant-numeric: tabular-nums` where numeric. Document titles (tournament name, form title) SHALL use `--font-doc` at 19–22px and appear nowhere else.
+Body text SHALL use `--font-ui` at 14px/1.5 in `--ink`, weight 400 or 500 only. Form controls — `input`, `select` and `textarea` — SHALL draw their size from a single `--field-size` token: 14px by default, and 16px where the pointing device is coarse. Table headers and field labels SHALL be 10.5–11px uppercase with `letter-spacing: 0.12em`, weight 500, color `--ink-faded`. Data values (IDs, amounts, VS, revision numbers) SHALL use `--font-data` with `font-variant-numeric: tabular-nums` where numeric. Document titles (tournament name, form title) SHALL use `--font-doc` at 19–22px and appear nowhere else.
 
 The 16px narrow-viewport size is deliberate and SHALL NOT be reverted. A mobile browser zooms the viewport when a control smaller than 16px takes focus and does not zoom back out, which pushes the rest of a form off-screen; the alternative countermeasure, suppressing user scaling in the viewport meta, is an accessibility regression and is prohibited.
 
@@ -17,16 +17,16 @@ A control whose size is inherited from the density of a data table it sits in �
 - **WHEN** an amount is displayed in a table or payment slip
 - **THEN** it uses `--font-data`, tabular numerals, is right-aligned, and shows currency after the number (e.g. "1 200 Kč")
 
-#### Scenario: Rendering a form control on a narrow viewport
-- **WHEN** a text input, select, or textarea is rendered below 768px
+#### Scenario: Rendering a form control on a touch device
+- **WHEN** a text input, select, or textarea is rendered on a device whose pointer is coarse
 - **THEN** it is 16px from the `--field-size` token, while the body text around it stays 14px
 
-#### Scenario: Rendering a form control at a desktop width
-- **WHEN** the same control is rendered at 1024px
+#### Scenario: Rendering a form control under a mouse
+- **WHEN** the same control is rendered on a machine driven by a fine pointer, at any window width
 - **THEN** it is 14px, matching the body text, and the sheet's own density is unchanged
 
 #### Scenario: Auditing a form against the body-text rule
-- **WHEN** an audit finds form controls set larger than the 14px body text on a narrow viewport
+- **WHEN** an audit finds form controls set larger than the 14px body text on a touch device
 - **THEN** the difference is the recorded 16px control size, not drift, and is left in place
 
 ### Requirement: Interaction and accessibility baseline

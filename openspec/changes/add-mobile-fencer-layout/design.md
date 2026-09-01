@@ -86,7 +86,7 @@ Existing queries are reconciled:
   as a *content threshold* — the width at which the console's two side-by-side panels
   stop fitting — not a device breakpoint. It is console-only and out of scope.
 
-### D2 — `--field-size`: 14px at desktop widths, 16px below 768px
+### D2 — `--field-size`: 14px by default, 16px on a touch device
 
 iOS Safari zooms the viewport when a control smaller than 16px takes focus, and never
 zooms back out. The countermeasures are: raise the control to 16px, or add
@@ -94,8 +94,8 @@ zooms back out. The countermeasures are: raise the control to 16px, or add
 it disables zoom everywhere, including where a fencer genuinely needs it — and is
 rejected outright.
 
-The size is applied **under `max-width: 768px` only**, leaving desktop controls at the
-14px they have always been.
+The size is applied **under `@media (pointer: coarse)` only**, leaving controls at the
+14px they have always been anywhere a mouse is driving.
 
 This reverses the original decision here, which applied 16px unconditionally on the
 reasoning that a value differing by viewport drifts, and that 14px against 16px is
@@ -112,11 +112,24 @@ Redefining a custom property inside a media *block* is ordinary CSS and works. W
 does not work is `var()` inside a media *condition* (D1). The two are easy to conflate
 and the token file now says so at both sites.
 
-*Known gap:* the query is width-based, so a touch device wider than 768px — an iPad in
-landscape — takes the 14px branch and can still zoom on focus. A pointer-based
-condition (`@media (pointer: coarse)`) would follow the actual failure mode rather than
-a proxy for it, since focus-zoom is a property of touch, not of width. Left as-is
-because width is what was chosen; it is a one-line change if the iPad case matters.
+The condition is the pointer, not a width, and it sits deliberately outside the
+canonical breakpoint set. Focus-zoom is a property of touch browsers, not of narrow
+windows, and a width query is wrong at both ends of that: an iPad in landscape is
+1366px wide and still zooms, while a 700px desktop window never does. Keying on the
+real condition removes the gap rather than documenting it.
+
+`pointer`, not `any-pointer`: the question is whether the device is driven by touch,
+not whether a touchscreen is attached to a machine that also has a mouse. A touchscreen
+laptop stays on 14px, correctly — its browser does not focus-zoom.
+
+This is the same move as D5, which puts decorative hover rules behind
+`@media (hover: hover)`: both ask what the input device can do rather than how wide the
+window is. Neither belongs in the breakpoint set, and `responsive-layout` says so, so
+that a later tidy-up does not convert them.
+
+*Testing consequence:* narrowing a desktop window does not trigger the 16px branch —
+the pointer stays fine. Device emulation reports `coarse` and does. The manual-pass
+task says so, because a tester who only resizes will conclude the token is broken.
 
 The token reaches **six** blocks, not the four the brief names:
 
@@ -139,9 +152,9 @@ row's height. Console fields are edited with a mouse on a desktop; the zoom faul
 not arise there.
 
 *Consequence:* `.form-field`/`.param-field` are shared with the console's Setup panel,
-which is why the unconditional version was visible there at all. Under the width-gated
-version the console is untouched at the widths it is actually used at, and the
-cross-cutting cost the proposal accepted is now paid only below 768px.
+which is why the unconditional version was visible there at all. Under the
+pointer-gated version the console is untouched on every machine it is actually worked
+on, and the cross-cutting cost the proposal accepted is paid only on touch.
 
 `.checklist-control` gains 1px at desktop widths (13px → 14px) by joining the common
 token. That is deliberate: it was the one control set below the common size, for no
