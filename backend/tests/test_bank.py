@@ -10,7 +10,7 @@ from app.bank import (
     parse_fio_json,
 )
 from app.main import app
-from tests.conftest import enable_payments
+from tests.conftest import enable_payments, settle
 
 FIO_JSON = {
     "accountStatement": {
@@ -105,15 +105,16 @@ def test_statement_import_is_idempotent(client, auth_headers):
     organizer = auth_headers()
     setup_tournament(client, organizer)
 
+    # the import is a started operation now, so the counts live in its record
     first = import_statement(client, organizer)
-    assert first.status_code == 200, first.text
-    assert first.json() == {
+    assert first.status_code == 202, first.text
+    assert settle(client, organizer, kind="statement")["outcome"] == {
         "new": 2, "duplicate": 0, "matched": 0, "flagged": 0, "unmatched": 2, "partial": 0,
         "set_aside": 0,
     }
 
-    again = import_statement(client, organizer)
-    assert again.json() == {
+    import_statement(client, organizer)
+    assert settle(client, organizer, kind="statement")["outcome"] == {
         "new": 0, "duplicate": 2, "matched": 0, "flagged": 0, "unmatched": 0, "partial": 0,
         "set_aside": 0,
     }

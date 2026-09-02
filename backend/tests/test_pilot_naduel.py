@@ -9,6 +9,13 @@ sheet must reproduce fencers_deduped.json: 53 fencers, the duplicate Florian
 Imhof registration merged, and the Bělina likely-pair still queued, exactly
 as the v1 organizer left it.
 
+One thing v2 does differently on purpose: v1 wrote HR's canonical name, club
+and nationality straight into the roster, while v2 leaves the claim register in
+the fencer's own words and files HR's reading in the evidence register until an
+organizer confirms it (spec etl-console, The ledger idiom). So those three
+fields are checked against `fencers_matched.json` through `hr_name`/`hr_club`
+rather than through the roster comparison.
+
 Runs only where the archive exists (skipped in CI); personal data never
 enters this repository.
 """
@@ -22,6 +29,7 @@ from app.dedup import MergeProposal, ThreeBands, default_merge, get_dedup_llm
 from app.hr_match import HRMatchResult, get_hr_matcher
 from app.importer import ParsedFencer, get_import_parser
 from app.main import app
+from tests.conftest import outcome as operation_outcome
 
 
 # the v1 archive predates slugs: `disciplines` entries are {weapon, gender,
@@ -59,17 +67,24 @@ def archive():
 
 
 class ArchiveParser:
-    """Replays v1's stored parse output; order-aligned with the CSV."""
+    """Replays v1's stored parse output; order-aligned with the CSV.
+
+    The importer parses in batches, so the archive is consumed with a cursor
+    that advances across calls — the row/archive alignment still has to hold.
+    """
 
     def __init__(self, parsed: list[dict]):
         self.parsed = parsed
+        self.cursor = 0
         self.calls = 0
 
     def parse_batch(self, rows, disciplines, rentals):
         self.calls += 1
-        assert len(rows) == len(self.parsed)
+        archived_batch = self.parsed[self.cursor : self.cursor + len(rows)]
+        assert len(archived_batch) == len(rows), "archive ran out of parsed rows"
+        self.cursor += len(rows)
         records = []
-        for raw, archived in zip(rows, self.parsed, strict=True):
+        for raw, archived in zip(rows, archived_batch, strict=True):
             assert (raw["E-mailová adresa"] or None) == archived["email"], (
                 "archive/CSV row alignment broke"
             )
@@ -129,26 +144,29 @@ class ArchiveDedup:
         return ThreeBands(likely=[likely] if len(likely) > 1 else [])
 
 
-def fencer_view(name, hr_id, email, club, nationality, disciplines, afterparty,
-                rentals, notes):
-    return (name, hr_id, email, club or None, nationality or None,
-            tuple(sorted(disciplines)), afterparty, tuple(sorted(rentals)),
-            notes or None)
+# v1 wrote HR's canonical name, club and nationality straight into the roster.
+# v2 keeps them out of the claim register until an organizer confirms the match
+# (spec etl-console, The ledger idiom), so those three are compared separately,
+# against the evidence register, and the roster comparison covers the rest.
+def fencer_view(hr_id, email, disciplines, afterparty, rentals, notes):
+    # sortable: the roster comparison sorts these tuples, and both an absent
+    # email and an unmatched hr_id are ordinary here
+    return (email or "", hr_id or 0, tuple(sorted(disciplines)), afterparty,
+            tuple(sorted(rentals)), notes or None)
 
 
 def archive_view(record):
     codes = [_legacy_code(d) for d in record["disciplines"]]
     return fencer_view(
-        record["name"], record["hr_id"], record["email"], record["club"],
-        record["nationality"], codes, record["after_party"] == "Yes",
-        record["borrow"], record["notes"],
+        record["hr_id"], record["email"], codes,
+        record["after_party"] == "Yes", record["borrow"], record["notes"],
     )
 
 
 def sheet_view(row):
     return fencer_view(
-        row["name"], row["hr_id"], row["email"], row["club"], row["nationality"],
-        row["disciplines"], row["afterparty"], row["weapon_rentals"], row["notes"],
+        row["hr_id"], row["email"], row["disciplines"], row["afterparty"],
+        row["weapon_rentals"], row["notes"],
     )
 
 
@@ -175,21 +193,25 @@ def test_pilot_replay_reproduces_v1_final_state(client, auth_headers, archive):
     app.dependency_overrides[get_dedup_llm] = lambda: dedup
 
     # 1. intake: the real Google-Form export, every row parsed, problems surfaced
-    outcome = client.post(
+    client.post(
         "/api/tournaments/na-duel-2026/import",
         files={"file": ("registrations_v0.csv", archive["csv"], "text/csv")},
         headers=organizer,
-    ).json()
-    assert outcome["rows"] == 54
-    assert outcome["parsed"] == 54
-    problem_rows = {p["problems"] for p in outcome["problems"]}
+    )
+    # the parse runs behind the request now, so the counts come off the record
+    parsed = operation_outcome(client, organizer, "na-duel-2026", "parse")
+    assert parsed["rows"] == 54
+    assert parsed["parsed"] == 54
+    problem_rows = {p["problems"] for p in parsed["problems"]}
     assert any("Duplicate registration" in p for p in problem_rows)
-    assert len(outcome["problems"]) == 4
+    assert len(parsed["problems"]) == 4
+    # the parser runs a batch at a time; what matters below is that the
+    # re-import in step 6 adds no calls at all, not the batch count itself
+    parse_calls = parser.calls
 
     # 2. matching: v1 matched 51 of 54; canonical names apply, reg_name retained
-    result = client.post(
-        "/api/tournaments/na-duel-2026/import/match", headers=organizer
-    ).json()
+    client.post("/api/tournaments/na-duel-2026/import/match", headers=organizer)
+    result = operation_outcome(client, organizer, "na-duel-2026", "match")
     assert result == {"matched": 51, "unmatched": 3, "reused": 0}
 
     def rows():
@@ -199,18 +221,20 @@ def test_pilot_replay_reproduces_v1_final_state(client, auth_headers, archive):
         return [r for r in sheet["rows"] if not r["_deleted"]]
 
     by_name = {r["name"]: r for r in rows()}
-    sourek = by_name["Jan Šourek"]  # form had "Jan" / club "Šourek"
-    assert sourek["reg_name"] == "Jan"
-    assert sourek["club"] == "AKA - Akademie rytířských umění"
+    # the form split this fencer across the two fields; the row still says what
+    # they typed, and HR's reading of it sits beside it as evidence
+    sourek = by_name["Jan"]
+    assert sourek["club"] == "Šourek"
+    assert sourek["hr_name"] == "Jan Šourek"
+    assert sourek["hr_club"] == "AKA - Akademie rytířských umění"
     assert sourek["match_verdict"] == "proposed"
-    szucs = by_name["Kornél Antal Szücs"]  # name order canonicalized
-    assert szucs["reg_name"] == "Szücs Kornél Antal"
+    szucs = by_name["Szücs Kornél Antal"]  # HR canonicalizes the name order
+    assert szucs["hr_name"] == "Kornél Antal Szücs"
     assert by_name["Jan Sax Bělina"]["match_verdict"] == "none_found"
 
     # 3. dedup: the Florian pair queues (nothing merges silently), Bělinas likely
-    result = client.post(
-        "/api/tournaments/na-duel-2026/import/dedup", headers=organizer
-    ).json()
+    client.post("/api/tournaments/na-duel-2026/import/dedup", headers=organizer)
+    result = operation_outcome(client, organizer, "na-duel-2026", "dedup")
     assert result == {"proposals": 1, "auto_merged": 0, "likely": 1}
     groups = client.get(
         "/api/tournaments/na-duel-2026/import/dedup/groups", headers=organizer
@@ -240,6 +264,20 @@ def test_pilot_replay_reproduces_v1_final_state(client, auth_headers, archive):
     # does the same via default_merge — compare full tuples
     assert ours == v1
 
+    # and what v1 wrote into the roster, v2 holds as evidence against the words
+    # the fencer actually gave — every matched row's canonical name and club
+    canonical = {
+        (p["name"], p["club"]): m
+        for p, m in zip(archive["parsed"], archive["matched"], strict=True)
+    }
+    matched_rows = [r for r in final if r["hr_id"] is not None]
+    assert len(matched_rows) == 51 - 1  # 51 matched, less the merged Florian
+    for row in matched_rows:
+        archived = canonical[(row["name"], row["club"])]
+        assert row["hr_id"] == archived["hr_id"]
+        assert row["hr_name"] == archived["name"]
+        assert row["hr_club"] == archived["club"]
+
     # the Bělina pair stays pending, matching the archived likely-groups file;
     # the Florian pair stays listed, now stating the merge the organizer made
     groups = client.get(
@@ -249,18 +287,19 @@ def test_pilot_replay_reproduces_v1_final_state(client, auth_headers, archive):
     assert verdicts == {"same_id": "merged", "likely": "pending"}
 
     # 6. incrementality on real data: reruns of every stage cost nothing
-    outcome = client.post(
+    # nothing is left undecided, so the re-upload answers without an operation
+    # at all (spec table-import, Reused rows are not work)
+    reimport = client.post(
         "/api/tournaments/na-duel-2026/import",
         files={"file": ("registrations_v0.csv", archive["csv"], "text/csv")},
         headers=organizer,
     ).json()
-    assert outcome["reused"] == 54 and outcome["parsed"] == 0
-    result = client.post(
-        "/api/tournaments/na-duel-2026/import/match", headers=organizer
-    ).json()
+    assert reimport["reused"] == 54 and reimport["parsed"] == 0
+    client.post("/api/tournaments/na-duel-2026/import/match", headers=organizer)
+    result = operation_outcome(client, organizer, "na-duel-2026", "match")
     assert result["matched"] == 0 and result["unmatched"] == 0
     client.post("/api/tournaments/na-duel-2026/import/dedup", headers=organizer)
-    assert parser.calls == 1
+    assert parser.calls == parse_calls
     assert matcher.calls == 1
     assert dedup.classify_calls == 1
 

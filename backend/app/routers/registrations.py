@@ -875,7 +875,11 @@ def admit_substitute(
     totals = pricing.registration_total(registration, tournament)
     registration.total_amount = totals.local
     registration.total_eur = totals.eur
-    registration.expires_at = _promotion_expires_at(tournament)
+    # an issued registration's clocks are dormant by origin, so promotion
+    # bills it but opens no window: it never acquires a due date, whatever
+    # happens to it later (spec imported-registrations)
+    if not registration.clocks_dormant:
+        registration.expires_at = _promotion_expires_at(tournament)
     if was_paid:
         session.add(
             PaymentEvent(

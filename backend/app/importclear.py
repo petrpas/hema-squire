@@ -7,24 +7,52 @@ it (spec table-import, Clearing the tournament's imported content). This is the
 one place the console deletes rather than records — the reversible row deletion
 the table offers is a rule, and rules are what this removes.
 
-Ordered by dependency, in one transaction: journal entries, then the rules they
-belong to, then the numbers, then the rows, then the batches. Decisions are
-pruned last, once the survivors are known.
+Ordered by dependency, in one transaction: registrations issued for the cleared
+rows, then journal entries, then the rules they belong to, then the numbers,
+then the rows, then the batches. Decisions are pruned last, once the survivors
+are known.
+
+A registration issued for an imported row goes with it. It exists only because
+the row did, and it stands in the row's place in the fencer list — left behind
+it would keep drawing that fencer into the table under the id of a row that no
+longer exists, and the clear could be seen through. Where such a registration
+has been credited the clear is refused instead: money already recorded against a
+fencer is not the console's to delete on the way past.
 """
 
-from sqlalchemy import delete, func, select
+from sqlalchemy import delete, func, select, update
 from sqlalchemy.orm import Session
 
 from app import dedup, hr_match
 from app.models import (
+    BankTransaction,
     ImportBatch,
     ImportDecision,
     ImportedRow,
+    PaymentEvent,
+    Registration,
+    RegistrationDiscipline,
+    RegistrationExtra,
     Rule,
     RuleJournalEntry,
     SheetRowNumber,
+    Team,
+    TeamMember,
     Tournament,
 )
+
+
+class CreditedRegistrationsError(RuntimeError):
+    """The clear would delete registrations that money has been credited to.
+
+    Raised rather than deleting them: the row can be asserted never to have
+    existed, but the payment against it was a real event, and destroying it
+    silently would leave a tournament whose books do not add up with nothing to
+    say why. The organizer resolves those payments first."""
+
+    def __init__(self, count: int):
+        self.count = count
+        super().__init__(f"{count} issued registrations hold credit")
 
 
 def _names_a_cleared_row(value: object, cleared: set[str]) -> bool:
@@ -112,9 +140,29 @@ def imported_totals(session: Session, tournament: Tournament) -> dict:
     return {"rows": rows or 0, "files": files or 0}
 
 
+def _issued_registrations(session: Session, tournament: Tournament) -> list[Registration]:
+    """Registrations issued for a row of this tournament's fencer list."""
+    return list(
+        session.scalars(
+            select(Registration).where(
+                Registration.tournament_id == tournament.id,
+                Registration.source_row_id.is_not(None),
+            )
+        )
+    )
+
+
 def clear_imports(session: Session, tournament: Tournament) -> dict:
     """Remove every trace of every import. Returns what was removed, in the
-    terms the confirmation stated it: rows and files."""
+    terms the confirmation stated it: rows and files.
+
+    Raises `CreditedRegistrationsError` where a registration issued for one of
+    those rows has been credited.
+    """
+    issued = _issued_registrations(session, tournament)
+    credited = [r for r in issued if r.amount_paid_cents or r.amount_paid_eur_cents]
+    if credited:
+        raise CreditedRegistrationsError(len(credited))
     imported = list(
         session.scalars(
             select(ImportedRow).where(ImportedRow.tournament_id == tournament.id)
@@ -149,6 +197,36 @@ def clear_imports(session: Session, tournament: Tournament) -> dict:
                 SheetRowNumber.row_id.in_(cleared),
             )
         )
+    if issued:
+        # Children first and explicitly: SQLite has no ON DELETE CASCADE here
+        # and the relationships do not delete-orphan, so a plain delete would
+        # try to null a NOT NULL foreign key. Same order and reason as
+        # `routers.tournaments._cascade_delete`.
+        ids = [r.id for r in issued]
+        team_ids = select(Team.id).where(Team.registration_id.in_(ids))
+        session.execute(delete(TeamMember).where(TeamMember.team_id.in_(team_ids)))
+        session.execute(delete(Team).where(Team.registration_id.in_(ids)))
+        session.execute(
+            delete(RegistrationDiscipline).where(
+                RegistrationDiscipline.registration_id.in_(ids)
+            )
+        )
+        session.execute(
+            delete(RegistrationExtra).where(RegistrationExtra.registration_id.in_(ids))
+        )
+        session.execute(delete(PaymentEvent).where(PaymentEvent.registration_id.in_(ids)))
+        # a transaction that had been linked to one of these keeps its money and
+        # loses its addressee: it returns to the unresolved queue rather than
+        # vanishing with the registration (none of these is credited — a
+        # credited one refused the clear above)
+        session.execute(
+            update(BankTransaction)
+            .where(BankTransaction.matched_registration_id.in_(ids))
+            .values(matched_registration_id=None, status="unmatched",
+                    status_reason="registration_cleared")
+        )
+        session.execute(delete(Registration).where(Registration.id.in_(ids)))
+    session.flush()
     session.execute(delete(ImportedRow).where(ImportedRow.tournament_id == tournament.id))
     if batch_ids:
         session.execute(delete(ImportBatch).where(ImportBatch.id.in_(batch_ids)))

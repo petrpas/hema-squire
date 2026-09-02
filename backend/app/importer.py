@@ -14,7 +14,7 @@ import csv
 import hashlib
 import io
 import json
-from collections.abc import Callable
+from collections.abc import Callable, Iterable
 from typing import TYPE_CHECKING, Literal, Protocol
 
 from pydantic import BaseModel, Field, field_validator
@@ -51,37 +51,79 @@ class UnsupportedFormatError(ValueError):
     pass
 
 
+def _table_rows(header: Iterable, rows: Iterable[Iterable]) -> list[dict[str, str]]:
+    """Header-keyed rows of strings, from any table reader's cells.
+
+    The header defines the columns and every row aligns to it: a cell the row
+    does not reach reads empty, and cells past the last column are dropped. Real
+    exports are ragged — a bank writes a preamble line, a message field carries
+    an unquoted separator — and neither shape may leave the dict, because every
+    caller downstream (`row_fingerprint` above all, which sorts the keys) needs
+    string keys and string values. A ragged row used to arrive here with its
+    overflow under `csv.DictReader`'s `restkey`, which is `None`, and sorting
+    that against the real column names raised TypeError mid-import.
+
+    A column the header does not name is not a column, and is dropped with it:
+    nothing downstream can refer to it, openpyxl invents one whenever a stray
+    cell sits past the header row, and keeping them all under one empty key
+    silently collapses two such columns into one.
+
+    A blank line is not a row: it would reach the parser and come back as
+    whatever the model invents for a record with nothing in it.
+    """
+    named = [
+        (i, str(cell).strip())
+        for i, cell in enumerate(header)
+        if cell is not None and str(cell).strip()
+    ]
+    out = []
+    for row in rows:
+        cells = ["" if cell is None else str(cell) for cell in row]
+        if not any(cell.strip() for cell in cells):
+            continue
+        out.append({
+            key: cells[i] if i < len(cells) else "" for i, key in named
+        })
+    return out
+
+
+# what a table might be separated by, in the order a tie is broken
+DELIMITERS = ",;\t|"
+
+
+def sniff_delimiter(sample: str) -> str:
+    """The delimiter a line is separated by: the one that finds most columns.
+
+    A registration form exports with commas; a Czech or otherwise European bank
+    exports with semicolons, because there a comma is the decimal point. Read
+    with the wrong one, a semicolon file is a single column whose one value is
+    the whole line — and every embedded decimal comma cuts it short, so
+    `1214,03` ends the row at `1214` and everything after it, the payer's name
+    included, is lost. That is not a crash and nothing downstream can tell it
+    from a bank that really does write one column.
+
+    A header names its columns, so the delimiter that splits it into the most
+    of them is the one the file was written with.
+    """
+    return max(DELIMITERS, key=lambda d: len(next(csv.reader([sample], delimiter=d), [])))
+
+
 def read_table(filename: str, data: bytes) -> list[dict[str, str]]:
     """Read an uploaded CSV or XLSX into a list of header-keyed row dicts."""
     name = filename.lower()
     if name.endswith(".csv"):
         text = data.decode("utf-8-sig")
-        # a blank line is not a fencer. The XLSX reader below already skips
-        # them; without the same guard here a trailing empty line becomes a row,
-        # reaches the parser, and comes back named whatever the model invents
-        # for a record with nothing in it
-        return [
-            dict(row)
-            for row in csv.DictReader(io.StringIO(text))
-            if any((value or "").strip() for value in row.values())
-        ]
+        first = next((line for line in text.splitlines() if line.strip()), "")
+        reader = csv.reader(io.StringIO(text), delimiter=sniff_delimiter(first))
+        header = next(reader, None)
+        return [] if header is None else _table_rows(header, reader)
     if name.endswith(".xlsx"):
         import openpyxl
 
         workbook = openpyxl.load_workbook(io.BytesIO(data), read_only=True)
         rows_iter = workbook.active.iter_rows(values_only=True)
         header = next(rows_iter, None)
-        if header is None:
-            return []
-        keys = [str(cell) if cell is not None else "" for cell in header]
-        return [
-            {
-                key: "" if cell is None else str(cell)
-                for key, cell in zip(keys, row, strict=False)
-            }
-            for row in rows_iter
-            if any(cell is not None and str(cell).strip() for cell in row)
-        ]
+        return [] if header is None else _table_rows(header, rows_iter)
     raise UnsupportedFormatError(filename)
 
 

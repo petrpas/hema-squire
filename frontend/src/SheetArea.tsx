@@ -1,7 +1,7 @@
 import { IconArrowBackUp, IconTrash } from "@tabler/icons-react";
 import { useTranslation } from "react-i18next";
 
-import type { SheetRow } from "./api";
+import type { SheetRow, TournamentDetail } from "./api";
 import {
   CellDisplay,
   MARKER_COLUMNS,
@@ -28,6 +28,7 @@ import type { FieldError } from "./validation";
  */
 export default function SheetArea({
   phase,
+  queues,
   rows,
   visibleRows,
   columns,
@@ -35,6 +36,7 @@ export default function SheetArea({
   paidCount,
   revision,
   timezone,
+  currency,
   error,
   refresh,
   onEdit,
@@ -45,6 +47,10 @@ export default function SheetArea({
   onSearch,
 }: {
   phase: Phase;
+  /** What this phase puts above the table — the payments phase's resolution
+   *  queues. The work a phase exists to do belongs in the column the organizer
+   *  is looking at; null for a phase whose work is the table itself. */
+  queues?: React.ReactNode;
   /** The whole fencer list, which the index column reads to say where an
    *  absorbed row went; `visibleRows` is what this phase lists. */
   rows: SheetRow[];
@@ -54,6 +60,9 @@ export default function SheetArea({
   paidCount: number;
   revision: number;
   timezone: string | null;
+  /** Passed through to the money cells; null until the tournament detail has
+   *  arrived beside the sheet. */
+  currency: Pick<TournamentDetail, "local_currency" | "eur_payments_enabled"> | null;
   error: boolean;
   refresh: () => void;
   onEdit: (row: SheetRow, column: string, raw: string) => void;
@@ -76,6 +85,8 @@ export default function SheetArea({
           {t("console.refresh")}
         </button>
       </div>
+
+      {queues && <div className="sheet-queues">{queues}</div>}
 
       <div className="sheet-scroll">
         {error ? (
@@ -139,6 +150,7 @@ export default function SheetArea({
                                 row={row}
                                 column={column}
                                 timezone={timezone}
+                                currency={currency}
                                 hrIdentity={hrIdentity}
                               />
                             }
@@ -151,6 +163,7 @@ export default function SheetArea({
                             row={row}
                             column={column}
                             timezone={timezone}
+                            currency={currency}
                             hrIdentity={hrIdentity}
                           />
                         )}

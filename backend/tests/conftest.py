@@ -165,6 +165,25 @@ def settle(client, headers, slug="cup", kind=None, timeout=10.0):
     return concluded[kind]
 
 
+def import_statement(client, headers, content: bytes, slug="cup", filename="v.csv"):
+    """Import a statement and return the counts it used to answer with.
+
+    The import is a started operation now (design add-payments-intake D3), so
+    the counts live in the record. Tests that only care about the effect ask
+    for them the way the console does.
+    """
+    import io
+
+    response = client.post(
+        f"/api/tournaments/{slug}/payments/import-statement",
+        files={"file": (filename, io.BytesIO(content), "text/csv")},
+        headers=headers,
+    )
+    if response.status_code != 202:
+        return response
+    return settle(client, headers, slug, kind="statement")["outcome"]
+
+
 def outcome(client, headers, slug="cup", kind="parse"):
     """The outcome of the most recent operation of a kind — the body these
     endpoints used to return synchronously."""

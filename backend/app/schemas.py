@@ -545,6 +545,9 @@ class TournamentOut(BaseModel):
     amount_tolerance_percent: int
     refundable_until: datetime.date | None
     bank_account: str | None
+    # whether a Fio API token is on file — never the token itself. The console
+    # offers the poll action on this, and says so when it is false
+    fio_token_configured: bool
     expiry_grace_hours: int
     unpaid_list_treatment: UnpaidListTreatment
     output_sheet_url: str | None
@@ -997,6 +1000,21 @@ class TransactionOut(BaseModel):
     # the manual link dialog for an unmatched transaction (design Decisions
     # 5 and 6) — filled by routers.payments._transaction_out
     candidate_vs: list[int] = []
+
+
+class ExpiredHoldingOut(BaseModel):
+    """A reservation that lapsed while holding money already credited to it.
+
+    Not a transaction: the payment matched and was credited, so this money sits
+    in neither the unmatched nor the flagged queue, and without this view the
+    console has no sight of it at all."""
+
+    registration_id: int
+    fencer_name: str
+    vs: int
+    credited_amount: decimal.Decimal
+    credited_eur_amount: decimal.Decimal | None
+    expired_at: datetime.datetime
 
 
 class LinkIn(BaseModel):

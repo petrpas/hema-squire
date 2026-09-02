@@ -17,6 +17,7 @@ fixed number allocated to it, or None where none has been.
 """
 
 import datetime
+import decimal
 from collections import defaultdict
 
 from sqlalchemy import select
@@ -144,13 +145,20 @@ def base_rows(
 
     rows: dict[str, Row] = {}
     for registration in registrations:
+        # A registration issued for a fencer-list row stands in that row's
+        # place, under the row's own id: the fencer keeps the fixed number the
+        # row was born with (spec etl-console, Fixed fencer number), and the
+        # list shows them once rather than once as a row and once as a
+        # registration. The source rows below are added with `setdefault`, so
+        # claiming the id here is what removes the duplicate.
+        row_id = registration.source_row_id or f"reg:{registration.id}"
         extra_rentals, extra_afterparty, extra_other = _extras_summary(registration)
         notes = registration.notes
         if extra_other:
             summary = "; ".join(extra_other)
             notes = f"{notes} | {summary}" if notes else summary
-        rows[f"reg:{registration.id}"] = {
-            "id": f"reg:{registration.id}",
+        rows[row_id] = {
+            "id": row_id,
             "name": registration.fencer.display_name,
             "reg_name": None,
             "nationality": registration.fencer.nationality,
@@ -170,6 +178,12 @@ def base_rows(
             "paid": registration.state == RegistrationState.PAID,
             "registered_at": registration.registered_at.isoformat(),
             "total_amount": registration.total_amount,
+            # what is still owed, as a decimal string exactly as
+            # RegistrationOut states it — the same quantity, so the same shape.
+            # A row value, not a panel: it reruns, sorts and exports with the
+            # rest of the table (design add-payments-console-ui D5).
+            "outstanding_amount": _money(registration.outstanding_cents),
+            "outstanding_eur_amount": _money(registration.outstanding_eur_cents),
             "expires_at": registration.expires_at.isoformat()
             if registration.expires_at
             else None,
@@ -181,14 +195,27 @@ def base_rows(
             "problems": None,
             "_deleted": False,
         }
-    rows.update(_imported_rows(session, tournament, index))
-    rows.update(_manual_rows(session, tournament, index))
+    # `setdefault`, not `update`: a source row that has been issued a
+    # registration is already present above, as that registration, and must not
+    # be drawn a second time as the row it came from
+    for row_id, row in _imported_rows(session, tournament, index).items():
+        rows.setdefault(row_id, row)
+    for row_id, row in _manual_rows(session, tournament, index).items():
+        rows.setdefault(row_id, row)
     numbers = rownumbers.numbers_for(session, tournament)
     for row_id, row in rows.items():
         # None rather than a positional fallback: a visible gap beats a number
         # that lies (design, Allocation happens where a row is born)
         row["number"] = numbers.get(row_id)
     return _display_order(rows, setup.zone_for(tournament))
+
+
+def _money(cents: int | None) -> str | None:
+    """Cents to the decimal string the API states money in; None stays None,
+    which is how a tournament that prices in no EUR says so."""
+    if cents is None:
+        return None
+    return str((decimal.Decimal(cents) / 100).quantize(decimal.Decimal("0.01")))
 
 
 def _resolve_discipline_slugs(tournament: Tournament, entries: list) -> tuple[list[str], list[str]]:
@@ -383,3 +410,31 @@ def _manual_row(row: ManualRow, index: HRIndex | None = None) -> Row:
         "problems": None,
         "_deleted": False,
     }
+
+
+def source_rows(
+    session: Session, tournament: Tournament, index: HRIndex | None = None
+) -> list[Row]:
+    """The rows matching, deduplication and issuing work on: the ones that
+    entered unmatched. An in-app registration is HR-bound at birth and stays out
+    of it; an imported row and a hand-entered one both traverse the operations
+    (spec etl-console, Per-row phase status).
+
+    Replayed, so what this returns is what the organizer sees — every manual
+    edit, deletion and merge applied. Callers filter `_deleted` themselves,
+    because what a deleted row means differs by caller: deduplication still has
+    to see one to know it was absorbed, and issuing must not give it a
+    registration.
+
+    Selected on `state` rather than on the `imp:`/`man:` id prefix, which no
+    longer distinguishes them: a registration issued for a source row takes that
+    row's id, so the prefix now says where a row came from and the state says
+    what it is now. A row that has become a registration has left this
+    population — it has been matched, deduplicated and now billed, and handing
+    it back to those operations would have them work it a second time.
+    """
+    from app import rules
+
+    base = base_rows(session, tournament, index)
+    replayed, _ = rules.replay(base, rules.active_rules(session, tournament))
+    return [row for row in replayed.values() if row["state"] in ("imported", "manual")]

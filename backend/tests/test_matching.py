@@ -8,7 +8,7 @@ from app.db import get_session
 from app.mail import get_mailer
 from app.main import app
 from app.models import PaymentEvent, Registration, RegistrationState
-from tests.conftest import enable_payments, publish
+from tests.conftest import enable_payments, import_statement, publish
 
 
 class CollectingMailer:
@@ -64,11 +64,7 @@ def enroll(client, auth_headers, email="jan@example.com", name="Jan"):
 
 
 def import_rows(client, organizer, rows):
-    return client.post(
-        "/api/tournaments/cup/payments/import-statement",
-        files={"file": ("v.csv", io.BytesIO(make_csv(rows)), "text/csv")},
-        headers=organizer,
-    ).json()
+    return import_statement(client, organizer, make_csv(rows))
 
 
 def db_session():
@@ -431,11 +427,7 @@ def test_labelled_vs_matches_outside_and_inside_message(client, auth_headers, ma
         f"2;01.08.2026;1 000,00;CZK;;;;VS{vs_b} platba;;;",
     ]
     content = ("meta;data\n\n" + header + "\n" + "\n".join(rows) + "\n").encode()
-    result = client.post(
-        "/api/tournaments/cup/payments/import-statement",
-        files={"file": ("v.csv", io.BytesIO(content), "text/csv")},
-        headers=organizer,
-    ).json()
+    result = import_statement(client, organizer, content)
     assert result["matched"] == 2
     assert (
         client.get("/api/tournaments/cup/my-registration", headers=fencer_a).json()["state"]

@@ -217,6 +217,86 @@ def test_blank_lines_are_not_fencers(client, auth_headers):
     assert len(rows) == 2
 
 
+def test_a_semicolon_separated_export_is_read_as_columns(client, auth_headers):
+    """A Czech bank separates with semicolons, because there a comma is the
+    decimal point. Read with commas, the whole line is one column — and every
+    embedded decimal comma cuts it short, so `1214,03` ends the row at `1214`
+    and the payer's name, three columns later, is simply gone. Nothing
+    downstream can tell that from a bank that really does write one column."""
+    from app.importer import read_table
+
+    table = (
+        '"Datum";"Objem";"Měna";"Zpráva pro příjemce";"Poznámka"\r\n'
+        '"07.04.2026";"1214,03";"CZK";"NaDuel26: CHEREAU - Sabre, and bocler";"M. PAUL CHEREAU"\r\n'
+    ).encode("utf-8-sig")
+
+    assert read_table("vypis.csv", table) == [
+        {
+            "Datum": "07.04.2026",
+            "Objem": "1214,03",
+            "Měna": "CZK",
+            "Zpráva pro příjemce": "NaDuel26: CHEREAU - Sabre, and bocler",
+            "Poznámka": "M. PAUL CHEREAU",
+        }
+    ]
+
+
+def test_a_comma_separated_export_still_reads_as_commas(client, auth_headers):
+    """The registration form exports with commas and its text is full of
+    semicolons-free prose; sniffing must not steal it away from the comma."""
+    from app.importer import read_table
+
+    table = b'Name,Club,Note\nJan,AKA,"sabre, sword and buckler"\n'
+    assert read_table("regs.csv", table) == [
+        {"Name": "Jan", "Club": "AKA", "Note": "sabre, sword and buckler"}
+    ]
+
+
+def test_ragged_rows_align_to_the_header(client, auth_headers):
+    """Real exports are ragged: a bank writes a preamble line, a message field
+    carries an unquoted separator. Both shapes reached `row_fingerprint`, which
+    sorts the keys — and a long row's overflow arrives under csv.DictReader's
+    restkey, which is None, so sorting it against the column names raised
+    TypeError mid-import."""
+    from app.importer import read_table, row_fingerprint
+
+    table = b"a,b,c\nlong,row,with,extra,cells\nshort,row\n"
+    rows = read_table("statement.csv", table)
+
+    assert rows == [
+        {"a": "long", "b": "row", "c": "with"},
+        {"a": "short", "b": "row", "c": ""},
+    ]
+    # every key and value a string, so the fingerprint can sort them
+    for raw in rows:
+        assert all(isinstance(k, str) and isinstance(v, str) for k, v in raw.items())
+        assert row_fingerprint(raw)
+
+
+def test_ragged_xlsx_rows_align_to_the_header(client, auth_headers):
+    """The same rule for the other reader — a sheet whose rows outrun or fall
+    short of the header row."""
+    import openpyxl
+
+    from app.importer import read_table, row_fingerprint
+
+    workbook = openpyxl.Workbook()
+    for row in (["a", "b", "c"], ["long", "row", "with", "extra"], ["short"]):
+        workbook.active.append(row)
+    buffer = io.BytesIO()
+    workbook.save(buffer)
+
+    # openpyxl pads the header row out to the widest row, so the overflow
+    # cell invents an unnamed fourth column; it is dropped with its header
+    rows = read_table("statement.xlsx", buffer.getvalue())
+    assert rows == [
+        {"a": "long", "b": "row", "c": "with"},
+        {"a": "short", "b": "", "c": ""},
+    ]
+    for raw in rows:
+        assert row_fingerprint(raw)
+
+
 def test_unsupported_format_rejected(client, auth_headers):
     organizer = auth_headers()
     setup(client, organizer)

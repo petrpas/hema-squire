@@ -1,16 +1,25 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { type Transaction, api } from "./api";
+import { type Transaction, api } from "../api";
+import QueueCard from "./QueueCard";
 
-/** The flagged-transaction queue for the payments phase: every VS-matched
- *  transaction that did not reach paid/reinstated/refunded automatically,
- *  with the organizer's two explicit resolving actions. */
-export default function PaymentsPanel({
+/** The flagged-transaction queue: every VS-matched transaction that did not
+ *  reach paid/reinstated/refunded automatically, with the organizer's two
+ *  explicit resolving actions.
+ *
+ *  One queue of the payments phase, not the phase itself — the name it used to
+ *  carry claimed the whole domain while implementing this one list. */
+export default function FlaggedPanel({
   slug,
+  reload,
   onChanged,
 }: {
   slug: string;
+  /** Bumped by the console whenever the money may have moved — a landing
+   *  statement import, the Fio poll, the lifecycle run, a link made or undone.
+   *  The queue reloads from it rather than waiting for the organizer. */
+  reload: number;
   onChanged: () => void;
 }) {
   const { t } = useTranslation();
@@ -18,11 +27,22 @@ export default function PaymentsPanel({
   const [busyId, setBusyId] = useState<number | null>(null);
   const [errorId, setErrorId] = useState<number | null>(null);
 
+  const [failed, setFailed] = useState(false);
+
   function refresh() {
-    api.unmatchedTransactions(slug).then(setTransactions, () => setTransactions([]));
+    api.unmatchedTransactions(slug).then(
+      (data) => {
+        setTransactions(data);
+        setFailed(false);
+      },
+      () => {
+        setTransactions([]);
+        setFailed(true);
+      },
+    );
   }
 
-  useEffect(refresh, [slug]);
+  useEffect(refresh, [slug, reload]);
 
   const flagged = (transactions ?? []).filter((tx) => tx.status === "flagged");
 
@@ -55,13 +75,13 @@ export default function PaymentsPanel({
   }
 
   return (
-    <section className="rail-card">
-      <h2>{t("payments.flagged.title")}</h2>
-      {transactions === null ? (
-        <p className="rail-hint">{t("common.loading")}</p>
-      ) : flagged.length === 0 ? (
-        <p className="rail-hint">{t("payments.flagged.empty")}</p>
-      ) : (
+    <QueueCard
+      title={t("payments.flagged.title")}
+      count={transactions === null ? null : flagged.length}
+      loading={transactions === null}
+      failed={failed}
+    >
+      <>
         <table className="sheet-table">
           <thead>
             <tr>
@@ -108,8 +128,8 @@ export default function PaymentsPanel({
             ))}
           </tbody>
         </table>
-      )}
-      {errorId !== null && <p className="login-error">{t("payments.flagged.actionFailed")}</p>}
-    </section>
+        {errorId !== null && <p className="login-error">{t("payments.flagged.actionFailed")}</p>}
+      </>
+    </QueueCard>
   );
 }

@@ -9,7 +9,6 @@ eur_rate, which is a Setup convenience only (design Decision 3).
 """
 
 import datetime
-import io
 import os
 import subprocess
 import sys
@@ -25,7 +24,7 @@ from app.db import Base
 from app.mail import get_mailer
 from app.main import app
 from app.models import Currency, Discipline, ExtraCategory, ExtraItem, Tournament
-from tests.conftest import enable_payments, publish
+from tests.conftest import enable_payments, import_statement, publish
 from tests.test_tournaments import make_tournament as make_api_tournament
 
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
@@ -52,11 +51,7 @@ def _import_rows(client, headers, rows):
         "ID pohybu;Datum;Objem;Měna;VS;KS;SS;Zpráva pro příjemce;Název protiúčtu;Protiúčet"
     )
     csv = ("meta;data\n\n" + header + "\n" + "\n".join(rows) + "\n").encode()
-    return client.post(
-        "/api/tournaments/na-duel-2026/payments/import-statement",
-        files={"file": ("v.csv", io.BytesIO(csv), "text/csv")},
-        headers=headers,
-    ).json()
+    return import_statement(client, headers, csv, slug="na-duel-2026")
 
 
 @pytest.fixture

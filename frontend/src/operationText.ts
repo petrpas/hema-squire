@@ -6,7 +6,11 @@ import type { Operation, OperationKind } from "./api";
  *  measured in rows, matching and deduplication in questions asked. Text, not
  *  a bar — the design spec allows no animated progress (CLAUDE.md). */
 export function progressText(t: TFunction, operation: Operation): string {
-  const key = operation.kind === "parse" ? "operation.progress" : "operation.questions";
+  // parse and statement count rows; match and dedup count questions asked
+  const key =
+    operation.kind === "parse" || operation.kind === "statement"
+      ? "operation.progress"
+      : "operation.questions";
   return t(key, { count: operation.total, done: operation.done });
 }
 

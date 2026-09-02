@@ -262,3 +262,21 @@ describe("which cells a phase opens for editing", () => {
     }
   });
 });
+
+
+describe("the payments columns", () => {
+  it("states the balance beside the total", () => {
+    // a part-paid reservation is legible in the table, not only in the
+    // fencer's own view (spec `etl-console`)
+    const columns = PHASE_COLUMNS.payments;
+    expect(columns).toContain("outstanding");
+    expect(columns.indexOf("outstanding")).toBe(columns.indexOf("total_amount") + 1);
+  });
+
+  it("keeps the fencer table, unlike Deduplication", () => {
+    // Payments does something to every row, so the table is the right shape
+    // for it; the queues sit above the table rather than replacing it
+    expect(PHASE_COLUMNS.payments.length).toBeGreaterThan(0);
+    expect(PHASE_COLUMNS.dedup).toEqual([]);
+  });
+});

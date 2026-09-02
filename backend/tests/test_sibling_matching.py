@@ -1,9 +1,9 @@
 """Global VS lookup and cross-tournament set-aside behavior
 (design add-structured-vs, Decision 4/5)."""
 
-import io
 
 from tests.conftest import enable_payments, publish
+from tests.conftest import import_statement as conftest_import_statement
 
 
 def create_tournament(client, organizer, slug, date="2026-12-05"):
@@ -49,11 +49,7 @@ def statement_for(vs, amount="800,00"):
 
 
 def import_statement(client, headers, slug, content):
-    return client.post(
-        f"/api/tournaments/{slug}/payments/import-statement",
-        files={"file": ("v.csv", io.BytesIO(content), "text/csv")},
-        headers=headers,
-    ).json()
+    return conftest_import_statement(client, headers, content, slug=slug)
 
 
 def test_sibling_tournaments_transaction_is_set_aside_then_matches_its_own(

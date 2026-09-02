@@ -180,9 +180,12 @@ def main() -> None:
         "Název protiúčtu;Protiúčet\n"
         f"9001;15.07.2026;{czk};CZK;{my['vs']};;;VS {my['vs']};Jan Novák;123/0800\n"
     ).encode()
-    matched = call("POST", f"/api/tournaments/{SLUG}/payments/import-statement",
+    # a Fio export, so it parses exactly and needs no model; the import is a
+    # started operation now, and its counts land in the operation's outcome
+    started = call("POST", f"/api/tournaments/{SLUG}/payments/import-statement",
                    token, files=("file", "vypis.csv", statement))
-    print(f"bank statement: {matched}")
+    assert started["operation_id"]
+    print(f"bank statement: {_await_operation(token)}")
 
     # imported legacy table (google-form style)
     table = (
@@ -212,6 +215,24 @@ def main() -> None:
         f"\nSet HEMA_SQUIRE_OWNER_EMAIL={email} (in backend/.env) to make that account the "
         "deployment Owner — it then outranks Admin and can itself grant/revoke Admin."
     )
+
+
+def _await_operation(token: str, kind: str = "statement", timeout: float = 20.0) -> dict:
+    """Wait out the tournament's running operation and return that kind's
+    outcome. The import returns the moment its record exists and does the work
+    behind the request, so the counts are asked of the record."""
+    import time
+
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        body = call("GET", f"/api/tournaments/{SLUG}/operations", token)
+        if body["running"] is None:
+            concluded = {op["kind"]: op for op in body["concluded"]}
+            if kind in concluded:
+                return concluded[kind]["outcome"]
+            return {}
+        time.sleep(0.2)
+    return {"timeout": True}
 
 
 def _backfill_parse_decisions() -> None:

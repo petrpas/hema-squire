@@ -4,7 +4,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models import Registration, Tournament
-from tests.conftest import enable_payments, publish
+from tests.conftest import enable_payments, import_statement, publish
 
 
 def create_tournament(client, organizer, slug, date="2026-12-05"):
@@ -228,18 +228,13 @@ def test_legacy_vs_still_resolves_and_matches(client, auth_headers):
     registration.vs = 1000001
     session.commit()
 
-    import io
 
     csv_content = (
         "meta;data\n\n"
         "ID pohybu;Datum;Objem;Měna;VS;KS;SS;Zpráva pro příjemce;Název protiúčtu;Protiúčet\n"
         "1;01.08.2026;800,00;CZK;1000001;;;;;\n"
     ).encode()
-    result = client.post(
-        "/api/tournaments/aa/payments/import-statement",
-        files={"file": ("v.csv", io.BytesIO(csv_content), "text/csv")},
-        headers=organizer,
-    ).json()
+    result = import_statement(client, organizer, csv_content, slug="aa")
     assert result["matched"] == 1
 
     state = client.get("/api/tournaments/aa/my-registration", headers=fencer).json()["state"]

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import { OPERATION_KINDS } from "../api";
 import { VALIDATION_CODES } from "../validation";
 import cs from "./cs.json";
 import en from "./en.json";
@@ -39,4 +40,25 @@ describe("validation locale parity", () => {
       }
     }
   });
+});
+
+// Every operation kind names itself twice: `operation.kind.X` in a sentence
+// about it, `operation.label.X` on the progress indicator. Adding a kind and
+// only one of the two ships the raw key to the console — which is how
+// `operation.label.statement` reached the running indicator.
+
+const OPERATION_BUNDLES: Record<string, { kind: Record<string, string>; label: Record<string, string> }> = {
+  cs: (cs as { operation: { kind: Record<string, string>; label: Record<string, string> } }).operation,
+  en: (en as { operation: { kind: Record<string, string>; label: Record<string, string> } }).operation,
+};
+
+describe("operation locale parity", () => {
+  for (const kind of OPERATION_KINDS) {
+    it(`names "${kind}" as both a kind and a label in every bundled locale`, () => {
+      for (const [locale, operation] of Object.entries(OPERATION_BUNDLES)) {
+        expect(operation.kind[kind], `${locale} is missing operation.kind.${kind}`).toBeTruthy();
+        expect(operation.label[kind], `${locale} is missing operation.label.${kind}`).toBeTruthy();
+      }
+    });
+  }
 });

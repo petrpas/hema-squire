@@ -4,6 +4,7 @@ idempotent interface keyed by the bank's transaction id."""
 import csv
 import datetime
 import io
+import json
 import re
 from decimal import Decimal
 from typing import Protocol
@@ -205,6 +206,135 @@ def parse_fio_csv(content: bytes) -> list[IncomingTransaction]:
             )
         )
     return result
+
+
+# --- Statement import: any bank's table ---
+
+
+class ParsedStatementRow(BaseModel):
+    """One row of an arbitrary bank's export, as the parser reads it.
+
+    Deliberately looser than `IncomingTransaction`: `external_id` is optional,
+    because a bank that supplies no movement id of its own is exactly the case
+    this path exists for, and the caller fills it from the row's fingerprint.
+    """
+
+    external_id: str | None = None
+    date: datetime.date
+    amount_cents: int
+    currency: str = "CZK"
+    vs: int | None = None
+    message: str | None = None
+    payer_name: str | None = None
+    payer_account: str | None = None
+
+
+class StatementParser(Protocol):
+    """One batch per call. The loop over batches belongs to the caller, which
+    is what lets each batch's decisions commit with the progress they
+    represent — the same contract as `importer.ImportParser`."""
+
+    def parse_batch(self, rows: list[dict[str, str]]) -> list[ParsedStatementRow]: ...
+
+
+_STATEMENT_SYSTEM_PROMPT = """\
+You read rows from a bank account statement and turn each into a structured
+payment record. The account belongs to a HEMA tournament, and the rows are
+incoming transfers from people paying their entry fee. Return exactly one
+record per input row, in order.
+
+Rules:
+1. amount_cents: an integer number of cents, signed. Banks write amounts in
+   many ways — "1 200,00", "1.200,00", "1200.00", or a positive number in a
+   separate credit column with debits in another. Read the row's own
+   convention and convert. Never round to whole units.
+2. Set amount_cents negative for money leaving the account. The caller drops
+   those; do not omit the row yourself, and do not turn a debit into a credit.
+3. date: the date the money moved. Prefer a settlement/posting date over a
+   value date where the row carries both.
+4. vs: the Czech variable symbol (variabilní symbol), the number identifying
+   which registration is being paid. It is often its own column, but may sit
+   inside the payment message. A number that is plainly something else — an
+   account number, a constant or specific symbol — is not a VS. Null if absent.
+5. message: whatever free text the payer sent with the payment, verbatim.
+6. payer_name / payer_account: the counterparty's name and account, null if
+   the row does not carry them.
+7. external_id: the bank's own identifier for the movement, if the row has
+   one. Null if it does not — do not invent one, and never use the row number.
+8. currency: the ISO code (CZK, EUR). Default to CZK only if nothing states it.
+"""
+
+
+class _ParsedStatement(BaseModel):
+    rows: list[ParsedStatementRow]
+
+
+class LLMStatementParser:
+    """pydantic-ai parser over Anthropic, mirroring `importer.LLMImportParser`.
+
+    Reached only for a statement that is not a Fio export: a published, stable
+    column layout is not a guessing problem (design D1).
+    """
+
+    def __init__(self, model):
+        self._model = model
+
+    def parse_batch(self, rows: list[dict[str, str]]) -> list[ParsedStatementRow]:
+        from pydantic_ai import Agent
+
+        agent = Agent(
+            model=self._model,
+            output_type=_ParsedStatement,
+            system_prompt=_STATEMENT_SYSTEM_PROMPT,
+            retries=3,
+        )
+        result = agent.run_sync(
+            f"Parse the following {len(rows)} statement rows in order:\n\n"
+            f"```json\n{json.dumps(rows, ensure_ascii=False)}\n```\n\n"
+            f"Return exactly {len(rows)} records in the same order."
+        )
+        return list(result.output.rows)
+
+
+def get_statement_parser() -> StatementParser | None:
+    """None where no model is configured — the injection point tests override,
+    exactly as `importer.get_import_parser` is."""
+    from app.llm import get_model, llm_configured
+
+    if not llm_configured():
+        return None
+    return LLMStatementParser(get_model())
+
+
+def is_fio_export(data: bytes) -> bool:
+    """The same test `parse_fio_csv` uses to find its header, so the sniff and
+    the parser can never disagree about what a Fio file is."""
+    try:
+        text = data.decode("utf-8-sig")
+    except UnicodeDecodeError:
+        return False
+    return any("ID pohybu" in line for line in text.splitlines())
+
+
+def to_transaction(row: ParsedStatementRow, raw: dict[str, str]) -> IncomingTransaction:
+    """A parsed row as the ingest interface takes it.
+
+    Where the bank supplied no id, the row's own fingerprint becomes one.
+    Ingestion dedupes on `external_id`, so the same row read twice collides
+    with itself and is counted duplicate — which is what keeps import
+    idempotent on a bank that numbers nothing (design D2)."""
+    from app.importer import row_fingerprint
+
+    return IncomingTransaction(
+        external_id=row.external_id or f"row:{row_fingerprint(raw)}",
+        date=row.date,
+        amount_cents=row.amount_cents,
+        currency=row.currency or "CZK",
+        vs=row.vs,
+        message=row.message,
+        payer_name=row.payer_name,
+        payer_account=row.payer_account,
+    )
 
 
 # --- Fio REST client (swappable for tests via get_fio_client) ---

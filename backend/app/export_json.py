@@ -40,7 +40,7 @@ from app.models import (
 )
 from app.routers.tournaments import _lowest_free_series
 
-SCHEMA_VERSION = 10
+SCHEMA_VERSION = 11
 
 _TOURNAMENT_FIELDS = [
     "slug", "display_name", "date", "language",
@@ -83,6 +83,11 @@ _V3_TOURNAMENT_DEFAULTS = {
 _REGISTRATION_FIELDS = [
     "registered_at", "state", "vs", "total_amount", "total_eur", "expires_at",
     "reminded_at", "paid_at", "cancelled_at", "refundable", "refund_state",
+    # what has actually been credited, in both lanes. Carried since v11: a
+    # restore that reconstructs the totals but not the credit leaves every
+    # registration reading as if nothing had been paid against it, while its
+    # state still says paid.
+    "amount_paid_cents", "amount_paid_eur_cents",
     "weapon_rentals", "afterparty", "aftersparring", "accommodation", "notes",
 ]
 
@@ -302,7 +307,7 @@ def _parse_time(value: str | None) -> datetime.time | None:
 
 def restore_tournament(session: Session, data: dict, actor: Fencer) -> Tournament:
     version = data.get("schema_version")
-    if version not in (1, 2, 3, 4, 5, 6, 7, 8, 9, SCHEMA_VERSION):
+    if version not in (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, SCHEMA_VERSION):
         raise HTTPException(status_code=422, detail="unsupported_schema_version")
     doc = dict(data["tournament"])
     if version == 1:
@@ -399,8 +404,15 @@ def restore_tournament(session: Session, data: dict, actor: Fencer) -> Tournamen
     reg_map: dict[int, Registration] = {}
     for entry in data.get("registrations", []):
         # total_eur arrived in v5; an older file's registrations priced in
-        # local currency only
-        entry = {"total_eur": None, **entry}
+        # local currency only. The credited counters arrived in v11; a document
+        # written before that recorded no credit, which restores as zero — the
+        # same reading those deployments already had.
+        entry = {
+            "total_eur": None,
+            "amount_paid_cents": 0,
+            "amount_paid_eur_cents": 0,
+            **entry,
+        }
         payload = {k: entry[k] for k in _REGISTRATION_FIELDS}
         for field in ("registered_at", "expires_at", "reminded_at", "paid_at",
                       "cancelled_at"):

@@ -59,6 +59,11 @@ def process_reminders(session: Session, tournament: Tournament, mailer: Mailer) 
             Registration.tournament_id == tournament.id,
             Registration.state == RegistrationState.RESERVED,
             Registration.reminded_at.is_(None),
+            # an issued registration is never reminded: its clocks are dormant
+            # by origin, and _reminder_due would otherwise anchor it to the
+            # seating deadline and mail a roster that registered a season ago
+            # (spec imported-registrations)
+            Registration.clocks_dormant.is_(False),
         )
     ).all()
     due = [
@@ -108,6 +113,10 @@ def process_expiries(session: Session, tournament: Tournament, mailer: Mailer) -
             Registration.state == RegistrationState.RESERVED,
             Registration.expires_at.is_not(None),
             Registration.expires_at <= _now(),
+            # stated rather than left to follow from expires_at being NULL: an
+            # issued registration never expires for non-payment whatever else
+            # is written on it (spec imported-registrations)
+            Registration.clocks_dormant.is_(False),
         )
     ).all()
     if seating_has_settled(tournament, _now().date()):
@@ -194,6 +203,14 @@ def pending_demotions(session: Session, tournament: Tournament) -> int:
         select(Registration).where(
             Registration.tournament_id == tournament.id,
             Registration.state == RegistrationState.RESERVED,
+            # an issued registration stays seated. The seating deadline is the
+            # second of the two clocks, and it is dormant for the same reason
+            # the first is: the row it came from stated who was competing, and
+            # demoting them for money the organizer never asked for would take
+            # a seat nobody was owed (spec imported-registrations). This
+            # predicate is shared with `pending_demotions`, which states the
+            # count the organizer confirms — the two must select alike
+            Registration.clocks_dormant.is_(False),
         )
     ).all()
     return sum(
@@ -223,6 +240,14 @@ def settle_seating(session: Session, tournament: Tournament) -> int:
         select(Registration).where(
             Registration.tournament_id == tournament.id,
             Registration.state == RegistrationState.RESERVED,
+            # an issued registration stays seated. The seating deadline is the
+            # second of the two clocks, and it is dormant for the same reason
+            # the first is: the row it came from stated who was competing, and
+            # demoting them for money the organizer never asked for would take
+            # a seat nobody was owed (spec imported-registrations). This
+            # predicate is shared with `pending_demotions`, which states the
+            # count the organizer confirms — the two must select alike
+            Registration.clocks_dormant.is_(False),
         )
     ).all()
     demoted = 0

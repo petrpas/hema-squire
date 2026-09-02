@@ -39,6 +39,21 @@ function cell(column: string, fields: Partial<SheetRow>, timezone: string | null
   );
 }
 
+/** A money cell, with the currency context the Payments phase passes in
+ *  (design add-payments-console-ui D5). */
+function moneyCell(
+  column: string,
+  fields: Partial<SheetRow>,
+  currency: { local_currency: "CZK" | "EUR"; eur_payments_enabled: boolean } | null = {
+    local_currency: "CZK",
+    eur_payments_enabled: false,
+  },
+): string {
+  return renderToStaticMarkup(
+    <CellDisplay row={row(fields)} column={column} timezone={null} currency={currency} />,
+  );
+}
+
 /** An identity cell as a phase after matching draws it (spec `etl-console`,
  *  HR identity in the phases after matching). */
 function identityCell(column: string, fields: Partial<SheetRow>): string {
@@ -109,5 +124,42 @@ describe("an identity cell after matching", () => {
 
   it("draws no italic on a phase that identifies by the registered values", () => {
     expect(cell("club", REGISTERED, null)).toBe("Berlin");
+  });
+});
+
+
+describe("money cells", () => {
+  it("states the outstanding balance with its unit", () => {
+    expect(moneyCell("outstanding", { outstanding_amount: "400.00" })).toBe("400 Kč");
+  });
+
+  it("puts the EUR balance beside the local one where the tournament takes both", () => {
+    expect(
+      moneyCell(
+        "outstanding",
+        { outstanding_amount: "400.00", outstanding_eur_amount: "16.00" },
+        { local_currency: "CZK", eur_payments_enabled: true },
+      ),
+    ).toBe("400 Kč (16 €)");
+  });
+
+  it("gives the total a unit, which it rendered without before", () => {
+    // grouped for the locale: the separator is a non-breaking space
+    expect(moneyCell("total_amount", { total_amount: 1000 })).toBe("1\u00a0000 Kč");
+  });
+
+  it("reads a dash where no registration stands behind the row", () => {
+    // an imported row owes nothing; a zero would be a figure it never agreed to
+    expect(moneyCell("outstanding", {})).toBe("—");
+    expect(moneyCell("total_amount", { total_amount: null })).toBe("—");
+  });
+
+  it("states the bare figure until the tournament detail has arrived", () => {
+    // unitless beats wrongly-united: the currency is not known yet
+    expect(moneyCell("outstanding", { outstanding_amount: "400.00" }, null)).toBe("400.00");
+  });
+
+  it("settles to zero rather than to a dash once fully paid", () => {
+    expect(moneyCell("outstanding", { outstanding_amount: "0.00" })).toBe("0 Kč");
   });
 });

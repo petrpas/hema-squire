@@ -6,11 +6,12 @@ That change's Group 10 was written against wrong premises (it names `MatchDialog
 
 ## What Changes
 
-- **New manual-link modal** (`LinkDialog.tsx`), opened from an unmatched transaction row, pre-filling the `candidate_vs` the backend already computes as one-click choices, accepting hand-typed VS, and supporting the one-payer-covers-several-registrations split that `LinkIn` already takes. First frontend caller of `POST /payments/link`.
-- **New unmatched-transaction rail card** (`UnmatchedPanel.tsx`): the `unmatched` half of `GET /payments/unmatched`, which the existing panel filters away.
-- **`PaymentsPanel.tsx` narrows to its actual job** — the flagged queue — and is renamed `FlaggedPanel.tsx` to stop the name implying it covers payments as a whole.
-- **New expired-holding-payment rail card** (`ExpiredHoldingPanel.tsx`) listing reservations that expired while holding credited money, backed by a **new read endpoint** `GET /api/tournaments/{slug}/payments/expired-holding`. Nothing currently queries `PaymentEvent.kind == "expired_holding_payment"`, so this money is invisible today.
-- **New payment-links rail card** (`PaymentLinksPanel.tsx`) listing active `payment_link` rules with auto-created ones marked, and removal via the existing rules API. These rules replay through `_apply_opaque`, so they emit no audit rows and never appear in the rail's edits log — today a link, once made, cannot be seen or undone from the console.
+- **New manual-link modal** (`payments/LinkDialog.tsx`), opened from an unmatched transaction row, pre-filling the `candidate_vs` the backend already computes as one-click choices, accepting hand-typed VS, and supporting the one-payer-covers-several-registrations split that `LinkIn` already takes. First frontend caller of `POST /payments/link`.
+- **The payments phase's work moves into its main column**: the four queues below are stacked above the fencer table, the way Deduplication puts its candidate groups in the main area, leaving the rail to the tolerance parameters and the edits log. The table stays — unlike Deduplication, Payments does something to every row.
+- **New unmatched-transaction queue** (`payments/UnmatchedPanel.tsx`): the `unmatched` half of `GET /payments/unmatched`, which the existing panel filters away.
+- **`PaymentsPanel.tsx` narrows to its actual job** — the flagged queue — and becomes `payments/FlaggedPanel.tsx`, so the name stops implying it covers payments as a whole and the five components sit in the panel directory `CLAUDE.md` calls for.
+- **New expired-holding-payment queue** (`payments/ExpiredHoldingPanel.tsx`) listing reservations that expired while holding credited money, backed by a **new read endpoint** `GET /api/tournaments/{slug}/payments/expired-holding`. Nothing currently queries `PaymentEvent.kind == "expired_holding_payment"`, so this money is invisible today.
+- **New payment-links queue** (`payments/PaymentLinksPanel.tsx`) listing active `payment_link` rules with auto-created ones marked, and removal via the existing rules API. These rules replay through `_apply_opaque`, so they emit no audit rows and never appear in the rail's edits log — today a link, once made, cannot be seen or undone from the console.
 - **Outstanding balance becomes a sheet column**: `sheet.base_rows` gains `outstanding_amount` (and the EUR sibling) from the existing `Registration.outstanding_cents` properties, `SheetRow` gains the fields, and the Payments phase gains an `outstanding` column.
 - Czech and English strings for every new surface.
 
@@ -26,12 +27,12 @@ Not in scope: any change to matching, crediting, expiry or refund behaviour — 
 
 ## Impact
 
-**Frontend** (`frontend/src/`): `PaymentsPanel.tsx` → `FlaggedPanel.tsx`; new `UnmatchedPanel.tsx`, `ExpiredHoldingPanel.tsx`, `PaymentLinksPanel.tsx`, `LinkDialog.tsx`; `Console.tsx` (four rail cards on the payments phase, `PHASE_COLUMNS.payments`, `CellDisplay` money formatting); `api.ts` (`linkTransaction`, `expiredHolding`, `rules`, `Transaction.candidate_vs`, `SheetRow.outstanding_amount`); `i18n/{en,cs}.json`; `index.css` if the modal or the chips need anything beyond existing classes.
+**Frontend** (`frontend/src/`): `PaymentsPanel.tsx` → `payments/FlaggedPanel.tsx`; new `payments/` siblings `UnmatchedPanel.tsx`, `ExpiredHoldingPanel.tsx`, `PaymentLinksPanel.tsx`, `LinkDialog.tsx`, each with its tests; `Console.tsx` (the four queues in the payments main column, the rail narrowed to tolerance and edits, `PHASE_COLUMNS.payments`, `CellDisplay` money formatting); `api.ts` (`linkTransaction`, `expiredHolding`, `rules`, `Transaction.candidate_vs`, `SheetRow.outstanding_amount`); `i18n/{en,cs}.json`; `index.css` if the queues or the modal need anything beyond existing classes.
 
-**Backend** (`backend/app/`): `routers/payments.py` (new expired-holding endpoint), `schemas.py` (its response model), `sheet.py` (two more row fields). No model, migration, or matching-logic change.
+**Backend** (`backend/app/`): `routers/payments.py` (new expired-holding endpoint), `schemas.py` (its response model), `sheet.py` (two more row fields), and `export_json.py` — putting the balance on the sheet showed that JSON export/restore carried a registration's totals but not its credit, so a restored tournament read as fully unpaid while its state said paid; the two credited counters now travel with the document (`SCHEMA_VERSION` 11, older documents restore as uncredited). No model, migration, or matching-logic change.
 
-**Design constraints**: all four cards and the modal are subject to `CLAUDE.md` / `openspec/squire-design-spec.md` — no gradients, shadows, radii > 2px, emoji, spinners, or hexes outside `tokens.css`; the modal follows the existing `.modal-backdrop` / `.modal` pattern.
+**Design constraints**: all four queues and the modal are subject to `CLAUDE.md` / `openspec/squire-design-spec.md` — no gradients, shadows, radii > 2px, emoji, spinners, or hexes outside `tokens.css`; the modal follows the existing `.modal-backdrop` / `.modal` pattern.
 
 **Verification**: `npm run lint` (`tsc -b --noEmit`), `npm run build`, and `npm test` (`vitest run`), alongside driving the console; the new endpoint and sheet fields are covered by `backend/tests/`.
 
-> Corrected by `add-mobile-fencer-layout`: this line previously stated the frontend had no test runner. `frontend/package.json` defines `"test": "vitest run"` and `frontend/src/` holds two dozen `.test.ts(x)` files, several of them covering this console.
+> Corrected by `add-mobile-fencer-layout`, folded in here: this change was first written believing the frontend had no test runner. `frontend/package.json` defines `"test": "vitest run"` and `frontend/src/` holds a dozen `.test.ts(x)` files, several of them covering this console. The new components are tested like every other panel built since.

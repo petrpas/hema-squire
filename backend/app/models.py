@@ -134,6 +134,9 @@ class OperationKind(enum.StrEnum):
     PARSE = "parse"
     MATCH = "match"
     DEDUP = "dedup"
+    # interpreting a bank statement no exact reader recognises
+    # (design add-payments-intake D3)
+    STATEMENT = "statement"
 
 
 class OperationStatus(enum.StrEnum):
@@ -345,6 +348,13 @@ class Tournament(Base):
     eur_rate: Mapped[Decimal | None] = mapped_column(Numeric(12, 2))
 
     fio_token: Mapped[str | None] = mapped_column(String(200))
+
+    @property
+    def fio_token_configured(self) -> bool:
+        """Whether the bank API can be polled at all. The token itself never
+        leaves the server; the console needs only this."""
+        return bool(self.fio_token)
+
     output_sheet_url: Mapped[str | None] = mapped_column(String(300))
     # taxonomy code (design discipline-identity D5) -> HR category keyword,
     # overriding the built-in default. Keyed by classification, not by
@@ -559,6 +569,34 @@ class Registration(Base):
     # never recomputed on read, never moved by a later price or rate change
     total_eur: Mapped[int | None]
     expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # Both lifecycle clocks are dormant for this registration, by virtue of its
+    # origin: it was issued for a row that states who is competing rather than
+    # taken from someone registering now (spec imported-registrations, "An
+    # issued registration's clocks never start"). It carries no due date, opens
+    # no payment window, never expires for non-payment, is never reminded, and
+    # is never demoted when seating settles — permanently, whatever the
+    # tournament's payments feature, payment mode or seating deadline later
+    # says.
+    #
+    # `registration` already knows this idea: both clocks are dormant while the
+    # payments feature is off. This is the same dormancy reached by a second
+    # cause, so it is a property of the registration rather than a test the
+    # scheduler makes — a stored fact is one thing to get right in one place,
+    # and forgetting an origin test in one of four passes mails people who
+    # registered a season ago (design Decision 3).
+    #
+    # What is dormant is the passage of time, not the money: an issued
+    # registration is matched, linked and credited like any other.
+    clocks_dormant: Mapped[bool] = mapped_column(default=False)
+    # The fencer-list row this registration was issued for — `imp:<key>` or
+    # `man:<id>` — where it was issued rather than made by someone registering.
+    #
+    # It is the row's identity, not a back-reference: the registration takes the
+    # row's place in the fencer list under this id, so the fencer keeps the
+    # fixed number they were given when the row was born (spec etl-console,
+    # Fixed fencer number) and the list does not show them twice, once as a row
+    # and once as a registration.
+    source_row_id: Mapped[str | None] = mapped_column(String(80), unique=True)
     reminded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     paid_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     cancelled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

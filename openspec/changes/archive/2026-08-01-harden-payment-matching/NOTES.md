@@ -66,3 +66,24 @@ expired-holding-payment too, or do these become separate panels? Is a
 manual-link dialog a modal like the existing HR `MatchDialog.tsx` pattern, or
 inline in the table? Worth deciding with the actual console layout in view
 rather than guessing blind.
+
+### Resolved: Group 10 superseded
+
+Group 10 was replanned and implemented as the change
+`add-payments-console-ui` (2026-09-01). The questions above were answered
+there:
+
+- The flagged-only `PaymentsPanel.tsx` did **not** grow. It narrowed to the one
+  queue it actually implemented and became `payments/FlaggedPanel.tsx`, beside
+  `UnmatchedPanel`, `ExpiredHoldingPanel` and `PaymentLinksPanel` — four
+  separate queues, each loading and failing on its own.
+- The manual link is a modal on the `MatchDialog.tsx` pattern, not inline in
+  the table: a row has no room for the message text that names the payer, and
+  a multi-registration selection is unreadable in a table row.
+- Decided with the console layout in view, as suggested: the queues went into
+  the payments phase's **main column above the fencer table**, not into the
+  rail, which would have been six stacked cards in 300px.
+
+Also carried the credited counters into the JSON export (`SCHEMA_VERSION` 11):
+restore reconstructed a registration's totals but not its credit, which nothing
+had noticed because nothing read those counters through the sheet.

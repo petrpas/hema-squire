@@ -83,7 +83,7 @@ Notes for a full-feature run:
 ## Tests
 
 ```bash
-cd backend && uv run pytest     # 177 tests; ruff check . for lint
+cd backend && uv run pytest     # 902 tests; ruff check . for lint
 cd frontend && npm run build    # type-check + build
 ```
 

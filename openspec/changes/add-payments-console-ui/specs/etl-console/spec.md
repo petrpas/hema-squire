@@ -14,3 +14,7 @@ The Payments phase's fencer table SHALL carry an outstanding-balance column alon
 #### Scenario: Balance survives a rerun
 - **WHEN** the organizer reruns processing
 - **THEN** the outstanding column is recomputed from the current credited amounts, with no rule required to maintain it
+
+#### Scenario: The Payments phase keeps its table
+- **WHEN** the organizer opens the Payments phase
+- **THEN** the fencer table is present with the outstanding column, below the phase's resolution queues — unlike Deduplication, which replaces the table entirely

@@ -16,7 +16,7 @@ What the backend already offers and nobody calls:
 
 Two structural facts shape the design. First, `payment_link` rules replay through `_apply_opaque` in `rules.py`, which yields no `AppliedChange`, so they never appear in the rail's per-phase edits log — the one place the console otherwise shows rules. A link, once made, is invisible. Second, `sheet.base_rows` builds rows straight from `Registration`, so the outstanding balance is two lines away from being a table column; the credited counters are already on the model.
 
-Constraints: `CLAUDE.md` / `openspec/squire-design-spec.md` ("Bureau 1952") are binding — no gradients, shadows, radii above 2px, emoji, spinners, or hex values outside `tokens.css`. The frontend has no test runner; `npm run lint` is `tsc -b --noEmit`.
+Constraints: `CLAUDE.md` / `openspec/squire-design-spec.md` ("Bureau 1952") are binding — no gradients, shadows, radii above 2px, emoji, spinners, or hex values outside `tokens.css`. `CLAUDE.md` also fixes where the files go: a panel composed of several components lives under a directory named for it, as `setup/`, `dedup/` and `manual/` already do. The frontend runs `vitest` (`npm test`) over a dozen suites, several of them covering this console, and every panel built recently ships its tests beside it.
 
 ## Goals / Non-Goals
 
@@ -31,21 +31,35 @@ Constraints: `CLAUDE.md` / `openspec/squire-design-spec.md` ("Bureau 1952") are 
 - No change to matching, crediting, tolerance, expiry, reinstatement, or refund behaviour. This change surfaces decisions the backend already makes.
 - No refund workflow beyond the existing mark-for-refund action.
 - No new columns or views for phases other than Payments.
-- No frontend test infrastructure. Verification is typecheck, build, backend tests, and driving the console.
+- No change to the rail's own furniture: `TolerancePanel` and `ManualEditsRail` keep their shape and placement.
 
 ## Decisions
 
-### Decision 1 — Four separate rail cards, not one panel with sections
+### Decision 1 — The four queues are the phase's main area, not rail cards
 
-Each concern gets its own component: `FlaggedPanel`, `UnmatchedPanel`, `ExpiredHoldingPanel`, `PaymentLinksPanel`, stacked in the payments-phase rail in that order (most-actionable first). Each owns its own fetch, loading state and error state, matching how `MatchPanel`, `DedupPanel` and `ImportPanel` already work.
+The Payments phase's main column holds the four queues stacked above the fencer table — `UnmatchedPanel`, `FlaggedPanel`, `ExpiredHoldingPanel`, `PaymentLinksPanel`, then `SheetArea`. The rail keeps only what it holds for every other phase: the operation's parameters (`TolerancePanel`) and the manual-edits log.
 
-*Alternative considered*: one `PaymentsPanel` with four labelled sections — fewer files, one refresh cycle. Rejected: a single fetch failure would blank all four concerns, and the component would carry four unrelated action sets. Separate cards keep each surface independently testable and independently degradable (spec: "one card fails to load").
+This follows `DedupView`'s reading of the console: the work a phase exists to do belongs in the column the organizer is looking at, not in a 300px sidebar beside it.
 
-*Consequence*: `FlaggedPanel` and `UnmatchedPanel` both call `GET /payments/unmatched` and filter to their own status, so the phase opens with two identical requests. Accepted over adding a `status` query param or lifting the fetch into `Console`: the endpoint is small and per-tournament, and either alternative recouples the two cards. If the duplication becomes a problem, the fix is a `status` filter on the endpoint, not shared state in the console.
+**Where it diverges from Deduplication**: `DedupView` replaces the fencer table outright, because that phase concerns a handful of rows out of fifty and listing all fifty states the work where it is hardest to see. Payments is the opposite — every registration has a payment state, and this change adds an `outstanding` column to that very table (Decision 5). So the table stays and the queues sit above it. The queues are the exceptions, the table is the ledger, and the phase reads top to bottom in that order.
 
-### Decision 2 — `PaymentsPanel.tsx` is renamed `FlaggedPanel.tsx`
+**Empty queues collapse to their heading.** A queue with nothing in it renders its title and a zero count, and no body. The absence is stated rather than omitted — that is the console's ledger idiom throughout — but a full "nothing here" card for each of four queues would push the fencer table down by four cards on the ordinary tournament where nothing is wrong. One line each is the whole cost when the phase is clean, and the table starts where it does today; the queues take room in proportion to the work they hold.
 
-Its name currently claims the whole domain while implementing one queue, which is exactly the confusion that sent the original Group 10 task list to the wrong files. `git mv` preserves history; the i18n keys are already namespaced `payments.flagged.*` and do not move.
+Each queue is its own component with its own fetch, loading state and error state, matching how `MatchPanel`, `DedupPanel` and `ImportPanel` already work.
+
+*Alternative considered*: one `PaymentsPanel` with four labelled sections — fewer files, one refresh cycle. Rejected: a single fetch failure would blank all four concerns, and the component would carry four unrelated action sets. Separate views keep each surface independently testable and independently degradable (spec: "one view fails to load").
+
+*Alternative considered*: leaving the four cards in the rail, as this change originally planned. Rejected once the rail was counted honestly — `TolerancePanel` plus four queues plus `ManualEditsRail` is six stacked cards in a 300px column, and the queue an organizer opens the phase to act on would sit below the fold.
+
+*Alternative considered*: full parity with Deduplication, the queues replacing the table. Rejected: it would strand the outstanding column this change adds, and Payments is a phase that does something to every row.
+
+*Consequence*: `FlaggedPanel` and `UnmatchedPanel` both call `GET /payments/unmatched` and filter to their own status, so the phase opens with two identical requests. Accepted over adding a `status` query param or lifting the fetch into `Console`: the endpoint is small and per-tournament, and either alternative recouples the two views. If the duplication becomes a problem, the fix is a `status` filter on the endpoint, not shared state in the console.
+
+### Decision 2 — `PaymentsPanel.tsx` becomes `payments/FlaggedPanel.tsx`
+
+Its name currently claims the whole domain while implementing one queue, which is exactly the confusion that sent the original Group 10 task list to the wrong files.
+
+The five components also move into `frontend/src/payments/`, the directory convention `CLAUDE.md` states and `setup/`, `dedup/` and `manual/` already follow: four queues and a dialog are a panel composed of sections, not five loose files at the root of `src/`. `git mv` preserves history; the i18n keys are already namespaced `payments.flagged.*` and do not move.
 
 ### Decision 3 — Manual link is a modal, following the `MatchDialog.tsx` pattern
 
@@ -71,7 +85,9 @@ It is filtered to registrations **still** in `EXPIRED` state with credit remaini
 
 This puts the balance on the same replay path as every other row value: it recomputes on rerun, sorts with the table, and follows rows into exports. A separate rail list would be a second place to read registration state, drifting from the first.
 
-Rendering goes through the existing `formatMoneyWithEur(local, eur, tournament)` in `money.ts`, which already owns the "does this tournament show EUR" decision — `Console` holds `detail` (a `TournamentDetail`) so the currency context is in hand. `CellDisplay` gains a money case for `outstanding` and `total_amount`; today `total_amount` falls through to `String(value)` with no unit, which the same case fixes.
+Rendering goes through the existing `formatMoneyWithEur(local, eur, tournament)` in `money.ts`, which already owns the "does this tournament show EUR" decision. `CellDisplay` gains a money case for `outstanding` and `total_amount`; today `total_amount` falls through to `String(value)` with no unit, which the same case fixes.
+
+The currency context reaches the cell as its own prop, alongside the `timezone` and `hrIdentity` props `CellDisplay` already takes — not as the whole `TournamentDetail`. Those two set the precedent: a cell is a function of what it draws, not of where the console is, so it receives the one fact it needs to draw money rather than the tournament record to go looking through.
 
 *Note on the two counters*: local and EUR credit are never summed (a registration settles when either currency's credit covers that currency's total, per the payments design). The column therefore shows the local balance with the EUR balance in parentheses where applicable — exactly what `formatMoneyWithEur` does — rather than inventing a single combined figure.
 
@@ -87,9 +103,10 @@ Rendering goes through the existing `formatMoneyWithEur(local, eur, tournament)`
 - **A link posted against a transaction a concurrent Fio poll just matched** → The endpoint already returns `409 already_matched`; the dialog treats it as "someone else resolved this", closes, and refreshes rather than reporting an error the organizer cannot act on.
 - **`unapply_payment_link` on a registration since marked paid by another route** → Existing backend behaviour, unchanged here; the card surfaces the result by refetching after removal rather than assuming the outcome.
 - **Outstanding on the sheet touches every consumer of `base_rows`** → The added keys are additive and `SheetRow` has an index signature, so exports and other phases ignore them; backend tests cover the sheet shape.
-- **Four cards plus a modal is a lot of new copy** → All strings land in `i18n/{en,cs}.json` under `payments.*` in the same pass; Czech is not deferred, since the console's primary users are Czech organizers.
-- **No frontend tests** → Verification is `npm run lint`, `npm run build`, and driving the console against a tournament with seeded unmatched, flagged, expired-holding and linked cases. Backend additions (endpoint, sheet fields) get pytest coverage.
+- **Four queues plus a modal is a lot of new copy** → All strings land in `i18n/{en,cs}.json` under `payments.*` in the same pass; Czech is not deferred, since the console's primary users are Czech organizers.
+- **The queues push the fencer table down exactly when the phase is busiest** → Intended: on a tournament with money to resolve, the money is the work and the ledger is the reference. The collapse-to-heading empty state (Decision 1) keeps the cost at four lines on a clean tournament.
+- **Verification** → `vitest` covers the new components — the dialog's two error branches, the empty collapse, and per-view failure isolation — alongside `npm run lint`, `npm run build`, `pytest` for the endpoint and sheet fields, and driving the console against seeded unmatched, flagged, expired-holding and linked cases.
 
 ## Migration Plan
 
-Additive throughout: one new read endpoint, two new sheet fields, four frontend components (one renamed). No schema change, no migration, no data backfill. Rolling back is deleting the components and reverting the two backend additions; nothing persists that the old console cannot read.
+Additive throughout: one new read endpoint, two new sheet fields, five frontend components under `payments/` (one of them the renamed `PaymentsPanel`), and the payments phase's main column rearranged around them. No schema change, no migration, no data backfill. Rolling back is deleting the directory, restoring the old rail placement, and reverting the two backend additions; nothing persists that the old console cannot read.

@@ -226,7 +226,8 @@
     "email": "E-mail",
     "reg_name": "Name as registered",
     "match_verdict": "Match",
-    "merge_note": "Merge note"
+    "merge_note": "Merge note",
+    "outstanding": "Outstanding"
   },
   "param": {
     "early_bird_until": "Early bird until",
@@ -835,7 +836,6 @@
   "payments": {
     "flagged": {
       "title": "Unresolved payments",
-      "empty": "No unresolved payments.",
       "vs": "VS",
       "amount": "Amount",
       "reason": "Reason",
@@ -855,6 +855,78 @@
     "tolerance": {
       "title": "Matching tolerance",
       "hint": "How far a transferred amount may differ from what is owed and still count as payment. Applies on the next rerun."
+    },
+    "queue": {
+      "failed": "This list could not be loaded."
+    },
+    "unmatched": {
+      "title": "Unmatched payments",
+      "date": "Date",
+      "payer": "Payer",
+      "amount": "Amount",
+      "message": "Message",
+      "link": "Link to registration"
+    },
+    "link": {
+      "title": "Link payment",
+      "unknownPayer": "payer not stated",
+      "candidates": "Detected in the payment",
+      "placeholder": "VS",
+      "add": "Add",
+      "selected": "Linking to",
+      "noneSelected": "Nothing selected yet.",
+      "remove": "Remove",
+      "unknownVs": "No registration has VS {{values}}.",
+      "failed": "The link could not be created.",
+      "confirm": "Link"
+    },
+    "expiredHolding": {
+      "title": "Expired, holding money",
+      "fencer": "Fencer",
+      "vs": "VS",
+      "credited": "Credited",
+      "expiredAt": "Expired",
+      "empty": "No money is stranded on an expired reservation."
+    },
+    "links": {
+      "title": "Payment links",
+      "transaction": "Payment",
+      "vs": "VS",
+      "auto": "created by the matcher",
+      "manual": "created by hand",
+      "remove": "Remove link",
+      "failed": "The link could not be removed."
+    },
+    "intake": {
+      "title": "Payment intake",
+      "hint": "A statement export from any bank, as CSV or XLSX.",
+      "upload": "Import statement",
+      "poll": "Poll the bank now",
+      "noToken": "No bank API token is configured for this tournament, so it cannot be polled.",
+      "lifecycle": "Run expiries and reminders now",
+      "imported": "Imported: {{new}} new, {{matched}} matched.",
+      "polled": "Polled: {{new}} new, {{matched}} matched.",
+      "noParser": "An unrecognised statement cannot be read — this deployment has no parser configured.",
+      "unsupportedFormat": "That file is neither a CSV nor a spreadsheet.",
+      "importFailed": "The statement could not be imported.",
+      "pollFailed": "The bank could not be polled.",
+      "lifecycleFailed": "The lifecycle run failed.",
+      "unreadable": "That file does not read as a statement — no column in it holds dates and amounts. Check it is the right export, and that it opens as a table in a spreadsheet."
+    },
+    "clear": {
+      "title": "Clear payments",
+      "hint": "Removes every payment taken in, and how each statement row was read.",
+      "action": "Clear payments…",
+      "blockedByCredit": "Clearing is unavailable: {{count}} payments have been credited to a fencer. Unlink them first.",
+      "result": "Removed {{count}} payments.",
+      "failed": "The payments could not be cleared.",
+      "confirm": {
+        "title": "Clear the payments?",
+        "body": "This removes {{count}} payments and everything recorded about them.",
+        "reread": "How each statement row was read is removed too, so importing the file again reads it afresh.",
+        "final": "This cannot be undone.",
+        "confirm": "remove permanently"
+      }
     }
   },
   "validation": {
@@ -929,12 +1001,14 @@
     "kind": {
       "parse": "parsing the table",
       "match": "matching",
-      "dedup": "deduplicating"
+      "dedup": "deduplicating",
+      "statement": "statement import"
     },
     "label": {
       "parse": "parsing",
       "match": "matching",
-      "dedup": "deduplicating"
+      "dedup": "deduplicating",
+      "statement": "reading the statement"
     },
     "progress_one": "{{done}} of {{count}} row",
     "progress_other": "{{done}} of {{count}} rows",
@@ -945,5 +1019,24 @@
     "failed": "{{kind}} stopped before it finished: {{error}}",
     "interrupted": "{{kind}} stopped partway, at {{done}} of {{total}}. run it again to finish it.",
     "done": "finished"
+  },
+  "issue": {
+    "title": "Issue registrations",
+    "hint": "A row states who is competing. A registration can be paid for: it carries a variable symbol and a balance.",
+    "action": "Issue registrations",
+    "confirm": "This issues {{count}} registrations. Variable symbols are allocated and are not reclaimed.",
+    "noMail": "Nobody is mailed. These registrations have no payment window, are never reminded, and never expire.",
+    "confirmAction": "Issue them",
+    "blockedByDedup": "Duplicates are still under review ({{count}}). A row a merge would collapse must not take a variable symbol first.",
+    "result": "Issued {{issued}}; {{already}} already had a registration.",
+    "skipped": "{{name}} — {{reason}}",
+    "unnamed": "unnamed row",
+    "failed": "The registrations could not be issued.",
+    "reason": {
+      "no_discipline": "enters no discipline",
+      "no_email": "has no e-mail address",
+      "no_name": "has no name",
+      "email_taken": "shares an e-mail address with another row"
+    }
   }
 }

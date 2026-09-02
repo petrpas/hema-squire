@@ -13,10 +13,16 @@ import MatchPanel from "./MatchPanel";
 import NoteMarker from "./NoteMarker";
 import OperationsIndicator from "./OperationsIndicator";
 import ManualEditsRail from "./ManualEditsRail";
+import IssuePanel from "./IssuePanel";
 import ManualEntryPanel from "./manual/ManualEntryPanel";
 import PaidStamp from "./PaidStamp";
 import TolerancePanel from "./TolerancePanel";
-import PaymentsPanel from "./PaymentsPanel";
+import ExpiredHoldingPanel from "./payments/ExpiredHoldingPanel";
+import FlaggedPanel from "./payments/FlaggedPanel";
+import ClearPaymentsPanel from "./payments/ClearPaymentsPanel";
+import IntakePanel from "./payments/IntakePanel";
+import PaymentLinksPanel from "./payments/PaymentLinksPanel";
+import UnmatchedPanel from "./payments/UnmatchedPanel";
 import QueuePanel from "./QueuePanel";
 import { useAuth } from "./RequireAuth";
 import * as routes from "./routes";
@@ -24,6 +30,7 @@ import SetupPanel from "./SetupPanel";
 import SheetArea from "./SheetArea";
 import TeamsPanel from "./TeamsPanel";
 import useOperations from "./useOperations";
+import { formatMoneyWithEur } from "./money";
 import { registeredMoment } from "./momentText";
 import { parseInteger } from "./numeric";
 import { checkNumeric, checkString, type FieldError } from "./validation";
@@ -90,7 +97,7 @@ export const PHASE_COLUMNS: Record<Phase, string[]> = {
   matching: ["hr_id", "hr_name", "hr_nationality", "hr_club", "match"],
   // Deduplication shows candidate groups, not the fencer list (design D1)
   dedup: [],
-  payments: ["vs", "total_amount", "expires_at", "paid_at", "state"],
+  payments: ["vs", "total_amount", "outstanding", "expires_at", "paid_at", "state"],
   export: ["hr_id", "disciplines", "state"],
   teams: [],
   queue: [],
@@ -208,11 +215,18 @@ export function CellDisplay({
   row,
   column,
   timezone,
+  currency = null,
   hrIdentity = false,
 }: {
   row: SheetRow;
   column: string;
   timezone: string | null;
+  /** What money on this row is denominated in, and whether a EUR figure sits
+   *  beside it. The two fields the decision needs, not the whole tournament: a
+   *  cell is a function of what it draws, as `timezone` and `hrIdentity`
+   *  already are. Null until the detail has arrived, when an amount reads
+   *  unitless rather than wrong. */
+  currency?: Pick<TournamentDetail, "local_currency" | "eur_payments_enabled"> | null;
   /** Whether this phase identifies a row by its HR profile (spec `etl-console`,
    *  HR identity in the phases after matching). A flag rather than the phase
    *  itself: the cell is a function of what it draws, not of where the console
@@ -226,6 +240,18 @@ export function CellDisplay({
     return declared ? <span className="identity-declared">{text}</span> : <>{text}</>;
   }
   switch (column) {
+    case "total_amount":
+    case "outstanding": {
+      // an imported row has no registration behind it and so owes nothing —
+      // a dash, not a zero it never agreed to
+      const value = column === "outstanding" ? row.outstanding_amount : row.total_amount;
+      if (value === null || value === undefined) return <>—</>;
+      // only the balance has a EUR sibling on the row; the sheet carries no
+      // EUR total, so that one reads in the local currency alone
+      const eur = column === "outstanding" ? row.outstanding_eur_amount : null;
+      if (currency === null) return <>{value}</>;
+      return <>{formatMoneyWithEur(value, eur, currency)}</>;
+    }
     case "state":
       return <StateBadge id={row.id} state={row.state} />;
     case "disciplines":
@@ -285,6 +311,14 @@ export default function Console({
     api.account().then(setAccount, () => setAccount(null));
   }, []);
 
+  // The payments queues each own their data, so the sheet reloading tells them
+  // nothing. This counter is the console's one "the money moved" signal: every
+  // caller of `refresh` already means exactly that — a landing statement
+  // import, the Fio poll, the lifecycle run, a link made or undone — and the
+  // queues reload from it rather than each learning about all four
+  // (spec etl-console, The fencer list follows a concluded operation).
+  const [queueReload, setQueueReload] = useState(0);
+
   const refresh = useCallback(() => {
     api.sheet(tournament.slug).then(
       (data) => {
@@ -294,6 +328,7 @@ export default function Console({
       () => setError(true),
     );
     api.tournament(tournament.slug).then(setDetail, () => {});
+    setQueueReload((n) => n + 1);
   }, [tournament.slug]);
 
   useEffect(refresh, [refresh]);
@@ -459,6 +494,32 @@ export default function Console({
         ) : (
           <SheetArea
             phase={phase}
+            queues={
+              phase === "payments" ? (
+                <>
+                  <UnmatchedPanel
+                    slug={tournament.slug}
+                    reload={queueReload}
+                    onChanged={refresh}
+                  />
+                  <FlaggedPanel
+                    slug={tournament.slug}
+                    reload={queueReload}
+                    onChanged={refresh}
+                  />
+                  <ExpiredHoldingPanel
+                    slug={tournament.slug}
+                    reload={queueReload}
+                    currency={detail?.local_currency ?? "CZK"}
+                  />
+                  <PaymentLinksPanel
+                    slug={tournament.slug}
+                    reload={queueReload}
+                    onChanged={refresh}
+                  />
+                </>
+              ) : null
+            }
             rows={rows}
             visibleRows={visibleRows}
             columns={columns}
@@ -466,6 +527,7 @@ export default function Console({
             paidCount={paidCount}
             revision={sheet?.edits.length ?? 0}
             timezone={detail?.timezone ?? null}
+            currency={detail ?? null}
             error={error}
             refresh={refresh}
             onEdit={saveEdit}
@@ -493,7 +555,10 @@ export default function Console({
             />
           )}
           {phase === "fencers" && (
-            <ManualEntryPanel detail={detail} slug={tournament.slug} onEntered={refresh} />
+            <>
+              <ManualEntryPanel detail={detail} slug={tournament.slug} onEntered={refresh} />
+              <IssuePanel slug={tournament.slug} onIssued={refresh} />
+            </>
           )}
           {phase === "matching" && (
             <MatchPanel
@@ -510,10 +575,24 @@ export default function Console({
               onChanged={refresh}
             />
           )}
+          {/* the four payment queues are the phase's main column, above the
+              fencer table; the rail keeps what it keeps for every phase — the
+              operation's parameters and the edits log (design
+              add-payments-console-ui D1) */}
           {phase === "payments" && (
             <>
+              <IntakePanel
+                slug={tournament.slug}
+                detail={detail}
+                operations={operations}
+                onChanged={refresh}
+              />
               <TolerancePanel detail={detail} slug={tournament.slug} onSaved={refresh} />
-              <PaymentsPanel slug={tournament.slug} onChanged={refresh} />
+              <ClearPaymentsPanel
+                slug={tournament.slug}
+                reload={queueReload}
+                onCleared={refresh}
+              />
             </>
           )}
           {phase === "export" && <ExportPanel slug={tournament.slug} />}

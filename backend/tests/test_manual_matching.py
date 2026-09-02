@@ -4,7 +4,7 @@ import pytest
 
 from app.mail import get_mailer
 from app.main import app
-from tests.conftest import enable_payments, publish
+from tests.conftest import enable_payments, import_statement, publish
 
 
 class CollectingMailer:
@@ -60,11 +60,7 @@ def enroll(client, auth_headers, email, name):
 
 
 def import_csv(client, organizer):
-    return client.post(
-        "/api/tournaments/cup/payments/import-statement",
-        files={"file": ("v.csv", io.BytesIO(CSV), "text/csv")},
-        headers=organizer,
-    ).json()
+    return import_statement(client, organizer, CSV)
 
 
 def unmatched_transaction_id(client, organizer):

@@ -18,6 +18,30 @@ export class ApiError extends Error {
   }
 }
 
+/** A multipart upload. Its own function rather than an option on `request`,
+ *  which sets a JSON content type the browser must choose itself for a
+ *  FormData body — the boundary is the browser's to write. */
+async function upload<T>(path: string, file: File): Promise<T> {
+  const body = new FormData();
+  body.append("file", file);
+  const token = getToken();
+  const response = await fetch(path, {
+    method: "POST",
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    body,
+  });
+  if (!response.ok) {
+    let detail: unknown = null;
+    try {
+      detail = (await response.json()).detail;
+    } catch {
+      /* non-JSON error body */
+    }
+    throw new ApiError(response.status, detail);
+  }
+  return response.json();
+}
+
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const token = getToken();
   const response = await fetch(path, {
@@ -297,6 +321,9 @@ export type PaymentMode = "immediate" | "deposit" | "reservation";
 
 export interface TournamentDetail extends Tournament {
   payment_mode: PaymentMode;
+  /** Whether a Fio API token is on file, so the bank can be polled at all.
+   *  Never the token itself — the console needs only this. */
+  fio_token_configured: boolean;
   /** The date seating settles — a soft boundary inside registration_closes,
    *  not the hard close. Unset it resolves to the registration close, which
    *  itself resolves to the tournament date. */
@@ -383,6 +410,13 @@ export interface SheetRow {
   paid: boolean;
   registered_at: string | null;
   total_amount: number | null;
+  /** total_amount less what has been credited, as a decimal string — the same
+   *  quantity and the same shape as `RegistrationDetail.outstanding_amount`.
+   *  Absent on a row with no registration behind it, such as an imported one. */
+  outstanding_amount?: string;
+  /** The EUR sibling; null when the tournament prices in no EUR. The two are
+   *  never summed — each currency settles against its own total. */
+  outstanding_eur_amount?: string | null;
   problems: string | null;
   match_verdict?: "confirmed" | "found" | "proposed" | "none_found" | "unknown";
   /** The evidence register: what HEMA Ratings holds for this row's hr_id.
@@ -687,6 +721,38 @@ export interface Transaction {
   /** Only meaningful for a flagged transaction: whether the reinstate action
    *  is currently offered (the backend has re-checked capacity). */
   reinstate_available: boolean;
+  /** Only meaningful for an unmatched transaction: VS values detected in its
+   *  text that resolve to a registration. The link dialog offers these as
+   *  one-click choices; empty when the backend recognised nothing. */
+  candidate_vs: number[];
+  /** When the matcher last considered this transaction; null before it has. */
+  last_evaluated_at: string | null;
+}
+
+/** A reservation that lapsed while holding money credited to it. The payment
+ *  matched, so it is in neither transaction queue — this is the only view of
+ *  it. */
+export interface ExpiredHolding {
+  registration_id: number;
+  fencer_name: string;
+  vs: number;
+  /** A decimal string, as every credited amount the API states is. */
+  credited_amount: string;
+  credited_eur_amount: string | null;
+  expired_at: string;
+}
+
+/** A persisted manual operation as the rules API states it. Payment links are
+ *  the `payment_link` kind: they replay opaquely and so never reach the edits
+ *  log, which is why the payments phase lists them itself. */
+export interface Rule {
+  id: number;
+  phase: string;
+  kind: string;
+  target: string;
+  payload: Record<string, unknown>;
+  created_by: number;
+  created_at: string;
 }
 
 export interface PaymentInstructions {
@@ -804,6 +870,19 @@ export const api = {
       method: "POST",
       body: JSON.stringify(rule),
     }),
+  /** Links an unmatched transaction to one or more registrations by VS. The
+   *  first frontend caller of the manual-link endpoint. Rejects with 404 and
+   *  `detail.unknown_vs` when a VS resolves to nothing, 409 `already_matched`
+   *  when a concurrent poll matched the transaction first. */
+  linkTransaction: (slug: string, transaction_id: number, vs: number[]) =>
+    request<{ rule_id: number; applied: number }>(
+      `/api/tournaments/${slug}/payments/link`,
+      { method: "POST", body: JSON.stringify({ transaction_id, vs }) },
+    ),
+  expiredHolding: (slug: string) =>
+    request<ExpiredHolding[]>(`/api/tournaments/${slug}/payments/expired-holding`),
+  rules: (slug: string, phase: string) =>
+    request<Rule[]>(`/api/tournaments/${slug}/rules?phase=${encodeURIComponent(phase)}`),
   deleteRule: (slug: string, ruleId: number) =>
     request<void>(`/api/tournaments/${slug}/rules/${ruleId}`, { method: "DELETE" }),
   hrSearch: (query: string, nationality?: string | null) =>
@@ -815,26 +894,23 @@ export const api = {
   /** Records the batch and returns; the parse runs as an operation behind it,
    *  reported by `operations` (spec console-operations). A file whose rows are
    *  all already parsed starts no operation and comes back with its outcome. */
-  importTable: async (slug: string, file: File): Promise<ImportStarted> => {
-    const body = new FormData();
-    body.append("file", file);
-    const token = getToken();
-    const response = await fetch(`/api/tournaments/${slug}/import`, {
-      method: "POST",
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
-      body,
-    });
-    if (!response.ok) {
-      let detail: unknown = null;
-      try {
-        detail = (await response.json()).detail;
-      } catch {
-        /* non-JSON error body */
-      }
-      throw new ApiError(response.status, detail);
-    }
-    return response.json();
-  },
+  importTable: (slug: string, file: File): Promise<ImportStarted> =>
+    upload<ImportStarted>(`/api/tournaments/${slug}/import`, file),
+  /** Import a bank statement from any bank, as a started operation. The ingest
+   *  counts land in the operation's outcome, not in this response. Rejects
+   *  with 409 `no_statement_parser` where an unrecognised statement arrives on
+   *  a deployment with no model configured, and 422
+   *  `unsupported_statement_format` for a file that is neither CSV nor XLSX. */
+  importStatement: (slug: string, file: File): Promise<OperationStarted & { rows: number }> =>
+    upload(`/api/tournaments/${slug}/payments/import-statement`, file),
+  /** Pull recent movements from the bank's API. Offered only where the
+   *  tournament has a token; without one the endpoint answers 409. */
+  fioPoll: (slug: string) =>
+    request<IngestAndMatch>(`/api/tournaments/${slug}/payments/fio-poll`, { method: "POST" }),
+  /** Run the payment lifecycle passes now — expiries, reminders and
+   *  holding-payment events — rather than waiting for the scheduler. */
+  processLifecycle: (slug: string) =>
+    request<unknown>(`/api/tournaments/${slug}/payments/process`, { method: "POST" }),
   /** Hard, total and final: everything the tournament ever imported. The
    *  console confirms before calling (spec table-import, Clearing is warned
    *  about and irreversible). */
@@ -847,6 +923,24 @@ export const api = {
       method: "POST",
       body: JSON.stringify(entry),
     }),
+  /** What clearing the tournament's payments would remove, and what stands in
+   *  its way — read before offering the action, so a refusal is stated rather
+   *  than discovered. */
+  clearablePayments: (slug: string) =>
+    request<ClearablePayments>(`/api/tournaments/${slug}/payments/clear`),
+  /** Remove every payment taken in, and the stored readings behind them. */
+  clearPayments: (slug: string) =>
+    request<{ payments: number }>(`/api/tournaments/${slug}/payments`, {
+      method: "DELETE",
+    }),
+  /** How many fencer-list rows an issuing pass would act on, and whether it
+   *  may run yet — what the console states before the organizer commits. */
+  issuableCount: (slug: string) =>
+    request<IssuableCount>(`/api/tournaments/${slug}/import/issue`),
+  /** Issue registrations for the fencer list. Synchronous: it asks no model,
+   *  so there is no operation to watch. */
+  issueRegistrations: (slug: string) =>
+    request<IssueReport>(`/api/tournaments/${slug}/import/issue`, { method: "POST" }),
   runMatching: (slug: string) =>
     request<OperationStarted>(`/api/tournaments/${slug}/import/match`, { method: "POST" }),
   runDedup: (slug: string) =>
@@ -1087,8 +1181,38 @@ export interface ImportResult {
   detail?: string;
 }
 
+export interface ClearablePayments {
+  /** Transactions the tournament holds, whatever their state. */
+  payments: number;
+  /** Of those, how many have been credited to a registration. Any at all makes
+   *  clearing unavailable: money the tournament acted on is not deletable. */
+  credited: number;
+}
+
+export interface IssuableCount {
+  /** Rows that state who is competing and have no registration yet. */
+  pending_rows: number;
+  /** Duplicate groups still awaiting a verdict; issuing waits for them,
+   *  because a row a merge may collapse must not spend a variable symbol. */
+  pending_dedup: number;
+}
+
+export interface IssuedSkip {
+  row_id: string;
+  name: string | null;
+  /** `no_discipline` | `no_email` | `no_name` */
+  reason: string;
+}
+
+export interface IssueReport {
+  issued: number;
+  /** Rows left alone because they already had a registration. */
+  already: number;
+  skipped: IssuedSkip[];
+}
+
 /** The kinds of console work that run as an operation. */
-export const OPERATION_KINDS = ["parse", "match", "dedup"] as const;
+export const OPERATION_KINDS = ["parse", "match", "dedup", "statement"] as const;
 export type OperationKind = (typeof OPERATION_KINDS)[number];
 
 /** `interrupted` is not a failure: the process running the work did not
@@ -1113,6 +1237,18 @@ export interface Operation {
 export interface OperationsReport {
   running: Operation | null;
   concluded: Operation[];
+}
+
+/** The counts a reconciliation pass reports: what arrived, what it matched,
+ *  and what it could not. */
+export interface IngestAndMatch {
+  new: number;
+  duplicate: number;
+  matched: number;
+  flagged: number;
+  unmatched: number;
+  partial: number;
+  set_aside: number;
 }
 
 export interface OperationStarted {

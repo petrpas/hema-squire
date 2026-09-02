@@ -1,15 +1,19 @@
 ## ADDED Requirements
 
 ### Requirement: Payment resolution views
-The Payments phase SHALL present the organizer's payment work as four separate rail cards, each addressing one kind of unresolved money: flagged transactions, unmatched transactions, reservations that expired while holding credited money, and active payment links. Each card SHALL be independently loadable and SHALL state plainly when it has nothing to show, rather than being hidden.
+The Payments phase SHALL present the organizer's payment work as four views in the phase's main area, stacked above the fencer table: flagged transactions, unmatched transactions, reservations that expired while holding credited money, and active payment links. The phase's rail SHALL hold only the operation's parameters and the manual-edits log, as every other phase's rail does. Each view SHALL load independently of the others and of the table. A view with nothing to show SHALL say so rather than disappear, and SHALL take no more room than its own heading while it has nothing to show.
 
 #### Scenario: Nothing outstanding
 - **WHEN** the organizer opens the Payments phase on a tournament where every transaction matched cleanly
-- **THEN** all four cards are present and each states that it is empty
+- **THEN** each of the four views states that it is empty in a single heading line, and the fencer table begins directly below them
 
-#### Scenario: One card fails to load
+#### Scenario: Work sits above the ledger
+- **WHEN** the tournament has transactions awaiting resolution
+- **THEN** those views appear above the fencer table, and the table below still lists every registration with its payment state
+
+#### Scenario: One view fails to load
 - **WHEN** the expired-holding request fails while the others succeed
-- **THEN** that card reports its own failure and the remaining three still render their data
+- **THEN** that view reports its own failure, and the remaining three and the fencer table still render their data
 
 ### Requirement: Unmatched transaction queue
 The console SHALL list every transaction whose status is `unmatched` — the ones carrying no VS that resolves to a registration — showing the payer, the amount with its currency, the date, and the transaction's message text, so the organizer can judge who sent the money. Flagged transactions SHALL NOT appear in this list; they belong to the flagged queue.

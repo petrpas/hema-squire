@@ -232,7 +232,8 @@
     "email": "E-mail",
     "reg_name": "Jméno z přihlášky",
     "match_verdict": "Spárování",
-    "merge_note": "Poznámka ke sloučení"
+    "merge_note": "Poznámka ke sloučení",
+    "outstanding": "Zbývá"
   },
   "param": {
     "early_bird_until": "Early bird do",
@@ -843,7 +844,6 @@
   "payments": {
     "flagged": {
       "title": "Nevyřešené platby",
-      "empty": "Žádné nevyřešené platby.",
       "vs": "VS",
       "amount": "Částka",
       "reason": "Důvod",
@@ -863,6 +863,78 @@
     "tolerance": {
       "title": "Tolerance párování",
       "hint": "O kolik se smí poslaná částka lišit od dlužné a přesto se počítat jako zaplaceno. Projeví se při dalším spuštění."
+    },
+    "queue": {
+      "failed": "Seznam se nepodařilo načíst."
+    },
+    "unmatched": {
+      "title": "Nepřiřazené platby",
+      "date": "Datum",
+      "payer": "Plátce",
+      "amount": "Částka",
+      "message": "Zpráva",
+      "link": "Přiřadit k registraci"
+    },
+    "link": {
+      "title": "Přiřadit platbu",
+      "unknownPayer": "plátce neuveden",
+      "candidates": "Nalezeno v platbě",
+      "placeholder": "VS",
+      "add": "Přidat",
+      "selected": "Přiřadit k",
+      "noneSelected": "Zatím nic vybráno.",
+      "remove": "Odebrat",
+      "unknownVs": "Žádná registrace nemá VS {{values}}.",
+      "failed": "Platbu se nepodařilo přiřadit.",
+      "confirm": "Přiřadit"
+    },
+    "expiredHolding": {
+      "title": "Vypršelé s platbou",
+      "fencer": "Šermíř",
+      "vs": "VS",
+      "credited": "Připsáno",
+      "expiredAt": "Vypršela",
+      "empty": "Na vypršelých rezervacích neleží žádné peníze."
+    },
+    "links": {
+      "title": "Přiřazení plateb",
+      "transaction": "Platba",
+      "vs": "VS",
+      "auto": "vytvořeno automaticky",
+      "manual": "vytvořeno ručně",
+      "remove": "Zrušit přiřazení",
+      "failed": "Přiřazení se nepodařilo zrušit."
+    },
+    "intake": {
+      "title": "Příjem plateb",
+      "hint": "Výpis z libovolné banky, jako CSV nebo XLSX.",
+      "upload": "Načíst výpis",
+      "poll": "Stáhnout z banky",
+      "noToken": "Turnaj nemá nastavený token k bankovnímu API, stahovat tedy nelze.",
+      "lifecycle": "Spustit expirace a upomínky",
+      "imported": "Načteno: {{new}} nových, {{matched}} spárováno.",
+      "polled": "Staženo: {{new}} nových, {{matched}} spárováno.",
+      "noParser": "Neznámý výpis nelze přečíst — tato instalace nemá nastavený parser.",
+      "unsupportedFormat": "Tento soubor není CSV ani tabulka.",
+      "importFailed": "Výpis se nepodařilo načíst.",
+      "pollFailed": "Z banky se nepodařilo stáhnout.",
+      "lifecycleFailed": "Spuštění se nezdařilo.",
+      "unreadable": "Soubor nevypadá jako výpis — žádný sloupec v něm nenese data a částky. Ověřte, že jde o správný export a že se otevře jako tabulka v tabulkovém procesoru."
+    },
+    "clear": {
+      "title": "Smazat platby",
+      "hint": "Odstraní všechny přijaté platby i to, jak se přečetl každý řádek výpisu.",
+      "action": "Smazat platby…",
+      "blockedByCredit": "Mazání není dostupné: {{count}} plateb je připsáno šermíři. Nejdřív je odpojte.",
+      "result": "Odstraněno {{count}} plateb.",
+      "failed": "Platby se nepodařilo smazat.",
+      "confirm": {
+        "title": "Smazat platby?",
+        "body": "Odstraní se {{count}} plateb a vše, co je o nich zaznamenáno.",
+        "reread": "Odstraní se i to, jak se přečetl každý řádek výpisu, takže se soubor při dalším načtení přečte znovu.",
+        "final": "Tuto akci nelze vzít zpět.",
+        "confirm": "trvale odstranit"
+      }
     }
   },
   "validation": {
@@ -939,12 +1011,14 @@
     "kind": {
       "parse": "zpracování tabulky",
       "match": "párování",
-      "dedup": "slučování duplicit"
+      "dedup": "slučování duplicit",
+      "statement": "načtení výpisu"
     },
     "label": {
       "parse": "zpracování",
       "match": "párování",
-      "dedup": "slučování"
+      "dedup": "slučování",
+      "statement": "načítání výpisu"
     },
     "progress_one": "{{done}} z {{count}} řádku",
     "progress_few": "{{done}} ze {{count}} řádků",
@@ -957,5 +1031,24 @@
     "failed": "{{kind}} skončilo dřív, než mělo: {{error}}",
     "interrupted": "{{kind}} se zastavilo v půli, u {{done}} z {{total}}. dalším spuštěním se dokončí.",
     "done": "hotovo"
+  },
+  "issue": {
+    "title": "Vystavit registrace",
+    "hint": "Řádek uvádí, kdo závodí. Registrace se dá zaplatit: nese variabilní symbol a zůstatek.",
+    "action": "Vystavit registrace",
+    "confirm": "Vystaví se {{count}} registrací. Variabilní symboly se přidělí a nevracejí se.",
+    "noMail": "Nikomu se nic neposílá. Tyto registrace nemají splatnost, nepřipomínají se a nikdy nevyprší.",
+    "confirmAction": "Vystavit",
+    "blockedByDedup": "Duplicity se ještě posuzují ({{count}}). Řádek, který by sloučení zrušilo, nesmí dřív dostat variabilní symbol.",
+    "result": "Vystaveno {{issued}}; {{already}} už registraci mělo.",
+    "skipped": "{{name}} — {{reason}}",
+    "unnamed": "řádek bez jména",
+    "failed": "Registrace se nepodařilo vystavit.",
+    "reason": {
+      "no_discipline": "nemá žádnou disciplínu",
+      "no_email": "nemá e-mailovou adresu",
+      "no_name": "nemá jméno",
+      "email_taken": "má stejnou e-mailovou adresu jako jiný řádek"
+    }
   }
 }

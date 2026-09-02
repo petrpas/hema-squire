@@ -5,10 +5,11 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from app import dedup, hr_match, importclear, importer, operations, rules, sheet
+from app import dedup, hr_match, importclear, importer, issuing, operations, rules, sheet
 from app.auth import require_console_access
 from app.hr_index import HRIndex, get_hr_index
 from app.models import Fencer, Operation, OperationKind, Tournament
+from app.routers.registrations import next_vs
 from app.routers.tournaments import FencerDep, SessionDep, TournamentDep
 
 router = APIRouter(prefix="/api/tournaments/{slug}/import", tags=["import"])
@@ -19,16 +20,6 @@ DedupDep = Annotated[dedup.DedupLLM | None, Depends(dedup.get_dedup_llm)]
 HRIndexDep = Annotated[HRIndex, Depends(get_hr_index)]
 
 
-def _replayed_import_rows(session, tournament, index=None) -> list[dict]:
-    """The rows matching and deduplication work on: the ones that entered
-    unmatched. An in-app registration is HR-bound at birth and stays out of it;
-    an imported row and a hand-entered one both traverse the two operations
-    (spec etl-console, Per-row phase status)."""
-    base = sheet.base_rows(session, tournament, index)
-    rows, _ = rules.replay(base, rules.active_rules(session, tournament))
-    return [
-        row for row in rows.values() if row["id"].startswith(("imp:", "man:"))
-    ]
 
 
 def _premerge_import_rows(session, tournament, index=None) -> list[dict]:
@@ -144,7 +135,15 @@ def clear_import(tournament: TournamentDep, session: SessionDep, fencer: FencerD
     the console confirms it before calling (spec table-import, Clearing is
     warned about and irreversible)."""
     require_console_access(session, tournament, fencer)
-    return importclear.clear_imports(session, tournament)
+    try:
+        return importclear.clear_imports(session, tournament)
+    except importclear.CreditedRegistrationsError as credited:
+        # the rows are the console's to erase; money credited against them is
+        # not. The organizer resolves those payments first
+        raise HTTPException(
+            status_code=409,
+            detail={"code": "credited_registrations", "count": credited.count},
+        ) from None
 
 
 @router.post("/match", status_code=202)
@@ -158,7 +157,7 @@ async def run_matching(
     require_console_access(session, tournament, fencer)
     if matcher is None:
         raise HTTPException(status_code=503, detail="llm_not_configured")
-    rows = _replayed_import_rows(session, tournament, index)
+    rows = sheet.source_rows(session, tournament, index)
     total = hr_match.pending_count(session, tournament, rows)
     operation = _start(session, tournament, fencer, OperationKind.MATCH, total)
 
@@ -169,7 +168,7 @@ async def run_matching(
             work_tournament,
             matcher,
             index,
-            _replayed_import_rows(work_session, work_tournament, index),
+            sheet.source_rows(work_session, work_tournament, index),
             progress=lambda session, units: operations.advance(session, work_operation, units),
         )
 
@@ -187,7 +186,7 @@ async def run_dedup(
     require_console_access(session, tournament, fencer)
     if llm is None:
         raise HTTPException(status_code=503, detail="llm_not_configured")
-    rows = _replayed_import_rows(session, tournament)
+    rows = sheet.source_rows(session, tournament)
     total = dedup.pending_count(session, tournament, rows)
     operation = _start(session, tournament, fencer, OperationKind.DEDUP, total)
     actor_id = fencer.id
@@ -199,7 +198,7 @@ async def run_dedup(
             work_session,
             work_tournament,
             llm,
-            _replayed_import_rows(work_session, work_tournament),
+            sheet.source_rows(work_session, work_tournament),
             actor,
             progress=lambda session, units: operations.advance(session, work_operation, units),
         )
@@ -215,6 +214,44 @@ def dedup_groups(tournament: TournamentDep, session: SessionDep, fencer: FencerD
     require_console_access(session, tournament, fencer)
     rows = _premerge_import_rows(session, tournament)
     return dedup.candidate_groups(session, tournament, rows)
+
+
+def _pending_dedup(session, tournament) -> int:
+    """Candidate duplicate groups still awaiting the organizer's verdict."""
+    rows = _premerge_import_rows(session, tournament)
+    return sum(
+        1
+        for group in dedup.candidate_groups(session, tournament, rows)
+        if group.get("verdict") == "pending"
+    )
+
+
+@router.get("/issue")
+def issuable_count(tournament: TournamentDep, session: SessionDep, fencer: FencerDep):
+    """How many rows an issuing pass would act on, and whether it may run yet —
+    what the console states before asking the organizer to commit."""
+    require_console_access(session, tournament, fencer)
+    return {
+        "pending_rows": len(issuing.pending(session, tournament)),
+        "pending_dedup": _pending_dedup(session, tournament),
+    }
+
+
+@router.post("/issue")
+def issue_registrations(tournament: TournamentDep, session: SessionDep, fencer: FencerDep):
+    """Issue registrations for the fencer list (spec `imported-registrations`).
+
+    Synchronous, unlike its neighbours on this router: it asks no model and does
+    a bounded amount of local work, so there is nothing for an operation record
+    to report on that the response cannot.
+    """
+    require_console_access(session, tournament, fencer)
+    if _pending_dedup(session, tournament):
+        # a row a pending merge may collapse must not spend a variable symbol
+        # first: the number is unique across the deployment and never reused
+        raise HTTPException(status_code=409, detail="dedup_pending")
+    report = issuing.issue(session, tournament, next_vs)
+    return report.as_dict()
 
 
 class DedupDecisionIn(BaseModel):
