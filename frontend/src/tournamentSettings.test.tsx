@@ -44,6 +44,10 @@ function modeRadios() {
   return [...document.querySelectorAll<HTMLInputElement>('input[name="tournament-mode"]')];
 }
 
+function paymentRadios() {
+  return [...document.querySelectorAll<HTMLInputElement>('input[name="tournament-payments"]')];
+}
+
 function checkboxes() {
   return [...document.querySelectorAll<HTMLInputElement>('input[type="checkbox"]')];
 }
@@ -80,8 +84,11 @@ it("offers the mode, payments and the three inclusions on one surface", () => {
     <TournamentSettingsDialog detail={detail()} onApplied={vi.fn()} onClose={vi.fn()} />,
   );
   expect(modeRadios()).toHaveLength(2);
-  // payments plus the three inclusions; payments is not one of the three
-  expect(checkboxes()).toHaveLength(4);
+  // payments is a named choice between two, like the mode above it — both
+  // behavioural settings are answered rather than one being the absence of
+  // the other. The three inclusions are checkboxes; payments is not among them
+  expect(paymentRadios()).toHaveLength(2);
+  expect(checkboxes()).toHaveLength(3);
   expect(document.body.textContent).toContain(t("setup.settings.mode.title"));
   expect(document.body.textContent).toContain(t("setup.settings.payments.title"));
   expect(document.body.textContent).toContain(t("setup.settings.includes.title"));
@@ -106,7 +113,9 @@ it("states all three tiers in one section", () => {
     />,
   );
   expect(host.textContent).toContain(t("setup.settings.section.mode.organizer"));
-  expect(host.textContent).toContain(t("setup.settings.section.payments.on"));
+  // the tournament under test is manual, so the payments line is the manual
+  // one: what payments on adds there is matching, not the whole machinery
+  expect(host.textContent).toContain(t("setup.settings.section.payments.manual.on"));
   expect(host.textContent).toContain(
     t("setup.settings.section.includes", {
       features: t("setup.settings.feature.extras").toLocaleLowerCase(),
@@ -237,4 +246,61 @@ it("turning a feature on is never warned", async () => {
   await settle();
 
   expect(flags).toHaveBeenCalled();
+});
+
+
+it("states both payment answers by what each gives, not by what it withholds", () => {
+  mount(
+    <TournamentSettingsDialog detail={detail()} onApplied={vi.fn()} onClose={vi.fn()} />,
+  );
+  const text = document.body.textContent ?? "";
+  expect(text).toContain(t("setup.settings.payments.consequence.automatic.squire"));
+  expect(text).toContain(t("setup.settings.payments.consequence.automatic.self"));
+  // neither answer is described as the other one turned off
+  expect(text).not.toMatch(/vypnut|nepoužívá|bez plateb/i);
+});
+
+it("says what payments do in the mode actually selected", () => {
+  // The setting means two different things. In automatic mode, payments on is
+  // the whole machinery. In manual mode the scheduler never sees the
+  // tournament and the roster arrived by import, so everything else is already
+  // suspended and what payments on adds is matching against the statement —
+  // which is the only thing an organizer in that mode wants to know.
+  mount(
+    <TournamentSettingsDialog detail={detail()} onApplied={vi.fn()} onClose={vi.fn()} />,
+  );
+  expect(document.body.textContent).toContain(
+    t("setup.settings.payments.consequence.automatic.squire"),
+  );
+
+  act(() => {
+    modeRadios()[1].click();
+  });
+
+  const text = document.body.textContent ?? "";
+  expect(text).toContain(t("setup.settings.payments.consequence.manual.squire"));
+  expect(text).not.toContain(t("setup.settings.payments.consequence.automatic.squire"));
+});
+
+it("choosing to handle payments yourself is written like any other flag", async () => {
+  const flags = vi
+    .spyOn(api, "setTournamentFlags")
+    .mockResolvedValue(detail({ feature_payments: false }));
+  mount(
+    <TournamentSettingsDialog
+      detail={detail({ feature_payments: true })}
+      onApplied={vi.fn()}
+      onClose={vi.fn()}
+    />,
+  );
+  act(() => {
+    paymentRadios()[1].click();
+  });
+  act(() => buttonNamed(t("setup.settings.apply"))?.click());
+  await settle();
+
+  expect(flags).toHaveBeenCalledWith(
+    "cup",
+    expect.objectContaining({ feature_payments: false }),
+  );
 });

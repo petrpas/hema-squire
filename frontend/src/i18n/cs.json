@@ -579,11 +579,35 @@
       },
       "payments": {
         "title": "Platby",
-        "label": "Platby řeší Squire",
-        "hint": "Squire přiděluje variabilní symboly, posílá pokyny k platbě s QR kódem, čte bankovní výpis a označuje, kdo zaplatil.",
+        "label": {
+          "automatic": {
+            "squire": "Platby řeší Squire",
+            "self": "Platby si řeším sám"
+          },
+          "manual": {
+            "squire": "Squire mi páruje platby podle výpisu",
+            "self": "Platby vedu úplně mimo Squire"
+          }
+        },
+        "hint": {
+          "automatic": {
+            "squire": "Squire přiděluje variabilní symboly, posílá pokyny k platbě s QR kódem, čte bankovní výpis a označuje, kdo zaplatil.",
+            "self": "Peníze vybíráš, jak chceš — na místě, vlastním QR kódem, přes klubový účet. Squire turnaj nacení a šermířům ukáže, kolik to stojí."
+          },
+          "manual": {
+            "squire": "Nahraješ výpis z účtu a Squire ho spáruje se soupiskou — podle variabilního symbolu, podle částky i podle jména, které plátce napsal. Nikomu nic neposílá: šermíři se hlásili jinde a Squire jim nikdy nepsal.",
+            "self": "Squire soupisku nacení, takže export nese, kdo kolik dluží. Kdo zaplatil, si vedeš tam, kde si to vedeš."
+          }
+        },
         "consequence": {
-          "on": "Squire si o peníze řekne, hlídá je a upomíná.",
-          "off": "Ceny se dál ukazují a počítají; peníze se vyřizují mimo Squire."
+          "automatic": {
+            "squire": "Squire obstarává platby, řekne si o peníze, hlídá je a upomíná.",
+            "self": "Platby si řešíš sám. Squire ceny spočítá a ukáže je šermířům; co přišlo, si hlídáš ty."
+          },
+          "manual": {
+            "squire": "Platby si řešíš sám. Squire ti může pomoct s párováním podle výpisu.",
+            "self": "Platby si řešíš sám. Squire soupisku nacení pro export a peněz se nedotkne."
+          }
         }
       },
       "includes": {
@@ -627,8 +651,14 @@
           "organizer": "Registrace tohoto turnaje vede pořadatel."
         },
         "payments": {
-          "on": "Platby řeší Squire.",
-          "off": "Platby se vyřizují mimo Squire."
+          "automatic": {
+            "on": "Platby řeší Squire.",
+            "off": "Platby si řeší pořadatel."
+          },
+          "manual": {
+            "on": "Squire páruje platby podle bankovního výpisu.",
+            "off": "Platby se vedou mimo Squire."
+          }
         },
         "includes": "Turnaj zahrnuje: {{features}}.",
         "includesNothing": "Turnaj nezahrnuje program, týmové disciplíny ani doplňkové služby.",

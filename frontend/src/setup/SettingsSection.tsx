@@ -35,10 +35,15 @@ export function SettingsSection({
     <section className="rail-card">
       <h2>{t("setup.settings.section.title")}</h2>
       <p>{t(`setup.settings.section.mode.${detail.registrations_kept_by}`)}</p>
+      {/* what payments means depends on the mode above it: in manual mode the
+          lifecycle is already suspended, so payments on adds reconciliation
+          and nothing else */}
       <p>
-        {detail.feature_payments
-          ? t("setup.settings.section.payments.on")
-          : t("setup.settings.section.payments.off")}
+        {t(
+          `setup.settings.section.payments.${
+            detail.registrations_kept_by === "organizer" ? "manual" : "automatic"
+          }.${detail.feature_payments ? "on" : "off"}`,
+        )}
       </p>
       <p>
         {included.length > 0

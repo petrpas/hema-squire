@@ -92,6 +92,15 @@ export function TournamentSettingsFields({
   const [error, setError] = useState<string | null>(null);
 
   const modeChanged = mode !== detail.registrations_kept_by;
+  // What the payments setting *does* depends on the mode above it, so the copy
+  // does too. In automatic mode, payments on is the whole machinery: variable
+  // symbols, instructions with a QR code, a window, reminders, expiry and
+  // reconciliation. In manual mode the scheduler never sees the tournament and
+  // the roster arrived by import, so all that is already suspended — what
+  // payments on then adds is reconciliation and nothing else. One line true of
+  // both would have to be vague about the only thing the organizer wants to
+  // know (spec payments, tournament-mode).
+  const modeKey = mode === "organizer" ? "manual" : "automatic";
   const held = detail.in_app_registrations ?? 0;
   // Turning a flag on is never warned — there is nothing to lose.
   const losing = (["feature_payments", ...TOURNAMENT_FEATURES] as const).filter(
@@ -203,25 +212,42 @@ export function TournamentSettingsFields({
           </div>
 
           {/* Tier 2 — payments. Beside the mode rather than among the three
-              below: it suspends machinery instead of hiding controls. */}
+              below: it suspends machinery instead of hiding controls, so it
+              is offered the way the mode is — two named answers, each stated
+              by what it gives the organizer rather than by what it withholds.
+              A checkbox would have made one of the two answers the absence of
+              the other, which is the shape this surface stopped using. */}
           <div className="settings-tier">
             <h3>{t("setup.settings.payments.title")}</h3>
-            <label className="qualification-option">
-              <input
-                type="checkbox"
-                checked={flags.feature_payments}
-                onChange={(event) =>
-                  setFlags({ ...flags, feature_payments: event.target.checked })
-                }
-              />
-              {t("setup.settings.payments.label")}
-              <HelpHint text={t("setup.settings.payments.hint")} />
-            </label>
-            <p className="rail-hint">
-              {flags.feature_payments
-                ? t("setup.settings.payments.consequence.on")
-                : t("setup.settings.payments.consequence.off")}
-            </p>
+            <div className="mode-options">
+              {([true, false] as const).map((value) => (
+                <div className="mode-option" key={String(value)}>
+                  <label className="qualification-option">
+                    <input
+                      type="radio"
+                      name="tournament-payments"
+                      checked={flags.feature_payments === value}
+                      onChange={() => setFlags({ ...flags, feature_payments: value })}
+                    />
+                    {t(
+                      `setup.settings.payments.label.${modeKey}.${value ? "squire" : "self"}`,
+                    )}
+                    <HelpHint
+                      text={t(
+                        `setup.settings.payments.hint.${modeKey}.${value ? "squire" : "self"}`,
+                      )}
+                    />
+                  </label>
+                  <p className="rail-hint">
+                    {t(
+                      `setup.settings.payments.consequence.${modeKey}.${
+                        value ? "squire" : "self"
+                      }`,
+                    )}
+                  </p>
+                </div>
+              ))}
+            </div>
           </div>
 
           {/* Tier 3 — what the tournament includes. No collective name and no

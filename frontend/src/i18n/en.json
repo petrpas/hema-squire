@@ -571,11 +571,35 @@
       },
       "payments": {
         "title": "Payments",
-        "label": "Squire handles the payments",
-        "hint": "Squire issues variable symbols, sends payment instructions with a QR code, reads the bank statement and marks who has paid.",
+        "label": {
+          "automatic": {
+            "squire": "Squire handles the payments",
+            "self": "I handle the payments myself"
+          },
+          "manual": {
+            "squire": "Squire matches the payments from the statement",
+            "self": "Payments stay outside Squire entirely"
+          }
+        },
+        "hint": {
+          "automatic": {
+            "squire": "Squire issues variable symbols, sends payment instructions with a QR code, reads the bank statement and marks who has paid.",
+            "self": "You collect the money however you like — cash on the day, a QR code of your own, a club account. Squire prices the tournament and shows fencers what it costs."
+          },
+          "manual": {
+            "squire": "You upload the bank statement and Squire matches it against the roster — by variable symbol, by amount, and by the name the payer wrote. It sends nobody anything: the fencers registered somewhere else, and Squire has never written to them.",
+            "self": "Squire prices the roster so the export carries what everyone owes. Who has paid is recorded wherever you record it."
+          }
+        },
         "consequence": {
-          "on": "Squire asks for the money, watches for it and chases it.",
-          "off": "Prices are still shown and still counted; the money is settled outside Squire."
+          "automatic": {
+            "squire": "Squire handles the payments: it asks for the money, watches for it and chases it.",
+            "self": "You handle the payments yourself. Squire still works out every price and shows it to the fencer; what arrives is yours to track."
+          },
+          "manual": {
+            "squire": "You handle the payments yourself. Squire can help by matching them against the bank statement.",
+            "self": "You handle the payments yourself. Squire prices the roster for the export and leaves the money alone."
+          }
         }
       },
       "includes": {
@@ -619,8 +643,14 @@
           "organizer": "The organizer keeps this tournament's registrations."
         },
         "payments": {
-          "on": "Squire handles the payments.",
-          "off": "Payments are settled outside Squire."
+          "automatic": {
+            "on": "Squire handles the payments.",
+            "off": "The organizer handles the payments."
+          },
+          "manual": {
+            "on": "Squire matches the payments from the bank statement.",
+            "off": "Payments are kept outside Squire."
+          }
         },
         "includes": "The tournament includes: {{features}}.",
         "includesNothing": "The tournament includes no schedule, team disciplines or extra services.",
