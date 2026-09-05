@@ -1,18 +1,20 @@
-import type { ReactNode } from "react";
+import { type ReactNode, useContext, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 
-/** The shell every payments queue draws itself in: a heading, the count of what
- *  it holds, and its rows.
+import { QueueTabsContext } from "./QueueTabs";
+
+/** The shell every payments queue draws itself in.
  *
- *  A queue with nothing in it renders its heading and a zero, and no body. The
- *  absence is stated rather than omitted — that is the console's idiom
- *  everywhere — but these four cards sit above the fencer table, not beside it
- *  in the rail, so a full "nothing here" card each would push the table down by
- *  four cards on the ordinary tournament where nothing is wrong (design
- *  add-payments-console-ui D1).
+ *  Inside `QueueTabs`, which is where the payments phase puts them, the card
+ *  has no heading of its own: the tab carries the title and the count, and a
+ *  heading under it would say the same thing twice. The card registers what it
+ *  holds, then renders nothing at all unless it is the tab being read.
  *
- *  Loading and failure are the same shape: one line, the card's own, so one
- *  queue failing leaves the other three and the table as they were.
+ *  Outside the tabs it is the card it always was — a heading, the count, and
+ *  its rows — which is what a queue shown on its own still needs.
+ *
+ *  Loading and failure are the same shape either way: one line, the card's own,
+ *  so one queue failing leaves the others and the table as they were.
  */
 export default function QueueCard({
   title,
@@ -30,19 +32,48 @@ export default function QueueCard({
   children?: ReactNode;
 }) {
   const { t } = useTranslation();
+  const tabs = useContext(QueueTabsContext);
+  const register = tabs?.register;
+  const unregister = tabs?.unregister;
+
+  useEffect(() => {
+    register?.(title, count, failed);
+  }, [register, title, count, failed]);
+
+  // withdrawing the tab is its own effect, not this one's cleanup: the one
+  // above re-runs on every count change, and unregistering there would send
+  // the queue to the back of the strip each time its number moved
+  useEffect(() => () => unregister?.(title), [unregister, title]);
+
+  const body = failed ? (
+    <p className="login-error">{t("payments.queue.failed")}</p>
+  ) : loading ? (
+    <p className="rail-hint">{t("common.loading")}</p>
+  ) : null;
+
+  if (tabs !== null) {
+    if (tabs.active !== title) return null;
+    return (
+      <section
+        className="rail-card queue-card"
+        role="tabpanel"
+        id={`queue-tabpanel-${title}`}
+        aria-labelledby={`queue-tab-${title}`}
+      >
+        {/* an empty queue says so rather than showing an empty frame: its tab
+            already states the zero, and a blank panel reads as a fault */}
+        {body ?? (count === 0 ? <p className="rail-hint">{t("payments.queue.empty")}</p> : children)}
+      </section>
+    );
+  }
+
   return (
     <section className={`rail-card queue-card${count === 0 ? " queue-card-empty" : ""}`}>
       <div className="rail-card-heading">
         <h2>{title}</h2>
         {count !== null && <span className="rail-count">{count}</span>}
       </div>
-      {failed ? (
-        <p className="login-error">{t("payments.queue.failed")}</p>
-      ) : loading ? (
-        <p className="rail-hint">{t("common.loading")}</p>
-      ) : (
-        count !== 0 && children
-      )}
+      {body ?? (count !== 0 && children)}
     </section>
   );
 }

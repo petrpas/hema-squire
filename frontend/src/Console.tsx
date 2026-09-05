@@ -8,6 +8,7 @@ import DedupView from "./dedup/DedupView";
 import ExportPanel from "./ExportPanel";
 import { IDENTITY_COLUMNS, identityValue, usesHRIdentity } from "./identity";
 import ImportPanel from "./ImportPanel";
+import QueueTabs, { QueueTabStrip } from "./payments/QueueTabs";
 import IssueOnArrival from "./payments/IssueOnArrival";
 import MatchDialog from "./MatchDialog";
 import MatchPanel from "./MatchPanel";
@@ -199,8 +200,14 @@ export function rowsForPhase(rows: SheetRow[], phase: Phase): SheetRow[] {
  *  come back, which is why it is listed at all — except an absorbed one, whose
  *  removal is not its own to reverse: a merge is undone by withdrawing the
  *  merge, and restoring the row alone would leave it un-deleted and still
- *  merged (spec etl-console, Reversible row deletion). */
-export function rowAction(row: SheetRow): "delete" | "restore" | null {
+ *  merged (spec etl-console, Reversible row deletion).
+ *
+ *  Nothing is offered on Payments. Taking a fencer off the list is a decision
+ *  about the roster, made where the roster is worked; the payments table states
+ *  who has paid, and a delete sitting at the end of a row about money reads as
+ *  an action on the money. */
+export function rowAction(row: SheetRow, phase: Phase): "delete" | "restore" | null {
+  if (phase === "payments") return null;
   if (row._merged_into !== undefined) return null;
   return row._deleted ? "restore" : "delete";
 }
@@ -536,6 +543,12 @@ export default function Console({
             timezone={detail?.timezone ?? null}
           />
         ) : (
+          /* the tabs' state lives above the table, because the fencer list is
+             the first of them and gives way to whichever queue is read. Keyed
+             by phase: the tabs belong to Payments, and a selection carried into
+             a phase that draws no queues would leave the table hidden behind a
+             tab that is not there */
+          <QueueTabs key={phase} primary={t("payments.tabs.fencers")}>
           <SheetArea
             phase={phase}
             queues={
@@ -552,9 +565,12 @@ export default function Console({
                   <IssueOnArrival slug={tournament.slug} onIssued={refresh} />
                 </>
               ) : phase === "payments" ? (
+                /* one table at a time: the fencer list and four queues stacked
+                   could not be read as five different things. Proposals lead
+                   the queues — the one with the most work in it and the one an
+                   organizer empties fastest */
                 <>
-                  {/* proposals first: they are the queue with the most work in
-                      it and the one an organizer empties fastest */}
+                  <QueueTabStrip />
                   <LikelyPanel
                     slug={tournament.slug}
                     reload={queueReload}
@@ -602,6 +618,7 @@ export default function Console({
             onRatify={ratifyMatch}
             onSearch={setMatchRow}
           />
+          </QueueTabs>
         )}
 
         <aside className="rail">

@@ -895,9 +895,31 @@ button.secondary:disabled {
 }
 
 /* an empty queue is its heading and nothing else: four of them on a clean
-   tournament must not push the fencer table off the first screen */
+   tournament must not push the fencer table off the first screen. Only
+   reachable outside the tabs — inside them a queue shows one at a time */
 .sheet-queues .queue-card-empty {
   padding: 0.3rem 1rem;
+}
+
+/* the tab strip sits on the queues' own rule, so the panel below reads as
+   hanging off the tab rather than floating under it */
+/* The fencer list is not one of the queues. It answers "who has paid"; they
+   are the exceptions to it, and a row means something different in each. Two
+   ems of air says so before the reader has to work it out from the columns.
+   Two boxes rather than one with a gap: the strip's rule is drawn around the
+   whole of it, and a margin inside would run the top and bottom lines straight
+   through the air meant to separate them. */
+.queue-tabs {
+  display: flex;
+  align-self: flex-start;
+  gap: 2em;
+}
+
+/* one table at a time, and the fencer table gives way to it, so the stack's
+   scroll cap has nothing left to protect: capping the queue here would cut it
+   off mid-row over empty space */
+.sheet-queues:has(.queue-tabs) {
+  max-height: none;
 }
 
 .queue-card-empty .rail-card-heading {

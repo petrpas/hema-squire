@@ -14,6 +14,7 @@ import {
 } from "./Console";
 import EditableCell from "./EditableCell";
 import { usesHRIdentity } from "./identity";
+import { useSheetVisible } from "./payments/QueueTabs";
 import MatchCell from "./MatchCell";
 import SettledCell from "./SettledCell";
 import type { FieldError } from "./validation";
@@ -81,6 +82,7 @@ export default function SheetArea({
 }) {
   const { t } = useTranslation();
   const hrIdentity = usesHRIdentity(phase);
+  const sheetVisible = useSheetVisible();
 
   return (
     <main className="sheet-area">
@@ -95,6 +97,10 @@ export default function SheetArea({
 
       {queues && <div className="sheet-queues">{queues}</div>}
 
+      {/* on the payments phase the table is itself a tab, and gives way to
+          whichever queue is being read. Everywhere else there are no tabs and
+          it is always what the phase shows */}
+      {sheetVisible && (
       <div className="sheet-scroll">
         {error ? (
           <p className="sheet-empty">{t("console.error")}</p>
@@ -187,7 +193,8 @@ export default function SheetArea({
                     );
                   })}
                   <td className="col-actions">
-                    {rowAction(row) === null ? null : rowAction(row) === "restore" ? (
+                    {rowAction(row, phase) === null ? null : rowAction(row, phase) ===
+                      "restore" ? (
                       <button
                         className="row-action"
                         title={t("actions.restore")}
@@ -211,8 +218,9 @@ export default function SheetArea({
           </table>
         )}
       </div>
+      )}
 
-      {!error && visibleRows.length > 0 && (
+      {sheetVisible && !error && visibleRows.length > 0 && (
         <div className="doc-footer">
           <span>
             {t("console.footerStats", { rows: activeRows.length, paid: paidCount })}

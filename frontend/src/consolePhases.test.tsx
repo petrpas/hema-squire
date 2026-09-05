@@ -184,16 +184,25 @@ describe("an absorbed row in the Import view", () => {
 
 describe("what a row offers to have done to it", () => {
   it("offers to delete a live row", () => {
-    expect(rowAction(row("reg:1"))).toBe("delete");
+    expect(rowAction(row("reg:1"), "fencers")).toBe("delete");
   });
 
   it("offers to bring back a deleted one", () => {
-    expect(rowAction(row("reg:1", { _deleted: true, _removed_in: "fencers" }))).toBe("restore");
+    expect(rowAction(row("reg:1", { _deleted: true, _removed_in: "fencers" }), "fencers")).toBe(
+      "restore",
+    );
   });
 
   it("offers nothing on an absorbed row, whose removal is the merge's to undo", () => {
     // restoring it alone would leave it un-deleted and still merged
-    expect(rowAction(row("imp:d2bb", { _deleted: true, _merged_into: "reg:7" }))).toBeNull();
+    expect(
+      rowAction(row("imp:d2bb", { _deleted: true, _merged_into: "reg:7" }), "dedup"),
+    ).toBeNull();
+  });
+
+  it("offers nothing on the payments table, where fencers are not deleted", () => {
+    // a delete at the end of a row about money reads as an action on the money
+    expect(rowAction(row("reg:1"), "payments")).toBeNull();
   });
 
   it("offers to bring back every removed row a phase lists, and no other", () => {
@@ -204,10 +213,12 @@ describe("what a row offers to have done to it", () => {
     ];
     const restorable = (phase: Phase) =>
       rowsForPhase(rows, phase)
-        .filter((r) => rowAction(r) === "restore")
+        .filter((r) => rowAction(r, phase) === "restore")
         .map((r) => r.id);
     expect(restorable("fencers")).toEqual(["reg:2", "reg:3"]);
-    expect(restorable("payments")).toEqual(["reg:3"]);
+    // Payments offers nothing on a row at all; a row removed there is still
+    // listed, and is brought back from the phase the roster is worked on
+    expect(restorable("payments")).toEqual([]);
     expect(restorable("export")).toEqual([]);
   });
 });
