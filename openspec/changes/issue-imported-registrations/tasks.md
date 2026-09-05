@@ -76,7 +76,11 @@ Manual linking addresses a registration by its symbol and by nothing else, so
 removing the symbol first takes away the organizer's only way to reconcile a
 payment and gives nothing back. The two land together.
 
-- [ ] 7.1 Allocate the variable symbol in `issuing.py` only where the tournament's registrations are Squire's; on a manual one create the registration with its price, its entries and its dormant clocks and no symbol
-- [ ] 7.2 Sweep every surface that reads `Registration.vs` for code that treats its absence as "no registration". `SettledCell` did exactly that and was fixed on 2026-09-05; the sheet row, the export, the payment-event details (`f"VS {registration.vs}"`) and the console's money columns are the rest of the list
-- [ ] 7.3 Tests: a manual tournament issues registrations with prices and no symbols, and the tournament's sequence has not advanced; a Squire-kept one is unchanged and still issues one symbol per row
+- [x] 7.1 `issuing.py` allocates a symbol only where the registrations are Squire's. The collision retry goes with it: with nothing allocated there is nothing to collide, so a failure there is something else and retrying would hide it
+- [x] 7.2 Swept. The payment-event details printed `VS None` in nine places across four modules; `Registration.audit_label` now answers that question once — the symbol where there is one, the fencer where there is not — and `matching.py`'s local copy of the same idea folded into it. The sheet row, the export and the money columns already carried a nullable symbol and needed nothing
+
+- [x] 7.2b **Found by the sweep, and it is the one that mattered.** `_payment_mail_suppressed` guarded only on the payments setting, so crediting an *issued* registration mailed its fencer. Dormancy stops the scheduler; it did not stop the organizer. Confirming this pilot's 43 proposals would have sent 43 payment-received messages to people who registered elsewhere a season ago, from a system that has never written to them — saying `VS None`. The guard is now per registration: a dormant one is matched, linked and credited exactly as before, and told nothing.
+
+  The spec named reminders and expiry notices, which are what the scheduler sends, and said an issued registration is "seated and silent". It did not say what a credit does, because crediting is expressly allowed. That gap is what this closes
+- [x] 7.3 Four tests in `test_issuing.py`: a manual tournament issues priced, dormant, seated registrations with no symbols and does not advance the sequence; a Squire-kept one still issues one distinct symbol per row; and an issued registration is credited silently while an ordinary one is still told
 - [ ] 7.4 Restate Decision 4's deduplication gate on the ground that survives — a merge collapses rows, so merging after issuing leaves two registrations for one fencer — or relax it to a warning, which is what the weaker argument supports. Decide when the gate is next touched rather than now

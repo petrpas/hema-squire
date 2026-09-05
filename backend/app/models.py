@@ -703,6 +703,20 @@ class Registration(Base):
         )
 
     @property
+    def audit_label(self) -> str:
+        """How this registration names itself in an audit line or an event.
+
+        Its variable symbol where it has one, because that is what an organizer
+        reading a bank statement sees. Where it has none — a registration on a
+        tournament whose organizer keeps the roster, which Squire never gave a
+        symbol to quote — the fencer, which is what identifies it there. Never
+        "VS None", which is a line that says the symbol is missing rather than
+        that there was never one to miss."""
+        if self.vs is not None:
+            return f"VS {self.vs}"
+        return f"registrace {self.id} ({self.fencer.display_name})"
+
+    @property
     def outstanding_cents(self) -> int:
         return self.total_amount * 100 - self.amount_paid_cents
 

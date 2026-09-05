@@ -638,3 +638,100 @@ def test_clearing_is_refused_while_an_issued_registration_holds_credit(
     assert response.status_code == 409
     assert response.json()["detail"]["code"] == "credited_registrations"
     assert len(registrations()) == 1
+
+
+# ----------------------------- the symbol belongs to the automatic path
+
+
+def kept_by_organizer():
+    from app.models import RegistrationsKeptBy, Tournament
+
+    session = db_session()
+    tournament = session.scalar(select(Tournament).where(Tournament.slug == "cup"))
+    tournament.registrations_kept_by = RegistrationsKeptBy.ORGANIZER
+    session.commit()
+
+
+def next_sequence():
+    from app.models import Tournament
+
+    return db_session().scalar(select(Tournament.vs_next_seq).where(Tournament.slug == "cup"))
+
+
+def test_a_manual_tournament_issues_no_variable_symbols(client, auth_headers, mailbox):
+    """A symbol is what Squire tells a fencer to quote. On a tournament whose
+    organizer keeps the registrations it has told them nothing, so a symbol
+    minted here would match no payment while consuming a number from a sequence
+    that is unique across the deployment and never reused."""
+    organizer = auth_headers()
+    setup(client, organizer)
+    import_roster(client, organizer, [row("Jan Novak", "jan@example.com")])
+    kept_by_organizer()
+    before = next_sequence()
+
+    assert issue(client, organizer)["issued"] == 1
+
+    issued = registrations()
+    assert issued and all(r.vs is None for r in issued)
+    assert next_sequence() == before, "the sequence has not moved"
+
+
+def test_a_manual_registration_is_still_priced_and_dormant(client, auth_headers, mailbox):
+    organizer = auth_headers()
+    setup(client, organizer)
+    import_roster(client, organizer, [row("Jan Novak", "jan@example.com")])
+    kept_by_organizer()
+    issue(client, organizer)
+
+    (registration,) = registrations()
+    assert registration.total_amount > 0
+    assert registration.clocks_dormant
+    assert registration.expires_at is None
+    assert [e.is_substitute for e in registration.entries] == [False]
+
+
+def test_a_squire_kept_tournament_still_issues_one_symbol_per_row(
+    client, auth_headers, mailbox
+):
+    organizer = auth_headers()
+    setup(client, organizer)
+    import_roster(
+        client,
+        organizer,
+        [row("Jan Novak", "jan@example.com"), row("Eva Dvorak", "eva@example.com")],
+    )
+    issue(client, organizer)
+
+    symbols = [r.vs for r in registrations()]
+    assert all(vs is not None for vs in symbols)
+    assert len(set(symbols)) == len(symbols)
+
+
+def test_an_issued_registration_is_never_told_about_a_credit(client, auth_headers, mailbox):
+    """The hazard dormancy does not cover: crediting an issued registration is
+    expressly allowed, so an organizer reconciling last season's statement would
+    have mailed the whole roster by confirming each payment. The dormant clocks
+    stop the scheduler, not the organizer."""
+    from app import emails
+    from app.models import Tournament
+
+    organizer = auth_headers()
+    setup(client, organizer)
+    import_roster(client, organizer, [row("Jan Novak", "jan@example.com")])
+    issue(client, organizer)
+
+    session = db_session()
+    tournament = session.scalar(select(Tournament).where(Tournament.slug == "cup"))
+    tournament.feature_payments = True
+    (registration,) = session.scalars(select(Registration)).all()
+    session.commit()
+    mailbox.sent.clear()
+
+    emails.send_payment_received(mailbox, tournament, registration.fencer, registration)
+    assert mailbox.sent == [], "an issued registration is credited silently"
+
+    # and an ordinary registration is still told
+    registration.clocks_dormant = False
+    session.commit()
+    emails.send_payment_received(mailbox, tournament, registration.fencer, registration)
+    assert len(mailbox.sent) == 1

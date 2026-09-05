@@ -605,16 +605,6 @@ def linked_registrations(
     return found
 
 
-def _registration_label(registration: Registration) -> str:
-    """How a registration is named in an audit line. Its variable symbol where
-    it has one, because that is what an organizer reading a statement sees;
-    otherwise the fencer, which is what identifies it on a tournament that
-    issues no symbols."""
-    if registration.vs is not None:
-        return f"VS {registration.vs}"
-    return f"registration {registration.id} ({registration.fencer.display_name})"
-
-
 def credit_key(registration: Registration) -> str:
     """How a rule records what it credited to one registration, so that removing
     it reverts exactly what happened.
@@ -745,7 +735,7 @@ def unapply_payment_link(session: Session, tournament: Tournament, rule) -> None
                 transaction_id=transaction.id if transaction else None,
                 kind="manual_link_removed",
                 detail=(
-                    f"rule {rule.id}: {_registration_label(registration)}"
+                    f"rule {rule.id}: {registration.audit_label}"
                     f" back to reserved ({amount} cents)"
                 ),
             )

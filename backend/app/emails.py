@@ -95,13 +95,35 @@ def _account_text(tournament: Tournament) -> str:
     return accounts.display(tournament.bank_account)
 
 
-def _payment_mail_suppressed(tournament: Tournament) -> bool:
-    """Whether this tournament's payment mail is not sent at all. With the
-    payments feature off Squire requests no money, so a reminder, an expiry
-    notice, a surcharge or a payment-received message has nothing to be about
-    (spec payments). Guarded here, at the one place every such
-    message is composed, rather than at each of the several callers."""
-    return not tournament.feature_payments
+def _payment_mail_suppressed(
+    tournament: Tournament, registration: Registration | None = None
+) -> bool:
+    """Whether this payment message is not sent at all. Guarded here, at the one
+    place every such message is composed, rather than at each of the several
+    callers.
+
+    Two reasons, and the second is per registration.
+
+    With the payments feature off Squire requests no money, so a reminder, an
+    expiry notice, a surcharge or a payment-received message has nothing to be
+    about (spec payments).
+
+    And **a registration whose clocks are dormant is never written to at all**.
+    Those are rows issued from an imported list: people who registered through
+    somebody else's form, often a season ago, often having already paid, and to
+    whom Squire has never sent anything. The spec names reminders and expiry
+    notices, which the scheduler would have sent; this is the same silence on
+    the path a person triggers, and it is the one that would actually have
+    fired — crediting an issued registration is expressly allowed, so an
+    organizer reconciling last season's statement would have mailed the whole
+    roster by clicking Confirm forty-three times.
+
+    What is dormant is the passage of time and not the money: such a
+    registration is still matched, still linked and still credited. It is only
+    not told."""
+    if not tournament.feature_payments:
+        return True
+    return registration is not None and registration.clocks_dormant
 
 
 def _send_confirmation_without_payment(
@@ -235,7 +257,7 @@ def payment_qrs(
 def send_payment_reminder(
     mailer: Mailer, tournament: Tournament, fencer: Fencer, registration: Registration
 ) -> None:
-    if _payment_mail_suppressed(tournament):
+    if _payment_mail_suppressed(tournament, registration):
         return
     lang = tournament.language
     subject = t("email.reminder.subject", lang, tournament=tournament.display_name)
@@ -270,7 +292,7 @@ def send_reservation_expired(
     while carrying a partial payment (design harden-payment-matching
     Decision 3): it states the organizer holds the money and will be in
     contact, and never implies the money is lost or promises a seat."""
-    if _payment_mail_suppressed(tournament):
+    if _payment_mail_suppressed(tournament, registration):
         return
     lang = tournament.language
     if holding_payment:
@@ -299,7 +321,7 @@ def send_reservation_expired(
 def send_payment_received(
     mailer: Mailer, tournament: Tournament, fencer: Fencer, registration: Registration
 ) -> None:
-    if _payment_mail_suppressed(tournament):
+    if _payment_mail_suppressed(tournament, registration):
         return
     lang = tournament.language
     subject = t("email.paid.subject", lang, tournament=tournament.display_name)
@@ -325,7 +347,7 @@ def send_partial_payment_received(
     outstanding in the currency this payment credited, rather than being left
     to work the difference out themselves (design harden-payment-matching
     Decision 3)."""
-    if _payment_mail_suppressed(tournament):
+    if _payment_mail_suppressed(tournament, registration):
         return
     lang = tournament.language
     if which == "local":
@@ -405,7 +427,7 @@ def send_surcharge_due(
     the difference in each currency, against the same VS the fencer already
     paid once. The two currencies' outstanding amounts are independent —
     a price change need not move both the same way."""
-    if _payment_mail_suppressed(tournament):
+    if _payment_mail_suppressed(tournament, registration):
         return
     lang = tournament.language
     outstanding_local = (Decimal(registration.outstanding_cents) / 100).quantize(
@@ -519,7 +541,7 @@ def send_reservation_reinstated(
     grace period: one message combining the reinstatement and the payment,
     consistent with the registration already showing as paid by the time this
     is sent (matching.match_new_transactions, routers/payments.reinstate)."""
-    if _payment_mail_suppressed(tournament):
+    if _payment_mail_suppressed(tournament, registration):
         return
     lang = tournament.language
     subject = t("email.reinstated.subject", lang, tournament=tournament.display_name)
@@ -540,7 +562,7 @@ def send_payment_after_expiry(
     """A payment that could not be reinstated automatically — outside grace,
     or the seat is gone. States plainly that it arrived and that the organizer
     will follow up; it must not promise a seat that may no longer exist."""
-    if _payment_mail_suppressed(tournament):
+    if _payment_mail_suppressed(tournament, registration):
         return
     lang = tournament.language
     subject = t("email.afterExpiry.subject", lang, tournament=tournament.display_name)

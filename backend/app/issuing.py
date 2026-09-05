@@ -37,6 +37,7 @@ from app.models import (
     Fencer,
     Registration,
     RegistrationDiscipline,
+    RegistrationsKeptBy,
     RegistrationState,
     Tournament,
 )
@@ -202,6 +203,7 @@ def _issue_one(
             # discovering that this row can never be issued
             return EMAIL_TAKEN
 
+    squire_keeps = tournament.registrations_kept_by is RegistrationsKeptBy.SQUIRE
     for attempt in range(5):
         registration = Registration(
             tournament=tournament,
@@ -209,7 +211,18 @@ def _issue_one(
             source_row_id=row["id"],
             state=RegistrationState.RESERVED,
             registered_at=_registration_time(row),
-            vs=next_vs(session, tournament),
+            # A variable symbol is a shortcut: quoted on a payment, it finds
+            # the registration without anybody reading the message. Squire tells
+            # a fencer to quote one — and on a tournament whose registrations
+            # the organizer keeps it has told them nothing, because they
+            # registered through the organizer's own form and paid against
+            # whatever that form said. A symbol minted here would appear on no
+            # statement and shorten nothing, while consuming a number from a
+            # sequence that is unique across the deployment and never reused
+            # (spec, "A variable symbol is issued only where Squire keeps the
+            # registrations"). Such a payment is resolved from the payer's own
+            # words instead (`name-assisted-matching`).
+            vs=next_vs(session, tournament) if squire_keeps else None,
             # the whole point of the mark: no window, no reminder, no expiry,
             # no demotion at the seating deadline (spec, "An issued
             # registration's clocks never start")
@@ -239,9 +252,11 @@ def _issue_one(
         except IntegrityError:
             # a VS collision retries with the next number, exactly as
             # `routers.registrations.register` does — the unique constraint is
-            # the backstop that turns a counter race into a retry
+            # the backstop that turns a counter race into a retry. With no
+            # symbol allocated there is nothing to collide, so a failure here
+            # is something else and retrying would only hide it
             session.rollback()
-            if attempt == 4:
+            if attempt == 4 or not squire_keeps:
                 raise
     else:  # pragma: no cover - the loop always breaks or raises
         raise RuntimeError("vs allocation exhausted its retries")

@@ -804,7 +804,7 @@ def amend_registration(
             tournament_id=tournament.id,
             registration_id=registration.id,
             kind="registration_amended",
-            detail=f"VS {registration.vs}: {previous_total} -> {registration.total_amount}",
+            detail=f"{registration.audit_label}: {previous_total} -> {registration.total_amount}",
         )
     )
     session.commit()
@@ -940,7 +940,7 @@ def mark_settled(
             kind=MARK_SETTLED if settled else UNMARK_SETTLED,
             # who said so: a roster stating that someone has paid can always
             # answer who said it and when (design D3)
-            detail=f"VS {registration.vs}: {fencer.display_name} <{fencer.email}>",
+            detail=f"{registration.audit_label}: {fencer.display_name} <{fencer.email}>",
         )
     )
     session.commit()
@@ -1006,7 +1006,10 @@ def admit_substitute(
                 tournament_id=tournament.id,
                 registration_id=registration.id,
                 kind="registration_promoted",
-                detail=f"VS {registration.vs}: {previous_total} -> {registration.total_amount}",
+                detail=(
+                    f"{registration.audit_label}:"
+                    f" {previous_total} -> {registration.total_amount}"
+                ),
             )
         )
     session.commit()
@@ -1072,7 +1075,7 @@ def return_to_queue(
             tournament_id=tournament.id,
             registration_id=registration.id,
             kind="returned_to_queue",
-            detail=f"VS {registration.vs}: {discipline_slug}",
+            detail=f"{registration.audit_label}: {discipline_slug}",
         )
     )
     session.commit()

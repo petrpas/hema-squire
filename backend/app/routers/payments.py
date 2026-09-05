@@ -568,7 +568,7 @@ def reinstate_transaction(
             registration_id=registration.id,
             transaction_id=transaction.id,
             kind="reinstated_by_organizer",
-            detail=f"VS {registration.vs}: reinstated by organizer",
+            detail=f"{registration.audit_label}: reinstated by organizer",
         )
     )
     session.commit()

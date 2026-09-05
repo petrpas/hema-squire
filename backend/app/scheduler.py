@@ -86,7 +86,7 @@ def process_reminders(session: Session, tournament: Tournament, mailer: Mailer) 
                 tournament_id=tournament.id,
                 registration_id=registration.id,
                 kind="reminder_sent",
-                detail=f"VS {registration.vs}",
+                detail=registration.audit_label,
             )
         )
         emails.send_payment_reminder(mailer, tournament, registration.fencer, registration)
@@ -139,7 +139,7 @@ def process_expiries(session: Session, tournament: Tournament, mailer: Mailer) -
                     tournament_id=tournament.id,
                     registration_id=registration.id,
                     kind="promotion_lapsed",
-                    detail=f"VS {registration.vs}",
+                    detail=registration.audit_label,
                 )
             )
         session.commit()
@@ -158,7 +158,7 @@ def process_expiries(session: Session, tournament: Tournament, mailer: Mailer) -
                     tournament_id=tournament.id,
                     registration_id=registration.id,
                     kind="seat_lapsed_to_queue",
-                    detail=f"VS {registration.vs}",
+                    detail=registration.audit_label,
                 )
             )
             continue
@@ -172,7 +172,7 @@ def process_expiries(session: Session, tournament: Tournament, mailer: Mailer) -
                 tournament_id=tournament.id,
                 registration_id=registration.id,
                 kind="expired_holding_payment" if holding_payment else "reservation_expired",
-                detail=f"VS {registration.vs}",
+                detail=registration.audit_label,
             )
         )
         emails.send_reservation_expired(
@@ -282,7 +282,7 @@ def settle_seating(session: Session, tournament: Tournament) -> int:
                 tournament_id=tournament.id,
                 registration_id=registration.id,
                 kind="seating_demoted",
-                detail=f"VS {registration.vs}",
+                detail=registration.audit_label,
             )
         )
     tournament.seating_settled_at = _now()
