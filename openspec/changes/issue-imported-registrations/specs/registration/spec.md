@@ -12,9 +12,11 @@ The seating deadline SHALL NOT be expressed as a payment window on individual re
 
 A registration holding no substitute placement SHALL expire on a lapsed payment window exactly as it does today.
 
-**Both clocks SHALL be dormant while the tournament's payments feature is off.** Such a registration SHALL be seated on the same capacity terms as any other, SHALL carry no due date, SHALL open no payment window, and SHALL never expire for non-payment. Its total SHALL still be computed and presented, as a statement of what the tournament costs rather than a demand, and it SHALL be presented to the fencer as confirmed rather than as awaiting payment. No payment mode SHALL apply to it: the mode describes how money is collected, and no money is being collected.
+**Both clocks SHALL be dormant while the tournament's payments feature is off**, and dormancy SHALL reach every lifecycle pass alike, as fixed by **One dormancy predicate governs the lifecycle passes**. Such a registration SHALL be seated on the same capacity terms as any other, SHALL carry no due date, SHALL open no payment window, SHALL never expire for non-payment, and **SHALL NOT be demoted to the substitute queue when the seating deadline passes**. A seat given without asking for money SHALL NOT be lost for money not paid. Its total SHALL still be computed and presented, as a statement of what the tournament costs rather than a demand, and it SHALL be presented to the fencer as confirmed rather than as awaiting payment. No payment mode SHALL apply to it: the mode describes how money is collected, and no money is being collected.
 
-A registration issued for an imported or manually entered row SHALL have both clocks dormant by virtue of its origin, permanently, whatever the tournament's payments feature, payment mode or seating deadline says at any time. It SHALL carry no due date, SHALL open no payment window, SHALL never expire for non-payment, and SHALL never be sent a reminder or an expiry notice. Its total SHALL still be computed, stored and presented, and it SHALL still be matched and credited like any other registration: what its origin makes dormant is the passage of time, not the money. The row it came from stated who was competing and, often, that they had already paid; a clock started long afterwards would demand money from people who owe none and mail people who registered a season ago (`imported-registrations`).
+Dormancy SHALL suspend the demotion, never the closing of seating. A tournament whose registrations are all dormant SHALL still settle its seating on its deadline and SHALL still place subsequent registrations in the queue rather than in seats, because seats are finite whether or not they were paid for; settlement SHALL simply find no registration to move.
+
+A registration issued for an imported or manually entered row SHALL have both clocks dormant **by virtue of its origin**, permanently, whatever the tournament's payments setting, payment mode or seating deadline says at any time. That origin SHALL be one of the causes the predicate above answers with, and it SHALL outlast every setting the others depend on: turning payments on, changing the payment mode or moving the seating deadline SHALL NOT wake it. It SHALL carry no due date, SHALL open no payment window, SHALL never expire for non-payment, SHALL never be demoted when seating settles, and SHALL never be sent a reminder or an expiry notice. Its total SHALL still be computed, stored and presented, and it SHALL still be matched and credited like any other registration: what its origin makes dormant is the passage of time, not the money. The row it came from stated who was competing and, often, that they had already paid; a clock started long afterwards would demand money from people who owe none and mail people who registered a season ago (`imported-registrations`).
 
 A registration taken while payments were off SHALL NOT acquire a due date retroactively when the payments feature is turned on. It SHALL remain seated and SHALL NOT expire on account of a window that never opened; what becomes of it is the organizer's decision.
 
@@ -60,6 +62,14 @@ An expired reservation SHALL NOT bar the fencer from the tournament. A fencer wh
 - **WHEN** the scheduler runs against a payments-off tournament long after any configured payment window would have closed
 - **THEN** no registration expires, no capacity is freed, and no expiry notice is sent
 
+#### Scenario: Payments-off registration keeps its seat past the seating deadline
+- **WHEN** the seating deadline passes on a payments-off tournament holding seated registrations
+- **THEN** none of them is demoted, every seat is kept, and no capacity is freed
+
+#### Scenario: Seating still closes on a payments-off tournament
+- **WHEN** the seating deadline has passed on a payments-off tournament and a fencer registers afterwards
+- **THEN** that registration is placed in the substitute queue rather than seated, exactly as it would be on a tournament that collects
+
 #### Scenario: Turning payments on does not expire what came before
 - **WHEN** a tournament that took registrations with payments off turns payments on and the scheduler runs
 - **THEN** those registrations remain seated, none expires, and none is sent an expiry notice
@@ -81,5 +91,5 @@ An expired reservation SHALL NOT bar the fencer from the tournament. A fencer wh
 - **THEN** none of them expires, no capacity is freed, and none is sent an expiry notice or a reminder
 
 #### Scenario: Configuration cannot wake an issued registration's clocks
-- **WHEN** the payments feature is turned on, or the payment mode or the seating deadline is changed, after registrations have been issued
-- **THEN** those registrations remain seated, acquire no due date, and are sent nothing
+- **WHEN** the payments setting is turned on, or the payment mode or the seating deadline is changed, after registrations have been issued
+- **THEN** those registrations remain seated, acquire no due date, are not demoted when seating settles, and are sent nothing

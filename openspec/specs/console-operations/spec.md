@@ -5,11 +5,9 @@ Govern long-running console work — LLM table parsing, HR matching, deduplicati
 records owned by the tournament rather than as requests owned by a browser tab, so that
 progress, refusal, outcome and recovery survive a reload, a second organizer, and a
 restart of the process.
-
 ## Requirements
-
 ### Requirement: An operation is a record, not a request
-Console work that calls an LLM — parsing an imported table, matching against the fighters index, deduplicating — SHALL be recorded as an operation of the tournament before it begins. The record SHALL state which tournament it belongs to, which kind of work it is, how many units of work it expects, how many it has completed, when it started, and which organizer started it.
+Console work that calls an LLM — parsing an imported table, interpreting an imported bank statement, matching against the fighters index, deduplicating — SHALL be recorded as an operation of the tournament before it begins. The record SHALL state which tournament it belongs to, which kind of work it is, how many units of work it expects, how many it has completed, when it started, and which organizer started it.
 
 The request that starts an operation SHALL return as soon as the record exists, without waiting for the work. The work SHALL proceed independently of that request, and SHALL neither stop nor change when the client abandons the response.
 
@@ -30,6 +28,10 @@ Everything the console knows about an operation SHALL come from the record. No p
 #### Scenario: Abandoned response does not stop the work
 - **WHEN** the organizer closes the tab while an import is parsing
 - **THEN** the parsing continues to its end and the record shows it concluded
+
+#### Scenario: A statement interpreted in the background
+- **WHEN** the organizer uploads a bank statement the system must interpret
+- **THEN** it is recorded as an operation before the interpreting begins, and reported like any other
 
 ### Requirement: Progress is counted and stated in units of work
 An operation SHALL state its total when it starts and SHALL raise its completed count as work lands. The total SHALL count the work the operation will actually do, not the size of what it was pointed at: rows whose decision is already stored are reused rather than worked on and SHALL NOT be counted.
@@ -108,3 +110,4 @@ Interruption SHALL be reported as work that stopped partway and can be finished 
 #### Scenario: Interruption is not failure
 - **WHEN** an interrupted operation is reported
 - **THEN** the console states that the work stopped partway and that running it again will finish it
+

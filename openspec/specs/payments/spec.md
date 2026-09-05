@@ -55,11 +55,15 @@ When a transaction's VS resolves to a registration belonging to a **different** 
 - **THEN** it resolves to its registration and matches exactly as it did before
 
 ### Requirement: Bank transaction ingestion
-The system SHALL ingest transactions via the Fio bank REST API on a schedule and via manual statement import (CSV). Ingestion SHALL be idempotent: each transaction is processed at most once.
+The system SHALL ingest transactions via the Fio bank REST API on a schedule and via manual statement import. A manually imported statement SHALL be accepted whatever bank produced it, as a CSV or XLSX table, rather than only in the Fio export format. Ingestion SHALL be idempotent: each transaction is processed at most once, including where the statement carries no identifier of the bank's own.
 
 #### Scenario: Overlapping statement re-import
 - **WHEN** the organizer imports a statement overlapping already-ingested transactions
 - **THEN** no transaction is matched or counted twice
+
+#### Scenario: A statement from another bank
+- **WHEN** the organizer imports a statement from a bank other than Fio
+- **THEN** its credits are ingested as transactions and matched by the same rules as any other
 
 ### Requirement: Amount tolerance
 A VS-matched transaction SHALL be credited to the registration its VS identifies, **in the currency the transaction is denominated in**, and that currency's state SHALL then be decided from the **total credited to it in that same currency** rather than from that transaction alone. Several transfers carrying one VS in the same currency — an installment, a correction after an underpayment, a transfer a bank has split, or a payment covering an amendment surcharge — SHALL therefore settle a registration between them.
