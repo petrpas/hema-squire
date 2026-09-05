@@ -1707,6 +1707,17 @@ tr.row-deleted td.col-actions {
   gap: 0.9rem;
 }
 
+/* The settings surface holds three tiers at once, each with its own options
+   and the sentence saying what each does. At the standard 26rem those
+   sentences wrap to two and three lines and the dialog outgrows the viewport,
+   putting its own actions below the fold on first open. Wider rather than
+   taller: the extra width is spent on the copy, which is what makes the
+   difference between the two answers in each tier legible. */
+.modal-wide {
+  width: 40rem;
+  max-height: 88dvh;
+}
+
 /* On a phone a dialog is not a card resting on a backdrop — it is the screen.
    The offset double frame goes with the inset: an outline drawn 3px outside a
    full-bleed panel is simply cropped by the viewport, leaving a rule down one

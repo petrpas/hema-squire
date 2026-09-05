@@ -305,7 +305,7 @@ export default function TournamentSettingsDialog({
   const { t } = useTranslation();
   return (
     <div className="modal-backdrop" onClick={onClose}>
-      <div className="modal" onClick={(event) => event.stopPropagation()}>
+      <div className="modal modal-wide" onClick={(event) => event.stopPropagation()}>
         <h2>{t("setup.settings.title")}</h2>
         <TournamentSettingsFields detail={detail} onApplied={onApplied} onClose={onClose} />
       </div>

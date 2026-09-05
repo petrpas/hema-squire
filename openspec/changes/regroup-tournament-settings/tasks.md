@@ -69,4 +69,4 @@ it is accepted.
 
   The surface reads as intended: three tiers separated by hairlines, the mode leading, and the section on `OTHER` stating all three in words where two sections used to sit. Checked again after 3.3b, in both modes, and confirmed the live tournament was left untouched — `na-duel-2026` is still automatic with payments on.
 
-  One layout note for the owner: with payments as a radio the dialog is tall enough to scroll on a 780px viewport, so the actions sit below the fold on first open. It behaves correctly and the scroll is the modal's own, but it is worth a look at whether the surface wants to be wider rather than taller
+  The dialog needed to be wider (owner, on seeing it): at the standard 26rem the three tiers outgrew a 780px viewport and put the surface's own actions below the fold. `.modal-wide` gives it 40rem and 88dvh — wider rather than taller, so the extra room goes to the sentences that distinguish the two answers in each tier, and every one of them now sits on a single line. Verified on screen with no scrollbar and both actions visible
