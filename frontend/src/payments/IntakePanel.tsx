@@ -3,6 +3,8 @@ import { useTranslation } from "react-i18next";
 
 import { ApiError, type IngestAndMatch, type TournamentDetail, api } from "../api";
 import { conclusionText, kindName } from "../operationText";
+import IssuedReport from "./IssuedReport";
+import IssuePreflight from "./IssuePreflight";
 import type { OperationsView } from "../useOperations";
 
 /** Getting the tournament's money into the console: a statement from any bank,
@@ -32,6 +34,9 @@ export default function IntakePanel({
   const running = operations.running;
   const busy = running !== null || working;
   const statement = operations.concluded.statement;
+  // what the pre-flight count is re-read against: a concluded intake has just
+  // issued whatever was pending, so the statement must not keep standing
+  const revision = statement?.id ?? 0;
 
   async function importStatement(file: File) {
     setError(null);
@@ -49,7 +54,15 @@ export default function IntakePanel({
         detail !== null && typeof detail === "object" && "code" in detail
           ? (detail as { code: string }).code
           : detail;
-      if (code === "no_statement_parser") setError(t("payments.intake.noParser"));
+      // the roster cannot be issued while a merge could still collapse a row
+      // under it, so intake refuses whole and says which phase settles that
+      if (code === "dedup_pending")
+        setError(
+          t("payments.intake.dedupPending", {
+            count: (detail as { groups?: number }).groups ?? 0,
+          }),
+        );
+      else if (code === "no_statement_parser") setError(t("payments.intake.noParser"));
       else if (code === "unsupported_statement_format")
         setError(t("payments.intake.unsupportedFormat"));
       else if (code === "unreadable_statement") setError(t("payments.intake.unreadable"));
@@ -65,8 +78,18 @@ export default function IntakePanel({
     try {
       setPolled(await api.fioPoll(slug));
       onChanged();
-    } catch {
-      setError(t("payments.intake.pollFailed"));
+    } catch (failure) {
+      const refusal = failure instanceof ApiError ? failure.detail : null;
+      const pending =
+        refusal !== null && typeof refusal === "object" && "code" in refusal
+          ? (refusal as { code: string; groups?: number })
+          : null;
+      // refused on the same ground as the import, and the bank is not asked
+      setError(
+        pending?.code === "dedup_pending"
+          ? t("payments.intake.dedupPending", { count: pending.groups ?? 0 })
+          : t("payments.intake.pollFailed"),
+      );
     } finally {
       setWorking(false);
     }
@@ -89,6 +112,10 @@ export default function IntakePanel({
     <section className="rail-card">
       <h2>{t("payments.intake.title")}</h2>
       <p className="rail-hint">{t("payments.intake.hint")}</p>
+
+      {/* stated ahead of the controls, because it is what pressing one of them
+          will do that cannot be undone */}
+      <IssuePreflight slug={slug} detail={detail} revision={revision} />
 
       <input
         ref={inputRef}
@@ -130,17 +157,23 @@ export default function IntakePanel({
         </p>
       )}
       {polled && (
-        <p className="rail-hint">
-          {t("payments.intake.polled", { new: polled.new, matched: polled.matched })}
-        </p>
+        <>
+          <p className="rail-hint">
+            {t("payments.intake.polled", { new: polled.new, matched: polled.matched })}
+          </p>
+          <IssuedReport outcome={polled} />
+        </>
       )}
       {statement?.status === "done" && (
-        <p className="rail-hint">
-          {t("payments.intake.imported", {
-            new: (statement.outcome as unknown as IngestAndMatch).new,
-            matched: (statement.outcome as unknown as IngestAndMatch).matched,
-          })}
-        </p>
+        <>
+          <p className="rail-hint">
+            {t("payments.intake.imported", {
+              new: (statement.outcome as unknown as IngestAndMatch).new,
+              matched: (statement.outcome as unknown as IngestAndMatch).matched,
+            })}
+          </p>
+          <IssuedReport outcome={statement.outcome as unknown as IngestAndMatch} />
+        </>
       )}
       {statement?.status === "failed" && (
         <p className="login-error">{conclusionText(t, statement)}</p>

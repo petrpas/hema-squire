@@ -26,7 +26,7 @@ Two properties matter more than the rest:
 import datetime
 from dataclasses import dataclass, field
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -278,6 +278,18 @@ def issue(session: Session, tournament: Tournament, next_vs) -> IssueReport:
     the router that owns the allocator; there is still only one allocator.
     """
     report = IssueReport()
+    # counted before the pass, so what it reports is what it left alone rather
+    # than what it has just created. A row that has been issued a registration
+    # leaves `source_rows` — the registration stands in its place — so the
+    # registrations carrying a row's id are exactly the rows already done
+    report.already = session.scalar(
+        select(func.count())
+        .select_from(Registration)
+        .where(
+            Registration.tournament_id == tournament.id,
+            Registration.source_row_id.is_not(None),
+        )
+    )
     for row in pending(session, tournament):
         outcome = _issue_one(session, tournament, row, next_vs)
         if isinstance(outcome, str):

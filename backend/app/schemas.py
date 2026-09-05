@@ -1092,6 +1092,12 @@ class LinkIn(BaseModel):
         return self
 
 
+class IssueSkipOut(BaseModel):
+    row_id: str
+    name: str | None = None
+    reason: str
+
+
 class IngestAndMatchOut(BaseModel):
     new: int
     duplicate: int
@@ -1103,6 +1109,13 @@ class IngestAndMatchOut(BaseModel):
     # belonged to a sibling tournament on the same bank account; recorded, not
     # queued here (design Decision 5) — distinct from matched/flagged/unmatched
     set_aside: int
+    # what the issuing pass that runs ahead of the match did. Carried in the
+    # intake's own outcome because there is no confirmation dialog to report it:
+    # a skipped row is a fencer whose payment cannot reconcile until it is fixed,
+    # so the conclusion names each one (spec payments-intake, design Decision 10)
+    issued: int = 0
+    already_issued: int = 0
+    skipped: list[IssueSkipOut] = []
 
 
 class RuleIn(BaseModel):

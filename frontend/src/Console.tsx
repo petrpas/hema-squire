@@ -8,12 +8,12 @@ import DedupView from "./dedup/DedupView";
 import ExportPanel from "./ExportPanel";
 import { IDENTITY_COLUMNS, identityValue, usesHRIdentity } from "./identity";
 import ImportPanel from "./ImportPanel";
+import IssueOnArrival from "./payments/IssueOnArrival";
 import MatchDialog from "./MatchDialog";
 import MatchPanel from "./MatchPanel";
 import NoteMarker from "./NoteMarker";
 import OperationsIndicator from "./OperationsIndicator";
 import ManualEditsRail from "./ManualEditsRail";
-import IssuePanel from "./IssuePanel";
 import ManualEntryPanel from "./manual/ManualEntryPanel";
 import PaidStamp from "./PaidStamp";
 import TolerancePanel from "./TolerancePanel";
@@ -545,7 +545,12 @@ export default function Console({
                    reading paid while still showing its total is the honest
                    reading of both, and a reader who takes it for a fault is
                    misreading the one true thing about it */
-                <p className="rail-hint">{t("console.settled.meaning")}</p>
+                <>
+                  <p className="rail-hint">{t("console.settled.meaning")}</p>
+                  {/* no intake exists here to issue the roster, so arriving
+                      does it (design Decision 10) */}
+                  <IssueOnArrival slug={tournament.slug} onIssued={refresh} />
+                </>
               ) : phase === "payments" ? (
                 <>
                   {/* proposals first: they are the queue with the most work in
@@ -614,11 +619,11 @@ export default function Console({
               onImported={refresh}
             />
           )}
+          {/* the fencer list is entered and corrected here; making it billable
+              is not an action of this phase and is not offered as one — payment
+              intake issues registrations for it (design Decision 10) */}
           {phase === "fencers" && (
-            <>
-              <ManualEntryPanel detail={detail} slug={tournament.slug} onEntered={refresh} />
-              <IssuePanel slug={tournament.slug} onIssued={refresh} />
-            </>
+            <ManualEntryPanel detail={detail} slug={tournament.slug} onEntered={refresh} />
           )}
           {phase === "matching" && (
             <MatchPanel

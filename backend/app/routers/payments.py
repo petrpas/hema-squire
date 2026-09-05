@@ -7,8 +7,10 @@ from sqlalchemy.orm import Session
 
 from app import (
     bank,
+    dedup,
     emails,
     importer,
+    issuing,
     matching,
     nameresolve,
     operations,
@@ -31,7 +33,7 @@ from app.models import (
 )
 
 # one rounding rule for money leaving the API, not a second copy of it here
-from app.routers.registrations import _cents_to_amount
+from app.routers.registrations import _cents_to_amount, next_vs
 from app.routers.tournaments import FencerDep, SessionDep, TournamentDep
 from app.schemas import (
     ExpiredHoldingOut,
@@ -53,7 +55,31 @@ StatementParserDep = Annotated[
 ]
 
 
+def _refuse_while_duplicates_pending(session, tournament) -> None:
+    """Intake stops while the fencer list still holds unresolved duplicates.
+
+    Not a rule about intake at all, but the only place it can be enforced. Intake
+    issues registrations for the rows before it matches anything, and a merge
+    collapses *rows*, not registrations — so a registration issued ahead of the
+    verdict survives its own merge and leaves one person holding two, with a
+    payment free to settle either. Refusing here makes that state unreachable by
+    the order of the phases rather than by an error the organizer meets two
+    phases before they could act on it (spec payments-intake, design Decision 10).
+    """
+    pending = dedup.unresolved_groups(session, tournament)
+    if pending:
+        raise HTTPException(
+            status_code=409,
+            detail={"code": "dedup_pending", "groups": pending},
+        )
+
+
 def _ingest_and_match(session, tournament, mailer, source, transactions) -> IngestAndMatchOut:
+    # the roster is made billable first, because matching resolves a payment
+    # through `Registration.vs` and a row has none. Idempotent, so every intake
+    # after the first issues nothing and a list that gained rows in between is
+    # caught up without anybody remembering to (spec payments-intake)
+    issued = issuing.issue(session, tournament, next_vs)
     ingested = bank.ingest(session, tournament, source, transactions)
     matched = matching.match_new_transactions(session, tournament, mailer)
     matching.apply_payment_links(session, tournament, mailer)
@@ -65,6 +91,12 @@ def _ingest_and_match(session, tournament, mailer, source, transactions) -> Inge
         unmatched=matched.unmatched,
         partial=matched.partial,
         set_aside=matched.set_aside,
+        issued=issued.issued,
+        already_issued=issued.already,
+        skipped=[
+            {"row_id": skip.row_id, "name": skip.name, "reason": skip.reason}
+            for skip in issued.skipped
+        ],
     )
 
 
@@ -86,6 +118,7 @@ async def import_statement(
     """
     require_console_access(session, tournament, fencer)
     bank.require_payments_enabled(tournament)
+    _refuse_while_duplicates_pending(session, tournament)
     content = await file.read()
     filename = file.filename or "statement.csv"
 
@@ -149,6 +182,7 @@ def fio_poll(
 ):
     require_console_access(session, tournament, fencer)
     bank.require_payments_enabled(tournament)
+    _refuse_while_duplicates_pending(session, tournament)
     if not tournament.fio_token:
         raise HTTPException(status_code=409, detail="fio_token_not_configured")
     today = date.today()

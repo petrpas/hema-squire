@@ -165,3 +165,72 @@ linking addresses a registration by its variable symbol and by nothing else —
 leave an organizer with no way to reconcile a payment at all until
 `add-name-assisted-payment-matching` gives them one by name. The two land
 together or the manual path goes backwards.
+
+
+## Revision, 2026-09-05: issuing is not an action, and the gate moves to matching
+
+**Nobody was ever going to press it.** The issuing action was offered on the
+Fencers phase — which is phase three of nine, two ahead of Deduplication
+(`Console.tsx:54`) — while this proposal's own text said it is offered "after
+deduplication". Nothing enforced that but a 409 the organizer meets *before* the
+duplicates they would have to resolve, so the control the roster depends on was
+reachable only in the state where it refuses. Its name says what the data model
+does ("issue registrations") rather than what the organizer wants (to be able to
+reconcile payments), and the phase where the absence hurts — Platby, with 43
+transactions and nothing to match them against — said nothing about it at all.
+An organizer had no path from the symptom to the cause.
+
+So the action stops being an action.
+
+**Issuing runs as the first step of payment intake.** Importing a statement and
+polling the bank both issue registrations for the fencer list before matching
+anything. The pass is idempotent by construction (Decision 8), so running it on
+every intake costs nothing after the first and keeps a roster that gained rows
+between two statements up to date without anybody remembering to.
+
+**Deduplication becomes a precondition of matching, not of issuing.** This closes
+open task 7.4. The original gate rested on a variable symbol that a merge would
+strand, and Decision 9 removed the symbol from the manual path, leaving the gate
+resting on nothing there. The argument that survives is about registrations, not
+symbols: a merge collapses *rows*, so issuing before the verdicts leaves one
+person holding two registrations and the merge with nothing to collapse. Moving
+the gate to intake enforces that by the order of the phases rather than by an
+error message, and puts the refusal where the organizer is already trying to do
+the thing it blocks.
+
+**The report moves into the operation's conclusion.** With no confirmation
+dialog there is nowhere for the skipped rows to be named, and naming them is
+half the value of the pass — a row with no discipline, no e-mail, no name, or an
+e-mail another row already claimed is a row whose payments will not reconcile
+until the organizer fixes it. The intake operation's conclusion carries it,
+beside what the statement itself did.
+
+**The notice survives the dialog.** Issuing is irreversible and, where Squire
+keeps the registrations, spends variable symbols out of a deployment-wide
+sequence that never recycles. The intake panel states that before the upload
+rather than after it — the panel's established idiom is to say what an action
+will and will not do instead of offering a control that surprises (design
+add-payments-intake D5).
+
+**A tournament Squire collects nothing for issues on entering the Payments
+phase.** Where payments are boned out there is no intake to hang the pass on, and
+the roster would never gain totals, an outstanding column, or a line in the
+export. Such a tournament mints no symbols at all (Decision 9), so the pass is
+cheap and carries no irreversible cost worth a confirmation: it runs when the
+organizer opens Platby with the duplicates settled.
+
+### Capabilities affected by this revision
+
+- `imported-registrations`: "Issuing registrations for the fencer list" is
+  rewritten. It is no longer offered as an action, no longer confirmed, and no
+  longer gated on dedup itself; it runs on intake and on entering a boned-out
+  Payments phase, and reports through the operation's conclusion.
+- `etl-console`: "Manual entry of a fencer" currently points at "the separate,
+  explicit action that issues registrations … offered after deduplication".
+  That action no longer exists; the sentence has to point at intake instead.
+- `payments-intake`: two new requirements — intake issues registrations for the
+  fencer list before it matches anything, and intake is refused while duplicate
+  groups are pending, naming the count and pointing at Deduplication. "Every
+  intake action is reachable from the console" is modified alongside them: an
+  action now states what it will irreversibly do before it runs, not only why it
+  cannot run.

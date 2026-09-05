@@ -7,7 +7,9 @@ A manually entered row SHALL be a source record of the tournament in its own rig
 
 A manually entered row SHALL NOT create an account for the fencer, and SHALL NOT cause any mail to be sent. **It SHALL NOT be given a variable symbol or a payment instruction when it is entered.** It states who is competing; entering it does not enrol them in the application.
 
-A row SHALL become billable only by the separate, explicit action that issues registrations for the fencer list, offered after deduplication and described in `imported-registrations`. That action SHALL apply to manually entered rows and imported rows alike — both state who is competing, and neither is enrolled until the organizer says so. Being issued a registration SHALL NOT cause mail to be sent either, and SHALL NOT create an account.
+A row SHALL become billable when registrations are issued for the fencer list, which happens as a step of payment intake rather than by any action the organizer takes on this phase (`imported-registrations`). Issuing SHALL apply to manually entered rows and imported rows alike — both state who is competing, and neither is enrolled by arriving. Being issued a registration SHALL NOT cause mail to be sent either, and SHALL NOT create an account.
+
+The Fencers phase SHALL NOT offer an action that issues registrations. An organizer reconciling a payment SHALL NOT have to know that issuing exists, and SHALL NOT be sent to another phase to make the roster billable first.
 
 A manually entered row SHALL NOT appear on the Import view, in any state. The Import view records what a file contained, and a manual entry came from no file.
 
@@ -37,8 +39,12 @@ A manually entered row SHALL NOT appear on the Import view, in any state. The Im
 
 #### Scenario: Entry alone issues no variable symbol
 - **WHEN** a fencer is entered by hand on a tournament whose payments feature is on
-- **THEN** the row carries no variable symbol until registrations are issued for the list
+- **THEN** the row carries no variable symbol until the next payment intake issues registrations for the list
 
 #### Scenario: Manual rows are issued alongside imported ones
-- **WHEN** the organizer issues registrations for a list holding both imported and manually entered rows
+- **WHEN** a statement is imported against a list holding both imported and manually entered rows
 - **THEN** both populations are issued registrations, and neither is sent mail
+
+#### Scenario: The Fencers phase offers no issuing action
+- **WHEN** the organizer opens the Fencers tab on a tournament whose rows have no registrations
+- **THEN** no action to issue registrations is offered there

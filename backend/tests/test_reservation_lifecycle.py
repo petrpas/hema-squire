@@ -348,6 +348,9 @@ def test_payment_inside_grace_with_free_seat_reinstates_and_pays(client, auth_he
     assert poll == {
         "new": 1, "duplicate": 0, "matched": 1, "flagged": 0, "unmatched": 0, "partial": 0,
         "set_aside": 0,
+        # intake issues before it matches; this roster is in-app, so it issues
+        # nothing (spec payments-intake)
+        "issued": 0, "already_issued": 0, "skipped": [],
     }
 
     registration = client.get(

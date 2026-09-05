@@ -263,3 +263,101 @@ a merge collapses *rows*, so merging after issuing leaves two registrations for
 one fencer and nothing to collapse them. That is a reason to wait, but it is a
 different reason, and it is weaker — it argues for warning rather than refusing.
 Left as it is for now; revisited when the gate is next touched.
+
+
+## Decision 10 (2026-09-05): issuing is a step of intake, and the gate guards matching
+
+**Supersedes Decision 4 and closes task 7.4.**
+
+Decision 4 put the action on the Fencers phase "beside the other actions that
+operate on the list as a whole", and made deduplication a precondition of it.
+Trialled against a real console, both halves fail for the same reason: the
+Fencers phase is third in the order and Deduplication is fifth
+(`Console.tsx:54`), so the only state in which an organizer naturally meets the
+control is the state in which it refuses. The refusal is honest and useless —
+it names duplicates to somebody who has not reached the duplicates yet, about an
+action whose purpose they have no way to infer from a name that describes the
+data model. Meanwhile Platby, where the missing registrations are the reason 43
+transactions sit unmatched, never mentions it.
+
+An action nobody can find at a moment when it works is not a safeguard; it is a
+step the product has failed to take on the organizer's behalf.
+
+### The pass runs on intake
+
+Importing a statement and polling the bank both issue registrations for the
+fencer list first, then match. Three properties make this safe rather than
+merely convenient:
+
+- **Idempotence (Decision 8)** means every intake after the first issues nothing,
+  so the pass costs one query on the common path and there is no state in which
+  running it twice differs from running it once.
+- **It is the moment the answer is needed.** Matching resolves through
+  `Registration.vs` and manual linking through a typed symbol; both are
+  meaningless against a roster of rows. Issuing immediately before matching is
+  issuing exactly when the absence would otherwise bite.
+- **A roster that grew between two statements catches up by itself.** A later
+  import or a manual entry is picked up by the next intake with nobody
+  remembering that it has to be.
+
+The "run the lifecycle passes now" action in the same panel does **not** issue.
+It moves time, not money, and a pass over an empty roster has nothing to do.
+
+### The gate guards matching, not issuing
+
+Intake SHALL refuse while any duplicate group is pending, and say so. Issuing
+itself carries no dedup precondition any more, because it can no longer be
+reached with one outstanding.
+
+This is the restatement task 7.4 asked for, and it lands on the surviving
+argument rather than the dead one. The original reason — a merged-away row must
+not strand a variable symbol — stopped applying to manual tournaments when
+Decision 9 removed the symbol from them. The reason that holds in both modes is
+about registrations: a merge collapses *rows*, so a registration issued before
+the verdict survives the merge and leaves one person holding two. Enforcing that
+by the order of the phases is stronger than enforcing it by a 409, because the
+organizer meets the refusal while attempting the thing it protects.
+
+It also gives dedup a consequence it never had. Today an organizer can ignore
+the phase indefinitely; now leaving it unfinished visibly stops the money.
+
+### The report and the notice
+
+Two things the confirmation dialog was carrying have to land somewhere else.
+
+**The skipped rows** — no discipline, no e-mail, no name, an e-mail another row
+already claimed — go into the intake operation's conclusion, beside what the
+statement did. They are not an aside: each is a fencer whose payment will not
+reconcile until the row is fixed, and the `email_taken` case is usually a parent
+or a club representative entering several people on one address, which the
+organizer must resolve by hand. `operationText` already renders conclusions, so
+this is a longer conclusion rather than a new surface.
+
+**The notice** stays, as prose in the intake panel rather than a second click.
+Before the upload the panel states how many rows the import will issue and, where
+Squire keeps the registrations, that variable symbols will be allocated and never
+reclaimed. This is the panel's existing idiom — "each action states why it cannot
+run instead of offering a control that fails when used" (design
+add-payments-intake D5) — extended from why it cannot run to what it will do.
+
+The owner accepted the loss of the second click knowingly: the cost of the
+unreachable button was larger than the cost of an unconfirmed but announced and
+idempotent pass.
+
+### Where Squire collects nothing
+
+A boned-out Payments phase has no intake at all (`Console.tsx:645`), so the pass
+would never run and the roster would never gain totals, an outstanding column, or
+a line in the export — the manual paid-tick would have no registration to hold
+its state against. Such a tournament issues on entering the Payments phase with
+the duplicates settled. It mints no symbols there (Decision 9), so the pass
+allocates nothing scarce and needs no notice: it creates the fencer, the
+registration, the entries and the frozen price, and that is all.
+
+### What is given up
+
+An organizer who wants a billable roster and has no statement to import must open
+Platby to get one. That is the correct place to send them — it is the phase the
+roster is billable *for* — but it does mean issuing is no longer reachable from
+the phase the list itself lives on. Accepted: the alternative is the button this
+decision exists to remove.

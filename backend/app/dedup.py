@@ -25,7 +25,7 @@ from typing import TYPE_CHECKING, Protocol
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from app import rules
+from app import rules, sheet
 from app.importer import get_decision, store_decision
 from app.llm import get_model, llm_configured
 from app.models import Fencer, Tournament
@@ -509,3 +509,32 @@ def decide(
     )
     session.commit()
     return {"status": "merged" if accept else "rejected"}
+
+
+def premerge_rows(session, tournament, index=None) -> list[dict]:
+    """The same rows, replayed without their merges.
+
+    What a candidate group displays, and what its conclusion offers as choices,
+    is the records as they stood before anything was merged. Replayed with the
+    merges applied, a settled group would show its survivor already carrying the
+    merged values and its absorbed rows gone — the group could state neither
+    what it merged nor what it could merge instead (design D2).
+    """
+    base = sheet.base_rows(session, tournament, index)
+    kept = [
+        rule
+        for rule in rules.active_rules(session, tournament)
+        if rule.kind != "dedup_decision"
+    ]
+    rows, _ = rules.replay(base, kept)
+    return [row for row in rows.values() if row["id"].startswith(("imp:", "man:"))]
+
+
+def unresolved_groups(session, tournament) -> int:
+    """Candidate duplicate groups still awaiting the organizer's verdict."""
+    rows = premerge_rows(session, tournament)
+    return sum(
+        1
+        for group in candidate_groups(session, tournament, rows)
+        if group.get("verdict") == "pending"
+    )

@@ -83,4 +83,67 @@ payment and gives nothing back. The two land together.
 
   The spec named reminders and expiry notices, which are what the scheduler sends, and said an issued registration is "seated and silent". It did not say what a credit does, because crediting is expressly allowed. That gap is what this closes
 - [x] 7.3 Four tests in `test_issuing.py`: a manual tournament issues priced, dormant, seated registrations with no symbols and does not advance the sequence; a Squire-kept one still issues one distinct symbol per row; and an issued registration is credited silently while an ordinary one is still told
-- [ ] 7.4 Restate Decision 4's deduplication gate on the ground that survives — a merge collapses rows, so merging after issuing leaves two registrations for one fencer — or relax it to a warning, which is what the weaker argument supports. Decide when the gate is next touched rather than now
+- [x] 7.4 **Closed by Decision 10 (2026-09-05).** The gate is not restated where it stood — it moves. Deduplication becomes a precondition of payment *intake* rather than of issuing, on the surviving ground (a merge collapses rows, so issuing first leaves one person holding two registrations). Enforced by the order of the phases instead of a 409, and the organizer meets it while attempting the thing it protects. See section 8
+
+## 8. Rework: issuing becomes a step of intake (owner decision, 2026-09-05)
+
+Supersedes the parts of sections 4 and 5 that built an action. The pass itself
+(sections 1–3b) is unchanged and stays; what is removed is the button, the
+confirmation and the endpoint's dedup refusal.
+
+- [x] 8.1 `specs/payments-intake/spec.md` written: "Intake issues registrations
+  before it matches" and "Intake is refused while duplicates are pending" added,
+  and "Every intake action is reachable from the console" modified so an action
+  states what it will irreversibly do and not only why it cannot run. The last
+  requirement carries the counterpart nobody asked for and the panel needs — a
+  roster with nothing to issue announces nothing, so the notice keeps its force
+- [x] 8.2 Backend: run the issuing pass at the head of statement import and of the
+  bank poll, inside the same operation, before matching. Not in the lifecycle
+  passes — they move time, not money
+- [x] 8.3 Backend: refuse both intake paths while `_pending_dedup` is non-zero,
+  with a stated code the console can render, and drop the same refusal from the
+  issuing path — it can no longer be reached with a verdict outstanding
+- [x] 8.4 Backend: carry the issuing report into the intake operation's
+  conclusion — issued, already had one, and every skipped row named with its
+  reason (`no_discipline`, `no_email`, `no_name`, `email_taken`)
+- [x] 8.5 Backend: issue on entering a boned-out Payments phase, where there is no
+  intake to hang the pass on. Guarded by concluded deduplication; allocates no
+  symbols, since such a tournament mints none (Decision 9)
+- [x] 8.6 `POST /import/issue` **stays, narrowed to the boned-out path** and
+  refused with `intake_issues_instead` where payments are on — so exactly one
+  path issues on a tournament Squire collects for, and no surface can allocate a
+  variable symbol outside it. `GET /import/issue` stays as the pre-flight source
+  of `pending_rows` and `pending_dedup`. `_premerge_import_rows` and
+  `_pending_dedup` moved out of the router into `dedup.py` as `premerge_rows` and
+  `unresolved_groups`, since both routers now need them and a router must not
+  import from a router
+- [x] 8.7 Frontend: `IssuePanel.tsx`, its mount on the Fencers phase and
+  `issuePanel.test.tsx` deleted. New `payments/IssueOnArrival.tsx` carries 8.5's
+  other half — the boned-out phase calls the endpoint when the organizer opens
+  it, silent unless it skipped something
+- [x] 8.8 Frontend: `payments/IssuePreflight.tsx` states it ahead of the
+  controls — the count, and the unreclaimed symbols only where Squire keeps the
+  registrations. Silent where there is nothing to issue, so the notice does not
+  become wallpaper. `payments/IssuedReport.tsx` renders the conclusion's issued
+  count and skipped rows, tolerating an outcome stored before these fields
+  existed
+- [x] 8.9 Frontend: render the refusal on pending duplicates as the intake panel
+  renders its other unavailable-reasons, naming the count and pointing at the
+  Deduplication phase
+- [x] 8.10 i18n: remove the `issue.*` action, confirmation and blockedByDedup
+  strings; add the intake pre-flight statement, the dedup refusal, and the
+  conclusion's issued/skipped lines under the intake namespace, cs and en
+- [x] 8.11 Tests: a statement import against a roster of rows issues then matches
+  in one operation; a poll does the same; a second import issues nothing; an
+  import with duplicates pending is refused and issues nothing; the lifecycle
+  passes issue nothing; a boned-out tournament issues on entering Payments; the
+  conclusion names the skipped rows; and no other surface can issue where Squire
+  collects. Eleven new tests, and `test_issuing`'s `issue()` helper now drives
+  the real path — intake where payments are on, the arrival endpoint where they
+  are off — so the existing 29 kept their meaning instead of testing a dead
+  endpoint. Found on the way: `IssueReport.already` was never incremented, and
+  the conclusion needs it, so it is now counted before the pass runs
+- [ ] 8.12 Re-run the pilot check from 6.3 through the new path — import a
+  statement on a copy of the pilot database and confirm the 51 registrations
+  appear as a side effect of the import, with the skipped rows named in the
+  conclusion

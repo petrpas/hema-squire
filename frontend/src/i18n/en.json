@@ -994,7 +994,11 @@
       "importFailed": "The statement could not be imported.",
       "pollFailed": "The bank could not be polled.",
       "lifecycleFailed": "The lifecycle run failed.",
-      "unreadable": "That file does not read as a statement — no column in it holds dates and amounts. Check it is the right export, and that it opens as a table in a spreadsheet."
+      "unreadable": "That file does not read as a statement — no column in it holds dates and amounts. Check it is the right export, and that it opens as a table in a spreadsheet.",
+      "willIssue": "Importing a statement will issue registrations for {{count}} rows of the fencer list. Without them a payment has nothing to settle against.",
+      "willIssueWithSymbols": "Importing a statement will issue registrations for {{count}} rows of the fencer list and allocate variable symbols. Symbols are never reclaimed or reused.",
+      "dedupPending": "A statement cannot be imported yet: {{count}} duplicates are awaiting review. Settle them on the Deduplication phase.",
+      "issued": "Issued {{count}} registrations."
     },
     "clear": {
       "title": "Clear payments",
@@ -1115,17 +1119,10 @@
     "done": "finished"
   },
   "issue": {
-    "title": "Issue registrations",
-    "hint": "A row states who is competing. A registration can be paid for: it carries a variable symbol and a balance.",
-    "action": "Issue registrations",
-    "confirm": "This issues {{count}} registrations. Variable symbols are allocated and are not reclaimed.",
-    "noMail": "Nobody is mailed. These registrations have no payment window, are never reminded, and never expire.",
-    "confirmAction": "Issue them",
-    "blockedByDedup": "Duplicates are still under review ({{count}}). A row a merge would collapse must not take a variable symbol first.",
-    "result": "Issued {{issued}}; {{already}} already had a registration.",
+    "skippedHeading": "These rows were left without a registration; until they are fixed, their payments cannot be reconciled:",
     "skipped": "{{name}} — {{reason}}",
     "unnamed": "unnamed row",
-    "failed": "The registrations could not be issued.",
+    "blockedByDedup": "The duplicates have to be settled first. A merge collapses rows, not registrations, so a row issued beforehand would survive its own merge as a second registration for the same person.",
     "reason": {
       "no_discipline": "enters no discipline",
       "no_email": "has no e-mail address",

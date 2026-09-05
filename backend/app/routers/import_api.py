@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from app import dedup, hr_match, importclear, importer, issuing, operations, rules, sheet
+from app import dedup, hr_match, importclear, importer, issuing, operations, sheet
 from app.auth import require_console_access
 from app.hr_index import HRIndex, get_hr_index
 from app.models import Fencer, Operation, OperationKind, Tournament
@@ -20,25 +20,6 @@ DedupDep = Annotated[dedup.DedupLLM | None, Depends(dedup.get_dedup_llm)]
 HRIndexDep = Annotated[HRIndex, Depends(get_hr_index)]
 
 
-
-
-def _premerge_import_rows(session, tournament, index=None) -> list[dict]:
-    """The same rows, replayed without their merges.
-
-    What a candidate group displays, and what its conclusion offers as choices,
-    is the records as they stood before anything was merged. Replayed with the
-    merges applied, a settled group would show its survivor already carrying the
-    merged values and its absorbed rows gone — the group could state neither
-    what it merged nor what it could merge instead (design D2).
-    """
-    base = sheet.base_rows(session, tournament, index)
-    kept = [
-        rule
-        for rule in rules.active_rules(session, tournament)
-        if rule.kind != "dedup_decision"
-    ]
-    rows, _ = rules.replay(base, kept)
-    return [row for row in rows.values() if row["id"].startswith(("imp:", "man:"))]
 
 
 def _refuse_while_busy(session: Session, tournament: Tournament) -> None:
@@ -212,18 +193,8 @@ def dedup_groups(tournament: TournamentDep, session: SessionDep, fencer: FencerD
     """Every candidate group with its verdict — the whole of the Deduplication
     phase (spec etl-console, Deduplication candidate review)."""
     require_console_access(session, tournament, fencer)
-    rows = _premerge_import_rows(session, tournament)
+    rows = dedup.premerge_rows(session, tournament)
     return dedup.candidate_groups(session, tournament, rows)
-
-
-def _pending_dedup(session, tournament) -> int:
-    """Candidate duplicate groups still awaiting the organizer's verdict."""
-    rows = _premerge_import_rows(session, tournament)
-    return sum(
-        1
-        for group in dedup.candidate_groups(session, tournament, rows)
-        if group.get("verdict") == "pending"
-    )
 
 
 @router.get("/issue")
@@ -233,22 +204,35 @@ def issuable_count(tournament: TournamentDep, session: SessionDep, fencer: Fence
     require_console_access(session, tournament, fencer)
     return {
         "pending_rows": len(issuing.pending(session, tournament)),
-        "pending_dedup": _pending_dedup(session, tournament),
+        "pending_dedup": dedup.unresolved_groups(session, tournament),
     }
 
 
 @router.post("/issue")
 def issue_registrations(tournament: TournamentDep, session: SessionDep, fencer: FencerDep):
-    """Issue registrations for the fencer list (spec `imported-registrations`).
+    """Issue registrations for the fencer list where no intake will do it.
+
+    Not an action the organizer takes. Issuing normally runs at the head of every
+    payment intake, but a tournament whose payments Squire does not collect has
+    no intake to hang it on — and without a registration its rows carry no price,
+    no outstanding column and no line in the export, and the manual paid tick has
+    nothing to hold its state against. The console calls this when such a
+    tournament opens its Payments phase (spec `imported-registrations`).
+
+    Refused where payments are on, so there is exactly one path that issues on a
+    tournament Squire collects for, and no surface can allocate variable symbols
+    outside it.
 
     Synchronous, unlike its neighbours on this router: it asks no model and does
     a bounded amount of local work, so there is nothing for an operation record
     to report on that the response cannot.
     """
     require_console_access(session, tournament, fencer)
-    if _pending_dedup(session, tournament):
-        # a row a pending merge may collapse must not spend a variable symbol
-        # first: the number is unique across the deployment and never reused
+    if tournament.feature_payments:
+        raise HTTPException(status_code=409, detail="intake_issues_instead")
+    if dedup.unresolved_groups(session, tournament):
+        # a merge collapses rows, not registrations: issuing before the verdict
+        # leaves one person holding two, and the merge nothing to collapse
         raise HTTPException(status_code=409, detail="dedup_pending")
     report = issuing.issue(session, tournament, next_vs)
     return report.as_dict()
@@ -269,7 +253,7 @@ def dedup_decide(
     fencer: FencerDep,
 ):
     require_console_access(session, tournament, fencer)
-    rows = _premerge_import_rows(session, tournament)
+    rows = dedup.premerge_rows(session, tournament)
     outcome = dedup.decide(
         session, tournament, fencer, rows, data.key, data.accept, data.fields, data.note
     )

@@ -43,8 +43,20 @@ function operations(overrides: Partial<OperationsView> = {}): OperationsView {
   return { running: null, concluded: {}, refresh: vi.fn(), ...overrides };
 }
 
-function detail(fio: boolean): TournamentDetail {
-  return { slug: "cup", fio_token_configured: fio } as TournamentDetail;
+function detail(fio: boolean, keptBy = "squire"): TournamentDetail {
+  return {
+    slug: "cup",
+    fio_token_configured: fio,
+    registrations_kept_by: keptBy,
+  } as TournamentDetail;
+}
+
+/** The pre-flight count the panel reads on mount. Nothing to issue unless a
+ *  test says otherwise, so the panel stays quiet about it. */
+function issuable(pending_rows = 0, pending_dedup = 0) {
+  return vi
+    .spyOn(api, "issuableCount")
+    .mockResolvedValue({ pending_rows, pending_dedup });
 }
 
 function running(kind: string): Operation {
@@ -63,28 +75,34 @@ function render(props: Partial<Parameters<typeof IntakePanel>[0]> = {}) {
   );
 }
 
-beforeEach(() => void vi.restoreAllMocks());
+beforeEach(() => {
+  vi.restoreAllMocks();
+  issuable();
+});
 afterEach(() => {
   host?.remove();
   host = null;
 });
 
-it("does not offer the bank poll without a token, and says why", () => {
+it("does not offer the bank poll without a token, and says why", async () => {
   render({ detail: detail(false) });
+  await settle();
 
   expect(buttonNamed(t("payments.intake.poll"))).toBeUndefined();
   expect(host?.textContent).toContain(t("payments.intake.noToken"));
 });
 
-it("offers the bank poll where a token is configured", () => {
+it("offers the bank poll where a token is configured", async () => {
   render({ detail: detail(true) });
+  await settle();
 
   expect(buttonNamed(t("payments.intake.poll"))).toBeDefined();
   expect(host?.textContent).not.toContain(t("payments.intake.noToken"));
 });
 
-it("disables every action while other work is running, naming it", () => {
+it("disables every action while other work is running, naming it", async () => {
   render({ detail: detail(true), operations: operations({ running: running("parse") }) });
+  await settle();
 
   expect(buttonNamed(t("payments.intake.upload"))?.disabled).toBe(true);
   expect(buttonNamed(t("payments.intake.poll"))?.disabled).toBe(true);
@@ -147,7 +165,7 @@ it("says a file that is not a table at all was not imported", async () => {
   );
 });
 
-it("reports what a concluded import brought in", () => {
+it("reports what a concluded import brought in", async () => {
   const concluded = {
     statement: {
       id: 3,
@@ -157,6 +175,7 @@ it("reports what a concluded import brought in", () => {
     } as unknown as Operation,
   };
   render({ operations: operations({ concluded }) });
+  await settle();
 
   expect(host?.textContent).toContain(
     t("payments.intake.imported", { new: 2, matched: 1 }),
@@ -166,6 +185,7 @@ it("reports what a concluded import brought in", () => {
 it("polls the bank and reports what it brought in", async () => {
   const poll = vi.spyOn(api, "fioPoll").mockResolvedValue({
     new: 3, duplicate: 0, matched: 2, flagged: 0, unmatched: 1, partial: 0, set_aside: 0,
+    issued: 0, already_issued: 0, skipped: [],
   });
   const onChanged = vi.fn();
   render({ detail: detail(true), onChanged });
@@ -188,4 +208,101 @@ it("runs the lifecycle passes on demand", async () => {
 
   expect(process).toHaveBeenCalledWith("cup");
   expect(onChanged).toHaveBeenCalled();
+});
+
+// Intake issues registrations for the fencer list before it matches anything,
+// so the panel carries what the confirmation dialog used to: what the import
+// will irreversibly do, and what it could not do (design Decision 10).
+
+it("states what an import will issue, and that the symbols are not reclaimed", async () => {
+  issuable(54);
+  render({ detail: detail(false) });
+  await settle();
+
+  expect(host?.textContent).toContain(
+    t("payments.intake.willIssueWithSymbols", { count: 54 }),
+  );
+});
+
+it("says nothing about symbols where the organizer keeps the registrations", async () => {
+  issuable(54);
+  render({ detail: detail(false, "organizer") });
+  await settle();
+
+  expect(host?.textContent).toContain(t("payments.intake.willIssue", { count: 54 }));
+  expect(host?.textContent).not.toContain(
+    t("payments.intake.willIssueWithSymbols", { count: 54 }),
+  );
+});
+
+it("announces nothing where there is nothing to issue", async () => {
+  issuable(0);
+  render({ detail: detail(false) });
+  await settle();
+
+  expect(host?.textContent).not.toContain(t("payments.intake.willIssue", { count: 0 }));
+});
+
+it("states the pending duplicates instead, before anything is uploaded", async () => {
+  issuable(54, 3);
+  render({ detail: detail(false) });
+  await settle();
+
+  expect(host?.textContent).toContain(t("payments.intake.dedupPending", { count: 3 }));
+  expect(host?.textContent).not.toContain(
+    t("payments.intake.willIssueWithSymbols", { count: 54 }),
+  );
+});
+
+it("reports a refused poll on the duplicates rather than as a failure", async () => {
+  vi.spyOn(api, "fioPoll").mockRejectedValue(
+    new ApiError(409, { code: "dedup_pending", groups: 2 }),
+  );
+  render({ detail: detail(true) });
+
+  act(() => void buttonNamed(t("payments.intake.poll"))?.click());
+  await settle();
+
+  expect(host?.textContent).toContain(t("payments.intake.dedupPending", { count: 2 }));
+  expect(host?.textContent).not.toContain(t("payments.intake.pollFailed"));
+});
+
+it("names the rows an import could not issue, and why", async () => {
+  const concluded = {
+    statement: {
+      id: 7,
+      kind: "statement",
+      status: "done",
+      outcome: {
+        new: 2,
+        matched: 1,
+        issued: 51,
+        already_issued: 0,
+        skipped: [{ row_id: "imp:9", name: "Jan Novák", reason: "no_email" }],
+      },
+    } as unknown as Operation,
+  };
+  render({ operations: operations({ concluded }) });
+  await settle();
+
+  expect(host?.textContent).toContain(t("payments.intake.issued", { count: 51 }));
+  expect(host?.textContent).toContain(
+    t("issue.skipped", { name: "Jan Novák", reason: t("issue.reason.no_email") }),
+  );
+});
+
+it("says nothing about issuing where an import issued nothing", async () => {
+  const concluded = {
+    statement: {
+      id: 8,
+      kind: "statement",
+      status: "done",
+      outcome: { new: 2, matched: 1, issued: 0, already_issued: 51, skipped: [] },
+    } as unknown as Operation,
+  };
+  render({ operations: operations({ concluded }) });
+  await settle();
+
+  expect(host?.textContent).toContain(t("payments.intake.imported", { new: 2, matched: 1 }));
+  expect(host?.textContent).not.toContain(t("payments.intake.issued", { count: 0 }));
 });

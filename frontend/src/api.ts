@@ -1020,12 +1020,15 @@ export const api = {
     request<{ payments: number }>(`/api/tournaments/${slug}/payments`, {
       method: "DELETE",
     }),
-  /** How many fencer-list rows an issuing pass would act on, and whether it
-   *  may run yet — what the console states before the organizer commits. */
+  /** How many fencer-list rows the next intake will issue registrations for,
+   *  and whether it may run yet — what the intake panel states before the
+   *  upload, in place of the confirmation there no longer is. */
   issuableCount: (slug: string) =>
     request<IssuableCount>(`/api/tournaments/${slug}/import/issue`),
-  /** Issue registrations for the fencer list. Synchronous: it asks no model,
-   *  so there is no operation to watch. */
+  /** Issue registrations where no intake will do it: a tournament whose
+   *  payments Squire does not collect has none, so the Payments phase calls
+   *  this on arrival. Refused where payments are on — there, intake issues.
+   *  Synchronous: it asks no model, so there is no operation to watch. */
   issueRegistrations: (slug: string) =>
     request<IssueReport>(`/api/tournaments/${slug}/import/issue`, { method: "POST" }),
   runMatching: (slug: string) =>
@@ -1299,8 +1302,9 @@ export interface ClearablePayments {
 export interface IssuableCount {
   /** Rows that state who is competing and have no registration yet. */
   pending_rows: number;
-  /** Duplicate groups still awaiting a verdict; issuing waits for them,
-   *  because a row a merge may collapse must not spend a variable symbol. */
+  /** Duplicate groups still awaiting a verdict. Intake refuses while any
+   *  stands: a merge collapses rows, not registrations, so issuing ahead of
+   *  the verdict leaves one person holding two. */
   pending_dedup: number;
 }
 
@@ -1356,6 +1360,11 @@ export interface IngestAndMatch {
   unmatched: number;
   partial: number;
   set_aside: number;
+  /** What the issuing pass at the head of this intake did. There is no
+   *  confirmation dialog to carry it, so the conclusion does. */
+  issued: number;
+  already_issued: number;
+  skipped: IssuedSkip[];
 }
 
 export interface OperationStarted {

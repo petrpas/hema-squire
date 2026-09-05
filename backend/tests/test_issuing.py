@@ -12,9 +12,10 @@ import io
 from datetime import UTC, datetime, timedelta
 
 import pytest
-from conftest import outcome
+from conftest import enable_payments, outcome
 from sqlalchemy import select
 
+from app.bank import get_fio_client
 from app.dedup import MergeProposal, ThreeBands, default_merge, get_dedup_llm
 from app.importer import ParsedFencer, get_import_parser
 from app.mail import get_mailer
@@ -110,10 +111,44 @@ def import_roster(client, organizer, rows):
     return outcome(client, organizer, "cup", "parse")
 
 
-def issue(client, organizer):
-    response = client.post("/api/tournaments/cup/import/issue", headers=organizer)
-    assert response.status_code == 200, response.json()
-    return response.json()
+# a Fio export carrying no movements: enough for the intake path to run, and it
+# ingests nothing, so what the outcome reports about issuing is all that changed
+EMPTY_STATEMENT = """\
+accountId;2000145399
+bankId;2010
+currency;CZK
+
+ID pohybu;Datum;Objem;Měna;VS;KS;SS;Zpráva pro příjemce;Název protiúčtu;Protiúčet
+""".encode()
+
+
+def issue(client, organizer, slug="cup"):
+    """Drive the issuing pass the way the console does: through payment intake.
+
+    There is no issuing action any more (design Decision 10). Importing a
+    statement issues registrations for the fencer list before it matches
+    anything, so an empty statement is how a test asks for the pass alone. A
+    tournament Squire collects nothing for has no intake, and issues through the
+    endpoint the Payments phase calls on arrival instead.
+    """
+    detail = client.get(f"/api/tournaments/{slug}", headers=organizer).json()
+    if not detail.get("feature_payments"):
+        response = client.post(f"/api/tournaments/{slug}/import/issue", headers=organizer)
+        assert response.status_code == 200, response.json()
+        return response.json()
+
+    response = client.post(
+        f"/api/tournaments/{slug}/payments/import-statement",
+        files={"file": ("statement.csv", io.BytesIO(EMPTY_STATEMENT), "text/csv")},
+        headers=organizer,
+    )
+    assert response.status_code == 202, response.text
+    report = outcome(client, organizer, slug, "statement")
+    return {
+        "issued": report["issued"],
+        "already": report["already_issued"],
+        "skipped": report["skipped"],
+    }
 
 
 def sheet_rows(client, organizer):
@@ -550,7 +585,10 @@ class PairingDedup:
 
 
 def test_refused_while_deduplication_is_pending(client, auth_headers, mailbox):
-    """A row a merge may collapse must not spend a variable symbol first."""
+    """A merge collapses rows, not registrations: issuing before the verdict
+    leaves one person holding two and the merge nothing to collapse. This is the
+    boned-out path, where the Payments phase issues on arrival; the tournament
+    Squire collects for meets the same rule at intake (see below)."""
     organizer = auth_headers()
     setup(client, organizer)
     app.dependency_overrides[get_dedup_llm] = lambda: PairingDedup()
@@ -735,3 +773,244 @@ def test_an_issued_registration_is_never_told_about_a_credit(client, auth_header
     session.commit()
     emails.send_payment_received(mailbox, tournament, registration.fencer, registration)
     assert len(mailbox.sent) == 1
+
+
+# --- Issuing through payment intake -----------------------------------------
+#
+# There is no issuing action (design Decision 10). On a tournament Squire
+# collects for, the roster is made billable by the intake that needs it — the
+# statement import and the bank poll, each issuing before it matches — and the
+# deduplication gate sits on intake rather than on issuing, so a verdict left
+# outstanding stops the money rather than a control the organizer cannot find.
+
+
+def collecting_setup(client, organizer, *, fio_token=None):
+    setup(client, organizer)
+    enable_payments(client, organizer, "cup")
+    if fio_token:
+        client.patch(
+            "/api/tournaments/cup", json={"fio_token": fio_token}, headers=organizer
+        )
+
+
+class SilentFio:
+    """A bank with nothing to report: a poll of it is the issuing pass alone."""
+
+    def __init__(self):
+        self.calls = []
+
+    def fetch(self, token, date_from, date_to):
+        self.calls.append(token)
+        return []
+
+
+@pytest.fixture
+def stub_fio():
+    stub = SilentFio()
+    app.dependency_overrides[get_fio_client] = lambda: stub
+    yield stub
+    app.dependency_overrides.pop(get_fio_client, None)
+
+
+def import_bank_statement(client, organizer, content=EMPTY_STATEMENT):
+    return client.post(
+        "/api/tournaments/cup/payments/import-statement",
+        files={"file": ("statement.csv", io.BytesIO(content), "text/csv")},
+        headers=organizer,
+    )
+
+
+def test_a_statement_import_issues_before_it_matches(client, auth_headers, mailbox):
+    """The whole point: the organizer imports a statement and the roster it has
+    to match against comes into existence in the same operation."""
+    organizer = auth_headers()
+    collecting_setup(client, organizer)
+    import_roster(client, organizer, [row("Jan Novak", "jan@example.com"),
+                                      row("Eva Dvorak", "eva@example.com")])
+    assert registrations() == []
+
+    assert import_bank_statement(client, organizer).status_code == 202
+    report = outcome(client, organizer, "cup", "statement")
+
+    assert report["issued"] == 2
+    assert len(registrations()) == 2
+    # a tournament Squire keeps the registrations for gets its shortcut
+    assert all(r.vs is not None for r in registrations())
+    assert mailbox.sent == [], "issuing mails nobody, whatever ran it"
+
+
+def test_a_poll_issues_on_the_same_terms(client, auth_headers, mailbox, stub_fio):
+    organizer = auth_headers()
+    collecting_setup(client, organizer, fio_token="secret-token")
+    import_roster(client, organizer, [row("Jan Novak", "jan@example.com")])
+
+    polled = client.post("/api/tournaments/cup/payments/fio-poll", headers=organizer)
+
+    assert polled.status_code == 200, polled.text
+    assert polled.json()["issued"] == 1
+    assert len(registrations()) == 1
+
+
+def test_a_second_intake_issues_nothing(client, auth_headers, mailbox):
+    organizer = auth_headers()
+    collecting_setup(client, organizer)
+    import_roster(client, organizer, [row("Jan Novak", "jan@example.com")])
+
+    import_bank_statement(client, organizer)
+    first = outcome(client, organizer, "cup", "statement")
+    symbols = {r.id: r.vs for r in registrations()}
+
+    import_bank_statement(client, organizer)
+    second = outcome(client, organizer, "cup", "statement")
+
+    assert first["issued"] == 1
+    assert second == {**second, "issued": 0, "already_issued": 1}
+    assert {r.id: r.vs for r in registrations()} == symbols
+
+
+def test_a_row_entered_between_two_statements_is_caught_up(client, auth_headers, mailbox):
+    """Nobody has to remember that the second fencer needs anything done."""
+    organizer = auth_headers()
+    collecting_setup(client, organizer)
+    import_roster(client, organizer, [row("Jan Novak", "jan@example.com")])
+    import_bank_statement(client, organizer)
+    outcome(client, organizer, "cup", "statement")
+
+    import_roster(client, organizer, [row("Eva Dvorak", "eva@example.com")])
+    import_bank_statement(client, organizer)
+    second = outcome(client, organizer, "cup", "statement")
+
+    assert second["issued"] == 1
+    assert second["already_issued"] == 1
+    assert len(registrations()) == 2
+
+
+def test_intake_is_refused_while_duplicates_are_pending(client, auth_headers, mailbox):
+    organizer = auth_headers()
+    collecting_setup(client, organizer)
+    app.dependency_overrides[get_dedup_llm] = lambda: PairingDedup()
+    import_roster(
+        client,
+        organizer,
+        [row("Jan Novák", "jan@example.com"), row("Jan Novak", "jan2@example.com")],
+    )
+    client.post("/api/tournaments/cup/import/dedup", headers=organizer)
+    outcome(client, organizer, "cup", "dedup")
+
+    response = import_bank_statement(client, organizer)
+
+    assert response.status_code == 409
+    assert response.json()["detail"]["code"] == "dedup_pending"
+    assert response.json()["detail"]["groups"] == 1
+    assert registrations() == [], "a refused intake issues nothing"
+
+
+def test_a_poll_is_refused_on_the_same_ground(client, auth_headers, mailbox, stub_fio):
+    organizer = auth_headers()
+    collecting_setup(client, organizer, fio_token="secret-token")
+    app.dependency_overrides[get_dedup_llm] = lambda: PairingDedup()
+    import_roster(
+        client,
+        organizer,
+        [row("Jan Novák", "jan@example.com"), row("Jan Novak", "jan2@example.com")],
+    )
+    client.post("/api/tournaments/cup/import/dedup", headers=organizer)
+    outcome(client, organizer, "cup", "dedup")
+
+    response = client.post("/api/tournaments/cup/payments/fio-poll", headers=organizer)
+
+    assert response.status_code == 409
+    assert response.json()["detail"]["code"] == "dedup_pending"
+    assert stub_fio.calls == [], "the bank is not even asked"
+
+
+def test_intake_proceeds_once_the_verdicts_are_in(client, auth_headers, mailbox):
+    organizer = auth_headers()
+    collecting_setup(client, organizer)
+    app.dependency_overrides[get_dedup_llm] = lambda: PairingDedup()
+    import_roster(
+        client,
+        organizer,
+        [row("Jan Novák", "jan@example.com"), row("Jan Novak", "jan2@example.com")],
+    )
+    client.post("/api/tournaments/cup/import/dedup", headers=organizer)
+    outcome(client, organizer, "cup", "dedup")
+    groups = client.get("/api/tournaments/cup/import/dedup/groups", headers=organizer).json()
+    for group in groups:
+        client.post(
+            "/api/tournaments/cup/import/dedup/decide",
+            json={"key": group["key"], "accept": False},
+            headers=organizer,
+        )
+
+    assert import_bank_statement(client, organizer).status_code == 202
+    report = outcome(client, organizer, "cup", "statement")
+
+    assert report["issued"] == 2
+
+
+def test_the_conclusion_names_the_rows_it_skipped(client, auth_headers, mailbox):
+    """No confirmation dialog carries this any more, and it has to land
+    somewhere: each skipped row is a fencer whose payment cannot reconcile until
+    the organizer fixes the row."""
+    organizer = auth_headers()
+    collecting_setup(client, organizer)
+    import_roster(
+        client,
+        organizer,
+        [
+            row("Jan Novak", "jan@example.com"),
+            row("Bez Disciplin", "bez@example.com", disciplines=""),
+        ],
+    )
+
+    import_bank_statement(client, organizer)
+    report = outcome(client, organizer, "cup", "statement")
+
+    assert report["issued"] == 1
+    assert [(s["name"], s["reason"]) for s in report["skipped"]] == [
+        ("Bez Disciplin", "no_discipline")
+    ]
+
+
+def test_the_lifecycle_passes_issue_nothing(client, auth_headers, mailbox):
+    """They move time, not money."""
+    organizer = auth_headers()
+    collecting_setup(client, organizer)
+    import_roster(client, organizer, [row("Jan Novak", "jan@example.com")])
+
+    response = client.post("/api/tournaments/cup/payments/process", headers=organizer)
+
+    assert response.status_code == 200, response.text
+    assert registrations() == []
+
+
+def test_no_surface_issues_outside_intake_where_squire_collects(client, auth_headers, mailbox):
+    """One path, so a variable symbol cannot be spent from anywhere else."""
+    organizer = auth_headers()
+    collecting_setup(client, organizer)
+    import_roster(client, organizer, [row("Jan Novak", "jan@example.com")])
+
+    response = client.post("/api/tournaments/cup/import/issue", headers=organizer)
+
+    assert response.status_code == 409
+    assert response.json()["detail"] == "intake_issues_instead"
+    assert registrations() == []
+
+
+def test_a_tournament_squire_collects_nothing_for_issues_on_arrival(client, auth_headers, mailbox):
+    """No intake exists to hang the pass on, so the Payments phase issues when
+    the organizer opens it — and mints nothing scarce doing so."""
+    organizer = auth_headers()
+    setup(client, organizer)
+    import_roster(client, organizer, [row("Jan Novak", "jan@example.com")])
+
+    report = issue(client, organizer)
+
+    assert report["issued"] == 1
+    (registration,) = registrations()
+    # priced, entered and dormant — everything the export, the outstanding
+    # column and the manual paid tick need. Whether it carries a symbol is
+    # `registrations_kept_by`'s question, not this one
+    assert registration.total_amount is not None
+    assert registration.clocks_dormant

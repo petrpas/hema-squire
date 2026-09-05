@@ -111,12 +111,18 @@ def test_statement_import_is_idempotent(client, auth_headers):
     assert settle(client, organizer, kind="statement")["outcome"] == {
         "new": 2, "duplicate": 0, "matched": 0, "flagged": 0, "unmatched": 2, "partial": 0,
         "set_aside": 0,
+        # intake issues before it matches; this roster is in-app, so it issues
+        # nothing (spec payments-intake)
+        "issued": 0, "already_issued": 0, "skipped": [],
     }
 
     import_statement(client, organizer)
     assert settle(client, organizer, kind="statement")["outcome"] == {
         "new": 0, "duplicate": 2, "matched": 0, "flagged": 0, "unmatched": 0, "partial": 0,
         "set_aside": 0,
+        # intake issues before it matches; this roster is in-app, so it issues
+        # nothing (spec payments-intake)
+        "issued": 0, "already_issued": 0, "skipped": [],
     }
 
     listing = client.get("/api/tournaments/cup/payments/transactions", headers=organizer)
@@ -159,6 +165,9 @@ def test_fio_poll_overlaps_with_csv_idempotently(client, auth_headers, stub_fio)
     assert polled.json() == {
         "new": 1, "duplicate": 1, "matched": 0, "flagged": 0, "unmatched": 1, "partial": 0,
         "set_aside": 0,
+        # intake issues before it matches; this roster is in-app, so it issues
+        # nothing (spec payments-intake)
+        "issued": 0, "already_issued": 0, "skipped": [],
     }
     assert stub_fio.calls == ["secret-token"]
 

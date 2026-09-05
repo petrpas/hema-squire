@@ -1003,7 +1003,11 @@
       "importFailed": "Výpis se nepodařilo načíst.",
       "pollFailed": "Z banky se nepodařilo stáhnout.",
       "lifecycleFailed": "Spuštění se nezdařilo.",
-      "unreadable": "Soubor nevypadá jako výpis — žádný sloupec v něm nenese data a částky. Ověřte, že jde o správný export a že se otevře jako tabulka v tabulkovém procesoru."
+      "unreadable": "Soubor nevypadá jako výpis — žádný sloupec v něm nenese data a částky. Ověřte, že jde o správný export a že se otevře jako tabulka v tabulkovém procesoru.",
+      "willIssue": "Načtením výpisu se {{count}} řádkům seznamu vystaví registrace. Bez nich nemá platba k čemu sednout.",
+      "willIssueWithSymbols": "Načtením výpisu se {{count}} řádkům seznamu vystaví registrace a přidělí variabilní symboly. Symboly se nevracejí ani nepoužívají znovu.",
+      "dedupPending": "Načítat výpis zatím nelze: {{count}} duplicit čeká na posouzení. Vyřešte je ve fázi Deduplikace.",
+      "issued": "Vystaveno {{count}} registrací."
     },
     "clear": {
       "title": "Smazat platby",
@@ -1128,17 +1132,10 @@
     "done": "hotovo"
   },
   "issue": {
-    "title": "Vystavit registrace",
-    "hint": "Řádek uvádí, kdo závodí. Registrace se dá zaplatit: nese variabilní symbol a zůstatek.",
-    "action": "Vystavit registrace",
-    "confirm": "Vystaví se {{count}} registrací. Variabilní symboly se přidělí a nevracejí se.",
-    "noMail": "Nikomu se nic neposílá. Tyto registrace nemají splatnost, nepřipomínají se a nikdy nevyprší.",
-    "confirmAction": "Vystavit",
-    "blockedByDedup": "Duplicity se ještě posuzují ({{count}}). Řádek, který by sloučení zrušilo, nesmí dřív dostat variabilní symbol.",
-    "result": "Vystaveno {{issued}}; {{already}} už registraci mělo.",
+    "skippedHeading": "Bez registrace zůstaly tyto řádky; dokud je neopravíte, jejich platby nepůjde spárovat:",
     "skipped": "{{name}} — {{reason}}",
     "unnamed": "řádek bez jména",
-    "failed": "Registrace se nepodařilo vystavit.",
+    "blockedByDedup": "Nejdřív je potřeba dořešit duplicity. Sloučení slučuje řádky, ne registrace, takže řádek vystavený předem by po sloučení zůstal jako druhá registrace téhož člověka.",
     "reason": {
       "no_discipline": "nemá žádnou disciplínu",
       "no_email": "nemá e-mailovou adresu",
