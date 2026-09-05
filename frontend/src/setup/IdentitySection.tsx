@@ -28,6 +28,14 @@ const IDENTITY_FIELDS = [
     hint: "setup.identity.registrationInstructionsHint",
     markdown: true,
   },
+  // where registration is held when Squire does not hold it. Here rather than
+  // on TIMELINE because it is a fencer-facing fact about the tournament, not a
+  // date on its schedule (design add-external-registration, Open Questions)
+  {
+    key: "external_registration_url",
+    type: "text",
+    hint: "setup.identity.externalRegistrationHint",
+  },
 ] as const;
 
 // rendered as three runs — [display_name, subtitle], [date, location, description],
@@ -53,6 +61,12 @@ const IDENTITY_TEXT_CHECKS: Record<string, (value: string) => FieldErrorValue | 
       "TournamentUpdate.registration_instructions",
       value,
       { multiline: true },
+    ),
+  external_registration_url: (value) =>
+    checkString(
+      "external_registration_url",
+      "TournamentUpdate.external_registration_url",
+      value,
     ),
 };
 

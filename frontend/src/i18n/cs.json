@@ -347,7 +347,9 @@
       "discount_prices": "Chybí eurová částka u některé pevné slevy",
       "legacy_fixed_fees_block_eur": "Turnaj používá staré pevné poplatky za zapůjčení zbraně nebo afterparty, které nemají eurový protějšek — přejdi na položkové doplňkové služby, aby šlo zapnout eura",
       "bank_account": "Chybí bankovní účet, na který se vybírají platby",
-      "deposit_amount": "Chybí záloha na turnaji, který zálohu vybírá"
+      "deposit_amount": "Chybí záloha na turnaji, který zálohu vybírá",
+      "external_registration_url": "Chybí adresa, kde běží registrace",
+      "payment_feed": "Zálohový režim potřebuje token bankovního feedu, aby se záloha poznala hned po připsání"
     },
     "priceChangeWarning": {
       "title": "Změna cen na turnaji s otevřenou registrací",
@@ -377,7 +379,8 @@
       "qualificationCriteriaRequired": "Zadej kvalifikační kritéria, nebo přepni zpět na \"otevřeno pro všechny\".",
       "registrationInstructions": "Pokyny k registraci",
       "registrationInstructionsHint": "Zobrazí se jen v registračním formuláři — místo pro poznámky k platbě nebo registraci, které nepatří na veřejnou stránku.",
-      "markdownHint": "podporuje markdown: **tučně**, *kurzíva*, nadpisy # a ##, odrážky -, číslovaný seznam 1., [odkazy](url), > citace, --- vodorovná čára"
+      "markdownHint": "podporuje markdown: **tučně**, *kurzíva*, nadpisy # a ##, odrážky -, číslovaný seznam 1., [odkazy](url), > citace, --- vodorovná čára",
+      "externalRegistrationHint": "Kam se šermíři hlásí, když registraci vede pořadatel. Squire na ni jen odkazuje — adresu nekontroluje a nic z ní nečte."
     },
     "vsSeries": {
       "title": "Řada variabilního symbolu",
@@ -541,7 +544,8 @@
       "effect.reservation": "Místo drží zdarma do {{deadline}}. Pokud do té doby nezaplatí, šermíř se přesune mezi náhradníky.",
       "deadline.own": "{{date}}",
       "deadline.close": "{{date}} (uzávěrka přihlášek)",
-      "deadline.date": "{{date}} (datum turnaje)"
+      "deadline.date": "{{date}} (datum turnaje)",
+      "depositNeedsFeed": "Zálohový režim potřebuje bankovní feed, aby se záloha poznala hned po připsání. Nastav Fio token, aby šel použít."
     },
     "legacyFees": {
       "title": "Staré pevné poplatky",
@@ -756,7 +760,9 @@
     "opensAt": "registrace od {{date}} v {{time}} {{zone}}",
     "opensAtNotice": "Přihlašování se otevře {{date}} v {{time}} {{zone}}.",
     "opensOnNotice": "Přihlašování se otevře {{date}}.",
-    "opensIn": "otevře se za {{countdown}}"
+    "opensIn": "otevře se za {{countdown}}",
+    "registrationElsewhere": "Registraci na tento turnaj vede pořadatel mimo Squire.",
+    "registrationElsewhereAction": "Přejít na registraci"
   },
   "form": {
     "title": "Registrace",

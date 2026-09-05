@@ -48,6 +48,13 @@ MISSING_TEAM_BOUNDS = "team_bounds"
 # the account payments are collected into, mandatory only once the
 # tournament can produce a nonzero total (design Decision 2)
 MISSING_BANK_ACCOUNT = "bank_account"
+# where a tournament the organizer keeps sends its fencers. Publishing one with
+# no address leaves a fencer nowhere to go, which is the failure the branch
+# exists to prevent (design add-external-registration D3)
+MISSING_EXTERNAL_REGISTRATION = "external_registration_url"
+# the deposit payment mode expires a seat on a per-registration clock, which
+# only a feed arriving by itself can answer (design D5)
+MISSING_PAYMENT_FEED = "payment_feed"
 # the flat deposit, mandatory only in deposit mode — where it is a price like
 # any other, EUR figure included (design add-payment-modes D4)
 MISSING_DEPOSIT_AMOUNT = "deposit_amount"
@@ -150,6 +157,30 @@ def setup_missing(tournament: Tournament) -> list[str]:
         )
     ):
         missing.append(MISSING_DEPOSIT_AMOUNT)
+
+    # A tournament the organizer keeps needs the address its fencers are sent
+    # to, and needs no account, because Squire collects nothing for it. Its
+    # registration window is not mandatory either: the dates still say when the
+    # organizer's own registration runs, but the gate they would guard refuses
+    # every submission already (design add-external-registration D3). Every
+    # other item above is untouched — an organizer-kept tournament is no less a
+    # tournament, and still has a place, organizers, disciplines and prices
+    if tournament.registrations_kept_by is RegistrationsKeptBy.ORGANIZER:
+        if not (tournament.external_registration_url or "").strip():
+            missing.append(MISSING_EXTERNAL_REGISTRATION)
+        return missing
+
+    # the deposit mode holds a seat on a deposit and expires it on a sliding
+    # per-registration window. Only a feed that arrives by itself can answer
+    # one; a statement uploaded by hand answers a single question after a
+    # single date. Reported rather than rewritten: switching the mode on the
+    # organizer's behalf would hand them a mode they did not choose (design D5)
+    if (
+        tournament.feature_payments
+        and tournament.payment_mode == PaymentMode.DEPOSIT
+        and not (tournament.fio_token or "").strip()
+    ):
+        missing.append(MISSING_PAYMENT_FEED)
 
     # only a tournament Squire collects money for needs an account to collect
     # it into (design tournament-modes D5). Every other item above is

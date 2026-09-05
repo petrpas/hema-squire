@@ -94,7 +94,7 @@ def test_one_transfer_covers_two_fencers(client, auth_headers, mailbox):
     assert len(mailbox.sent) == 2  # both fencers got payment confirmations
 
     statuses = {p["name"]: p["status"] for p in
-                client.get("/api/tournaments/cup/participants").json()}
+                client.get("/api/tournaments/cup/participants").json()["participants"]}
     assert statuses == {"Adéla": "confirmed", "Boris": "confirmed"}
 
     # persisted as a rule in the payments phase

@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 
 import NotFound from "./NotFound";
+import ExternalRegistrationNotice from "./ExternalRegistrationNotice";
 import OpeningNotice from "./OpeningNotice";
 import PaidStamp from "./PaidStamp";
 import PaymentPanel from "./PaymentPanel";
@@ -482,7 +483,11 @@ export default function TournamentDetail() {
               <OtherActionsInfo detail={detail} />
               {!readOnly &&
                 !secondTabOffered &&
-                (registrationStatus(detail, opening.now) === "opens_on" ? (
+                (registrationStatus(detail, opening.now) === "elsewhere" ? (
+                  // the way out stands where the registration form would
+                  // have been, and never beside a Register action
+                  <ExternalRegistrationNotice detail={detail} />
+                ) : registrationStatus(detail, opening.now) === "opens_on" ? (
                   <OpeningNotice
                     detail={detail}
                     remainingMs={opening.remainingMs}

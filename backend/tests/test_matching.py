@@ -117,7 +117,7 @@ def test_exact_vs_match_marks_paid_and_notifies(client, auth_headers, mailbox):
 
     registration = client.get("/api/tournaments/cup/my-registration", headers=fencer).json()
     assert registration["state"] == "paid"
-    participants = client.get("/api/tournaments/cup/participants").json()
+    participants = client.get("/api/tournaments/cup/participants").json()["participants"]
     assert participants[0]["status"] == "confirmed"
     assert "Platba přijata" in mailbox.sent[-1]["Subject"]
 

@@ -25,8 +25,7 @@ function StatusBadge({ tournament }: { tournament: OpenTournament }) {
   }
   if (tournament.registration_status === "elsewhere") {
     // states where registration is, never that it is closed: this tournament
-    // never had a window here (design add-registrations-kept-by D4). The link
-    // out is attached by add-external-registration
+    // never had a window here (design add-registrations-kept-by D4)
     return <span className="chip">{t("home.status.elsewhere")}</span>;
   }
   if (tournament.registration_status === "opens_on") {

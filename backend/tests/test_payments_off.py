@@ -280,6 +280,8 @@ def test_stored_payment_settings_survive_the_feature_being_turned_off(
         json={
             "bank_account": IBAN,
             "payment_mode": "deposit",
+            # deposit mode needs a configured feed (spec tournament-admin)
+            "fio_token": "test-feed-token",
             "deposit_amount": 300,
             "reservation_validity_days": 5,
             "reminder_day": 3,

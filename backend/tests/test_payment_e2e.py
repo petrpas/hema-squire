@@ -132,7 +132,7 @@ def test_happy_path_reserve_qr_match_paid(client, auth_headers, mailbox, fio):
     assert str(vs) in body  # VS quoted in the body too
 
     # public list before payment: greyed unconfirmed (owner default)
-    (entry,) = client.get("/api/tournaments/cup/participants").json()
+    (entry,) = client.get("/api/tournaments/cup/participants").json()["participants"]
     assert entry["status"] == "unconfirmed"
 
     # the fencer pays within tolerance (980 vs 1000 at 5%); Fio poll picks it up
@@ -153,7 +153,7 @@ def test_happy_path_reserve_qr_match_paid(client, auth_headers, mailbox, fio):
 
     # receipt email and public confirmation
     assert len(mailbox.to("jan@example.com")) == 2
-    (entry,) = client.get("/api/tournaments/cup/participants").json()
+    (entry,) = client.get("/api/tournaments/cup/participants").json()["participants"]
     assert entry["status"] == "confirmed"
 
     # idempotence: polling the same transaction again changes nothing
@@ -191,7 +191,7 @@ def test_expiry_path_reminder_expire_free_capacity_flag_late_payment(
     ).json()
     assert registration["state"] == "expired"
     assert len(mailbox.to("jan@example.com")) == 3
-    assert client.get("/api/tournaments/cup/participants").json() == []
+    assert client.get("/api/tournaments/cup/participants").json()["participants"] == []
 
     # the freed slot is available again: the discipline was at capacity 1
     (availability,) = client.get("/api/tournaments/cup/availability").json()

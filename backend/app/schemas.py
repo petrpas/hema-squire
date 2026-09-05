@@ -388,6 +388,9 @@ class TournamentUpdate(BaseModel):
     registration_instructions: (
         MultilineStr(constraints.TOURNAMENT_REGISTRATION_INSTRUCTIONS_MAX_LENGTH) | None
     ) = None
+    external_registration_url: (
+        HttpUrlStr(constraints.EXTERNAL_REGISTRATION_URL_MAX_LENGTH) | None
+    ) = None
     local_currency: Currency | None = None
     eur_payments_enabled: bool | None = None
     # local-currency units per 1 EUR; a Setup convenience for recalculate-
@@ -572,6 +575,9 @@ class TournamentOut(BaseModel):
     qualification_open: bool
     qualification_criteria: str | None
     registration_instructions: str | None
+    # where registration is held when Squire does not hold it; presented
+    # wherever a fencer would otherwise be offered a registration form
+    external_registration_url: str | None
     local_currency: Currency
     eur_payments_enabled: bool
     eur_rate: decimal.Decimal | None
@@ -971,6 +977,11 @@ class OpenTournamentOut(BaseModel):
     local_currency: Currency = Currency.CZK
     organizers: list[OrganizerOut]
     registration_status: RegistrationStatus
+    # where registration is held, set only while the status is `elsewhere` —
+    # the destination the card offers in the Register action's place. None
+    # there means the organizer has not recorded one yet, which a published
+    # tournament cannot be in, since the address is mandatory to publish one
+    external_registration_url: str | None = None
     # the opening *day*, kept as it was so a client written before the opening
     # moment existed still reads this list
     registration_opens_on: datetime.date | None = None
@@ -1175,4 +1186,28 @@ class ParticipantOut(BaseModel):
     club: str | None
     nationality: str | None
     disciplines: list[str]
-    status: Literal["confirmed", "unconfirmed"]
+    # None where Squire guarantees no payment state for this tournament — the
+    # payments feature is off, or the organizer keeps the registrations. The
+    # distinction is not drawn rather than drawn wrongly: reading a
+    # registration's payment state as its attendance is only meaningful where
+    # money was asked for (design add-external-registration D2)
+    status: Literal["confirmed", "unconfirmed"] | None
+
+
+class ParticipantListOut(BaseModel):
+    """The public list, with what it can and cannot vouch for.
+
+    An envelope rather than a bare array because the list has to be able to
+    state how current it is: a roster Squire maintains is live by
+    construction, and one that arrived by import is as current as the last
+    import, which may be a month ago."""
+
+    participants: list[ParticipantOut]
+    # True where the payments feature is on and Squire keeps the
+    # registrations — the only case in which a `status` means anything
+    payment_state_known: bool
+    # the moment the roster last reached Squire, where Squire does not
+    # maintain it. A fact about when, never a judgement about currency: the
+    # system cannot say whether a list is up to date, and saying so would be
+    # wrong the moment the organizer imports again (design D2)
+    as_of: datetime.datetime | None

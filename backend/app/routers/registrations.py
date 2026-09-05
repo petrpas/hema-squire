@@ -22,12 +22,14 @@ from app.models import (
     Discipline,
     DisciplineKind,
     ExtraItem,
+    ImportBatch,
     PaymentEvent,
     PaymentMode,
     RefundState,
     Registration,
     RegistrationDiscipline,
     RegistrationExtra,
+    RegistrationsKeptBy,
     RegistrationState,
     Team,
     TeamMember,
@@ -38,6 +40,7 @@ from app.routers.tournaments import FencerDep, SessionDep, TournamentDep
 from app.schemas import (
     AvailabilityOut,
     DiscountBreakdownOut,
+    ParticipantListOut,
     ParticipantOut,
     PaymentInstructionsOut,
     PricePreviewIn,
@@ -248,10 +251,26 @@ def availability(tournament: TournamentDep, session: SessionDep):
     return result
 
 
-@router.get("/participants", response_model=list[ParticipantOut])
+@router.get("/participants", response_model=ParticipantListOut)
 def participants(tournament: TournamentDep, session: SessionDep):
-    """Public list: paid registrations as confirmed; unpaid reservations hidden
-    or greyed as unconfirmed per the tournament setting. Never as confirmed."""
+    """The public list of who is entered.
+
+    What it says about payment depends on whether Squire guarantees a payment
+    state at all. Where it collects — payments on, and Squire keeping the
+    registrations — paid registrations are confirmed and unpaid ones are hidden
+    or greyed per the tournament's setting, as before.
+
+    Where it does not, no confirmed/unconfirmed distinction is drawn and the
+    unpaid-list setting does not apply: there are no unpaid reservations in the
+    sense that setting means, because no money was requested. Reading a
+    registration's state as its attendance used to leave a payments-off
+    tournament's list either empty or entirely "unconfirmed", which contradicted
+    `registration`'s own lifecycle rule that such a registration is presented as
+    confirmed (design add-external-registration D2)."""
+    known = (
+        tournament.feature_payments
+        and tournament.registrations_kept_by is RegistrationsKeptBy.SQUIRE
+    )
     show_unpaid = tournament.unpaid_list_treatment == UnpaidListTreatment.GREYED
     rows = session.scalars(
         select(Registration)
@@ -269,19 +288,39 @@ def participants(tournament: TournamentDep, session: SessionDep):
         ]
         if not active_slugs:
             continue  # fully-queued substitutes are not participants
-        confirmed = registration.state == RegistrationState.PAID
-        if not confirmed and not show_unpaid:
-            continue
+        status = None
+        if known:
+            confirmed = registration.state == RegistrationState.PAID
+            if not confirmed and not show_unpaid:
+                continue
+            status = "confirmed" if confirmed else "unconfirmed"
         result.append(
             ParticipantOut(
                 name=registration.fencer.display_name,
                 club=registration.fencer.club,
                 nationality=registration.fencer.nationality,
                 disciplines=active_slugs,
-                status="confirmed" if confirmed else "unconfirmed",
+                status=status,
             )
         )
-    return result
+    return ParticipantListOut(
+        participants=result,
+        payment_state_known=known,
+        as_of=_roster_as_of(session, tournament),
+    )
+
+
+def _roster_as_of(session, tournament: Tournament) -> datetime | None:
+    """When the roster last reached Squire, for a list Squire does not
+    maintain. None where it does — a live list dating itself would be noise,
+    and the date would invite a reader to wonder what it is warning about."""
+    if tournament.registrations_kept_by is not RegistrationsKeptBy.ORGANIZER:
+        return None
+    return session.scalar(
+        select(func.max(ImportBatch.uploaded_at)).where(
+            ImportBatch.tournament_id == tournament.id
+        )
+    )
 
 
 def _resolve_selection(tournament: Tournament, data) -> tuple[list, list[tuple]]:

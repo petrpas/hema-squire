@@ -398,6 +398,10 @@ export interface TournamentDetail extends Tournament {
    *  outside Squire and reaches it by import; no in-app registration opens and
    *  no lifecycle runs (design add-registrations-kept-by). */
   registrations_kept_by: RegistrationsKeptBy;
+  /** Where registration is held when Squire does not hold it. Mandatory to
+   *  publish a tournament the organizer keeps; optional otherwise. Squire
+   *  never fetches it (design add-external-registration D1). */
+  external_registration_url: string | null;
   /** Live registrations fencers made in the application themselves, excluding
    *  ones issued from an imported row. What the confirmation states when the
    *  organizer takes the tournament out of Squire's keeping — the people it

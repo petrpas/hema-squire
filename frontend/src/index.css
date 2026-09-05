@@ -27,6 +27,17 @@ a {
   text-decoration: underline;
 }
 
+/* A link that leaves the site, on a page that is otherwise entirely ours: it
+   has to read as a destination rather than as another of our own pages (spec
+   external-registration). Marked by a typographic arrow rather than by colour
+   — the one saturated colour is spoken for, and an outward link is not an
+   error or a stamp. */
+.external-link::after {
+  content: " \2197";
+  text-decoration: none;
+  display: inline-block;
+}
+
 strong,
 h1,
 h2,
@@ -2648,6 +2659,17 @@ label.checkbox-chip,
 .prose-inline a {
   color: var(--ink);
   text-decoration: underline;
+}
+
+/* A link that leaves the site, on a page that is otherwise entirely ours: it
+   has to read as a destination rather than as another of our own pages (spec
+   external-registration). Marked by a typographic arrow rather than by colour
+   — the one saturated colour is spoken for, and an outward link is not an
+   error or a stamp. */
+.external-link::after {
+  content: " \2197";
+  text-decoration: none;
+  display: inline-block;
 }
 
 .prose blockquote {

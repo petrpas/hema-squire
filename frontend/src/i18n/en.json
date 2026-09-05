@@ -340,7 +340,9 @@
       "discount_prices": "Some fixed discount has no EUR amount",
       "legacy_fixed_fees_block_eur": "This tournament uses the legacy fixed weapon-rental/afterparty fees, which have no EUR counterpart — switch to itemized extra services to enable EUR",
       "bank_account": "The bank account payments are collected into is missing",
-      "deposit_amount": "The deposit is missing on a tournament that takes one"
+      "deposit_amount": "The deposit is missing on a tournament that takes one",
+      "external_registration_url": "The address where registration is held is missing",
+      "payment_feed": "The deposit mode needs a bank feed token, so a deposit is noticed as it arrives"
     },
     "priceChangeWarning": {
       "title": "Changing prices on a tournament with open registration",
@@ -370,7 +372,8 @@
       "qualificationCriteriaRequired": "Enter the qualification criteria, or switch back to \"open to everyone\".",
       "registrationInstructions": "Registration instructions",
       "registrationInstructionsHint": "Shown only on the registration form — the place for payment or registration notes that do not belong on the public page.",
-      "markdownHint": "supports markdown: **strong**, *emphasis*, # and ## headings, - lists, 1. numbered lists, [links](url), > quotes, --- rule"
+      "markdownHint": "supports markdown: **strong**, *emphasis*, # and ## headings, - lists, 1. numbered lists, [links](url), > quotes, --- rule",
+      "externalRegistrationHint": "Where fencers register when the organizer keeps the registrations. Squire only links to it — it never checks the address or reads anything back from it."
     },
     "vsSeries": {
       "title": "Variable symbol series",
@@ -534,7 +537,8 @@
       "effect.reservation": "Seat held free until {{deadline}}. Still unpaid then, the fencer moves to the queue.",
       "deadline.own": "{{date}}",
       "deadline.close": "{{date}} (the registration close)",
-      "deadline.date": "{{date}} (the tournament date)"
+      "deadline.date": "{{date}} (the tournament date)",
+      "depositNeedsFeed": "The deposit mode needs a bank feed, so that a deposit is noticed as it arrives. Record a Fio token to use it."
     },
     "legacyFees": {
       "title": "Legacy fixed fees",
@@ -748,7 +752,9 @@
     "opensAt": "registration opens {{date}} at {{time}} {{zone}}",
     "opensAtNotice": "Registration opens {{date}} at {{time}} {{zone}}.",
     "opensOnNotice": "Registration opens {{date}}.",
-    "opensIn": "opens in {{countdown}}"
+    "opensIn": "opens in {{countdown}}",
+    "registrationElsewhere": "Registration for this tournament is held by its organizer, outside Squire.",
+    "registrationElsewhereAction": "Go to the registration"
   },
   "form": {
     "title": "Registration",

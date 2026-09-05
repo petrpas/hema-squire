@@ -254,6 +254,9 @@ def _fencer_tournament_out(
     return OpenTournamentOut(
         slug=tournament.slug,
         display_name=tournament.display_name,
+        external_registration_url=(
+            tournament.external_registration_url if status_ == "elsewhere" else None
+        ),
         subtitle=tournament.subtitle,
         has_logo=tournament.has_logo,
         date=tournament.date,

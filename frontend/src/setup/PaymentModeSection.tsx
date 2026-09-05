@@ -15,6 +15,16 @@ import {
 import { _int, type SaverRegistry, useSectionSaver } from "./shared";
 
 const MODES: PaymentMode[] = ["immediate", "deposit", "reservation"];
+
+/** The deposit mode holds a seat on a sliding per-registration window and
+ *  expires it when the deposit does not arrive. Only a feed that arrives by
+ *  itself can answer one; a statement uploaded by hand answers a single
+ *  question after a single date. So it is offered only where a feed is
+ *  configured, and its absence is stated rather than left as a gap (spec
+ *  tournament-admin, "The deposit payment mode requires a payment feed"). */
+function modesAvailable(fioConfigured: boolean): PaymentMode[] {
+  return fioConfigured ? MODES : MODES.filter((mode) => mode !== "deposit");
+}
 const UNPAID_TREATMENTS = ["greyed", "hidden"] as const;
 
 /** The date the seating deadline actually falls on, with the fallback that
@@ -184,7 +194,7 @@ export function PaymentModeSection({
     <section className="rail-card">
       <h2>{t("setup.paymentMode.title")}</h2>
       <div className="mode-options">
-        {MODES.map((option) => (
+        {modesAvailable(detail.fio_token_configured).map((option) => (
           <div className="mode-option" key={option}>
             <label className="qualification-option">
               <input
@@ -215,9 +225,17 @@ export function PaymentModeSection({
           </div>
         ))}
       </div>
+      {!detail.fio_token_configured && (
+        <p className="rail-hint">{t("setup.paymentMode.depositNeedsFeed")}</p>
+      )}
       <div className="form-fields">
         {numberField("reservation_validity_days", "param.hint.reservation_validity_days")}
-        {numberField("reminder_day")}
+        {/* the reminder day schedules notice about an obligation Squire
+            neither sets nor chases where the organizer keeps the
+            registrations, so it has no operator there. Hidden, never cleared:
+            the stored value comes back if the tournament returns to Squire's
+            keeping (design add-external-registration D6) */}
+        {detail.registrations_kept_by === "squire" && numberField("reminder_day")}
         <label className="form-field">
           <span>
             {t("param.unpaid_list_treatment")}

@@ -108,6 +108,10 @@ DISCOUNT_NAME_MAX_LENGTH = SHORT
 ORGANIZER_NAME_MIN_LENGTH = 1
 ORGANIZER_NAME_MAX_LENGTH = SHORT
 ORGANIZER_LINK_MAX_LENGTH = 500
+# where a tournament's registration is held when Squire does not hold it. The
+# same room a titular organizer's link gets: it is one address, and an address
+# that does not fit in 500 characters is not one a fencer will be following
+EXTERNAL_REGISTRATION_URL_MAX_LENGTH = 500
 
 # ---- TournamentCreate / TournamentUpdate ----
 TOURNAMENT_DISPLAY_NAME_MIN_LENGTH = 1

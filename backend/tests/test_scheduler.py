@@ -120,7 +120,7 @@ def test_expiry_frees_capacity_and_notifies(client, auth_headers, mailbox):
 
     availability = client.get("/api/tournaments/cup/availability").json()
     assert availability[0]["free"] == 1
-    assert client.get("/api/tournaments/cup/participants").json() == []
+    assert client.get("/api/tournaments/cup/participants").json()["participants"] == []
 
     session = db_session()
     kinds = session.scalars(select(PaymentEvent.kind)).all()

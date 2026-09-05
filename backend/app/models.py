@@ -260,6 +260,15 @@ class Tournament(Base):
     # optional plain text shown only on the registration form — the place for
     # registration/payment notes that do not belong on the public info screen
     registration_instructions: Mapped[str | None] = mapped_column(Text)
+    # where this tournament's registration is held when Squire does not hold it
+    # (spec external-registration). Mandatory to publish a tournament the
+    # organizer keeps, optional otherwise. Squire never fetches it, never checks
+    # that it resolves and never reports it as dead: what it points at is not
+    # Squire's to know, and a check made at save time proves nothing about the
+    # moment a fencer follows it (design add-external-registration D1)
+    external_registration_url: Mapped[str | None] = mapped_column(
+        String(constraints.EXTERNAL_REGISTRATION_URL_MAX_LENGTH)
+    )
     # public-facing titular organizers (clubs/entities), each {"name", "link"};
     # independent of the account-based console access in TournamentOrganizer.
     # Entries may still be bare strings from a partially-migrated or

@@ -352,3 +352,21 @@ def test_a_squire_kept_tournament_is_still_listed_open(client, auth_headers):
     listed = client.get("/api/tournaments/open", headers=fencer).json()
     entry = next(t for t in listed if t["slug"] == "cup")
     assert entry["registration_status"] == "open"
+
+
+def test_the_mine_tab_needs_no_change(client, auth_headers):
+    """Contrary to the working brief, which expected an organizer-kept
+    tournament to vanish from Mine. Mine lists tournaments the account is bound
+    to by registration **or by organizing** (spec fencer-home), so it appears
+    there for its organizer, correctly, and is absent for a fencer who never
+    registered in the application — which is already what it does."""
+    organizer = auth_headers()
+    make_tournament(client, organizer)
+    publish(client, organizer, "cup")
+    set_kept_by(client, organizer, "organizer")
+
+    mine = client.get("/api/tournaments/mine", headers=organizer).json()
+    assert [t["slug"] for t in mine] == ["cup"]
+
+    stranger = auth_headers(email="nobody@example.com", name="Nobody")
+    assert client.get("/api/tournaments/mine", headers=stranger).json() == []
