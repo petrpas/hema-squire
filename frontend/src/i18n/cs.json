@@ -966,7 +966,11 @@
       "remove": "Odebrat",
       "unknownVs": "Žádná registrace nemá VS {{values}}.",
       "failed": "Platbu se nepodařilo přiřadit.",
-      "confirm": "Přiřadit"
+      "confirm": "Přiřadit",
+      "roster": "Za koho ta platba je?",
+      "search": "Hledat v soupisce",
+      "strongest": "nejlepší shoda",
+      "refused": "(řekls, že to není on)"
     },
     "expiredHolding": {
       "title": "Vypršelé s platbou",
@@ -1015,6 +1019,17 @@
         "final": "Tuto akci nelze vzít zpět.",
         "confirm": "trvale odstranit"
       }
+    },
+    "likely": {
+      "title": "Nejspíš tihle šermíři",
+      "explain": "Vyčteno z toho, co plátce napsal. Nic není připsané a nikomu nic nepřišlo — zaplacené to bude až potvrzením.",
+      "date": "Datum",
+      "payer": "Zaplatil",
+      "amount": "Částka",
+      "message": "Zpráva plátce",
+      "fencer": "Za koho",
+      "confirm": "Potvrdit",
+      "reject": "To není on"
     }
   },
   "validation": {

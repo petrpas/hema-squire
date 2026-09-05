@@ -19,6 +19,7 @@ import PaidStamp from "./PaidStamp";
 import TolerancePanel from "./TolerancePanel";
 import ExpiredHoldingPanel from "./payments/ExpiredHoldingPanel";
 import FlaggedPanel from "./payments/FlaggedPanel";
+import LikelyPanel from "./payments/LikelyPanel";
 import ClearPaymentsPanel from "./payments/ClearPaymentsPanel";
 import IntakePanel from "./payments/IntakePanel";
 import PaymentLinksPanel from "./payments/PaymentLinksPanel";
@@ -547,6 +548,13 @@ export default function Console({
                 <p className="rail-hint">{t("console.settled.meaning")}</p>
               ) : phase === "payments" ? (
                 <>
+                  {/* proposals first: they are the queue with the most work in
+                      it and the one an organizer empties fastest */}
+                  <LikelyPanel
+                    slug={tournament.slug}
+                    reload={queueReload}
+                    onChanged={refresh}
+                  />
                   <UnmatchedPanel
                     slug={tournament.slug}
                     reload={queueReload}

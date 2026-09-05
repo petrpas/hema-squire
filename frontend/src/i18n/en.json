@@ -957,7 +957,11 @@
       "remove": "Remove",
       "unknownVs": "No registration has VS {{values}}.",
       "failed": "The link could not be created.",
-      "confirm": "Link"
+      "confirm": "Link",
+      "roster": "Who is this payment for?",
+      "search": "Search the roster",
+      "strongest": "best match",
+      "refused": "(you said not them)"
     },
     "expiredHolding": {
       "title": "Expired, holding money",
@@ -1006,6 +1010,17 @@
         "final": "This cannot be undone.",
         "confirm": "remove permanently"
       }
+    },
+    "likely": {
+      "title": "Probably these fencers",
+      "explain": "Read from what the payer wrote. Nothing has been credited and nobody has been told — confirming is what pays the registration.",
+      "date": "Date",
+      "payer": "Paid by",
+      "amount": "Amount",
+      "message": "Payer's message",
+      "fencer": "For",
+      "confirm": "Confirm",
+      "reject": "Not them"
     }
   },
   "validation": {

@@ -3,13 +3,14 @@ import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
-import { ApiError, type Transaction, api } from "../api";
+import { ApiError, type RankedFencer, type Transaction, api } from "../api";
 import i18n from "../i18n";
 import LinkDialog from "./LinkDialog";
 
-// The manual link dialog: the candidates the backend detected, a VS typed by
-// hand, and several registrations settled by one transfer (spec
-// `payments-console`, Manual link dialog).
+// The manual link dialog. It addresses a **person** first — a variable symbol
+// is a shortcut, and about one payment in ten carries none or carries one that
+// is wrong — with the detected candidates and a typed symbol kept as a second
+// way in (spec name-assisted-matching, payments-console).
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -35,6 +36,30 @@ function transaction(overrides: Partial<Transaction> = {}): Transaction {
     last_evaluated_at: null,
     ...overrides,
   } as Transaction;
+}
+
+function ranked(overrides: Partial<RankedFencer> = {}): RankedFencer {
+  return {
+    fencer_id: 1,
+    name: "Jan Novák",
+    registration_id: 11,
+    vs: 2601001,
+    outstanding_amount: "1200.00",
+    score: 1,
+    proposed: false,
+    rejected: false,
+    ...overrides,
+  };
+}
+
+/** The roster the dialog fetches when it opens. Empty by default so the tests
+ *  that predate it keep exercising the symbol path. */
+function withRoster(fencers: RankedFencer[] = []) {
+  return vi.spyOn(api, "transactionRoster").mockResolvedValue({
+    transaction_id: 7,
+    query: "za Novaka a Dvoraka",
+    fencers,
+  });
 }
 
 let host: HTMLElement | null = null;
@@ -98,7 +123,9 @@ it("offers a detected candidate and links it in one click", async () => {
   click(buttonNamed(t("payments.link.confirm")));
   await settle();
 
-  expect(link).toHaveBeenCalledWith("cup", 7, [2601001]);
+  // the roster is empty here, so a symbol the dialog cannot resolve locally is
+  // sent as a symbol and the endpoint resolves it
+  expect(link).toHaveBeenCalledWith("cup", 7, [2601001], []);
   expect(onLinked).toHaveBeenCalled();
 });
 
@@ -113,7 +140,7 @@ it("sends both registrations in one request when a transfer covers two", async (
   await settle();
 
   expect(link).toHaveBeenCalledTimes(1);
-  expect(link).toHaveBeenCalledWith("cup", 7, [2601001, 2601002]);
+  expect(link).toHaveBeenCalledWith("cup", 7, [2601001, 2601002], []);
 });
 
 it("names an unrecognised VS and keeps the dialog open with the entry", async () => {
@@ -162,5 +189,85 @@ it("creates no link when dismissed", () => {
 
 it("cannot confirm with nothing selected", () => {
   render(transaction({ candidate_vs: [] }));
+  expect(buttonNamed(t("payments.link.confirm"))?.disabled).toBe(true);
+});
+
+
+// ------------------------------------------------------- addressing a person
+
+it("lists the whole roster ranked, with the strongest marked", async () => {
+  withRoster([
+    ranked({ fencer_id: 1, name: "Josef Vejda", registration_id: 11, proposed: true }),
+    ranked({ fencer_id: 2, name: "Milan Diviš", registration_id: 12, score: 0.2 }),
+  ]);
+  render();
+  await settle();
+
+  const text = host?.textContent ?? "";
+  expect(text).toContain("Josef Vejda");
+  expect(text).toContain("Milan Diviš");
+  expect(text).toContain(t("payments.link.strongest"));
+});
+
+it("links by choosing a person, with no symbol quoted", async () => {
+  withRoster([ranked({ name: "Josef Vejda", registration_id: 11, vs: null })]);
+  const link = vi.spyOn(api, "linkTransaction").mockResolvedValue({ rule_id: 1, applied: 1 });
+  render();
+  await settle();
+
+  const box = host?.querySelector('input[type="checkbox"]') as HTMLInputElement;
+  act(() => box.click());
+  click(buttonNamed(t("payments.link.confirm")));
+  await settle();
+
+  // a registration with no symbol is addressed by id, which is the whole point
+  expect(link).toHaveBeenCalledWith("cup", 7, [], [11]);
+});
+
+it("filters the roster as the organizer types", async () => {
+  withRoster([
+    ranked({ fencer_id: 1, name: "Josef Vejda", registration_id: 11 }),
+    ranked({ fencer_id: 2, name: "Milan Diviš", registration_id: 12 }),
+  ]);
+  render();
+  await settle();
+
+  const search = [...(host?.querySelectorAll("input") ?? [])].find(
+    (input) => (input as HTMLInputElement).placeholder === t("payments.link.search"),
+  ) as HTMLInputElement;
+  act(() => {
+    // React tracks the input's value on the node, so assigning it directly is
+    // ignored; the native setter is how a controlled input is driven in a test
+    const setter = Object.getOwnPropertyDescriptor(
+      window.HTMLInputElement.prototype,
+      "value",
+    )?.set;
+    setter?.call(search, "diviš");
+    search.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+
+  expect(host?.textContent).toContain("Milan Diviš");
+  expect(host?.textContent).not.toContain("Josef Vejda");
+});
+
+it("a symbol the roster knows resolves to that person", async () => {
+  withRoster([ranked({ name: "Josef Vejda", registration_id: 11, vs: 2601001 })]);
+  const link = vi.spyOn(api, "linkTransaction").mockResolvedValue({ rule_id: 1, applied: 1 });
+  render();
+  await settle();
+
+  click(buttonNamed("2601001"));
+  click(buttonNamed(t("payments.link.confirm")));
+  await settle();
+
+  // sent as the registration, not as the number: one kind of thing reaches the
+  // endpoint wherever the dialog could tell
+  expect(link).toHaveBeenCalledWith("cup", 7, [], [11]);
+});
+
+it("says nothing can be linked until something is chosen", async () => {
+  withRoster([ranked()]);
+  render();
+  await settle();
   expect(buttonNamed(t("payments.link.confirm"))?.disabled).toBe(true);
 });

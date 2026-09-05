@@ -724,7 +724,38 @@ export interface PricePreview {
   discounts: DiscountBreakdown[];
 }
 
-export type TransactionStatus = "unmatched" | "flagged" | "matched" | "resolved";
+/** `likely` is a **proposal**, not an outcome: the resolver read a fencer's
+ *  name in the payer's own words and is asking a person. No money has moved and
+ *  nobody has been mailed while a transaction sits in it. */
+export type TransactionStatus =
+  | "unmatched"
+  | "flagged"
+  | "matched"
+  | "partial"
+  | "likely"
+  | "resolved";
+
+export interface RankedFencer {
+  fencer_id: number;
+  name: string;
+  registration_id: number;
+  /** Null on a tournament whose registrations carry no variable symbol. */
+  vs: number | null;
+  outstanding_amount: string;
+  score: number;
+  /** Strong enough and far enough ahead to have been proposed; at most one. */
+  proposed: boolean;
+  /** The organizer has already refused this fencer for this payment. */
+  rejected: boolean;
+}
+
+export interface TransactionRoster {
+  transaction_id: number;
+  /** What the roster was ranked against, stated so a surprising order is
+   *  explicable. */
+  query: string;
+  fencers: RankedFencer[];
+}
 
 export interface Transaction {
   id: number;
@@ -747,6 +778,12 @@ export interface Transaction {
    *  text that resolve to a registration. The link dialog offers these as
    *  one-click choices; empty when the backend recognised nothing. */
   candidate_vs: number[];
+  /** Who the payment's own text named, read at parse time — never the payer. */
+  named_person: string | null;
+  /** Who the resolver proposes while the status is `likely`. A proposal, not
+   *  an outcome: nothing is credited until a person confirms. */
+  proposed_fencer_id: number | null;
+  proposed_fencer_name: string | null;
   /** When the matcher last considered this transaction; null before it has. */
   last_evaluated_at: string | null;
 }
@@ -912,10 +949,22 @@ export const api = {
    *  first frontend caller of the manual-link endpoint. Rejects with 404 and
    *  `detail.unknown_vs` when a VS resolves to nothing, 409 `already_matched`
    *  when a concurrent poll matched the transaction first. */
-  linkTransaction: (slug: string, transaction_id: number, vs: number[]) =>
+  /** Which registrations a payment covers, addressed either way: by variable
+   *  symbol where the payer quoted one, by registration id where there is none
+   *  to quote. A registration on a tournament whose organizer keeps the roster
+   *  carries no symbol at all. */
+  linkTransaction: (
+    slug: string,
+    transaction_id: number,
+    vs: number[],
+    registration_ids: number[] = [],
+  ) =>
     request<{ rule_id: number; applied: number }>(
       `/api/tournaments/${slug}/payments/link`,
-      { method: "POST", body: JSON.stringify({ transaction_id, vs }) },
+      {
+        method: "POST",
+        body: JSON.stringify({ transaction_id, vs, registration_ids }),
+      },
     ),
   expiredHolding: (slug: string) =>
     request<ExpiredHolding[]>(`/api/tournaments/${slug}/payments/expired-holding`),
@@ -1140,6 +1189,26 @@ export const api = {
     ),
   unmatchedTransactions: (slug: string) =>
     request<Transaction[]>(`/api/tournaments/${slug}/payments/unmatched`),
+  /** Payments the resolver read a fencer's name in, waiting for a person.
+   *  Proposals, not outcomes: nothing here has been credited. */
+  likelyTransactions: (slug: string) =>
+    request<Transaction[]>(`/api/tournaments/${slug}/payments/likely`),
+  confirmProposal: (slug: string, transactionId: number) =>
+    request<{ rule_id: number; applied: number }>(
+      `/api/tournaments/${slug}/payments/likely/${transactionId}/confirm`,
+      { method: "POST" },
+    ),
+  rejectProposal: (slug: string, transactionId: number) =>
+    request<Transaction>(
+      `/api/tournaments/${slug}/payments/likely/${transactionId}/reject`,
+      { method: "POST" },
+    ),
+  /** The whole roster ordered by how well each fencer matches this payment's
+   *  own text, with the strongest marked where there is one. */
+  transactionRoster: (slug: string, transactionId: number) =>
+    request<TransactionRoster>(
+      `/api/tournaments/${slug}/payments/transactions/${transactionId}/roster`,
+    ),
   reinstateTransaction: (slug: string, transactionId: number) =>
     request<Transaction>(
       `/api/tournaments/${slug}/payments/transactions/${transactionId}/reinstate`,
