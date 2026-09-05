@@ -97,19 +97,31 @@ No new table, and a roster that says paid can always answer who said so and
 when. The alternative — a column on the registration recording who marked it —
 would answer only the last question and would lose an unmark entirely.
 
-### Decision 4: The column lives on Fencers, not Payments
+### Decision 4: The Payments phase is always offered, and boned out where Squire collects nothing
 
-The Payments phase is not offered where the payments setting is off
-(`etl-console`), which is precisely the configuration this serves. So the mark
-goes on **Fencers**, the phase every tournament has and the one that lists
-everybody.
+The phase stays. What it holds follows who handles the payments.
 
-`PHASE_COLUMNS` and `editableHere` are static tables today. They gain their first
-dependence on a tournament setting, which is a real change to how that module
-reads: a phase's columns have until now been a property of the phase alone. The
-alternative — offering a stripped Payments phase where Squire collects nothing —
-was rejected as worse: a phase named for payments, on a tournament that has
-none, holding one column.
+Where Squire handles them, it is what it is today: the queues, the intake card,
+the tolerance, the transactions, the variable symbols, the windows. Where it does
+not, it holds one thing — whether each registration is settled, and the action
+that changes it. Nothing else, because nothing else on that phase has any meaning
+when no money passes through Squire.
+
+This overturns an earlier draft of this design, which put the column on Fencers
+because `etl-console` says the Payments phase is offered only while the payments
+setting is on. Keeping the phase and emptying it is better on two counts.
+
+The phase is *already* the place a reader looks for who has paid, whichever way
+the tournament is run, so the answer does not move depending on a setting the
+reader may not know about. And it keeps the dependence where it belongs: a
+phase's **columns** stay a property of the phase alone, and it is the phase's
+**content** that varies — which `setup-navigation` and `etl-console` already do
+for other settings, rather than being a new kind of thing.
+
+The consequence is that two requirements move: `etl-console`'s rule that the
+Payments phase follows the payments setting, and `payments`' own statement that a
+tournament Squire collects nothing for offers no Payments phase. Both said the
+same thing and both are now half right — no reconciliation, but a phase.
 
 ### Decision 5: The public list marks the settled and marks nobody else
 
@@ -130,12 +142,17 @@ are none in the sense it means.
 
 ## Risks / Trade-offs
 
-**[A tournament is switched to Squire-handled payments afterwards] → It carries
-registrations marked paid with nothing behind them.** Reconciliation will find
-nothing to match, and the outstanding column will read the full total against a
-registration whose state says paid. The switch is already confirmed and already
-states what starts; this has to be among what it states, and the count of
-hand-marked registrations is the number to show.
+**[A tournament is switched to Squire-handled payments afterwards] → Accepted,
+and deliberately unhandled.** It carries registrations marked paid with nothing
+behind them: reconciliation finds nothing to match, and the outstanding column
+reads the full total against a registration whose state says paid.
+
+Nothing is built for it (owner's decision). The three alternatives each cost more
+than the case is worth: clearing the marks silently discards what a person
+entered by hand, refusing the switch puts a bar on a setting that is otherwise
+always changeable, and counting them in the confirmation is a number nobody has
+yet needed. The organizer who switches owns the consequence, and the state is
+recoverable by hand in the direction they came from.
 
 **[Paid with a full outstanding balance reads as a bug] → It is the honest
 reading, and the copy has to carry it.** Anything else means Squire writing a
@@ -164,7 +181,6 @@ distinguish them, and they survive.
 
 ## Open Questions
 
-- Whether the switch to Squire-handled payments should *offer* to unmark, rather
-  than only state the count. Undoing them silently is wrong, and leaving them is
-  what the risk above describes; offering is a third option that needs a screen.
-  Deferred until the count is real on a live tournament.
+- None outstanding. The one that was here — what the switch to Squire-handled
+  payments should do about hand-settled registrations — is answered above:
+  nothing. Reopen it if a live tournament ever makes the case concrete.

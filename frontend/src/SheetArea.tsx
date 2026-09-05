@@ -15,6 +15,7 @@ import {
 import EditableCell from "./EditableCell";
 import { usesHRIdentity } from "./identity";
 import MatchCell from "./MatchCell";
+import SettledCell from "./SettledCell";
 import type { FieldError } from "./validation";
 
 /** The fencer table and the document it sits in: the main area of every phase
@@ -45,6 +46,8 @@ export default function SheetArea({
   onRestore,
   onRatify,
   onSearch,
+  onToggleSettled,
+  settling,
 }: {
   phase: Phase;
   /** What this phase puts above the table — the payments phase's resolution
@@ -68,6 +71,10 @@ export default function SheetArea({
   onEdit: (row: SheetRow, column: string, raw: string) => void;
   onValidate: (column: string, raw: string) => FieldError | null;
   onDelete: (row: SheetRow) => void;
+  /** Marks a registration settled, or unmarks it — offered only on the
+   *  boned-out payments phase, where it is the phase's whole content. */
+  onToggleSettled?: (row: SheetRow) => void;
+  settling?: boolean;
   onRestore: (row: SheetRow) => void;
   onRatify: (row: SheetRow) => void;
   onSearch: (row: SheetRow) => void;
@@ -102,7 +109,9 @@ export default function SheetArea({
                   <th
                     key={column}
                     className={[
-                      PHASE_COLUMNS[phase].includes(column) ? "col-phase" : "",
+                      PHASE_COLUMNS[phase].includes(column) || column === "settled"
+                        ? "col-phase"
+                        : "",
                       MARKER_COLUMNS.has(column) ? "col-marker" : "",
                     ]
                       .filter(Boolean)
@@ -127,7 +136,8 @@ export default function SheetArea({
                     )}
                   </td>
                   {columns.map((column) => {
-                    const phaseOwned = PHASE_COLUMNS[phase].includes(column);
+                    const phaseOwned =
+                      PHASE_COLUMNS[phase].includes(column) || column === "settled";
                     const editable = editableHere(column, phase) && !row._deleted;
                     const isMatch = column === "match";
                     return (
@@ -137,7 +147,13 @@ export default function SheetArea({
                           isMatch ? "col-verdict" : ""
                         } ${MARKER_COLUMNS.has(column) ? "col-marker" : ""}`}
                       >
-                        {isMatch ? (
+                        {column === "settled" && onToggleSettled ? (
+                          <SettledCell
+                            row={row}
+                            onToggle={onToggleSettled}
+                            busy={settling ?? false}
+                          />
+                        ) : isMatch ? (
                           <MatchCell
                             row={row}
                             onRatify={() => onRatify(row)}

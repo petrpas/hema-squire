@@ -194,6 +194,13 @@
       "title": "unsaved setup changes",
       "body": "leaving setup now will discard the unsaved changes on this tab.",
       "confirm": "discard and leave"
+    },
+    "settled": {
+      "heading": "Settled",
+      "no": "not settled",
+      "set": "Mark settled — your own record that the money reached you",
+      "unset": "Unmark settled",
+      "meaning": "Settled records your word that the money reached you. Squire has received nothing itself, so what each fencer is owed stays as it is."
     }
   },
   "row": {
@@ -227,7 +234,8 @@
     "reg_name": "Name as registered",
     "match_verdict": "Match",
     "merge_note": "Merge note",
-    "outstanding": "Outstanding"
+    "outstanding": "Outstanding",
+    "settled": "Settled"
   },
   "param": {
     "early_bird_until": "Early bird until",

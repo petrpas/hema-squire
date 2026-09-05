@@ -1404,6 +1404,32 @@ fieldset.form-field > legend {
   overflow-x: hidden;
 }
 
+/* The one cell in the fencer table that is an action rather than a value: the
+   organizer's own word that a registration was settled. Drawn as the value it
+   sets, so the column reads as a column and not as a row of buttons — the
+   affordance is the pointer and the pressed state, not a frame. */
+.settled-cell {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+
+.settled-cell:disabled {
+  cursor: default;
+}
+
+.settled-cell .settled-unset {
+  color: var(--ink-faded);
+}
+
+.settled-cell:hover:not(:disabled) .settled-unset {
+  color: var(--ink);
+}
+
 /* Lift a sticky table header's cell clear of the sibling headers' shared
    z-index while its hint is open, so the box isn't cut off by the next
    header (design refine-detail-and-setup-ui D6). */

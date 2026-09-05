@@ -69,15 +69,27 @@ export type Phase = (typeof PHASES)[number];
  *  permanently empty tab. */
 export const DEFAULT_PHASE: Phase = "fencers";
 
-/** Which phases the tournament's mode offers, in the fixed order above — the
- *  mode removes phases, it never reorders them (spec: etl-console). The rest
- *  are always offered, since they are what every tournament is made of. */
+/** Which phases the tournament's settings offer, in the fixed order above — a
+ *  setting removes phases, it never reorders them (spec: etl-console). The rest
+ *  are always offered, since they are what every tournament is made of.
+ *
+ *  Payments is offered whoever handles the payments. It is the place a reader
+ *  looks for who has paid, and that answer must not move to another phase
+ *  depending on a setting the reader may not know about; what varies is the
+ *  phase's contents, not its presence (spec add-manual-paid-marking D4). */
 export function offeredPhases(mode: TournamentFlags): Phase[] {
   return PHASES.filter((phase) => {
-    if (phase === "payments") return mode.feature_payments;
     if (phase === "teams") return mode.feature_teams;
     return true;
   });
+}
+
+/** Whether the Payments phase is boned out: on a tournament whose payments
+ *  Squire does not handle it holds the settled mark and nothing else — no
+ *  queues, no intake, no tolerance, no transactions, none of which has a
+ *  meaning when no money passes through Squire. */
+export function paymentsBonedOut(mode: TournamentFlags): boolean {
+  return !mode.feature_payments;
 }
 
 // A phase tab is a view of the whole fencer list plus that operation's
@@ -102,6 +114,14 @@ export const PHASE_COLUMNS: Record<Phase, string[]> = {
   teams: [],
   queue: [],
 };
+
+/** The boned-out Payments phase's own columns. A second entry rather than a
+ *  condition inside `PHASE_COLUMNS.payments`, so a column stays a property of a
+ *  phase and none has to be read as sometimes present (spec etl-console). What
+ *  is owed is kept beside the mark deliberately: a hand-settled row reads as
+ *  paid while still showing its whole total, and hiding the second half would
+ *  make the first half look like the only truth. */
+export const BONED_PAYMENTS_COLUMNS = ["total_amount", "outstanding", "settled"];
 
 // Manual edits on these columns become field_edit rules. Notes are not among
 // them: a note is the fencer's words or the parser's, and a problem is the
@@ -421,7 +441,30 @@ export default function Console({
   // from the refreshed detail where there is one, so applying a mode in Setup
   // adds and removes phases at once rather than on the next load
   const phases = offeredPhases(detail ?? tournament);
-  const columns = [...BASE_COLUMNS, ...PHASE_COLUMNS[phase]];
+  const boned = phase === "payments" && paymentsBonedOut(detail ?? tournament);
+  const [settling, setSettling] = useState(false);
+
+  /** The organizer's word that a registration was settled. A write to the
+   *  registration, not a rule: every other manual edit in this console persists
+   *  as a rule replayed over the projection, which would reach the table and
+   *  the export and neither the public participant list nor the registration's
+   *  own state. Deliberate, and confined to this one action (spec etl-console,
+   *  "The Payments phase is boned out where Squire collects nothing"). */
+  async function toggleSettled(row: SheetRow) {
+    const id = row.registration_id;
+    if (typeof id !== "number") return;
+    setSettling(true);
+    try {
+      await api.markSettled(tournament.slug, id, !row.paid);
+      refresh();
+    } finally {
+      setSettling(false);
+    }
+  }
+  const columns = [
+    ...BASE_COLUMNS,
+    ...(boned ? BONED_PAYMENTS_COLUMNS : PHASE_COLUMNS[phase]),
+  ];
   const phaseEdits = editsForPhase(sheet?.edits ?? [], phase);
 
   return (
@@ -495,7 +538,14 @@ export default function Console({
           <SheetArea
             phase={phase}
             queues={
-              phase === "payments" ? (
+              boned ? (
+                /* the phase's whole content is the mark, so what the mark
+                   means goes above the table where the queues would be: a row
+                   reading paid while still showing its total is the honest
+                   reading of both, and a reader who takes it for a fault is
+                   misreading the one true thing about it */
+                <p className="rail-hint">{t("console.settled.meaning")}</p>
+              ) : phase === "payments" ? (
                 <>
                   <UnmatchedPanel
                     slug={tournament.slug}
@@ -534,6 +584,8 @@ export default function Console({
             onValidate={cellCheck}
             onDelete={(row) => void addRule("row_delete", row.id, {})}
             onRestore={(row) => void addRule("row_restore", row.id, {})}
+            onToggleSettled={boned ? toggleSettled : undefined}
+            settling={settling}
             onRatify={ratifyMatch}
             onSearch={setMatchRow}
           />
@@ -579,7 +631,7 @@ export default function Console({
               fencer table; the rail keeps what it keeps for every phase — the
               operation's parameters and the edits log (design
               add-payments-console-ui D1) */}
-          {phase === "payments" && (
+          {phase === "payments" && !boned && (
             <>
               <IntakePanel
                 slug={tournament.slug}

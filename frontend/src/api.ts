@@ -841,6 +841,15 @@ export const api = {
       method: "PATCH",
       body: JSON.stringify({ registrations_kept_by: value }),
     }),
+  /** The organizer's own word that a registration was settled, on a tournament
+   *  whose payments Squire does not handle. Writes the verdict and no amount:
+   *  what Squire has received stays at nothing, because it received nothing
+   *  (spec payments). */
+  markSettled: (slug: string, registrationId: number, settled: boolean) =>
+    request<RegistrationDetail>(
+      `/api/tournaments/${slug}/registrations/${registrationId}/settled?settled=${settled}`,
+      { method: "POST" },
+    ),
   taxonomy: () => request<Record<string, string>>("/api/taxonomy/disciplines"),
   addDiscipline: (slug: string, data: DisciplineInput) =>
     request<Discipline>(`/api/tournaments/${slug}/disciplines`, {

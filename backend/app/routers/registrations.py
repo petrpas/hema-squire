@@ -294,6 +294,14 @@ def participants(tournament: TournamentDep, session: SessionDep):
             if not confirmed and not show_unpaid:
                 continue
             status = "confirmed" if confirmed else "unconfirmed"
+        elif registration.state == RegistrationState.PAID:
+            # Squire guarantees no payment state here, so the only way this is
+            # paid is that the organizer said so by hand — an assertion by a
+            # person who collected the money, and worth showing. The others
+            # carry no mark at all rather than "unconfirmed": an absent mark is
+            # an organizer who has not reached that row, not a claim that
+            # anyone failed to pay (design add-manual-paid-marking D5)
+            status = "confirmed"
         result.append(
             ParticipantOut(
                 name=registration.fencer.display_name,
@@ -864,6 +872,77 @@ def cancel_registration(tournament: TournamentDep, session: SessionDep, fencer: 
         registration.refund_state = (
             RefundState.PENDING if refundable else RefundState.NOT_APPLICABLE
         )
+    session.commit()
+    return registration_out(session, registration, tournament)
+
+
+MARK_SETTLED = "settled_by_hand"
+UNMARK_SETTLED = "unsettled_by_hand"
+
+
+def _require_squire_collects_nothing(tournament: Tournament) -> None:
+    """Refuse a hand-mark on a tournament whose payments Squire handles.
+
+    The mirror of `bank.require_payments_enabled`, and for the same reason: the
+    paid state has one writer per tournament. Where Squire collects, that writer
+    is the reconciliation, and a mark made by hand could be contradicted by the
+    next statement with neither knowing (design add-manual-paid-marking D2)."""
+    if tournament.feature_payments:
+        raise HTTPException(status_code=409, detail="payments_handled_by_squire")
+
+
+@router.post("/registrations/{registration_id}/settled", response_model=RegistrationOut)
+def mark_settled(
+    registration_id: int,
+    tournament: TournamentDep,
+    session: SessionDep,
+    fencer: FencerDep,
+    settled: bool = True,
+):
+    """Record the organizer's word that a registration has been settled, on a
+    tournament whose payments Squire does not handle.
+
+    **Writes the verdict, not an amount.** `amount_paid_cents` and its EUR twin
+    are left exactly as they are — which on such a tournament is zero. Those
+    counters mean money that passed through Squire; the reconciliation fills
+    them from a statement it read, the export carries them, and the outstanding
+    column is computed against them. A figure written into them from a mark
+    would afterwards be indistinguishable from one Squire observed (design D1).
+
+    So a hand-settled registration reads as paid while still owing its whole
+    total. That is the honest reading of both columns at once: the fencer owes
+    the organizer nothing, and Squire received nothing.
+
+    `paid_at` is stamped, because it answers *when this became paid* and a mark
+    is when it did — and clearing it on the reverse mirrors what unlinking a
+    payment already does (`matching.py:662`)."""
+    require_console_access(session, tournament, fencer)
+    _require_squire_collects_nothing(tournament)
+    registration = session.scalar(
+        select(Registration).where(
+            Registration.tournament_id == tournament.id,
+            Registration.id == registration_id,
+        )
+    )
+    if registration is None:
+        raise HTTPException(status_code=404, detail="registration_not_found")
+    # this marks money received; it is not the way back from a state the
+    # lifecycle or the fencer chose
+    if registration.state not in (RegistrationState.RESERVED, RegistrationState.PAID):
+        raise HTTPException(status_code=409, detail="registration_not_live")
+
+    registration.state = RegistrationState.PAID if settled else RegistrationState.RESERVED
+    registration.paid_at = _now() if settled else None
+    session.add(
+        PaymentEvent(
+            tournament_id=tournament.id,
+            registration_id=registration.id,
+            kind=MARK_SETTLED if settled else UNMARK_SETTLED,
+            # who said so: a roster stating that someone has paid can always
+            # answer who said it and when (design D3)
+            detail=f"VS {registration.vs}: {fencer.display_name} <{fencer.email}>",
+        )
+    )
     session.commit()
     return registration_out(session, registration, tournament)
 

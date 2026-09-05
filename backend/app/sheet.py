@@ -174,6 +174,11 @@ def base_rows(
                 e.discipline.slug for e in registration.entries if e.is_substitute
             ],
             "state": registration.state.value,
+            # the registration behind this row, where one is behind it. The row
+            # id cannot stand in: an issued registration takes its source row's
+            # id, so `reg:<id>` is only sometimes the shape (see above). Read by
+            # the settled mark, which addresses the registration itself
+            "registration_id": registration.id,
             "vs": registration.vs,
             "paid": registration.state == RegistrationState.PAID,
             "registered_at": registration.registered_at.isoformat(),
@@ -319,6 +324,7 @@ def _imported_rows(
             "state": "imported",
             "vs": None,
             "paid": False,
+            "registration_id": None,
             "registered_at": record.get("registration_time"),
             "total_amount": None,
             "expires_at": None,
@@ -351,6 +357,7 @@ def _unparsed_row(row_id: str, row: ImportedRow) -> Row:
         "state": "imported",
         "vs": None,
         "paid": False,
+            "registration_id": None,
         "registered_at": None,
         "total_amount": None,
         "expires_at": None,
@@ -398,6 +405,7 @@ def _manual_row(row: ManualRow, index: HRIndex | None = None) -> Row:
         "state": "manual",
         "vs": None,
         "paid": False,
+            "registration_id": None,
         "registered_at": row.registered_at.isoformat(),
         "total_amount": None,
         "expires_at": None,

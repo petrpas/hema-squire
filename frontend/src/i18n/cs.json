@@ -200,6 +200,13 @@
       "title": "neuložené změny v nastavení",
       "body": "opuštěním nastavení teď se neuložené změny na této záložce zahodí.",
       "confirm": "zahodit a odejít"
+    },
+    "settled": {
+      "heading": "Vyrovnáno",
+      "no": "nevyrovnáno",
+      "set": "Označit vyrovnáno — tvůj vlastní záznam, že peníze dorazily",
+      "unset": "Zrušit označení",
+      "meaning": "Vyrovnáno je tvůj záznam, že ti peníze dorazily. Squire sám nedostal nic, takže částka, kterou šermíř dluží, zůstává, jak byla."
     }
   },
   "row": {
@@ -233,7 +240,8 @@
     "reg_name": "Jméno z přihlášky",
     "match_verdict": "Spárování",
     "merge_note": "Poznámka ke sloučení",
-    "outstanding": "Zbývá"
+    "outstanding": "Zbývá",
+    "settled": "Vyrovnáno"
   },
   "param": {
     "early_bird_until": "Early bird do",
