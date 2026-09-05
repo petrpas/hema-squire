@@ -69,6 +69,7 @@ export function TournamentSettingsFields({
   detail,
   onApplied,
   onClose,
+  onConfirm,
 }: {
   detail: TournamentDetail;
   /** The tournament as it stands after the settings were written, so the
@@ -76,6 +77,12 @@ export function TournamentSettingsFields({
    *  reload. */
   onApplied: (updated: TournamentDetail) => void;
   onClose: () => void;
+  /** Present when the tournament does not exist yet: the surface reports what
+   *  was chosen instead of writing it, and the caller creates the tournament
+   *  with it. There is nothing to confirm in that case — the warnings count
+   *  what a change would hide, and a tournament that does not exist holds
+   *  nothing and has taken no registrations. */
+  onConfirm?: (chosen: { mode: RegistrationsKeptBy; flags: TournamentFlags }) => Promise<void>;
 }) {
   const { t } = useTranslation();
   const usage = featuresInUse(detail);
@@ -111,6 +118,10 @@ export function TournamentSettingsFields({
     setBusy(true);
     setError(null);
     try {
+      if (onConfirm) {
+        await onConfirm({ mode, flags });
+        return;
+      }
       // The mode first, deliberately: two writes stand behind one confirm, and
       // a failure on the second should leave the more consequential choice
       // recorded rather than the less.
@@ -127,7 +138,7 @@ export function TournamentSettingsFields({
   }
 
   function submit() {
-    if ((modeChanged || losing.length > 0) && !confirming) {
+    if (!onConfirm && (modeChanged || losing.length > 0) && !confirming) {
       setConfirming(true);
       return;
     }
@@ -270,7 +281,6 @@ export function TournamentSettingsFields({
                 </label>
               ))}
             </div>
-            <p className="rail-hint">{t("setup.settings.includes.consequence")}</p>
           </div>
         </>
       )}

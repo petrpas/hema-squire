@@ -576,7 +576,7 @@
           "organizer": "Seznam přihlášených si vedeš sám — vlastní formulář, tabulka, klubová konference — a do Squire ho dostaneš importem. Squire ho vyčistí, spáruje s HEMA Ratings, nacení a vyexportuje. Nikomu nepíše a žádnou přihlášku nedrží."
         },
         "consequence": {
-          "squire": "Squire vede seznam a stará se o zbytek.",
+          "squire": "Šermíři se hlásí ve Squire. Vedu za tebe stav přihlášek a seznamy.",
           "organizer": "Ve Squire se nikdo nepřihlásí a Squire nikomu nic neposílá."
         },
         "confirmToManual": "Přihlašování ve Squire se zavře a Squire pro tento turnaj přestane posílat maily a rušit rezervace.",
@@ -619,8 +619,7 @@
         }
       },
       "includes": {
-        "title": "Co turnaj zahrnuje",
-        "consequence": "Tohle jen rozhoduje, jaká nastavení ti Squire nabídne. Šermíři se nezmění nic."
+        "title": "Co turnaj zahrnuje"
       },
       "feature": {
         "schedule": "Program turnaje",

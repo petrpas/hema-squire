@@ -25,28 +25,36 @@ Each of the three features SHALL carry a help hint stating which tournaments it 
 - **WHEN** the organizer reaches the help marker beside the manual mode
 - **THEN** a hint states that fencers cannot register in the application and Squire sends them nothing, rather than restating the word
 
-### Requirement: The settings surface is shown once a tournament is created
-Creating a tournament SHALL open the settings surface once the tournament exists, after the dialog that takes its display name, date and slug, and SHALL NOT show a further dialog after it.
+### Requirement: The settings surface is the second half of creating a tournament
+Creating a tournament SHALL take its display name, date and slug on one panel and its settings on the next, in one window, with no further dialog after them.
 
-The surface SHALL be dismissible. Dismissing it SHALL leave the created tournament exactly as it was created — automatic mode, payments off, no features — and SHALL open the console's Setup phase exactly as confirming it does. A tournament SHALL NOT be left uncreated, half-created, or unreachable by a setting that was never chosen.
+**No tournament SHALL exist until the settings panel is confirmed.** The two panels are one act: the request that creates the tournament SHALL carry its settings, so there is no moment at which a tournament exists without them and none at which one exists because of a step the organizer then backed out of.
 
-A failure to create the tournament SHALL NOT reach the settings surface: the organizer SHALL stay in the creation dialog with their input intact.
+The settings panel SHALL be dismissible, and dismissing it SHALL return to the naming panel with every field holding what was typed, having created nothing. Dismissing the naming panel SHALL abandon the creation.
+
+Because the tournament is created at the end, a refusal — a slug already taken, or any other — SHALL be reported on the naming panel with the input intact, whichever panel the organizer was on when it was raised.
+
+The settings panel SHALL NOT ask for confirmation of what it is about to write. Confirmation exists to count what a change would hide and whom it would affect, and a tournament that does not yet exist holds nothing and has taken no registrations.
 
 #### Scenario: Settings chosen at creation
-- **WHEN** an organizer creates a tournament, chooses manual mode and ticks team disciplines
-- **THEN** the tournament is manual with the team feature on, the other two features off, and the console opens on Setup
+- **WHEN** an organizer names a tournament, chooses manual mode, ticks team disciplines and confirms
+- **THEN** the tournament is created manual with the team feature on and the other two off, and the console opens on Setup
 
-#### Scenario: Surface dismissed
-- **WHEN** an organizer creates a tournament and closes the settings surface without choosing
-- **THEN** the tournament exists in automatic mode with payments off and no features, and the console opens on Setup
+#### Scenario: Cancelling the settings panel creates nothing
+- **WHEN** an organizer names a tournament, reaches the settings panel and cancels
+- **THEN** no tournament has been created, and the naming panel is shown again holding the name, date and slug that were typed
 
-#### Scenario: One surface, not two
-- **WHEN** an organizer confirms the settings surface at creation
-- **THEN** no further settings dialog opens, and the console opens on Setup
+#### Scenario: Confirming with nothing chosen
+- **WHEN** an organizer confirms the settings panel without changing anything
+- **THEN** the tournament is created in automatic mode with every feature off, and the console opens on Setup
 
-#### Scenario: Creation failure never reaches the settings
-- **WHEN** the creation dialog is rejected because the slug is taken
-- **THEN** the settings surface does not open and the organizer stays in the creation dialog with their input intact
+#### Scenario: A taken slug is reported where it was typed
+- **WHEN** the creation is refused because the slug is taken
+- **THEN** the naming panel is shown again with the input intact and the reason stated, and no tournament exists
+
+#### Scenario: Nothing is confirmed twice
+- **WHEN** an organizer chooses manual mode on the settings panel at creation
+- **THEN** no confirmation is asked for, because nothing is being hidden and nobody has registered
 
 ### Requirement: OTHER carries one settings section
 The Setup phase's `OTHER` tab SHALL carry **one** section stating the tournament's whole configuration — its mode, its payments setting, and which of the three features are enabled — in words, with a single control that reopens the settings surface on the tournament's current values. It SHALL NOT carry a second section describing any part of that configuration.

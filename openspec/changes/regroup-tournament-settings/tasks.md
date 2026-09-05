@@ -35,7 +35,11 @@ it is accepted.
 - [x] 3.5 `MODE_FEATURES` → `TOURNAMENT_FEATURES`, the three only. Payments is read by name at each of its two sites, which is fewer places than a second constant would create and makes its absence from the array read as deliberate. The type covering all four flags is `TournamentFlags`, since the tab and phase logic genuinely needs all four
 - [x] 3.6 `TournamentMode` → **`TournamentFlags`, still four booleans** — deviation from the written task. `offeredSetupTabs`, `offeredPhases` and `setupTabTitleKey` all read `feature_payments`, so a three-boolean type would have broken them for a distinction that is about category, not storage. `TOURNAMENT_FEATURES` is where the three-ness lives
 - [x] 3.7 `setup/ModeSection.tsx` and `setup/RegistrationsKeptBySection.tsx` → one `setup/SettingsSection.tsx` stating all three tiers with one control; mount it once in `SetupPanel.tsx` where the two were
-- [x] 3.8 `TournamentPicker.tsx`: the two-step creation flow collapses to one panel. The `modeDone` state added by `add-registrations-kept-by` goes with it
+- [x] 3.8 `TournamentPicker.tsx`: the two-step creation flow collapses to one panel; the `modeDone` state added by `add-registrations-kept-by` goes with it.
+
+- [x] 3.8b **Nothing is created until the settings panel is confirmed** (owner, on seeing it). This reverses `tournament-modes` D11, which persisted the tournament *before* the second panel so that dismissing it could not lose the record — the cost being a tournament brought into existence by an act the organizer then backed out of. Cancelling now returns to the naming panel with every field intact and nothing created.
+
+  Two consequences to know. `TournamentSettingsFields` gained an `onConfirm` prop: given one, it reports what was chosen instead of writing it, and asks for no confirmation — the warnings count what a change would hide, and a tournament that does not exist holds nothing. And a taken slug is now answered *after* the second panel rather than before, so the failure path returns to the naming panel and states it there
 - [x] 3.9 `setup/PublishSection.tsx` imports `FEATURE_NAMES` to name the feature that restores a hidden item's editor — follow the rename and confirm the message still reads correctly for an extra item hidden by a feature
 
 ## 4. Localization
