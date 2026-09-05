@@ -131,6 +131,30 @@ export const BONED_PAYMENTS_COLUMNS = ["total_amount", "outstanding", "settled"]
 // Note and problem markers).
 const EDITABLE_COLUMNS = new Set(["name", "nationality", "club", "hr_id"]);
 
+/** Columns a row owns only while it is still a row.
+ *
+ *  Disciplines are the one of these. A row's are what the fencer entered and
+ *  the organizer may correct them; an issued registration's are its entries,
+ *  which decide what it is billed and where it is seated — so a cell edit there
+ *  would move the table and not the money, and the row would read one thing
+ *  while the registration charged another.
+ *
+ *  Offered on the fencer list and nowhere else: the phases after it read the
+ *  roster rather than settle it. */
+const ROW_ONLY_COLUMNS = new Set(["disciplines"]);
+
+/** Slugs out of the text a discipline cell is edited as. Separators are loose
+ *  on purpose — a comma is what the cell shows, and a space is what someone
+ *  types instead — and the case is the slug's own, since a slug is an identity
+ *  rather than a word. */
+export function parseDisciplines(raw: string): string[] {
+  const seen = new Set<string>();
+  return raw
+    .split(/[,;]|\s+/)
+    .map((part) => part.trim())
+    .filter((part) => part !== "" && !seen.has(part) && seen.add(part) !== undefined);
+}
+
 /** Whether a cell opens for editing here. Identity is the organizer's to
  *  correct where it is claimed — on Import, on the fencer list, or by rebinding
  *  the id on Matching — and not on the phases that read it off the profile
@@ -138,7 +162,10 @@ const EDITABLE_COLUMNS = new Set(["name", "nationality", "club", "hr_id"]);
  *  cell is read-only there too: making only those editable would put the
  *  affordance on exactly the rows that are hardest to identify, and the rule it
  *  created would stop being displayed the moment the row was matched. */
-export function editableHere(column: string, phase: Phase): boolean {
+export function editableHere(column: string, phase: Phase, row?: SheetRow): boolean {
+  if (ROW_ONLY_COLUMNS.has(column)) {
+    return phase === "fencers" && (row?.registration_id ?? null) === null;
+  }
   if (IDENTITY_COLUMNS.includes(column)) return !usesHRIdentity(phase);
   return EDITABLE_COLUMNS.has(column);
 }
@@ -371,8 +398,25 @@ export default function Console({
     refresh();
   }
 
+  /** The disciplines an individual row may enter, by slug. Team disciplines are
+   *  not among them: a team is composed rather than entered on a row. */
+  const offeredSlugs = (detail?.disciplines ?? [])
+    .filter((discipline) => discipline.kind === "individual")
+    .map((discipline) => discipline.slug);
+
   function cellCheck(field: string, raw: string): FieldError | null {
     switch (field) {
+      case "disciplines": {
+        const slugs = parseDisciplines(raw);
+        // emptying it would leave a row that cannot be issued at all, which is
+        // the state this edit exists to get out of
+        if (slugs.length === 0) return { field, code: "required", params: {} };
+        const unknown = slugs.filter((slug) => !offeredSlugs.includes(slug));
+        if (unknown.length > 0) {
+          return { field, code: "bad_enum", params: { value: unknown.join(", ") } };
+        }
+        return null;
+      }
       case "hr_id":
         return checkNumeric(field, "RosterMemberIn.hr_id", raw);
       case "name":
@@ -387,6 +431,12 @@ export default function Console({
   }
 
   function saveEdit(row: SheetRow, field: string, raw: string) {
+    if (field === "disciplines") {
+      // a list, not the text it was typed as: the row's own shape, which
+      // pricing, seating and issuing all read
+      void addRule(ruleKindFor(field), row.id, { field, value: parseDisciplines(raw) });
+      return;
+    }
     const value =
       field === "hr_id"
         ? raw === ""

@@ -40,7 +40,7 @@ from app.models import (
 )
 from app.routers.tournaments import _lowest_free_series
 
-SCHEMA_VERSION = 11
+SCHEMA_VERSION = 12
 
 _TOURNAMENT_FIELDS = [
     "slug", "display_name", "date", "language",
@@ -174,7 +174,13 @@ def export_tournament(session: Session, tournament: Tournament) -> dict:
         .order_by(SheetRowNumber.number)
     ).all()
 
-    fencers = {r.fencer.email: r.fencer for r in registrations}
+    # keyed by id, not by address. A fencer record the organizer enrolled may
+    # hold no address at all (spec `fencer-accounts`), and a dictionary keyed on
+    # one would collapse every such record onto a single `None` — exporting one
+    # fencer where the tournament has three, and pointing every one of their
+    # registrations at whichever survived. Schema 12 carries `ref` for exactly
+    # this; `email` stays in the payload because it is worth reading.
+    fencers = {r.fencer.id: r.fencer for r in registrations}
     reg_by_id = {r.id: r for r in registrations}
 
     return {
@@ -203,12 +209,18 @@ def export_tournament(session: Session, tournament: Tournament) -> dict:
             for i in tournament.extra_items
         ],
         "fencers": [
-            _record(f, ["email", "display_name", "hr_id", "nationality", "club"])
+            {
+                "ref": f.id,
+                **_record(f, ["email", "display_name", "hr_id", "nationality", "club"]),
+            }
             for f in fencers.values()
         ],
         "registrations": [
             {
                 "ref": r.id,
+                "fencer_ref": r.fencer_id,
+                # kept for a reader's sake, and for restoring an export written
+                # before schema 12; `fencer_ref` is what the link is made on
                 "fencer_email": r.fencer.email,
                 **_record(r, _REGISTRATION_FIELDS),
                 "entries": [
@@ -307,7 +319,7 @@ def _parse_time(value: str | None) -> datetime.time | None:
 
 def restore_tournament(session: Session, data: dict, actor: Fencer) -> Tournament:
     version = data.get("schema_version")
-    if version not in (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, SCHEMA_VERSION):
+    if version not in (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, SCHEMA_VERSION):
         raise HTTPException(status_code=422, detail="unsupported_schema_version")
     doc = dict(data["tournament"])
     if version == 1:
@@ -392,13 +404,27 @@ def restore_tournament(session: Session, data: dict, actor: Fencer) -> Tournamen
         extra_items[(entry["name"], entry["category"])] = item
     session.flush()
 
-    fencers: dict[str, Fencer] = {}
+    # Keyed by the document's own reference, which every fencer has. Before
+    # schema 12 the address was the key, and a record without one could not be
+    # restored at all; an older document is keyed by address as it was written.
+    fencers: dict[object, Fencer] = {}
     for entry in data.get("fencers", []):
-        fencer = session.scalar(select(Fencer).where(Fencer.email == entry["email"]))
+        entry = dict(entry)
+        key = entry.pop("ref", None)
+        if key is None:
+            key = entry["email"]
+        # an address that exists still identifies an account, so a restore
+        # rejoins one that is already here rather than making a second
+        address = entry.get("email")
+        fencer = (
+            session.scalar(select(Fencer).where(Fencer.email == address))
+            if address
+            else None
+        )
         if fencer is None:
             fencer = Fencer(**entry)  # restored accounts carry no password
             session.add(fencer)
-        fencers[entry["email"]] = fencer
+        fencers[key] = fencer
     session.flush()
 
     reg_map: dict[int, Registration] = {}
@@ -419,7 +445,9 @@ def restore_tournament(session: Session, data: dict, actor: Fencer) -> Tournamen
             payload[field] = _parse_dt(payload[field])
         registration = Registration(
             tournament_id=tournament.id,
-            fencer_id=fencers[entry["fencer_email"]].id,
+            fencer_id=fencers[
+                entry["fencer_ref"] if "fencer_ref" in entry else entry["fencer_email"]
+            ].id,
             **payload,
         )
         session.add(registration)

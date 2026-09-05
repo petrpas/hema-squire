@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import {
   ApiError,
   type Currency,
+  type IssuedSkip,
   type RankedFencer,
   type Transaction,
   api,
@@ -56,6 +57,19 @@ export default function LinkDialog({
       () => setRoster([]),
     );
   }, [slug, transaction.id]);
+
+  // Who is on the fencer list but not in the roster below, and why. The roster
+  // holds registrations, and a row that could not be issued one has none — so
+  // it is absent here exactly as a fencer who never entered would be, and the
+  // two have different remedies. Named rather than left to be inferred from a
+  // search that finds nothing (spec `imported-registrations`).
+  const [unbillable, setUnbillable] = useState<IssuedSkip[]>([]);
+  useEffect(() => {
+    api.issuableCount(slug).then(
+      (count) => setUnbillable(count.skipped),
+      () => setUnbillable([]),
+    );
+  }, [slug]);
 
   const listed = useMemo(() => {
     const all = roster ?? [];
@@ -162,6 +176,21 @@ export default function LinkDialog({
         {transaction.message && <p className="link-message">{transaction.message}</p>}
 
         <p className="rail-hint">{t("payments.link.roster")}</p>
+        {unbillable.length > 0 && (
+          <div className="rail-hint">
+            <p>{t("payments.link.unbillable", { count: unbillable.length })}</p>
+            <ul>
+              {unbillable.map((skip) => (
+                <li key={skip.row_id}>
+                  {t("issue.skipped", {
+                    name: skip.name ?? t("issue.unnamed"),
+                    reason: t(`issue.reason.${skip.reason}`),
+                  })}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
         <input
           autoFocus
           className="link-filter"

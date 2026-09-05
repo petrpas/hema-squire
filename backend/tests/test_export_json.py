@@ -717,3 +717,61 @@ def test_arrival_order_numbers_a_numberless_document(client, auth_headers):
     # carrying the highest number — arrival, not display, is what numbers
     assert numbered["man"] == max(numbered.values())
     assert [row["id"].split(":")[0] for row in rows][0] == "man"
+
+
+def test_two_addressless_fencers_survive_a_round_trip(client, auth_headers):
+    """Keyed by address, an export collapsed every record without one onto a
+    single `None` — writing out one fencer where the tournament held two, and
+    pointing both registrations at whichever survived. Schema 12 keys on `ref`.
+    """
+    from sqlalchemy import create_engine, select
+    from sqlalchemy.orm import Session
+    from sqlalchemy.pool import StaticPool
+
+    from app.db import Base, get_session
+    from app.main import app
+    from app.models import Fencer, Registration
+    from tests.test_issuing import import_roster, issue, row
+    from tests.test_issuing import setup as issue_setup
+
+    organizer = auth_headers()
+    issue_setup(client, organizer)
+    import_roster(
+        client,
+        organizer,
+        [
+            row("Milan Diviš", "divis@example.com"),
+            row("Václav Pekárek", "divis@example.com"),
+            row("Jindřich Pekárek", "divis@example.com"),
+        ],
+    )
+    assert issue(client, organizer)["issued"] == 3
+
+    document = client.get("/api/tournaments/cup/export/json", headers=organizer).json()
+
+    refs = [f["ref"] for f in document["fencers"]]
+    assert len(refs) == len(set(refs)) == 3
+    assert sum(1 for f in document["fencers"] if f["email"] is None) == 2
+    assert {r["fencer_ref"] for r in document["registrations"]} == set(refs)
+
+    fresh = create_engine(
+        "sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool
+    )
+    Base.metadata.create_all(fresh)
+
+    def fresh_session():
+        with Session(fresh) as session:
+            yield session
+
+    app.dependency_overrides[get_session] = fresh_session
+    new_organizer = auth_headers()
+    restore = client.post("/api/tournaments/restore", json=document, headers=new_organizer)
+    assert restore.status_code == 201, restore.text
+
+    with Session(fresh) as check:
+        names = sorted(
+            f.display_name
+            for f in check.scalars(select(Fencer).where(Fencer.email.is_(None))).all()
+        )
+        assert names == ["Jindřich Pekárek", "Václav Pekárek"]
+        assert len(check.scalars(select(Registration)).all()) == 3

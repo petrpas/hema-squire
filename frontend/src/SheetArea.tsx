@@ -144,7 +144,7 @@ export default function SheetArea({
                   {columns.map((column) => {
                     const phaseOwned =
                       PHASE_COLUMNS[phase].includes(column) || column === "settled";
-                    const editable = editableHere(column, phase) && !row._deleted;
+                    const editable = editableHere(column, phase, row) && !row._deleted;
                     const isMatch = column === "match";
                     return (
                       <td
@@ -176,7 +176,13 @@ export default function SheetArea({
                                 hrIdentity={hrIdentity}
                               />
                             }
-                            value={row[column]}
+                            // a list is edited as the text it is shown as, so
+                            // the draft round-trips to itself when untouched
+                            value={
+                              column === "disciplines"
+                                ? row.disciplines.join(", ")
+                                : row[column]
+                            }
                             onSave={(raw) => onEdit(row, column, raw)}
                             validate={(raw) => onValidate(column, raw)}
                           />

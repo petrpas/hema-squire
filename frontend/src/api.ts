@@ -425,6 +425,12 @@ export interface SheetRow {
   disciplines: string[];
   substitute_for: string[];
   state: string;
+  /** The registration standing in this row's place, where one has been issued
+   *  for it; null while the row is still a row. Disciplines are the row's to
+   *  correct only while it is one — once issued, the entries are the
+   *  registration's and a cell edit would show a change the billing never
+   *  made. */
+  registration_id: number | null;
   vs: number | null;
   paid: boolean;
   registered_at: string | null;
@@ -1310,6 +1316,11 @@ export interface IssuableCount {
    *  stands: a merge collapses rows, not registrations, so issuing ahead of
    *  the verdict leaves one person holding two. */
   pending_dedup: number;
+  /** Rows the next issuing pass would leave alone, with the reason. Stated
+   *  before anything runs, because the question is asked elsewhere — a fencer
+   *  who is on the list but not billable is missing from every surface that
+   *  addresses a registration. */
+  skipped: IssuedSkip[];
 }
 
 export interface PaymentLink {
@@ -1328,7 +1339,8 @@ export interface PaymentLink {
 export interface IssuedSkip {
   row_id: string;
   name: string | null;
-  /** `no_discipline` | `no_email` | `no_name` */
+  /** `no_discipline` | `no_name` — both describe the row itself. An address
+   *  is not among them: a record enrolled by the organizer needs none. */
   reason: string;
 }
 

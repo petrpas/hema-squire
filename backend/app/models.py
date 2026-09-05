@@ -186,12 +186,28 @@ def str_enum(enum_cls: type[enum.StrEnum]) -> Enum:
 
 
 class Fencer(Base):
-    """Global, portable fencer account, ideally bound to a HEMA Ratings profile."""
+    """Global, portable fencer account, ideally bound to a HEMA Ratings profile.
+
+    Two records wearing one name. For a fencer who signs up it is a login — an
+    address and a password hash, portable between tournaments. For a fencer the
+    organizer enrols on the tournament's behalf it is only a person on a roster:
+    no credentials, never written to, not something anyone can log into (spec
+    `fencer-accounts`, "A fencer record may exist without an account").
+    """
 
     __tablename__ = "fencers"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    email: Mapped[str] = mapped_column(String(320), unique=True)
+    # Nullable, because an address identifies an *account* and a record that
+    # cannot be logged into needs none. Requiring one made the organizer write
+    # an address that was not the fencer's — a parent's, a club
+    # representative's, entered once for several people — and refused to enrol
+    # the second and third of them at all.
+    #
+    # Still unique where present: an address that exists is still a login, and
+    # NULL is not equal to NULL in either SQLite or Postgres, so the index
+    # admits any number of them.
+    email: Mapped[str | None] = mapped_column(String(320), unique=True)
     password_hash: Mapped[str | None] = mapped_column(String(200))
     display_name: Mapped[str] = mapped_column(String(200))
     hr_id: Mapped[int | None] = mapped_column(index=True)
@@ -994,10 +1010,15 @@ class ImportedRow(Base):
     """A source row of an uploaded table, kept verbatim for provenance.
 
     `key` is a content fingerprint: unchanged rows keep it across re-uploads,
-    so parse decisions and rules targeting "imp:<key>" survive."""
+    so parse decisions and rules targeting "imp:<key>" survive.
+
+    Unique per tournament, not per batch: a row belongs to the tournament, and
+    an upload carrying content already imported is recognised at intake and
+    takes in nothing (spec table-import, Intake takes in only rows new to the
+    tournament). `batch_id` records which upload first brought it."""
 
     __tablename__ = "imported_rows"
-    __table_args__ = (UniqueConstraint("batch_id", "key"),)
+    __table_args__ = (UniqueConstraint("tournament_id", "key"),)
 
     id: Mapped[int] = mapped_column(primary_key=True)
     batch_id: Mapped[int] = mapped_column(ForeignKey("import_batches.id"))
@@ -1131,12 +1152,15 @@ class Team(Base):
 
 
 class TeamMember(Base):
-    """A named roster entry — never a `Fencer`: `Fencer.email` is unique and
-    non-nullable, and most roster members neither have nor will ever have a
-    Squire account (design team-disciplines D4). `hr_id` null is the expected
-    case for an HR-unknown member, not a degraded one; no uniqueness
-    constraint, since identity is local to this roster (two rosters naming the
-    same person produce two independent rows)."""
+    """A named roster entry — never a `Fencer`: identity here is local to this
+    roster, and two rosters naming the same person produce two independent rows
+    (design team-disciplines D4). Most roster members neither have nor will ever
+    have a Squire account.
+
+    The original reason also cited `Fencer.email` being non-nullable, which it
+    no longer is; the locality of the identity is what was doing the work and is
+    what remains. `hr_id` null is the expected case for an HR-unknown member,
+    not a degraded one, and carries no uniqueness constraint."""
 
     __tablename__ = "team_members"
 

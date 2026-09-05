@@ -50,14 +50,34 @@ class SmtpMailer:
         logger.info("email to %s (%s) sent via %s", message["To"], message["Subject"], self.host)
 
 
+class NoRecipientError(ValueError):
+    """A message was built for nobody.
+
+    Raised rather than skipped. A fencer record created on the tournament's
+    behalf may hold no address (spec `fencer-accounts`), and nothing is supposed
+    to write to one — but "nothing does" has to be a property of this door
+    rather than of every caller happening to avoid it. That distinction is not
+    academic: dormancy kept the scheduler away from issued registrations and did
+    not keep the organizer away, and confirming a queue of payment proposals
+    would have mailed a roster that registered a season ago.
+
+    Not a silent skip, because every function in `emails.py` sends something a
+    person is meant to receive. One that quietly sends nothing is the worse bug:
+    the caller believes it worked, and the fencer reports months later that
+    nothing arrived.
+    """
+
+
 def build_message(
-    to: str,
+    to: str | None,
     sender: str,
     subject: str,
     body: str,
     qr: bytes | None = None,
     qr_eur: bytes | None = None,
 ) -> EmailMessage:
+    if not to:
+        raise NoRecipientError(f"no recipient for a message subject {subject!r}")
     message = EmailMessage()
     message["From"] = sender
     message["To"] = to

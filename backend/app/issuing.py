@@ -45,20 +45,16 @@ from app.models import (
 # why a row could not be issued a registration. Stated rather than silently
 # skipped: a row the organizer expected to see billed and does not is a question
 # they must be able to answer without reading the table twice.
-NO_DISCIPLINE = "no_discipline"
-NO_EMAIL = "no_email"
-NO_NAME = "no_name"
-# another row already claimed this e-mail address. `Fencer.email` is the account
-# identity and is unique across the deployment, and a fencer registers once per
-# tournament, so two rows sharing an address resolve to one fencer and only the
-# first can be issued a registration.
 #
-# Not always a duplicate: on a real roster it is usually one person entering
-# several others — a club representative, or a parent — and the pilot has one
-# address covering three different fencers. The organizer has to give the others
-# their own address before they can be billed, so the reason names the address
-# rather than claiming the row is a duplicate.
-EMAIL_TAKEN = "email_taken"
+# Both describe the row rather than Squire's bookkeeping, and that is the test a
+# reason has to pass. Two that failed it were removed: a row carrying no e-mail
+# address, and a row repeating one another row had used. Neither is a defect in
+# the row — a roster is routinely entered by one person for several, and the
+# address is that person's — and refusing them left fencers unbillable with no
+# remedy the organizer could reach (spec `fencer-accounts`, "A fencer record may
+# exist without an account").
+NO_DISCIPLINE = "no_discipline"
+NO_NAME = "no_name"
 
 
 @dataclass
@@ -143,7 +139,11 @@ def pending(session: Session, tournament: Tournament) -> list[dict]:
     ]
 
 
-def _resolve_fencer(session: Session, row: dict) -> Fencer | None:
+def _address(row: dict) -> str:
+    return (row.get("email") or "").strip().lower()
+
+
+def _resolve_fencer(session: Session, row: dict, claimed: set[str]) -> Fencer:
     """The fencer this row is about, created if no record exists yet.
 
     An existing record is reused and never overwritten: it may belong to someone
@@ -151,13 +151,27 @@ def _resolve_fencer(session: Session, row: dict) -> Fencer | None:
     theirs, not the roster's. A created record holds no password, so it is a
     fencer of the tournament rather than an account — and nothing here mails it
     (spec `fencer-accounts`, "A fencer record may exist without an account").
+
+    **An address is claimed by at most one record.** A row carrying none, and a
+    row repeating one this pass has already used, both get a record with no
+    address at all. Two rows sharing an address are not one person entered twice
+    — deduplication has already had its say — but one person's address written
+    against another, which is what a parent or a club representative entering a
+    family does. Asserting it as the second person's would be a claim nobody
+    made, and it is not needed: nothing writes to a record enrolled this way.
+
+    Which row keeps it is the order the rows are issued in, which is
+    registration order. Arbitrary between siblings, and it does not matter: the
+    address stays visible on both rows of the fencer list, where it was written.
     """
-    email = (row.get("email") or "").strip().lower()
-    if not email:
-        return None
-    existing = session.query(Fencer).filter(Fencer.email == email).one_or_none()
-    if existing is not None:
-        return existing
+    email = _address(row)
+    if email and email not in claimed:
+        existing = session.query(Fencer).filter(Fencer.email == email).one_or_none()
+        claimed.add(email)
+        if existing is not None:
+            return existing
+    else:
+        email = None
     fencer = Fencer(
         email=email,
         password_hash=None,
@@ -171,8 +185,15 @@ def _resolve_fencer(session: Session, row: dict) -> Fencer | None:
     return fencer
 
 
+# a row whose person is already registered on this tournament. Not a skip: the
+# row states somebody the tournament already holds a registration for, so there
+# is nothing to issue and nothing wrong with the row. Reported as one the pass
+# left alone.
+ALREADY = "already"
+
+
 def _issue_one(
-    session: Session, tournament: Tournament, row: dict, next_vs
+    session: Session, tournament: Tournament, row: dict, next_vs, claimed: set[str]
 ) -> Registration | str:
     """One row's registration, or the reason it could not have one."""
     if not (row.get("name") or "").strip():
@@ -182,12 +203,7 @@ def _issue_one(
         # a registration with no entries would total zero, read as settled, and
         # quietly absorb a payment (design Decision 6)
         return NO_DISCIPLINE
-    fencer = _resolve_fencer(session, row)
-    if fencer is None:
-        # `Fencer.email` is the account identity and is not nullable, so a row
-        # without one cannot become a registration until the organizer supplies
-        # it in the table
-        return NO_EMAIL
+    fencer = _resolve_fencer(session, row, claimed)
     session.flush()
     if fencer.id is not None:
         existing = session.scalar(
@@ -197,11 +213,14 @@ def _issue_one(
             )
         )
         if existing is not None:
-            # asked before inserting rather than caught after: the same
+            # a registration is unique per (tournament, fencer), so this row's
+            # person is already on the tournament — reached where the row's
+            # address belongs to somebody who registered in the application.
+            # Asked before inserting rather than caught after: the same
             # IntegrityError would otherwise be indistinguishable from a VS
             # collision, and the retry below would spend five variable symbols
-            # discovering that this row can never be issued
-            return EMAIL_TAKEN
+            # discovering that this row has nothing to issue
+            return ALREADY
 
     squire_keeps = tournament.registrations_kept_by is RegistrationsKeptBy.SQUIRE
     for attempt in range(5):
@@ -271,6 +290,32 @@ def _issue_one(
     return registration
 
 
+def would_skip(session: Session, tournament: Tournament) -> list[Skipped]:
+    """The rows an issuing pass would refuse, and why — without writing.
+
+    A dry run, because the answer is needed where nobody is issuing anything: a
+    fencer missing from a list the organizer expected them on is a question, and
+    "not on this tournament" and "here, but not billable" are different answers
+    with different remedies.
+
+    Only the row's own contents decide, so this needs no simulation of the pass:
+    a name and at least one discipline, and nothing about the address. A row
+    whose person is already registered is not refused either — it is left alone,
+    which is not a thing to warn about (spec `imported-registrations`, "What a
+    row must have to be issued").
+    """
+    skipped = []
+    for row in pending(session, tournament):
+        if not (row.get("name") or "").strip():
+            reason = NO_NAME
+        elif not _individual_disciplines(tournament, row):
+            reason = NO_DISCIPLINE
+        else:
+            continue
+        skipped.append(Skipped(row["id"], row.get("name"), reason))
+    return skipped
+
+
 def issue(session: Session, tournament: Tournament, next_vs) -> IssueReport:
     """Issue registrations for every fencer-list row that has none.
 
@@ -290,8 +335,12 @@ def issue(session: Session, tournament: Tournament, next_vs) -> IssueReport:
             Registration.source_row_id.is_not(None),
         )
     )
+    claimed: set[str] = set()
     for row in pending(session, tournament):
-        outcome = _issue_one(session, tournament, row, next_vs)
+        outcome = _issue_one(session, tournament, row, next_vs, claimed)
+        if outcome == ALREADY:
+            report.already += 1
+            continue
         if isinstance(outcome, str):
             report.skipped.append(Skipped(row["id"], row.get("name"), outcome))
             continue

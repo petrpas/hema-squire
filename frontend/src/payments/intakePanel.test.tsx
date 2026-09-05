@@ -56,7 +56,7 @@ function detail(fio: boolean, keptBy = "squire"): TournamentDetail {
 function issuable(pending_rows = 0, pending_dedup = 0) {
   return vi
     .spyOn(api, "issuableCount")
-    .mockResolvedValue({ pending_rows, pending_dedup });
+    .mockResolvedValue({ pending_rows, pending_dedup, skipped: [] });
 }
 
 function running(kind: string): Operation {
@@ -278,7 +278,7 @@ it("names the rows an import could not issue, and why", async () => {
         matched: 1,
         issued: 51,
         already_issued: 0,
-        skipped: [{ row_id: "imp:9", name: "Jan Novák", reason: "no_email" }],
+        skipped: [{ row_id: "imp:9", name: "Jan Novák", reason: "no_discipline" }],
       },
     } as unknown as Operation,
   };
@@ -287,7 +287,7 @@ it("names the rows an import could not issue, and why", async () => {
 
   expect(host?.textContent).toContain(t("payments.intake.issued", { count: 51 }));
   expect(host?.textContent).toContain(
-    t("issue.skipped", { name: "Jan Novák", reason: t("issue.reason.no_email") }),
+    t("issue.skipped", { name: "Jan Novák", reason: t("issue.reason.no_discipline") }),
   );
 });
 

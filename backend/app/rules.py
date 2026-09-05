@@ -18,7 +18,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.hr_index import country_code, evidence_fields
-from app.models import Fencer, Rule, RuleJournalEntry, Tournament
+from app.models import DisciplineKind, Fencer, Rule, RuleJournalEntry, Tournament
 
 Row = dict[str, Any]
 # A handler mutates rows in place and returns (target, field, before, after)
@@ -300,6 +300,29 @@ def create_rule(
         isinstance(payload, dict) and "field" in payload and "value" in payload
     ):
         raise HTTPException(status_code=422, detail="payload_requires_field_and_value")
+    if kind == "field_edit" and payload.get("field") == "disciplines":
+        # A row's disciplines decide what it is priced at, where it is seated
+        # and whether it can be issued at all, so an edit carries the row's own
+        # shape — a list of slugs the tournament offers — rather than whatever
+        # was typed. Checked here and not only in the console: a slug the
+        # tournament does not know would be dropped silently by issuing, and the
+        # organizer would meet it as a row that mysteriously will not bill.
+        value = payload.get("value")
+        offered = {
+            discipline.slug
+            for discipline in tournament.disciplines
+            if discipline.kind is DisciplineKind.INDIVIDUAL
+        }
+        if not isinstance(value, list) or not value or not all(
+            isinstance(slug, str) for slug in value
+        ):
+            raise HTTPException(status_code=422, detail="disciplines_must_be_a_list")
+        unknown = [slug for slug in value if slug not in offered]
+        if unknown:
+            raise HTTPException(
+                status_code=422,
+                detail={"code": "unknown_discipline_slug", "slugs": unknown},
+            )
     if kind == "match_resolution" and payload.get("value") is not None and index is not None:
         # The profile is read once, here, and stored with the rule: a verdict
         # says which fighter was bound, and replaying it must not depend on an

@@ -5,8 +5,16 @@ every dev checkout uses.
 
 from email.message import EmailMessage
 
+import pytest
+
 from app.config import settings
-from app.mail import OutboxMailer, SmtpMailer, get_mailer
+from app.mail import (
+    NoRecipientError,
+    OutboxMailer,
+    SmtpMailer,
+    build_message,
+    get_mailer,
+)
 
 
 def test_outbox_is_the_default(monkeypatch):
@@ -88,3 +96,34 @@ def test_send_without_credentials_skips_login(monkeypatch):
     (connection,) = _StubSmtp.instances
     assert connection.logged_in_as is None
     assert connection.sent
+
+
+# A fencer record created on the tournament's behalf may hold no address (spec
+# `fencer-accounts`). Nothing is supposed to write to one, and this is where
+# that stops being a hope: the door refuses, so it cannot depend on every
+# caller remembering.
+
+
+def test_a_message_for_nobody_is_refused():
+    with pytest.raises(NoRecipientError):
+        build_message(None, "squire@example.com", "Předmět", "Tělo")
+
+
+def test_an_empty_recipient_is_refused_too():
+    with pytest.raises(NoRecipientError):
+        build_message("", "squire@example.com", "Předmět", "Tělo")
+
+
+def test_the_refusal_names_what_was_attempted():
+    """A raise nobody can trace is a raise that gets caught and swallowed."""
+    with pytest.raises(NoRecipientError) as raised:
+        build_message(None, "squire@example.com", "Platba přijata", "Tělo")
+
+    assert "Platba přijata" in str(raised.value)
+
+
+def test_an_addressed_message_is_built_as_before():
+    message = build_message("jan@example.com", "squire@example.com", "Předmět", "Tělo")
+
+    assert message["To"] == "jan@example.com"
+    assert message["Subject"] == "Předmět"

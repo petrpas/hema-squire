@@ -322,25 +322,26 @@ def test_a_row_with_no_discipline_is_skipped_and_named(client, auth_headers, mai
     assert report["skipped"][0]["name"] == "Nada"
 
 
-def test_a_row_with_no_email_is_skipped(client, auth_headers, mailbox):
-    """`Fencer.email` is the account identity and cannot be null, so such a row
-    cannot become a registration until the organizer supplies one."""
+def test_a_row_with_no_email_is_issued(client, auth_headers, mailbox):
+    """An address identifies an account, and a record enrolled by the organizer
+    is not one: it holds no credentials and is never written to."""
     organizer = auth_headers()
     setup(client, organizer)
     import_roster(client, organizer, [row("Anon", "")])
 
     report = issue(client, organizer)
 
-    assert report["issued"] == 0
-    assert [s["reason"] for s in report["skipped"]] == ["no_email"]
+    assert report["issued"] == 1
+    assert report["skipped"] == []
+    (registration,) = registrations()
+    assert registration.fencer.email is None
+    assert registration.fencer.password_hash is None
 
 
-def test_two_rows_sharing_an_email_issue_once_and_say_so(client, auth_headers, mailbox):
+def test_two_rows_sharing_an_address_are_both_issued(client, auth_headers, mailbox):
     """One person entering several others is ordinary on a real roster — the
-    pilot has one address covering three different fencers. `Fencer.email` is
-    unique across the deployment and a fencer registers once per tournament, so
-    only the first row can be issued, and the rest are named rather than
-    silently dropped."""
+    pilot has one address covering three fencers, two of them brothers. The
+    address is that person's; the second record simply holds none."""
     organizer = auth_headers()
     setup(client, organizer)
     import_roster(
@@ -352,9 +353,53 @@ def test_two_rows_sharing_an_email_issue_once_and_say_so(client, auth_headers, m
 
     report = issue(client, organizer)
 
-    assert report["issued"] == 1
-    assert [s["reason"] for s in report["skipped"]] == ["email_taken"]
-    assert report["skipped"][0]["name"] == "Jindřich Pekárek"
+    assert report["issued"] == 2
+    assert report["skipped"] == []
+    by_name = {r.fencer.display_name: r.fencer.email for r in registrations()}
+    assert by_name == {"Václav Pekárek": "divis@example.com", "Jindřich Pekárek": None}
+
+
+def test_the_address_goes_to_the_row_that_comes_first(client, auth_headers, mailbox):
+    """Arbitrary between siblings and it does not matter — nothing is written to
+    either record, and the address stays on both rows of the fencer list."""
+    organizer = auth_headers()
+    setup(client, organizer)
+    import_roster(
+        client,
+        organizer,
+        [row("Jindřich Pekárek", "divis@example.com", when="2026-04-01T09:00:00"),
+         row("Václav Pekárek", "divis@example.com", when="2026-04-01T10:00:00")],
+    )
+
+    issue(client, organizer)
+
+    by_name = {r.fencer.display_name: r.fencer.email for r in registrations()}
+    assert by_name == {"Jindřich Pekárek": "divis@example.com", "Václav Pekárek": None}
+
+
+def test_a_row_whose_person_already_registered_is_left_alone(client, auth_headers, mailbox):
+    """A registration is unique per tournament and fencer, so a row naming
+    somebody who registered in the application has nothing to issue. Left alone
+    rather than refused: there is nothing wrong with the row."""
+    from conftest import publish
+
+    organizer = auth_headers()
+    setup(client, organizer)
+    publish(client, organizer, "cup")
+    enrolled = auth_headers(email="jan@example.com", name="Jan Novák")
+    entered = client.post(
+        "/api/tournaments/cup/register", json={"disciplines": ["SA"]}, headers=enrolled
+    )
+    assert entered.status_code == 201, entered.text
+    before = len(registrations())
+    import_roster(client, organizer, [row("Jan Novak", "jan@example.com")])
+
+    report = issue(client, organizer)
+
+    assert report["issued"] == 0
+    assert report["skipped"] == []
+    assert report["already"] >= 1
+    assert len(registrations()) == before
 
 
 def test_capacity_does_not_apply_to_an_issued_roster(client, auth_headers, mailbox):
@@ -1093,3 +1138,173 @@ def test_a_row_with_no_proposal_still_reads_unmatched_after_issuing(
     after = sheet_row_named(client, organizer, "Nikdo Neznámý")
     assert after["hr_id"] is None
     assert after["match_verdict"] == "none_found"
+
+
+# --- naming the rows that cannot be issued, before anything runs -------------
+
+
+def issuable(client, organizer):
+    return client.get("/api/tournaments/cup/import/issue", headers=organizer).json()
+
+
+def test_two_rows_sharing_an_address_are_not_named_at_all(client, auth_headers, mailbox):
+    """The pilot's shape, and no longer a problem: one address covering several
+    fencers is how a parent or a club representative enters a family."""
+    organizer = auth_headers()
+    setup(client, organizer)
+    import_roster(
+        client,
+        organizer,
+        [
+            row("Milan Diviš", "divis@example.com"),
+            row("Václav Pekárek", "divis@example.com"),
+        ],
+    )
+
+    stated = issuable(client, organizer)
+
+    assert stated["pending_rows"] == 2
+    assert stated["skipped"] == []
+    assert registrations() == [], "stating it writes nothing"
+
+
+def test_a_row_that_states_nothing_readable_is_named(client, auth_headers, mailbox):
+    """The two reasons that survive both describe the row: no fencer to make,
+    and a registration that would total zero and quietly absorb a payment."""
+    organizer = auth_headers()
+    setup(client, organizer)
+    import_roster(
+        client,
+        organizer,
+        [
+            row("Bez Disciplin", "bez@example.com", disciplines=""),
+            row("Jan Novak", "jan@example.com"),
+        ],
+    )
+
+    stated = issuable(client, organizer)
+
+    assert [(s["name"], s["reason"]) for s in stated["skipped"]] == [
+        ("Bez Disciplin", "no_discipline")
+    ]
+
+
+def test_the_dry_run_agrees_with_what_the_pass_then_does(client, auth_headers, mailbox):
+    organizer = auth_headers()
+    setup(client, organizer)
+    import_roster(
+        client,
+        organizer,
+        [
+            row("Milan Diviš", "divis@example.com"),
+            row("Václav Pekárek", "divis@example.com"),
+            row("Bez Disciplin", "bez@example.com", disciplines=""),
+            row("Bez Mailu", ""),
+        ],
+    )
+
+    stated = issuable(client, organizer)
+    report = issue(client, organizer)
+
+    assert [(s["name"], s["reason"]) for s in stated["skipped"]] == [
+        (s["name"], s["reason"]) for s in report["skipped"]
+    ]
+
+
+def test_a_row_whose_person_is_already_registered_is_not_named(client, auth_headers, mailbox):
+    """Left alone rather than refused, so nothing warns about it: the row is
+    fine, the tournament simply already holds that fencer's registration."""
+    organizer = auth_headers()
+    setup(client, organizer)
+    import_roster(client, organizer, [row("Milan Diviš", "divis@example.com")])
+    issue(client, organizer)
+    import_roster(client, organizer, [row("Václav Pekárek", "divis@example.com")])
+
+    stated = issuable(client, organizer)
+
+    assert stated["skipped"] == []
+
+
+def test_nothing_is_named_where_every_row_can_be_issued(client, auth_headers, mailbox):
+    organizer = auth_headers()
+    setup(client, organizer)
+    import_roster(client, organizer, [row("Jan Novak", "jan@example.com")])
+
+    assert issuable(client, organizer)["skipped"] == []
+
+
+# --- correcting a row's disciplines -----------------------------------------
+#
+# A row that entered no discipline cannot be issued, and until the organizer
+# could put one there the console named a remedy it did not offer. The cell is
+# the row's to correct only while it is still a row: an issued registration's
+# entries decide what it is billed and where it is seated, and a cell edit would
+# move the table without moving the money.
+
+
+def edit(client, organizer, row_id, value):
+    return client.post(
+        "/api/tournaments/cup/rules",
+        json={
+            "phase": "fencers",
+            "kind": "field_edit",
+            "target": row_id,
+            "payload": {"field": "disciplines", "value": value},
+        },
+        headers=organizer,
+    )
+
+
+def test_a_row_given_a_discipline_can_then_be_issued(client, auth_headers, mailbox):
+    organizer = auth_headers()
+    setup(client, organizer)
+    import_roster(client, organizer, [row("Bez Disciplin", "bez@example.com", disciplines="")])
+    (before,) = issuable(client, organizer)["skipped"]
+    assert before["reason"] == "no_discipline"
+
+    assert edit(client, organizer, before["row_id"], ["SA"]).status_code in (200, 201)
+
+    assert issuable(client, organizer)["skipped"] == []
+    report = issue(client, organizer)
+    assert report["issued"] == 1
+    (registration,) = registrations()
+    assert [e.discipline.slug for e in registration.entries] == ["SA"]
+
+
+def test_a_corrected_row_is_priced_for_what_it_now_enters(client, auth_headers, mailbox):
+    organizer = auth_headers()
+    setup(client, organizer, fee=800)
+    import_roster(client, organizer, [row("Jan Novak", "jan@example.com", disciplines="SA")])
+    rows = sheet_rows(client, organizer)
+    target = next(r["id"] for r in rows if r["name"] == "Jan Novak")
+
+    edit(client, organizer, target, ["SA", "SB"])
+    issue(client, organizer)
+
+    (registration,) = registrations()
+    assert sorted(e.discipline.slug for e in registration.entries) == ["SA", "SB"]
+    assert registration.total_amount == 1300  # 800 + 500
+
+
+def test_an_unknown_slug_is_refused(client, auth_headers, mailbox):
+    """Dropped silently by issuing, it would leave a row that mysteriously will
+    not bill."""
+    organizer = auth_headers()
+    setup(client, organizer)
+    import_roster(client, organizer, [row("Jan Novak", "jan@example.com")])
+    target = sheet_rows(client, organizer)[0]["id"]
+
+    refused = edit(client, organizer, target, ["SA", "NEEXISTUJE"])
+
+    assert refused.status_code == 422
+    assert refused.json()["detail"]["slugs"] == ["NEEXISTUJE"]
+
+
+def test_an_empty_list_is_refused(client, auth_headers, mailbox):
+    organizer = auth_headers()
+    setup(client, organizer)
+    import_roster(client, organizer, [row("Jan Novak", "jan@example.com")])
+    target = sheet_rows(client, organizer)[0]["id"]
+
+    assert edit(client, organizer, target, []).status_code == 422
+    assert edit(client, organizer, target, "SA").status_code == 422

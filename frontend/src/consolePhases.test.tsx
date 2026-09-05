@@ -8,6 +8,7 @@ import {
   PHASE_COLUMNS,
   PHASES,
   editableHere,
+  parseDisciplines,
   editsForPhase,
   rowAction,
   rowsForPhase,
@@ -68,16 +69,26 @@ describe("the rows a phase lists", () => {
     expect(rowsForPhase(ROWS, "import").map((r) => r.id)).toContain("imp:d2bb");
   });
 
-  it("lists the Import rows in the order of the file, not of the fencer list", () => {
-    // the fencer list sorts by registration moment, which would scatter the
-    // batch's lines; a reader checking an import against its source follows the
-    // file
+  it("lists the Import rows in arrival order, not that of the fencer list", () => {
+    // the fencer list sorts by registration moment, which would scatter an
+    // upload's rows; a reader checking an import against its source follows
+    // the order the rows arrived, which is what the fixed number counts
     const scattered = [
-      row("imp:c", { _source: { file: "regs.csv", row: 52 } }),
-      row("imp:a", { _source: { file: "regs.csv", row: 3 } }),
-      row("imp:b", { _source: { file: "regs.csv", row: 40 } }),
+      row("imp:c", { number: 52 }),
+      row("imp:a", { number: 3 }),
+      row("imp:b", { number: 40 }),
     ];
-    expect(rowsForPhase(scattered, "import").map((r) => r._source?.row)).toEqual([3, 40, 52]);
+    expect(rowsForPhase(scattered, "import").map((r) => r.number)).toEqual([3, 40, 52]);
+  });
+
+  it("lists a row of an earlier upload beside one of the latest", () => {
+    // uploads accumulate: a row is no less imported for having arrived first,
+    // and one issued a registration carries no _source at all
+    const across = [
+      row("imp:new", { number: 9, _source: { file: "dodatek.csv", row: 1 } }),
+      row("imp:old", { number: 2 }),
+    ];
+    expect(rowsForPhase(across, "import").map((r) => r.id)).toEqual(["imp:old", "imp:new"]);
   });
 
   it("gives the fencer list and every phase after it both populations", () => {
@@ -271,6 +282,44 @@ describe("which cells a phase opens for editing", () => {
     for (const column of ["notes", "problems", "state", "vs"]) {
       expect(editableHere(column, "fencers")).toBe(false);
     }
+  });
+
+  it("opens disciplines on the fencer list, while the row is still a row", () => {
+    expect(editableHere("disciplines", "fencers", row("imp:a1"))).toBe(true);
+  });
+
+  it("closes disciplines once a registration stands in the row's place", () => {
+    // the entries are the registration's: they decide what it is billed and
+    // where it is seated, so a cell edit would move the table and not the money
+    expect(
+      editableHere("disciplines", "fencers", row("imp:a1", { registration_id: 7 })),
+    ).toBe(false);
+  });
+
+  it("opens disciplines on no other phase", () => {
+    for (const phase of ["import", "matching", "payments", "export"] as Phase[]) {
+      expect(editableHere("disciplines", phase, row("imp:a1"))).toBe(false);
+    }
+  });
+});
+
+describe("reading the disciplines typed into a cell", () => {
+  it("takes commas, semicolons and spaces alike", () => {
+    expect(parseDisciplines("SA, SB")).toEqual(["SA", "SB"]);
+    expect(parseDisciplines("SA;SB")).toEqual(["SA", "SB"]);
+    expect(parseDisciplines("SA  SB")).toEqual(["SA", "SB"]);
+  });
+
+  it("keeps the slug's own case, since a slug is an identity", () => {
+    expect(parseDisciplines("sa")).toEqual(["sa"]);
+  });
+
+  it("does not repeat one entered twice", () => {
+    expect(parseDisciplines("SA, SA")).toEqual(["SA"]);
+  });
+
+  it("reads an emptied cell as nothing entered", () => {
+    expect(parseDisciplines("   ")).toEqual([]);
   });
 });
 

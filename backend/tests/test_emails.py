@@ -183,3 +183,115 @@ def test_admission_sends_payment_email(client, auth_headers, mailbox):
     assert "Variabilní symbol: 2601002" in body
     assert "Longsword" in body
     assert len(list(payment_message.iter_attachments())) == 1
+
+
+# A fencer record the organizer enrols holds no credentials and may hold no
+# address (spec `fencer-accounts`). Nothing is supposed to write to one — but
+# "nothing does" has to hold at the door rather than by every caller happening
+# to avoid it. Dormancy kept the scheduler away from issued registrations and
+# did not keep the organizer away, which is how a queue of payment proposals
+# came within one confirmation of mailing a roster from a season ago.
+
+
+SENDERS_TAKING_A_REGISTRATION = [
+    "send_registration_confirmation",
+    "send_payment_reminder",
+    "send_reservation_expired",
+    "send_payment_received",
+    "send_amendment_confirmation",
+    "send_surcharge_due",
+    "send_reservation_reinstated",
+    "send_payment_after_expiry",
+]
+
+
+def _addressless_registration(client, auth_headers, mailbox):
+    """An ordinary registration whose fencer has had its address taken away.
+
+    Deliberately not an issued one: an issued registration is mail-suppressed
+    by two other guards, and a test that leaned on them would prove those and
+    not this. What is under test is the next caller — any path that reaches
+    mail holding a record with no address.
+    """
+    from sqlalchemy import select
+
+    from app.models import Fencer, Registration
+    from tests.test_matching import db_session
+
+    organizer = auth_headers()
+    _setup(client, organizer)
+    fencer = auth_headers(email="jan@example.com", name="Jan Novák")
+    client.post(
+        "/api/tournaments/cup/register", json={"disciplines": ["LS"]}, headers=fencer
+    )
+    session = db_session()
+    record = session.scalar(select(Fencer).where(Fencer.email == "jan@example.com"))
+    record.email = None
+    session.commit()
+    registration = session.scalars(select(Registration)).all()[-1]
+    mailbox.sent.clear()
+    return session, registration
+
+
+@pytest.mark.parametrize("name", SENDERS_TAKING_A_REGISTRATION)
+def test_no_sender_will_mail_a_fencer_holding_no_address(
+    client, auth_headers, mailbox, name
+):
+    from app import emails
+    from app.mail import NoRecipientError
+
+    session, registration = _addressless_registration(client, auth_headers, mailbox)
+
+    with pytest.raises(NoRecipientError):
+        getattr(emails, name)(
+            mailbox, registration.tournament, registration.fencer, registration
+        )
+
+    assert mailbox.sent == []
+
+
+def test_the_partial_payment_notice_refuses_too(client, auth_headers, mailbox):
+    from app import emails
+    from app.mail import NoRecipientError
+
+    session, registration = _addressless_registration(client, auth_headers, mailbox)
+
+    with pytest.raises(NoRecipientError):
+        emails.send_partial_payment_received(
+            mailbox, registration.tournament, registration.fencer, registration, "local"
+        )
+
+    assert mailbox.sent == []
+
+
+def test_the_promotion_notice_refuses_too(client, auth_headers, mailbox):
+    from app import emails
+    from app.mail import NoRecipientError
+
+    session, registration = _addressless_registration(client, auth_headers, mailbox)
+
+    with pytest.raises(NoRecipientError):
+        emails.send_promoted(
+            mailbox, registration.tournament, registration.fencer, registration, "Long sword"
+        )
+
+    assert mailbox.sent == []
+
+
+def test_the_composition_reminder_refuses_too(client, auth_headers, mailbox):
+    import datetime
+
+    from app import emails
+    from app.mail import NoRecipientError
+
+    session, registration = _addressless_registration(client, auth_headers, mailbox)
+    # the reminder states the deadline, so it needs one to reach the message
+    registration.tournament.team_composition_deadline = datetime.date(2026, 11, 1)
+    session.commit()
+
+    with pytest.raises(NoRecipientError):
+        emails.send_composition_reminder(
+            mailbox, registration.tournament, registration.fencer, []
+        )
+
+    assert mailbox.sent == []

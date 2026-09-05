@@ -202,9 +202,17 @@ def issuable_count(tournament: TournamentDep, session: SessionDep, fencer: Fence
     """How many rows an issuing pass would act on, and whether it may run yet —
     what the console states before asking the organizer to commit."""
     require_console_access(session, tournament, fencer)
+    skipped = issuing.would_skip(session, tournament)
     return {
         "pending_rows": len(issuing.pending(session, tournament)),
         "pending_dedup": dedup.unresolved_groups(session, tournament),
+        # named before anything runs, because a fencer missing from a list the
+        # organizer expected them on is a question asked away from here — in the
+        # link dialog, mostly, where "not on this tournament" and "here, but not
+        # billable" look identical and have different remedies
+        "skipped": [
+            {"row_id": s.row_id, "name": s.name, "reason": s.reason} for s in skipped
+        ],
     }
 
 

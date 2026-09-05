@@ -671,7 +671,9 @@ class TeamAdd(BaseModel):
 
 class TeamMemberOut(BaseModel):
     fencer_id: int
-    email: EmailStr
+    # a fencer record the organizer enrolled holds no credentials and may hold
+    # no address (spec `fencer-accounts`); nothing here is written to
+    email: EmailStr | None
     display_name: str
 
 
@@ -687,7 +689,10 @@ class AdminAccountOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
-    email: EmailStr
+    # the listing is of every fencer record, and a record enrolled by an
+    # organizer holds no address — one is not a defect in the record, and this
+    # view is the one place they are all visible
+    email: EmailStr | None
     display_name: str
     role: Role
     hr_id: int | None
@@ -703,7 +708,7 @@ class RoleUpdateIn(BaseModel):
 class PleaQueueOut(BaseModel):
     id: int
     fencer_id: int
-    email: EmailStr
+    email: EmailStr | None
     display_name: str
     message: str | None
     created_at: datetime.datetime
