@@ -13,7 +13,11 @@ import PaidStamp from "./PaidStamp";
  *
  *  A row with no registration behind it — an imported row not yet issued —
  *  cannot be settled, and offers nothing rather than an action that would
- *  answer a refusal. */
+ *  answer a refusal. Asked of `registration_id` and never of the variable
+ *  symbol: a registration on a tournament the organizer keeps has no variable
+ *  symbol to carry — Squire never told anyone one — so reading its absence as
+ *  "no registration" would take the mark away from exactly the tournaments it
+ *  was built for. */
 export default function SettledCell({
   row,
   onToggle,
@@ -24,7 +28,7 @@ export default function SettledCell({
   busy: boolean;
 }) {
   const { t } = useTranslation();
-  if (row.vs === null || row.vs === undefined) return <>—</>;
+  if (typeof row.registration_id !== "number") return <>—</>;
   return (
     <button
       type="button"

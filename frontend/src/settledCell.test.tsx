@@ -99,9 +99,19 @@ it("offers nothing on a row with no registration behind it", () => {
   // an imported row not yet issued cannot be settled, and an action that would
   // answer a refusal is worse than none
   const host = mount(
-    <SettledCell row={row({ vs: null })} onToggle={vi.fn()} busy={false} />,
+    <SettledCell row={row({ registration_id: null })} onToggle={vi.fn()} busy={false} />,
   );
   expect(host.querySelector("button")).toBeNull();
+});
+
+it("offers the mark on a registration that carries no variable symbol", () => {
+  // a registration on a tournament the organizer keeps has none: Squire never
+  // told any payer a symbol, so reading its absence as "no registration" would
+  // take the mark away from the tournaments it exists for
+  const host = mount(
+    <SettledCell row={row({ vs: null })} onToggle={vi.fn()} busy={false} />,
+  );
+  expect(host.querySelector("button")).not.toBeNull();
 });
 
 it("does not fire while a mark is in flight", () => {
