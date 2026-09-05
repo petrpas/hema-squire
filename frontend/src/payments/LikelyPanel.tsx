@@ -1,3 +1,4 @@
+import { IconCheck, IconX } from "@tabler/icons-react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -91,20 +92,34 @@ export default function LikelyPanel({
                 <strong>{tx.proposed_fencer_name ?? "—"}</strong>
               </td>
               <td className="col-actions">
-                <button
-                  className="row-action"
-                  disabled={busy === tx.id}
-                  onClick={() => void act(tx, true)}
-                >
-                  {t("payments.likely.confirm")}
-                </button>
-                <button
-                  className="row-action"
-                  disabled={busy === tx.id}
-                  onClick={() => void act(tx, false)}
-                >
-                  {t("payments.likely.reject")}
-                </button>
+                {/* the two verdicts side by side, as glyphs: spelt out they
+                    wrapped the actions column onto three lines and pushed the
+                    evidence — which is what the organizer is here to read —
+                    off the row. The word survives as the tooltip */}
+                <div className="row-actions">
+                  <button
+                    className="row-action"
+                    title={t("payments.likely.confirm")}
+                    disabled={busy === tx.id}
+                    onClick={() => void act(tx, true)}
+                  >
+                    <IconCheck size={16} stroke={1.5} />
+                    <span className="visually-hidden">
+                      {t("payments.likely.confirm")}
+                    </span>
+                  </button>
+                  <button
+                    className="row-action"
+                    title={t("payments.likely.reject")}
+                    disabled={busy === tx.id}
+                    onClick={() => void act(tx, false)}
+                  >
+                    <IconX size={16} stroke={1.5} />
+                    <span className="visually-hidden">
+                      {t("payments.likely.reject")}
+                    </span>
+                  </button>
+                </div>
               </td>
             </tr>
           ))}

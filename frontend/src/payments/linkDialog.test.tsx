@@ -271,3 +271,43 @@ it("says nothing can be linked until something is chosen", async () => {
   await settle();
   expect(buttonNamed(t("payments.link.confirm"))?.disabled).toBe(true);
 });
+
+// A tournament whose registrations the organizer keeps mints no variable
+// symbols at all, so the symbol half of the dialog can resolve nothing: every
+// number typed comes back `unknown_vs` (spec `tournament-mode`).
+
+it("offers no symbol where the roster carries none", async () => {
+  withRoster([
+    ranked({ fencer_id: 1, name: "Josef Vejda", registration_id: 11, vs: null }),
+    ranked({ fencer_id: 2, name: "Václav Pekárek", registration_id: 12, vs: null }),
+  ]);
+  render(transaction({ candidate_vs: [2601001] }));
+  await settle();
+
+  expect(host?.querySelector(".link-entry")).toBeNull();
+  expect(buttonNamed(t("payments.link.add"))).toBeUndefined();
+  expect(buttonNamed("2601001")).toBeUndefined();
+  // the roster itself is untouched: choosing a person is the way in
+  expect(host?.textContent).toContain("Václav Pekárek");
+});
+
+it("keeps the symbol where some registration carries one", async () => {
+  withRoster([
+    ranked({ fencer_id: 1, name: "Jan Novák", registration_id: 11, vs: 2601001 }),
+    ranked({ fencer_id: 2, name: "Josef Vejda", registration_id: 12, vs: null }),
+  ]);
+  render(transaction({ candidate_vs: [] }));
+  await settle();
+
+  expect(host?.querySelector(".link-entry")).not.toBeNull();
+});
+
+it("keeps the symbol when the roster could not be read", async () => {
+  // an empty roster proves nothing about symbols, and it is then the only way
+  // in the organizer has left
+  vi.spyOn(api, "transactionRoster").mockRejectedValue(new Error("boom"));
+  render(transaction({ candidate_vs: [] }));
+  await settle();
+
+  expect(host?.querySelector(".link-entry")).not.toBeNull();
+});

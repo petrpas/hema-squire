@@ -9,6 +9,7 @@ import {
   api,
 } from "../api";
 import { formatMoney } from "../money";
+import { nameMatches } from "../nameSearch";
 
 /** Linking a payment to the registrations it pays for.
  *
@@ -57,16 +58,31 @@ export default function LinkDialog({
   }, [slug, transaction.id]);
 
   const listed = useMemo(() => {
-    const needle = filter.trim().toLocaleLowerCase();
     const all = roster ?? [];
-    if (!needle) return all;
-    return all.filter((fencer) => fencer.name.toLocaleLowerCase().includes(needle));
+    if (!filter.trim()) return all;
+    // folded: a Czech roster is not typed with its diacritics, and `pekarek`
+    // has to reach Pekárek (`nameSearch`)
+    return all.filter((fencer) => nameMatches(fencer.name, filter));
   }, [roster, filter]);
 
   const byId = useMemo(
     () => new Map((roster ?? []).map((fencer) => [fencer.registration_id, fencer])),
     [roster],
   );
+  // Whether a symbol can select anybody here at all. On a tournament whose
+  // registrations the organizer keeps, none carries one — Squire told the payer
+  // nothing to quote, so it mints nothing (`tournament-mode`) — and the endpoint
+  // answers `unknown_vs` for every number that could be typed. Hidden rather
+  // than disabled: a control whose set of possible successes is empty is not
+  // one the reader should be weighing.
+  //
+  // Read off the roster rather than off the mode, so a tournament holding both
+  // kinds keeps the way in that still works. A roster that is absent, still
+  // loading, or failed proves nothing about symbols, and there the symbol stays
+  // — it is then the only way in the organizer has left.
+  const known = roster ?? [];
+  const symbolsInUse = known.length === 0 || known.some((fencer) => fencer.vs !== null);
+
   const offered = transaction.candidate_vs.filter(
     (vs) => !typedVs.includes(vs) && !chosen.some((id) => byId.get(id)?.vs === vs),
   );
@@ -179,7 +195,7 @@ export default function LinkDialog({
           </ul>
         )}
 
-        {offered.length > 0 && (
+        {symbolsInUse && offered.length > 0 && (
           <>
             <p className="rail-hint">{t("payments.link.candidates")}</p>
             <ul className="link-candidates">
@@ -194,6 +210,7 @@ export default function LinkDialog({
           </>
         )}
 
+        {symbolsInUse && (
         <div className="link-entry">
           <input
             value={typed}
@@ -211,6 +228,7 @@ export default function LinkDialog({
             {t("payments.link.add")}
           </button>
         </div>
+        )}
 
         <p className="rail-hint">{t("payments.link.selected")}</p>
         {nothingChosen ? (

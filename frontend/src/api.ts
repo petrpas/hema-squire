@@ -1023,6 +1023,10 @@ export const api = {
   /** How many fencer-list rows the next intake will issue registrations for,
    *  and whether it may run yet — what the intake panel states before the
    *  upload, in place of the confirmation there no longer is. */
+  /** The active payment links, resolved into the payment and the fencers each
+   *  joins — the rule states neither in a form anyone can read. */
+  paymentLinks: (slug: string) =>
+    request<PaymentLink[]>(`/api/tournaments/${slug}/payments/links`),
   issuableCount: (slug: string) =>
     request<IssuableCount>(`/api/tournaments/${slug}/import/issue`),
   /** Issue registrations where no intake will do it: a tournament whose
@@ -1306,6 +1310,19 @@ export interface IssuableCount {
    *  stands: a merge collapses rows, not registrations, so issuing ahead of
    *  the verdict leaves one person holding two. */
   pending_dedup: number;
+}
+
+export interface PaymentLink {
+  rule_id: number;
+  /** Made by the matcher rather than by a person. */
+  auto_created: boolean;
+  /** Who the payment was credited to, by name — a link made by choosing a
+   *  fencer carries no symbol to show instead. */
+  fencers: string[];
+  vs: number[];
+  /** The bank's own row. Absent where the transaction behind the link is
+   *  gone, which a cleared statement leaves behind. */
+  transaction: Transaction | null;
 }
 
 export interface IssuedSkip {

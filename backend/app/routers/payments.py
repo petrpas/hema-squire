@@ -39,6 +39,7 @@ from app.schemas import (
     ExpiredHoldingOut,
     IngestAndMatchOut,
     LinkIn,
+    PaymentLinkOut,
     RankedFencerOut,
     TransactionOut,
     TransactionRosterOut,
@@ -438,6 +439,45 @@ def _transaction_out(session, tournament, transaction: BankTransaction) -> Trans
         out.candidate_vs = matching.detect_candidates(session, transaction)
     if transaction.proposed_fencer is not None:
         out.proposed_fencer_name = transaction.proposed_fencer.display_name
+    return out
+
+
+@router.get("/links", response_model=list[PaymentLinkOut])
+def payment_links(tournament: TournamentDep, session: SessionDep, fencer: FencerDep):
+    """The tournament's active payment links, resolved into what they join.
+
+    A link rule names its transaction by external id and its registrations by
+    symbol or id. None of that is readable: on a statement from a bank that
+    numbers nothing, the external id is a fingerprint of the row's own content,
+    and a link made by choosing a fencer carries no symbol to show at all. The
+    queue exists so the organizer can undo the wrong link, which they cannot do
+    without seeing which payment and which fencer it is — so the resolving
+    happens here, once, rather than in three requests the console would have to
+    join for itself (spec `payments-console`).
+    """
+    require_console_access(session, tournament, fencer)
+    out = []
+    for rule in rules.active_rules(session, tournament, kind="payment_link"):
+        payload = rule.payload or {}
+        registrations = matching.linked_registrations(session, tournament, payload)
+        transaction = matching.transaction_for_link(session, tournament, rule.target)
+        out.append(
+            PaymentLinkOut(
+                rule_id=rule.id,
+                auto_created=payload.get("auto_created") is True,
+                fencers=[
+                    registration.fencer.display_name
+                    for registration in registrations
+                    if registration.fencer is not None
+                ],
+                vs=[r.vs for r in registrations if r.vs is not None],
+                transaction=(
+                    _transaction_out(session, tournament, transaction)
+                    if transaction is not None
+                    else None
+                ),
+            )
+        )
     return out
 
 

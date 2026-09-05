@@ -1,7 +1,9 @@
+import { IconUnlink } from "@tabler/icons-react";
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { type Rule, api } from "../api";
+import { type Currency, type PaymentLink, api } from "../api";
+import { formatMoney } from "../money";
 import QueueCard from "./QueueCard";
 
 /** The tournament's active payment links.
@@ -10,6 +12,14 @@ import QueueCard from "./QueueCard";
  *  the rail's edits log, the one place the console otherwise shows what a rule
  *  did. Until this card, a link once made could be neither seen nor undone
  *  (design D6).
+ *
+ *  Seen means seen: the queue's only action destroys a link, and nobody can aim
+ *  that at the right row from the rule's own words. A rule names its transaction
+ *  by external id — which, on a statement from a bank that numbers nothing, is a
+ *  fingerprint of the row's own content — and its registrations by a variable
+ *  symbol that a link made by choosing a fencer never had. So the row states the
+ *  payment as the bank wrote it beside the fencer it was credited to, the same
+ *  evidence the proposals queue puts in front of the eye that clicks.
  */
 export default function PaymentLinksPanel({
   slug,
@@ -24,15 +34,15 @@ export default function PaymentLinksPanel({
   onChanged: () => void;
 }) {
   const { t } = useTranslation();
-  const [links, setLinks] = useState<Rule[] | null>(null);
+  const [links, setLinks] = useState<PaymentLink[] | null>(null);
   const [failed, setFailed] = useState(false);
   const [busyId, setBusyId] = useState<number | null>(null);
   const [removeFailed, setRemoveFailed] = useState(false);
 
   const load = useCallback(() => {
-    api.rules(slug, "payments").then(
-      (rules) => {
-        setLinks(rules.filter((rule) => rule.kind === "payment_link"));
+    api.paymentLinks(slug).then(
+      (rows) => {
+        setLinks(rows);
         setFailed(false);
       },
       () => {
@@ -72,35 +82,53 @@ export default function PaymentLinksPanel({
         <table className="sheet-table">
           <thead>
             <tr>
-              <th>{t("payments.links.transaction")}</th>
-              <th>{t("payments.links.vs")}</th>
+              <th>{t("payments.links.date")}</th>
+              <th>{t("payments.links.payer")}</th>
+              <th>{t("payments.links.amount")}</th>
+              <th>{t("payments.links.message")}</th>
+              <th>{t("payments.links.fencer")}</th>
+              <th>{t("payments.links.origin")}</th>
               <th className="col-actions" />
             </tr>
           </thead>
           <tbody>
-            {(links ?? []).map((rule) => {
-              const vs = Array.isArray(rule.payload.vs) ? (rule.payload.vs as number[]) : [];
+            {(links ?? []).map((link) => {
+              const tx = link.transaction;
               return (
-                <tr key={rule.id}>
-                  <td>{rule.target.replace(/^txn:/, "")}</td>
+                <tr key={link.rule_id}>
+                  <td>{tx === null ? "—" : new Date(tx.date).toLocaleDateString("cs")}</td>
+                  <td>{tx?.payer_name ?? "—"}</td>
                   <td>
-                    {vs.join(", ") || "—"}
-                    <span className="muted">
-                      {" "}
-                      ·{" "}
-                      {rule.payload.auto_created === true
-                        ? t("payments.links.auto")
-                        : t("payments.links.manual")}
-                    </span>
+                    {tx === null
+                      ? "—"
+                      : formatMoney(tx.amount_cents / 100, tx.currency as Currency)}
+                  </td>
+                  {/* the bank's own words, in full: judging the link is the work */}
+                  <td className="muted">{tx?.message ?? "—"}</td>
+                  <td>
+                    {/* the person, not the number. The symbols follow only
+                        where the payer quoted any */}
+                    {link.fencers.join(", ") || "—"}
+                    {link.vs.length > 0 && (
+                      <span className="muted"> · {link.vs.join(", ")}</span>
+                    )}
+                  </td>
+                  <td className="muted">
+                    {link.auto_created
+                      ? t("payments.links.auto")
+                      : t("payments.links.manual")}
                   </td>
                   <td className="col-actions">
                     <button
                       className="row-action"
                       title={t("payments.links.remove")}
-                      disabled={busyId === rule.id}
-                      onClick={() => void remove(rule.id)}
+                      disabled={busyId === link.rule_id}
+                      onClick={() => void remove(link.rule_id)}
                     >
-                      {t("payments.links.remove")}
+                      <IconUnlink size={16} stroke={1.5} />
+                      <span className="visually-hidden">
+                        {t("payments.links.remove")}
+                      </span>
                     </button>
                   </td>
                 </tr>
@@ -108,6 +136,11 @@ export default function PaymentLinksPanel({
             })}
           </tbody>
         </table>
+        {/* a link whose transaction is gone still holds a fencer's credit, so
+            it is shown and undoable rather than hidden */}
+        {(links ?? []).some((link) => link.transaction === null) && (
+          <p className="rail-hint">{t("payments.links.orphaned")}</p>
+        )}
         {removeFailed && <p className="login-error">{t("payments.links.failed")}</p>}
       </>
     </QueueCard>

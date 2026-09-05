@@ -286,3 +286,97 @@ def test_link_validation(client, auth_headers, mailbox):
         headers=organizer,
     )
     assert missing.status_code == 404
+
+
+# The links queue exists so a wrong link can be undone, which needs the reader
+# to see which payment and which fencer it joined. The rule states neither: it
+# names the transaction by an external id — a fingerprint of the row's own
+# content where the bank numbers nothing — and the registrations by a symbol
+# that a link made by choosing a fencer does not have (spec `payments-console`).
+
+
+def links(client, organizer):
+    response = client.get("/api/tournaments/cup/payments/links", headers=organizer)
+    assert response.status_code == 200, response.text
+    return response.json()
+
+
+def test_a_link_states_the_payment_and_the_fencers_it_joins(client, auth_headers, mailbox):
+    organizer = auth_headers()
+    setup(client, organizer)
+    _, vs_a = enroll(client, auth_headers, "a@example.com", "Adéla")
+    _, vs_b = enroll(client, auth_headers, "b@example.com", "Boris")
+    import_csv(client, organizer)
+    transaction_id = unmatched_transaction_id(client, organizer)
+    client.post(
+        "/api/tournaments/cup/payments/link",
+        json={"transaction_id": transaction_id, "vs": [vs_a, vs_b]},
+        headers=organizer,
+    )
+
+    (link,) = links(client, organizer)
+
+    assert link["fencers"] == ["Adéla", "Boris"]
+    assert link["vs"] == [vs_a, vs_b]
+    assert link["auto_created"] is False
+    # the bank's own words, so the reader can judge the link without leaving
+    assert link["transaction"]["payer_name"] == "Klubový účet"
+    assert link["transaction"]["amount_cents"] == 200000
+    assert link["transaction"]["message"] == "platba za dva"
+    assert link["transaction"]["date"] == "2026-08-01"
+
+
+def test_a_link_made_by_choosing_a_fencer_still_names_them(client, auth_headers, mailbox):
+    """The case the queue used to render as an em-dash: no symbol was quoted,
+    because the organizer picked the person rather than typing a number."""
+    organizer = auth_headers()
+    setup(client, organizer)
+    enroll(client, auth_headers, "a@example.com", "Adéla")
+    import_csv(client, organizer)
+    transaction_id = unmatched_transaction_id(client, organizer)
+    # the roster the link dialog offers, which is how an organizer picks a
+    # person rather than a number
+    roster = client.get(
+        f"/api/tournaments/cup/payments/transactions/{transaction_id}/roster",
+        headers=organizer,
+    ).json()
+    (candidate,) = roster["fencers"]
+    client.post(
+        "/api/tournaments/cup/payments/link",
+        json={"transaction_id": transaction_id, "registration_ids": [candidate["registration_id"]]},
+        headers=organizer,
+    )
+
+    (link,) = links(client, organizer)
+
+    assert link["fencers"] == ["Adéla"]
+    assert link["transaction"]["payer_name"] == "Klubový účet"
+
+
+def test_a_removed_link_leaves_the_queue(client, auth_headers, mailbox):
+    organizer = auth_headers()
+    setup(client, organizer)
+    _, vs = enroll(client, auth_headers, "a@example.com", "Adéla")
+    import_csv(client, organizer)
+    transaction_id = unmatched_transaction_id(client, organizer)
+    made = client.post(
+        "/api/tournaments/cup/payments/link",
+        json={"transaction_id": transaction_id, "vs": [vs]},
+        headers=organizer,
+    ).json()
+
+    client.delete(
+        f"/api/tournaments/cup/rules/{made['rule_id']}", headers=organizer
+    )
+
+    assert links(client, organizer) == []
+
+
+def test_the_links_queue_needs_console_access(client, auth_headers):
+    organizer = auth_headers()
+    setup(client, organizer)
+    outsider = auth_headers(email="nobody@example.com", name="Nikdo")
+
+    response = client.get("/api/tournaments/cup/payments/links", headers=outsider)
+
+    assert response.status_code == 403

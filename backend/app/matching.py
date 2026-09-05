@@ -105,13 +105,28 @@ def detected_vs_tokens(transaction: BankTransaction) -> list[int]:
 
 
 def detect_candidates(session: Session, transaction: BankTransaction) -> list[int]:
-    """Detected VS values that actually resolve to an issued registration
-    somewhere in the deployment — what the manual dialog pre-fills for an
-    unmatched transaction (design Decisions 5 and 6)."""
+    """Detected VS values that resolve to a registration **of this tournament**
+    — what the manual dialog pre-fills for an unmatched transaction (design
+    Decisions 5 and 6).
+
+    Scoped to the tournament because that is what the dialog can act on:
+    `POST /payments/link` resolves a typed symbol against this tournament's
+    registrations and answers `unknown_vs` for anything else, so a candidate
+    from elsewhere in the deployment is a one-click button that fails. It also
+    empties the offer on a tournament whose registrations carry no symbol at
+    all, which is the whole of the manual mode (`tournament-mode`).
+    """
     tokens = detected_vs_tokens(transaction)
     if not tokens:
         return []
-    issued = set(session.scalars(select(Registration.vs).where(Registration.vs.in_(tokens))))
+    issued = set(
+        session.scalars(
+            select(Registration.vs).where(
+                Registration.tournament_id == transaction.tournament_id,
+                Registration.vs.in_(tokens),
+            )
+        )
+    )
     return [vs for vs in tokens if vs in issued]
 
 
@@ -568,6 +583,18 @@ def _transaction_by_external_id(
     )
 
 
+def transaction_for_link(
+    session: Session, tournament: Tournament, target: str
+) -> BankTransaction | None:
+    """The transaction a `payment_link` rule's target names.
+
+    The prefix is stripped in one place rather than at each of the three call
+    sites that had grown their own `removeprefix`, so what a link's target looks
+    like is stated once.
+    """
+    return _transaction_by_external_id(session, tournament, target.removeprefix("txn:"))
+
+
 def linked_registrations(
     session: Session, tournament: Tournament, payload: dict
 ) -> list[Registration]:
@@ -640,9 +667,7 @@ def apply_payment_links(session: Session, tournament: Tournament, mailer: Mailer
     bank.require_payments_enabled(tournament)
     applied = 0
     for rule in rules_engine.active_rules(session, tournament, kind="payment_link"):
-        transaction = _transaction_by_external_id(
-            session, tournament, rule.target.removeprefix("txn:")
-        )
+        transaction = transaction_for_link(session, tournament, rule.target)
         if transaction is None or transaction.status == "matched":
             continue
         registrations = linked_registrations(session, tournament, rule.payload)
@@ -688,9 +713,7 @@ def unapply_payment_link(session: Session, tournament: Tournament, rule) -> None
     having credited it (design Decision 7) — not the full transaction amount,
     and not a recomputed guess against today's balances. The transaction
     returns to the unmatched queue."""
-    transaction = _transaction_by_external_id(
-        session, tournament, rule.target.removeprefix("txn:")
-    )
+    transaction = transaction_for_link(session, tournament, rule.target)
     if transaction is not None and transaction.status_reason == "manual_link":
         transaction.status = "unmatched"
         transaction.status_reason = "manual_unlink"

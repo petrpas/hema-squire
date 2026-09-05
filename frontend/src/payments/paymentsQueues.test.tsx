@@ -3,7 +3,7 @@ import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
-import { type ExpiredHolding, type Rule, api } from "../api";
+import { type ExpiredHolding, type PaymentLink, api } from "../api";
 import i18n from "../i18n";
 import SheetArea from "../SheetArea";
 import ExpiredHoldingPanel from "./ExpiredHoldingPanel";
@@ -58,15 +58,20 @@ function stranded(overrides: Partial<ExpiredHolding> = {}): ExpiredHolding {
   };
 }
 
-function rule(overrides: Partial<Rule> = {}): Rule {
+function link(overrides: Partial<PaymentLink> = {}): PaymentLink {
   return {
-    id: 11,
-    phase: "payments",
-    kind: "payment_link",
-    target: "txn:5",
-    payload: { vs: [2601001] },
-    created_by: 1,
-    created_at: "2026-08-20T10:00:00Z",
+    rule_id: 11,
+    auto_created: false,
+    fencers: ["Adéla Nová"],
+    vs: [2601001],
+    transaction: {
+      id: 5,
+      date: "2026-08-01",
+      amount_cents: 200000,
+      currency: "CZK",
+      payer_name: "Klubový účet",
+      message: "platba za dva",
+    } as unknown as PaymentLink["transaction"],
     ...overrides,
   };
 }
@@ -123,9 +128,9 @@ it("reloads when the console says the money moved", async () => {
 });
 
 it("marks an auto-created link apart from one made by hand", async () => {
-  vi.spyOn(api, "rules").mockResolvedValue([
-    rule({ id: 11, payload: { vs: [2601001], auto_created: true } }),
-    rule({ id: 12, target: "txn:6", payload: { vs: [2601002] } }),
+  vi.spyOn(api, "paymentLinks").mockResolvedValue([
+    link({ rule_id: 11, auto_created: true }),
+    link({ rule_id: 12 }),
   ]);
   mount(<PaymentLinksPanel slug="cup" reload={0} onChanged={() => {}} />);
   await settle();
@@ -135,19 +140,41 @@ it("marks an auto-created link apart from one made by hand", async () => {
   expect(rows[1].textContent).toContain(t("payments.links.manual"));
 });
 
-it("keeps only payment_link rules out of the payments phase", async () => {
-  vi.spyOn(api, "rules").mockResolvedValue([
-    rule(),
-    rule({ id: 99, kind: "field_edit", target: "reg:1", payload: {} }),
-  ]);
+it("states the payment as the bank wrote it, beside the fencer it credits", async () => {
+  // the queue's only action destroys a link, and nobody can aim that at the
+  // right row from an external id and a symbol
+  vi.spyOn(api, "paymentLinks").mockResolvedValue([link()]);
   mount(<PaymentLinksPanel slug="cup" reload={0} onChanged={() => {}} />);
   await settle();
 
-  expect(host?.querySelector(".rail-count")?.textContent).toBe("1");
+  const row = host?.querySelector("tbody tr")?.textContent ?? "";
+  expect(row).toContain("Klubový účet");
+  expect(row).toContain("platba za dva");
+  expect(row).toContain("Adéla Nová");
+  expect(row).not.toContain("txn:");
+});
+
+it("names the fencer where the payer quoted no symbol", async () => {
+  vi.spyOn(api, "paymentLinks").mockResolvedValue([link({ vs: [] })]);
+  mount(<PaymentLinksPanel slug="cup" reload={0} onChanged={() => {}} />);
+  await settle();
+
+  expect(host?.querySelector("tbody tr")?.textContent).toContain("Adéla Nová");
+});
+
+it("keeps a link whose payment is gone, and says why it reads short", async () => {
+  // the statement was cleared; the credit is still with the fencer until the
+  // link itself is removed
+  vi.spyOn(api, "paymentLinks").mockResolvedValue([link({ transaction: null })]);
+  mount(<PaymentLinksPanel slug="cup" reload={0} onChanged={() => {}} />);
+  await settle();
+
+  expect(host?.querySelector("tbody tr")?.textContent).toContain("Adéla Nová");
+  expect(host?.textContent).toContain(t("payments.links.orphaned"));
 });
 
 it("refetches after removing a link rather than assuming the outcome", async () => {
-  const rules = vi.spyOn(api, "rules").mockResolvedValue([rule()]);
+  const rules = vi.spyOn(api, "paymentLinks").mockResolvedValue([link()]);
   const remove = vi.spyOn(api, "deleteRule").mockResolvedValue(undefined);
   const onChanged = vi.fn();
   mount(<PaymentLinksPanel slug="cup" reload={0} onChanged={onChanged} />);

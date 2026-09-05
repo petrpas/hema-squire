@@ -1092,6 +1092,26 @@ class LinkIn(BaseModel):
         return self
 
 
+class PaymentLinkOut(BaseModel):
+    """An active payment link, resolved into the two things it joins.
+
+    The rule itself names a transaction by its external id and a registration by
+    a symbol or an id — none of which a reader recognises, and on a statement
+    from a bank that numbers nothing the external id is a fingerprint of the
+    row's own content. So the console is handed the payment as the bank wrote it
+    and the fencer by name (spec `payments-console`).
+    """
+
+    rule_id: int
+    auto_created: bool
+    fencers: list[str]
+    vs: list[int]
+    # absent where the transaction behind the link is gone — a cleared statement
+    # leaves the rule standing, and a row that states nothing is worse than one
+    # that states what little is left
+    transaction: TransactionOut | None = None
+
+
 class IssueSkipOut(BaseModel):
     row_id: str
     name: str | None = None

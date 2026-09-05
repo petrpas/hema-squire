@@ -24,7 +24,7 @@
     "hint": "CSV nebo XLSX s registracemi (např. export Google Formuláře).",
     "upload": "Nahrát soubor…",
     "failed": "Import se nezdařil.",
-    "result": "{{rows}} řádků · {{parsed}} nově zpracováno · {{reused}} beze změny · {{problems}} k prověření",
+    "result": "{{rows}} nových řádků · {{skipped}} beze změny · {{problems}} k prověření",
     "notConfigured": "{{rows}} řádků nahráno, ale LLM parser není nakonfigurován.",
     "clear": "Vymazat tabulku…",
     "clearConfirm": {
@@ -945,7 +945,9 @@
       "hint": "O kolik se smí poslaná částka lišit od dlužné a přesto se počítat jako zaplaceno. Projeví se při dalším spuštění."
     },
     "queue": {
-      "failed": "Seznam se nepodařilo načíst."
+      "failed": "Seznam se nepodařilo načíst.",
+      "empty": "Nic tu není.",
+      "tabs": "Fronty plateb"
     },
     "unmatched": {
       "title": "Nepřiřazené platby",
@@ -970,7 +972,8 @@
       "roster": "Za koho ta platba je?",
       "search": "Hledat v soupisce",
       "strongest": "nejlepší shoda",
-      "refused": "(řekls, že to není on)"
+      "refused": "(řekls, že to není on)",
+      "unbillable": "{{count}} šermířů ze seznamu tady není, protože nemají registraci — platbu jim nelze přiřadit, dokud se řádek ve fázi Šermíři neopraví:"
     },
     "expiredHolding": {
       "title": "Vypršelé s platbou",
@@ -984,10 +987,17 @@
       "title": "Přiřazení plateb",
       "transaction": "Platba",
       "vs": "VS",
-      "auto": "vytvořeno automaticky",
-      "manual": "vytvořeno ručně",
+      "auto": "automaticky",
+      "manual": "ručně",
       "remove": "Zrušit přiřazení",
-      "failed": "Přiřazení se nepodařilo zrušit."
+      "failed": "Přiřazení se nepodařilo zrušit.",
+      "date": "Datum",
+      "payer": "Plátce",
+      "amount": "Částka",
+      "message": "Zpráva",
+      "fencer": "Šermíř",
+      "origin": "Vzniklo",
+      "orphaned": "Platba za některým přiřazením už neexistuje — výpis byl smazán. Připsané peníze u šermíře zůstávají, dokud přiřazení nezrušíte."
     },
     "intake": {
       "title": "Příjem plateb",
@@ -1025,7 +1035,7 @@
       }
     },
     "likely": {
-      "title": "Nejspíš tihle šermíři",
+      "title": "Navržené shody",
       "explain": "Vyčteno z toho, co plátce napsal. Nic není připsané a nikomu nic nepřišlo — zaplacené to bude až potvrzením.",
       "date": "Datum",
       "payer": "Zaplatil",
@@ -1033,7 +1043,10 @@
       "message": "Zpráva plátce",
       "fencer": "Za koho",
       "confirm": "Potvrdit",
-      "reject": "To není on"
+      "reject": "Zrušit"
+    },
+    "tabs": {
+      "fencers": "Šermíři"
     }
   },
   "validation": {
@@ -1132,15 +1145,13 @@
     "done": "hotovo"
   },
   "issue": {
-    "skippedHeading": "Bez registrace zůstaly tyto řádky; dokud je neopravíte, jejich platby nepůjde spárovat:",
+    "skippedHeading": "Bez registrace zůstaly tyto řádky; dokud je ve fázi Šermíři neopravíte, jejich platby nepůjde spárovat:",
     "skipped": "{{name}} — {{reason}}",
     "unnamed": "řádek bez jména",
     "blockedByDedup": "Nejdřív je potřeba dořešit duplicity. Sloučení slučuje řádky, ne registrace, takže řádek vystavený předem by po sloučení zůstal jako druhá registrace téhož člověka.",
     "reason": {
       "no_discipline": "nemá žádnou disciplínu",
-      "no_email": "nemá e-mailovou adresu",
-      "no_name": "nemá jméno",
-      "email_taken": "má stejnou e-mailovou adresu jako jiný řádek"
+      "no_name": "nemá jméno"
     }
   }
 }

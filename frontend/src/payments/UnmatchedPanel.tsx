@@ -1,3 +1,4 @@
+import { IconLink } from "@tabler/icons-react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -78,7 +79,10 @@ export default function UnmatchedPanel({
                     title={t("payments.unmatched.link")}
                     onClick={() => setLinking(tx)}
                   >
-                    {t("payments.unmatched.link")}
+                    <IconLink size={16} stroke={1.5} />
+                    <span className="visually-hidden">
+                      {t("payments.unmatched.link")}
+                    </span>
                   </button>
                 </td>
               </tr>

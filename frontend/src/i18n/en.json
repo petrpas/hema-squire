@@ -24,7 +24,7 @@
     "hint": "CSV or XLSX with registrations (e.g. a Google Form export).",
     "upload": "Upload file…",
     "failed": "Import failed.",
-    "result": "{{rows}} rows · {{parsed}} newly parsed · {{reused}} unchanged · {{problems}} to review",
+    "result": "{{rows}} new rows · {{skipped}} unchanged · {{problems}} to review",
     "notConfigured": "{{rows}} rows uploaded, but the LLM parser is not configured.",
     "clear": "Clear table…",
     "clearConfirm": {
@@ -936,7 +936,9 @@
       "hint": "How far a transferred amount may differ from what is owed and still count as payment. Applies on the next rerun."
     },
     "queue": {
-      "failed": "This list could not be loaded."
+      "failed": "This list could not be loaded.",
+      "empty": "Nothing here.",
+      "tabs": "Payment queues"
     },
     "unmatched": {
       "title": "Unmatched payments",
@@ -961,7 +963,8 @@
       "roster": "Who is this payment for?",
       "search": "Search the roster",
       "strongest": "best match",
-      "refused": "(you said not them)"
+      "refused": "(you said not them)",
+      "unbillable": "{{count}} fencers from the list are not here, because they have no registration — a payment cannot be linked to them until the row is corrected on the Fencers phase:"
     },
     "expiredHolding": {
       "title": "Expired, holding money",
@@ -975,10 +978,17 @@
       "title": "Payment links",
       "transaction": "Payment",
       "vs": "VS",
-      "auto": "created by the matcher",
-      "manual": "created by hand",
+      "auto": "by the matcher",
+      "manual": "by hand",
       "remove": "Remove link",
-      "failed": "The link could not be removed."
+      "failed": "The link could not be removed.",
+      "date": "Date",
+      "payer": "Payer",
+      "amount": "Amount",
+      "message": "Message",
+      "fencer": "Fencer",
+      "origin": "Made",
+      "orphaned": "The payment behind one of these links is gone — its statement was cleared. The credit stays with the fencer until the link is removed."
     },
     "intake": {
       "title": "Payment intake",
@@ -1016,7 +1026,7 @@
       }
     },
     "likely": {
-      "title": "Probably these fencers",
+      "title": "Proposed matches",
       "explain": "Read from what the payer wrote. Nothing has been credited and nobody has been told — confirming is what pays the registration.",
       "date": "Date",
       "payer": "Paid by",
@@ -1024,7 +1034,10 @@
       "message": "Payer's message",
       "fencer": "For",
       "confirm": "Confirm",
-      "reject": "Not them"
+      "reject": "Reject"
+    },
+    "tabs": {
+      "fencers": "Fencers"
     }
   },
   "validation": {
@@ -1119,15 +1132,13 @@
     "done": "finished"
   },
   "issue": {
-    "skippedHeading": "These rows were left without a registration; until they are fixed, their payments cannot be reconciled:",
+    "skippedHeading": "These rows were left without a registration; until they are corrected on the Fencers phase, their payments cannot be reconciled:",
     "skipped": "{{name}} — {{reason}}",
     "unnamed": "unnamed row",
     "blockedByDedup": "The duplicates have to be settled first. A merge collapses rows, not registrations, so a row issued beforehand would survive its own merge as a second registration for the same person.",
     "reason": {
       "no_discipline": "enters no discipline",
-      "no_email": "has no e-mail address",
-      "no_name": "has no name",
-      "email_taken": "shares an e-mail address with another row"
+      "no_name": "has no name"
     }
   }
 }

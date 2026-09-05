@@ -1,3 +1,4 @@
+import { IconArrowBackUp, IconReceiptRefund } from "@tabler/icons-react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -105,24 +106,32 @@ export default function FlaggedPanel({
                   })}
                 </td>
                 <td className="col-actions">
-                  {tx.reinstate_available && (
+                  <div className="row-actions">
+                    {tx.reinstate_available && (
+                      <button
+                        className="row-action"
+                        title={t("payments.flagged.reinstate")}
+                        disabled={busyId === tx.id}
+                        onClick={() => void reinstate(tx.id)}
+                      >
+                        <IconArrowBackUp size={16} stroke={1.5} />
+                        <span className="visually-hidden">
+                          {t("payments.flagged.reinstate")}
+                        </span>
+                      </button>
+                    )}
                     <button
                       className="row-action"
-                      title={t("payments.flagged.reinstate")}
+                      title={t("payments.flagged.markForRefund")}
                       disabled={busyId === tx.id}
-                      onClick={() => void reinstate(tx.id)}
+                      onClick={() => void markForRefund(tx.id)}
                     >
-                      {t("payments.flagged.reinstate")}
+                      <IconReceiptRefund size={16} stroke={1.5} />
+                      <span className="visually-hidden">
+                        {t("payments.flagged.markForRefund")}
+                      </span>
                     </button>
-                  )}
-                  <button
-                    className="row-action"
-                    title={t("payments.flagged.markForRefund")}
-                    disabled={busyId === tx.id}
-                    onClick={() => void markForRefund(tx.id)}
-                  >
-                    {t("payments.flagged.markForRefund")}
-                  </button>
+                  </div>
                 </td>
               </tr>
             ))}
