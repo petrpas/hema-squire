@@ -106,9 +106,10 @@ def test_upload_returns_before_the_parse(client, auth_headers, engine):
     assert parser.calls == 3
 
 
-def test_reused_rows_are_not_work(client, auth_headers):
-    """A re-upload of an unchanged file starts no operation at all
-    (spec console-operations, Reused rows are not work)."""
+def test_recognised_rows_are_not_work(client, auth_headers):
+    """A re-upload of an unchanged file brings nothing and starts no operation
+    at all (spec console-operations, Reused rows are not work; spec
+    table-import, Intake takes in only rows new to the tournament)."""
     organizer = auth_headers()
     setup(client, organizer)
     app.dependency_overrides[get_import_parser] = lambda: CountingParser()
@@ -118,7 +119,8 @@ def test_reused_rows_are_not_work(client, auth_headers):
     body = upload(client, organizer, rows_csv(5)).json()
 
     assert body["parsed"] == 0
-    assert body["reused"] == 5
+    assert body["rows"] == 0
+    assert body["skipped"] == 5
     assert "operation_id" not in body
     # the earlier parse is still the latest one on the record
     assert settle(client, organizer, kind="parse")["total"] == 5

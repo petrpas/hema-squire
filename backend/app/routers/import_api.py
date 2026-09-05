@@ -67,26 +67,37 @@ async def import_table(
     _refuse_while_busy(session, tournament)
     data = await file.read()
     try:
-        batch, imported = importer.intake(
+        batch, imported, skipped = importer.intake(
             session, tournament, file.filename or "upload.csv", data, fencer.id
         )
     except importer.UnsupportedFormatError:
         raise HTTPException(status_code=422, detail="unsupported_format") from None
 
-    undecided = importer.undecided_rows(session, tournament, imported)
+    # what the parse works on is the tournament's undecided rows, not this
+    # upload's. Rows belong to the tournament, and so does the work of parsing
+    # them: an upload that brings nothing new still resumes a parse an earlier
+    # run left unfinished (spec table-import, Partial parse survives an
+    # interruption)
+    undecided = importer.undecided_rows(
+        session, tournament, importer.imported_rows(session, tournament)
+    )
+    brought = len(imported)
+    undecided_keys = {row.key for row in undecided}
+    reused = sum(1 for row in imported if row.key not in undecided_keys)
     if not undecided or parser is None:
-        # nothing to run: an all-reused re-upload, or a deployment with no LLM.
-        # Starting an operation with nothing to do would report a long parse
-        # that never happened (spec, Reused rows are not work).
+        # nothing to run: everything already parsed, or a deployment with no
+        # LLM. Starting an operation with nothing to do would report a long
+        # parse that never happened (spec, Reused rows are not work).
         return importer.import_outcome(
             session,
             tournament,
             batch,
-            imported,
+            rows=brought,
             parsed=0,
-            reused=len(imported) - len(undecided),
+            reused=reused,
             unparsed=len(undecided),
             detail="llm_not_configured" if undecided else None,
+            skipped=skipped,
         )
 
     operation = _start(session, tournament, fencer, OperationKind.PARSE, len(undecided))
@@ -95,19 +106,26 @@ async def import_table(
     def body(work_session: Session, work_operation: Operation) -> dict:
         work_tournament = work_session.get(Tournament, work_operation.tournament_id)
         work_batch = work_session.get(importer.ImportBatch, batch_id)
-        rows = importer.batch_rows(work_session, work_batch)
+        rows = importer.imported_rows(work_session, work_tournament)
         return importer.parse_undecided(
             work_session,
             work_tournament,
             parser,
             work_batch,
-            rows,
             importer.undecided_rows(work_session, work_tournament, rows),
             progress=lambda session, units: operations.advance(session, work_operation, units),
+            brought=brought,
+            reused=reused,
+            skipped=skipped,
         )
 
     operations.run_in_background(operation.id, body)
-    return {"operation_id": operation.id, "batch_id": batch_id, "rows": len(imported)}
+    return {
+        "operation_id": operation.id,
+        "batch_id": batch_id,
+        "rows": brought,
+        "skipped": skipped,
+    }
 
 
 @router.delete("")

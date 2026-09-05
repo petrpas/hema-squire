@@ -72,9 +72,8 @@ def restore(session: Session, tournament: Tournament, pairs: list[tuple[str, int
 
 def arrival_order(session: Session, tournament: Tournament) -> list[str]:
     """The order rows would have been numbered in, for a document that records
-    no numbers: registrations by registration moment, then the latest imported
-    batch in file order, then the hand-entered rows as they were entered."""
-    from app import importer
+    no numbers: registrations by registration moment, then every imported row
+    in the order it arrived, then the hand-entered rows as they were entered."""
     from app.models import ImportedRow, ManualRow, Registration
 
     row_ids = [
@@ -85,16 +84,16 @@ def arrival_order(session: Session, tournament: Tournament) -> list[str]:
             .order_by(Registration.registered_at, Registration.id)
         )
     ]
-    batch = importer.latest_batch(session, tournament)
-    if batch is not None:
-        row_ids += [
-            f"imp:{key}"
-            for key in session.scalars(
-                select(ImportedRow.key)
-                .where(ImportedRow.batch_id == batch.id)
-                .order_by(ImportedRow.row_number)
-            )
-        ]
+    # across every upload, not the latest alone: a row is taken in once, when
+    # its content first appears, and its id is that arrival
+    row_ids += [
+        f"imp:{key}"
+        for key in session.scalars(
+            select(ImportedRow.key)
+            .where(ImportedRow.tournament_id == tournament.id)
+            .order_by(ImportedRow.id)
+        )
+    ]
     row_ids += [
         f"man:{row_id}"
         for row_id in session.scalars(

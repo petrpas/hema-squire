@@ -515,7 +515,7 @@ Clearing the tournament's imported content SHALL be the one exception: the numbe
 
 The number SHALL be allocated in the order rows enter the tournament, which is not necessarily the order the table displays. Where an imported row states a registration moment earlier than that of rows already numbered, the table SHALL sort it into its chronological place and its number SHALL stand out of sequence there. The number counts nobody's position in the list; it names a fencer.
 
-The Import view SHALL NOT use this number. Its rows SHALL be numbered by their line in the uploaded file, a number meaningful only within that batch.
+Every view SHALL number its rows by this number, the Import view included. No view SHALL number rows by their line in an uploaded file: a line number describes a file, and the Import view describes what the tournament imported across every file it was given. Import's numbers SHALL therefore be those of the tournament, gaps and all, where rows of other populations were numbered between them.
 
 #### Scenario: Deletion does not renumber
 - **WHEN** the organizer deletes the third row of a fifteen-row table
@@ -529,9 +529,13 @@ The Import view SHALL NOT use this number. Its rows SHALL be numbered by their l
 - **WHEN** an import brings a fencer whose registration moment precedes existing rows
 - **THEN** that row is displayed among the earliest rows while carrying a number higher than theirs
 
-#### Scenario: Import numbers its own lines
-- **WHEN** the organizer opens the Import view
-- **THEN** each row is numbered by its line in the uploaded file, and those numbers start again at one for the next upload
+#### Scenario: Import shows the tournament's numbers
+- **WHEN** the organizer opens the Import view of a tournament whose imported rows are numbered three, four, seven and eight, in-app registrations holding the rest
+- **THEN** those four rows are shown numbered three, four, seven and eight, and no numbering starts again at one
+
+#### Scenario: A second upload continues the numbering
+- **WHEN** a second file brings four rows to a tournament numbered one to thirty
+- **THEN** they are numbered thirty-one to thirty-four, and the rows of the first file keep the numbers they had
 
 #### Scenario: Manual entry takes the next number
 - **WHEN** the organizer enters a fencer by hand into a table whose highest number is forty
@@ -581,14 +585,24 @@ The note marker SHALL be offered on the Import view and on the fencer list alike
 - **WHEN** an in-app registration carries a note from the fencer
 - **THEN** its marker appears on the fencer list and discloses that note
 
-### Requirement: Import view of one batch
-The Import view SHALL show the latest imported batch whole: every row of the file as it was read, parsed, and hand-corrected. A row that a later operation has absorbed or deleted SHALL remain listed there, marked as such, rather than disappearing — the view is a record of what a file contained and how it was understood, not a list of who is competing.
+### Requirement: Import view of everything imported
+The Import view SHALL show every row the tournament has imported, from every upload, in the order the rows arrived. Each SHALL be shown as it was read, parsed, and hand-corrected. A row that a later operation has absorbed or deleted SHALL remain listed there, marked as such, rather than disappearing — the view is a record of what the tournament's files contained and how they were understood, not a list of who is competing.
+
+A row SHALL be listed there for as long as it is imported. A later upload that does not carry it SHALL NOT remove it from the view, and neither the upload a row arrived in nor the order the uploads happened in SHALL group or separate rows there.
 
 The Import view SHALL carry the import operation's controls; the fencer list SHALL NOT.
 
 #### Scenario: Absorbed row stays visible
 - **WHEN** deduplication merges an imported row into an in-app registration
 - **THEN** the row remains in the Import view marked as absorbed, and is gone from the fencer list
+
+#### Scenario: Rows of every upload listed together
+- **WHEN** the organizer has uploaded three files and opens the Import view
+- **THEN** the rows of all three are listed together in arrival order, with nothing marking where one upload ended and the next began
+
+#### Scenario: An issued row is still an imported row
+- **WHEN** an imported row has been issued a registration
+- **THEN** it is still listed in the Import view, with its number and its parse problems
 
 #### Scenario: Import controls belong to Import
 - **WHEN** the organizer opens the Fencers tab

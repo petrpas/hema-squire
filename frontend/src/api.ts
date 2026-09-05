@@ -1293,7 +1293,13 @@ export interface DedupGroup {
 
 export interface ImportResult {
   batch_id: number;
+  /** rows this upload brought that the tournament did not already hold */
   rows: number;
+  /** rows of the file the tournament already held, recognised and not taken in
+   *  a second time. Absent on an outcome stored before uploads accumulated —
+   *  those runs replaced the batch rather than adding to it, and counted
+   *  nothing as recognised */
+  skipped?: number;
   parsed: number;
   reused: number;
   unparsed: number;

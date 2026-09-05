@@ -287,14 +287,15 @@ def test_pilot_replay_reproduces_v1_final_state(client, auth_headers, archive):
     assert verdicts == {"same_id": "merged", "likely": "pending"}
 
     # 6. incrementality on real data: reruns of every stage cost nothing
-    # nothing is left undecided, so the re-upload answers without an operation
-    # at all (spec table-import, Reused rows are not work)
+    # every row of the file is content the tournament already holds, so the
+    # re-upload brings nothing and answers without an operation at all (spec
+    # table-import, Intake takes in only rows new to the tournament)
     reimport = client.post(
         "/api/tournaments/na-duel-2026/import",
         files={"file": ("registrations_v0.csv", archive["csv"], "text/csv")},
         headers=organizer,
     ).json()
-    assert reimport["reused"] == 54 and reimport["parsed"] == 0
+    assert reimport["skipped"] == 54 and reimport["rows"] == 0 and reimport["parsed"] == 0
     client.post("/api/tournaments/na-duel-2026/import/match", headers=organizer)
     result = operation_outcome(client, organizer, "na-duel-2026", "match")
     assert result["matched"] == 0 and result["unmatched"] == 0

@@ -133,7 +133,7 @@ export default function SheetArea({
               {visibleRows.map((row) => (
                 <tr key={row.id} className={row._deleted ? "row-deleted" : ""}>
                   <td className="col-index">
-                    {rowNumber(row, phase)}
+                    {rowNumber(row)}
                     {absorbedInto(row, rows) !== null && (
                       <span className="row-absorbed" title={t("row.absorbed")}>
                         {" \u2192 #"}

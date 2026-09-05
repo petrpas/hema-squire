@@ -2,9 +2,11 @@
 
 Raw rows are source records; the LLM parse of a row is a cached decision keyed
 by the row's content fingerprint (spec: reruns reuse stored decisions, only
-undecided rows invoke the LLM). The newest batch is the active source — a
-re-upload replaces the projection, and unchanged rows keep their fingerprint,
-so decisions and rules targeting them survive.
+undecided rows invoke the LLM). Uploads accumulate: a row the tournament
+already holds is recognised by its fingerprint at intake and not taken in
+again, so decisions, corrections and numbers targeting it survive, and what a
+tournament imported is the union of every file it was given rather than the
+latest one.
 
 The FastAPI dependency `get_import_parser` is the swap point between the real
 pydantic-ai parser and test fakes.
@@ -257,6 +259,9 @@ def get_import_parser() -> ImportParser | None:
 
 
 def latest_batch(session: Session, tournament: Tournament) -> ImportBatch | None:
+    """The newest upload — which is not the tournament's rows. Uploads
+    accumulate; `imported_rows` is what a reader of the table wants. This
+    describes the upload itself, for the status the console states about it."""
     return session.scalars(
         select(ImportBatch)
         .where(ImportBatch.tournament_id == tournament.id)
@@ -296,15 +301,30 @@ def store_decision(
     return decision
 
 
+def held_keys(session: Session, tournament: Tournament) -> set[str]:
+    """Every row key the tournament has already imported, from any upload."""
+    return set(
+        session.scalars(
+            select(ImportedRow.key).where(ImportedRow.tournament_id == tournament.id)
+        )
+    )
+
+
 def intake(
     session: Session,
     tournament: Tournament,
     filename: str,
     data: bytes,
     uploaded_by: int,
-) -> tuple[ImportBatch, list[ImportedRow]]:
-    """File intake: persist the batch with its provenance, its source rows and
-    their numbers, and commit.
+) -> tuple[ImportBatch, list[ImportedRow], int]:
+    """File intake: persist the batch with its provenance, the rows it brings
+    that the tournament does not already hold, and their numbers, then commit.
+
+    Uploads accumulate rather than replace (spec table-import, Intake takes in
+    only rows new to the tournament). A row whose content the tournament has
+    already imported is recognised by its key and skipped: it keeps the parse,
+    the corrections and the number it has, and no second source row is made for
+    it. Returns the count of those alongside the rows actually taken in.
 
     This half runs inside the request, so a browser that abandons the upload
     response still leaves a complete batch behind (spec table-import, Batch
@@ -316,19 +336,29 @@ def intake(
         tournament_id=tournament.id,
         filename=filename,
         uploaded_by=uploaded_by,
+        # what the file contained, not what was new: an upload that brought
+        # nothing still happened, and this is provenance about the upload
         row_count=len(raw_rows),
     )
     session.add(batch)
     session.flush()
 
+    held = held_keys(session, tournament)
     seen: dict[str, int] = {}
     imported: list[ImportedRow] = []
+    skipped = 0
     for number, raw in enumerate(raw_rows, start=1):
         fingerprint = row_fingerprint(raw)
-        # identical duplicate rows get distinct keys; dedup decides their fate
+        # identical duplicate rows get distinct keys; dedup decides their fate.
+        # Counting within the file is enough for the union: the keys a file
+        # yields are deterministic, so a file carrying a row more often than the
+        # tournament holds it produces exactly the further keys that are new
         occurrence = seen.get(fingerprint, 0)
         seen[fingerprint] = occurrence + 1
         key = fingerprint if occurrence == 0 else f"{fingerprint}-{occurrence + 1}"
+        if key in held:
+            skipped += 1
+            continue
         row = ImportedRow(
             batch_id=batch.id,
             tournament_id=tournament.id,
@@ -343,15 +373,23 @@ def intake(
     # unchanged row keeps its fingerprint, so it keeps its number
     rownumbers.allocate(session, tournament, [f"imp:{row.key}" for row in imported])
     session.commit()
-    return batch, imported
+    return batch, imported, skipped
 
 
-def batch_rows(session: Session, batch: ImportBatch) -> list[ImportedRow]:
+def imported_rows(session: Session, tournament: Tournament) -> list[ImportedRow]:
+    """Every row the tournament has imported, in arrival order.
+
+    The unit the parse works on. Rows belong to the tournament rather than to
+    the upload that carried them, so an upload that brings nothing new still
+    finds the rows an earlier run left undecided — which is what makes a
+    re-upload resume an interrupted parse (spec table-import, Partial parse
+    survives an interruption).
+    """
     return list(
         session.scalars(
             select(ImportedRow)
-            .where(ImportedRow.batch_id == batch.id)
-            .order_by(ImportedRow.row_number)
+            .where(ImportedRow.tournament_id == tournament.id)
+            .order_by(ImportedRow.id)
         )
     )
 
@@ -375,22 +413,43 @@ def import_outcome(
     session: Session,
     tournament: Tournament,
     batch: ImportBatch,
-    imported: list[ImportedRow],
+    *,
+    rows: int,
     parsed: int,
     reused: int,
     unparsed: int = 0,
     detail: str | None = None,
+    skipped: int = 0,
 ) -> dict:
     """What the console reports about a run — the shape the endpoint used to
-    return synchronously, now stored on the operation."""
+    return synchronously, now stored on the operation.
+
+    `skipped` counts the file's rows the tournament already held, which are
+    neither parsed nor reused, having never become rows of this batch. Without
+    it a hundred-row upload reporting four rows reads as a failure (spec
+    table-import, Intake takes in only rows new to the tournament).
+
+    The problems are the tournament's, not the upload's: every imported row
+    whose parse reported one, so the count reads as the review queue it is
+    rather than shrinking to nothing on an upload that brought no new rows.
+    A problem names its row by the fixed fencer number, which is the number the
+    organizer can find the row by — the line it arrived on names a file.
+    """
+    numbers = rownumbers.numbers_for(session, tournament)
     problems = []
-    for row in imported:
+    for row in imported_rows(session, tournament):
         decision = get_decision(session, tournament, "parse", row.key)
         if decision and decision.payload.get("problems"):
-            problems.append({"row": row.row_number, "problems": decision.payload["problems"]})
+            problems.append(
+                {
+                    "row": numbers.get(f"imp:{row.key}"),
+                    "problems": decision.payload["problems"],
+                }
+            )
     outcome = {
         "batch_id": batch.id,
-        "rows": len(imported),
+        "rows": rows,
+        "skipped": skipped,
         "parsed": parsed,
         "reused": reused,
         "unparsed": unparsed,
@@ -406,9 +465,11 @@ def parse_undecided(
     tournament: Tournament,
     parser: ImportParser,
     batch: ImportBatch,
-    imported: list[ImportedRow],
     undecided: list[ImportedRow],
     progress: Callable[[Session, int], None] | None = None,
+    brought: int = 0,
+    reused: int = 0,
+    skipped: int = 0,
 ) -> dict:
     """Parse the undecided rows, one batch at a time, storing as it goes.
 
@@ -440,7 +501,8 @@ def parse_undecided(
         session,
         tournament,
         batch,
-        imported,
+        rows=brought,
         parsed=parsed_count,
-        reused=len(imported) - len(undecided),
+        reused=reused,
+        skipped=skipped,
     )

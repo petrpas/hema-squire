@@ -129,9 +129,13 @@ export default function ImportPanel({
             {outcome.detail === "llm_not_configured"
               ? t("import.notConfigured", { rows: outcome.rows })
               : t("import.result", {
+                  // the rows this upload brought, and the ones the tournament
+                  // already held — an upload of a grown form export is mostly
+                  // the latter, and saying so is what keeps it from reading as
+                  // a failure (spec table-import, Intake takes in only rows new
+                  // to the tournament)
                   rows: outcome.rows,
-                  parsed: outcome.parsed,
-                  reused: outcome.reused,
+                  skipped: outcome.skipped ?? 0,
                   problems: outcome.problems.length,
                 })}
           </p>

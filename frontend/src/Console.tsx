@@ -8,8 +8,8 @@ import DedupView from "./dedup/DedupView";
 import ExportPanel from "./ExportPanel";
 import { IDENTITY_COLUMNS, identityValue, usesHRIdentity } from "./identity";
 import ImportPanel from "./ImportPanel";
-import QueueTabs, { QueueTabStrip } from "./payments/QueueTabs";
 import IssueOnArrival from "./payments/IssueOnArrival";
+import QueueTabs, { QueueTabStrip } from "./payments/QueueTabs";
 import MatchDialog from "./MatchDialog";
 import MatchPanel from "./MatchPanel";
 import NoteMarker from "./NoteMarker";
@@ -179,13 +179,13 @@ export function ruleKindFor(field: string): "match_resolution" | "field_edit" {
   return field === "hr_id" ? "match_resolution" : "field_edit";
 }
 
-/** The number the leftmost column shows. On the fencer list it is the fencer's
- *  fixed number; on Import it is the row's line in the uploaded file, a number
- *  meaningful only within that batch (spec etl-console, Fixed fencer number).
- *  Neither is ever the row's position in the list. */
-export function rowNumber(row: SheetRow, phase: Phase): string {
-  const number = phase === "import" ? row._source?.row : row.number;
-  return number === null || number === undefined ? "—" : String(number);
+/** The number the leftmost column shows: the fencer's fixed number, on every
+ *  view including Import (spec etl-console, Fixed fencer number). Never the
+ *  row's position in the list, and never a line in a file — a line number
+ *  describes one upload, and what Import shows is what the tournament imported
+ *  across all of them. */
+export function rowNumber(row: SheetRow): string {
+  return row.number === null || row.number === undefined ? "—" : String(row.number);
 }
 
 /** Whether a phase still lists a row a removal has taken out of the table.
@@ -214,13 +214,14 @@ export function rowsForPhase(rows: SheetRow[], phase: Phase): SheetRow[] {
   if (phase !== "import") {
     return rows.filter((row) => !row._deleted || listsRemovedRow(row, phase));
   }
-  // in the order of the file, not of the fencer list: the fencer list is
-  // ordered by registration moment, which scatters a batch's lines and sends
-  // the ones stating no moment to the end, where a reader checking an import
-  // against its source cannot follow them
+  // in arrival order, not that of the fencer list: the fencer list is ordered
+  // by registration moment, which scatters an upload's rows and sends the ones
+  // stating no moment to the end, where a reader checking an import against
+  // its source cannot follow them. Arrival order is what the fixed number
+  // counts, so the number sorts them
   return rows
     .filter((row) => row.id.startsWith("imp:"))
-    .sort((a, b) => (a._source?.row ?? 0) - (b._source?.row ?? 0));
+    .sort((a, b) => (a.number ?? Infinity) - (b.number ?? Infinity));
 }
 
 /** What the actions column offers on a row. A listed removed row offers to

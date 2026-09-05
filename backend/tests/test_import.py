@@ -122,7 +122,11 @@ def test_reupload_reuses_decisions_and_keeps_row_identity(client, auth_headers):
     assert reuploaded.status_code == 202
     body = reuploaded.json()
     assert body["parsed"] == 0
-    assert body["reused"] == 2
+    # both rows are content the tournament already holds: recognised at intake
+    # and not taken in a second time (spec, Intake takes in only rows new to
+    # the tournament)
+    assert body["rows"] == 0
+    assert body["skipped"] == 2
     assert parser.calls == 1
     second_ids = sorted(
         r["id"] for r in get_sheet(client, organizer)["rows"] if r["id"].startswith("imp:")
@@ -146,9 +150,9 @@ def test_reupload_reuses_decisions_and_keeps_row_identity(client, auth_headers):
     )
     assert upload(client, organizer, content=grown).status_code == 202
     body = outcome(client, organizer)
-    assert body["rows"] == 3
+    assert body["rows"] == 1  # the row the file brought
+    assert body["skipped"] == 2  # the rows it repeated
     assert body["parsed"] == 1  # only the new row hits the parser
-    assert body["reused"] == 2
 
     sheet = get_sheet(client, organizer)
     edited = next(r for r in sheet["rows"] if r["id"] == target)
@@ -493,3 +497,127 @@ def test_offered_rentals_reach_the_parser_and_are_borrowed_once(client, auth_hea
     row = next(r for r in get_sheet(client, organizer)["rows"] if r["id"].startswith("imp:"))
     assert row["weapon_rentals"] == ["Sabre", "Buckler"]
     assert row["disciplines"] == ["SA", "SB"]
+
+
+def test_a_file_bringing_nothing_new_is_recognised_whole(client, auth_headers):
+    """The Google Form export uploaded again unchanged: nothing is taken in a
+    second time, and the outcome says so rather than reading as a failure
+    (spec table-import, A file bringing nothing new)."""
+    organizer = auth_headers()
+    setup(client, organizer)
+    parser = FakeParser()
+    override_parser(parser)
+
+    upload(client, organizer)
+    settle(client, organizer)
+
+    body = upload(client, organizer).json()
+    assert body["rows"] == 0
+    assert body["skipped"] == 2
+    assert parser.calls == 1
+    rows = [r for r in get_sheet(client, organizer)["rows"] if r["id"].startswith("imp:")]
+    assert len(rows) == 2
+
+
+def test_an_edited_row_arrives_beside_the_row_it_replaced(client, auth_headers):
+    """A cell changed in the source spreadsheet is new content, so it is a new
+    row; the row with the old content stays, and the pair is deduplication's
+    (spec table-import, An edited row arrives as a new row)."""
+    organizer = auth_headers()
+    setup(client, organizer)
+    parser = FakeParser()
+    override_parser(parser)
+
+    upload(client, organizer)
+    settle(client, organizer)
+    corrected = CSV.replace("Twerchhau", "Twerchhau e.V.")
+
+    upload(client, organizer, content=corrected)
+    settle(client, organizer)
+    body = outcome(client, organizer)
+    assert body["rows"] == 1
+    assert body["skipped"] == 1
+
+    clubs = sorted(
+        r["club"]
+        for r in get_sheet(client, organizer)["rows"]
+        if r["id"].startswith("imp:") and r["name"] == "Alexander Bryzgalov"
+    )
+    assert clubs == ["Twerchhau", "Twerchhau e.V."]
+
+
+def test_a_repeated_line_is_taken_in_as_its_own_row(client, auth_headers):
+    """A tournament holding one copy of a row meets a file carrying it twice:
+    the first copy is recognised, the second is a distinct row for dedup to
+    settle (spec table-import, A duplicate line taken in as its own row)."""
+    organizer = auth_headers()
+    setup(client, organizer)
+    parser = FakeParser()
+    override_parser(parser)
+
+    upload(client, organizer)
+    settle(client, organizer)
+
+    first_line = CSV.splitlines(keepends=True)[1]
+    doubled = CSV + first_line
+    upload(client, organizer, content=doubled)
+    settle(client, organizer)
+
+    body = outcome(client, organizer)
+    assert body["rows"] == 1
+    assert body["skipped"] == 2
+    alex = [
+        r
+        for r in get_sheet(client, organizer)["rows"]
+        if r["id"].startswith("imp:") and r["name"] == "Alexander Bryzgalov"
+    ]
+    assert len(alex) == 2
+
+
+def test_rows_of_every_upload_are_listed_with_their_numbers(client, auth_headers):
+    """The sheet is the union of every file the tournament was given, each row
+    once, numbered as it arrived (spec etl-console, Import view of everything
+    imported)."""
+    organizer = auth_headers()
+    setup(client, organizer)
+    parser = FakeParser()
+    override_parser(parser)
+
+    upload(client, organizer)
+    settle(client, organizer)
+    second = (
+        CSV.splitlines(keepends=True)[0]
+        + "2.4.2026 09:00:00,jan@example.com,Jan Testovací,Praha,CZ,šavle / sabre,,Ne / No,\n"
+    )
+    upload(client, organizer, content=second, filename="dodatek.csv")
+    settle(client, organizer)
+
+    rows = [r for r in get_sheet(client, organizer)["rows"] if r["id"].startswith("imp:")]
+    assert len(rows) == 3
+    # the numbering continues across uploads; the first file's rows keep theirs
+    assert sorted(r["number"] for r in rows) == [1, 2, 3]
+    by_name = {r["name"]: r for r in rows}
+    assert by_name["Alexander Bryzgalov"]["_source"] == {"file": "regs.csv", "row": 1}
+    assert by_name["Jan Testovací"]["_source"] == {"file": "dodatek.csv", "row": 1}
+
+
+def test_a_row_the_new_file_omits_stays(client, auth_headers):
+    """Once imported, a row belongs to the tournament: an upload that omits it
+    is not distinguishable from one that never carried it, so it takes nothing
+    away (spec table-import, Row dropped from the file stays)."""
+    organizer = auth_headers()
+    setup(client, organizer)
+    parser = FakeParser()
+    override_parser(parser)
+
+    upload(client, organizer)
+    settle(client, organizer)
+    shortened = "".join(CSV.splitlines(keepends=True)[:2])
+
+    upload(client, organizer, content=shortened)
+    names = {
+        r["name"]
+        for r in get_sheet(client, organizer)["rows"]
+        if r["id"].startswith("imp:")
+    }
+    assert names == {"Alexander Bryzgalov", "Aleksandra Grzegorczyk"}
