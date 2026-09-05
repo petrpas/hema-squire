@@ -30,6 +30,7 @@ from app.models import (
     ExtraCategory,
     PaymentMode,
     RefundState,
+    RegistrationsKeptBy,
     RegistrationState,
     RequestState,
     Role,
@@ -501,6 +502,15 @@ class TournamentModeIn(BaseModel):
     feature_extras: bool
 
 
+class RegistrationsKeptByIn(BaseModel):
+    """Who keeps the tournament's registrations, set on its own. Not folded
+    into `TournamentModeIn`: the four features are a shape chosen as a whole,
+    and this is a different axis that changes what Squire does rather than what
+    it shows (design add-registrations-kept-by D1, D5)."""
+
+    registrations_kept_by: RegistrationsKeptBy
+
+
 class TournamentModeOut(TournamentModeIn):
     """What the mode dialog opens on. Deliberately the request model read back,
     so the two can never describe different sets of features."""
@@ -580,10 +590,20 @@ class TournamentOut(BaseModel):
     feature_payments: bool
     feature_teams: bool
     feature_extras: bool
+    # who keeps the list of entrants — a different axis from the four features
+    # above, read by the console to decide which sections it offers and by the
+    # fencer-facing surfaces to decide whether a registration form exists at
+    # all (design add-registrations-kept-by D1)
+    registrations_kept_by: RegistrationsKeptBy
     discounts: list[DiscountIn]
     extra_items: list[ExtraItemOut] = []
     # filled by the detail endpoint from setup.setup_missing(); None elsewhere
     setup_missing: list[str] | None = None
+    # how many registrations fencers made in the application themselves, live
+    # and not issued from an imported row. Filled beside setup_missing; None
+    # elsewhere. What the console states when the organizer takes the
+    # tournament out of Squire's keeping — the people it would stop managing
+    in_app_registrations: int | None = None
     # derived from local_currency + eur_payments_enabled; a convenience for
     # the frontend rather than a stored fact (design Decision 2)
     currency_mode: CurrencyMode = "local"
@@ -930,7 +950,11 @@ class OpenDisciplineOut(BaseModel):
     queue_length: int
 
 
-RegistrationStatus = Literal["open", "opens_on", "closed"]
+# `elsewhere` is not a state of this tournament's window but a statement that
+# it has none here: the organizer keeps the registrations (design
+# add-registrations-kept-by D4). Kept distinct from `closed`, which means a
+# window has passed and would be a false account of why a fencer cannot enter
+RegistrationStatus = Literal["open", "opens_on", "closed", "elsewhere"]
 MyRegistrationState = Literal["none", "reserved", "paid", "substitute", "cancelled"]
 
 

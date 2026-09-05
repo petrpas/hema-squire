@@ -72,7 +72,7 @@ export function openingHourIn(opensAt: string | null, timezone: string): string 
 
 /* ---- the gate mirror ---- */
 
-type RegistrationStatus = "open" | "opens_on" | "closed";
+type RegistrationStatus = "open" | "opens_on" | "closed" | "elsewhere";
 
 /** Mirrors `setup.registration_availability` on the backend, which stays the
  *  authority: this only decides what the page offers.
@@ -88,6 +88,9 @@ export function registrationStatus(
   detail: TournamentDetail,
   now: number = Date.now(),
 ): RegistrationStatus {
+  // first, and never as `closed`: the organizer keeps this tournament's
+  // registrations, so there is no window here to have passed
+  if (detail.registrations_kept_by === "organizer") return "elsewhere";
   const opensAt = openingMomentMs(detail.registration_opens_at);
   if (opensAt !== null && now < opensAt) return "opens_on";
   const closes = detail.registration_closes ?? detail.date;

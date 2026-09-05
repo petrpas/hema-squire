@@ -15,7 +15,14 @@ from app import bank, emails, matching
 from app.config import settings
 from app.db import SessionLocal
 from app.mail import Mailer, get_mailer
-from app.models import PaymentEvent, Registration, RegistrationState, Team, Tournament
+from app.models import (
+    PaymentEvent,
+    Registration,
+    RegistrationsKeptBy,
+    RegistrationState,
+    Team,
+    Tournament,
+)
 from app.setup import clocks_run, seating_deadline_for, seating_has_settled
 
 logger = logging.getLogger(__name__)
@@ -378,15 +385,37 @@ def run_tournament_tick(
     return result
 
 
+def tournaments_to_tick(session: Session) -> list[Tournament]:
+    """The tournaments one lifecycle pass considers.
+
+    Two exclusions, and they are different in kind. A tournament already held
+    is behind every clock it had. A tournament whose registrations its
+    organizer keeps was never under one: Squire does not own its roster, so no
+    pass may see it at all.
+
+    The second is made here, once, rather than as a condition inside each pass.
+    That is the difference between a guard and a guarantee — a registration
+    created on such a tournament by any path, including one that forgets to
+    mark it dormant, is safe because the passes are never reached (design
+    add-registrations-kept-by D2). A named function rather than an inline
+    select so the exclusion can be asserted directly, without standing up a
+    scheduler."""
+    return list(
+        session.scalars(
+            select(Tournament).where(
+                Tournament.date >= date.today(),
+                Tournament.registrations_kept_by != RegistrationsKeptBy.ORGANIZER,
+            )
+        ).all()
+    )
+
+
 def run_tick() -> None:
     """One scheduler pass over all current tournaments, with real dependencies."""
     mailer = get_mailer()
     fio_client = bank.get_fio_client()
     with SessionLocal() as session:
-        tournaments = session.scalars(
-            select(Tournament).where(Tournament.date >= date.today())
-        ).all()
-        for tournament in tournaments:
+        for tournament in tournaments_to_tick(session):
             try:
                 run_tournament_tick(session, tournament, mailer, fio_client)
             except Exception:

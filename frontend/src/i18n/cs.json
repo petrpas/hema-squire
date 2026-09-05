@@ -594,6 +594,36 @@
         "advanced": "Turnaj je v pokročilém režimu: {{features}}.",
         "change": "Změnit režim"
       }
+    },
+    "keptBy": {
+      "title": "Registrace",
+      "option": {
+        "squire": "Registrace vede Squire",
+        "organizer": "Registrace vede pořadatel"
+      },
+      "hint": {
+        "squire": "Šermíři se hlásí tady. Squire otevře přihlášku, rozešle potvrzení a upomínky a vede frontu náhradníků.",
+        "organizer": "Registrace běží jinde — vlastní formulář, tabulka, klubová konference — a soupiska se do Squire dostane importem. Squire ji vyčistí, spáruje a vyexportuje."
+      },
+      "consequence": {
+        "squire": "Šermíři se hlásí v aplikaci a Squire se stará o zbytek.",
+        "organizer": "V aplikaci se nikdo nepřihlásí a Squire nikomu nic neposílá."
+      },
+      "confirmToOrganizer": "Přihlašování v aplikaci se zavře a Squire pro tento turnaj přestane posílat maily a rušit rezervace.",
+      "confirmToSquire": "Přihlašování v aplikaci se otevře podle termínů turnaje a Squire začne vést registrace, které turnaj drží.",
+      "alreadyHeld_one": "Jedna registrace už tady je. Squire ji přestane vést.",
+      "alreadyHeld_few": "Jsou tady {{count}} registrace. Squire je přestane vést.",
+      "alreadyHeld_other": "Je tady {{count}} registrací. Squire je přestane vést.",
+      "nothingIsWritten": "Žádná registrace se tím nesmaže, nezruší ani nepřesune. Mění se to, co Squire udělá dál.",
+      "apply": "Použít",
+      "confirm": "Změnit a použít",
+      "failed": "Změnu se nepodařilo uložit.",
+      "section": {
+        "title": "Registrace",
+        "squire": "Registrace tohoto turnaje vede Squire.",
+        "organizer": "Registrace tohoto turnaje vede pořadatel.",
+        "change": "Změnit"
+      }
     }
   },
   "preview": {
@@ -693,7 +723,8 @@
       "open": "Registrace otevřena",
       "opensOn": "Registrace od {{date}}",
       "closed": "Registrace uzavřena",
-      "opensAt": "Registrace od {{date}} v {{time}}"
+      "opensAt": "Registrace od {{date}} v {{time}}",
+      "elsewhere": "registrace jinde"
     }
   },
   "detail": {

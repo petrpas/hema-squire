@@ -17,7 +17,13 @@ from app import setup as app_setup
 from app.db import get_session
 from app.mail import get_mailer
 from app.main import app
-from app.models import PaymentEvent, Registration, RegistrationState, Tournament
+from app.models import (
+    PaymentEvent,
+    Registration,
+    RegistrationsKeptBy,
+    RegistrationState,
+    Tournament,
+)
 from app.scheduler import (
     pending_demotions,
     run_tournament_tick,
@@ -95,8 +101,9 @@ def placements(vs):
 
 
 class FakeTournament:
-    def __init__(self, feature_payments):
+    def __init__(self, feature_payments, kept_by=RegistrationsKeptBy.SQUIRE):
         self.feature_payments = feature_payments
+        self.registrations_kept_by = kept_by
 
 
 class FakeRegistration:
@@ -104,25 +111,31 @@ class FakeRegistration:
         self.clocks_dormant = clocks_dormant
 
 
+SQUIRE = RegistrationsKeptBy.SQUIRE
+ORGANIZER = RegistrationsKeptBy.ORGANIZER
+
+
 @pytest.mark.parametrize(
-    "payments,issued,expected",
+    "payments,kept_by,issued,expected",
     [
-        (True, False, None),
-        (False, False, app_setup.DORMANT_PAYMENTS_OFF),
-        (True, True, app_setup.DORMANT_ISSUED_FROM_IMPORT),
-        # both at once reports the tournament-wide cause: it explains every
-        # registration rather than one
-        (False, True, app_setup.DORMANT_PAYMENTS_OFF),
+        (True, SQUIRE, False, None),
+        (False, SQUIRE, False, app_setup.DORMANT_PAYMENTS_OFF),
+        (True, ORGANIZER, False, app_setup.DORMANT_ORGANIZER_KEPT),
+        (True, SQUIRE, True, app_setup.DORMANT_ISSUED_FROM_IMPORT),
+        # several at once report the widest cause: it explains every
+        # registration rather than one, which is what a reader asking "why is
+        # nothing moving?" needs first
+        (False, ORGANIZER, True, app_setup.DORMANT_PAYMENTS_OFF),
+        (True, ORGANIZER, True, app_setup.DORMANT_ORGANIZER_KEPT),
     ],
 )
-def test_dormancy_cause_over_the_closed_set(payments, issued, expected):
+def test_dormancy_cause_over_the_closed_set(payments, kept_by, issued, expected):
     """No session, no scheduler, no tournament row — the predicate is a pure
     function over two values, which is what lets every pass ask it."""
-    cause = app_setup.dormancy_cause(FakeTournament(payments), FakeRegistration(issued))
-    assert cause == expected
-    assert app_setup.clocks_run(FakeTournament(payments), FakeRegistration(issued)) == (
-        expected is None
-    )
+    tournament = FakeTournament(payments, kept_by)
+    registration = FakeRegistration(issued)
+    assert app_setup.dormancy_cause(tournament, registration) == expected
+    assert app_setup.clocks_run(tournament, registration) == (expected is None)
 
 
 # ------------------------------------------- the regression: nobody is demoted

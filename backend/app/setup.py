@@ -10,16 +10,24 @@ import zoneinfo
 from fastapi import HTTPException
 
 from app.constraints import DEFAULT_TIMEZONE
-from app.models import DisciplineKind, PaymentMode, Registration, Tournament
+from app.models import (
+    DisciplineKind,
+    PaymentMode,
+    Registration,
+    RegistrationsKeptBy,
+    Tournament,
+)
 
 # the closed set of reasons a registration's lifecycle clocks are dormant.
 # One predicate answers for every lifecycle pass (design unify-lifecycle-
 # dormancy D1); a pass that grows a condition of its own is the defect this
 # set exists to prevent.
 DORMANT_PAYMENTS_OFF = "payments_off"
+DORMANT_ORGANIZER_KEPT = "organizer_kept"
 DORMANT_ISSUED_FROM_IMPORT = "issued_from_import"
 
 # distinct 4xx reasons a registration submission can be rejected with
+ORGANIZER_KEPT = "organizer_kept"
 NOT_PUBLISHED = "not_published"
 NOT_YET_OPEN = "not_yet_open"
 CLOSED = "closed"
@@ -269,8 +277,8 @@ def registration_opens_at(tournament: Tournament) -> datetime.datetime | None:
 
 def registration_availability(tournament: Tournament, now: datetime.datetime) -> str | None:
     """None when a new registration submission may proceed; otherwise the
-    reason it is rejected (gate order: cancelled -> published -> opens ->
-    closes — design D2 of add-explicit-publishing). Completeness is not
+    reason it is rejected (gate order: organizer-kept -> cancelled -> published
+    -> opens -> closes). Completeness is not
     re-checked here: a published tournament is guaranteed complete by
     guard_published_completeness.
 
@@ -286,6 +294,13 @@ def registration_availability(tournament: Tournament, now: datetime.datetime) ->
     Applies only to new submissions — never to cancellation, payment
     matching, or admission of substitutes on existing registrations.
     """
+    # First, and with a reason of its own rather than CLOSED: it is not that
+    # this tournament's window is shut but that it has no window here, and
+    # telling a fencer they were too late for a window that never existed is a
+    # falsehood the client would then present (design
+    # add-registrations-kept-by D4)
+    if tournament.registrations_kept_by is RegistrationsKeptBy.ORGANIZER:
+        return ORGANIZER_KEPT
     if tournament.cancelled_at is not None:
         return CLOSED
     if tournament.published_at is None:
@@ -349,11 +364,15 @@ def dormancy_cause(tournament: Tournament, registration: Registration) -> str | 
     What is dormant is the passage of time, never the money. A dormant
     registration is matched, linked and credited like any other.
 
-    A third cause is expected here — the tournament whose registrations its
-    organizer keeps — and adding it is one member of the set above and one
-    branch below."""
+    The organizer-kept cause is here even though the scheduler never selects
+    such a tournament at all (design add-registrations-kept-by D3). The
+    exclusion covers the scheduler's own pass; it does not cover the paths a
+    human reaches — the count the console states before settling, and the
+    settlement an organizer triggers by hand. Those ask this."""
     if not tournament.feature_payments:
         return DORMANT_PAYMENTS_OFF
+    if tournament.registrations_kept_by is RegistrationsKeptBy.ORGANIZER:
+        return DORMANT_ORGANIZER_KEPT
     if registration.clocks_dormant:
         return DORMANT_ISSUED_FROM_IMPORT
     return None

@@ -587,6 +587,35 @@
         "advanced": "The tournament is in advanced mode: {{features}}.",
         "change": "Change mode"
       }
+    },
+    "keptBy": {
+      "title": "Registrations",
+      "option": {
+        "squire": "Squire keeps the registrations",
+        "organizer": "The organizer keeps the registrations"
+      },
+      "hint": {
+        "squire": "Fencers register here. Squire opens the registration form, sends the confirmations and reminders, and manages the queue.",
+        "organizer": "Registration is held elsewhere — a form of your own, a spreadsheet, a club mailing list — and the roster reaches Squire by import. Squire cleans, matches and exports it."
+      },
+      "consequence": {
+        "squire": "Fencers register in the application and Squire manages what follows.",
+        "organizer": "No one can register in the application, and Squire writes to no one."
+      },
+      "confirmToOrganizer": "In-app registration will close, and Squire will stop sending mail and stop expiring reservations for this tournament.",
+      "confirmToSquire": "In-app registration will open according to the tournament's registration window, and Squire will begin managing the registrations it holds.",
+      "alreadyHeld_one": "One registration is already held here. Squire will stop managing it.",
+      "alreadyHeld_other": "{{count}} registrations are already held here. Squire will stop managing them.",
+      "nothingIsWritten": "No registration is deleted, cancelled or moved by this. What changes is what Squire does next.",
+      "apply": "Apply",
+      "confirm": "Change and apply",
+      "failed": "The change could not be saved.",
+      "section": {
+        "title": "Registrations",
+        "squire": "Squire keeps this tournament's registrations.",
+        "organizer": "The organizer keeps this tournament's registrations.",
+        "change": "Change"
+      }
     }
   },
   "preview": {
@@ -686,7 +715,8 @@
       "open": "Registration open",
       "opensOn": "Registration opens {{date}}",
       "closed": "Registration closed",
-      "opensAt": "Registration opens {{date}} at {{time}}"
+      "opensAt": "Registration opens {{date}} at {{time}}",
+      "elsewhere": "registration is held elsewhere"
     }
   },
   "detail": {

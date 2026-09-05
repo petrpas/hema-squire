@@ -51,6 +51,9 @@ BODIES: dict[tuple[str, str], object] = {
         "category": "rental",
         "price": 100,
     },
+    ("PATCH", "/api/tournaments/{slug}/registrations-kept-by"): {
+        "registrations_kept_by": "squire"
+    },
     ("POST", "/api/tournaments/{slug}/import/dedup/decide"): {"key": "k", "accept": True},
     ("POST", "/api/tournaments/{slug}/manual-rows"): {
         "name": "Hand Entered",

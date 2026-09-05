@@ -50,6 +50,32 @@ class UnpaidListTreatment(enum.StrEnum):
     GREYED = "greyed"
 
 
+class RegistrationsKeptBy(enum.StrEnum):
+    """Who keeps a tournament's list of entrants.
+
+    `SQUIRE` is the product as it has always worked: fencers register in the
+    application and Squire manages what follows — the window, the clocks, the
+    mail, the queue. `ORGANIZER` says the list is maintained somewhere else and
+    reaches Squire by import, so Squire cleans, matches, prices and exports it
+    and runs nothing against it.
+
+    **A different axis from the four `feature_*` flags, and deliberately not a
+    fifth one** (design add-registrations-kept-by D1). Those four govern which
+    advanced surfaces the console offers, and rest on the rule that turning one
+    off hides settings without changing what a fencer experiences — a hidden
+    extra item is still sold. This withdraws the registration form outright, so
+    a flag is the wrong shape for it, and counting it among the four would make
+    every organizer-kept tournament "advanced", which says nothing true.
+
+    Never derived from what the tournament holds. A tournament that has been
+    imported into is not organizer-kept on that evidence, and one that has been
+    registered for is not Squire-kept on that evidence; the guarantee has to
+    hold from the moment the tournament exists, before either has happened."""
+
+    SQUIRE = "squire"
+    ORGANIZER = "organizer"
+
+
 class Currency(enum.StrEnum):
     """A tournament's local currency — the unit every configured price and
     computed total is expressed in. Closed enum so widening it stays a code
@@ -277,6 +303,18 @@ class Tournament(Base):
     feature_payments: Mapped[bool] = mapped_column(default=False)
     feature_teams: Mapped[bool] = mapped_column(default=False)
     feature_extras: Mapped[bool] = mapped_column(default=False)
+
+    # who keeps this tournament's list of entrants (see RegistrationsKeptBy).
+    # Not a fifth feature: the four above decide what the organizer sees, this
+    # decides whether Squire owns the roster at all. `ORGANIZER` closes in-app
+    # registration and takes the tournament out of the scheduler's pass
+    # entirely — a structural exclusion rather than a per-registration check,
+    # so a registration created by any path is safe by construction (design
+    # add-registrations-kept-by D2). Every tournament predating this is
+    # `SQUIRE`, which is what all of them were
+    registrations_kept_by: Mapped[RegistrationsKeptBy] = mapped_column(
+        str_enum(RegistrationsKeptBy), default=RegistrationsKeptBy.SQUIRE
+    )
 
     # payment and reservation parameters
     # how a seat is held (see PaymentMode); `immediate` is what every

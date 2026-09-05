@@ -12,6 +12,7 @@ import { ExtraItemsSection } from "./setup/ExtraItemsSection";
 import { IdentitySection, VsSeriesSection } from "./setup/IdentitySection";
 import { LegacyFeesSection } from "./setup/LegacyFeesSection";
 import { ModeSection } from "./setup/ModeSection";
+import { RegistrationsKeptBySection } from "./setup/RegistrationsKeptBySection";
 import { OrganizersSection } from "./setup/OrganizersSection";
 import { PaymentModeSection } from "./setup/PaymentModeSection";
 import { PublishSection } from "./setup/PublishSection";
@@ -222,6 +223,7 @@ export default function SetupPanel({
               hidden={selected !== "other"}
             >
               <ModeSection detail={detail} onApplied={onSaved} />
+              <RegistrationsKeptBySection detail={detail} onApplied={onSaved} />
               <TeamSection slug={slug} />
               <ExportSheetSection detail={detail} slug={slug} registry={registry} />
               <DangerZoneSection

@@ -23,6 +23,12 @@ function StatusBadge({ tournament }: { tournament: OpenTournament }) {
   if (tournament.registration_status === "open") {
     return <span className="chip status-open">{t("home.status.open")}</span>;
   }
+  if (tournament.registration_status === "elsewhere") {
+    // states where registration is, never that it is closed: this tournament
+    // never had a window here (design add-registrations-kept-by D4). The link
+    // out is attached by add-external-registration
+    return <span className="chip">{t("home.status.elsewhere")}</span>;
+  }
   if (tournament.registration_status === "opens_on") {
     // the status itself is the server's, computed against the same resolved
     // moment the detail page reads, so the card, the tabs and the page cannot

@@ -6,7 +6,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Response, UploadFile
 from PIL import Image, UnidentifiedImageError
-from sqlalchemy import delete, false, or_, select
+from sqlalchemy import delete, false, func, or_, select
 from sqlalchemy.orm import Session, selectinload
 
 from app import money_bounds, scheduler, setup, taxonomy
@@ -65,6 +65,7 @@ from app.schemas import (
     QueueDisciplineOut,
     QueueEntryOut,
     QueueOut,
+    RegistrationsKeptByIn,
     SettleSeatingOut,
     SetupSuggestionsOut,
     TeamAdd,
@@ -111,6 +112,23 @@ def _lowest_free_series(session: Session, year: int) -> int:
         if series not in taken:
             return series
     raise HTTPException(status_code=422, detail=f"vs_series_exhausted_for_year_{year}")
+
+
+def _in_app_registrations(session: Session, tournament: Tournament) -> int:
+    """How many live registrations fencers made in the application themselves.
+
+    Registrations issued from an imported row are excluded — they carry a
+    `source_row_id` and stand in for a row the organizer already keeps, so they
+    are not what Squire would stop managing. This is the number the console
+    states when the organizer moves the tournament out of Squire's keeping: the
+    people whose registration Squire is handling today."""
+    return session.scalar(
+        select(func.count(Registration.id)).where(
+            Registration.tournament_id == tournament.id,
+            Registration.source_row_id.is_(None),
+            Registration.state != RegistrationState.CANCELLED,
+        )
+    ) or 0
 
 
 def _has_registrations(session: Session, tournament: Tournament) -> bool:
@@ -214,7 +232,14 @@ def _fencer_tournament_out(
     and the caller's own bonds folded in to avoid N+1 calls from the
     frontend."""
     reason = setup.registration_availability(tournament, datetime.now(UTC))
-    if reason == setup.NOT_YET_OPEN:
+    if reason == setup.ORGANIZER_KEPT:
+        # Not `closed`: `closed` means a window has passed, and this tournament
+        # never had one here. A client presenting it as closed would tell the
+        # fencer they were too late for something that never existed (design
+        # add-registrations-kept-by D4). Where its registration *is* held is
+        # attached to this status by add-external-registration
+        status_, opens_on, opens_at = "elsewhere", None, None
+    elif reason == setup.NOT_YET_OPEN:
         # the day and the moment: the first for a client written before the
         # opening hour existed, the second so no client has to resolve this
         # tournament's zone itself (design add-registration-open-time D6)
@@ -437,6 +462,7 @@ def setup_suggestions(session: SessionDep, fencer: FencerDep):
 def tournament_detail(tournament: TournamentDep, session: SessionDep):
     out = TournamentOut.model_validate(tournament)
     out.setup_missing = setup.setup_missing(tournament)
+    out.in_app_registrations = _in_app_registrations(session, tournament)
     out.vs_series_editable = not _has_registrations(session, tournament)
     _apply_disciplines_frozen(session, tournament, out)
     return out
@@ -664,6 +690,39 @@ def set_tournament_mode(
     session.refresh(tournament)
     out = TournamentOut.model_validate(tournament)
     out.setup_missing = setup.setup_missing(tournament)
+    out.in_app_registrations = _in_app_registrations(session, tournament)
+    out.vs_series_editable = not _has_registrations(session, tournament)
+    _apply_disciplines_frozen(session, tournament, out)
+    return out
+
+
+@router.patch("/{slug}/registrations-kept-by", response_model=TournamentOut)
+def set_registrations_kept_by(
+    data: RegistrationsKeptByIn,
+    tournament: TournamentDep,
+    session: SessionDep,
+    fencer: FencerDep,
+):
+    """Say who keeps this tournament's list of entrants.
+
+    Its own endpoint rather than a field on the mode, because it is its own
+    axis: the mode writes four features that decide what the console shows,
+    and this decides whether Squire owns the roster at all (design
+    add-registrations-kept-by D1).
+
+    Writes the value and nothing else, in either direction. No registration is
+    deleted, expired, cancelled or demoted by the change — what it alters is
+    what Squire will do next, never what has already happened. The organizer
+    has confirmed the effect before the request is made; the confirmation is
+    the console's, and stating it here as well would be a second gate on a
+    decision already taken."""
+    require_console_access(session, tournament, fencer)
+    tournament.registrations_kept_by = data.registrations_kept_by
+    session.commit()
+    session.refresh(tournament)
+    out = TournamentOut.model_validate(tournament)
+    out.setup_missing = setup.setup_missing(tournament)
+    out.in_app_registrations = _in_app_registrations(session, tournament)
     out.vs_series_editable = not _has_registrations(session, tournament)
     _apply_disciplines_frozen(session, tournament, out)
     return out
@@ -703,6 +762,7 @@ async def upload_logo(
     session.refresh(tournament)
     out = TournamentOut.model_validate(tournament)
     out.setup_missing = setup.setup_missing(tournament)
+    out.in_app_registrations = _in_app_registrations(session, tournament)
     _apply_disciplines_frozen(session, tournament, out)
     return out
 
@@ -1290,6 +1350,7 @@ def publish_tournament(tournament: TournamentDep, session: SessionDep, fencer: F
     session.refresh(tournament)
     out = TournamentOut.model_validate(tournament)
     out.setup_missing = setup.setup_missing(tournament)
+    out.in_app_registrations = _in_app_registrations(session, tournament)
     _apply_disciplines_frozen(session, tournament, out)
     return out
 

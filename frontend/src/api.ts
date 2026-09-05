@@ -79,6 +79,18 @@ export interface TournamentMode {
   feature_extras: boolean;
 }
 
+/** Who keeps a tournament's list of entrants.
+ *
+ *  A different axis from the four features above, and deliberately not a fifth
+ *  one: those decide which advanced surfaces the console offers, and rest on
+ *  the rule that turning one off hides settings without changing what a fencer
+ *  experiences. This closes the registration form outright and takes the
+ *  tournament out of the scheduler (design add-registrations-kept-by D1). */
+export type RegistrationsKeptBy = "squire" | "organizer";
+
+export const KEPT_BY_VALUES = ["squire", "organizer"] as const satisfies
+  readonly RegistrationsKeptBy[];
+
 export const MODE_FEATURES = [
   "feature_schedule",
   "feature_payments",
@@ -382,6 +394,15 @@ export interface TournamentDetail extends Tournament {
   discounts: Discount[];
   extra_items: ExtraItem[];
   setup_missing: string[] | null;
+  /** Who keeps the list of entrants. `organizer` means registration is held
+   *  outside Squire and reaches it by import; no in-app registration opens and
+   *  no lifecycle runs (design add-registrations-kept-by). */
+  registrations_kept_by: RegistrationsKeptBy;
+  /** Live registrations fencers made in the application themselves, excluding
+   *  ones issued from an imported row. What the confirmation states when the
+   *  organizer takes the tournament out of Squire's keeping — the people it
+   *  would stop managing. Filled by the detail endpoint; null elsewhere. */
+  in_app_registrations: number | null;
   /** Derived from local_currency + eur_payments_enabled (design Decision 2). */
   currency_mode: CurrencyMode;
   disciplines: Discipline[];
@@ -462,7 +483,10 @@ export interface Sheet {
   edits: NetChange[];
 }
 
-export type RegistrationStatus = "open" | "opens_on" | "closed";
+/** `elsewhere` says the organizer keeps the registrations, so this tournament
+ *  has no window here at all — distinct from `closed`, which means a window has
+ *  passed (design add-registrations-kept-by D4). */
+export type RegistrationStatus = "open" | "opens_on" | "closed" | "elsewhere";
 export type MyRegistrationState = "none" | "reserved" | "paid" | "substitute" | "cancelled";
 
 export interface OpenDiscipline {
@@ -811,6 +835,13 @@ export const api = {
     request<TournamentDetail>(`/api/tournaments/${slug}/mode`, {
       method: "PATCH",
       body: JSON.stringify(mode),
+    }),
+  /** Its own request rather than a field on the mode: the four features are a
+   *  shape chosen as a whole, and this is a different axis (design D1). */
+  setRegistrationsKeptBy: (slug: string, value: RegistrationsKeptBy) =>
+    request<TournamentDetail>(`/api/tournaments/${slug}/registrations-kept-by`, {
+      method: "PATCH",
+      body: JSON.stringify({ registrations_kept_by: value }),
     }),
   taxonomy: () => request<Record<string, string>>("/api/taxonomy/disciplines"),
   addDiscipline: (slug: string, data: DisciplineInput) =>
