@@ -195,6 +195,25 @@ attachable to several registrations.
 - **WHEN** the organizer chooses more than one fencer for one payment
 - **THEN** the payment is linked to each of their registrations
 
+### Requirement: A variable symbol is a shortcut, and the tail is resolved by hand
+A variable symbol SHALL be understood as a shortcut that resolves the majority of payments cheaply, and SHALL NOT be treated as a registration's identity. A payment that carries none, carries one that resolves to nothing, or carries one belonging to somebody other than the person its message names SHALL be an ordinary case with an expected share of the traffic, not an exception.
+
+**In every mode**, therefore, an organizer SHALL be able to resolve such a payment by choosing the fencer it is for, without quoting a symbol. Typing a symbol SHALL remain available as a second route for an organizer who knows the number, and SHALL NOT be the only one.
+
+The resolver's proposal SHALL be offered wherever it has one, whatever the mode, and SHALL still move nothing until a person accepts it. Where it proposes nobody, or proposes wrongly, the organizer's own choice SHALL be the last word.
+
+#### Scenario: A mistyped symbol is resolved by name
+- **WHEN** a payment on a Squire-kept tournament quotes a variable symbol that resolves to nothing, and its message names a fencer on the roster
+- **THEN** the organizer is offered that fencer, and can link the payment without typing a number
+
+#### Scenario: A symbol quoted for somebody else
+- **WHEN** a payment quotes one fencer's symbol while its message names another
+- **THEN** the organizer can direct it to the fencer the message names
+
+#### Scenario: Typing a symbol still works
+- **WHEN** an organizer who knows the number types it
+- **THEN** the payment links as it does today
+
 ### Requirement: Where no registration carries a symbol, this is the whole of matching
 WHERE a tournament's registrations carry no variable symbol — which is every tournament whose registrations the organizer keeps (`tournament-mode`, `imported-registrations`) — resolution by the payer's own words SHALL be the only route by which a payment finds a fencer, and every incoming payment SHALL reach it.
 

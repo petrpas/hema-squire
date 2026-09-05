@@ -17,8 +17,9 @@ The action SHALL state, before it runs, how many rows it will issue
 registrations for, and SHALL state that no mail will be sent.
 
 **A variable symbol SHALL be issued only where Squire keeps the tournament's
-registrations** (`tournament-mode`). A symbol is what Squire tells a fencer to
-quote so a payment can find its registration; on a manual tournament it has told
+registrations** (`tournament-mode`). A symbol is a shortcut Squire tells a fencer to
+quote so a payment can find its registration without anybody reading the
+message — never the registration's identity; on a manual tournament it has told
 them nothing, since they registered through the organizer's own form and paid
 against whatever that form said. A symbol minted afterwards would appear on no
 statement and match no transaction, while consuming a number from a sequence

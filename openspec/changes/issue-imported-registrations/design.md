@@ -229,11 +229,18 @@ practice.
 
 ## Decision 9 (2026-09-05): the symbol belongs to the automatic path alone
 
-A variable symbol is what Squire tells a fencer to quote so that a payment can
-find its registration. On a manual tournament Squire tells them nothing: they
-registered elsewhere and paid against whatever the organizer's own form said. A
-symbol minted here would appear on no statement, match no transaction, and still
-consume a number from a deployment-wide sequence that never recycles.
+A variable symbol is a **shortcut**: Squire tells a fencer to quote it so that a
+payment can find its registration without anybody reading the message. It is not
+the registration's identity, and even where it is issued it resolves the cheap
+majority rather than everything — blank fields, typos and one person paying for
+another are an expected share of the traffic in any mode
+(`name-assisted-matching`).
+
+On a manual tournament Squire tells them nothing: they registered elsewhere and
+paid against whatever the organizer's own form said. A symbol minted here would
+appear on no statement and shorten nothing, while consuming a number from a
+deployment-wide sequence that never recycles. What is removed is a shortcut that
+can never fire, not a way of identifying anything.
 
 So the allocator is called only where the tournament's registrations are
 Squire's. Elsewhere the registration is created without one, and

@@ -123,7 +123,7 @@ where the expected shape is roughly 35 proposals and 8 for a human, and where
 the three Milan Diviš payments must resolve to three different fencers.
 
 
-## Revision, 2026-09-05: in manual mode this is the only path, not the fallback
+## Revision, 2026-09-05: a variable symbol is a shortcut, not an identity
 
 The automatic/manual cut landed after this was written, and the owner has since
 fixed that **variable symbols belong to the automatic path alone**: a symbol is
@@ -137,7 +137,21 @@ Every payment arrives with no symbol, every registration carries none, and
 resolving by the payer's own words is the **only** way a payment ever finds a
 fencer.
 
-Three things follow.
+**And the framing above was too narrow.** Reading this as a manual-mode concern
+implies the automatic path is settled, which it is not. A variable symbol is a
+shortcut that resolves the cheap majority — the owner's estimate is around nine
+payments in ten — and the remaining tenth is permanent: fencers who leave the
+field blank, fencers who mistype it, fencers who quote last year's. Those land in
+a queue today with a stated reason, and the only tool the organizer has for them
+is to read a message, find the fencer and type a seven-digit number.
+
+So the resolver and the by-name control are **not the manual tournament's
+substitute for matching**. They are how the tail is resolved in every mode, and
+the manual tournament is the case where the tail is the whole. What the symbol
+buys is that the tail is a tenth rather than everything; what it never was is the
+only way a payment can find a fencer.
+
+Four things follow.
 
 **The resolver stops being optional.** On a Squire-kept tournament it is a
 convenience that saves typing; on a manual one it is the reconciliation. A
@@ -145,11 +159,19 @@ tournament whose organizer keeps the registrations and has no name matching has
 no way to record who paid at all, beyond marking them settled by hand — which
 records a verdict and no money.
 
-**Manual linking has to address a fencer, not a symbol.** The link dialog offers
-`candidate_vs`, accepts a typed symbol and reports `unknown_vs`; all three are
-meaningless where no registration has one. The roster-listing endpoint in task
-4.3 already points the right way, and the dialog has to follow it: an organizer
-picks a person, not a number.
+**Manual linking has to address a fencer, not a symbol — in every mode.** The
+link dialog offers `candidate_vs`, accepts a typed symbol and reports
+`unknown_vs`. On a manual tournament all three are meaningless because no
+registration has one. On an automatic tournament they are merely the wrong
+question: an organizer looking at a payment from someone who mistyped their
+symbol knows the person, not the number, and making them look it up is the work
+this change exists to remove. The roster-listing endpoint in task 4.3 is the
+addressing mechanism, and it is unconditional.
+
+**The organizer's judgement is the last word wherever the tail lands.** A
+proposal moves nothing and waits for a person, as designed; but the person also
+has to be able to act where the resolver proposes nothing, and to overrule it
+where it proposes wrongly. That control is the same one in both modes.
 
 **This change and the symbol's removal land together.** Until this exists,
 removing the symbol would take away the only reconciliation an organizer has.

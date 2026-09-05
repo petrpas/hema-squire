@@ -59,7 +59,7 @@
 - [ ] 7.5 Reject a proposal and check it returns to unresolved and is not proposed again
 
 
-## 7. Revision, 2026-09-05: the manual tournament has no symbols to fall back on
+## 7. Revision, 2026-09-05: the symbol is a shortcut, and the tail is permanent
 
 `issue-imported-registrations` is revised to allocate no variable symbol where
 the organizer keeps the registrations, so on such a tournament this resolver is
@@ -67,8 +67,18 @@ the only way a payment ever finds a fencer. **Neither half ships alone**:
 removing the symbol first leaves an organizer unable to reconcile anything, and
 shipping this first is harmless but leaves the symbol pointlessly minted.
 
-- [ ] 7.1 Manual linking addresses a **fencer**, not a symbol, on a tournament whose registrations carry none. `LinkDialog` offers `candidate_vs`, accepts a typed symbol and reports `unknown_vs`; all three are meaningless there. The roster-listing endpoint from 4.3 is the addressing mechanism — promote it from a convenience for the proposal dialog to the way the dialog works
+And the by-name control is **not conditional on the mode**. A symbol resolves the
+cheap majority — the owner's estimate is roughly nine payments in ten — and the
+remaining tenth is permanent in every mode: blank fields, typos, last year's
+number, one person paying for another. Those reach a queue today with a stated
+reason, and the only tool for them is to read the message, find the fencer and
+type a seven-digit number. That is the work this section removes, on every
+tournament.
+
+- [ ] 7.1 Manual linking addresses a **fencer**, not a symbol, **in every mode**. `LinkDialog` offers `candidate_vs`, accepts a typed symbol and reports `unknown_vs`: meaningless on a manual tournament and merely the wrong question on an automatic one, where the organizer looking at a mistyped payment knows the person and not the number. The roster-listing endpoint from 4.3 is the addressing mechanism — promote it from a convenience for the proposal dialog to the way the dialog works, unconditionally
+- [ ] 7.1b Keep typing a symbol as a **second** way in, not the only one. Where an organizer does know the number it is the fastest route, and on a Squire-kept tournament the numbers are real; what changes is that it stops being the sole route
 - [ ] 7.2 `POST /payments/link` takes a VS array. Give it a way to name registrations that have none, or address them by registration id, and keep the existing shape working for tournaments that do carry symbols
+- [ ] 7.3a Tests over an **automatic** tournament's tail: a payment quoting no symbol, one quoting a symbol that resolves nowhere, and one quoting a symbol belonging to a different fencer than the message names. Each reaches the organizer with the resolver's proposal where there is one, and each is resolvable by choosing a person without typing a number
 - [ ] 7.3 Tests over a manual tournament end to end: registrations with no symbols, a statement of payments with no symbols, the resolver proposing, an organizer confirming, and the credit landing exactly as a VS-quoting payment's would
 - [ ] 7.4 Land together with `issue-imported-registrations` section 7. Verify in that order — symbols removed and name matching present in the same deploy — and confirm on the pilot that a payment can still be reconciled at every point
 - [ ] 7.5 Re-read the threshold constants before shipping. They were tuned where a VS-matched majority would have absorbed a wrong proposal; on a manual tournament every payment goes through the resolver, so a confident mistake is a larger share of the outcome. The rule stays "propose only on a clear single winner" and the margin stays strict

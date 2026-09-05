@@ -202,12 +202,23 @@ either direction, which is the benefit of Decision 4.
   fencer would silence a fencer whose name keeps mis-attracting payments.
 
 
-## Decision (2026-09-05): the resolver is the path, not a branch off it
+## Decision (2026-09-05): the symbol is a shortcut over a permanent tail
 
-Written as an addition to `matching.py`'s `no_vs` branch, which assumed a VS
-branch exists to fall out of. On a manual tournament it does not: no registration
-carries a symbol, so every payment reaches resolution by name, and the branch
-that used to be the exception is the whole flow.
+Written as an addition to `matching.py`'s `no_vs` branch, on the assumption that
+the VS branch carries the work and this catches what falls out. That is the wrong
+shape twice over.
+
+On a manual tournament there is no VS branch at all: no registration carries a
+symbol, so every payment reaches resolution by name.
+
+And on an automatic tournament the branch is not a rare exception either. A
+symbol is a shortcut over a tail that never goes away — blank fields, typos,
+last year's number, a payer paying for somebody else. The owner's estimate is
+about one payment in ten, and the pilot's own statement is the extreme of the
+same distribution: the export had no symbol column at all. What the symbol buys
+is that resolution by name is a tenth of the work rather than all of it. It is
+not the identity of a registration and nothing should be built as though it
+were.
 
 This is not a different algorithm — the ranking, the two thresholds and the
 refusal to propose without a clear single winner are unchanged, and they were
@@ -218,9 +229,11 @@ none does, an unresolved payment falls back to a human picking a person, and tha
 control has to exist before this is useful.
 
 So the roster-listing endpoint (task 4.3) is promoted from a convenience for the
-proposal dialog to the addressing mechanism for manual linking itself, and the
-existing VS-addressed link dialog needs a fencer-addressed counterpart on a
-tournament whose registrations have no symbols.
+proposal dialog to **the** addressing mechanism for manual linking, in every
+mode. An organizer resolving a mistyped symbol on an automatic tournament knows
+the person and not the number; asking them for the number is the work this change
+exists to remove, and it is the same control the manual tournament needs for
+everything.
 
 **Threshold caution carried over.** The constants were tuned on a roster of 54
 against a statement of 43. On a manual tournament there is no VS-matched majority

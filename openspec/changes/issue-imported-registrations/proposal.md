@@ -133,7 +133,11 @@ transactions become linkable.
 
 ## Revision, 2026-09-05: no variable symbol in manual mode
 
-**A symbol Squire mints after the fact was never on any payment.** On a manual
+**A symbol Squire mints after the fact was never on any payment.** A variable
+symbol is a shortcut that lets a payment find its registration without anybody
+reading the message; it is not the registration's identity, and a registration
+without one is resolved by the payer's own words like the tenth of payments that
+carry no usable symbol on any tournament (`name-assisted-matching`). On a manual
 tournament the fencers registered through the organizer's own form and paid with
 whatever reference that form told them — or with none. A number invented a season
 later, which Squire has never shown to anybody, cannot match an incoming payment
