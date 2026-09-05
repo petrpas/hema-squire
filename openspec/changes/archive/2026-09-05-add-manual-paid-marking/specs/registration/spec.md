@@ -3,9 +3,9 @@
 ### Requirement: Public participant list
 The public participant list SHALL present who is entered for the tournament. What it says about payment SHALL depend on whether Squire guarantees a payment state at all.
 
-**Where Squire collects the money** — the payments feature is on and Squire keeps the registrations — the list SHALL show confirmed (paid) registrations only. Unpaid reservations SHALL be either hidden or shown greyed as unconfirmed, according to the tournament setting; the default for a new tournament is greyed.
+**Where Squire collects the money** — the payments setting is on and the tournament is in automatic mode — the list SHALL show confirmed (paid) registrations only. Unpaid reservations SHALL be either hidden or shown greyed as unconfirmed, according to the tournament setting; the default for a new tournament is greyed.
 
-**Where Squire does not** — it handles no payments for the tournament, or the tournament is in manual mode (`tournament-mode`) — the list SHALL NOT read a registration's payment state as its attendance of its own accord, and the unpaid-list setting SHALL NOT apply, because there are no unpaid reservations in the sense that setting means: no money was requested, so none is outstanding.
+**Where Squire does not** — the payments setting is off, or the tournament is in manual mode (`tournament-mode`) — the list SHALL NOT read a registration's payment state as its attendance of its own accord, and the unpaid-list setting SHALL NOT apply, because there are no unpaid reservations in the sense that setting means: no money was requested, so none is outstanding.
 
 Such a list SHALL present every entrant, and SHALL mark **only** those the organizer has settled by hand (`payments`). A marked entrant SHALL be shown as confirmed, because a person who collected the money has said so. An entrant not marked SHALL carry **no mark whatever** and SHALL NOT be shown as unconfirmed: the absence of a mark is not a claim that anyone has failed to pay, only that the organizer has not reached that row, and turning it into one would have the system assert precisely what it has no basis for.
 
@@ -15,7 +15,7 @@ A list drawn from a roster Squire does not maintain SHALL state **how current it
 - **WHEN** a visitor views the public participant list of a tournament Squire collects for
 - **THEN** unpaid reservations never appear as confirmed participants
 
-#### Scenario: A list Squire collects nothing for makes no claim of its own
+#### Scenario: Payments-off list shows entrants without a payment claim
 - **WHEN** a visitor views the public participant list of a tournament whose payments Squire does not handle, none of whose registrations has been marked settled
 - **THEN** every seated entrant is listed, none carries any payment mark, and the unpaid-list setting has no effect
 

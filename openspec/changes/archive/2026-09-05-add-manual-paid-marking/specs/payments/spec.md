@@ -28,9 +28,9 @@ Turning payments off SHALL retain every stored payment value: the bank account, 
 - **WHEN** the scheduler runs against a payments-off tournament holding registrations older than any payment window
 - **THEN** no reservation expires, no reminder is sent, and no expiry notice is sent
 
-#### Scenario: The payments phase holds the mark and nothing else
+#### Scenario: No payments phase
 - **WHEN** the organizer opens the console for a tournament whose payments Squire does not handle
-- **THEN** the Payments phase is offered holding whether each registration is settled, and no transaction can be reconciled against the tournament
+- **THEN** the Payments phase is offered holding whether each registration is settled and nothing else, and no transaction can be reconciled against the tournament
 
 #### Scenario: Prices survive
 - **WHEN** an organizer turns payments off on a tournament pricing in CZK with two discounts

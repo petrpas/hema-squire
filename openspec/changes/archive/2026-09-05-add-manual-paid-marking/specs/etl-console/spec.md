@@ -52,7 +52,7 @@ A phase the mode does not offer SHALL NOT be reachable by its URL either. Addres
 - **THEN** the Import phase is shown again
 
 #### Scenario: Payments phase absent without the feature
-- **WHEN** the organizer opens the console of a tournament whose payments feature is off
+- **WHEN** the organizer opens the console of a tournament whose payments setting is off
 - **THEN** no Payments phase is offered, and the other phases its mode allows behave as usual
 
 #### Scenario: Teams phase absent without the feature
@@ -63,9 +63,9 @@ A phase the mode does not offer SHALL NOT be reachable by its URL either. Addres
 - **WHEN** an organizer opens a saved URL naming the Teams phase of a tournament whose team disciplines feature has since been turned off
 - **THEN** the console opens on its default phase rather than on an empty Teams view
 
-#### Scenario: The phase fills out again
+#### Scenario: Phase reappears with its feature
 - **WHEN** the organizer of a tournament that handled its own payments switches it to Squire handling them
-- **THEN** the Payments phase, already present, gains the queues, the intake and the transactions in its fixed place between Deduplication and Export
+- **THEN** the Payments phase, which was present all along, gains the queues, the intake and the transactions in its fixed place between Deduplication and Export — what returns with the setting is the phase's contents, not the phase
 
 ## ADDED Requirements
 

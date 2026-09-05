@@ -2,9 +2,7 @@
 
 ## Purpose
 Provide the organizer console: a phase-tabbed fencer table with per-row status, HR matching review, deterministic reruns, operation parameters, and reversible row deletion.
-
 ## Requirements
-
 ### Requirement: Phase-tabbed fencer table
 The organizer console SHALL present phase tabs in the fixed order Setup, Import, Fencers, Matching on HR, Deduplication, Payments, Export, Teams, Queue. Every tab, including Setup, SHALL be clickable from every other tab. Selecting a phase tab SHALL change the console's URL to that phase and push a browser history entry, so that Back returns to the previously open phase and a reload reopens the phase on display. The Setup tab (step 0) SHALL present the tournament configuration — identity fields, titular organizers, disciplines, registration window, pricing, and the completeness checklist — instead of a fencer table. Deduplication, Teams and Queue SHALL likewise replace the fencer table with their own views, as fixed by **Deduplication candidate review**, `team-disciplines` and `seating-queue`.
 
@@ -14,7 +12,9 @@ The organizer console SHALL present phase tabs in the fixed order Setup, Import,
 
 A phase whose operation concerns a small and usually empty subset of the fencers SHALL NOT be given the fencer table for that reason: where the work is a handful of rows out of fifty, listing the fifty states the work in the one place it is hardest to see. Deduplication is such a phase and shows its candidates instead.
 
-Which phases are offered SHALL follow the tournament's settings, as fixed by `tournament-features`. The Payments phase SHALL be offered only while the payments feature is on, and the Teams phase only while the team disciplines feature is on. The remaining phases SHALL always be offered, since they are what every tournament is made of. Whichever phases are offered SHALL keep the fixed order above; the mode removes phases, it never reorders them.
+Which phases are offered SHALL follow the tournament's settings. The Teams phase SHALL be offered only while the team disciplines feature is on (`tournament-features`). **The Payments phase SHALL be offered on every tournament**, whoever handles its payments: where Squire handles them it holds what it holds today, and where it does not it is boned out to the settled mark alone (`payments`). It is the place a reader looks for who has paid, and that answer SHALL NOT move to another phase depending on a setting the reader may not know about. The remaining phases SHALL always be offered, since they are what every tournament is made of. Whichever phases are offered SHALL keep the fixed order above; a setting removes phases, it never reorders them.
+
+A phase's **columns** SHALL remain a property of that phase. Where a phase's contents follow a tournament's settings, it SHALL be the phase that branches, not its column table — so that no column has to be understood as sometimes present.
 
 A phase the mode does not offer SHALL NOT be reachable by its URL either. Addressing it SHALL open the console on the phase it opens on by default rather than on an empty view, so that a bookmark saved before a feature was turned off still lands somewhere useful.
 
@@ -55,7 +55,7 @@ A phase the mode does not offer SHALL NOT be reachable by its URL either. Addres
 - **THEN** the Import phase is shown again
 
 #### Scenario: Payments phase absent without the feature
-- **WHEN** the organizer opens the console of a tournament whose payments feature is off
+- **WHEN** the organizer opens the console of a tournament whose payments setting is off
 - **THEN** no Payments phase is offered, and the other phases its mode allows behave as usual
 
 #### Scenario: Teams phase absent without the feature
@@ -63,12 +63,12 @@ A phase the mode does not offer SHALL NOT be reachable by its URL either. Addres
 - **THEN** no Teams phase is offered
 
 #### Scenario: Stale bookmark to a hidden phase
-- **WHEN** an organizer opens a saved URL naming the Payments phase of a tournament whose payments feature has since been turned off
-- **THEN** the console opens on its default phase rather than on an empty Payments view
+- **WHEN** an organizer opens a saved URL naming the Teams phase of a tournament whose team disciplines feature has since been turned off
+- **THEN** the console opens on its default phase rather than on an empty Teams view
 
 #### Scenario: Phase reappears with its feature
-- **WHEN** the organizer turns the payments feature back on
-- **THEN** the Payments phase is offered again in its fixed place between Deduplication and Export
+- **WHEN** the organizer of a tournament that handled its own payments switches it to Squire handling them
+- **THEN** the Payments phase, which was present all along, gains the queues, the intake and the transactions in its fixed place between Deduplication and Export — what returns with the setting is the phase's contents, not the phase
 
 ### Requirement: Console addressed by tournament and phase
 The console SHALL be addressed by the URL `/organizer/:slug/console/:phase`, where `:slug`
@@ -822,3 +822,27 @@ The manual refresh action SHALL remain available; it SHALL stop being the only w
 #### Scenario: Results appear on the phase the organizer is on
 - **WHEN** matching concludes while the organizer is on the Fencers phase
 - **THEN** the fencer list reloads and shows what matching decided
+
+### Requirement: The Payments phase is boned out where Squire collects nothing
+WHERE Squire does not handle a tournament's payments, the Payments phase SHALL hold exactly one thing: whether each registration has been marked settled, and the control that marks and unmarks it (`payments`).
+
+It SHALL hold nothing else. No queue of unmatched or flagged transactions, no intake card, no matching tolerance, no transaction list, no variable symbol, no payment window — none of them has a meaning when no money passes through Squire, and a phase offering a control that answers a refusal is worse than one that does not offer it.
+
+Where Squire does handle the payments the phase SHALL be exactly what it is today, and SHALL NOT carry the settled mark: the state there follows from credited transactions and has one writer.
+
+The phase SHALL state what the mark means where it could mislead: that it records the organizer's word that the money was received, and that Squire has received nothing itself.
+
+**The mark SHALL be a write to the registration, not a rule.** Every other manual edit in the console persists as a rule replayed over the projection, which changes what the table and the export show and reaches nothing else. This mark changes what the registration *is* — the public participant list and the registration's own state depend on it — so it SHALL be written through. The departure SHALL be deliberate and confined to this one action.
+
+#### Scenario: The boned-out phase
+- **WHEN** the organizer opens the Payments phase on a tournament that handles its own payments
+- **THEN** each row states whether it is marked settled and the mark can be set and unset, and no queue, intake, tolerance or transaction list is offered
+
+#### Scenario: The full phase is unchanged
+- **WHEN** the organizer opens the Payments phase on a tournament whose payments Squire handles
+- **THEN** it holds what it holds today, and no settled mark is offered
+
+#### Scenario: The mark reaches the registration
+- **WHEN** a registration is marked settled and the tournament's public participant list is read
+- **THEN** that entrant is shown as confirmed, which no rule over the projection could have achieved
+
