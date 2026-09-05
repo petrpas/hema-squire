@@ -4,7 +4,7 @@
 Match bank payments to reservations by variable symbol, with idempotent ingestion, amount tolerance, manual matching rules, reminders, and foreign-transfer handling.
 ## Requirements
 ### Requirement: Payment identity via variable symbol
-Each reservation SHALL receive a variable symbol that is unique across the whole deployment, not merely within its tournament. Transaction matching SHALL be performed exclusively by VS — or by the VS quoted in the payment message for transfers that cannot carry a VS field — never by payer name or amount alone.
+Each reservation SHALL receive a variable symbol that is unique across the whole deployment, not merely within its tournament. Money SHALL be credited exclusively on a variable symbol — one quoted by the payer, or one an organizer supplied by confirming a proposal — and SHALL NOT be credited on a payer name, a payment message or an amount. A resolution reached by name SHALL be a proposal awaiting a human, never a credit: it SHALL move no money, change no balance, settle no registration and send no mail until a person confirms it (`name-assisted-matching`). A payer name SHALL NOT be treated as naming the fencer being paid for — one person commonly pays for another — so it SHALL NOT be read as an identity except where the payment names no one else at all.
 
 A newly issued VS SHALL take the structured form `YYNNnnn`: two digits of the tournament's VS year, two digits of the tournament's series within that year, and three digits of registration sequence within that tournament. The value SHALL be seven digits with a leading nonzero digit, so that it survives banks that strip leading zeros and fits both the ten-digit domestic limit and the SPAYD variable-symbol field. Sequence allocation SHALL be per tournament and SHALL be correct when two registrations are created concurrently. Allocation SHALL fail with a clear error when a tournament exhausts its sequence rather than wrapping, truncating, or issuing a value that overruns into the series digits.
 
@@ -53,6 +53,18 @@ When a transaction's VS resolves to a registration belonging to a **different** 
 #### Scenario: Legacy variable symbol still matches
 - **WHEN** a transaction carries a VS issued before the structured format
 - **THEN** it resolves to its registration and matches exactly as it did before
+
+#### Scenario: A name resolves but does not credit
+- **WHEN** a payment carrying no variable symbol resolves by name to exactly one fencer
+- **THEN** it is held as a proposal, no money is credited, no balance moves, no registration is settled, and no mail is sent
+
+#### Scenario: Confirming a proposal is what credits
+- **WHEN** the organizer confirms such a proposal
+- **THEN** the payment is credited to that fencer's registration exactly as a payment quoting its variable symbol would be
+
+#### Scenario: The payer is not the fencer
+- **WHEN** a payment from one person carries a message naming a different fencer, both of whom are on the roster
+- **THEN** the fencer named in the message is the one proposed, and the payer is not
 
 ### Requirement: Bank transaction ingestion
 The system SHALL ingest transactions via the Fio bank REST API on a schedule and via manual statement import. A manually imported statement SHALL be accepted whatever bank produced it, as a CSV or XLSX table, rather than only in the Fio export format. Ingestion SHALL be idempotent: each transaction is processed at most once, including where the statement carries no identifier of the bank's own.

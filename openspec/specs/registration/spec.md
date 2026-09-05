@@ -216,6 +216,8 @@ A registration holding no substitute placement SHALL expire on a lapsed payment 
 
 Dormancy SHALL suspend the demotion, never the closing of seating. A tournament whose registrations are all dormant SHALL still settle its seating on its deadline and SHALL still place subsequent registrations in the queue rather than in seats, because seats are finite whether or not they were paid for; settlement SHALL simply find no registration to move.
 
+A registration issued for an imported or manually entered row SHALL have both clocks dormant **by virtue of its origin**, permanently, whatever the tournament's payments setting, payment mode or seating deadline says at any time. That origin SHALL be one of the causes the predicate above answers with, and it SHALL outlast every setting the others depend on: turning payments on, changing the payment mode or moving the seating deadline SHALL NOT wake it. It SHALL carry no due date, SHALL open no payment window, SHALL never expire for non-payment, SHALL never be demoted when seating settles, and SHALL never be sent a reminder or an expiry notice. Its total SHALL still be computed, stored and presented, and it SHALL still be matched and credited like any other registration: what its origin makes dormant is the passage of time, not the money. The row it came from stated who was competing and, often, that they had already paid; a clock started long afterwards would demand money from people who owe none and mail people who registered a season ago (`imported-registrations`).
+
 A registration taken while payments were off SHALL NOT acquire a due date retroactively when the payments feature is turned on. It SHALL remain seated and SHALL NOT expire on account of a window that never opened; what becomes of it is the organizer's decision.
 
 Per mode, on a tournament whose payments feature is on, a seated reservation SHALL be held as follows:
@@ -283,6 +285,14 @@ An expired reservation SHALL NOT bar the fencer from the tournament. A fencer wh
 #### Scenario: Repeated expiry not penalized
 - **WHEN** a fencer's reservation expires unpaid for the second time and they register again
 - **THEN** the registration is accepted on the same terms as the first time
+
+#### Scenario: An issued registration never expires
+- **WHEN** the lifecycle passes run against a tournament holding issued registrations, long after any configured payment window would have closed
+- **THEN** none of them expires, no capacity is freed, and none is sent an expiry notice or a reminder
+
+#### Scenario: Configuration cannot wake an issued registration's clocks
+- **WHEN** the payments setting is turned on, or the payment mode or the seating deadline is changed, after registrations have been issued
+- **THEN** those registrations remain seated, acquire no due date, are not demoted when seating settles, and are sent nothing
 
 ### Requirement: Seating settlement at the deadline
 Seating SHALL settle when the tournament's seating deadline passes, or earlier if the organizer settles it by hand. Settling SHALL do the same thing in both cases: every registration that is still reserved — that is, still owing money — and whose lifecycle clocks are not dormant SHALL have each of its seated discipline entries marked as a substitute placement and each of its non-waitlisted teams waitlisted, in place, freeing the capacity they held. The registration SHALL remain reserved, SHALL keep its VS, and SHALL have no payment window.

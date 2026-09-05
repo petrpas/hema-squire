@@ -56,9 +56,31 @@
 
 - [x] 7.1 `cd backend && uv run pytest` and `ruff check .`
 - [x] 7.2 `cd frontend && npx vitest run`, `npm run build`
-- [ ] 7.3 Against the pilot's own 43 transactions, after `issue-imported-registrations` has run: confirm roughly 35 proposals and 8 unresolved, that the three Milan Diviš payments name three different fencers, and that no proposal has moved money before anyone confirmed anything
-- [ ] 7.4 Confirm a proposal and check the credit, the balance and the mail match what a VS-quoting payment produces
-- [ ] 7.5 Reject a proposal and check it returns to unresolved and is not proposed again
+- [x] 7.3 Run against a copy of the pilot with all 53 registrations issued: of
+  43 transactions the resolver proposes **36** and withholds 7 — 6 naming nobody
+  on the roster, 1 ambiguous — against the 35/8 this estimated. The three Milan
+  Diviš payments name three different fencers (Václav Pekárek, Milan Diviš,
+  Jindřich Pekárek), which is the case this capability exists for; two of the
+  three resolve only because those rows now hold registrations. Nothing moved:
+  `resolve` writes nothing and a proposal credits nobody until confirmed
+- [x] 7.4 Confirmed on the pilot: Jan Žegklitz's 1 100 Kč credited his own
+  registration in full — `amount_paid` 1 100 against a total of 1 100, state
+  `paid`, one `payment_link` rule and one `payment_matched` event, exactly the
+  shape a hand-linked payment leaves. **No mail, and that is right**: the
+  registration was issued for a fencer-list row, so it is dormant by origin and
+  `_payment_mail_suppressed` credits it silently. A VS-quoting payment against an
+  ordinary registration still writes to the fencer; the difference is the
+  registration's origin, not this path
+- [x] 7.5 Rejected on the pilot: the payment from JAN BĚLINA returned to
+  `unmatched` with reason `proposal_rejected`, carrying the refused fencer's id
+  so the resolver cannot offer the same wrong answer twice. It is in the
+  unmatched queue, which the endpoint selects by status.
+
+  Found while checking it, and left as it is on the owner's say-so: the queues
+  became tabs earlier the same day, and a rejected payment now leaves the tab
+  being read and arrives on one nobody is looking at. Stacked, the hand-off was
+  visible — the payment moved from one card to the card below. The count on the
+  destination tab is the only signal now, and it has to be sought
 
 
 ## 8. Revision, 2026-09-05: the symbol is a shortcut, and the tail is permanent
@@ -82,7 +104,13 @@ tournament.
 - [x] 8.2 `POST /payments/link` takes a VS array. Give it a way to name registrations that have none, or address them by registration id, and keep the existing shape working for tournaments that do carry symbols
 - [x] 8.3a Tests over an **automatic** tournament's tail: a payment quoting no symbol, one quoting a symbol that resolves nowhere, and one quoting a symbol belonging to a different fencer than the message names. Each reaches the organizer with the resolver's proposal where there is one, and each is resolvable by choosing a person without typing a number
 - [x] 8.3 Tests over a manual tournament end to end: registrations with no symbols, a statement of payments with no symbols, the resolver proposing, an organizer confirming, and the credit landing exactly as a VS-quoting payment's would
-- [ ] 8.4 Land together with `issue-imported-registrations` section 7. Verify in that order — symbols removed and name matching present in the same deploy — and confirm on the pilot that a payment can still be reconciled at every point
+- [x] 8.4 Verified in that order on the pilot, which keeps its own registrations
+  and therefore mints no symbol at all — `vs_next_seq` is still 1. Every one of
+  the three ways a payment reaches a registration was exercised on real data
+  after the symbols were gone: **automatic by symbol** cannot fire and correctly
+  does not; **by name** proposes 37 of 43; **by hand** links from the ranked
+  roster, which is how the remaining 6 are resolved. Nothing is left without a
+  way through
 - [x] 8.5 Re-read the threshold constants before shipping. They were tuned where a VS-matched majority would have absorbed a wrong proposal; on a manual tournament every payment goes through the resolver, so a confident mistake is a larger share of the outcome. The rule stays "propose only on a clear single winner" and the margin stays strict
 
 

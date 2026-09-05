@@ -626,7 +626,11 @@ The organizer MAY add a fencer to the fencer list by hand, without a file and wi
 
 A manually entered row SHALL be a source record of the tournament in its own right, a third population beside in-app registrations and imported rows. It SHALL take a fixed number when it is entered, SHALL sort by the registration moment it states, SHALL carry its note, and SHALL travel through matching, deduplication and export exactly as an imported row does. It SHALL be editable and deletable by the same means as any other row.
 
-A manually entered row SHALL NOT create an account for the fencer, SHALL NOT be given a variable symbol or a payment instruction, and SHALL NOT cause any mail to be sent. It states who is competing; it does not enrol them in the application.
+A manually entered row SHALL NOT create an account for the fencer, and SHALL NOT cause any mail to be sent. **It SHALL NOT be given a variable symbol or a payment instruction when it is entered.** It states who is competing; entering it does not enrol them in the application.
+
+A row SHALL become billable when registrations are issued for the fencer list, which happens as a step of payment intake rather than by any action the organizer takes on this phase (`imported-registrations`). Issuing SHALL apply to manually entered rows and imported rows alike — both state who is competing, and neither is enrolled by arriving. Being issued a registration SHALL NOT cause mail to be sent either, and SHALL NOT create an account.
+
+The Fencers phase SHALL NOT offer an action that issues registrations. An organizer reconciling a payment SHALL NOT have to know that issuing exists, and SHALL NOT be sent to another phase to make the roster billable first.
 
 A manually entered row SHALL NOT appear on the Import view, in any state. The Import view records what a file contained, and a manual entry came from no file.
 
@@ -653,6 +657,18 @@ A manually entered row SHALL NOT appear on the Import view, in any state. The Im
 #### Scenario: No account is created
 - **WHEN** a fencer is entered by hand
 - **THEN** no account exists for them, no confirmation mail is sent, and no payment instruction is issued
+
+#### Scenario: Entry alone issues no variable symbol
+- **WHEN** a fencer is entered by hand on a tournament whose payments feature is on
+- **THEN** the row carries no variable symbol until the next payment intake issues registrations for the list
+
+#### Scenario: Manual rows are issued alongside imported ones
+- **WHEN** a statement is imported against a list holding both imported and manually entered rows
+- **THEN** both populations are issued registrations, and neither is sent mail
+
+#### Scenario: The Fencers phase offers no issuing action
+- **WHEN** the organizer opens the Fencers tab on a tournament whose rows have no registrations
+- **THEN** no action to issue registrations is offered there
 
 ### Requirement: Manual entry fields follow the tournament's structure
 The manual entry dialog SHALL offer the tournament's own structure rather than a generic fencer form. Disciplines SHALL be offered as the tournament's own offered individual disciplines, by their names; items to borrow SHALL be offered as the items the tournament lends, by their names; the afterparty SHALL be offered only where the tournament holds one. A choice the tournament does not offer SHALL NOT be presented.

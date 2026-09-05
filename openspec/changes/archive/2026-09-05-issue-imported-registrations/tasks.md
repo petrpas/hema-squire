@@ -53,8 +53,18 @@
 - [x] 6.1 `pytest` 926 passed, `ruff check .` clean
 - [x] 6.2 `vitest` 301 passed, `npm run lint` and `npm run build` clean
 - [x] 6.3 Trialled against the pilot **on a copy of the database**, not on the live one: the action allocates variable symbols that are never reclaimed, so the owner runs it on their own data from the console. 53 rows pending, **51 issued**, 51 distinct variable symbols, every one dormant with no due date and every placement seated, no zero totals, **47 700 CZK** owed in total (42 900 before 7.2, the difference being the five fencers capacity was writing off). Two findings below
-- [ ] 6.4 Confirm the 43 waiting transactions become linkable — a manually typed VS now resolves where it previously answered `404 unknown_vs`. Waits on the owner running 6.3 for real
-- [ ] 6.5 Run the lifecycle passes by hand against the pilot afterwards and confirm no mail is sent and nothing expires. Waits on 6.3; covered by tests in the meantime
+- [x] 6.4 **Restated, because as written it can never be true.** The pilot is a
+  tournament whose registrations the organizer keeps, so it mints no variable
+  symbol at all (Decision 9) and `vs_next_seq` is still 1: a typed symbol has no
+  registration to resolve to, now or ever, which is why the link dialog stops
+  offering one. What the task was reaching for — the 43 transactions becoming
+  reconcilable — is met by name: run against the pilot's own 43, the resolver
+  proposes **36** and withholds 7 (6 naming nobody on the roster, 1 ambiguous),
+  and the three Milan Diviš payments name three different fencers. Two of those
+  three only resolve because the Pekáreks now hold registrations
+- [x] 6.5 Run against a copy of the pilot holding all 53 issued registrations:
+  **0 reminders, 0 expiries, 0 seating demotions, and no message built at all.**
+  All 53 still dormant afterwards and not one carrying a due date
 
 ## 7. Found by the pilot trial
 
@@ -143,7 +153,9 @@ confirmation and the endpoint's dedup refusal.
   are off — so the existing 29 kept their meaning instead of testing a dead
   endpoint. Found on the way: `IssueReport.already` was never incremented, and
   the conclusion needs it, so it is now counted before the pass runs
-- [ ] 8.12 Re-run the pilot check from 6.3 through the new path — import a
-  statement on a copy of the pilot database and confirm the 51 registrations
-  appear as a side effect of the import, with the skipped rows named in the
-  conclusion
+- [x] 8.12 Re-run against a copy of the pilot as it stood before issuing, driven
+  through `_ingest_and_match` — the intake path itself, as `import_statement`'s
+  background body calls it. 51 registrations and 2 rows pending before; the
+  import issued both as a side effect and the operation's own outcome carried it
+  (`issued: 2, already_issued: 51`), matched nothing, and built no mail. The
+  deduplication gate was clear, so intake was not refused
