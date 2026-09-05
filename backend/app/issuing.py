@@ -31,6 +31,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app import pricing, rownumbers, sheet
+from app.hr_index import name_key
 from app.models import (
     Discipline,
     DisciplineKind,
@@ -165,11 +166,23 @@ def _resolve_fencer(session: Session, row: dict, claimed: set[str]) -> Fencer:
     address stays visible on both rows of the fencer list, where it was written.
     """
     email = _address(row)
+    name = (row.get("name") or "").strip()
     if email and email not in claimed:
         existing = session.query(Fencer).filter(Fencer.email == email).one_or_none()
         claimed.add(email)
-        if existing is not None:
+        # An address is reused as an identity only where it names the same
+        # person. On a roster entered by a parent or a club representative it
+        # names the payer, and binding the row to their record would enrol one
+        # person under another's name — the pilot's own shape: two brothers and
+        # their father's address, where the father is himself a fencer.
+        #
+        # Compared with the fighters index's own key, which disregards
+        # diacritics, case and word order and is not a subset test, so
+        # "Novák Jan" is Jan Novák and "Jan Petr Novák" is not.
+        if existing is not None and name_key(existing.display_name) == name_key(name):
             return existing
+        if existing is not None:
+            email = None
     else:
         email = None
     fencer = Fencer(

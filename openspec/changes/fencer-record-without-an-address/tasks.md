@@ -97,11 +97,15 @@ sends onwards is a defect that leaves the building.
 
 - [x] 6.1 `pytest`, `ruff check .`
 - [x] 6.2 `vitest`, `npm run lint`, `npm run build`
-- [ ] 6.3 The pilot, on a copy of the database: 53 rows pending and 51 issued
-  before, 53 issued after, with Jindřich and Václav Pekárek among them and one
-  of the two records holding no address
-- [ ] 6.4 Confirm on the pilot that both Pekáreks now appear in the manual
-  payment-link dialog's roster, which is where this was found
+- [x] 6.3 The pilot, on a copy: 51 issued and 2 pending before, **53 issued and
+  0 pending after**, both Pekáreks among them, both records holding no address,
+  no zero totals, 49 550 CZK owed, no variable symbol allocated and
+  `vs_next_seq` still 1 (a manual tournament mints none), all 53 dormant with no
+  due date. The lifecycle passes then ran against it and built **no message at
+  all** — the risk this change turns on, checked against real data rather than
+  against a fixture
+- [x] 6.4 Both Pekáreks are in the link dialog's roster, beside Milan Diviš —
+  the surface this was found missing from
 
 ## 7. Correcting a row's disciplines (owner decision, follow-on to 5.3)
 
@@ -131,3 +135,23 @@ remedy it did not offer. Editable on the fencer list **and nowhere else**.
   for what it now enters; an unknown slug and an empty list are refused; the
   cell opens on Fencers while the row is a row, closes once a registration
   stands in its place, and opens on no other phase
+
+## 8. What the pilot found (2026-09-05)
+
+- [x] 8.1 **An address was reused as an identity, and it is not one.** The first
+  run issued one of the two brothers, not both: `_resolve_fencer` matched
+  Jindřich Pekárek's row to the record holding `divis.m9@gmail.com` — which is
+  **Milan Diviš**, their father, himself on the roster — found he already had a
+  registration, and left Jindřich off the list entirely under `already`.
+
+  Decision 2 said a row whose address a record already holds reuses that record.
+  That is right where the address names the person and wrong where it names the
+  payer, which is the whole case this change exists for. An existing record is
+  now reused only where its name agrees with the row's, compared with the
+  fighters index's own key — diacritics, case and word order disregarded, and
+  not a subset test, so "Novák Jan" is Jan Novák and "Jan Petr Novák" is not.
+  Otherwise the row gets its own record with no address.
+
+  Two tests: the pilot's own shape — father and two sons on one address, three
+  people and three records — and its converse, a row whose address belongs to
+  the fencer it names, reused whatever spelling the roster used

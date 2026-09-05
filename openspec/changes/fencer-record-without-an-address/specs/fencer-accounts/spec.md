@@ -18,8 +18,12 @@ once for several fencers. A record SHALL therefore be creatable with the address
 absent, and its absence SHALL NOT be treated as an incomplete record.
 
 **An e-mail address SHALL belong to at most one fencer record.** Where a row
-carries an address a record already holds, that record SHALL be reused, and its
-name, credentials and HEMA Ratings binding SHALL be left as they are. Where a
+carries an address a record already holds **and names the person that record
+names**, that record SHALL be reused, and its name, credentials and HEMA Ratings
+binding SHALL be left as they are. Where the names disagree the address is
+somebody else's — a parent's, a club representative's — and the row SHALL be
+given its own record with no address: an address is a way of reaching a person,
+never a statement of who they are. Where a
 second row of the same list repeats an address the enrolment has just claimed,
 the second record SHALL be created without one: two rows sharing an address are
 one person's address written against another, which deduplication has already
@@ -54,8 +58,12 @@ carrying no history from the first. Reconciling the two is not addressed here.
 - **THEN** both are enrolled, the first record carries the address, and the second carries none
 
 #### Scenario: An existing account keeps its address and its identity
-- **WHEN** a row carries the address of a fencer who already has an account
+- **WHEN** a row carries the address of a fencer who already has an account, and names that fencer
 - **THEN** that record is reused, and its name, credentials and HEMA Ratings binding are unchanged
+
+#### Scenario: A parent's address does not enrol the child as the parent
+- **WHEN** a roster carries a father and his two sons, all three on the father's address
+- **THEN** three records exist, the father's keeps the address, and neither son is enrolled under his name
 
 #### Scenario: A record with no address is not incomplete
 - **WHEN** a record created on the tournament's behalf holds no address

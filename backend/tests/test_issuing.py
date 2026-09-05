@@ -377,6 +377,53 @@ def test_the_address_goes_to_the_row_that_comes_first(client, auth_headers, mail
     assert by_name == {"Jindřich Pekárek": "divis@example.com", "Václav Pekárek": None}
 
 
+def test_a_parents_address_does_not_enrol_the_child_as_the_parent(client, auth_headers, mailbox):
+    """Found on the pilot. Two brothers and their father's address, where the
+    father is himself on the roster: resolving by address alone bound one
+    brother's row to the father's record, found the father already registered,
+    and left the brother off the list entirely."""
+    organizer = auth_headers()
+    setup(client, organizer)
+    import_roster(
+        client,
+        organizer,
+        [
+            row("Milan Diviš", "divis@example.com"),
+            row("Jindřich Pekárek", "divis@example.com"),
+            row("Václav Pekárek", "divis@example.com"),
+        ],
+    )
+
+    report = issue(client, organizer)
+
+    assert report["issued"] == 3
+    by_name = {r.fencer.display_name: r.fencer.email for r in registrations()}
+    assert by_name == {
+        "Milan Diviš": "divis@example.com",
+        "Jindřich Pekárek": None,
+        "Václav Pekárek": None,
+    }
+    # three people, three records — not one record wearing three names
+    assert len({r.fencer_id for r in registrations()}) == 3
+
+
+def test_an_address_is_reused_where_it_names_the_same_person(client, auth_headers, mailbox):
+    """The other half: a row whose address belongs to the fencer it names is
+    that fencer, whatever spelling the roster used."""
+    organizer = auth_headers()
+    setup(client, organizer)
+    account = auth_headers(email="eva@example.com", name="Eva Malá")
+    assert account
+    before = db_session().scalar(select(Fencer).where(Fencer.email == "eva@example.com"))
+    before_id = before.id
+
+    import_roster(client, organizer, [row("Malá Eva", "eva@example.com")])
+    issue(client, organizer)
+
+    (registration,) = registrations()
+    assert registration.fencer_id == before_id, "word order is not a different person"
+
+
 def test_a_row_whose_person_already_registered_is_left_alone(client, auth_headers, mailbox):
     """A registration is unique per tournament and fencer, so a row naming
     somebody who registered in the application has nothing to issue. Left alone
