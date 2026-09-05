@@ -771,6 +771,13 @@ class BankTransaction(Base):
     message: Mapped[str | None] = mapped_column(Text)
     payer_name: Mapped[str | None] = mapped_column(String(200))
     payer_account: Mapped[str | None] = mapped_column(String(50))
+    # Who this payment is *for*, as the row's own text named them — read out of
+    # the statement at parse time and never the payer (spec
+    # name-assisted-matching). One person routinely pays for another: the payer
+    # names who paid, this names who it is for, and conflating them credits the
+    # wrong fencer precisely when the payer is competing too. Null where the
+    # text named nobody, which is an honest answer the resolver weighs.
+    named_person: Mapped[str | None] = mapped_column(Text)
     # additional Fio text fields that may carry a SEPA reference (design
     # harden-payment-matching Decision 4); NULL on every historical row, which
     # the VS scan treats as absent. Deliberately not payer_name/payer_account,
@@ -783,12 +790,28 @@ class BankTransaction(Base):
         DateTime(timezone=True), server_default=func.now()
     )
 
-    # matching outcome; None until the matcher has processed the transaction
-    status: Mapped[str | None] = mapped_column(String(20))  # matched|unmatched|flagged|partial
+    # matching outcome; None until the matcher has processed the transaction.
+    # `likely` is a *proposal* and not an outcome: the resolver read a fencer's
+    # name in the payer's own words and is asking a person. No money moves, no
+    # balance changes and no mail is sent while a transaction sits in it —
+    # crediting is by variable symbol alone, whether the payer quoted one or the
+    # organizer supplied it by confirming (spec name-assisted-matching).
+    status: Mapped[str | None] = mapped_column(
+        String(20)
+    )  # matched|unmatched|flagged|partial|likely
     status_reason: Mapped[str | None] = mapped_column(String(50))
     matched_registration_id: Mapped[int | None] = mapped_column(
         ForeignKey("registrations.id")
     )
+    # the fencer a `likely` proposal names. Points at the person, not their
+    # registration: what the resolver read was a name, and the registration is
+    # looked up when the organizer confirms
+    proposed_fencer_id: Mapped[int | None] = mapped_column(ForeignKey("fencers.id"))
+    # fencers the organizer has refused for *this* payment, so the resolver does
+    # not offer the same wrong answer twice. Per payment rather than per fencer:
+    # a name that mis-attracts one payment has not thereby stopped being
+    # somebody's name (design, Open Questions)
+    rejected_fencer_ids: Mapped[list] = mapped_column(JSON, default=list)
     # when the matcher last considered this transaction — set on every pass
     # that examines it (new or re-evaluated flagged), so a row leaving the
     # queue between passes is explicable (design Decision 2)
@@ -796,6 +819,7 @@ class BankTransaction(Base):
 
     tournament: Mapped[Tournament] = relationship()
     matched_registration: Mapped[Registration | None] = relationship()
+    proposed_fencer: Mapped[Fencer | None] = relationship()
 
     @property
     def searchable_text(self) -> str:

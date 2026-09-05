@@ -10,6 +10,7 @@ from app import (
     emails,
     importer,
     matching,
+    nameresolve,
     operations,
     paymentsclear,
     rules,
@@ -32,7 +33,14 @@ from app.models import (
 # one rounding rule for money leaving the API, not a second copy of it here
 from app.routers.registrations import _cents_to_amount
 from app.routers.tournaments import FencerDep, SessionDep, TournamentDep
-from app.schemas import ExpiredHoldingOut, IngestAndMatchOut, LinkIn, TransactionOut
+from app.schemas import (
+    ExpiredHoldingOut,
+    IngestAndMatchOut,
+    LinkIn,
+    RankedFencerOut,
+    TransactionOut,
+    TransactionRosterOut,
+)
 
 router = APIRouter(prefix="/api/tournaments/{slug}/payments", tags=["payments"])
 
@@ -198,7 +206,21 @@ def link_transaction(
     unknown = [vs for vs in data.vs if vs not in known_vs]
     if unknown:
         raise HTTPException(status_code=404, detail={"unknown_vs": unknown})
+    known_ids = set(
+        session.scalars(
+            select(Registration.id).where(
+                Registration.tournament_id == tournament.id,
+                Registration.id.in_(data.registration_ids),
+            )
+        )
+    )
+    unknown_ids = [rid for rid in data.registration_ids if rid not in known_ids]
+    if unknown_ids:
+        raise HTTPException(status_code=404, detail={"unknown_registrations": unknown_ids})
 
+    payload = {"vs": data.vs}
+    if data.registration_ids:
+        payload["registration_ids"] = data.registration_ids
     rule = rules.create_rule(
         session,
         tournament,
@@ -206,10 +228,167 @@ def link_transaction(
         phase="payments",
         kind="payment_link",
         target=f"txn:{transaction.external_id}",
-        payload={"vs": data.vs},
+        payload=payload,
     )
     applied = matching.apply_payment_links(session, tournament, mailer)
     return {"rule_id": rule.id, "applied": applied}
+
+
+@router.get("/likely", response_model=list[TransactionOut])
+def likely_transactions(tournament: TournamentDep, session: SessionDep, fencer: FencerDep):
+    """Payments the resolver read a fencer's name in, waiting for a person.
+
+    A queue of proposals, not of outcomes: nothing here has been credited and
+    nobody has been mailed. Confirming is the organizer supplying the variable
+    symbol the payer omitted (spec name-assisted-matching)."""
+    require_console_access(session, tournament, fencer)
+    rows = session.scalars(
+        select(BankTransaction)
+        .where(
+            BankTransaction.tournament_id == tournament.id,
+            BankTransaction.status == nameresolve.LIKELY,
+        )
+        .order_by(BankTransaction.date, BankTransaction.id)
+    ).all()
+    return [_transaction_out(session, tournament, row) for row in rows]
+
+
+def _proposal(session, tournament, transaction_id: int) -> BankTransaction:
+    transaction = session.get(BankTransaction, transaction_id)
+    if transaction is None or transaction.tournament_id != tournament.id:
+        raise HTTPException(status_code=404, detail="transaction_not_found")
+    if transaction.status != nameresolve.LIKELY:
+        raise HTTPException(status_code=409, detail="not_a_proposal")
+    return transaction
+
+
+@router.post("/likely/{transaction_id}/confirm", status_code=201)
+def confirm_proposal(
+    transaction_id: int,
+    tournament: TournamentDep,
+    session: SessionDep,
+    fencer: FencerDep,
+    mailer: MailerDep,
+):
+    """Accept the resolver's reading and credit the payment.
+
+    Goes through the manual-link path rather than beside it (design Decision
+    5): the same `payment_link` rule, the same crediting, the same tolerance,
+    the same survival across reruns. Confirming *is* the organizer supplying
+    the reference the payer omitted, so a confirmed proposal is afterwards
+    indistinguishable from a payment linked by hand — which is what it is.
+    """
+    require_console_access(session, tournament, fencer)
+    bank.require_payments_enabled(tournament)
+    transaction = _proposal(session, tournament, transaction_id)
+    registration = session.scalar(
+        select(Registration).where(
+            Registration.tournament_id == tournament.id,
+            Registration.fencer_id == transaction.proposed_fencer_id,
+            Registration.state.in_([RegistrationState.RESERVED, RegistrationState.PAID]),
+        )
+    )
+    if registration is None:
+        raise HTTPException(status_code=409, detail="no_registration_to_credit")
+
+    # addressed by id, not by symbol: the proposal named a person, and on a
+    # tournament whose organizer keeps the roster there is no symbol to name
+    rule = rules.create_rule(
+        session,
+        tournament,
+        fencer,
+        phase="payments",
+        kind="payment_link",
+        target=f"txn:{transaction.external_id}",
+        payload={"vs": [], "registration_ids": [registration.id]},
+    )
+    applied = matching.apply_payment_links(session, tournament, mailer)
+    return {"rule_id": rule.id, "applied": applied}
+
+
+@router.post("/likely/{transaction_id}/reject", response_model=TransactionOut)
+def reject_proposal(
+    transaction_id: int,
+    tournament: TournamentDep,
+    session: SessionDep,
+    fencer: FencerDep,
+):
+    """Refuse the resolver's reading. The payment returns to unresolved and the
+    pairing is remembered, so the same wrong answer is not offered twice.
+
+    Remembered per payment rather than per fencer: a name that mis-attracts one
+    payment has not thereby stopped being somebody's name (design, Open
+    Questions)."""
+    require_console_access(session, tournament, fencer)
+    transaction = _proposal(session, tournament, transaction_id)
+    refused = list(transaction.rejected_fencer_ids or [])
+    if transaction.proposed_fencer_id is not None:
+        refused.append(transaction.proposed_fencer_id)
+    transaction.rejected_fencer_ids = refused
+    transaction.proposed_fencer_id = None
+    transaction.status = "unmatched"
+    transaction.status_reason = "proposal_rejected"
+    session.commit()
+    session.refresh(transaction)
+    return _transaction_out(session, tournament, transaction)
+
+
+@router.get("/transactions/{transaction_id}/roster", response_model=TransactionRosterOut)
+def transaction_roster(
+    transaction_id: int,
+    tournament: TournamentDep,
+    session: SessionDep,
+    fencer: FencerDep,
+):
+    """The whole roster, ordered by how well each fencer matches this payment's
+    own text.
+
+    Every fencer, always. Ranking them all costs nothing once the scores exist
+    and never orders worse than alphabetically, and the hard payments — a
+    surname two fencers share, a placeholder somebody left in the form — are
+    exactly the ones no shortlist would have helped with (design Decision 6).
+    """
+    require_console_access(session, tournament, fencer)
+    transaction = session.get(BankTransaction, transaction_id)
+    if transaction is None or transaction.tournament_id != tournament.id:
+        raise HTTPException(status_code=404, detail="transaction_not_found")
+
+    resolution = nameresolve.resolve(session, tournament, transaction)
+    query, _ = nameresolve.query_for(transaction)
+    refused = set(transaction.rejected_fencer_ids or [])
+    proposed_id = resolution.proposed.id if resolution.proposed else None
+
+    registrations = {
+        registration.fencer_id: registration
+        for registration in session.scalars(
+            select(Registration).where(
+                Registration.tournament_id == tournament.id,
+                Registration.state.in_(
+                    [RegistrationState.RESERVED, RegistrationState.PAID]
+                ),
+            )
+        )
+    }
+    fencers = []
+    for ranked in resolution.ranked:
+        registration = registrations.get(ranked.key)
+        if registration is None:
+            continue
+        fencers.append(
+            RankedFencerOut(
+                fencer_id=ranked.key,
+                name=ranked.name,
+                registration_id=registration.id,
+                vs=registration.vs,
+                outstanding_amount=_cents_to_amount(registration.outstanding_cents),
+                score=round(ranked.score, 4),
+                proposed=ranked.key == proposed_id,
+                rejected=ranked.key in refused,
+            )
+        )
+    return TransactionRosterOut(
+        transaction_id=transaction.id, query=query, fencers=fencers
+    )
 
 
 def _transaction_out(session, tournament, transaction: BankTransaction) -> TransactionOut:
@@ -223,6 +402,8 @@ def _transaction_out(session, tournament, transaction: BankTransaction) -> Trans
         )
     if transaction.status == "unmatched":
         out.candidate_vs = matching.detect_candidates(session, transaction)
+    if transaction.proposed_fencer is not None:
+        out.proposed_fencer_name = transaction.proposed_fencer.display_name
     return out
 
 

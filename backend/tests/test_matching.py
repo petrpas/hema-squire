@@ -208,7 +208,11 @@ def test_unknown_and_missing_vs_land_in_unmatched_queue(client, auth_headers, ma
 
     queue = client.get("/api/tournaments/cup/payments/unmatched", headers=organizer).json()
     reasons = {t["external_id"]: t["status_reason"] for t in queue}
-    assert reasons == {"1": "unknown_vs", "2": "no_vs"}
+    # `no_vs` became more specific once the resolver started reading the payer's
+    # own words (spec name-assisted-matching): a payment with no symbol is now
+    # told apart by *why* it could not be resolved. This one's message is `dar`,
+    # which names nobody on the roster
+    assert reasons == {"1": "unknown_vs", "2": "no_name_match"}
 
 
 def test_second_payment_for_paid_registration_flagged(client, auth_headers, mailbox):
@@ -484,7 +488,10 @@ def test_payer_name_digits_not_treated_as_vs(client, auth_headers, mailbox):
     assert state["outstanding_amount"] == "1000.00"
 
     queue = client.get("/api/tournaments/cup/payments/unmatched", headers=organizer).json()
-    assert queue[0]["status_reason"] == "no_vs"
+    # the row carries no message at all, so the only text naming anybody is the
+    # payer's own name — which is who paid and not who the payment is for, and
+    # is never proposed (spec name-assisted-matching, design Decision 2)
+    assert queue[0]["status_reason"] == "payer_name_only"
     assert queue[0]["candidate_vs"] == []
 
 

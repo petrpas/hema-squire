@@ -102,11 +102,16 @@ def test_one_transfer_covers_two_fencers(client, auth_headers, mailbox):
         "/api/tournaments/cup/rules", params={"phase": "payments"}, headers=organizer
     ).json()
     assert listed[0]["kind"] == "payment_link"
-    # the amount credited per VS is recorded at apply time (design Decision 7)
-    assert listed[0]["payload"] == {
-        "vs": [vs_a, vs_b],
-        "credited": {str(vs_a): 100000, str(vs_b): 100000},
-    }
+    # What was credited to each registration is recorded at apply time (design
+    # Decision 7), keyed by the registration rather than by its variable symbol:
+    # a registration on a tournament whose organizer keeps the roster has no
+    # symbol to key by (spec name-assisted-matching). Rules written before this
+    # keyed by symbol and are still read back that way, so nothing stored needs
+    # rewriting.
+    payload = listed[0]["payload"]
+    assert payload["vs"] == [vs_a, vs_b]
+    assert sorted(payload["credited"].values()) == [100000, 100000]
+    assert all(key.startswith("reg:") for key in payload["credited"])
 
 
 def test_link_survives_reingestion(client, auth_headers, mailbox):

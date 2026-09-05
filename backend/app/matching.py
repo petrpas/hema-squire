@@ -23,7 +23,7 @@ from pydantic import BaseModel
 from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
-from app import bank, emails
+from app import bank, emails, nameresolve
 from app import rules as rules_engine
 from app.availability import taken_seats
 from app.mail import Mailer
@@ -56,6 +56,10 @@ class MatchResult(BaseModel):
     matched: int = 0
     flagged: int = 0
     unmatched: int = 0
+    # proposed to a fencer by the payer's own words, waiting for a person to
+    # confirm. Counted apart from `matched` because nothing has been credited
+    # (spec name-assisted-matching)
+    likely: int = 0
     # credited but short of the amount due — left reserved, not queued
     # (design Decision 1)
     partial: int = 0
@@ -341,8 +345,20 @@ def _evaluate_transaction(
 ) -> None:
     tokens = detected_vs_tokens(transaction)
     if not tokens:
-        _finish(transaction, "unmatched", "no_vs")
-        result.unmatched += 1
+        # No symbol quoted — about one payment in ten, and every payment on a
+        # tournament whose registrations the organizer keeps. Ask the resolver
+        # who the payer's own words name before giving up on it (spec
+        # name-assisted-matching, design Decision 7).
+        #
+        # A proposal moves nothing: the transaction's status becomes `likely`
+        # and it names a fencer, while the registration keeps its total, its
+        # credited amount and its state. Crediting is by variable symbol alone,
+        # and confirming is the organizer supplying the one the payer omitted.
+        resolution = nameresolve.resolve(session, tournament, transaction)
+        if nameresolve.propose(transaction, resolution):
+            result.likely += 1
+        else:
+            result.unmatched += 1
         return
 
     issued = _resolve_global(session, tokens)
@@ -552,6 +568,74 @@ def _transaction_by_external_id(
     )
 
 
+def linked_registrations(
+    session: Session, tournament: Tournament, payload: dict
+) -> list[Registration]:
+    """The registrations one `payment_link` rule covers.
+
+    Addressed two ways, and both are needed. By **variable symbol** where the
+    payer quoted one, which is how every rule written before this was recorded.
+    By **registration id** where there is no symbol to quote: a registration on
+    a tournament whose organizer keeps the roster carries none at all, and an
+    organizer resolving a payment whose symbol was mistyped knows the person
+    rather than the number (spec name-assisted-matching).
+
+    Order is symbols first, then ids, because a link distributes a payment
+    across the registrations it covers in the order they are listed and an
+    existing rule must keep distributing it the way it did.
+    """
+    found: list[Registration] = []
+    for vs in payload.get("vs", []):
+        registration = session.scalar(
+            select(Registration).where(
+                Registration.tournament_id == tournament.id, Registration.vs == vs
+            )
+        )
+        if registration is not None:
+            found.append(registration)
+    for registration_id in payload.get("registration_ids", []):
+        registration = session.scalar(
+            select(Registration).where(
+                Registration.tournament_id == tournament.id,
+                Registration.id == registration_id,
+            )
+        )
+        if registration is not None and registration not in found:
+            found.append(registration)
+    return found
+
+
+def _registration_label(registration: Registration) -> str:
+    """How a registration is named in an audit line. Its variable symbol where
+    it has one, because that is what an organizer reading a statement sees;
+    otherwise the fencer, which is what identifies it on a tournament that
+    issues no symbols."""
+    if registration.vs is not None:
+        return f"VS {registration.vs}"
+    return f"registration {registration.id} ({registration.fencer.display_name})"
+
+
+def credit_key(registration: Registration) -> str:
+    """How a rule records what it credited to one registration, so that removing
+    it reverts exactly what happened.
+
+    The registration's id, because a registration need not have a variable
+    symbol. Rules written before this keyed by symbol, and `_credited_amount`
+    reads both.
+    """
+    return f"reg:{registration.id}"
+
+
+def _credited_amount(credited: dict, registration: Registration) -> int:
+    """What a rule recorded against one registration, under either key."""
+    amount = credited.get(credit_key(registration))
+    if amount:
+        return amount
+    if registration.vs is not None:
+        return credited.get(str(registration.vs)) or 0
+    return 0
+
+
 def apply_payment_links(session: Session, tournament: Tournament, mailer: Mailer) -> int:
     """Re-assert active payment_link rules. Idempotent: an already-matched
     transaction is skipped, so reruns and re-ingestion converge on the same
@@ -571,15 +655,7 @@ def apply_payment_links(session: Session, tournament: Tournament, mailer: Mailer
         )
         if transaction is None or transaction.status == "matched":
             continue
-        registrations = [
-            session.scalar(
-                select(Registration).where(
-                    Registration.tournament_id == tournament.id, Registration.vs == vs
-                )
-            )
-            for vs in rule.payload.get("vs", [])
-        ]
-        registrations = [r for r in registrations if r is not None]
+        registrations = linked_registrations(session, tournament, rule.payload)
         which = match_currency(transaction, tournament)
         remaining = transaction.amount_cents
         credited: dict[str, int] = {}
@@ -593,7 +669,7 @@ def apply_payment_links(session: Session, tournament: Tournament, mailer: Mailer
             if amount <= 0:
                 continue
             remaining -= amount
-            credited[str(registration.vs)] = amount
+            credited[credit_key(registration)] = amount
             _credit(registration, which, amount)
             _settle(
                 session,
@@ -632,23 +708,21 @@ def unapply_payment_link(session: Session, tournament: Tournament, rule) -> None
     which = match_currency(transaction, tournament) if transaction is not None else None
     credited = rule.payload.get("credited", {})
 
+    # a registration another live rule still covers keeps its credit; identity
+    # is the registration itself, not the symbol, since it may not have one
     still_linked = {
-        vs
+        other_registration.id
         for other in rules_engine.active_rules(session, tournament, kind="payment_link")
-        for vs in other.payload.get("vs", [])
+        if other.id != rule.id
+        for other_registration in linked_registrations(session, tournament, other.payload)
     }
-    for vs in rule.payload.get("vs", []):
-        if vs in still_linked:
+    for registration in linked_registrations(session, tournament, rule.payload):
+        if registration.id in still_linked:
             continue
-        amount = credited.get(str(vs))
+        amount = _credited_amount(credited, registration)
         if not amount:
-            continue  # this rule never actually credited this VS
-        registration = session.scalar(
-            select(Registration).where(
-                Registration.tournament_id == tournament.id, Registration.vs == vs
-            )
-        )
-        if registration is None or registration.state != RegistrationState.PAID:
+            continue  # this rule never actually credited this registration
+        if registration.state != RegistrationState.PAID:
             continue
         auto_matched = session.scalar(
             select(BankTransaction.id).where(
@@ -670,7 +744,10 @@ def unapply_payment_link(session: Session, tournament: Tournament, rule) -> None
                 registration_id=registration.id,
                 transaction_id=transaction.id if transaction else None,
                 kind="manual_link_removed",
-                detail=f"rule {rule.id}: VS {vs} back to reserved ({amount} cents)",
+                detail=(
+                    f"rule {rule.id}: {_registration_label(registration)}"
+                    f" back to reserved ({amount} cents)"
+                ),
             )
         )
     session.commit()

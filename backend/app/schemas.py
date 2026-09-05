@@ -1039,6 +1039,12 @@ class TransactionOut(BaseModel):
     status: str | None
     status_reason: str | None
     matched_registration_id: int | None
+    # who the payment's own text named, read at parse time — never the payer
+    named_person: str | None = None
+    # who the resolver proposes while the status is `likely`. A proposal, not an
+    # outcome: nothing is credited and nobody is mailed until a person confirms
+    proposed_fencer_id: int | None = None
+    proposed_fencer_name: str | None = None
     # when the matcher last considered this transaction (design Decision 2)
     last_evaluated_at: datetime.datetime | None
     # only meaningful for a flagged transaction; whether reinstate is offered
@@ -1066,8 +1072,24 @@ class ExpiredHoldingOut(BaseModel):
 
 
 class LinkIn(BaseModel):
+    """Which registrations a payment covers, addressed either way.
+
+    By variable symbol where the payer quoted one, and by registration id where
+    there is none to quote — a registration on a tournament whose organizer
+    keeps the roster carries no symbol at all, and an organizer resolving a
+    mistyped one knows the person rather than the number (spec
+    name-assisted-matching). At least one of the two must name something.
+    """
+
     transaction_id: int
-    vs: list[int] = Field(min_length=constraints.LINK_VS_MIN_ITEMS)
+    vs: list[int] = []
+    registration_ids: list[int] = []
+
+    @model_validator(mode="after")
+    def _names_something(self):
+        if not self.vs and not self.registration_ids:
+            raise ValueError("no_registrations")
+        return self
 
 
 class IngestAndMatchOut(BaseModel):
@@ -1224,3 +1246,31 @@ class ParticipantListOut(BaseModel):
     # system cannot say whether a list is up to date, and saying so would be
     # wrong the moment the organizer imports again (design D2)
     as_of: datetime.datetime | None
+
+
+class RankedFencerOut(BaseModel):
+    """One fencer on the roster, as ranked against a payment's own text. The
+    dialog lists all of them ordered — ranking the whole roster costs nothing
+    once the scores exist and never ranks worse than alphabetical — with the
+    strongest marked where there is one (design Decision 6)."""
+
+    fencer_id: int
+    name: str
+    registration_id: int
+    vs: int | None
+    outstanding_amount: decimal.Decimal
+    score: float
+    # whether this one is strong enough and far enough ahead to have been
+    # proposed on its own; at most one in a list is
+    proposed: bool
+    # the organizer has already refused this fencer for this payment
+    rejected: bool
+
+
+class TransactionRosterOut(BaseModel):
+    """The ranked roster for one payment, and the query it was ranked against —
+    stated so an organizer reading a surprising order can see what was asked."""
+
+    transaction_id: int
+    query: str
+    fencers: list[RankedFencerOut]

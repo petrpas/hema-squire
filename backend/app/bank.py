@@ -43,6 +43,14 @@ class IncomingTransaction(BaseModel):
     message: str | None = None
     payer_name: str | None = None
     payer_account: str | None = None
+    # Who the payment is *for*, as the payer's own text names them — never the
+    # payer. The two are different people often enough to matter: one club
+    # organizer pays for three fencers in the pilot's statement alone, and
+    # crediting the payer would credit the wrong person every time (spec
+    # name-assisted-matching). Null where the text names nobody; the resolver
+    # decides what to fall back on, because that decision has to be weighable
+    # and the model cannot weigh it.
+    named_person: str | None = None
     # additional text-bearing Fio fields that carry SEPA references on some
     # routings (design harden-payment-matching Decision 4); deliberately not
     # payer_name/payer_account, which are structured identifiers, not text
@@ -227,6 +235,8 @@ class ParsedStatementRow(BaseModel):
     message: str | None = None
     payer_name: str | None = None
     payer_account: str | None = None
+    # who the payment is *for*, never the payer — see IncomingTransaction
+    named_person: str | None = None
 
 
 class StatementParser(Protocol):
@@ -262,6 +272,17 @@ Rules:
 7. external_id: the bank's own identifier for the movement, if the row has
    one. Null if it does not — do not invent one, and never use the row number.
 8. currency: the ISO code (CZK, EUR). Default to CZK only if nothing states it.
+9. named_person: the person this payment is FOR, as the row's own text names
+   them. Take it from the message and the other free-text fields. It is often
+   written beside a discipline list or a tournament prefix — "NaDuel26: Jan Sax
+   Bělina - šavle a meč a štítek" is for Jan Sax Bělina — and it may be written
+   surname first, or with the spaces missing, or as a surname alone. Report it
+   as the row writes it; do not tidy it, expand it, or guess a fuller name.
+   Where the text names nobody, report null. **Never fall back to the payer
+   name.** One person routinely pays for another, and reporting the payer as
+   the named person makes the strongest evidence point at the wrong person
+   exactly when the payer is also competing. Null is the honest answer and the
+   caller knows what to do with it.
 """
 
 
@@ -334,6 +355,7 @@ def to_transaction(row: ParsedStatementRow, raw: dict[str, str]) -> IncomingTran
         message=row.message,
         payer_name=row.payer_name,
         payer_account=row.payer_account,
+        named_person=row.named_person,
     )
 
 
