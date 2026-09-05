@@ -16,7 +16,7 @@ from app.config import settings
 from app.db import SessionLocal
 from app.mail import Mailer, get_mailer
 from app.models import PaymentEvent, Registration, RegistrationState, Team, Tournament
-from app.setup import seating_deadline_for, seating_has_settled
+from app.setup import clocks_run, seating_deadline_for, seating_has_settled
 
 logger = logging.getLogger(__name__)
 
@@ -59,17 +59,18 @@ def process_reminders(session: Session, tournament: Tournament, mailer: Mailer) 
             Registration.tournament_id == tournament.id,
             Registration.state == RegistrationState.RESERVED,
             Registration.reminded_at.is_(None),
-            # an issued registration is never reminded: its clocks are dormant
-            # by origin, and _reminder_due would otherwise anchor it to the
-            # seating deadline and mail a roster that registered a season ago
-            # (spec imported-registrations)
-            Registration.clocks_dormant.is_(False),
         )
     ).all()
+    # Dormancy is asked once, of `setup.clocks_run`, and never spelled as a
+    # condition here (design unify-lifecycle-dormancy D1). Without it
+    # `_reminder_due` would anchor a dormant registration to the seating
+    # deadline and mail a roster that registered a season ago.
     due = [
         registration
         for registration in candidates
-        if not registration.fully_queued and _reminder_due(tournament, registration, now)
+        if clocks_run(tournament, registration)
+        and not registration.fully_queued
+        and _reminder_due(tournament, registration, now)
     ]
     for registration in due:
         registration.reminded_at = _now()
@@ -113,12 +114,12 @@ def process_expiries(session: Session, tournament: Tournament, mailer: Mailer) -
             Registration.state == RegistrationState.RESERVED,
             Registration.expires_at.is_not(None),
             Registration.expires_at <= _now(),
-            # stated rather than left to follow from expires_at being NULL: an
-            # issued registration never expires for non-payment whatever else
-            # is written on it (spec imported-registrations)
-            Registration.clocks_dormant.is_(False),
         )
     ).all()
+    # Stated rather than left to follow from expires_at being NULL: a dormant
+    # registration never expires for non-payment whatever else is written on it
+    # (design unify-lifecycle-dormancy D1)
+    overdue = [r for r in overdue if clocks_run(tournament, r)]
     if seating_has_settled(tournament, _now().date()):
         returned = 0
         for registration in overdue:
@@ -195,36 +196,56 @@ def _demote(registration: Registration) -> bool:
     return True
 
 
-def pending_demotions(session: Session, tournament: Tournament) -> int:
-    """How many registrations `settle_seating` would move below the line right
-    now — what the console states before asking the organizer to confirm an
-    irreversible settlement."""
+def _demotable(session: Session, tournament: Tournament) -> list[Registration]:
+    """The registrations settling seating would move below the line, in
+    registration order.
+
+    **One selection, two callers.** `pending_demotions` counts what this
+    returns and `settle_seating` acts on it, so the number the console states
+    before the organizer confirms an irreversible settlement is the number the
+    settlement then delivers. They used to be two queries carrying the same
+    `where` and a comment on each asking future editors to keep them aligned;
+    the alignment is structural now (design unify-lifecycle-dormancy D5).
+
+    Reserved means "still owes money" only where money was asked for. A dormant
+    registration is excluded whatever made it dormant — on a payments-off
+    tournament nothing ever leaves RESERVED, so reading the state as a debt
+    would select the entire field and take seats nobody was ever billed for
+    (design D3).
+
+    Holding something above the line is part of the selection rather than a
+    test `settle_seating` makes afterwards: a registration already wholly in the
+    queue is neither counted nor audited, because there is nothing to move."""
     reserved = session.scalars(
         select(Registration).where(
             Registration.tournament_id == tournament.id,
             Registration.state == RegistrationState.RESERVED,
-            # an issued registration stays seated. The seating deadline is the
-            # second of the two clocks, and it is dormant for the same reason
-            # the first is: the row it came from stated who was competing, and
-            # demoting them for money the organizer never asked for would take
-            # a seat nobody was owed (spec imported-registrations). This
-            # predicate is shared with `pending_demotions`, which states the
-            # count the organizer confirms — the two must select alike
-            Registration.clocks_dormant.is_(False),
         )
+        .order_by(Registration.registered_at)
     ).all()
-    return sum(
-        1
+    return [
+        registration
         for registration in reserved
-        if any(not entry.is_substitute for entry in registration.entries)
-        or any(not team.waitlisted for team in registration.teams)
-    )
+        if clocks_run(tournament, registration)
+        and (
+            any(not entry.is_substitute for entry in registration.entries)
+            or any(not team.waitlisted for team in registration.teams)
+        )
+    ]
+
+
+def pending_demotions(session: Session, tournament: Tournament) -> int:
+    """How many registrations `settle_seating` would move below the line right
+    now — what the console states before asking the organizer to confirm an
+    irreversible settlement."""
+    return len(_demotable(session, tournament))
 
 
 def settle_seating(session: Session, tournament: Tournament) -> int:
     """Close the tournament's seating: every registration still owing money —
-    that is, still RESERVED — is moved to the substitute queue in place, and
-    the tournament is stamped as settled. Returns how many were demoted.
+    that is, still RESERVED and not dormant — is moved to the substitute queue
+    in place, and the tournament is stamped as settled. Returns how many were
+    demoted.
 
     A pure pass with no trigger condition of its own, so the deadline tick and
     the organizer's settle-early action are literally the same operation
@@ -232,26 +253,20 @@ def settle_seating(session: Session, tournament: Tournament) -> int:
     `Registration.registered_at`, so demotion places each registration in the
     queue in registration order with no sorting here.
 
-    The stamp is what makes settlement one-shot. Its demotion predicate is
-    "reserved and seated", which is exactly what `admit_substitute` produces,
-    so without the stamp every later tick would silently unwind the
+    **The stamp is unconditional.** Closing seating and demoting debtors are two
+    things this pass does at once, and only the second is about money: seats are
+    finite whether or not anyone paid for them, so a tournament with nobody to
+    demote still closes and still sends later registrations to the queue (design
+    unify-lifecycle-dormancy D3). Immediate mode has always reached that state
+    by a different road, demoting nobody because every unpaid reservation
+    expired first.
+
+    The stamp is also what makes settlement one-shot. Its demotion predicate is
+    "reserved, seated and not dormant", which is exactly what `admit_substitute`
+    produces, so without the stamp every later tick would silently unwind the
     organizer's promotions."""
-    reserved = session.scalars(
-        select(Registration).where(
-            Registration.tournament_id == tournament.id,
-            Registration.state == RegistrationState.RESERVED,
-            # an issued registration stays seated. The seating deadline is the
-            # second of the two clocks, and it is dormant for the same reason
-            # the first is: the row it came from stated who was competing, and
-            # demoting them for money the organizer never asked for would take
-            # a seat nobody was owed (spec imported-registrations). This
-            # predicate is shared with `pending_demotions`, which states the
-            # count the organizer confirms — the two must select alike
-            Registration.clocks_dormant.is_(False),
-        )
-    ).all()
     demoted = 0
-    for registration in reserved:
+    for registration in _demotable(session, tournament):
         if not _demote(registration):
             continue
         demoted += 1
@@ -347,18 +362,18 @@ def run_tournament_tick(
     # date is queued or expired would come down to tick timing. Settling first
     # makes it uniform — everything still reserved at the deadline is queued.
     result["seating_demoted"] = settle_seating_if_due(session, tournament)
-    # Reminders and expiry are the money passes, so they do not run at all
-    # while the payments feature is off (design tournament-modes D5) — nothing
-    # is owed, so there is nothing to remind about and no window to lapse.
-    # Seating settlement and composition reminders keep running above and
-    # below: they are about seats and rosters, which every tournament has.
-    if tournament.feature_payments:
-        # Expire second: a reservation past its window must not receive a reminder.
-        result["expired"] = process_expiries(session, tournament, mailer)
-        result["reminders"] = process_reminders(session, tournament, mailer)
-    else:
-        result["expired"] = 0
-        result["reminders"] = 0
+    # Every pass runs on every tournament, and each asks `setup.dormancy_cause`
+    # what it may touch. The payments feature used to be tested here as well,
+    # skipping these two wholesale — a second decision point that reached two of
+    # the four passes and not the other two, which is how a payments-off
+    # tournament came to demote its entire field at the seating deadline (design
+    # unify-lifecycle-dormancy D4). The cost of dropping it is two indexed
+    # selects that return nothing; the gain is that there is one place to be
+    # wrong.
+    #
+    # Expire second: a reservation past its window must not receive a reminder.
+    result["expired"] = process_expiries(session, tournament, mailer)
+    result["reminders"] = process_reminders(session, tournament, mailer)
     result["composition_reminders"] = process_composition_reminders(session, tournament, mailer)
     return result
 

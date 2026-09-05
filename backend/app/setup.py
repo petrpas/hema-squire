@@ -10,7 +10,14 @@ import zoneinfo
 from fastapi import HTTPException
 
 from app.constraints import DEFAULT_TIMEZONE
-from app.models import DisciplineKind, PaymentMode, Tournament
+from app.models import DisciplineKind, PaymentMode, Registration, Tournament
+
+# the closed set of reasons a registration's lifecycle clocks are dormant.
+# One predicate answers for every lifecycle pass (design unify-lifecycle-
+# dormancy D1); a pass that grows a condition of its own is the defect this
+# set exists to prevent.
+DORMANT_PAYMENTS_OFF = "payments_off"
+DORMANT_ISSUED_FROM_IMPORT = "issued_from_import"
 
 # distinct 4xx reasons a registration submission can be rejected with
 NOT_PUBLISHED = "not_published"
@@ -315,6 +322,48 @@ def seating_has_settled(tournament: Tournament, today: datetime.date) -> bool:
         tournament.seating_settled_at is not None
         or today > seating_deadline_for(tournament)
     )
+
+
+def dormancy_cause(tournament: Tournament, registration: Registration) -> str | None:
+    """Why Squire does not run its lifecycle clocks against this registration,
+    or None where it does.
+
+    **The single decision point.** The reminder pass, the expiry pass, the
+    demotion carried out at seating settlement and the count of pending
+    demotions the console states before the organizer confirms one all consult
+    this and nothing else. Two conditions used to answer it separately and with
+    different reach — a `feature_payments` branch wrapping two of the four
+    passes, and a `clocks_dormant` term inside each pass's query — and the gap
+    between them demoted every registration on a payments-off tournament to the
+    substitute queue on the day after registration closed. A condition added to
+    a pass instead of here is that defect returning.
+
+    A live setting is read live, so turning payments on starts the clocks from
+    that instant with no registration rewritten. An origin is stored, because it
+    is not recomputable from what the registration presently holds.
+
+    Where both hold, the tournament-wide cause is reported: it explains every
+    registration rather than one, which is what a reader asking "why is nothing
+    moving?" needs first.
+
+    What is dormant is the passage of time, never the money. A dormant
+    registration is matched, linked and credited like any other.
+
+    A third cause is expected here — the tournament whose registrations its
+    organizer keeps — and adding it is one member of the set above and one
+    branch below."""
+    if not tournament.feature_payments:
+        return DORMANT_PAYMENTS_OFF
+    if registration.clocks_dormant:
+        return DORMANT_ISSUED_FROM_IMPORT
+    return None
+
+
+def clocks_run(tournament: Tournament, registration: Registration) -> bool:
+    """The positive reading of `dormancy_cause`, for the call sites that filter
+    rather than report. One function decides; this only spells it the way a
+    comprehension reads."""
+    return dormancy_cause(tournament, registration) is None
 
 
 def amendment_availability(tournament: Tournament, now: datetime.datetime) -> str | None:

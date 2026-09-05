@@ -875,10 +875,12 @@ def admit_substitute(
     totals = pricing.registration_total(registration, tournament)
     registration.total_amount = totals.local
     registration.total_eur = totals.eur
-    # an issued registration's clocks are dormant by origin, so promotion
-    # bills it but opens no window: it never acquires a due date, whatever
-    # happens to it later (spec imported-registrations)
-    if not registration.clocks_dormant:
+    # A dormant registration's promotion bills it but opens no window: it never
+    # acquires a due date, whatever happens to it later. Asked of the one
+    # predicate the lifecycle passes ask, so the promotion path cannot come to
+    # disagree with them about what a dormant registration is (design
+    # unify-lifecycle-dormancy D1)
+    if setup.clocks_run(tournament, registration):
         registration.expires_at = _promotion_expires_at(tournament)
     if was_paid:
         session.add(

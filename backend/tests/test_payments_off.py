@@ -173,12 +173,17 @@ def test_nothing_expires_or_is_reminded_across_a_long_tick(client, auth_headers,
     assert result["reminders"] == 0
     assert mailbox.sent == []
 
-    assert (
-        db_session()
-        .scalar(select(Registration).where(Registration.vs == registration["vs"]))
-        .state
-        == RegistrationState.RESERVED
+    row = db_session().scalar(
+        select(Registration).where(Registration.vs == registration["vs"])
     )
+    assert row.state == RegistrationState.RESERVED
+    # The state assertion above is not sufficient on its own and used to be all
+    # this test made: a registration demoted to the substitute queue is still
+    # RESERVED, so seating settlement could move the whole field and this test
+    # would pass. It did, on every payments-off tournament past its seating
+    # deadline, until unify-lifecycle-dormancy. The placements are what say the
+    # seat was kept.
+    assert [entry.is_substitute for entry in row.entries] == [False]
 
 
 def test_lifecycle_endpoint_is_refused(client, auth_headers):
