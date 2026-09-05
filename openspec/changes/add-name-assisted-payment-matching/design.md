@@ -200,3 +200,31 @@ either direction, which is the benefit of Decision 4.
 - Should a rejected pairing be remembered per payment, or per fencer across
   payments? Per payment is the conservative reading and what the spec says; per
   fencer would silence a fencer whose name keeps mis-attracting payments.
+
+
+## Decision (2026-09-05): the resolver is the path, not a branch off it
+
+Written as an addition to `matching.py`'s `no_vs` branch, which assumed a VS
+branch exists to fall out of. On a manual tournament it does not: no registration
+carries a symbol, so every payment reaches resolution by name, and the branch
+that used to be the exception is the whole flow.
+
+This is not a different algorithm — the ranking, the two thresholds and the
+refusal to propose without a clear single winner are unchanged, and they were
+measured against a statement in which **not one of 43 payments carried a symbol
+anyway**. What changes is what it means to fail. Where a symbol exists, an
+unresolved payment falls back to a human typing a number they can look up. Where
+none does, an unresolved payment falls back to a human picking a person, and that
+control has to exist before this is useful.
+
+So the roster-listing endpoint (task 4.3) is promoted from a convenience for the
+proposal dialog to the addressing mechanism for manual linking itself, and the
+existing VS-addressed link dialog needs a fencer-addressed counterpart on a
+tournament whose registrations have no symbols.
+
+**Threshold caution carried over.** The constants were tuned on a roster of 54
+against a statement of 43. On a manual tournament there is no VS-matched majority
+to absorb the resolver's mistakes — every payment goes through it — so a wrong
+confident proposal is a larger share of the outcome than the pilot measured.
+That argues for keeping the margin requirement strict and the "propose only on a
+clear single winner" rule absolute, not for loosening either.

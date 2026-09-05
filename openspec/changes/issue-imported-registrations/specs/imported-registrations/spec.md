@@ -16,9 +16,27 @@ not exist.
 The action SHALL state, before it runs, how many rows it will issue
 registrations for, and SHALL state that no mail will be sent.
 
+**A variable symbol SHALL be issued only where Squire keeps the tournament's
+registrations** (`tournament-mode`). A symbol is what Squire tells a fencer to
+quote so a payment can find its registration; on a manual tournament it has told
+them nothing, since they registered through the organizer's own form and paid
+against whatever that form said. A symbol minted afterwards would appear on no
+statement and match no transaction, while consuming a number from a sequence
+that is unique across the deployment and never reused. On a manual tournament the
+registration SHALL be created with its price, its entries and its dormant clocks,
+and with no symbol.
+
+A registration carrying no symbol SHALL be reconciled by the payer's own words
+instead, as fixed by `name-assisted-matching`. No surface SHALL read the absence
+of a symbol as the absence of a registration.
+
+#### Scenario: A manual tournament's roster carries no symbols
+- **WHEN** the organizer of a tournament they keep the registrations for issues registrations for fifty imported rows
+- **THEN** fifty registrations are created with their prices and their dormant clocks, none carries a variable symbol, and none is drawn from the tournament's sequence
+
 #### Scenario: Roster becomes billable
 - **WHEN** the organizer issues registrations for a fencer list of imported rows that have none
-- **THEN** each row gains a registration carrying a variable symbol, and the outstanding amount for each row appears in the fencer list
+- **THEN** each row gains a registration, the outstanding amount for each row appears in the fencer list, and a variable symbol is carried only where Squire keeps the registrations
 
 #### Scenario: Not offered before deduplication has concluded
 - **WHEN** duplicate groups are still pending the organizer's review

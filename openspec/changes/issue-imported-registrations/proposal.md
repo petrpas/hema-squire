@@ -46,7 +46,8 @@ read at.
   computed and presented "as a statement of what the tournament costs rather
   than a demand". An issued registration is dormant for the same reason by a
   different cause — its origin rather than the tournament's configuration.
-- **A variable symbol is issued**, from the tournament's own sequence, so the
+- **A variable symbol is issued only where Squire keeps the registrations**,
+  from the tournament's own sequence, so the
   fencer can be paid for, quoted a QR code, matched and linked exactly as an
   in-app registration is. This is the whole point: one payment model, not two.
 - **Issuing is idempotent and repeatable.** A row that already has a
@@ -112,7 +113,8 @@ carrying values for these rows, with no change to `SheetArea` — it already
 renders `outstanding_amount` for registration-backed rows.
 
 **Data**: this creates real fencers and registrations from imported rows and
-allocates variable symbols, which is not reversible by re-running the action.
+allocates variable symbols on a Squire-kept tournament, which is not reversible
+by re-running the action.
 The confirmation is the guard, and `data-export` carries the results like any
 other registration.
 
@@ -127,3 +129,35 @@ and off), VS allocation and uniqueness, idempotent rerun, and the scheduler
 leaving issued registrations alone; `vitest` for the action and its
 confirmation; then the pilot itself — 54 rows issued, and the 43 waiting
 transactions become linkable.
+
+
+## Revision, 2026-09-05: no variable symbol in manual mode
+
+**A symbol Squire mints after the fact was never on any payment.** On a manual
+tournament the fencers registered through the organizer's own form and paid with
+whatever reference that form told them — or with none. A number invented a season
+later, which Squire has never shown to anybody, cannot match an incoming payment
+and exists only to be looked at. It is not free either: a variable symbol is
+unique across the deployment and never reused, so issuing fifty of them for a
+past tournament burns fifty numbers out of a namespace every future tournament
+shares.
+
+So issuing SHALL allocate a symbol only on a tournament whose registrations
+Squire keeps. On a manual one it creates the fencer, the registration, the
+entries and the frozen price, and stops there.
+
+Two things follow, and the second is a sequencing constraint rather than a
+design point.
+
+**The reason for waiting on deduplication changes.** It was that a row a merge
+may collapse must not spend an identifier first. With no identifier spent there
+is nothing to waste — but there is still a reason to wait, and it has to be
+stated as the reason it actually is: a merge after issuing leaves two
+registrations for one person, and the merge collapses rows, not registrations.
+
+**The code SHALL NOT change before name-assisted matching lands.** Manual
+linking addresses a registration by its variable symbol and by nothing else —
+`candidate_vs`, a typed symbol, `unknown_vs`. Removing the symbol today would
+leave an organizer with no way to reconcile a payment at all until
+`add-name-assisted-payment-matching` gives them one by name. The two land
+together or the manual path goes backwards.

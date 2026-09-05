@@ -61,3 +61,22 @@
 - [x] 7.1 **`Registration` is unique on (tournament, fencer)**, which no test had exercised. The pilot has one e-mail address covering *three different fencers* — Milan Diviš entered himself and both Pekáreks — so they resolve to one fencer record and only the first can be issued. The pass now asks before inserting rather than catching the `IntegrityError` after, which was indistinguishable from a variable-symbol collision and would have spent five symbols discovering the row could never be issued. Reason reported as `email_taken`, phrased about the address rather than calling the row a duplicate, because on a real roster this is usually one person entering several others
 - [x] 7.3 **`clear_imports` let an issued registration outlive its row.** The clear asserts no file was ever uploaded — "no batch, no source row … survives it" — but a registration issued for a cleared row survived, and being drawn under that row's id kept the fencer in the table after a total clear. Issued registrations are now deleted with their rows, children first and explicitly (SQLite has no cascade here); a transaction that had been linked to one returns to the unresolved queue rather than vanishing. The clear is **refused** where such a registration holds credit, mirroring `delete_tournament`'s rule that financial history is never deletable
 - [x] 7.2 **Capacity applied to the roster and left five fencers owing nothing.** The pilot's SA holds 42 against 48 entrants and SB 28 against 30, so eight placements queued — and a substitute placement is not billed. **Owner decision: capacity does not apply to an imported roster; everyone is seated.** A fencer list records who competed, not who applied, and the fencers on it were admitted by whoever ran the event. Every issued placement is now seated, issuing may leave a discipline over capacity, and that capacity keeps governing everyone who registers afterwards (design Decision 7)
+
+
+## 7. Revision, 2026-09-05: the symbol belongs to the automatic path
+
+Added after the automatic/manual cut landed and the owner pointed out that
+variable symbols are the automatic path's alone. Section 3.1 allocates one
+unconditionally; that is now wrong on a manual tournament, where Squire has told
+no payer any symbol and the number would match nothing while consuming one from a
+sequence that never recycles.
+
+**None of this may be implemented before `add-name-assisted-payment-matching`.**
+Manual linking addresses a registration by its symbol and by nothing else, so
+removing the symbol first takes away the organizer's only way to reconcile a
+payment and gives nothing back. The two land together.
+
+- [ ] 7.1 Allocate the variable symbol in `issuing.py` only where the tournament's registrations are Squire's; on a manual one create the registration with its price, its entries and its dormant clocks and no symbol
+- [ ] 7.2 Sweep every surface that reads `Registration.vs` for code that treats its absence as "no registration". `SettledCell` did exactly that and was fixed on 2026-09-05; the sheet row, the export, the payment-event details (`f"VS {registration.vs}"`) and the console's money columns are the rest of the list
+- [ ] 7.3 Tests: a manual tournament issues registrations with prices and no symbols, and the tournament's sequence has not advanced; a Squire-kept one is unchanged and still issues one symbol per row
+- [ ] 7.4 Restate Decision 4's deduplication gate on the ground that survives — a merge collapses rows, so merging after issuing leaves two registrations for one fencer — or relax it to a warning, which is what the weaker argument supports. Decide when the gate is next touched rather than now

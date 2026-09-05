@@ -19,7 +19,7 @@
 ## 3. Backend: resolution and the `likely` state
 
 - [ ] 3.1 Add `likely` to the transaction statuses and a reference to the fencer proposed, with an Alembic migration; record a rejected pairing so it is not proposed again
-- [ ] 3.2 At `matching.py:344` — the `no_vs` branch — consult the resolver instead of finishing as `unmatched` outright. Nothing before that branch changes
+- [ ] 3.2 At `matching.py:344` — the `no_vs` branch — consult the resolver instead of finishing as `unmatched` outright. Nothing before that branch changes. **On a manual tournament every payment reaches this branch**, because no registration carries a symbol: the same code, but the whole flow rather than the exception
 - [ ] 3.3 Query from the extracted named person; where there is none, fall back to the payment's text, and mark the resolution ineligible to be a clear winner when the fallback used the payer name
 - [ ] 3.4 Propose only on a clear single winner: score above the minimum AND margin above the minimum, both required
 - [ ] 3.5 Never propose a pairing already rejected, and never propose where the roster has no registration to credit
@@ -57,3 +57,18 @@
 - [ ] 7.3 Against the pilot's own 43 transactions, after `issue-imported-registrations` has run: confirm roughly 35 proposals and 8 unresolved, that the three Milan Diviš payments name three different fencers, and that no proposal has moved money before anyone confirmed anything
 - [ ] 7.4 Confirm a proposal and check the credit, the balance and the mail match what a VS-quoting payment produces
 - [ ] 7.5 Reject a proposal and check it returns to unresolved and is not proposed again
+
+
+## 7. Revision, 2026-09-05: the manual tournament has no symbols to fall back on
+
+`issue-imported-registrations` is revised to allocate no variable symbol where
+the organizer keeps the registrations, so on such a tournament this resolver is
+the only way a payment ever finds a fencer. **Neither half ships alone**:
+removing the symbol first leaves an organizer unable to reconcile anything, and
+shipping this first is harmless but leaves the symbol pointlessly minted.
+
+- [ ] 7.1 Manual linking addresses a **fencer**, not a symbol, on a tournament whose registrations carry none. `LinkDialog` offers `candidate_vs`, accepts a typed symbol and reports `unknown_vs`; all three are meaningless there. The roster-listing endpoint from 4.3 is the addressing mechanism — promote it from a convenience for the proposal dialog to the way the dialog works
+- [ ] 7.2 `POST /payments/link` takes a VS array. Give it a way to name registrations that have none, or address them by registration id, and keep the existing shape working for tournaments that do carry symbols
+- [ ] 7.3 Tests over a manual tournament end to end: registrations with no symbols, a statement of payments with no symbols, the resolver proposing, an organizer confirming, and the credit landing exactly as a VS-quoting payment's would
+- [ ] 7.4 Land together with `issue-imported-registrations` section 7. Verify in that order — symbols removed and name matching present in the same deploy — and confirm on the pilot that a payment can still be reconciled at every point
+- [ ] 7.5 Re-read the threshold constants before shipping. They were tuned where a VS-matched majority would have absorbed a wrong proposal; on a manual tournament every payment goes through the resolver, so a confident mistake is a larger share of the outcome. The rule stays "propose only on a clear single winner" and the margin stays strict

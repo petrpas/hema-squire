@@ -121,3 +121,40 @@ thresholds, and — hardest — that `likely` moves no money and sends no mail;
 `vitest` for the queue and the dialog; then the pilot's own 43 transactions,
 where the expected shape is roughly 35 proposals and 8 for a human, and where
 the three Milan Diviš payments must resolve to three different fencers.
+
+
+## Revision, 2026-09-05: in manual mode this is the only path, not the fallback
+
+The automatic/manual cut landed after this was written, and the owner has since
+fixed that **variable symbols belong to the automatic path alone**: a symbol is
+what Squire tells a fencer to quote, and on a manual tournament it has told them
+nothing. `issue-imported-registrations` is revised to allocate none there.
+
+That changes what this change is. It was written as a fallback — "at
+`matching.py:344`, the `no_vs` branch, consult the resolver instead of finishing
+as unmatched". On a manual tournament there is no VS branch to fall out of.
+Every payment arrives with no symbol, every registration carries none, and
+resolving by the payer's own words is the **only** way a payment ever finds a
+fencer.
+
+Three things follow.
+
+**The resolver stops being optional.** On a Squire-kept tournament it is a
+convenience that saves typing; on a manual one it is the reconciliation. A
+tournament whose organizer keeps the registrations and has no name matching has
+no way to record who paid at all, beyond marking them settled by hand — which
+records a verdict and no money.
+
+**Manual linking has to address a fencer, not a symbol.** The link dialog offers
+`candidate_vs`, accepts a typed symbol and reports `unknown_vs`; all three are
+meaningless where no registration has one. The roster-listing endpoint in task
+4.3 already points the right way, and the dialog has to follow it: an organizer
+picks a person, not a number.
+
+**This change and the symbol's removal land together.** Until this exists,
+removing the symbol would take away the only reconciliation an organizer has.
+The dependency runs both ways and neither half ships alone.
+
+What does not change: the design, the two experiments behind it, and the
+conclusion that the message alone beats the message and payer name together.
+Those were measured against the pilot's real statement and are unaffected.

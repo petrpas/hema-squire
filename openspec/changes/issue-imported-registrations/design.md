@@ -225,3 +225,34 @@ practice.
 - Should the organizer be able to issue registrations for a *selection* of rows
   rather than the whole list? Not needed for the pilot, and the whole-list action
   is the one that composes with a rerun.
+
+
+## Decision 9 (2026-09-05): the symbol belongs to the automatic path alone
+
+A variable symbol is what Squire tells a fencer to quote so that a payment can
+find its registration. On a manual tournament Squire tells them nothing: they
+registered elsewhere and paid against whatever the organizer's own form said. A
+symbol minted here would appear on no statement, match no transaction, and still
+consume a number from a deployment-wide sequence that never recycles.
+
+So the allocator is called only where the tournament's registrations are
+Squire's. Elsewhere the registration is created without one, and
+`Registration.vs` is already nullable, so nothing in the schema moves.
+
+**What this costs, and what pays for it.** Everything that addresses a
+registration by its symbol stops working on a manual tournament: automatic
+matching resolves through `Registration.vs`, and the manual link dialog offers
+`candidate_vs`, accepts a typed symbol and reports `unknown_vs`. That is the
+whole of the reconciliation path today.
+
+Name-assisted matching is what pays for it, and until it exists this decision is
+a plan and not an edit. Removing the symbol first would take away the only way an
+organizer has to say "this payment is that fencer's" and give nothing back.
+
+**Consequence for Decision 4's gate.** Issuing waits for deduplication because a
+row about to be merged must not spend a symbol. Where no symbol is spent that
+argument is empty, and the gate has to be restated on the ground that survives:
+a merge collapses *rows*, so merging after issuing leaves two registrations for
+one fencer and nothing to collapse them. That is a reason to wait, but it is a
+different reason, and it is weaker — it argues for warning rather than refusing.
+Left as it is for now; revisited when the gate is next touched.

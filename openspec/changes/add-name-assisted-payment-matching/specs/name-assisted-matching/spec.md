@@ -194,3 +194,24 @@ attachable to several registrations.
 #### Scenario: One payment covering several fencers
 - **WHEN** the organizer chooses more than one fencer for one payment
 - **THEN** the payment is linked to each of their registrations
+
+### Requirement: Where no registration carries a symbol, this is the whole of matching
+WHERE a tournament's registrations carry no variable symbol — which is every tournament whose registrations the organizer keeps (`tournament-mode`, `imported-registrations`) — resolution by the payer's own words SHALL be the only route by which a payment finds a fencer, and every incoming payment SHALL reach it.
+
+The resolver SHALL behave identically there. The same ranking, the same score and margin minimums, the same refusal to propose without a clear single winner: what changes is that nothing precedes it, not how it decides. A proposal SHALL still move no money and SHALL still wait for a person.
+
+**An organizer SHALL be able to resolve a payment by naming the fencer**, on such a tournament, without quoting a symbol that does not exist. Where a payment resolves to nobody, the control that links it by hand SHALL address a person rather than a symbol, since neither the registration nor the statement carries one.
+
+No surface SHALL treat the absence of a symbol as the absence of a registration.
+
+#### Scenario: Every payment goes through the resolver
+- **WHEN** a statement is imported against a tournament whose registrations carry no variable symbols
+- **THEN** every payment in it is resolved by the payer's own words, and none is set aside for quoting no symbol
+
+#### Scenario: The unresolved are linked by name
+- **WHEN** a payment on such a tournament resolves to nobody
+- **THEN** the organizer can link it by choosing the fencer, and is asked for no variable symbol
+
+#### Scenario: The decision rule is unchanged
+- **WHEN** two fencers score alike on such a tournament
+- **THEN** neither is proposed, exactly as on a tournament whose registrations carry symbols
