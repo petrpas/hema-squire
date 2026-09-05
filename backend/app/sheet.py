@@ -121,6 +121,40 @@ def _evidence(index: HRIndex | None, hr_id: int | None, payload: dict | None = N
     return evidence_fields(None)
 
 
+def _hr_proposal(
+    session: Session, tournament: Tournament, index, name, club, nationality, hr_id
+) -> tuple[int | None, dict | None, str]:
+    """A row's standing HEMA Ratings match: the id it is bound to or proposed,
+    the evidence payload behind a proposal, and the verdict to show.
+
+    A fencer-provided hr_id is a verdict at birth. A cached match binds its id
+    and fills the evidence register, and nothing else: the name, club and
+    nationality on the row stay the fencer's words until an organizer reaches a
+    verdict, or the review has nothing to compare against (spec etl-console,
+    The ledger idiom).
+
+    Shared with the registration branch of `base_rows`, because a registration
+    issued for a fencer-list row stands in that row's place and has to show what
+    the row showed. Issuing binds only a confirmed match, so an unratified
+    proposal would otherwise vanish the moment the roster became billable —
+    taking with it the only surface that could ratify it.
+    """
+    if hr_id is not None:
+        return hr_id, None, "confirmed"
+    if not name:
+        return None, None, "unknown"
+    match = importer.get_decision(
+        session, tournament, "hr_match", hr_match.identity_key(name, club)
+    )
+    if match is None:
+        return None, None, "unknown"
+    if match.payload.get("hr_id") is None:
+        return None, None, "none_found"
+    payload = match.payload
+    proposed = payload["hr_id"]
+    return proposed, payload, hr_match.derive_tier(name, nationality, proposed, index)
+
+
 def base_rows(
     session: Session, tournament: Tournament, index: HRIndex | None = None
 ) -> dict[str, Row]:
@@ -152,6 +186,20 @@ def base_rows(
         # registration. The source rows below are added with `setdefault`, so
         # claiming the id here is what removes the duplicate.
         row_id = registration.source_row_id or f"reg:{registration.id}"
+        # A registration issued for a fencer-list row keeps the row's standing
+        # match proposal. Issuing binds only a confirmed one, so without this a
+        # roster matched but not yet ratified reads as wholly unmatched the
+        # moment it becomes billable — and the proposals are unreachable, since
+        # ratifying happens on this table.
+        row_hr_id, row_hr_payload, row_verdict = _hr_proposal(
+            session,
+            tournament,
+            index,
+            registration.fencer.display_name,
+            registration.fencer.club,
+            registration.fencer.nationality,
+            registration.fencer.hr_id,
+        )
         extra_rentals, extra_afterparty, extra_other = _extras_summary(registration)
         notes = registration.notes
         if extra_other:
@@ -163,9 +211,9 @@ def base_rows(
             "reg_name": None,
             "nationality": registration.fencer.nationality,
             "club": registration.fencer.club,
-            "hr_id": registration.fencer.hr_id,
-            **_evidence(index, registration.fencer.hr_id),
-            "match_verdict": "confirmed" if registration.fencer.hr_id else "unknown",
+            "hr_id": row_hr_id,
+            **_evidence(index, row_hr_id, row_hr_payload),
+            "match_verdict": row_verdict,
             "email": registration.fencer.email,
             "disciplines": [
                 e.discipline.slug for e in registration.entries if not e.is_substitute
@@ -261,13 +309,18 @@ def _resolve_discipline_slugs(tournament: Tournament, entries: list) -> tuple[li
 def _imported_rows(
     session: Session, tournament: Tournament, index: HRIndex | None = None
 ) -> dict[str, Row]:
-    batch = importer.latest_batch(session, tournament)
-    if batch is None:
-        return {}
+    """Every row the tournament has imported, from every upload it was given.
+
+    Not the latest batch alone: uploads accumulate, and a row that arrived in an
+    earlier file is as much an imported row as one that arrived in the newest
+    (spec etl-console, Import view of everything imported). Ordered by id, which
+    is arrival — a row is taken in once, when its content first appears.
+    """
     imported = session.scalars(
         select(ImportedRow)
-        .where(ImportedRow.batch_id == batch.id)
-        .order_by(ImportedRow.row_number)
+        .where(ImportedRow.tournament_id == tournament.id)
+        .options(selectinload(ImportedRow.batch))
+        .order_by(ImportedRow.id)
     ).all()
 
     rows: dict[str, Row] = {}
@@ -287,24 +340,9 @@ def _imported_rows(
         club = record.get("club")
         nationality = record.get("nationality") or None
         hr_id = record.get("hr_id")
-        # A fencer-provided hr_id is a verdict at birth. A cached match binds
-        # its id and fills the evidence register, and nothing else: the name,
-        # club and nationality on this row stay the fencer's words until an
-        # organizer reaches a verdict, or the review has nothing to compare
-        # against (spec etl-console, The ledger idiom).
-        verdict = "confirmed" if hr_id is not None else "unknown"
-        payload = None
-        if hr_id is None and name:
-            match = importer.get_decision(
-                session, tournament, "hr_match", hr_match.identity_key(name, club)
-            )
-            if match is not None:
-                if match.payload.get("hr_id") is not None:
-                    payload = match.payload
-                    hr_id = payload["hr_id"]
-                    verdict = hr_match.derive_tier(name, nationality, hr_id, index)
-                else:
-                    verdict = "none_found"
+        hr_id, payload, verdict = _hr_proposal(
+            session, tournament, index, name, club, nationality, hr_id
+        )
         problems = record.get("problems")
         if discipline_problems:
             extra = "; ".join(discipline_problems)

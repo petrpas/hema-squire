@@ -17,6 +17,7 @@ from sqlalchemy import select
 
 from app.bank import get_fio_client
 from app.dedup import MergeProposal, ThreeBands, default_merge, get_dedup_llm
+from app.hr_match import HRMatchResult, get_hr_matcher
 from app.importer import ParsedFencer, get_import_parser
 from app.mail import get_mailer
 from app.main import app
@@ -1014,3 +1015,81 @@ def test_a_tournament_squire_collects_nothing_for_issues_on_arrival(client, auth
     # `registrations_kept_by`'s question, not this one
     assert registration.total_amount is not None
     assert registration.clocks_dormant
+
+
+# --- what issuing must not take away ----------------------------------------
+
+
+class MatchesJan:
+    """Proposes the stub index's Jan Novák for the row of that name, and finds
+    nobody else — the shape a real matching run leaves behind: proposals that
+    nobody has ratified yet."""
+
+    def match(self, fencers, candidates):
+        # one result per fencer, matched or not: the real matcher answers the
+        # whole batch, and `run_matching` zips the two strictly
+        return [
+            HRMatchResult(
+                name=fencer["name"],
+                club=fencer["club"],
+                hr_id=10234 if fencer["name"] == "Jan Novak" else None,
+                matched_name="Jan Novák" if fencer["name"] == "Jan Novak" else None,
+                matched_club="Prague HEMA" if fencer["name"] == "Jan Novak" else None,
+                nationality="CZ",
+            )
+            for fencer in fencers
+        ]
+
+
+def sheet_row_named(client, organizer, name):
+    body = client.get("/api/tournaments/cup/sheet", headers=organizer).json()
+    return next(r for r in body["rows"] if r["name"] == name)
+
+
+def test_issuing_keeps_an_unratified_hr_proposal_on_the_row(client, auth_headers, mailbox):
+    """The bug this covers: matching proposed 52 profiles, the organizer had not
+    ratified them, and the first statement import issued the roster — after
+    which every row read `nespárováno` with an empty HR side, and the proposals
+    could not be reached at all, because ratifying happens on this table.
+
+    Issuing binds only a confirmed match, and that stays true. What must not
+    happen is the proposal disappearing: a registration issued for a row stands
+    in that row's place, so it shows what the row showed.
+    """
+    organizer = auth_headers()
+    setup(client, organizer)
+    app.dependency_overrides[get_hr_matcher] = lambda: MatchesJan()
+    import_roster(client, organizer, [row("Jan Novak", "jan@example.com")])
+    client.post("/api/tournaments/cup/import/match", headers=organizer)
+    outcome(client, organizer, "cup", "match")
+
+    before = sheet_row_named(client, organizer, "Jan Novak")
+    assert before["hr_id"] == 10234
+    assert before["match_verdict"] != "unknown"
+
+    issue(client, organizer)
+
+    after = sheet_row_named(client, organizer, "Jan Novak")
+    assert after["hr_id"] == 10234, "the proposal survives the roster becoming billable"
+    assert after["match_verdict"] == before["match_verdict"]
+    assert after["hr_name"] == before["hr_name"]
+    # and it is still only a proposal: nothing claimed the profile
+    fencer = db_session().scalar(select(Fencer).where(Fencer.email == "jan@example.com"))
+    assert fencer.hr_id is None
+
+
+def test_a_row_with_no_proposal_still_reads_unmatched_after_issuing(
+    client, auth_headers, mailbox
+):
+    organizer = auth_headers()
+    setup(client, organizer)
+    app.dependency_overrides[get_hr_matcher] = lambda: MatchesJan()
+    import_roster(client, organizer, [row("Nikdo Neznámý", "nikdo@example.com")])
+    client.post("/api/tournaments/cup/import/match", headers=organizer)
+    outcome(client, organizer, "cup", "match")
+
+    issue(client, organizer)
+
+    after = sheet_row_named(client, organizer, "Nikdo Neznámý")
+    assert after["hr_id"] is None
+    assert after["match_verdict"] == "none_found"
