@@ -147,7 +147,7 @@ def setup_missing(tournament: Tournament) -> list[str]:
     # the deposit belongs to a payment mode, and no payment mode applies while
     # payments are off: the item could not be resolved (its editor is
     # concealed) and need not be, since nothing holds a seat with money that
-    # is never requested (design tournament-modes D5, setup-navigation)
+    # is never requested (spec payments, setup-navigation)
     if (
         tournament.feature_payments
         and tournament.payment_mode == PaymentMode.DEPOSIT
@@ -183,7 +183,7 @@ def setup_missing(tournament: Tournament) -> list[str]:
         missing.append(MISSING_PAYMENT_FEED)
 
     # only a tournament Squire collects money for needs an account to collect
-    # it into (design tournament-modes D5). Every other item above is
+    # it into (spec payments). Every other item above is
     # unaffected by the feature, because the rest of completeness is about what
     # the tournament offers rather than about collecting for it — a hidden team
     # discipline is still checked for roster bounds, an unpriced hidden extra

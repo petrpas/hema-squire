@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { ApiError, type TournamentDetail, type TournamentMode, api } from "../api";
-import { FEATURE_NAMES } from "../TournamentModeDialog";
+import { ApiError, type TournamentDetail, type TournamentFlags, api } from "../api";
+import { FEATURE_NAMES } from "../TournamentSettingsDialog";
 import { concealedBy } from "./shared";
 
 export function PublishSection({
@@ -28,7 +28,7 @@ export function PublishSection({
     ...new Set(
       missing
         .map((key) => concealedBy(key, detail))
-        .filter((feature): feature is keyof TournamentMode => feature !== undefined),
+        .filter((feature): feature is keyof TournamentFlags => feature !== undefined),
     ),
   ];
 
@@ -102,7 +102,7 @@ export function PublishSection({
           {concealing.map((feature) => (
             <p key={feature} className="rail-hint">
               {t("setup.publish.turnOnFeature", {
-                feature: t(`setup.mode.feature.${FEATURE_NAMES[feature]}`),
+                feature: t(`setup.settings.feature.${FEATURE_NAMES[feature]}`),
               })}
             </p>
           ))}

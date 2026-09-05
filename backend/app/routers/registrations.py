@@ -627,7 +627,7 @@ def _initial_expires_at(tournament: Tournament, registration: Registration) -> d
     seat is held correctly with no change to the capacity predicate.
 
     With the payments feature off no money is requested at all, so no window
-    opens whatever the stored payment mode says (design tournament-modes D5,
+    opens whatever the stored payment mode says (spec payments,
     D6). The total is still computed and stored — it states what the
     tournament costs, settled outside Squire — and the null window is what
     makes the registration inert to expiry rather than a new state."""

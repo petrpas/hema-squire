@@ -1281,7 +1281,31 @@ fieldset.form-field > legend {
   margin-left: 1.45rem;
 }
 
-/* the tournament mode's four features, revealed under the advanced option */
+/* Three tiers on one settings surface: the mode, the payments setting, and
+   what the tournament includes. The first two are decisions about what Squire
+   does and the third about what Setup shows, so they are separated by a rule
+   rather than run together as one list — an organizer has to be able to see
+   which of their choices carry consequences beyond the console (spec
+   setup-navigation). */
+.settings-tier + .settings-tier {
+  border-top: var(--border-w) solid var(--hairline);
+  margin-top: 1.1rem;
+  padding-top: 0.9rem;
+}
+
+.settings-tier > h3 {
+  font-size: 0.82rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-faded);
+  margin: 0 0 0.55rem;
+}
+
+.settings-tier > .rail-hint {
+  margin-top: 0.5rem;
+}
+
+/* the three inclusions, and the payments checkbox above them */
 .mode-features {
   display: flex;
   flex-direction: column;

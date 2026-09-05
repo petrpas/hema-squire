@@ -69,7 +69,7 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
  *  absence of all four, advanced mode at least one — there is no separately
  *  stored mode value, so the name a tournament is given and the sections its
  *  console offers can never disagree (design tournament-modes D2). */
-export interface TournamentMode {
+export interface TournamentFlags {
   /** Disciplines specify where and when they occur. */
   feature_schedule: boolean;
   /** Squire handles payment processing: the only feature that changes what
@@ -91,25 +91,19 @@ export type RegistrationsKeptBy = "squire" | "organizer";
 export const KEPT_BY_VALUES = ["squire", "organizer"] as const satisfies
   readonly RegistrationsKeptBy[];
 
-export const MODE_FEATURES = [
+/** The three features, in the order the settings surface lists them. Payments
+ *  is deliberately absent: it suspends machinery rather than hiding controls,
+ *  and stands beside the tournament's mode (spec tournament-features,
+ *  payments). Anything iterating "the features" iterates these three; a caller
+ *  that also wants payments reads `feature_payments` by name, so that no list
+ *  quietly puts them back in one category. */
+export const TOURNAMENT_FEATURES = [
   "feature_schedule",
-  "feature_payments",
   "feature_teams",
   "feature_extras",
-] as const satisfies readonly (keyof TournamentMode)[];
+] as const satisfies readonly (keyof TournamentFlags)[];
 
-export const EASY_MODE: TournamentMode = {
-  feature_schedule: false,
-  feature_payments: false,
-  feature_teams: false,
-  feature_extras: false,
-};
-
-export function isEasyMode(mode: TournamentMode): boolean {
-  return !MODE_FEATURES.some((feature) => mode[feature]);
-}
-
-export interface Tournament extends TournamentMode {
+export interface Tournament extends TournamentFlags {
   slug: string;
   display_name: string;
   subtitle: string | null;
@@ -831,14 +825,14 @@ export const api = {
       method: "PATCH",
       body: JSON.stringify(patch),
     }),
-  getTournamentMode: (slug: string) =>
-    request<TournamentMode>(`/api/tournaments/${slug}/mode`),
-  // a mode is chosen as a whole, never one feature at a time, so the whole
-  // set goes in one request (design tournament-modes D2)
-  setTournamentMode: (slug: string, mode: TournamentMode) =>
-    request<TournamentDetail>(`/api/tournaments/${slug}/mode`, {
+  getTournamentFlags: (slug: string) =>
+    request<TournamentFlags>(`/api/tournaments/${slug}/features`),
+  // written as a whole, never one flag at a time, so the whole set goes in one
+  // request (spec tournament-features)
+  setTournamentFlags: (slug: string, flags: TournamentFlags) =>
+    request<TournamentDetail>(`/api/tournaments/${slug}/features`, {
       method: "PATCH",
-      body: JSON.stringify(mode),
+      body: JSON.stringify(flags),
     }),
   /** Its own request rather than a field on the mode: the four features are a
    *  shape chosen as a whole, and this is a different axis (design D1). */

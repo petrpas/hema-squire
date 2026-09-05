@@ -14,7 +14,7 @@ import { type SaverRegistry, useSectionSaver } from "./shared";
 
 // Identity fields patched as a whole, mirroring ParamPanel's save pattern
 // but for the fields that live in the Setup tab's main content, not the rail.
-const IDENTITY_FIELDS = [
+export const IDENTITY_FIELDS = [
   { key: "display_name", type: "text" },
   { key: "subtitle", type: "text" },
   { key: "date", type: "date" },

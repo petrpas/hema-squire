@@ -41,7 +41,8 @@ def db_session():
 
 
 def setup(client, organizer, *, capacity=10, **patch):
-    """A published, priced tournament in easy mode — no bank account anywhere."""
+    """A published, priced tournament with every flag off — no bank account
+    anywhere."""
     client.post(
         "/api/tournaments",
         json={"slug": "cup", "display_name": "Cup", "date": "2026-12-05"},

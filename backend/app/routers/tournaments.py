@@ -71,8 +71,8 @@ from app.schemas import (
     TeamAdd,
     TeamMemberOut,
     TournamentCreate,
-    TournamentModeIn,
-    TournamentModeOut,
+    TournamentFeaturesIn,
+    TournamentFeaturesOut,
     TournamentOut,
     TournamentUpdate,
     tolerant_organizers,
@@ -664,24 +664,29 @@ def update_tournament(
     return out
 
 
-@router.get("/{slug}/mode", response_model=TournamentModeOut)
-def tournament_mode(tournament: TournamentDep, session: SessionDep, fencer: FencerDep):
+@router.get("/{slug}/features", response_model=TournamentFeaturesOut)
+def tournament_features(tournament: TournamentDep, session: SessionDep, fencer: FencerDep):
     require_console_access(session, tournament, fencer)
     return tournament
 
 
-@router.patch("/{slug}/mode", response_model=TournamentOut)
-def set_tournament_mode(
-    data: TournamentModeIn, tournament: TournamentDep, session: SessionDep, fencer: FencerDep
+@router.patch("/{slug}/features", response_model=TournamentOut)
+def set_tournament_features(
+    data: TournamentFeaturesIn, tournament: TournamentDep, session: SessionDep, fencer: FencerDep
 ):
-    """Choose the tournament's mode. Writes the four features and nothing else:
-    a feature turned off hides its settings and never clears, resets or deletes
-    one (design tournament-modes D4), which is what makes the mode safe to
-    experiment with.
+    """Write the tournament's four stored flags and nothing else: a feature
+    turned off hides its settings and never clears, resets or deletes one
+    (spec tournament-features), which is what makes them safe to experiment
+    with.
+
+    Three of the four are features in that sense. The fourth, payments,
+    suspends machinery rather than hiding controls (spec payments); it shares
+    this request because it shares storage, not because it is the same kind of
+    setting. The tournament's mode is neither and has its own endpoint.
 
     Completeness is deliberately not guarded here. Turning payments on for a
     published, priced tournament with no account recorded is accepted, and the
-    account is then reported as missing on PUBLISH — the mode is how the
+    account is then reported as missing on PUBLISH — this endpoint is how the
     organizer reaches the field that fixes it, so refusing the change would
     leave them nowhere to go."""
     require_console_access(session, tournament, fencer)
@@ -706,12 +711,12 @@ def set_registrations_kept_by(
     session: SessionDep,
     fencer: FencerDep,
 ):
-    """Say who keeps this tournament's list of entrants.
+    """Set the tournament's mode: automatic, in which Squire keeps the list of
+    entrants, or manual, in which the organizer does.
 
-    Its own endpoint rather than a field on the mode, because it is its own
-    axis: the mode writes four features that decide what the console shows,
-    and this decides whether Squire owns the roster at all (design
-    add-registrations-kept-by D1).
+    Its own endpoint rather than a field among the flags, because it is its own
+    axis: those decide what the console shows, and this decides whether Squire
+    owns the roster at all (spec tournament-mode).
 
     Writes the value and nothing else, in either direction. No registration is
     deleted, expired, cancelled or demoted by the change — what it alters is

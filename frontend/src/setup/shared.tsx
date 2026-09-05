@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { type Currency, type CurrencyMode, type ExtraCategory, type TournamentMode } from "../api";
+import { type Currency, type CurrencyMode, type ExtraCategory, type TournamentFlags } from "../api";
 import { parseInteger } from "../numeric";
 import { LEGACY_WEAPONS } from "../TournamentFace";
 
@@ -36,7 +36,7 @@ export const SETUP_TABS: SetupTab[] = [
  *  `EXTRA` follows the extra services feature; `OTHER` keeps its owner-only
  *  restriction; the remaining five are always offered, so an easy-mode
  *  tournament is navigated by six. */
-export function offeredSetupTabs(mode: TournamentMode, isOwner: boolean): SetupTab[] {
+export function offeredSetupTabs(mode: TournamentFlags, isOwner: boolean): SetupTab[] {
   return SETUP_TABS.filter((tab) => {
     if (tab === "extra") return mode.feature_extras;
     if (tab === "other") return isOwner;
@@ -49,7 +49,7 @@ export function offeredSetupTabs(mode: TournamentMode, isOwner: boolean): SetupT
  *  gives, and a tab titled for payments on a tournament that takes none
  *  states something untrue (design D7). Its identifier stays `payments` —
  *  the URL, the marker attribution and `aria-controls` are built from that. */
-export function setupTabTitleKey(tab: SetupTab, mode: TournamentMode): string {
+export function setupTabTitleKey(tab: SetupTab, mode: TournamentFlags): string {
   if (tab === "payments" && !mode.feature_payments) return "setup.tabs.pricing";
   return `setup.tabs.${tab}`;
 }
@@ -84,21 +84,21 @@ export const MISSING_TAB: Record<string, SetupTab> = {
 // back (spec: setup-navigation). Items that cannot arise in a mode at all —
 // the bank account and the deposit while payments are off — are not reported
 // by the backend and never reach here.
-export const MISSING_FEATURE: Record<string, keyof TournamentMode> = {
+export const MISSING_FEATURE: Record<string, keyof TournamentFlags> = {
   extra_item_prices: "feature_extras",
   team_bounds: "feature_teams",
 };
 
 /** The feature a missing item needs turned on before it can be edited, or
  *  undefined when its editor is already offered. */
-export function concealedBy(key: string, mode: TournamentMode): keyof TournamentMode | undefined {
+export function concealedBy(key: string, mode: TournamentFlags): keyof TournamentFlags | undefined {
   const feature = MISSING_FEATURE[key];
   return feature !== undefined && !mode[feature] ? feature : undefined;
 }
 
 /** The tab a missing item marks, or undefined when no tab does: either the
  *  client does not recognize the item, or the mode conceals its editor. */
-export function missingTab(key: string, mode: TournamentMode): SetupTab | undefined {
+export function missingTab(key: string, mode: TournamentFlags): SetupTab | undefined {
   if (concealedBy(key, mode) !== undefined) return undefined;
   return MISSING_TAB[key];
 }

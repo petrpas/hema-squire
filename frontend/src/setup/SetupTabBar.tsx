@@ -1,7 +1,7 @@
 import { type KeyboardEvent } from "react";
 import { useTranslation } from "react-i18next";
 
-import { type TournamentMode } from "../api";
+import { type TournamentFlags } from "../api";
 import { type SetupTab, setupTabTitleKey } from "./shared";
 
 export function SetupTabBar({
@@ -15,7 +15,7 @@ export function SetupTabBar({
   tabs: SetupTab[];
   tab: SetupTab;
   /** Titles the payments tab for what it holds; the ids are unaffected. */
-  mode: TournamentMode;
+  mode: TournamentFlags;
   onSelect: (tab: SetupTab) => void;
   markedTabs: Set<SetupTab>;
   dirtyTabs: Set<SetupTab>;

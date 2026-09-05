@@ -69,7 +69,7 @@ BODIES: dict[tuple[str, str], object] = {
     ("PATCH", "/api/tournaments/{slug}/rules/{rule_id}"): {"payload": {}},
     ("POST", "/api/tournaments/{slug}/transfer-ownership"): {"email": "someone@example.com"},
     ("POST", "/api/tournaments/{slug}/team"): {"email": "someone@example.com"},
-    ("PATCH", "/api/tournaments/{slug}/mode"): {
+    ("PATCH", "/api/tournaments/{slug}/features"): {
         "feature_schedule": False,
         "feature_payments": False,
         "feature_teams": False,

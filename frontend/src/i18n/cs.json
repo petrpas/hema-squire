@@ -256,6 +256,7 @@
     "subtitle": "Podtitul",
     "description": "Popis",
     "registration_instructions": "Pokyny k registraci",
+    "external_registration_url": "Externí registrace",
     "payment_mode": "Režim platby",
     "payment_mode.immediate": "Platba ihned",
     "payment_mode.deposit": "Rezervace se zálohou",
@@ -556,13 +557,39 @@
       "title": "Export do tabulky",
       "hint": "Google tabulka, do které export zapisuje."
     },
-    "mode": {
-      "title": "Režim turnaje",
-      "easy": "jednoduchý režim",
-      "easyHint": "Jen to nejnutnější — turnaj, disciplíny, termíny a ceny. Doporučeno.",
-      "advanced": "pokročilý režim",
-      "advancedHint": "Vyber, které pokročilé funkce turnaj používá.",
-      "nothingChosen": "Bez zapnuté funkce je to jednoduchý režim.",
+    "settings": {
+      "title": "Nastavení turnaje",
+      "mode": {
+        "title": "Režim",
+        "squire": "Automatický",
+        "organizer": "Manuální",
+        "hint": {
+          "squire": "Šermíři se hlásí tady, ve Squire. Ten otevře přihlášku, rozešle potvrzení a upomínky, hlídá termíny a vede frontu náhradníků.",
+          "organizer": "Seznam přihlášených si vedeš sám — vlastní formulář, tabulka, klubová konference — a do Squire ho dostaneš importem. Squire ho vyčistí, spáruje s HEMA Ratings, nacení a vyexportuje. Nikomu nepíše a žádnou přihlášku nedrží."
+        },
+        "consequence": {
+          "squire": "Squire vede seznam a stará se o zbytek.",
+          "organizer": "Ve Squire se nikdo nepřihlásí a Squire nikomu nic neposílá."
+        },
+        "confirmToManual": "Přihlašování ve Squire se zavře a Squire pro tento turnaj přestane posílat maily a rušit rezervace.",
+        "confirmToAutomatic": "Přihlašování se otevře podle termínů turnaje a Squire začne vést registrace, které turnaj drží.",
+        "alreadyHeld_one": "Jedna registrace už tady je. Squire ji přestane vést.",
+        "alreadyHeld_few": "Jsou tady {{count}} registrace. Squire je přestane vést.",
+        "alreadyHeld_other": "Je tady {{count}} registrací. Squire je přestane vést."
+      },
+      "payments": {
+        "title": "Platby",
+        "label": "Platby řeší Squire",
+        "hint": "Squire přiděluje variabilní symboly, posílá pokyny k platbě s QR kódem, čte bankovní výpis a označuje, kdo zaplatil.",
+        "consequence": {
+          "on": "Squire si o peníze řekne, hlídá je a upomíná.",
+          "off": "Ceny se dál ukazují a počítají; peníze se vyřizují mimo Squire."
+        }
+      },
+      "includes": {
+        "title": "Co turnaj zahrnuje",
+        "consequence": "Tohle jen rozhoduje, jaká nastavení ti Squire nabídne. Šermíři se nezmění nic."
+      },
       "feature": {
         "schedule": "Program turnaje",
         "payments": "Platby",
@@ -571,13 +598,12 @@
       },
       "hint": {
         "schedule": "Pro větší turnaje s několika disciplínami v různé dny a na různých místech. Disciplíny pak mají uvedený čas a místo.",
-        "payments": "Pro pořadatele, kteří chtějí, aby platby zpracovával Squire.",
         "teams": "Pro turnaje s jednou nebo více týmovými disciplínami.",
         "extras": "Afterparty, semináře, zapůjčení zbraní, merch."
       },
       "apply": "Použít",
-      "confirm": "Skrýt a použít",
-      "confirmIntro": "Vypnutím funkce se skryje toto nastavení:",
+      "confirm": "Potvrdit a použít",
+      "confirmIntro": "Vypnutím se skryje toto nastavení:",
       "hiding": {
         "schedule": "disciplíny s uvedeným časem a místem: {{count}}",
         "teams": "týmové disciplíny: {{count}}",
@@ -589,43 +615,23 @@
         "payment_mode": "způsob platby",
         "deposit_amount": "záloha"
       },
-      "stillSold": "Nic se nemaže. Skryté položky se dál prodávají a šermíři je dál vidí — mizí jen jejich nastavení a vrátí se beze změny, jakmile funkci znovu zapneš.",
+      "stillSold": "Nic se nemaže. Skryté položky se dál prodávají a šermíři je dál vidí — mizí jen jejich nastavení a vrátí se beze změny, jakmile to znovu zapneš.",
       "paymentsConsequence": "Squire přestane vybírat peníze: žádné pokyny k platbě, QR kódy, upomínky ani rušení nezaplacených rezervací. Ceny, měna, slevy i připsané platby zůstávají uložené.",
-      "failed": "Režim se nepodařilo uložit.",
+      "nothingIsWritten": "Nic, co už je přihlášené, se nesmaže, nezruší ani nepřesune. Mění se to, co Squire udělá dál.",
+      "failed": "Nastavení se nepodařilo uložit.",
+      "failedAfterMode": "Režim se změnil, ale zbytek nastavení se uložit nepodařilo. Zkus to znovu.",
       "section": {
-        "title": "Režim turnaje",
-        "easy": "Turnaj je v jednoduchém režimu.",
-        "advanced": "Turnaj je v pokročilém režimu: {{features}}.",
-        "change": "Změnit režim"
-      }
-    },
-    "keptBy": {
-      "title": "Registrace",
-      "option": {
-        "squire": "Registrace vede Squire",
-        "organizer": "Registrace vede pořadatel"
-      },
-      "hint": {
-        "squire": "Šermíři se hlásí tady. Squire otevře přihlášku, rozešle potvrzení a upomínky a vede frontu náhradníků.",
-        "organizer": "Registrace běží jinde — vlastní formulář, tabulka, klubová konference — a soupiska se do Squire dostane importem. Squire ji vyčistí, spáruje a vyexportuje."
-      },
-      "consequence": {
-        "squire": "Šermíři se hlásí v aplikaci a Squire se stará o zbytek.",
-        "organizer": "V aplikaci se nikdo nepřihlásí a Squire nikomu nic neposílá."
-      },
-      "confirmToOrganizer": "Přihlašování v aplikaci se zavře a Squire pro tento turnaj přestane posílat maily a rušit rezervace.",
-      "confirmToSquire": "Přihlašování v aplikaci se otevře podle termínů turnaje a Squire začne vést registrace, které turnaj drží.",
-      "alreadyHeld_one": "Jedna registrace už tady je. Squire ji přestane vést.",
-      "alreadyHeld_few": "Jsou tady {{count}} registrace. Squire je přestane vést.",
-      "alreadyHeld_other": "Je tady {{count}} registrací. Squire je přestane vést.",
-      "nothingIsWritten": "Žádná registrace se tím nesmaže, nezruší ani nepřesune. Mění se to, co Squire udělá dál.",
-      "apply": "Použít",
-      "confirm": "Změnit a použít",
-      "failed": "Změnu se nepodařilo uložit.",
-      "section": {
-        "title": "Registrace",
-        "squire": "Registrace tohoto turnaje vede Squire.",
-        "organizer": "Registrace tohoto turnaje vede pořadatel.",
+        "title": "Nastavení turnaje",
+        "mode": {
+          "squire": "Registrace tohoto turnaje vede Squire.",
+          "organizer": "Registrace tohoto turnaje vede pořadatel."
+        },
+        "payments": {
+          "on": "Platby řeší Squire.",
+          "off": "Platby se vyřizují mimo Squire."
+        },
+        "includes": "Turnaj zahrnuje: {{features}}.",
+        "includesNothing": "Turnaj nezahrnuje program, týmové disciplíny ani doplňkové služby.",
         "change": "Změnit"
       }
     }

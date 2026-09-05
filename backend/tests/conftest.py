@@ -73,19 +73,19 @@ FEATURE_FLAGS = ("feature_schedule", "feature_payments", "feature_teams", "featu
 
 
 def feature_payload(**enabled) -> dict:
-    """A whole mode: a feature not named is off, because a mode is chosen as a
-    whole rather than one flag at a time (design tournament-modes D2)."""
+    """All four stored flags: one not named is off, because the endpoint takes
+    them together rather than one at a time (spec tournament-features)."""
     return {flag: enabled.get(flag, False) for flag in FEATURE_FLAGS}
 
 
 def set_features(client, headers, slug, **enabled):
-    """Turn tournament features on. A tournament is created in easy mode, which
-    asks fencers for no money at all, so every test exercising reservations,
-    reminders, expiry, matching or the bank account has to enable payments —
-    exactly as an organizer does, since nothing is ever derived at runtime
-    (design tournament-modes D9)."""
+    """Turn tournament features on. A tournament is created with every flag
+    off, which asks fencers for no money at all, so every test exercising
+    reservations, reminders, expiry, matching or the bank account has to enable
+    payments — exactly as an organizer does, since nothing is ever derived at
+    runtime (spec tournament-features)."""
     response = client.patch(
-        f"/api/tournaments/{slug}/mode", json=feature_payload(**enabled), headers=headers
+        f"/api/tournaments/{slug}/features", json=feature_payload(**enabled), headers=headers
     )
     assert response.status_code == 200, response.text
     return response.json()

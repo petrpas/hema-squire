@@ -5,7 +5,10 @@ tests/test_discipline_identity_migration.py's approach.
 
 The derivation is generous by design: any evidence at all turns a feature on,
 so an existing organizer's console looks exactly as it did before, while a
-never-configured draft lands in easy mode."""
+never-configured draft lands with every flag off.
+
+Named for the revision it exercises, which is history and is not renamed: the
+flags were called a mode when `b3d1f0a72c45` was written."""
 
 import os
 import sqlite3

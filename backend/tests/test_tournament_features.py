@@ -1,87 +1,106 @@
-"""The four feature flags that make up a tournament's mode, and the endpoint
-that writes them (design tournament-modes D1-D4, D12).
+"""The tournament's four stored flags and the endpoint that writes them (spec
+tournament-features, payments).
 
-The payments feature's behavioural consequences live in
-tests/test_payments_off.py; this module covers the flags themselves."""
+Three are features in the sense that capability fixes: each governs which
+controls Setup offers and changes nothing a fencer experiences. The fourth,
+payments, suspends machinery and stands beside the tournament's mode; it
+shares this endpoint because it shares storage. Its behavioural consequences
+live in tests/test_payments_off.py, and the mode in
+tests/test_registrations_kept_by.py; this module covers the flags themselves.
+
+There is no easy or advanced mode. Nothing derives a name from how many flags
+are enabled — that named a state nothing stored, which is why it is gone."""
 
 from tests.test_tournaments import make_tournament
 
 FLAGS = ("feature_schedule", "feature_payments", "feature_teams", "feature_extras")
-EASY = dict.fromkeys(FLAGS, False)
+# the four off. A description, not a named state — see the module docstring
+NONE_ON = dict.fromkeys(FLAGS, False)
 
 
-def mode(**enabled: bool) -> dict[str, bool]:
-    return {**EASY, **enabled}
+def flags(**enabled: bool) -> dict[str, bool]:
+    return {**NONE_ON, **enabled}
 
 
-def set_mode(client, headers, slug, **enabled: bool):
-    return client.patch(f"/api/tournaments/{slug}/mode", json=mode(**enabled), headers=headers)
+def set_flags(client, headers, slug, **enabled: bool):
+    return client.patch(
+        f"/api/tournaments/{slug}/features", json=flags(**enabled), headers=headers
+    )
 
 
 def test_created_tournament_has_no_features(client, auth_headers):
     headers = auth_headers()
     created = make_tournament(client, headers)
-    assert {flag: created[flag] for flag in FLAGS} == EASY
+    assert {flag: created[flag] for flag in FLAGS} == NONE_ON
 
     detail = client.get("/api/tournaments/na-duel-2026").json()
-    assert {flag: detail[flag] for flag in FLAGS} == EASY
+    assert {flag: detail[flag] for flag in FLAGS} == NONE_ON
 
 
-def test_mode_read_and_written(client, auth_headers):
+def test_flags_read_and_written(client, auth_headers):
     headers = auth_headers()
     make_tournament(client, headers)
 
-    assert client.get("/api/tournaments/na-duel-2026/mode", headers=headers).json() == EASY
+    assert client.get("/api/tournaments/na-duel-2026/features", headers=headers).json() == NONE_ON
 
-    response = set_mode(client, headers, "na-duel-2026", feature_payments=True, feature_teams=True)
+    response = set_flags(
+        client, headers, "na-duel-2026", feature_payments=True, feature_teams=True
+    )
     assert response.status_code == 200, response.text
-    assert {flag: response.json()[flag] for flag in FLAGS} == mode(
+    assert {flag: response.json()[flag] for flag in FLAGS} == flags(
         feature_payments=True, feature_teams=True
     )
-    assert client.get("/api/tournaments/na-duel-2026/mode", headers=headers).json() == mode(
+    assert client.get("/api/tournaments/na-duel-2026/features", headers=headers).json() == flags(
         feature_payments=True, feature_teams=True
     )
 
 
-def test_mode_is_chosen_as_a_whole(client, auth_headers):
-    """Every feature is given together: a request that omits one is asking for
-    it to be off, not for it to be left alone."""
+def test_the_flags_are_written_as_a_whole(client, auth_headers):
+    """Every flag is given together: a request that omits one is asking for it
+    to be off, not for it to be left alone."""
     headers = auth_headers()
     make_tournament(client, headers)
-    set_mode(client, headers, "na-duel-2026", feature_extras=True, feature_teams=True)
+    set_flags(client, headers, "na-duel-2026", feature_extras=True, feature_teams=True)
 
-    response = set_mode(client, headers, "na-duel-2026", feature_teams=True)
+    response = set_flags(client, headers, "na-duel-2026", feature_teams=True)
     assert response.json()["feature_extras"] is False
 
     partial = client.patch(
-        "/api/tournaments/na-duel-2026/mode", json={"feature_teams": True}, headers=headers
+        "/api/tournaments/na-duel-2026/features", json={"feature_teams": True}, headers=headers
     )
     assert partial.status_code == 422
 
 
-def test_easy_mode_is_the_absence_of_every_feature(client, auth_headers):
+def test_turning_the_last_flag_off_names_no_state(client, auth_headers):
+    """What used to be "easy mode" is just every flag off. The endpoint reports
+    the flags and nothing else — no tier, no derived label — because a name for
+    a state nothing stores is what this capability removed."""
     headers = auth_headers()
     make_tournament(client, headers)
-    set_mode(client, headers, "na-duel-2026", feature_payments=True)
+    set_flags(client, headers, "na-duel-2026", feature_payments=True)
 
-    response = set_mode(client, headers, "na-duel-2026")
-    assert {flag: response.json()[flag] for flag in FLAGS} == EASY
+    response = set_flags(client, headers, "na-duel-2026")
+    body = response.json()
+    assert {flag: body[flag] for flag in FLAGS} == NONE_ON
+
+    read_back = client.get("/api/tournaments/na-duel-2026/features", headers=headers).json()
+    assert set(read_back) == set(FLAGS), "the flags alone; nothing derived from them"
 
 
-def test_mode_requires_console_access(client, auth_headers):
+def test_writing_the_flags_requires_console_access(client, auth_headers):
     headers = auth_headers()
     make_tournament(client, headers)
     outsider = auth_headers(email="other@example.com", name="Other")
 
-    assert set_mode(client, outsider, "na-duel-2026", feature_teams=True).status_code == 403
+    assert set_flags(client, outsider, "na-duel-2026", feature_teams=True).status_code == 403
     assert (
-        client.get("/api/tournaments/na-duel-2026/mode", headers=outsider).status_code == 403
+        client.get("/api/tournaments/na-duel-2026/features", headers=outsider).status_code == 403
     )
-    anonymous = client.patch("/api/tournaments/na-duel-2026/mode", json=mode())
+    anonymous = client.patch("/api/tournaments/na-duel-2026/features", json=flags())
     assert anonymous.status_code == 401
 
 
-def test_console_team_member_sees_and_sets_the_same_mode(client, auth_headers):
+def test_console_team_member_sees_and_sets_the_same_flags(client, auth_headers):
     """The mode belongs to the tournament, not to the reader (design D3)."""
     headers = auth_headers()
     make_tournament(client, headers)
@@ -97,11 +116,12 @@ def test_console_team_member_sees_and_sets_the_same_mode(client, auth_headers):
     ).json()
     member_headers = {"Authorization": f"Bearer {member['token']}"}
 
-    set_mode(client, headers, "na-duel-2026", feature_extras=True)
-    assert client.get("/api/tournaments/na-duel-2026/mode", headers=member_headers).json() == mode(
-        feature_extras=True
-    )
-    assert set_mode(
+    set_flags(client, headers, "na-duel-2026", feature_extras=True)
+    member_view = client.get(
+        "/api/tournaments/na-duel-2026/features", headers=member_headers
+    ).json()
+    assert member_view == flags(feature_extras=True)
+    assert set_flags(
         client, member_headers, "na-duel-2026", feature_extras=True, feature_schedule=True
     ).status_code == 200
 
@@ -125,7 +145,7 @@ def test_features_are_not_re_derived_from_contents(client, auth_headers):
         headers=headers,
     )
     assert added.status_code == 201, added.text
-    assert client.get("/api/tournaments/na-duel-2026/mode", headers=headers).json() == EASY
+    assert client.get("/api/tournaments/na-duel-2026/features", headers=headers).json() == NONE_ON
 
     item = client.post(
         "/api/tournaments/na-duel-2026/extra-items",
@@ -133,10 +153,10 @@ def test_features_are_not_re_derived_from_contents(client, auth_headers):
         headers=headers,
     )
     assert item.status_code == 201, item.text
-    assert client.get("/api/tournaments/na-duel-2026/mode", headers=headers).json() == EASY
+    assert client.get("/api/tournaments/na-duel-2026/features", headers=headers).json() == NONE_ON
 
 
-def test_mode_write_leaves_every_concealed_setting_untouched(client, auth_headers):
+def test_a_flag_write_leaves_every_concealed_setting_untouched(client, auth_headers):
     """Turning features off writes nothing but the mode (design D4)."""
     headers = auth_headers()
     make_tournament(client, headers)
@@ -178,8 +198,8 @@ def test_mode_write_leaves_every_concealed_setting_untouched(client, auth_header
     assert configured.status_code == 200, configured.text
     before = client.get("/api/tournaments/na-duel-2026").json()
 
-    set_mode(client, headers, "na-duel-2026", feature_teams=True, feature_payments=True)
-    set_mode(client, headers, "na-duel-2026")
+    set_flags(client, headers, "na-duel-2026", feature_teams=True, feature_payments=True)
+    set_flags(client, headers, "na-duel-2026")
     after = client.get("/api/tournaments/na-duel-2026").json()
 
     # `server_time` is this response's own clock, not a setting — it differs
@@ -190,7 +210,7 @@ def test_mode_write_leaves_every_concealed_setting_untouched(client, auth_header
     }
 
 
-def test_mode_changeable_after_publication(client, auth_headers):
+def test_flags_changeable_after_publication(client, auth_headers):
     headers = auth_headers()
     make_tournament(client, headers)
     client.post(
@@ -206,6 +226,6 @@ def test_mode_changeable_after_publication(client, auth_headers):
     published = client.post("/api/tournaments/na-duel-2026/publish", headers=headers)
     assert published.status_code == 200, published.text
 
-    response = set_mode(client, headers, "na-duel-2026", feature_extras=True)
+    response = set_flags(client, headers, "na-duel-2026", feature_extras=True)
     assert response.status_code == 200, response.text
     assert response.json()["feature_extras"] is True

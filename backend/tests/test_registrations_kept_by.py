@@ -132,7 +132,7 @@ def test_it_is_not_one_of_the_four_features(client, auth_headers):
     make_tournament(client, organizer)
     set_kept_by(client, organizer, "organizer")
 
-    mode = client.get("/api/tournaments/cup/mode", headers=organizer).json()
+    mode = client.get("/api/tournaments/cup/features", headers=organizer).json()
     assert set(mode) == {
         "feature_schedule",
         "feature_payments",

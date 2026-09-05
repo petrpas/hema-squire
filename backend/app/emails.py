@@ -99,7 +99,7 @@ def _payment_mail_suppressed(tournament: Tournament) -> bool:
     """Whether this tournament's payment mail is not sent at all. With the
     payments feature off Squire requests no money, so a reminder, an expiry
     notice, a surcharge or a payment-received message has nothing to be about
-    (design tournament-modes D5). Guarded here, at the one place every such
+    (spec payments). Guarded here, at the one place every such
     message is composed, rather than at each of the several callers."""
     return not tournament.feature_payments
 
@@ -223,7 +223,7 @@ def payment_qrs(
 ) -> tuple[bytes | None, bytes | None]:
     # no QR is produced for a tournament Squire collects nothing for: a code
     # drawn on an account no money is owed into is a demand the tournament is
-    # not making (design tournament-modes D5)
+    # not making (spec payments)
     if not tournament.feature_payments or not tournament.bank_account:
         return None, None
     primary, eur = payment_spayd(

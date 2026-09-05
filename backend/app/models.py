@@ -59,13 +59,12 @@ class RegistrationsKeptBy(enum.StrEnum):
     reaches Squire by import, so Squire cleans, matches, prices and exports it
     and runs nothing against it.
 
-    **A different axis from the four `feature_*` flags, and deliberately not a
-    fifth one** (design add-registrations-kept-by D1). Those four govern which
-    advanced surfaces the console offers, and rest on the rule that turning one
-    off hides settings without changing what a fencer experiences — a hidden
-    extra item is still sold. This withdraws the registration form outright, so
-    a flag is the wrong shape for it, and counting it among the four would make
-    every organizer-kept tournament "advanced", which says nothing true.
+    **This is the tournament's mode, and the only thing so called.** It
+    qualifies because it is stored, has two values and changes what the system
+    does. The `feature_*` flags are not a mode: three of them govern which
+    controls Setup offers and change nothing a fencer experiences, and the
+    fourth is the payments setting, which stands beside this one (spec
+    tournament-mode, tournament-features).
 
     Never derived from what the tournament holds. A tournament that has been
     imported into is not organizer-kept on that evidence, and one that has been
@@ -299,28 +298,41 @@ class Tournament(Base):
     # what NULL means, and they would drift
     timezone: Mapped[str] = mapped_column(String(64), default=constraints.DEFAULT_TIMEZONE)
 
-    # the four advanced features this tournament uses (design tournament-modes
-    # D1). Easy mode is the absence of all four — there is no separate stored
-    # mode value, so the name a tournament is given and the sections its
-    # console offers can never disagree (D2). They record what the organizer
-    # asked to see and are never derived or re-derived from the tournament's
-    # contents at runtime: adding a team discipline does not turn
-    # feature_teams on (D9). Only feature_payments changes what the system
-    # does; the other three govern which controls Setup offers, and the data
-    # they conceal stays in force everywhere else (D4, D12).
+    # Four stored flags, of two kinds — and the difference is the point.
+    #
+    # `feature_schedule`, `feature_teams` and `feature_extras` are features in
+    # the sense `tournament-features` fixes: each governs which controls Setup
+    # offers and changes nothing a fencer experiences. A hidden extra item is
+    # still sold, a hidden team discipline still takes teams.
+    #
+    # `feature_payments` is not one of those. It suspends the payment
+    # machinery — no window, no mail, no reconciliation (spec payments) — and
+    # so stands beside the tournament's mode, `registrations_kept_by` below,
+    # as the second setting that changes what Squire does rather than what it
+    # shows. It is stored here because it always has been, not because it is
+    # the same kind of thing.
+    #
+    # No name is derived from how many are enabled. There is no easy or
+    # advanced mode: that named a state nothing stored, and every surface had
+    # to compute it (spec tournament-features). And none is re-derived from
+    # the tournament's contents — adding a team discipline does not turn
+    # feature_teams on. They record what the organizer asked to see.
     feature_schedule: Mapped[bool] = mapped_column(default=False)
     feature_payments: Mapped[bool] = mapped_column(default=False)
     feature_teams: Mapped[bool] = mapped_column(default=False)
     feature_extras: Mapped[bool] = mapped_column(default=False)
 
-    # who keeps this tournament's list of entrants (see RegistrationsKeptBy).
-    # Not a fifth feature: the four above decide what the organizer sees, this
-    # decides whether Squire owns the roster at all. `ORGANIZER` closes in-app
-    # registration and takes the tournament out of the scheduler's pass
-    # entirely — a structural exclusion rather than a per-registration check,
-    # so a registration created by any path is safe by construction (design
-    # add-registrations-kept-by D2). Every tournament predating this is
-    # `SQUIRE`, which is what all of them were
+    # The tournament's **mode**, and the only thing in the product so called
+    # (spec tournament-mode): `SQUIRE` is automatic mode, `ORGANIZER` manual.
+    # Stored under this name rather than as `mode` because a column reading
+    # `manual` would not say manual what; every surface an organizer reads
+    # calls it the mode.
+    #
+    # Manual mode closes in-app registration and takes the tournament out of
+    # the scheduler's pass entirely — a structural exclusion rather than a
+    # per-registration check, so a registration created by any path is safe by
+    # construction. Every tournament predating this is `SQUIRE`, which is what
+    # all of them were
     registrations_kept_by: Mapped[RegistrationsKeptBy] = mapped_column(
         str_enum(RegistrationsKeptBy), default=RegistrationsKeptBy.SQUIRE
     )

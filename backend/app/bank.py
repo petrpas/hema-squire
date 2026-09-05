@@ -22,7 +22,7 @@ FIO_API_BASE = "https://fioapi.fio.cz/v1/rest"
 
 def require_payments_enabled(tournament: Tournament) -> None:
     """Refuse a reconciliation request against a tournament whose payments
-    feature is off (design tournament-modes D5). Such a tournament has no
+    feature is off (spec payments). Such a tournament has no
     money in flight for Squire to reconcile, and an organizer uploading a
     statement against the wrong tournament must learn that rather than watch
     it disappear — so this refuses rather than accepting with no effect.

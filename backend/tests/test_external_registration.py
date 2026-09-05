@@ -235,7 +235,7 @@ def test_a_payments_off_deposit_tournament_is_not_reported(client, auth_headers)
         headers=organizer,
     )
     client.patch(
-        "/api/tournaments/cup/mode",
+        "/api/tournaments/cup/features",
         json={
             "feature_schedule": False,
             "feature_payments": False,

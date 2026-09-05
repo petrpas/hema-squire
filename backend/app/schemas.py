@@ -492,12 +492,18 @@ class TournamentUpdate(BaseModel):
         return accounts.parse(value)
 
 
-class TournamentModeIn(BaseModel):
-    """The tournament's mode, chosen as a whole. All four features are given
-    together and none is optional: a mode is a shape the organizer picks, not
-    four settings toggled one at a time, so a request that omits a feature is
-    asking for it to be off rather than to be left alone. Easy mode is all
-    four false (design tournament-modes D2)."""
+class TournamentFeaturesIn(BaseModel):
+    """The tournament's four stored flags, given together.
+
+    Three of them are features in the sense `tournament-features` fixes: they
+    govern which controls Setup offers and change nothing a fencer
+    experiences. The fourth, payments, is a behavioural setting fixed by
+    `payments` and stands beside the tournament's mode rather than among the
+    features. They travel in one request because they share storage and are
+    chosen on one surface, not because they are one kind of thing.
+
+    None is optional: a request that omits a flag is asking for it to be off
+    rather than to be left alone."""
 
     feature_schedule: bool
     feature_payments: bool
@@ -506,17 +512,23 @@ class TournamentModeIn(BaseModel):
 
 
 class RegistrationsKeptByIn(BaseModel):
-    """Who keeps the tournament's registrations, set on its own. Not folded
-    into `TournamentModeIn`: the four features are a shape chosen as a whole,
-    and this is a different axis that changes what Squire does rather than what
-    it shows (design add-registrations-kept-by D1, D5)."""
+    """The tournament's **mode** — automatic or manual — set on its own.
+
+    Stored under a name that says which registrations it is about, because a
+    column reading `manual` would not say manual what. Every surface an
+    organizer reads calls it the tournament's mode; the two names are one
+    setting, as `feature_payments` and *Platby* already are (spec
+    tournament-mode).
+
+    Its own request rather than a field among the flags: those decide what the
+    console shows, this decides whether Squire owns the roster at all."""
 
     registrations_kept_by: RegistrationsKeptBy
 
 
-class TournamentModeOut(TournamentModeIn):
-    """What the mode dialog opens on. Deliberately the request model read back,
-    so the two can never describe different sets of features."""
+class TournamentFeaturesOut(TournamentFeaturesIn):
+    """What the settings surface opens on. Deliberately the request model read
+    back, so the two can never describe different sets of flags."""
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -588,18 +600,19 @@ class TournamentOut(BaseModel):
     registration_closes: datetime.date | None
     amendments_close: datetime.date | None
     team_composition_deadline: datetime.date | None
-    # the tournament's mode: easy mode is all four off (design
-    # tournament-modes D2). Read by the console to decide which tabs, sections
-    # and phases it offers, and by the fencer-facing surfaces to decide
-    # whether money is being asked for at all
+    # the three features that govern which controls Setup offers, plus the
+    # payments setting stored beside them. Read by the console to decide which
+    # tabs, sections and phases it offers, and by the fencer-facing surfaces to
+    # decide whether money is being asked for at all. No name is derived from
+    # how many are enabled (spec tournament-features)
     feature_schedule: bool
     feature_payments: bool
     feature_teams: bool
     feature_extras: bool
-    # who keeps the list of entrants — a different axis from the four features
-    # above, read by the console to decide which sections it offers and by the
-    # fencer-facing surfaces to decide whether a registration form exists at
-    # all (design add-registrations-kept-by D1)
+    # the tournament's mode, automatic or manual — the only thing in the
+    # product so called (spec tournament-mode). Read by the console to decide
+    # which sections it offers and by the fencer-facing surfaces to decide
+    # whether a registration form exists at all
     registrations_kept_by: RegistrationsKeptBy
     discounts: list[DiscountIn]
     extra_items: list[ExtraItemOut] = []

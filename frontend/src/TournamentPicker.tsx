@@ -7,8 +7,7 @@ import { useAuth } from "./RequireAuth";
 import { consolePath } from "./routes";
 import { ApiError, type Account, type Tournament, type TournamentDetail, api } from "./api";
 import FieldError, { invalidProps } from "./FieldError";
-import { RegistrationsKeptByFields } from "./RegistrationsKeptBy";
-import { TournamentModeFields } from "./TournamentModeDialog";
+import { TournamentSettingsFields } from "./TournamentSettingsDialog";
 import { useFieldValidation } from "./useFieldValidation";
 import { apiErrors, checkString } from "./validation";
 
@@ -49,13 +48,6 @@ function TournamentCreateDialog({
 }) {
   const { t } = useTranslation();
   const [created, setCreated] = useState<TournamentDetail | null>(null);
-  // Two questions after the tournament exists, asked one after the other in
-  // the same window: what the console offers, and who keeps the entrants.
-  // They are separate steps because they are separate axes — folding the
-  // second into the mode fields would make that dialog's own explanation
-  // untrue (design add-registrations-kept-by D5). Dismissing either leaves
-  // the tournament as created, which is easy mode and Squire-kept.
-  const [modeDone, setModeDone] = useState(false);
   const [displayName, setDisplayName] = useState("");
   const [date, setDate] = useState("");
   const [slug, setSlug] = useState("");
@@ -108,25 +100,13 @@ function TournamentCreateDialog({
 
   return (
     <div className="modal-backdrop" onClick={created ? () => onDone(created) : onClose}>
-      {created && modeDone ? (
+      {created ? (
         <div className="modal" onClick={(event) => event.stopPropagation()}>
-          <h2>{t("setup.keptBy.title")}</h2>
-          <RegistrationsKeptByFields
+          <h2>{t("setup.settings.title")}</h2>
+          <TournamentSettingsFields
             detail={created}
             onApplied={onDone}
             onClose={() => onDone(created)}
-          />
-        </div>
-      ) : created ? (
-        <div className="modal" onClick={(event) => event.stopPropagation()}>
-          <h2>{t("setup.mode.title")}</h2>
-          <TournamentModeFields
-            detail={created}
-            onApplied={(updated) => {
-              setCreated(updated);
-              setModeDone(true);
-            }}
-            onClose={() => setModeDone(true)}
           />
         </div>
       ) : (

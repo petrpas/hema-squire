@@ -41,7 +41,7 @@ import {
   type SheetRow,
   type Tournament,
   type TournamentDetail,
-  type TournamentMode,
+  type TournamentFlags,
   api,
 } from "./api";
 
@@ -72,7 +72,7 @@ export const DEFAULT_PHASE: Phase = "fencers";
 /** Which phases the tournament's mode offers, in the fixed order above — the
  *  mode removes phases, it never reorders them (spec: etl-console). The rest
  *  are always offered, since they are what every tournament is made of. */
-export function offeredPhases(mode: TournamentMode): Phase[] {
+export function offeredPhases(mode: TournamentFlags): Phase[] {
   return PHASES.filter((phase) => {
     if (phase === "payments") return mode.feature_payments;
     if (phase === "teams") return mode.feature_teams;
