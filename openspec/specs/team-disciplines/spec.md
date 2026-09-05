@@ -360,7 +360,7 @@ minimum and maximum, and the team's waitlist position where it is waitlisted. Te
 marked below minimum after the composition deadline SHALL be distinguished.
 
 The view SHALL be offered only while the tournament's team disciplines feature is on, as
-fixed by `tournament-modes`. An organizer who has turned the feature off SHALL see no
+fixed by `tournament-features`. An organizer who has turned the feature off SHALL see no
 Teams phase; the teams, rosters and waitlist positions it would have shown SHALL be
 retained untouched and SHALL be shown again when the feature is turned back on. The
 entering fencer's own roster editor on the tournament detail page SHALL be unaffected by

@@ -11,9 +11,7 @@ preservation of unsaved edits across tab switches, the
 one-save-per-tab rule with its drafted row tables, the non-atomic flush and its
 error reporting, the stated immediate-action exceptions, and the confirmation
 on leaving Setup dirty.
-
 ## Requirements
-
 ### Requirement: Setup settings are navigated by tabs
 The Setup phase's settings pane SHALL present its tabs in the fixed order `TOURNAMENT`,
 `DISCIPLINES`, `EXTRA`, `TIMELINE`, `PAYMENTS`, `OTHER`, `PUBLISH`, and SHALL show the
@@ -26,9 +24,9 @@ organizer works: what the tournament is, what it offers, what those cost, when i
 happens, and how it is paid for.
 
 **Which of those tabs are offered SHALL follow the tournament's features**, as fixed by
-`tournament-modes`. `EXTRA` SHALL be offered only while the extra services feature is on.
+`tournament-features`. `EXTRA` SHALL be offered only while the extra services feature is on.
 `OTHER` SHALL keep its owner-only restriction. The remaining five SHALL always be
-offered, so that a tournament in easy mode is navigated by `TOURNAMENT`, `DISCIPLINES`,
+offered, so that a tournament with no feature enabled is navigated by `TOURNAMENT`, `DISCIPLINES`,
 `TIMELINE`, `PAYMENTS`, `OTHER` and `PUBLISH`. Whichever tabs are offered SHALL keep the
 fixed order above; the mode removes tabs, it never reorders them.
 
@@ -56,7 +54,7 @@ controls.
 - **THEN** the tournament's dates are shown and no other tab's sections are shown
 
 #### Scenario: Easy mode offers six tabs
-- **WHEN** the tournament owner opens the Setup phase of a tournament in easy mode
+- **WHEN** the tournament owner opens the Setup phase of a tournament with no feature enabled
 - **THEN** the tab bar offers `TOURNAMENT`, `DISCIPLINES`, `TIMELINE`, `PRICING`, `OTHER` and `PUBLISH`, in that order, and no `EXTRA` tab
 
 #### Scenario: Payments tab titled for what it holds
@@ -92,7 +90,7 @@ The payment-mode section SHALL stand first on `PAYMENTS`, before the bank accoun
 money arrives in; the bank account SHALL keep its place ahead of the currency it is
 denominated in.
 
-**A section whose feature is off SHALL NOT be shown**, as fixed by `tournament-modes`,
+**A section whose feature is off SHALL NOT be shown**, as fixed by `tournament-features`,
 and its stored values SHALL be retained rather than cleared. On `PAYMENTS` this SHALL
 divide the tab: while payments are off, the tab — then titled `PRICING` — SHALL hold the
 currency and exchange-rate section, the discount list, and any legacy fixed fees the
@@ -157,7 +155,7 @@ account with console access.
 - **THEN** `TIMELINE` stops offering the seating deadline, the stored date is unchanged, and registration opens and closes are still offered
 
 #### Scenario: Mode section always on OTHER
-- **WHEN** the tournament owner opens `OTHER` in easy mode
+- **WHEN** the tournament owner opens `OTHER` on a tournament with no feature enabled
 - **THEN** the tournament mode section is present alongside the console team, the export sheet address and the danger zone
 
 #### Scenario: Bank account has one editor
@@ -191,8 +189,8 @@ Both SHALL save with the rest of the timeline section, through the same single s
 - **WHEN** the organizer opens `TIMELINE`
 - **THEN** the tournament's timezone is offered as a property of the section as a whole, not as an entry in the sequence of dates
 
-#### Scenario: Offered in easy mode
-- **WHEN** the organizer of a tournament in easy mode opens `TIMELINE`
+#### Scenario: Offered whatever the tournament includes
+- **WHEN** the organizer of a tournament with no feature enabled opens `TIMELINE`
 - **THEN** both the opening time and the timezone are offered, exactly as the registration window itself is
 
 #### Scenario: Saved with the section
@@ -429,3 +427,104 @@ NOT be confirmed, because nothing is discarded by it.
 #### Scenario: Tab switching is never confirmed
 - **WHEN** the organizer switches between Setup tabs with unsaved changes in both
 - **THEN** no confirmation appears and no change is discarded
+
+### Requirement: Setup offers no section for a registration Squire does not run
+WHEN a tournament is in manual mode (`tournament-mode`), Setup SHALL NOT offer the sections that govern a registration Squire runs and no one operates on such a tournament — in particular the reminder day, which schedules notice about an obligation Squire neither sets nor chases.
+
+The line SHALL be drawn at **who acts on a setting**, not at who might read it. A setting the organizer still acts on SHALL remain offered even where Squire does nothing with it: prices price the export, the totals and what the organizer charges; the seating deadline is about seats; the registration-opens and registration-closes dates still state when the organizer's own registration runs, and SHALL remain editable although they no longer gate anything, as fixed by `tournament-admin`.
+
+A hidden section SHALL follow the treatment `setup-navigation` already fixes for a section the tournament's mode does not offer: its stored values SHALL be retained unchanged, and it SHALL become available again if the tournament's registrations return to Squire's keeping.
+
+The external registration address SHALL be offered on such a tournament and SHALL be marked as a mandatory item, since it is what publication now depends on.
+
+#### Scenario: The reminder day is not offered
+- **WHEN** the organizer opens Setup on a tournament whose registrations they keep
+- **THEN** no reminder day is offered
+
+#### Scenario: The timeline dates remain
+- **WHEN** the same organizer opens the timeline
+- **THEN** the registration-opens and registration-closes dates are offered and editable, stating when their own registration runs
+
+#### Scenario: Hidden values survive the switch back
+- **WHEN** a tournament carrying a reminder day is switched to organizer-kept and later back to Squire-kept
+- **THEN** the reminder day holds the value it held before, with nothing to re-enter
+
+#### Scenario: The external address is offered and marked
+- **WHEN** the organizer opens Setup on an organizer-kept tournament with no external registration address
+- **THEN** the address is offered and reported among the mandatory items still to supply
+
+### Requirement: The tournament's settings are configured on one surface
+A tournament's mode, its payments setting and the three features it may include SHALL be offered together on **one surface**, never on a sequence of screens and never split between sections that describe one configuration in parts.
+
+The surface SHALL present them in three tiers, in this order, and SHALL make the ordering legible rather than merely sequential:
+
+1. the **mode** — automatic or manual (`tournament-mode`) — as a choice between two, with automatic preselected;
+2. the **payments** setting (`payments`);
+3. **what the tournament includes** — schedule, team disciplines, extra services (`tournament-features`) — as independent checkboxes.
+
+The first two SHALL be presented as decisions about what Squire does, and the third as a statement of what Setup offers, so that an organizer can see which of their choices carry consequences beyond the console. The third tier SHALL carry no collective name and no summary of how many are enabled.
+
+Each of the three features SHALL carry a help hint stating which tournaments it is for; the mode's two values and the payments setting SHALL each carry a hint stating the consequence rather than restating the label.
+
+#### Scenario: All three tiers on one surface
+- **WHEN** the organizer opens the tournament's settings
+- **THEN** the mode, the payments setting and the three inclusions are all present, in that order
+
+#### Scenario: No tier name over the inclusions
+- **WHEN** the organizer has none of the three features enabled
+- **THEN** the surface states which features are off and gives that condition no name
+
+#### Scenario: Consequence in the hint
+- **WHEN** the organizer reaches the help marker beside the manual mode
+- **THEN** a hint states that fencers cannot register in the application and Squire sends them nothing, rather than restating the word
+
+### Requirement: The settings surface is the second half of creating a tournament
+Creating a tournament SHALL take its display name, date and slug on one panel and its settings on the next, in one window, with no further dialog after them.
+
+**No tournament SHALL exist until the settings panel is confirmed.** The two panels are one act: the request that creates the tournament SHALL carry its settings, so there is no moment at which a tournament exists without them and none at which one exists because of a step the organizer then backed out of.
+
+The settings panel SHALL be dismissible, and dismissing it SHALL return to the naming panel with every field holding what was typed, having created nothing. Dismissing the naming panel SHALL abandon the creation.
+
+Because the tournament is created at the end, a refusal — a slug already taken, or any other — SHALL be reported on the naming panel with the input intact, whichever panel the organizer was on when it was raised.
+
+The settings panel SHALL NOT ask for confirmation of what it is about to write. Confirmation exists to count what a change would hide and whom it would affect, and a tournament that does not yet exist holds nothing and has taken no registrations.
+
+#### Scenario: Settings chosen at creation
+- **WHEN** an organizer names a tournament, chooses manual mode, ticks team disciplines and confirms
+- **THEN** the tournament is created manual with the team feature on and the other two off, and the console opens on Setup
+
+#### Scenario: Cancelling the settings panel creates nothing
+- **WHEN** an organizer names a tournament, reaches the settings panel and cancels
+- **THEN** no tournament has been created, and the naming panel is shown again holding the name, date and slug that were typed
+
+#### Scenario: Confirming with nothing chosen
+- **WHEN** an organizer confirms the settings panel without changing anything
+- **THEN** the tournament is created in automatic mode with every feature off, and the console opens on Setup
+
+#### Scenario: A taken slug is reported where it was typed
+- **WHEN** the creation is refused because the slug is taken
+- **THEN** the naming panel is shown again with the input intact and the reason stated, and no tournament exists
+
+#### Scenario: Nothing is confirmed twice
+- **WHEN** an organizer chooses manual mode on the settings panel at creation
+- **THEN** no confirmation is asked for, because nothing is being hidden and nobody has registered
+
+### Requirement: OTHER carries one settings section
+The Setup phase's `OTHER` tab SHALL carry **one** section stating the tournament's whole configuration — its mode, its payments setting, and which of the three features are enabled — in words, with a single control that reopens the settings surface on the tournament's current values. It SHALL NOT carry a second section describing any part of that configuration.
+
+Confirming the surface SHALL apply the settings immediately and SHALL refresh the tab bar and the sections around it, without leaving Setup.
+
+The section SHALL follow the `OTHER` tab's rule that its actions carry their own controls: it SHALL NOT be written by a save control, and `OTHER` SHALL continue to carry none.
+
+#### Scenario: One section states everything
+- **WHEN** the organizer opens `OTHER` on a manual tournament with payments on and extra services enabled
+- **THEN** one section states that the tournament is manual, that it collects payments, and that it includes extra services, and offers one control to change any of it
+
+#### Scenario: No second section
+- **WHEN** the organizer reads `OTHER`
+- **THEN** no separate section describes the mode, the payments setting or the features on its own
+
+#### Scenario: Change applies at once
+- **WHEN** the organizer enables extra services through the settings surface on `OTHER`
+- **THEN** the `EXTRA` tab appears without a save and without leaving Setup
+

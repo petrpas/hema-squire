@@ -2,9 +2,7 @@
 
 ## Purpose
 Define and configure tournaments in a multi-tournament deployment: disciplines, pricing, payment and reservation parameters, and organizer authorization.
-
 ## Requirements
-
 ### Requirement: Multiple tournaments in one deployment
 The system SHALL host multiple tournaments concurrently in a single deployment. Registrations, rules, operation parameters, pricing, and exports SHALL be tournament-scoped; fencer accounts SHALL be shared globally.
 
@@ -392,7 +390,7 @@ A failed logo upload SHALL tell the organizer which of the distinguishable cause
 ### Requirement: Payment and reservation parameters
 Per tournament with the payments feature enabled, the organizer SHALL configure, in Setup: the payment mode, the payment window in days, the reminder day, and the public-list treatment of unpaid registrations. In deposit mode the organizer SHALL additionally configure the deposit amount. The bank account payments are collected into is configured in Setup alongside them, as fixed by `setup-navigation`.
 
-**None of these parameters SHALL be offered while the payments feature is off**, as fixed by `tournament-modes`: a tournament Squire collects no money for has no payment mode to choose, no window to open and no reminder to send. Their stored values SHALL be retained and SHALL be offered again, unchanged, when the feature is turned back on. Every rule below governs a tournament whose payments feature is on.
+**None of these parameters SHALL be offered while the payments setting is off**, as fixed by `payments`: a tournament Squire collects no money for has no payment mode to choose, no window to open and no reminder to send. Their stored values SHALL be retained and SHALL be offered again, unchanged, when the feature is turned back on. Every rule below governs a tournament whose payments feature is on.
 
 The amount-matching tolerance in percent SHALL remain a per-tournament value but SHALL be configured in the console's payments phase rather than in Setup: it is tuned against transactions that already exist, while reconciliation is running, and is not a decision taken before the tournament is published.
 
@@ -631,11 +629,13 @@ Each tournament SHALL have exactly one Tournament Owner (initially the creator) 
 ### Requirement: In-app tournament creation
 An account holding the global Organizer role or higher SHALL be able to create a tournament from the tournament picker via a minimal dialog asking display name and date. The slug SHALL be auto-derived from the name and be editable before submission. Derivation SHALL append the event's year only when the slugified name does not already carry one: a four-digit group between 1900 and 2099 standing as its own token in the slug counts as a year already present, and in that case the slug is the slugified name alone. The creator SHALL become the tournament's Tournament Owner and land in the console's Setup phase. Accounts below the Organizer role SHALL NOT be able to create tournaments.
 
-Creation SHALL take two dialogs, not one. The first creates the tournament from the fields above; the second, opened once the tournament exists, chooses its mode as fixed by `tournament-modes`. A tournament SHALL be created with none of its features enabled, so that the second dialog only ever turns things on, and dismissing it leaves an easy-mode tournament rather than an unfinished one.
+Creation SHALL take two panels in one window, not two windows: the fields above, then the tournament's settings as fixed by `setup-navigation`. **No tournament SHALL exist until the second panel is confirmed** — the request that creates it carries its settings, so there is no moment at which one exists without them and none at which one exists because of a step the organizer then backed out of. Cancelling the second panel SHALL return to the first with every field intact, having created nothing.
+
+A tournament SHALL be created in automatic mode with none of its features enabled, so that the settings panel only ever turns things on.
 
 #### Scenario: Create from picker
 - **WHEN** an account with the Organizer role submits the "New tournament" dialog with a name and date
-- **THEN** the tournament is created with the derived slug, the account becomes its Tournament Owner, the Tournament Mode dialog opens, and the console then opens on the Setup phase
+- **THEN** the settings panel opens; confirming it creates the tournament with the derived slug, makes the account its Tournament Owner, and opens the console on the Setup phase
 
 #### Scenario: Year appended when the name carries none
 - **WHEN** the organizer types "Prague Open" with a date in 2026
@@ -651,15 +651,19 @@ Creation SHALL take two dialogs, not one. The first creates the tournament from 
 
 #### Scenario: Slug collision
 - **WHEN** the derived slug is already taken
-- **THEN** creation is rejected with a clear error, the mode dialog does not open, and the user can edit the slug
+- **THEN** creation is rejected with a clear error, no tournament exists, and the first panel is shown again with the input intact so the slug can be edited
 
 #### Scenario: Fencer cannot create
 - **WHEN** an account with only the Fencer role attempts to create a tournament
 - **THEN** creation is rejected with an authorization error
 
 #### Scenario: Created tournament starts with no features
-- **WHEN** a tournament is created and the mode dialog is dismissed
-- **THEN** the tournament is in easy mode and the console opens on Setup
+- **WHEN** an organizer confirms the settings panel without changing anything
+- **THEN** the tournament is created in automatic mode with every feature off, and the console opens on Setup
+
+#### Scenario: Cancelling the settings panel creates nothing
+- **WHEN** an organizer reaches the settings panel and cancels
+- **THEN** no tournament has been created, and the first panel holds the name, date and slug that were typed
 
 ### Requirement: Tournament ownership transfer
 The Tournament Owner SHALL be able to transfer ownership to a team member; on transfer the previous owner SHALL remain on the team. A global Admin SHALL be able to assign or reassign a tournament's owner as a fallback (for example when the owner's account is gone or the tournament has no owner).
@@ -777,7 +781,9 @@ Mandatory setup SHALL comprise: display name, date, location, at least one titul
 
 The bank account is mandatory **on a tournament Squire collects money for** because a published tournament accepts registrations, and a registration that cannot be paid holds a place against a deadline the fencer has no way to meet. Completeness is the only guarantee the registration path relies on, so the account SHALL be guaranteed by the same rule as every other mandatory item rather than checked again when a fencer asks how to pay.
 
-**A tournament whose payments feature is off SHALL NOT be required to record a bank account, whatever it charges**, and SHALL NOT have one reported as missing. Squire requests no money for such a tournament, sends no payment instructions and reconciles no transactions, as fixed by `tournament-modes`; the prices it carries state what the event costs and are settled outside the system. Every other mandatory item SHALL be unaffected by the payments feature, because the rest of completeness is about what the tournament offers rather than about collecting for it.
+Mandatory setup SHALL branch on the tournament's mode, as fixed by `tournament-mode`. **A tournament in manual mode SHALL additionally require the address of its external registration**, because publishing a tournament that accepts no registration and names no other way in leaves a fencer with nowhere to go. It SHALL NOT be required to record a bank account, whatever it charges, since Squire collects nothing for it. Its registration-opens and registration-closes dates SHALL NOT be treated as mandatory and SHALL NOT be enforced as a gate: they describe when the organizer's own registration runs, and the gate they would guard refuses every submission already. Every other mandatory item SHALL apply unchanged, because an organizer-kept tournament is no less a tournament — it has a place, organizers, disciplines and prices like any other.
+
+**A tournament whose payments feature is off SHALL NOT be required to record a bank account, whatever it charges**, and SHALL NOT have one reported as missing. Squire requests no money for such a tournament, sends no payment instructions and reconciles no transactions, as fixed by `payments`; the prices it carries state what the event costs and are settled outside the system. Every other mandatory item SHALL be unaffected by the payments feature, because the rest of completeness is about what the tournament offers rather than about collecting for it.
 
 A tournament SHALL be treated as charging when any price it can build a total from is above zero — any discipline's unit or early-bird price in either currency, any extra item's price in either currency, or any of the legacy fixed weapon-rental and afterparty parameters. Discounts SHALL NOT be considered, since they only reduce a total and cannot make a free tournament charge. A tournament that charges nothing SHALL be publishable with no bank account recorded. Completeness therefore depends on price **values** and not merely on their presence, so a tournament with payments enabled SHALL become incomplete at the moment it first sets a nonzero price without an account to collect it into — including a published tournament, whose save SHALL then be refused until the account is supplied.
 
@@ -786,6 +792,18 @@ An item whose editor the tournament's features conceal SHALL still be reported, 
 Complete mandatory setup SHALL be the precondition for publishing a tournament, and SHALL NOT by itself make a tournament public: publication is the explicit act fixed by `tournament-publication`. The items still unconfigured SHALL be named on the Setup phase's `PUBLISH` tab, which is where the organizer learns what stands between the tournament and publication. A tournament that has not been published SHALL NOT accept registrations, whether or not its mandatory setup is complete.
 
 A tournament published before the bank account became mandatory SHALL remain published and SHALL NOT be un-published by this rule, since the guarantee attaches at the moment of publication and cannot be applied retroactively. Such tournaments SHALL be reportable, so that an organizer can be told to supply the account rather than discovering it through a fencer who cannot pay.
+
+#### Scenario: An organizer-kept tournament needs its external address
+- **WHEN** the organizer opens `PUBLISH` on a tournament whose registrations they keep, with no external registration address recorded
+- **THEN** the tab lists that address as blocking publication
+
+#### Scenario: An organizer-kept tournament needs no bank account
+- **WHEN** a tournament whose registrations the organizer keeps carries priced disciplines and no bank account
+- **THEN** no missing bank account is reported and publication is available once the external address is recorded
+
+#### Scenario: The registration window does not block an organizer-kept tournament
+- **WHEN** a tournament whose registrations the organizer keeps has neither a registration-opens nor a registration-closes date
+- **THEN** neither is reported as missing
 
 #### Scenario: Blocking items shown
 - **WHEN** the organizer opens `PUBLISH` for a tournament without location and without discipline prices
@@ -871,3 +889,29 @@ only element on the tab styled as a primary action.
 #### Scenario: Removal matches the upload
 - **WHEN** the tournament has a logo
 - **THEN** its removal control is presented in the same tertiary treatment as the upload
+
+### Requirement: The deposit payment mode requires a payment feed that arrives by itself
+The `reservation with deposit` payment mode SHALL be available only on a tournament with a configured bank feed token. Where none is configured, the mode SHALL NOT be offered, and the Setup section SHALL state that a payment feed is what makes it available rather than omitting it without explanation.
+
+The reason is what the mode does: it opens a payment window per registration for the deposit and expires the reservation when the deposit is not credited within it. A sliding window per registration can only be answered by transactions that arrive on their own. A statement uploaded by hand answers one question after one date, in a batch, and cannot answer a hundred rolling ones.
+
+The two remaining modes — `immediate payment` and `reservation without deposit` — SHALL stay available whatever the feed, because both fall due at the single seating deadline, which a batch of uploaded statements answers correctly: the check is one pass after a date rather than a continuous watch. A tournament without a feed SHALL therefore keep its reminders, its confirmations and its seating settlement; what it does without is the per-registration sliding window.
+
+A tournament already carrying the deposit mode with no configured feed SHALL be reported as incomplete, naming the feed token as the item to supply. It SHALL NOT be switched to another mode on its behalf, since that would hand the organizer a mode they did not choose, and it SHALL NOT be un-published, publication having attached under the rules of its own moment.
+
+#### Scenario: Deposit mode not offered without a feed
+- **WHEN** the organizer opens the payment parameters on a tournament with no bank feed token configured
+- **THEN** the deposit mode is not offered, and the section states that a payment feed is what makes it available
+
+#### Scenario: The other two modes are unaffected
+- **WHEN** the organizer of that tournament chooses between the modes available
+- **THEN** immediate payment and reservation without deposit are both offered
+
+#### Scenario: An existing deposit tournament without a feed is reported
+- **WHEN** a tournament already set to the deposit mode has no bank feed token
+- **THEN** the `PUBLISH` tab reports the missing feed token, the payment mode is left as the organizer set it, and the tournament stays published if it was
+
+#### Scenario: Configuring the feed restores the mode
+- **WHEN** the organizer records a bank feed token
+- **THEN** the deposit mode is offered and the incompleteness is cleared
+

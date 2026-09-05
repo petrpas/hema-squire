@@ -2,9 +2,7 @@
 
 ## Purpose
 Handle in-app registration: reservations with per-reservation payment windows, QR payment confirmation emails, capacity and substitute queues, the public participant list, and cancellation policy.
-
 ## Requirements
-
 ### Requirement: In-app registration
 An authenticated fencer SHALL register for a tournament by selecting disciplines and any of the tournament's configured extra services, each with a quantity up to the item's per-registration limit and an option value where the item declares an option label, plus one non-billable field: a free-text note to the organizer. For legacy tournaments without configured extra services, the fixed weapon-rental and afterparty options SHALL remain accepted as before and SHALL be presented as rows in the same checklist. The system SHALL record the registration time, compute the total from the tournament's itemized pricing and discounts, and create a reservation with a unique VS. The confirmation email and exports SHALL list the selected items with their quantities and option values. Registration is exposed through the API and through the fencer-facing tournament detail page (fencer-home capability).
 
@@ -214,7 +212,9 @@ The seating deadline SHALL NOT be expressed as a payment window on individual re
 
 A registration holding no substitute placement SHALL expire on a lapsed payment window exactly as it does today.
 
-**Both clocks SHALL be dormant while the tournament's payments feature is off.** Such a registration SHALL be seated on the same capacity terms as any other, SHALL carry no due date, SHALL open no payment window, and SHALL never expire for non-payment. Its total SHALL still be computed and presented, as a statement of what the tournament costs rather than a demand, and it SHALL be presented to the fencer as confirmed rather than as awaiting payment. No payment mode SHALL apply to it: the mode describes how money is collected, and no money is being collected.
+**Both clocks SHALL be dormant while the tournament's payments feature is off**, and dormancy SHALL reach every lifecycle pass alike, as fixed by **One dormancy predicate governs the lifecycle passes**. Such a registration SHALL be seated on the same capacity terms as any other, SHALL carry no due date, SHALL open no payment window, SHALL never expire for non-payment, and **SHALL NOT be demoted to the substitute queue when the seating deadline passes**. A seat given without asking for money SHALL NOT be lost for money not paid. Its total SHALL still be computed and presented, as a statement of what the tournament costs rather than a demand, and it SHALL be presented to the fencer as confirmed rather than as awaiting payment. No payment mode SHALL apply to it: the mode describes how money is collected, and no money is being collected.
+
+Dormancy SHALL suspend the demotion, never the closing of seating. A tournament whose registrations are all dormant SHALL still settle its seating on its deadline and SHALL still place subsequent registrations in the queue rather than in seats, because seats are finite whether or not they were paid for; settlement SHALL simply find no registration to move.
 
 A registration taken while payments were off SHALL NOT acquire a due date retroactively when the payments feature is turned on. It SHALL remain seated and SHALL NOT expire on account of a window that never opened; what becomes of it is the organizer's decision.
 
@@ -260,6 +260,14 @@ An expired reservation SHALL NOT bar the fencer from the tournament. A fencer wh
 - **WHEN** the scheduler runs against a payments-off tournament long after any configured payment window would have closed
 - **THEN** no registration expires, no capacity is freed, and no expiry notice is sent
 
+#### Scenario: Payments-off registration keeps its seat past the seating deadline
+- **WHEN** the seating deadline passes on a payments-off tournament holding seated registrations
+- **THEN** none of them is demoted, every seat is kept, and no capacity is freed
+
+#### Scenario: Seating still closes on a payments-off tournament
+- **WHEN** the seating deadline has passed on a payments-off tournament and a fencer registers afterwards
+- **THEN** that registration is placed in the substitute queue rather than seated, exactly as it would be on a tournament that collects
+
 #### Scenario: Turning payments on does not expire what came before
 - **WHEN** a tournament that took registrations with payments off turns payments on and the scheduler runs
 - **THEN** those registrations remain seated, none expires, and none is sent an expiry notice
@@ -277,7 +285,11 @@ An expired reservation SHALL NOT bar the fencer from the tournament. A fencer wh
 - **THEN** the registration is accepted on the same terms as the first time
 
 ### Requirement: Seating settlement at the deadline
-Seating SHALL settle when the tournament's seating deadline passes, or earlier if the organizer settles it by hand. Settling SHALL do the same thing in both cases: every registration that is still reserved — that is, still owing money — SHALL have each of its seated discipline entries marked as a substitute placement and each of its non-waitlisted teams waitlisted, in place, freeing the capacity they held. The registration SHALL remain reserved, SHALL keep its VS, and SHALL have no payment window.
+Seating SHALL settle when the tournament's seating deadline passes, or earlier if the organizer settles it by hand. Settling SHALL do the same thing in both cases: every registration that is still reserved — that is, still owing money — and whose lifecycle clocks are not dormant SHALL have each of its seated discipline entries marked as a substitute placement and each of its non-waitlisted teams waitlisted, in place, freeing the capacity they held. The registration SHALL remain reserved, SHALL keep its VS, and SHALL have no payment window.
+
+A dormant registration SHALL NOT be demoted, for whichever cause made it dormant, as fixed by **One dormancy predicate governs the lifecycle passes**. Being reserved is what identifies a debtor only where money was asked for; where none was, the state means nothing about what is owed and SHALL NOT be read as though it did.
+
+Closing seating SHALL NOT depend on there being anything to demote. Settlement SHALL record the tournament as settled whether it moved every registration or none, so that seating closes on its deadline on every tournament alike and later registrations join the queue.
 
 Settled registrations SHALL take their position in the substitute queue by registration time, ranked among existing substitutes as though they had been queued from the start, so that a fencer who registered early keeps that advantage over one who registered late.
 
@@ -299,6 +311,10 @@ Seating SHALL be treated as settled when it has been settled explicitly, and als
 - **WHEN** the seating deadline passes and a registration is fully paid
 - **THEN** it keeps its seat and nothing about it changes
 
+#### Scenario: Dormant registration untouched
+- **WHEN** the seating deadline passes on a registration whose clocks are dormant
+- **THEN** it keeps its seat, its capacity is not freed, and no demotion is recorded against it
+
 #### Scenario: Deposit paid, balance not
 - **WHEN** the seating deadline passes on a deposit-mode registration that paid its deposit but not its balance
 - **THEN** it is moved to the substitute queue and the deposit is not refunded
@@ -318,6 +334,10 @@ Seating SHALL be treated as settled when it has been settled explicitly, and als
 #### Scenario: Immediate mode demotes nobody but closes seating
 - **WHEN** the seating deadline passes on an immediate-mode tournament
 - **THEN** no registration is demoted, because every unpaid one already expired, and subsequent registrations join the queue
+
+#### Scenario: Settlement with nothing to demote still closes seating
+- **WHEN** the seating deadline passes on a tournament every one of whose registrations is dormant
+- **THEN** no registration is demoted and the tournament is recorded as settled
 
 #### Scenario: Deadline reached before the processing pass runs
 - **WHEN** the seating deadline has passed but the settlement pass has not yet run
@@ -493,20 +513,44 @@ A registration holding both seated and queued placements SHALL be billed for its
 - **THEN** the submission is accepted and placed, and is never refused in order to ask the fencer to choose between trimming the selection and queueing all of it
 
 ### Requirement: Public participant list
-The public participant list SHALL show confirmed (paid) registrations only. Unpaid reservations SHALL be either hidden or shown greyed as unconfirmed, according to the tournament setting; the default for a new tournament is greyed.
+The public participant list SHALL present who is entered for the tournament. What it says about payment SHALL depend on whether Squire guarantees a payment state at all.
+
+**Where Squire collects the money** — the payments feature is on and Squire keeps the registrations — the list SHALL show confirmed (paid) registrations only. Unpaid reservations SHALL be either hidden or shown greyed as unconfirmed, according to the tournament setting; the default for a new tournament is greyed.
+
+**Where Squire does not** — the payments setting is off, or the tournament is in manual mode (`tournament-mode`) — the list SHALL present every entrant plainly, and SHALL draw no confirmed or unconfirmed distinction. It SHALL NOT mark an entrant unconfirmed, and the unpaid-list setting SHALL NOT apply, because there are no unpaid reservations in the sense that setting means: no money was requested, so none is outstanding. Reading a registration's payment state as its attendance SHALL NOT happen on a tournament whose payments Squire was never asked to handle.
+
+A list drawn from a roster Squire does not maintain SHALL state **how current it is**, naming the moment the roster last reached Squire. It SHALL state that moment as a fact and SHALL NOT characterise it — it SHALL NOT claim the list is up to date, nor warn that it may be stale, both being assessments the system has no basis for. A list Squire maintains itself SHALL state no such moment, being live by construction.
 
 #### Scenario: Unpaid fencer not presented as confirmed
-- **WHEN** a visitor views the public participant list
+- **WHEN** a visitor views the public participant list of a tournament Squire collects for
 - **THEN** unpaid reservations never appear as confirmed participants
 
+#### Scenario: Payments-off list shows entrants without a payment claim
+- **WHEN** a visitor views the public participant list of a tournament whose payments feature is off
+- **THEN** every seated entrant is listed, none is marked unconfirmed, and the unpaid-list setting has no effect
+
+#### Scenario: Organizer-kept list states its currency
+- **WHEN** a visitor views the public participant list of a tournament whose registrations the organizer keeps, imported four days ago
+- **THEN** the entrants are listed plainly and the list states that it stands as of the moment the roster last reached Squire
+
+#### Scenario: A live list does not date itself
+- **WHEN** a visitor views the participant list of a tournament Squire keeps the registrations for
+- **THEN** no as-of moment is stated
+
 ### Requirement: Registration availability
-The system SHALL accept a registration only when the tournament has been published and the current moment is within the registration window: at or after the tournament's opening moment when an opens date is set, and on or before the registration-closes date when set (otherwise up to the tournament date). When registration is unavailable, the rejection SHALL carry a distinct reason — not yet published, not yet open, or closed — so clients can present it (with the opening moment where applicable). The gate SHALL NOT re-check mandatory setup completeness: publication already guarantees it, and a published tournament cannot be edited into incompleteness.
+The system SHALL accept a registration only when the tournament's registrations are kept by Squire, the tournament has been published, and the current moment is within the registration window: at or after the tournament's opening moment when an opens date is set, and on or before the registration-closes date when set (otherwise up to the tournament date). When registration is unavailable, the rejection SHALL carry a distinct reason — kept by the organizer, not yet published, not yet open, or closed — so clients can present it (with the opening moment where applicable). The gate SHALL NOT re-check mandatory setup completeness: publication already guarantees it, and a published tournament cannot be edited into incompleteness.
+
+A tournament in manual mode SHALL be refused before every other reason is considered, and with a reason of its own, as fixed by `tournament-mode`. It SHALL NOT be reported as closed: the closed reason means a window has passed, and telling a fencer they were too late for a window that never existed on this tournament is a falsehood the client would then present.
 
 The two edges of the window SHALL be evaluated differently, because they mean different things. The opening edge is an **instant**: the tournament's opens date, its opening time when set (the start of the day otherwise), read in the tournament's timezone as fixed by `tournament-admin`. The closing edge remains a **whole day**: registration is accepted through the end of the closing date in the tournament's timezone. No edge SHALL be evaluated against a day boundary in any other zone, so a tournament announced as opening at a given hour opens at that hour for every caller, wherever the system or the caller happens to run.
 
 Amendment availability SHALL follow the same evaluation: it is closed by every reason registration is, plus its own amendments-close boundary when set, which is a whole day in the tournament's timezone.
 
 The gate SHALL remain the sole authority on whether a registration may be created. A client MAY present the window and MAY reveal its registration form when the opening moment passes, but a submission that arrives before the opening moment SHALL still be rejected with the not-yet-open reason, and that rejection SHALL carry the opening moment so the client can return to presenting the wait rather than a generic failure.
+
+#### Scenario: Kept by the organizer
+- **WHEN** a fencer attempts to register for a published, open tournament in manual mode
+- **THEN** the registration is rejected with the kept-by-the-organizer reason
 
 #### Scenario: Not published
 - **WHEN** a fencer attempts to register for a tournament that has not been published
@@ -727,3 +771,32 @@ A per-discipline count SHALL be stated in the unit its discipline is entered in:
 #### Scenario: Response states the server's clock
 - **WHEN** any fencer-facing tournament list or detail is fetched
 - **THEN** the response states the server's current instant
+
+### Requirement: One dormancy predicate governs the lifecycle passes
+Whether Squire runs its lifecycle clocks against a registration SHALL be settled by a single predicate over the tournament and the registration, and every lifecycle pass SHALL consult that predicate and no other condition of its own. The passes so governed are the reminder pass, the expiry pass, the demotion carried out at seating settlement, and the count of pending demotions the console states before the organizer confirms one.
+
+The predicate SHALL yield the **cause** of dormancy rather than a bare yes or no, drawn from a closed set of reasons, so that why a registration is not moving is readable rather than inferred. The causes SHALL be:
+
+- the tournament's **payments feature is off**, so no money was ever requested;
+- the registration was **issued from an imported row**, so its clocks are dormant by origin.
+
+A cause SHALL be read from the tournament wherever it is a live setting, so that changing that setting takes effect at once and no stale copy governs a pass. A cause SHALL be stored only where it records an origin that cannot be recomputed from the registration's present contents.
+
+Adding a further reason to leave a registration alone SHALL be an addition to this predicate and SHALL NOT be a condition placed in any pass.
+
+#### Scenario: Every pass agrees
+- **WHEN** a registration is dormant for any cause and the lifecycle runs
+- **THEN** it receives no reminder, does not expire, is not demoted at settlement, and is not counted among the pending demotions
+
+#### Scenario: The count and the settlement select alike
+- **WHEN** the console states how many registrations settling seating would demote, and the organizer then settles
+- **THEN** the registrations demoted are exactly those counted, with no registration counted that settlement leaves alone
+
+#### Scenario: A live cause is read live
+- **WHEN** a tournament's payments feature is turned on
+- **THEN** its registrations cease to be dormant for that cause from that moment, without any registration being rewritten
+
+#### Scenario: The cause is stated
+- **WHEN** a registration is dormant
+- **THEN** which of the reasons made it dormant is available, rather than only the fact that it is
+
