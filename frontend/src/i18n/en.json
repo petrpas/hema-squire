@@ -569,7 +569,7 @@
           "organizer": "You keep the list of entrants yourself — a form of your own, a spreadsheet, a club mailing list — and bring it into Squire by import. Squire cleans it, matches it against HEMA Ratings, prices it and exports it. It writes to nobody and holds no registration form."
         },
         "consequence": {
-          "squire": "Fencers register in Squire. I keep the state of every entry and the lists for you.",
+          "squire": "Fencers register in Squire. It keeps the state of every entry and the lists for you.",
           "organizer": "Nobody can register in Squire, and Squire sends nobody anything."
         },
         "confirmToManual": "In-app registration will close, and Squire will stop sending mail and stop expiring reservations for this tournament.",
