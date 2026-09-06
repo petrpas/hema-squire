@@ -202,6 +202,7 @@
       "unset": "Unmark settled",
       "meaning": "Settled records your word that the money reached you. Squire has received nothing itself, so what each fencer is owed stays as it is."
     },
+    "unpriced_rental_problem": "This tournament lends nothing called {{items}}, so nothing is billed for it.",
     "unpriced_rental": "This tournament lends nothing by that name, so nothing is billed for it.",
     "waived": "waived",
     "waived_all": "all waived",
@@ -226,7 +227,9 @@
       "silent": "No mail was sent.",
       "error": {
         "failed": "The correction could not be applied.",
-        "row_has_registration": "This row has a registration; its disciplines are amended, not overwritten.",
+        "row_has_registration": "This row has a registration; it is amended, not overwritten.",
+        "field_is_not_amendable": "This column is not one an issued registration is corrected through.",
+        "rentals_must_be_a_list": "Borrowed items are given as names separated by commas.",
         "registration_not_live": "This registration is no longer live and is not corrected here.",
         "no_registration_for_row": "This row has no registration to amend."
       }

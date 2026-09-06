@@ -8,6 +8,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import type { SheetRow } from "./api";
 import { CellDisplay, rowNumber } from "./Console";
 import NoteMarker from "./NoteMarker";
+import ProblemsCell from "./ProblemsCell";
 
 // The note and problem markers, and the number the leftmost column shows
 // (spec `etl-console`, Note and problem markers / Fixed fencer number).
@@ -55,6 +56,14 @@ describe("note and problem cells", () => {
     expect(cell("notes", { notes: "   " })).toBe("");
   });
 
+  it("marks a row whose only problem is an item nothing prices", () => {
+    // a borrowed item the tournament lends nothing by is billed nothing, and
+    // the total is short by exactly what nobody can see (owner decision,
+    // 2026-09-06)
+    expect(cell("problems", { unpriced_rentals: ["Sword"] })).toContain("[!]");
+    expect(cell("problems", { unpriced_rentals: [] })).toBe("");
+  });
+
   it("show a marker, not the text, where there is something to read", () => {
     const note = cell("notes", { notes: "dorazím později" });
     expect(note).toContain("[i]");
@@ -89,6 +98,22 @@ function mount(element: React.ReactElement) {
 afterEach(() => {
   host?.remove();
   host = null;
+});
+
+describe("the problems cell", () => {
+  it("discloses the unpriced item, and the parse problem after it", () => {
+    // the parser's report is about the file, and the file is the older news
+    const marker = mount(
+      <ProblemsCell text="afterparty answer ambiguous" unpriced={["Sword", "Mace"]} />,
+    );
+    marker.click();
+    const disclosed = marker.panel()?.textContent ?? "";
+    expect(disclosed).toContain("Sword, Mace");
+    expect(disclosed).toContain("afterparty answer ambiguous");
+    expect(disclosed.indexOf("Sword")).toBeLessThan(
+      disclosed.indexOf("afterparty answer ambiguous"),
+    );
+  });
 });
 
 describe("the marker's disclosure", () => {

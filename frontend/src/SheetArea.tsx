@@ -215,7 +215,9 @@ export default function SheetArea({
                             value={
                               column === "disciplines"
                                 ? row.disciplines.join(", ")
-                                : row[column]
+                                : column === "weapon_rentals"
+                                  ? row.weapon_rentals.join(", ")
+                                  : row[column]
                             }
                             onSave={(raw) => onEdit(row, column, raw)}
                             validate={(raw) => onValidate(column, raw)}

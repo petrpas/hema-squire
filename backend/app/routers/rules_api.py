@@ -58,7 +58,7 @@ def create_rule(
         data.payload,
         index,
     )
-    if rule.kind == "discipline_amendment":
+    if rule.kind == rules.AMENDMENT:
         result = _settle_amendments(session, tournament, rule, mailer)
         out = RuleOut.model_validate(rule)
         out.amendment = None if result is None else AmendmentOut(**result.__dict__)
@@ -69,7 +69,7 @@ def create_rule(
 def _settle_amendments(
     session, tournament, rule: Rule, mailer: Mailer
 ) -> amendment.AmendmentResult | None:
-    """Put the registration behind a row into the state its standing discipline
+    """Put the registration behind a row into the state its standing
     amendments produce.
 
     Called where an amendment is created and again where one is withdrawn, the
@@ -83,8 +83,11 @@ def _settle_amendments(
         session,
         tournament,
         registration,
-        rules.amendments_for(session, tournament, rule.target),
-        rule.payload.get("base", []),
+        # every amendable field, not only the one this rule touched: the
+        # amendment restates a whole registration, and `rule` is passed as the
+        # withdrawn one so that a field whose last amendment has just gone can
+        # still find what it was issued with
+        rules.amended_state(session, tournament, rule.target, registration, rule),
         mailer,
     )
 
@@ -122,10 +125,10 @@ def delete_rule(
     rules.delete_rule(session, rule, fencer)
     if rule.kind == "payment_link":
         matching.unapply_payment_link(session, tournament, rule)
-    if rule.kind == "discipline_amendment":
+    if rule.kind == rules.AMENDMENT:
         # withdrawal is a replay of what remains, not an inverse of what went:
-        # where nothing remains, the registration returns to the selection it
-        # was issued with, which this rule carries
+        # where nothing remains for this field, the registration returns to the
+        # value it was issued with, which this rule carries
         _settle_amendments(session, tournament, rule, mailer)
 
 

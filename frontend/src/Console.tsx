@@ -18,6 +18,7 @@ import OperationsIndicator from "./OperationsIndicator";
 import ManualEditsRail from "./ManualEditsRail";
 import ManualEntryPanel from "./manual/ManualEntryPanel";
 import PaidStamp from "./PaidStamp";
+import ProblemsCell from "./ProblemsCell";
 import RentalsCell from "./RentalsCell";
 import TolerancePanel from "./TolerancePanel";
 import ExpiredHoldingPanel from "./payments/ExpiredHoldingPanel";
@@ -113,7 +114,17 @@ export const MARKER_COLUMNS = new Set(["notes", "problems"]);
 export const PHASE_COLUMNS: Record<Phase, string[]> = {
   setup: [],
   import: ["disciplines", "problems", "notes"],
-  fencers: ["disciplines", "weapon_rentals", "afterparty", "registered_at", "notes"],
+  // problems sits beside notes here as it does on Import: a row now states
+  // problems that outlive parsing — a borrowed item nothing prices — and this
+  // is the phase where that item is read and corrected
+  fencers: [
+    "disciplines",
+    "weapon_rentals",
+    "afterparty",
+    "registered_at",
+    "notes",
+    "problems",
+  ],
   matching: ["hr_id", "hr_name", "hr_nationality", "hr_club", "match"],
   // Deduplication shows candidate groups, not the fencer list (design D1)
   dedup: [],
@@ -144,9 +155,9 @@ const EDITABLE_COLUMNS = new Set(["name", "nationality", "club", "hr_id"]);
 
 /** Columns the fencer list owns, and no other phase.
  *
- *  Disciplines are the one of these. Offered on the fencer list and nowhere
- *  else: the phases after it read the roster rather than settle it, and Import
- *  has no registration to amend.
+ *  The priced ones: the disciplines a row entered and the items it borrows.
+ *  Offered on the fencer list and nowhere else: the phases after it read the
+ *  roster rather than settle it, and Import has no registration to amend.
  *
  *  Whether a registration stands behind the row decides what the edit *does* —
  *  a correction to the row, or an amendment of the registration — and not
@@ -155,7 +166,20 @@ const EDITABLE_COLUMNS = new Set(["name", "nationality", "club", "hr_id"]);
  *  time when issuing was a button the organizer pressed when they were ready;
  *  issuing is a step of payment intake now, so every imported row has a
  *  registration within seconds of arriving and the cell opened for nothing. */
-const FENCER_LIST_COLUMNS = new Set(["disciplines"]);
+const FENCER_LIST_COLUMNS = new Set(["disciplines", "weapon_rentals"]);
+
+/** Item names out of the text a rentals cell is edited as. Commas alone, and
+ *  the case and spacing the organizer typed: an item is named, not slugged, and
+ *  "Sword & Buckler" is one item however many spaces it holds. A name matching
+ *  nothing the tournament lends is kept — it is billed nothing and stated as
+ *  such on the row (owner decision, 2026-09-06). */
+export function parseRentals(raw: string): string[] {
+  const seen = new Set<string>();
+  return raw
+    .split(",")
+    .map((part) => part.trim())
+    .filter((part) => part !== "" && !seen.has(part) && seen.add(part) !== undefined);
+}
 
 /** Slugs out of the text a discipline cell is edited as. Separators are loose
  *  on purpose — a comma is what the cell shows, and a space is what someone
@@ -207,13 +231,18 @@ export function editableHere(column: string, phase: Phase): boolean {
 export function ruleKindFor(
   field: string,
   row?: SheetRow,
-): "match_resolution" | "field_edit" | "discipline_amendment" {
+): "match_resolution" | "field_edit" | "registration_amendment" {
   if (field === "hr_id") return "match_resolution";
-  if (field === "disciplines" && (row?.registration_id ?? null) !== null) {
-    return "discipline_amendment";
+  if (AMENDABLE_FIELDS.has(field) && (row?.registration_id ?? null) !== null) {
+    return "registration_amendment";
   }
   return "field_edit";
 }
+
+/** The fields of a registration an organizer's edit amends rather than writes
+ *  to the row: each of them is priced, so the table and the money move
+ *  together or the edit is refused. */
+const AMENDABLE_FIELDS = new Set(["disciplines", "weapon_rentals"]);
 
 /** The number the leftmost column shows: the fencer's fixed number, on every
  *  view including Import (spec etl-console, Fixed fencer number). Never the
@@ -399,14 +428,17 @@ export function CellDisplay({
           )}
         </>
       );
-    case "notes":
-    case "problems": {
+    case "notes": {
       // nothing at all on a row that carries none: not a dash, not an empty
       // marker (spec etl-console, Note and problem markers)
-      const value = row[column];
+      const value = row.notes;
       if (typeof value !== "string" || value.trim() === "") return null;
-      return <NoteMarker kind={column === "notes" ? "note" : "problem"} text={value} />;
+      return <NoteMarker kind="note" text={value} />;
     }
+    case "problems":
+      // the parser's report, and anything else wrong with the row — a borrowed
+      // item nothing prices is stated here as well as in its own cell
+      return <ProblemsCell text={row.problems} unpriced={row.unpriced_rentals ?? []} />;
     case "weapon_rentals":
       // a name the tournament lends nothing by is billed nothing, and says so
       // here rather than leaving the total quietly short
@@ -532,10 +564,12 @@ export default function Console({
   }
 
   function saveEdit(row: SheetRow, field: string, raw: string) {
-    if (field === "disciplines") {
+    if (field === "disciplines" || field === "weapon_rentals") {
       // a list, not the text it was typed as: the row's own shape, which
       // pricing, seating and issuing all read
-      void addRule(ruleKindFor(field, row), row.id, { field, value: parseDisciplines(raw) });
+      const value =
+        field === "disciplines" ? parseDisciplines(raw) : parseRentals(raw);
+      void addRule(ruleKindFor(field, row), row.id, { field, value });
       return;
     }
     const value =

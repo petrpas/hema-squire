@@ -208,6 +208,7 @@
       "unset": "Zrušit označení",
       "meaning": "Vyrovnáno je tvůj záznam, že ti peníze dorazily. Squire sám nedostal nic, takže částka, kterou šermíř dluží, zůstává, jak byla."
     },
+    "unpriced_rental_problem": "Turnaj nepůjčuje: {{items}} — nic se za to neúčtuje.",
     "unpriced_rental": "Tuhle položku turnaj nepůjčuje, takže za ni nic neúčtuje.",
     "waived": "odpuštěno",
     "waived_all": "odpuštěno vše",
@@ -232,7 +233,9 @@
       "silent": "Žádný e-mail neodešel.",
       "error": {
         "failed": "Opravu se nepodařilo provést.",
-        "row_has_registration": "Za tímto řádkem stojí registrace; její disciplíny se mění, nepřepisují se.",
+        "row_has_registration": "Za tímto řádkem stojí registrace; ta se mění, nepřepisuje se.",
+        "field_is_not_amendable": "Tenhle sloupec se u vystavené registrace neopravuje.",
+        "rentals_must_be_a_list": "Zápůjčky se zadávají jako názvy oddělené čárkou.",
         "registration_not_live": "Tato registrace už není živá a tady se neopravuje.",
         "no_registration_for_row": "K tomuto řádku není žádná registrace, kterou by šlo změnit."
       }

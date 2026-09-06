@@ -314,7 +314,23 @@ describe("which cells a phase opens for editing", () => {
     // a row with a registration is a cell that never opens at all
     expect(ruleKindFor("disciplines", row("imp:a1"))).toBe("field_edit");
     expect(ruleKindFor("disciplines", row("imp:a1", { registration_id: 7 }))).toBe(
-      "discipline_amendment",
+      "registration_amendment",
+    );
+  });
+
+  it("opens the rentals cell on the fencer list and nowhere else", () => {
+    // what a row borrows is priced, so a rentals cell that cannot be corrected
+    // is a wrong total with no remedy in the console
+    expect(editableHere("weapon_rentals", "fencers")).toBe(true);
+    for (const phase of ["import", "matching", "payments", "export"] as Phase[]) {
+      expect(editableHere("weapon_rentals", phase)).toBe(false);
+    }
+  });
+
+  it("amends the registration where one stands behind a rentals edit", () => {
+    expect(ruleKindFor("weapon_rentals", row("imp:a1"))).toBe("field_edit");
+    expect(ruleKindFor("weapon_rentals", row("imp:a1", { registration_id: 7 }))).toBe(
+      "registration_amendment",
     );
   });
 

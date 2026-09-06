@@ -24,6 +24,7 @@ from app.availability import full_disciplines, team_waitlist_flags
 from app.mail import Mailer
 from app.models import (
     DisciplineKind,
+    ExtraCategory,
     PaymentEvent,
     RefundState,
     Registration,
@@ -103,6 +104,10 @@ def apply_amendment(
         session.execute(
             delete(RegistrationExtra).where(RegistrationExtra.registration_id == registration.id)
         )
+        # the caller may have read the selections to decide which of them to
+        # carry over — a rentals correction keeps the afterparty — and the
+        # collection it loaded now holds rows this delete has removed. Expired,
+        # so the appends below build on what the database actually holds
 
     existing_teams: dict[int, Team] = {}
     keep_ids: set[int] = set()
@@ -124,6 +129,16 @@ def apply_amendment(
             for tid in remove_ids:
                 registration.teams.remove(existing_teams[tid])
     session.flush()
+
+    # The deletes above went through Core, so a collection the caller had
+    # already loaded still holds the rows they removed — and an organizer's
+    # amendment does load them: it reads the entries to know what the
+    # registration was issued with, and the selections to know which of them to
+    # carry over. Appending to a stale collection resurrects what was deleted,
+    # which is a registration billed twice for one discipline.
+    session.expire(registration, ["entries"])
+    if extras is not None:
+        session.expire(registration, ["extra_selections"])
 
     # unlike register(), amendment never rejects for fullness: a discipline
     # that is full joins as a substitute placement in place, and every other
@@ -292,32 +307,89 @@ def resolve_slugs(tournament: Tournament, slugs: list[str]) -> list:
     return [by_slug[slug] for slug in slugs if slug in by_slug]
 
 
+@dataclass
+class ExtraSelectionSpec:
+    """One extra-item selection, in the shape `apply_amendment` takes them.
+
+    The fencer's own path passes the submission's own objects; the organizer's
+    has no submission and states them here."""
+
+    extra_item_id: int
+    qty: int = 1
+    option_value: str | None = None
+
+
+def rental_selections(
+    tournament: Tournament, registration: Registration, names: list[str]
+) -> list[ExtraSelectionSpec]:
+    """The whole extras set a rentals correction leaves behind: what the
+    registration holds that is not lent, plus one selection per named item the
+    tournament does lend.
+
+    `apply_amendment` replaces the extras it is given in full, so a correction
+    that passed only the rentals would drop the fencer's afterparty — a change
+    nobody asked for, made by an edit about sabres. One of each named item,
+    however often the name is repeated: a fencer borrows a sabre, not two.
+
+    A name the tournament lends nothing by selects nothing and is billed
+    nothing. It stays in the registration's own list of borrowed items, where
+    `pricing.unpriced_rentals` finds it and the row states it (owner decision,
+    2026-09-06)."""
+    kept = [
+        ExtraSelectionSpec(
+            extra_item_id=selection.extra_item_id,
+            qty=selection.qty,
+            option_value=selection.option_value,
+        )
+        for selection in registration.extra_selections
+        if selection.item.category is not ExtraCategory.RENTAL
+    ]
+    lent = {
+        item.name: item
+        for item in tournament.extra_items
+        if item.category is ExtraCategory.RENTAL
+    }
+    return kept + [
+        ExtraSelectionSpec(extra_item_id=lent[name].id)
+        for name in dict.fromkeys(names)
+        if name in lent
+    ]
+
+
 def reapply_amendments(
     session: Session,
     tournament: Tournament,
     registration: Registration,
-    amendments: list[list[str]],
-    base: list[str],
+    state: dict[str, list],
     mailer: Mailer,
 ) -> AmendmentResult:
     """Put the registration into the state the amendments that remain produce.
 
     Not an inverse of the operation just undone. Withdrawal is a replay, as it
-    is for every other rule kind (spec edit-rules, Rule lifecycle): the
-    disciplines the registration was issued with, with the remaining amendments
-    applied over them in order. Each amendment states the whole selection, so
-    the last one standing is the answer — and where none stands, the issued
-    selection is.
+    is for every other rule kind (spec edit-rules, Rule lifecycle): what the
+    registration was issued with, with the remaining amendments applied over it.
+    Each amendment states the whole of its own field, so the last one standing
+    per field is the answer — and where none stands for a field, the issued
+    value is (`rules.amended_state`).
+
+    Every amendable field is rebuilt at once, whichever of them the rule that
+    occasioned this touched. `apply_amendment` states a whole registration
+    rather than a difference from one, so rebuilding a single field would
+    reprice it against whatever the others happened to hold.
 
     Priced and placed on the same terms the amendment itself was, and silent
     unless the result leaves the fencer owing more."""
-    slugs = amendments[-1] if amendments else base
+    rentals = state["weapon_rentals"]
     return apply_amendment(
         session,
         tournament,
         registration,
-        resolve_slugs(tournament, slugs),
+        resolve_slugs(tournament, state["disciplines"]),
         mailer,
         seat_all=dormant_by_origin(registration),
         notice=SURCHARGE_ONLY,
+        extras=rental_selections(tournament, registration, rentals),
+        # the list the fencer list displays and the confirmation mail reads,
+        # and the only place a name nothing lends survives at all
+        fields={"weapon_rentals": list(rentals)},
     )

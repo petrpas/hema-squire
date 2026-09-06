@@ -78,7 +78,7 @@ def setup(client, organizer, *, sb_capacity=20, early_fee=None, early_until=None
     app.dependency_overrides[get_import_parser] = lambda: RosterParser()
 
 
-def amend(client, organizer, row_id, slugs, kind="discipline_amendment"):
+def amend(client, organizer, row_id, slugs, kind="registration_amendment"):
     return client.post(
         "/api/tournaments/cup/rules",
         json={

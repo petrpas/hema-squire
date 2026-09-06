@@ -3,7 +3,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
 import type { SheetRow } from "./api";
-import { CellDisplay, ruleKindFor } from "./Console";
+import { CellDisplay, parseRentals, ruleKindFor } from "./Console";
 
 // What the fencer table's Registered column states (spec `etl-console`,
 // Registration moment in the fencer table). The neighbouring day columns are
@@ -104,9 +104,25 @@ describe("an edited cell", () => {
     // the registration's entries decide what it is billed and where it is
     // seated, so the edit moves both or neither (spec `discipline-amendment`)
     expect(ruleKindFor("disciplines", row({ registration_id: 7 }))).toBe(
-      "discipline_amendment",
+      "registration_amendment",
     );
     expect(ruleKindFor("disciplines", row({}))).toBe("field_edit");
+  });
+
+  it("records a rentals edit the same way", () => {
+    // what a row borrows is priced through the tournament's items, so the edit
+    // moves the table and the money together or neither
+    expect(ruleKindFor("weapon_rentals", row({ registration_id: 7 }))).toBe(
+      "registration_amendment",
+    );
+    expect(ruleKindFor("weapon_rentals", row({}))).toBe("field_edit");
+  });
+
+  it("reads a rentals cell as the names it was typed as", () => {
+    // commas alone: an item is named, not slugged, and one name may hold spaces
+    expect(parseRentals("Sabre, Sword & Buckler")).toEqual(["Sabre", "Sword & Buckler"]);
+    expect(parseRentals(" Sabre , Sabre ,, ")).toEqual(["Sabre"]);
+    expect(parseRentals("")).toEqual([]);
   });
 });
 

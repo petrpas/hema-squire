@@ -36,9 +36,9 @@ def _apply_field_edit(rows: dict[str, Row], target: str, payload: dict):
     return [(target, field, before, value)]
 
 
-def _apply_discipline_amendment(rows: dict[str, Row], target: str, payload: dict):
-    """An organizer's correction to the disciplines of a registration that
-    already exists.
+def _apply_registration_amendment(rows: dict[str, Row], target: str, payload: dict):
+    """An organizer's correction to a priced field of a registration that
+    already exists — its disciplines, or the items it borrows.
 
     The first kind whose subject is not the projected row. What it decides is
     applied to the registration itself — its entries replaced, its total
@@ -54,15 +54,15 @@ def _apply_discipline_amendment(rows: dict[str, Row], target: str, payload: dict
     disciplines are already read off the amended registration, so this only
     keeps replay coherent for a row whose registration has since gone.
 
-    `before` is the selection the registration was issued with, recorded in the
+    `before` is the value the registration was issued with, recorded in the
     payload when the rule was created — not the row's current value, which is
     the amended state and would make every amendment read as a change from
     itself to itself.
     """
     row = rows[target]
-    value = payload["value"]
-    row["disciplines"] = value
-    return [(target, "disciplines", payload.get("base"), value)]
+    field, value = payload["field"], payload["value"]
+    row[field] = value
+    return [(target, field, payload.get("base"), value)]
 
 
 def _apply_match_resolution(rows: dict[str, Row], target: str, payload: dict):
@@ -165,7 +165,7 @@ HANDLERS: dict[str, Handler] = {
     "row_delete": _apply_row_delete,
     "row_restore": _apply_row_restore,
     "match_resolution": _apply_match_resolution,
-    "discipline_amendment": _apply_discipline_amendment,
+    "registration_amendment": _apply_registration_amendment,
     "payment_link": _apply_opaque,
     "dedup_decision": _apply_dedup_decision,
 }
@@ -315,29 +315,87 @@ def _journal(session: Session, rule: Rule, action: str, actor: Fencer) -> None:
     )
 
 
-def amendments_for(session: Session, tournament: Tournament, target: str) -> list[list[str]]:
-    """The selections the amendments still standing against a row name, oldest
-    first. Each states the whole selection, so the last is what the row holds."""
+AMENDMENT = "registration_amendment"
+
+# The fields of a registration an organizer may correct from the table. Each of
+# them is priced, which is why the correction is an amendment rather than a
+# field edit: what the row says and what the registration bills have to move
+# together. The afterparty and merchandise belong here as soon as they have
+# cells to be corrected in.
+AMENDABLE_FIELDS = ("disciplines", "weapon_rentals")
+
+
+def _amendments_of(session: Session, tournament: Tournament, target: str, field: str):
+    """The amendments still standing against one field of one row, oldest
+    first. Each states the whole of its field, so the last is what holds."""
     return [
-        rule.payload["value"]
-        for rule in active_rules(session, tournament, kind="discipline_amendment")
-        if rule.target == target
+        rule
+        for rule in active_rules(session, tournament, kind=AMENDMENT)
+        if rule.target == target and rule.payload.get("field") == field
     ]
 
 
-def issued_selection(
-    session: Session, tournament: Tournament, target: str, registration
-) -> list[str]:
-    """The disciplines the registration held before any organizer amendment.
+def _issued_value(registration, field: str) -> list:
+    """What the registration itself says a field held. A substitute placement
+    counts as much as a seated one: what is restored is what was entered, not
+    what happened to be seated."""
+    if field == "disciplines":
+        return [entry.discipline.slug for entry in registration.entries]
+    return list(registration.weapon_rentals or [])
 
-    Read off the earliest amendment of this row where there is one — they all
-    carry it — and off the registration itself where there is none. A
-    substitute placement is in the selection as much as a seated one: what is
-    restored is what was entered, not what happened to be seated."""
-    for rule in active_rules(session, tournament, kind="discipline_amendment"):
-        if rule.target == target and "base" in rule.payload:
+
+def issued_selection(
+    session: Session,
+    tournament: Tournament,
+    target: str,
+    registration,
+    field: str = "disciplines",
+    withdrawn: Rule | None = None,
+) -> list:
+    """What one field of the registration held before any organizer amendment.
+
+    Read off the earliest amendment of this field on this row where there is one
+    — they all carry it — and off the registration itself where there is none.
+    `withdrawn` is the rule being removed, which is already out of the active
+    set by the time a withdrawal asks: where it was the only amendment of its
+    field, its own record of the issued value is the last copy left."""
+    for rule in _amendments_of(session, tournament, target, field):
+        if "base" in rule.payload:
             return rule.payload["base"]
-    return [entry.discipline.slug for entry in registration.entries]
+    if (
+        withdrawn is not None
+        and withdrawn.payload.get("field") == field
+        and "base" in withdrawn.payload
+    ):
+        return withdrawn.payload["base"]
+    return _issued_value(registration, field)
+
+
+def amended_state(
+    session: Session,
+    tournament: Tournament,
+    target: str,
+    registration,
+    withdrawn: Rule | None = None,
+) -> dict[str, list]:
+    """Every amendable field of the registration as the standing amendments
+    leave it: the last amendment of each field where there is one, and the
+    issued value where there is none.
+
+    All of them together, because an amendment is applied by restating the
+    whole registration: rebuilding one field alone would price it against
+    whatever the others happened to hold at the time."""
+    state = {}
+    for field in AMENDABLE_FIELDS:
+        standing = _amendments_of(session, tournament, target, field)
+        state[field] = (
+            standing[-1].payload["value"]
+            if standing
+            else issued_selection(
+                session, tournament, target, registration, field, withdrawn
+            )
+        )
+    return state
 
 
 def create_rule(
@@ -352,58 +410,73 @@ def create_rule(
 ) -> Rule:
     if kind not in HANDLERS:
         raise HTTPException(status_code=422, detail="unknown_rule_kind")
-    if kind in ("field_edit", "match_resolution", "discipline_amendment") and not (
+    if kind in ("field_edit", "match_resolution", AMENDMENT) and not (
         isinstance(payload, dict) and "field" in payload and "value" in payload
     ):
         raise HTTPException(status_code=422, detail="payload_requires_field_and_value")
-    if kind == "discipline_amendment" and payload.get("field") != "disciplines":
-        raise HTTPException(status_code=422, detail="amendment_is_a_disciplines_edit")
-    if payload.get("field") == "disciplines" and kind in ("field_edit", "discipline_amendment"):
-        # A row's disciplines decide what it is priced at, where it is seated
-        # and whether it can be issued at all, so an edit carries the row's own
-        # shape — a list of slugs the tournament offers — rather than whatever
-        # was typed. Checked here and not only in the console: a slug the
-        # tournament does not know would be dropped silently by issuing, and the
-        # organizer would meet it as a row that mysteriously will not bill.
+    if kind == AMENDMENT and payload.get("field") not in AMENDABLE_FIELDS:
+        raise HTTPException(status_code=422, detail="field_is_not_amendable")
+    if payload.get("field") in AMENDABLE_FIELDS and kind in ("field_edit", AMENDMENT):
         value = payload.get("value")
-        offered = {
-            discipline.slug
-            for discipline in tournament.disciplines
-            if discipline.kind is DisciplineKind.INDIVIDUAL
-        }
-        if not isinstance(value, list) or not value or not all(
-            isinstance(slug, str) for slug in value
-        ):
-            raise HTTPException(status_code=422, detail="disciplines_must_be_a_list")
-        unknown = [slug for slug in value if slug not in offered]
-        if unknown:
-            raise HTTPException(
-                status_code=422,
-                detail={"code": "unknown_discipline_slug", "slugs": unknown},
-            )
-        # Which of the two kinds a disciplines edit is is not the console's to
-        # choose: it follows from whether a registration stands behind the row.
-        # A field edit writes the projection, so accepting one where a
-        # registration stands behind the row would move the table and leave the
-        # money where it was — silently, which is the whole defect (spec
-        # edit-rules, A field edit is refused where it would only move the
+        if payload.get("field") == "disciplines":
+            # A row's disciplines decide what it is priced at, where it is
+            # seated and whether it can be issued at all, so an edit carries the
+            # row's own shape — a list of slugs the tournament offers — rather
+            # than whatever was typed. Checked here and not only in the console:
+            # a slug the tournament does not know would be dropped silently by
+            # issuing, and the organizer would meet it as a row that
+            # mysteriously will not bill.
+            offered = {
+                discipline.slug
+                for discipline in tournament.disciplines
+                if discipline.kind is DisciplineKind.INDIVIDUAL
+            }
+            if not isinstance(value, list) or not value or not all(
+                isinstance(slug, str) for slug in value
+            ):
+                raise HTTPException(status_code=422, detail="disciplines_must_be_a_list")
+            unknown = [slug for slug in value if slug not in offered]
+            if unknown:
+                raise HTTPException(
+                    status_code=422,
+                    detail={"code": "unknown_discipline_slug", "slugs": unknown},
+                )
+        else:
+            # What a row borrows is checked for its shape and nothing else. A
+            # name the tournament lends nothing by is not refused: it is a
+            # record of what the fencer asked for, billed nothing and stated as
+            # such on the row (owner decision, 2026-09-06). Empty is a legitimate
+            # answer here as it is not for disciplines — borrowing nothing is a
+            # thing a fencer does.
+            if not isinstance(value, list) or not all(
+                isinstance(name, str) for name in value
+            ):
+                raise HTTPException(status_code=422, detail="rentals_must_be_a_list")
+        # Which of the two kinds an edit to an amendable field is is not the
+        # console's to choose: it follows from whether a registration stands
+        # behind the row. A field edit writes the projection, so accepting one
+        # where a registration stands behind the row would move the table and
+        # leave the money where it was — silently, which is the whole defect
+        # (spec edit-rules, A field edit is refused where it would only move the
         # table).
         registration = amendment.registration_for_row(session, tournament, target)
         if kind == "field_edit" and registration is not None:
             raise HTTPException(status_code=409, detail="row_has_registration")
-        if kind == "discipline_amendment":
+        if kind == AMENDMENT:
             if registration is None:
                 raise HTTPException(status_code=409, detail="no_registration_for_row")
             if not amendment.is_live(registration):
                 raise HTTPException(status_code=409, detail="registration_not_live")
-            # The selection the registration was issued with, recorded once and
-            # carried by every amendment of this row: it is what a withdrawal
-            # returns to, and reading it off the registration later would read
-            # the amended state instead. Earlier amendments of the same row
-            # already carry it, so it survives their withdrawal.
+            # The value the registration was issued with, recorded once per
+            # field and carried by every amendment of that field: it is what a
+            # withdrawal returns to, and reading it off the registration later
+            # would read the amended state instead. Earlier amendments of the
+            # same field already carry it, so it survives their withdrawal.
             payload = {
                 **payload,
-                "base": issued_selection(session, tournament, target, registration),
+                "base": issued_selection(
+                    session, tournament, target, registration, payload["field"]
+                ),
             }
     if kind == "match_resolution" and payload.get("value") is not None and index is not None:
         # The profile is read once, here, and stored with the rule: a verdict
