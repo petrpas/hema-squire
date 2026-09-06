@@ -55,6 +55,13 @@ BODIES: dict[tuple[str, str], object] = {
         "registrations_kept_by": "squire"
     },
     ("POST", "/api/tournaments/{slug}/import/dedup/decide"): {"key": "k", "accept": True},
+    ("POST", "/api/tournaments/{slug}/payments/manual"): {
+        "registration_id": 1,
+        "amount": "500.00",
+        "currency": "CZK",
+        "received_on": "2026-08-01",
+        "method": "cash",
+    },
     ("POST", "/api/tournaments/{slug}/manual-rows"): {
         "name": "Hand Entered",
         "disciplines": ["LS"],
@@ -97,6 +104,7 @@ PATH_PARAMS = {
     "transaction_id": "1",
     "item_id": "1",
     "rule_id": "1",
+    "payment_id": "1",
     "fencer_id": "1",
 }
 

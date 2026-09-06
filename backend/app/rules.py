@@ -17,6 +17,7 @@ from fastapi import HTTPException
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app import amendment
 from app.hr_index import country_code, evidence_fields
 from app.models import DisciplineKind, Fencer, Rule, RuleJournalEntry, Tournament
 
@@ -33,6 +34,35 @@ def _apply_field_edit(rows: dict[str, Row], target: str, payload: dict):
     before = row.get(field)
     row[field] = value
     return [(target, field, before, value)]
+
+
+def _apply_discipline_amendment(rows: dict[str, Row], target: str, payload: dict):
+    """An organizer's correction to the disciplines of a registration that
+    already exists.
+
+    The first kind whose subject is not the projected row. What it decides is
+    applied to the registration itself — its entries replaced, its total
+    recomputed — by `amendment.reapply_amendments`, called where the rule is
+    created and again where it is withdrawn, the way a payment link is applied
+    beside its rule rather than inside the replay. Replay is a pure function of
+    its inputs and stays one; a handler that wrote to the database would make
+    every read of the table a write.
+
+    What is left here is the audit line, so the decision reaches the fencer
+    list's manual-edits log and can be withdrawn there like any other. The
+    projection is written too, but never as the point of the rule: the row's
+    disciplines are already read off the amended registration, so this only
+    keeps replay coherent for a row whose registration has since gone.
+
+    `before` is the selection the registration was issued with, recorded in the
+    payload when the rule was created — not the row's current value, which is
+    the amended state and would make every amendment read as a change from
+    itself to itself.
+    """
+    row = rows[target]
+    value = payload["value"]
+    row["disciplines"] = value
+    return [(target, "disciplines", payload.get("base"), value)]
 
 
 def _apply_match_resolution(rows: dict[str, Row], target: str, payload: dict):
@@ -135,6 +165,7 @@ HANDLERS: dict[str, Handler] = {
     "row_delete": _apply_row_delete,
     "row_restore": _apply_row_restore,
     "match_resolution": _apply_match_resolution,
+    "discipline_amendment": _apply_discipline_amendment,
     "payment_link": _apply_opaque,
     "dedup_decision": _apply_dedup_decision,
 }
@@ -284,6 +315,31 @@ def _journal(session: Session, rule: Rule, action: str, actor: Fencer) -> None:
     )
 
 
+def amendments_for(session: Session, tournament: Tournament, target: str) -> list[list[str]]:
+    """The selections the amendments still standing against a row name, oldest
+    first. Each states the whole selection, so the last is what the row holds."""
+    return [
+        rule.payload["value"]
+        for rule in active_rules(session, tournament, kind="discipline_amendment")
+        if rule.target == target
+    ]
+
+
+def issued_selection(
+    session: Session, tournament: Tournament, target: str, registration
+) -> list[str]:
+    """The disciplines the registration held before any organizer amendment.
+
+    Read off the earliest amendment of this row where there is one — they all
+    carry it — and off the registration itself where there is none. A
+    substitute placement is in the selection as much as a seated one: what is
+    restored is what was entered, not what happened to be seated."""
+    for rule in active_rules(session, tournament, kind="discipline_amendment"):
+        if rule.target == target and "base" in rule.payload:
+            return rule.payload["base"]
+    return [entry.discipline.slug for entry in registration.entries]
+
+
 def create_rule(
     session: Session,
     tournament: Tournament,
@@ -296,11 +352,13 @@ def create_rule(
 ) -> Rule:
     if kind not in HANDLERS:
         raise HTTPException(status_code=422, detail="unknown_rule_kind")
-    if kind in ("field_edit", "match_resolution") and not (
+    if kind in ("field_edit", "match_resolution", "discipline_amendment") and not (
         isinstance(payload, dict) and "field" in payload and "value" in payload
     ):
         raise HTTPException(status_code=422, detail="payload_requires_field_and_value")
-    if kind == "field_edit" and payload.get("field") == "disciplines":
+    if kind == "discipline_amendment" and payload.get("field") != "disciplines":
+        raise HTTPException(status_code=422, detail="amendment_is_a_disciplines_edit")
+    if payload.get("field") == "disciplines" and kind in ("field_edit", "discipline_amendment"):
         # A row's disciplines decide what it is priced at, where it is seated
         # and whether it can be issued at all, so an edit carries the row's own
         # shape — a list of slugs the tournament offers — rather than whatever
@@ -323,6 +381,30 @@ def create_rule(
                 status_code=422,
                 detail={"code": "unknown_discipline_slug", "slugs": unknown},
             )
+        # Which of the two kinds a disciplines edit is is not the console's to
+        # choose: it follows from whether a registration stands behind the row.
+        # A field edit writes the projection, so accepting one where a
+        # registration stands behind the row would move the table and leave the
+        # money where it was — silently, which is the whole defect (spec
+        # edit-rules, A field edit is refused where it would only move the
+        # table).
+        registration = amendment.registration_for_row(session, tournament, target)
+        if kind == "field_edit" and registration is not None:
+            raise HTTPException(status_code=409, detail="row_has_registration")
+        if kind == "discipline_amendment":
+            if registration is None:
+                raise HTTPException(status_code=409, detail="no_registration_for_row")
+            if not amendment.is_live(registration):
+                raise HTTPException(status_code=409, detail="registration_not_live")
+            # The selection the registration was issued with, recorded once and
+            # carried by every amendment of this row: it is what a withdrawal
+            # returns to, and reading it off the registration later would read
+            # the amended state instead. Earlier amendments of the same row
+            # already carry it, so it survives their withdrawal.
+            payload = {
+                **payload,
+                "base": issued_selection(session, tournament, target, registration),
+            }
     if kind == "match_resolution" and payload.get("value") is not None and index is not None:
         # The profile is read once, here, and stored with the rule: a verdict
         # says which fighter was bound, and replaying it must not depend on an

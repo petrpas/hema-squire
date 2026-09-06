@@ -775,3 +775,167 @@ def test_two_addressless_fencers_survive_a_round_trip(client, auth_headers):
         )
         assert names == ["Jindřich Pekárek", "Václav Pekárek"]
         assert len(check.scalars(select(Registration)).all()) == 3
+
+
+# ------------------------------- hand-recorded payments and waivers (v13)
+
+
+def _restore_into_empty(client, auth_headers, document):
+    from sqlalchemy import create_engine
+    from sqlalchemy.orm import Session
+    from sqlalchemy.pool import StaticPool
+
+    from app.db import Base, get_session
+    from app.main import app
+
+    fresh = create_engine(
+        "sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool
+    )
+    Base.metadata.create_all(fresh)
+
+    def fresh_session():
+        with Session(fresh) as session:
+            yield session
+
+    app.dependency_overrides[get_session] = fresh_session
+    organizer = auth_headers()
+    restore = client.post("/api/tournaments/restore", json=document, headers=organizer)
+    assert restore.status_code == 201, restore.text
+    return organizer
+
+
+def _restored_manual_payments():
+    """What the restored deployment holds, read directly. `restored` above is
+    the same app pointed at a fresh database, so its session override is the
+    way in."""
+    from sqlalchemy import select
+
+    from app.db import get_session
+    from app.main import app
+    from app.models import ManualPayment
+
+    session = next(app.dependency_overrides[get_session]())
+    return list(session.scalars(select(ManualPayment)).all())
+
+
+def _registration_id(client, organizer, vs):
+    rows = client.get("/api/tournaments/cup/sheet", headers=organizer).json()["rows"]
+    return next(row["registration_id"] for row in rows if row["vs"] == vs)
+
+
+def test_a_recorded_cash_payment_round_trips(client, auth_headers):
+    """The credited counter may now hold money no transaction explains, so the
+    document must carry the payment that does (spec data-export)."""
+    organizer = auth_headers()
+    setup(client, organizer)
+    fencer = auth_headers(email="jan@example.com", name="Jan Novak")
+    vs = client.post(
+        "/api/tournaments/cup/register", json={"disciplines": ["LS"]}, headers=fencer
+    ).json()["vs"]
+    client.post(
+        "/api/tournaments/cup/payments/manual",
+        json={
+            "registration_id": _registration_id(client, organizer, vs),
+            "amount": "1000.00",
+            "currency": "CZK",
+            "received_on": "2026-08-01",
+            "method": "cash",
+            "note": "u prezence",
+        },
+        headers=organizer,
+    )
+
+    document = client.get("/api/tournaments/cup/export/json", headers=organizer).json()
+    [payment] = document["manual_payments"]
+    assert payment["amount_cents"] == 100000
+    assert payment["method"] == "cash"
+    assert payment["note"] == "u prezence"
+    assert document["registrations"][0]["amount_paid_cents"] == 100000
+
+    restored = _restore_into_empty(client, auth_headers, document)
+    rows = client.get("/api/tournaments/cup/sheet", headers=restored).json()["rows"]
+    [row] = [r for r in rows if r["vs"] == vs]
+    assert row["paid"] is True
+    # the credit is restored once, from the counters, and not replayed on top
+    # of them by the payment record beside them
+    assert row["outstanding_amount"] == "0.00"
+    # read from the database rather than the console: a restored tournament
+    # carries no feature flags at all, which is older than this change and
+    # outside it
+    assert [p.amount_cents for p in _restored_manual_payments()] == [100000]
+
+
+def test_a_waiver_round_trips(client, auth_headers):
+    organizer = auth_headers()
+    setup(client, organizer)
+    fencer = auth_headers(email="jan@example.com", name="Jan Novak")
+    vs = client.post(
+        "/api/tournaments/cup/register", json={"disciplines": ["LS"]}, headers=fencer
+    ).json()["vs"]
+    registration_id = _registration_id(client, organizer, vs)
+    assert client.post(
+        f"/api/tournaments/cup/registrations/{registration_id}"
+        "/settled?settled=True&reason=volná účast",
+        headers=organizer,
+    ).status_code == 200
+
+    document = client.get("/api/tournaments/cup/export/json", headers=organizer).json()
+    [entry] = document["registrations"]
+    assert entry["settled_by_hand_reason"] == "volná účast"
+    assert entry["settled_by_hand_at"] is not None
+    assert entry["amount_paid_cents"] == 0
+
+    restored = _restore_into_empty(client, auth_headers, document)
+    rows = client.get("/api/tournaments/cup/sheet", headers=restored).json()["rows"]
+    [row] = [r for r in rows if r["vs"] == vs]
+    assert row["paid"] is True
+    assert row["settled_by_hand"] is True
+    assert row["settled_by_hand_reason"] == "volná účast"
+
+
+def test_a_removed_payment_is_not_exported(client, auth_headers):
+    organizer = auth_headers()
+    setup(client, organizer)
+    fencer = auth_headers(email="jan@example.com", name="Jan Novak")
+    vs = client.post(
+        "/api/tournaments/cup/register", json={"disciplines": ["LS"]}, headers=fencer
+    ).json()["vs"]
+    payment = client.post(
+        "/api/tournaments/cup/payments/manual",
+        json={
+            "registration_id": _registration_id(client, organizer, vs),
+            "amount": "1000.00",
+            "currency": "CZK",
+            "received_on": "2026-08-01",
+            "method": "cash",
+        },
+        headers=organizer,
+    ).json()
+    client.delete(
+        f"/api/tournaments/cup/payments/manual/{payment['id']}", headers=organizer
+    )
+
+    document = client.get("/api/tournaments/cup/export/json", headers=organizer).json()
+    assert document["manual_payments"] == []
+
+
+def test_a_pre_v13_document_restores_unmarked(client, auth_headers):
+    organizer = auth_headers()
+    setup(client, organizer)
+    fencer = auth_headers(email="jan@example.com", name="Jan Novak")
+    vs = client.post(
+        "/api/tournaments/cup/register", json={"disciplines": ["LS"]}, headers=fencer
+    ).json()["vs"]
+
+    document = client.get("/api/tournaments/cup/export/json", headers=organizer).json()
+    document["schema_version"] = 12
+    document.pop("manual_payments")
+    for entry in document["registrations"]:
+        entry.pop("settled_by_hand_at")
+        entry.pop("settled_by_hand_reason")
+
+    restored = _restore_into_empty(client, auth_headers, document)
+    rows = client.get("/api/tournaments/cup/sheet", headers=restored).json()["rows"]
+    [row] = [r for r in rows if r["vs"] == vs]
+    assert row["settled_by_hand"] is False
+    assert _restored_manual_payments() == []

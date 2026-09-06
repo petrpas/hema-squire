@@ -679,15 +679,49 @@ class Registration(Base):
     refund_state: Mapped[RefundState] = mapped_column(
         str_enum(RefundState), default=RefundState.NOT_APPLICABLE
     )
-    # sum of payments credited to this registration in the tournament's local
+    # Sum of payments credited to this registration in the tournament's local
     # currency, in cents — the one stored local-currency money figure; the
-    # balance is always derived (see outstanding_cents), never stored
+    # balance is always derived (see outstanding_cents), never stored.
+    #
+    # This counter used to mean *money Squire saw in a statement*. It now means
+    # **money credited, by a statement or by a person who said so**: an
+    # organizer may record a payment that arrived outside the bank feed, and it
+    # is credited here exactly as an ingested transaction's amount is (spec
+    # payments, "An organizer may record a payment Squire never saw"). Where
+    # the money came from is a property of the payment, not of this figure —
+    # ask `ManualPayment` and `BankTransaction`, which is how the two are told
+    # apart after the fact.
+    #
+    # A second counter was rejected deliberately: five readers would each have
+    # to remember to sum two fields, and the one that forgot would be a
+    # reservation expiring on money the organizer was told had arrived (design
+    # add-manual-payment-entry D1).
+    #
+    # A registration settled by hand credits **nothing** here. That mark is a
+    # waiver, not a payment; see `settled_by_hand_at`.
     amount_paid_cents: Mapped[int] = mapped_column(default=0)
     # the EUR sibling of amount_paid_cents: sum of EUR payments credited, in
     # EUR cents. The two counters are never summed — a registration is settled
     # when either currency's credit covers that currency's own total (design
     # Decision 5); see matching.match_new_transactions.
     amount_paid_eur_cents: Mapped[int] = mapped_column(default=0)
+    # When an organizer said this registration is settled with nothing passing
+    # through Squire, and why. One mark meaning one thing on every kind of
+    # tournament: where Squire collects nothing it is the organizer's word that
+    # they took the money themselves, and where Squire collects it is a waiver
+    # — a free place, a comped entrant (spec payments, "An organizer may mark a
+    # registration settled by hand").
+    #
+    # Stored rather than deduced from a paid state with empty counters. That
+    # deduction was sound only while such a registration could have no other
+    # cause; it now can, since a waived registration may also hold a payment
+    # recorded by hand (design add-manual-payment-entry D4).
+    #
+    # The reason is required where the tournament's payments are Squire's and
+    # optional where they are not — enforced at the endpoint, since it is a
+    # fact about the tournament rather than about this row.
+    settled_by_hand_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    settled_by_hand_reason: Mapped[str | None] = mapped_column(String(200))
 
     @property
     def fully_queued(self) -> bool:
@@ -734,6 +768,12 @@ class Registration(Base):
 
     @property
     def outstanding_cents(self) -> int:
+        # Correct under the widened counter without change: what is owed is the
+        # total less what has been credited, whether a statement or a person
+        # put the credit there. A registration settled by hand is the one case
+        # this figure does not answer on its own — nothing was credited and
+        # nothing is due — and the surfaces read `settled_by_hand_at` beside it
+        # and say *waived* (design add-manual-payment-entry D5).
         return self.total_amount * 100 - self.amount_paid_cents
 
     @property
@@ -742,6 +782,52 @@ class Registration(Base):
         if self.total_eur is None:
             return None
         return self.total_eur * 100 - self.amount_paid_eur_cents
+
+    def tolerance_cents(self, tournament: "Tournament", which: str) -> float:
+        """Tolerance as a percentage of the registration's stable total in this
+        currency lane — not of a shrinking remainder, which would tighten with
+        every partial payment already credited."""
+        total = self.total_amount if which == "local" else (self.total_eur or 0)
+        return total * 100 * tournament.amount_tolerance_percent / 100
+
+    def balance_cents(self, tournament: "Tournament") -> tuple[int, Currency]:
+        """What is still owed — or, negative, what is over — and the currency
+        that figure is stated in. One number, never two.
+
+        The local and EUR totals are two prices for one place, not two halves
+        of a debt: whichever lane the money arrives in settles the
+        registration, and the other lane's untouched total is then not a
+        balance at all. Printed side by side they read as a conversion, and a
+        fencer who had paid 1 100 Kč in full was shown "0 Kč (45 €)" — a
+        demand aimed at someone who owed nothing. So the lane the money
+        actually came in decides, and where none has come the local one does,
+        that being the price the tournament quotes first.
+
+        **The tolerance decides the state, not this figure.** A settled
+        registration short of its total still says how short: a euro transfer
+        the payer's bank converted lands twenty or forty crowns under the local
+        price, the tolerance accepts it as payment and the registration becomes
+        paid — and the organizer is still owed the truth about what reached the
+        account. Zeroing it here left nine such rows on one tournament reading
+        "0 Kč" with money missing behind every one of them, and nothing
+        anywhere that could add it up (owner decision, 2026-09-06).
+
+        So what is quoted is what is quoted, and whether to chase it is the
+        organizer's to decide rather than this method's to pre-empt. A trivial
+        overpayment reads as the negative figure it is, for the same reason.
+
+        A waiver is the one exception and owes nothing at all, whatever its
+        counters hold, because no money was ever supposed to pass.
+        """
+        if self.amount_paid_eur_cents and not self.amount_paid_cents and self.total_eur is not None:
+            currency = Currency.EUR
+            remaining = self.outstanding_eur_cents or 0
+        else:
+            currency = tournament.local_currency
+            remaining = self.outstanding_cents
+        if self.settled_by_hand_at is not None:
+            return 0, currency
+        return remaining, currency
 
     # legacy billable extras (pre-itemized tournaments) and free-text fields
     weapon_rentals: Mapped[list[str]] = mapped_column(JSON, default=list)
@@ -886,6 +972,67 @@ class PaymentEvent(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
+
+
+class PaymentMethod(enum.StrEnum):
+    """How money an organizer recorded by hand arrived. A short closed set with
+    an `OTHER` beside a free note, because "how did it arrive" is the first
+    question asked of a payment nobody can look up in a statement."""
+
+    CASH = "cash"
+    TRANSFER = "transfer"
+    CARD = "card"
+    OTHER = "other"
+
+
+class ManualPayment(Base):
+    """A payment the organizer says arrived, which Squire never saw: cash at
+    the desk, a transfer to another account, a card terminal.
+
+    **A sibling of `BankTransaction`, deliberately not a row inside it.** The
+    transaction list is the statement ledger — what an organizer reads against
+    their bank account and what intake deduplicates against — and a row no bank
+    sent would falsify it for every reader of that table, for the convenience
+    of this one writer. The provenance question is answered by asking a
+    different table, not by filtering that one (design
+    add-manual-payment-entry D2).
+
+    Always against a registration: there is no unmatched queue for money a
+    person entered, because they entered it against somebody.
+
+    Removal is a soft delete, so a wrong entry and its reversal both survive.
+    The amount reversed is this row's own `amount_cents` — never a figure
+    derived from today's balance, which is the mistake the payment-link rules
+    were built to avoid (`matching.py:751`). A correction is a removal and a
+    new record; there is no edit."""
+
+    __tablename__ = "manual_payments"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    tournament_id: Mapped[int] = mapped_column(ForeignKey("tournaments.id"))
+    registration_id: Mapped[int] = mapped_column(ForeignKey("registrations.id"))
+    amount_cents: Mapped[int]
+    # one of the tournament's currencies; credited to that currency's lane and
+    # never converted, since the two lanes are never summed (see
+    # Registration.amount_paid_cents)
+    currency: Mapped[Currency] = mapped_column(str_enum(Currency))
+    # the date the organizer says the money arrived, which is not the date they
+    # typed it in. Provenance rather than a clock: reminders and expiry read
+    # `expires_at` and never this
+    received_on: Mapped[date]
+    method: Mapped[PaymentMethod] = mapped_column(str_enum(PaymentMethod))
+    note: Mapped[str | None] = mapped_column(Text)
+    # who said so, kept as the label the audit trail uses rather than a
+    # foreign key: the record must still read correctly when the account that
+    # made it is gone
+    recorded_by: Mapped[str] = mapped_column(String(200))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+    removed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+    tournament: Mapped[Tournament] = relationship()
+    registration: Mapped[Registration] = relationship()
 
 
 class Rule(Base):

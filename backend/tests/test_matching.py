@@ -276,8 +276,13 @@ def test_credits_not_summed_across_currencies(client, auth_headers, mailbox):
 
     registration = client.get("/api/tournaments/cup/my-registration", headers=fencer).json()
     assert registration["state"] == "reserved"
+    # 600 CZK, not 1000 less 400 CZK less some conversion of the 15 EUR: the
+    # lanes are not summed. The fencer is quoted the local lane — settling it
+    # settles the registration — and the EUR lane is not a second debt to
+    # print beside it
     assert registration["outstanding_amount"] == "600.00"
-    assert registration["outstanding_eur_amount"] == "25.00"
+    assert registration["outstanding_currency"] == "CZK"
+    assert "outstanding_eur_amount" not in registration
     # neither is a flag — there is nothing for the organizer to resolve
     queue = client.get("/api/tournaments/cup/payments/unmatched", headers=organizer).json()
     assert queue == []

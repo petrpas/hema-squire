@@ -3,9 +3,10 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
 
-from app import matching, rules, sheet
+from app import amendment, matching, rules, sheet
 from app.auth import require_console_access
 from app.hr_index import HRIndex, get_hr_index
+from app.mail import Mailer, get_mailer
 from app.models import Rule, RuleJournalEntry
 from app.routers.tournaments import FencerDep, SessionDep, TournamentDep
 from app.schemas import NetChangeOut, RuleIn, RuleOut, RulePayloadIn, SheetOut
@@ -13,6 +14,7 @@ from app.schemas import NetChangeOut, RuleIn, RuleOut, RulePayloadIn, SheetOut
 router = APIRouter(prefix="/api/tournaments/{slug}", tags=["rules"])
 
 HRIndexDep = Annotated[HRIndex, Depends(get_hr_index)]
+MailerDep = Annotated[Mailer, Depends(get_mailer)]
 
 
 @router.get("/rules", response_model=list[RuleOut])
@@ -36,9 +38,10 @@ def create_rule(
     session: SessionDep,
     fencer: FencerDep,
     index: HRIndexDep,
+    mailer: MailerDep,
 ):
     require_console_access(session, tournament, fencer)
-    return rules.create_rule(
+    rule = rules.create_rule(
         session,
         tournament,
         fencer,
@@ -47,6 +50,30 @@ def create_rule(
         data.target,
         data.payload,
         index,
+    )
+    if rule.kind == "discipline_amendment":
+        _settle_amendments(session, tournament, rule, mailer)
+    return rule
+
+
+def _settle_amendments(session, tournament, rule: Rule, mailer: Mailer) -> None:
+    """Put the registration behind a row into the state its standing discipline
+    amendments produce.
+
+    Called where an amendment is created and again where one is withdrawn, the
+    way a payment link is applied and unapplied beside its rule: the replay that
+    builds the table is a pure function and stays one, so a rule whose subject
+    is the registration reaches it from here."""
+    registration = amendment.registration_for_row(session, tournament, rule.target)
+    if registration is None:
+        return
+    amendment.reapply_amendments(
+        session,
+        tournament,
+        registration,
+        rules.amendments_for(session, tournament, rule.target),
+        rule.payload.get("base", []),
+        mailer,
     )
 
 
@@ -72,13 +99,22 @@ def update_rule(
 
 @router.delete("/rules/{rule_id}", status_code=204)
 def delete_rule(
-    rule_id: int, tournament: TournamentDep, session: SessionDep, fencer: FencerDep
+    rule_id: int,
+    tournament: TournamentDep,
+    session: SessionDep,
+    fencer: FencerDep,
+    mailer: MailerDep,
 ):
     require_console_access(session, tournament, fencer)
     rule = _get_rule(session, tournament, rule_id)
     rules.delete_rule(session, rule, fencer)
     if rule.kind == "payment_link":
         matching.unapply_payment_link(session, tournament, rule)
+    if rule.kind == "discipline_amendment":
+        # withdrawal is a replay of what remains, not an inverse of what went:
+        # where nothing remains, the registration returns to the selection it
+        # was issued with, which this rule carries
+        _settle_amendments(session, tournament, rule, mailer)
 
 
 @router.get("/rules/journal")

@@ -31,6 +31,7 @@ from app.models import (
     BankTransaction,
     Currency,
     Fencer,
+    ManualPayment,
     PaymentEvent,
     PaymentMode,
     RefundState,
@@ -130,13 +131,21 @@ def detect_candidates(session: Session, transaction: BankTransaction) -> list[in
     return [vs for vs in tokens if vs in issued]
 
 
-def _event(session: Session, transaction: BankTransaction, kind: str, detail: str,
+def _event(session: Session, transaction: BankTransaction | None, kind: str, detail: str,
            registration: Registration | None = None) -> None:
+    """An event with no transaction behind it is a credit an organizer
+    recorded by hand; the detail names the `ManualPayment` where the VS would
+    otherwise stand, and the tournament comes from the registration, since
+    there is nothing else to ask (design add-manual-payment-entry D3)."""
+    tournament_id = (
+        transaction.tournament_id if transaction is not None
+        else registration.tournament_id  # type: ignore[union-attr]
+    )
     session.add(
         PaymentEvent(
-            tournament_id=transaction.tournament_id,
+            tournament_id=tournament_id,
             registration_id=registration.id if registration else None,
-            transaction_id=transaction.id,
+            transaction_id=transaction.id if transaction is not None else None,
             kind=kind,
             detail=detail,
         )
@@ -189,10 +198,10 @@ def _tolerance_cents(
     registration: Registration, tournament: Tournament, which: MatchCurrency
 ) -> float:
     """Tolerance as a percentage of the registration's stable total in this
-    currency lane — not of a shrinking remainder, which would tighten with
-    every partial payment already credited."""
-    total = registration.total_amount if which == "local" else (registration.total_eur or 0)
-    return total * 100 * tournament.amount_tolerance_percent / 100
+    currency lane. Lives on the registration, because the outstanding column
+    asks the same question when it decides whether a settled row's leftover
+    cents are owed or forgiven."""
+    return registration.tolerance_cents(tournament, which)
 
 
 def _credit(registration: Registration, which: MatchCurrency, amount_cents: int) -> None:
@@ -205,10 +214,10 @@ def _credit(registration: Registration, which: MatchCurrency, amount_cents: int)
 def _apply_deposit_threshold(
     session: Session,
     tournament: Tournament,
-    transaction: BankTransaction,
+    transaction: BankTransaction | None,
     registration: Registration,
     which: MatchCurrency,
-    vs: int,
+    origin: str,
 ) -> None:
     """Reaching the tournament's deposit closes the payment window rather than
     extending it (design add-payment-modes Decision 3).
@@ -233,7 +242,7 @@ def _apply_deposit_threshold(
     registration.expires_at = None
     _event(
         session, transaction, "deposit_settled",
-        f"VS {vs}: deposit of {deposit} reached, payment window closed",
+        f"{origin}: deposit of {deposit} reached, payment window closed",
         registration,
     )
 
@@ -242,17 +251,28 @@ def _settle(
     session: Session,
     tournament: Tournament,
     mailer: Mailer,
-    transaction: BankTransaction,
+    transaction: BankTransaction | None,
     registration: Registration,
     which: MatchCurrency,
-    vs: int,
+    origin: str,
     amount_cents: int,
     *,
     reinstated: bool = False,
 ) -> MatchOutcome:
     """Decide the registration's resulting state from `which`'s outstanding
     balance, after that lane has already been credited (Decision 1), and send
-    exactly the notification the outcome calls for."""
+    exactly the notification the outcome calls for.
+
+    The one place that knows what follows a credit — the settle test against
+    tolerance, the deposit threshold, the event, the overpayment's refund
+    state, and which mail goes out — and so it is reached from both routes
+    money takes rather than copied into the second. A payment an organizer
+    recorded by hand passes `transaction=None` and names itself in `origin`;
+    everything after that is identical, deliberately, down to the mail the
+    fencer receives (design add-manual-payment-entry D3).
+
+    `origin` labels the event details: `VS 2501001` where a statement carried
+    the money, `recorded payment 7` where a person did."""
     remaining = (
         registration.outstanding_cents
         if which == "local"
@@ -264,10 +284,11 @@ def _settle(
     if remaining > tolerance:
         _event(
             session, transaction, "partial_payment",
-            f"VS {vs}: {amount_cents} cents {currency_code}, {remaining} cents still outstanding",
+            f"{origin}: {amount_cents} cents {currency_code}, "
+            f"{remaining} cents still outstanding",
             registration,
         )
-        _apply_deposit_threshold(session, tournament, transaction, registration, which, vs)
+        _apply_deposit_threshold(session, tournament, transaction, registration, which, origin)
         session.flush()
         emails.send_partial_payment_received(
             mailer, tournament, registration.fencer, registration, which
@@ -281,12 +302,13 @@ def _settle(
         registration.refund_state = RefundState.PENDING
         _event(
             session, transaction, "overpayment",
-            f"VS {vs}: {amount_cents} cents {currency_code}, {-remaining} cents over", registration,
+            f"{origin}: {amount_cents} cents {currency_code}, {-remaining} cents over",
+            registration,
         )
     else:
         _event(
             session, transaction, "payment_matched",
-            f"VS {vs}: {amount_cents} cents {currency_code}", registration,
+            f"{origin}: {amount_cents} cents {currency_code}", registration,
         )
     session.flush()
     if reinstated:
@@ -493,7 +515,7 @@ def _evaluate_single_vs(
     _credit(registration, which, paid_cents)
     transaction.matched_registration_id = registration.id
     outcome = _settle(
-        session, tournament, mailer, transaction, registration, which, vs, paid_cents,
+        session, tournament, mailer, transaction, registration, which, f"VS {vs}", paid_cents,
         reinstated=reinstated,
     )
     if outcome == "partial":
@@ -693,7 +715,7 @@ def apply_payment_links(session: Session, tournament: Tournament, mailer: Mailer
                 transaction,
                 registration,
                 which,
-                registration.vs,
+                f"VS {registration.vs}",
                 amount,
             )
         rule.payload = {**rule.payload, "credited": credited}
@@ -764,6 +786,89 @@ def unapply_payment_link(session: Session, tournament: Tournament, rule) -> None
             )
         )
     session.commit()
+
+
+def manual_payment_currency(
+    payment: ManualPayment, tournament: Tournament
+) -> MatchCurrency | None:
+    """Which lane a recorded payment credits, by currency identity alone — the
+    same question `match_currency` answers of a transaction, asked of a record
+    a person made."""
+    if payment.currency == tournament.local_currency:
+        return "local"
+    if payment.currency == Currency.EUR and tournament.shows_eur:
+        return "eur"
+    return None
+
+
+def credit_manual_payment(
+    session: Session,
+    tournament: Tournament,
+    mailer: Mailer,
+    registration: Registration,
+    payment: ManualPayment,
+    which: MatchCurrency,
+) -> MatchOutcome:
+    """Credit a payment the organizer recorded, and let every consequence of a
+    credit follow identically — the settle test against the same tolerance, the
+    deposit threshold and the window it closes, the payment event, the
+    overpayment's refund state, and the mail the fencer receives.
+
+    Tolerance applies unchanged. A hand-typed figure needs no allowance for
+    bank rounding, but tolerance here is what decides settled versus partial,
+    and a registration must not be settled by one route and left partial by the
+    other at the same number (design add-manual-payment-entry D3)."""
+    _credit(registration, which, payment.amount_cents)
+    return _settle(
+        session,
+        tournament,
+        mailer,
+        None,
+        registration,
+        which,
+        f"recorded payment {payment.id}",
+        payment.amount_cents,
+    )
+
+
+def uncredit_manual_payment(
+    session: Session,
+    tournament: Tournament,
+    registration: Registration,
+    payment: ManualPayment,
+    which: MatchCurrency,
+) -> None:
+    """Reverse a recorded payment: subtract **the record's own amount**, never
+    a figure derived from today's balance — the same discipline
+    `unapply_payment_link` keeps, and for the same reason. A total amended
+    upward since the payment was recorded would otherwise take back more than
+    ever went in.
+
+    The registration returns to reserved only where that amount was what
+    settled it. Where it is still covered — by a transaction, or by a second
+    recorded payment — it stays paid, and where it was never paid there is
+    nothing to return."""
+    if which == "local":
+        registration.amount_paid_cents -= payment.amount_cents
+    else:
+        registration.amount_paid_eur_cents -= payment.amount_cents
+    remaining = (
+        registration.outstanding_cents if which == "local" else registration.outstanding_eur_cents
+    )
+    tolerance = _tolerance_cents(registration, tournament, which)
+    if registration.state == RegistrationState.PAID and remaining > tolerance:
+        registration.state = RegistrationState.RESERVED
+        registration.paid_at = None
+    _event(
+        session,
+        None,
+        "manual_payment_removed",
+        f"recorded payment {payment.id}: {registration.audit_label},"
+        f" {payment.amount_cents} cents {payment.currency} reversed",
+        registration,
+    )
+
+
 def _settles_now(transaction: BankTransaction, tournament: Tournament) -> Registration | None:
     """The registration a `partial` transaction would settle under the
     tournament's tolerance as it stands now, or None where it would not.

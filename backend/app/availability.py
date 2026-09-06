@@ -55,7 +55,7 @@ def full_disciplines(session: Session, disciplines: list[Discipline]) -> set[str
     drift was invisible because each side read reasonably on its own.
 
     Individual disciplines only; a team discipline's capacity is counted in
-    teams and answered by `_team_waitlist_flags`."""
+    teams and answered by `team_waitlist_flags`."""
     return {
         d.slug
         for d in disciplines
@@ -138,3 +138,29 @@ def team_queue_length(session: Session, discipline: Discipline) -> int:
         )
         or 0
     )
+
+
+def team_waitlist_flags(
+    session: Session,
+    team_entries: list[tuple[Discipline, object]],
+    *,
+    exclude_registration_id: int | None = None,
+) -> list[bool]:
+    """One waitlisted flag per team entry, in submission order, assigning
+    remaining capacity sequentially so two teams entered into the same
+    discipline in one submission are not both charged into the same last-open
+    slot. `exclude_registration_id` excludes a registration's own current
+    teams from the count, so recomputing on amendment does not count a team
+    against itself (design team-disciplines 4.3)."""
+    counts: dict[int, int] = {}
+    flags = []
+    for discipline, _ in team_entries:
+        if discipline.id not in counts:
+            counts[discipline.id] = taken_team_slots(
+                session, discipline, exclude_registration_id=exclude_registration_id
+            )
+        taken = counts[discipline.id]
+        waitlisted = taken >= discipline.capacity
+        counts[discipline.id] = taken if waitlisted else taken + 1
+        flags.append(waitlisted)
+    return flags

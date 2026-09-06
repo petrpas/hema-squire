@@ -15,7 +15,7 @@ import { amendmentOpen, registrationStatus } from "./openingMoment";
 import { useOpeningMoment } from "./useOpeningMoment";
 import { useTabBand } from "./useTabBand";
 import { type Availability, type RegistrationDetail, type TournamentDetail as TournamentDetailData, api } from "./api";
-import { formatMoneyWithEur } from "./money";
+import { formatMoney, formatMoneyWithEur } from "./money";
 import {
   DiscountList,
   DisciplinesInfo,
@@ -38,7 +38,11 @@ function RegistrationStateTag({
   const state =
     registration.state === "reserved" && !detail.feature_payments ? "paid" : registration.state;
   const label = t(`registration.state.${state}`);
-  if (state === "paid") return <PaidStamp id={registration.vs} label={label} />;
+  // the stamp's id only fixes its tilt, and a registration on an
+  // organizer-kept tournament carries no symbol to fix it by — its own
+  // registration moment does just as well, and is as stable
+  if (state === "paid")
+    return <PaidStamp id={registration.vs ?? registration.registered_at} label={label} />;
   if (state === "reserved") return <span className="tag tag-form-yellow">{label}</span>;
   return <span className="state-text">{label}</span>;
 }
@@ -189,19 +193,16 @@ function RegistrationLines({
       {/* what the tournament costs is information the fencer needs; what is
           outstanding is a demand, and a payments-off tournament makes none
           (spec: fencer-home) */}
-      {detail.feature_payments &&
-        (Number(registration.outstanding_amount) !== 0 ||
-          Number(registration.outstanding_eur_amount ?? 0) !== 0) && (
-          <AmountLine
-            className="muted"
-            label={t("registration.outstandingLabel")}
-            amount={formatMoneyWithEur(
-              registration.outstanding_amount,
-              registration.outstanding_eur_amount,
-              detail,
-            )}
-          />
-        )}
+      {detail.feature_payments && Number(registration.outstanding_amount) !== 0 && (
+        <AmountLine
+          className="muted"
+          label={t("registration.outstandingLabel")}
+          amount={formatMoney(
+            registration.outstanding_amount,
+            registration.outstanding_currency,
+          )}
+        />
+      )}
     </div>
   );
 }

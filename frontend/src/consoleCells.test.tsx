@@ -133,14 +133,56 @@ describe("money cells", () => {
     expect(moneyCell("outstanding", { outstanding_amount: "400.00" })).toBe("400 Kč");
   });
 
-  it("puts the EUR balance beside the local one where the tournament takes both", () => {
+  it("states the balance in one currency even where the tournament takes both", () => {
+    // the two lanes are alternative prices, so the lane nobody paid into is
+    // not a second debt: printed as a pair it read as a conversion, and a
+    // fencer who had paid in full was shown "0 Kč (45 €)"
     expect(
       moneyCell(
         "outstanding",
-        { outstanding_amount: "400.00", outstanding_eur_amount: "16.00" },
+        { outstanding_amount: "400.00", outstanding_currency: "CZK" },
         { local_currency: "CZK", eur_payments_enabled: true },
       ),
-    ).toBe("400 Kč (16 €)");
+    ).toBe("400 Kč");
+  });
+
+  it("states the balance in the lane the money arrived in", () => {
+    expect(
+      moneyCell(
+        "outstanding",
+        { outstanding_amount: "16.00", outstanding_currency: "EUR" },
+        { local_currency: "CZK", eur_payments_enabled: true },
+      ),
+    ).toBe("16 €");
+  });
+
+  it("reads a waived balance as the word alone, with the reason on hover", () => {
+    // an organizer's reason runs as long as a sentence — "volný vstup za čtvrté
+    // místo dosažené v loňském roce" — and a money column set to the width of
+    // the longest one stops being a money column
+    const html = moneyCell("outstanding", {
+      outstanding_amount: "1750.00",
+      settled_by_hand: true,
+      settled_by_hand_reason: "volný vstup za čtvrté místo dosažené v loňském roce",
+    });
+    expect(html).toContain("odpuštěno");
+    // the figure it would otherwise owe is gone: nothing was credited and
+    // nothing is due, so it is true of neither
+    expect(html).not.toContain("1750");
+    // the reason is present but in the hint box, not in the cell's own line
+    expect(html).toContain("help-hint-box");
+    expect(html).toContain("volný vstup za čtvrté místo");
+  });
+
+  it("marks nothing on a waiver given without a reason", () => {
+    // there is nothing to open, so no marker is drawn
+    const html = moneyCell("outstanding", {
+      outstanding_amount: "1750.00",
+      settled_by_hand: true,
+      settled_by_hand_reason: null,
+    });
+    expect(html).toContain("odpuštěno");
+    expect(html).not.toContain("help-hint-box");
   });
 
   it("gives the total a unit, which it rendered without before", () => {

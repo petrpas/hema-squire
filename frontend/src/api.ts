@@ -433,15 +433,22 @@ export interface SheetRow {
   registration_id: number | null;
   vs: number | null;
   paid: boolean;
+  /** Settled with nothing passing through Squire, and why. The outstanding
+   *  column reads this and states the balance as waived rather than owed: a
+   *  reader who took the full total there for a fault would be misreading the
+   *  one true thing about the row. */
+  settled_by_hand?: boolean;
+  settled_by_hand_reason?: string | null;
   registered_at: string | null;
   total_amount: number | null;
-  /** total_amount less what has been credited, as a decimal string — the same
-   *  quantity and the same shape as `RegistrationDetail.outstanding_amount`.
+  /** What is still owed, or negative what is over, as a decimal string — the
+   *  same quantity and the same shape as `RegistrationDetail.outstanding_amount`.
    *  Absent on a row with no registration behind it, such as an imported one. */
   outstanding_amount?: string;
-  /** The EUR sibling; null when the tournament prices in no EUR. The two are
-   *  never summed — each currency settles against its own total. */
-  outstanding_eur_amount?: string | null;
+  /** The currency that balance is stated in — the lane the money arrived in,
+   *  the local one where none has. There is no second figure: the two lanes
+   *  are alternative prices, so the one nobody paid into is not a debt. */
+  outstanding_currency?: Currency;
   problems: string | null;
   match_verdict?: "confirmed" | "found" | "proposed" | "none_found" | "unknown";
   /** The evidence register: what HEMA Ratings holds for this row's hr_id.
@@ -590,14 +597,17 @@ export interface TeamEntry {
 
 export interface RegistrationDetail {
   state: RegistrationRowState;
-  vs: number;
+  /** Absent where the registration was never given one: a tournament whose
+   *  organizer keeps the roster mints no symbols. */
+  vs: number | null;
   total_amount: number;
-  /** total_amount less what has been credited so far; a decimal string. */
+  /** What is still owed, or negative what is over; a decimal string. */
   outstanding_amount: string;
-  /** The stored EUR pair, absent (not derived) when the tournament does not
+  /** The currency that balance is stated in. */
+  outstanding_currency: Currency;
+  /** The stored EUR price, absent (not derived) when the tournament does not
    *  price in EUR. */
   total_eur: number | null;
-  outstanding_eur_amount: string | null;
   expires_at: string | null;
   registered_at: string;
   paid_at: string | null;
@@ -792,6 +802,47 @@ export interface Transaction {
   proposed_fencer_name: string | null;
   /** When the matcher last considered this transaction; null before it has. */
   last_evaluated_at: string | null;
+  /** Why the registration this transaction names was already settled, where a
+   *  person settled it. Null on every ordinary conflict — a registration paid
+   *  by an earlier transaction makes no hand-settled claim. */
+  settled_by_hand_reason: string | null;
+  /** The payment an organizer recorded that settled this transaction's
+   *  registration, where one did. The organizer resolving a flagged row is
+   *  deciding whether this is further money or the same money arriving twice,
+   *  and needs the earlier act in front of them. */
+  settled_by_recorded_payment: ManualPayment | null;
+}
+
+/** How money an organizer recorded by hand arrived. */
+export type PaymentMethod = "cash" | "transfer" | "card" | "other";
+
+/** A payment the organizer says arrived, which Squire never saw: cash at the
+ *  desk, a transfer to another account, a card terminal. Credited exactly as an
+ *  ingested transaction is, and never a row in the statement ledger. */
+export interface ManualPayment {
+  id: number;
+  registration_id: number;
+  fencer_name: string;
+  /** A decimal string, as every money figure the API states is. */
+  amount: string;
+  currency: Currency;
+  received_on: string;
+  method: PaymentMethod;
+  note: string | null;
+  recorded_by: string;
+  created_at: string;
+  /** Whether removing this payment would return the registration to reserved,
+   *  so the console can say what removal will do before it is confirmed. */
+  removal_unsettles: boolean;
+}
+
+export interface ManualPaymentInput {
+  registration_id: number;
+  amount: string;
+  currency: Currency;
+  received_on: string;
+  method: PaymentMethod;
+  note?: string | null;
 }
 
 /** A reservation that lapsed while holding money credited to it. The payment
@@ -884,13 +935,22 @@ export const api = {
       method: "PATCH",
       body: JSON.stringify({ registrations_kept_by: value }),
     }),
-  /** The organizer's own word that a registration was settled, on a tournament
-   *  whose payments Squire does not handle. Writes the verdict and no amount:
-   *  what Squire has received stays at nothing, because it received nothing
-   *  (spec payments). */
-  markSettled: (slug: string, registrationId: number, settled: boolean) =>
+  /** Settled with nothing passing through Squire. Writes the verdict and no
+   *  amount: what has been credited stays exactly as it was, because nothing
+   *  arrived (spec payments).
+   *
+   *  Where Squire handles the payments this is the waiver and the reason is
+   *  required; where it does not, the reason is optional and the mark is the
+   *  organizer's word that they collected the money themselves. */
+  markSettled: (
+    slug: string,
+    registrationId: number,
+    settled: boolean,
+    reason?: string | null,
+  ) =>
     request<RegistrationDetail>(
-      `/api/tournaments/${slug}/registrations/${registrationId}/settled?settled=${settled}`,
+      `/api/tournaments/${slug}/registrations/${registrationId}/settled?settled=${settled}` +
+        (reason ? `&reason=${encodeURIComponent(reason)}` : ""),
       { method: "POST" },
     ),
   taxonomy: () => request<Record<string, string>>("/api/taxonomy/disciplines"),
@@ -974,6 +1034,17 @@ export const api = {
     ),
   expiredHolding: (slug: string) =>
     request<ExpiredHolding[]>(`/api/tournaments/${slug}/payments/expired-holding`),
+  manualPayments: (slug: string) =>
+    request<ManualPayment[]>(`/api/tournaments/${slug}/payments/manual`),
+  recordManualPayment: (slug: string, data: ManualPaymentInput) =>
+    request<ManualPayment>(`/api/tournaments/${slug}/payments/manual`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+  removeManualPayment: (slug: string, paymentId: number) =>
+    request<ManualPayment>(`/api/tournaments/${slug}/payments/manual/${paymentId}`, {
+      method: "DELETE",
+    }),
   rules: (slug: string, phase: string) =>
     request<Rule[]>(`/api/tournaments/${slug}/rules?phase=${encodeURIComponent(phase)}`),
   deleteRule: (slug: string, ruleId: number) =>

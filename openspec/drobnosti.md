@@ -31,10 +31,7 @@
      součástí intaku, po importu má registraci každý řádek — podmínka je fakticky
      mrtvá a buňka se neotevře nikdy
    - **rozhodnuto:** otevřít i u vystavených registrací a při úpravě přepočítat,
-     co registrace dluží. **Vlastní change, nezačato.** Otevřené otázky do ní:
-     co se zaplacenou registrací, které disciplína přibude a které ubude;
-     usazení, když je přibyvší disciplína plná; slevy vázané na počet disciplín;
-     a jestli audit stačí jako `field_edit`, nebo si to žádá vlastní druh
-     pravidla, aby v logu šlo poznat, že se hýbalo cenou
+     co registrace dluží. Rozepsáno jako change `edit-issued-disciplines`
+     (2026-09-06) — artefakty hotové, implementace nezačatá
 6. ~~Párování na HR~~ (hotovo 2026-09-06) — editovatelné zůstalo hr_id a verdikt
    - zrušit editovatelnost tabulky kromě pole HRID a match

@@ -201,6 +201,7 @@ def base_rows(
             registration.fencer.hr_id,
         )
         extra_rentals, extra_afterparty, extra_other = _extras_summary(registration)
+        balance, balance_currency = registration.balance_cents(tournament)
         notes = registration.notes
         if extra_other:
             summary = "; ".join(extra_other)
@@ -229,14 +230,26 @@ def base_rows(
             "registration_id": registration.id,
             "vs": registration.vs,
             "paid": registration.state == RegistrationState.PAID,
+            # settled with nothing passing through Squire, and why. Carried as
+            # a row value rather than deduced from a paid state with empty
+            # counters, which a waiver holding a recorded payment defeats
+            # (design add-manual-payment-entry D4). The outstanding column
+            # reads it and states the balance as waived rather than owed
+            "settled_by_hand": registration.settled_by_hand_at is not None,
+            "settled_by_hand_reason": registration.settled_by_hand_reason,
             "registered_at": registration.registered_at.isoformat(),
             "total_amount": registration.total_amount,
             # what is still owed, as a decimal string exactly as
             # RegistrationOut states it — the same quantity, so the same shape.
             # A row value, not a panel: it reruns, sorts and exports with the
             # rest of the table (design add-payments-console-ui D5).
-            "outstanding_amount": _money(registration.outstanding_cents),
-            "outstanding_eur_amount": _money(registration.outstanding_eur_cents),
+            #
+            # One figure and the currency it is in, decided by
+            # `balance_cents`: the two currency lanes are alternative prices,
+            # and the row used to carry both as though the second were a
+            # conversion of the first.
+            "outstanding_amount": _money(balance),
+            "outstanding_currency": balance_currency,
             "expires_at": registration.expires_at.isoformat()
             if registration.expires_at
             else None,
@@ -362,6 +375,8 @@ def _imported_rows(
             "state": "imported",
             "vs": None,
             "paid": False,
+            "settled_by_hand": False,
+            "settled_by_hand_reason": None,
             "registration_id": None,
             "registered_at": record.get("registration_time"),
             "total_amount": None,
@@ -395,6 +410,8 @@ def _unparsed_row(row_id: str, row: ImportedRow) -> Row:
         "state": "imported",
         "vs": None,
         "paid": False,
+        "settled_by_hand": False,
+        "settled_by_hand_reason": None,
             "registration_id": None,
         "registered_at": None,
         "total_amount": None,
@@ -443,6 +460,8 @@ def _manual_row(row: ManualRow, index: HRIndex | None = None) -> Row:
         "state": "manual",
         "vs": None,
         "paid": False,
+        "settled_by_hand": False,
+        "settled_by_hand_reason": None,
             "registration_id": None,
         "registered_at": row.registered_at.isoformat(),
         "total_amount": None,

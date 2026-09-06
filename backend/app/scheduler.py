@@ -164,6 +164,11 @@ def process_expiries(session: Session, tournament: Tournament, mailer: Mailer) -
             continue
         registration.state = RegistrationState.EXPIRED
         expired += 1
+        # correct under the widened counter: money an organizer recorded by
+        # hand is as real and this reservation is as expired, so it belongs in
+        # the expired-holding queue on the same terms (spec payments-console).
+        # A waiver credits nothing and so never lands here, which is right —
+        # there is nothing to give back
         holding_payment = (
             registration.amount_paid_cents > 0 or (registration.amount_paid_eur_cents or 0) > 0
         )

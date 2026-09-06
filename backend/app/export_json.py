@@ -27,6 +27,7 @@ from app.models import (
     ImportBatch,
     ImportDecision,
     ImportedRow,
+    ManualPayment,
     ManualRow,
     Registration,
     RegistrationDiscipline,
@@ -40,7 +41,7 @@ from app.models import (
 )
 from app.routers.tournaments import _lowest_free_series
 
-SCHEMA_VERSION = 12
+SCHEMA_VERSION = 13
 
 _TOURNAMENT_FIELDS = [
     "slug", "display_name", "date", "language",
@@ -88,7 +89,22 @@ _REGISTRATION_FIELDS = [
     # registration reading as if nothing had been paid against it, while its
     # state still says paid.
     "amount_paid_cents", "amount_paid_eur_cents",
+    # settled with nothing passing through Squire, and why. Carried since v13,
+    # and load-bearing: the paid state may now stand on nothing but a person's
+    # word, and a document restoring that state without its cause would leave
+    # a registration that cannot be explained, corrected or reversed.
+    "settled_by_hand_at", "settled_by_hand_reason",
     "weapon_rentals", "afterparty", "aftersparring", "accommodation", "notes",
+]
+
+# A payment the organizer recorded by hand. Removed ones are not exported:
+# what the document reconstructs is the state, and a reversed payment credits
+# nothing (spec data-export). The credited counters travel with the
+# registration, so a restore must not replay these as fresh credits on top of
+# them.
+_MANUAL_PAYMENT_FIELDS = [
+    "amount_cents", "currency", "received_on", "method", "note",
+    "recorded_by", "created_at",
 ]
 
 _TRANSACTION_FIELDS = [
@@ -140,6 +156,14 @@ def export_tournament(session: Session, tournament: Tournament) -> dict:
         select(BankTransaction)
         .where(BankTransaction.tournament_id == tournament.id)
         .order_by(BankTransaction.id)
+    ).all()
+    manual_payments = session.scalars(
+        select(ManualPayment)
+        .where(
+            ManualPayment.tournament_id == tournament.id,
+            ManualPayment.removed_at.is_(None),
+        )
+        .order_by(ManualPayment.id)
     ).all()
     batches = session.scalars(
         select(ImportBatch)
@@ -265,6 +289,14 @@ def export_tournament(session: Session, tournament: Tournament) -> dict:
             }
             for t in transactions
         ],
+        "manual_payments": [
+            {
+                "registration_ref": p.registration_id,
+                **_record(p, _MANUAL_PAYMENT_FIELDS),
+            }
+            for p in manual_payments
+            if p.registration_id in reg_by_id
+        ],
         "import_batches": [
             {
                 "ref": b.id,
@@ -319,7 +351,7 @@ def _parse_time(value: str | None) -> datetime.time | None:
 
 def restore_tournament(session: Session, data: dict, actor: Fencer) -> Tournament:
     version = data.get("schema_version")
-    if version not in (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, SCHEMA_VERSION):
+    if version not in (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, SCHEMA_VERSION):
         raise HTTPException(status_code=422, detail="unsupported_schema_version")
     doc = dict(data["tournament"])
     if version == 1:
@@ -433,15 +465,21 @@ def restore_tournament(session: Session, data: dict, actor: Fencer) -> Tournamen
         # local currency only. The credited counters arrived in v11; a document
         # written before that recorded no credit, which restores as zero — the
         # same reading those deployments already had.
+        #
+        # The mark arrived in v13; before it, no registration had been settled
+        # by hand under a stored mark, so its absence restores as unmarked —
+        # which is what those deployments held.
         entry = {
             "total_eur": None,
             "amount_paid_cents": 0,
             "amount_paid_eur_cents": 0,
+            "settled_by_hand_at": None,
+            "settled_by_hand_reason": None,
             **entry,
         }
         payload = {k: entry[k] for k in _REGISTRATION_FIELDS}
         for field in ("registered_at", "expires_at", "reminded_at", "paid_at",
-                      "cancelled_at"):
+                      "cancelled_at", "settled_by_hand_at"):
             payload[field] = _parse_dt(payload[field])
         registration = Registration(
             tournament_id=tournament.id,
@@ -517,6 +555,23 @@ def restore_tournament(session: Session, data: dict, actor: Fencer) -> Tournamen
             BankTransaction(
                 tournament_id=tournament.id,
                 matched_registration_id=reg_map[ref].id if ref in reg_map else None,
+                **entry,
+            )
+        )
+
+    for entry in data.get("manual_payments", []):
+        ref = entry.pop("registration_ref", None)
+        if ref not in reg_map:
+            continue
+        entry["received_on"] = _parse_date(entry["received_on"])
+        entry["created_at"] = _parse_dt(entry["created_at"])
+        # the credit itself travels on the registration's own counters, which
+        # were restored above; replaying it here would double every recorded
+        # payment in the document (spec data-export)
+        session.add(
+            ManualPayment(
+                tournament_id=tournament.id,
+                registration_id=reg_map[ref].id,
                 **entry,
             )
         )

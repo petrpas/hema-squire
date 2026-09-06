@@ -201,6 +201,20 @@
       "set": "Mark settled — your own record that the money reached you",
       "unset": "Unmark settled",
       "meaning": "Settled records your word that the money reached you. Squire has received nothing itself, so what each fencer is owed stays as it is."
+    },
+    "waived": "waived",
+    "waiver": {
+      "title": "Settle without a payment",
+      "meaning": "Records that this registration owes nothing and that no money arrived for it. Nothing is credited, so no total of what the tournament received moves.",
+      "reason": "Reason",
+      "placeholder": "free entry, sponsor, guest instructor…",
+      "confirm": "Mark settled",
+      "error": {
+        "failed": "The mark could not be written.",
+        "reason_required": "A reason is required.",
+        "registration_not_live": "This registration cannot be marked.",
+        "not_settled_by_hand": "This registration was settled by money, not by hand."
+      }
     }
   },
   "row": {
@@ -928,7 +942,9 @@
         "currency_unconvertible": "currency not convertible",
         "registration_paid": "registration already paid",
         "registration_cancelled": "registration cancelled"
-      }
+      },
+      "settledByHand": "Settled by hand: {{reason}}",
+      "settledByPayment": "Settled by a payment recorded by hand: {{amount}}, {{date}}"
     },
     "setAside": "{{count}} belonged to another tournament on this account — nothing to do, its own console will match it.",
     "tolerance": {
@@ -1043,6 +1059,45 @@
     },
     "tabs": {
       "fencers": "Fencers"
+    },
+    "record": {
+      "action": "Record a payment",
+      "title": "Record a payment",
+      "outstanding": "Outstanding: {{amount}}",
+      "noBalance": "This registration has no balance in this currency.",
+      "amount": "Amount",
+      "currency": "Currency",
+      "receivedOn": "Received on",
+      "methodLabel": "How it arrived",
+      "method": {
+        "cash": "Cash",
+        "transfer": "Transfer",
+        "card": "Card",
+        "other": "Other"
+      },
+      "note": "Note",
+      "confirm": "Record",
+      "error": {
+        "failed": "The payment could not be recorded.",
+        "currency_not_accepted": "This tournament does not price in that currency.",
+        "registration_not_live": "This registration can take no payment.",
+        "amount_not_positive": "The amount must be more than nothing.",
+        "payments_disabled": "Squire does not handle this tournament's payments."
+      }
+    },
+    "recorded": {
+      "title": "Payments recorded by hand",
+      "date": "Received",
+      "fencer": "Fencer",
+      "amount": "Amount",
+      "method": "How",
+      "note": "Note",
+      "recordedBy": "Recorded by",
+      "remove": "Remove",
+      "removeTitle": "Remove this payment",
+      "removeBody": "{{amount}} recorded for {{name}} will be taken back.",
+      "removeUnsettles": "This registration will stop reading as paid.",
+      "removeConfirm": "Remove"
     }
   },
   "validation": {

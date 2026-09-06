@@ -207,6 +207,20 @@
       "set": "Označit vyrovnáno — tvůj vlastní záznam, že peníze dorazily",
       "unset": "Zrušit označení",
       "meaning": "Vyrovnáno je tvůj záznam, že ti peníze dorazily. Squire sám nedostal nic, takže částka, kterou šermíř dluží, zůstává, jak byla."
+    },
+    "waived": "odpuštěno",
+    "waiver": {
+      "title": "Označit zaplaceno bez platby",
+      "meaning": "Zaznamená, že tato registrace nic nedluží a že na ni nedorazily žádné peníze. Nic se nepřipisuje, takže se nezmění žádný součet přijatých částek.",
+      "reason": "Důvod",
+      "placeholder": "volná účast, sponzor, hostující instruktor…",
+      "confirm": "Označit zaplaceno",
+      "error": {
+        "failed": "Označení se nepodařilo uložit.",
+        "reason_required": "Důvod je povinný.",
+        "registration_not_live": "Tuto registraci nelze označit.",
+        "not_settled_by_hand": "Tuto registraci vyrovnaly peníze, ne ruční označení."
+      }
     }
   },
   "row": {
@@ -875,7 +889,7 @@
   "registration": {
     "title": "Tvoje registrace",
     "state": {
-      "reserved": "Rezervováno",
+      "reserved": "Rezervace",
       "paid": "Zaplaceno",
       "substitute": "Náhradník",
       "expired": "Rezervace vypršela",
@@ -937,7 +951,9 @@
         "currency_unconvertible": "měnu nelze převést",
         "registration_paid": "registrace už je zaplacená",
         "registration_cancelled": "registrace zrušena"
-      }
+      },
+      "settledByHand": "Zaplaceno ručně: {{reason}}",
+      "settledByPayment": "Zaplaceno ručně zadanou platbou: {{amount}}, {{date}}"
     },
     "setAside": "{{count}} patřilo jinému turnaji na tomto účtu — není třeba nic dělat, spáruje je jeho vlastní konzole.",
     "tolerance": {
@@ -1060,6 +1076,45 @@
     },
     "tabs": {
       "fencers": "Šermíři"
+    },
+    "record": {
+      "action": "Zadat platbu",
+      "title": "Zadat platbu",
+      "outstanding": "Zbývá zaplatit: {{amount}}",
+      "noBalance": "Tato registrace v této měně nic nedluží.",
+      "amount": "Částka",
+      "currency": "Měna",
+      "receivedOn": "Přijato dne",
+      "methodLabel": "Jak dorazila",
+      "method": {
+        "cash": "Hotově",
+        "transfer": "Převodem",
+        "card": "Kartou",
+        "other": "Jinak"
+      },
+      "note": "Poznámka",
+      "confirm": "Zadat",
+      "error": {
+        "failed": "Platbu se nepodařilo zadat.",
+        "currency_not_accepted": "Turnaj v této měně nic neúčtuje.",
+        "registration_not_live": "Na tuto registraci nelze platbu připsat.",
+        "amount_not_positive": "Částka musí být větší než nula.",
+        "payments_disabled": "Platby tohoto turnaje Squire neřeší."
+      }
+    },
+    "recorded": {
+      "title": "Ručně zadané platby",
+      "date": "Přijato",
+      "fencer": "Šermíř",
+      "amount": "Částka",
+      "method": "Jak",
+      "note": "Poznámka",
+      "recordedBy": "Zadal",
+      "remove": "Odebrat",
+      "removeTitle": "Odebrat tuto platbu",
+      "removeBody": "{{amount}} zadaných pro {{name}} se odečte.",
+      "removeUnsettles": "Tato registrace přestane být vedena jako zaplacená.",
+      "removeConfirm": "Odebrat"
     }
   },
   "validation": {

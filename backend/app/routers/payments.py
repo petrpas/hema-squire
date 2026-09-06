@@ -1,4 +1,5 @@
 from datetime import UTC, date, datetime, timedelta
+from decimal import ROUND_HALF_UP, Decimal
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile
@@ -23,6 +24,7 @@ from app.auth import require_console_access
 from app.mail import Mailer, get_mailer
 from app.models import (
     BankTransaction,
+    ManualPayment,
     Operation,
     OperationKind,
     PaymentEvent,
@@ -39,6 +41,8 @@ from app.schemas import (
     ExpiredHoldingOut,
     IngestAndMatchOut,
     LinkIn,
+    ManualPaymentIn,
+    ManualPaymentOut,
     PaymentLinkOut,
     RankedFencerOut,
     TransactionOut,
@@ -415,7 +419,7 @@ def transaction_roster(
                 name=ranked.name,
                 registration_id=registration.id,
                 vs=registration.vs,
-                outstanding_amount=_cents_to_amount(registration.outstanding_cents),
+                outstanding_amount=_cents_to_amount(registration.balance_cents(tournament)[0]),
                 score=round(ranked.score, 4),
                 proposed=ranked.key == proposed_id,
                 rejected=ranked.key in refused,
@@ -435,6 +439,23 @@ def _transaction_out(session, tournament, transaction: BankTransaction) -> Trans
             and registration.state == RegistrationState.EXPIRED
             and matching.seats_free(session, registration)
         )
+        # what settled the registration, where a person did. The organizer is
+        # deciding whether this is further money or the same money twice, and
+        # needs the earlier act in front of them (design D6)
+        if registration is not None:
+            out.settled_by_hand_reason = registration.settled_by_hand_reason
+            recorded = session.scalars(
+                select(ManualPayment)
+                .where(
+                    ManualPayment.registration_id == registration.id,
+                    ManualPayment.removed_at.is_(None),
+                )
+                .order_by(ManualPayment.id.desc())
+            ).first()
+            if recorded is not None:
+                out.settled_by_recorded_payment = _manual_payment_out(
+                    session, tournament, recorded
+                )
     if transaction.status == "unmatched":
         out.candidate_vs = matching.detect_candidates(session, transaction)
     if transaction.proposed_fencer is not None:
@@ -705,3 +726,165 @@ def mark_transaction_for_refund(
     )
     session.commit()
     return transaction
+
+
+def _manual_payment_out(
+    session, tournament: Tournament, payment: ManualPayment
+) -> ManualPaymentOut:
+    registration = payment.registration
+    which = matching.manual_payment_currency(payment, tournament)
+    credited = (
+        registration.amount_paid_cents if which == "local" else registration.amount_paid_eur_cents
+    )
+    total = (
+        registration.total_amount * 100
+        if which == "local"
+        else (registration.total_eur or 0) * 100
+    )
+    return ManualPaymentOut(
+        id=payment.id,
+        registration_id=registration.id,
+        fencer_name=registration.fencer.display_name,
+        amount=_cents_to_amount(payment.amount_cents),
+        currency=payment.currency,
+        received_on=payment.received_on,
+        method=payment.method,
+        note=payment.note,
+        recorded_by=payment.recorded_by,
+        created_at=payment.created_at,
+        # what removal would do, answered before it is asked: taking this
+        # amount back leaves the lane short, so the registration would return
+        # to reserved and the roster would stop saying paid
+        removal_unsettles=(
+            registration.state == RegistrationState.PAID
+            and which is not None
+            and credited - payment.amount_cents < total
+        ),
+    )
+
+
+def _live_manual_payments(session, tournament: Tournament):
+    return session.scalars(
+        select(ManualPayment)
+        .where(
+            ManualPayment.tournament_id == tournament.id,
+            ManualPayment.removed_at.is_(None),
+        )
+        .order_by(ManualPayment.received_on.desc(), ManualPayment.id.desc())
+    ).all()
+
+
+@router.get("/manual", response_model=list[ManualPaymentOut])
+def list_manual_payments(tournament: TournamentDep, session: SessionDep, fencer: FencerDep):
+    """The payments an organizer recorded by hand. Removed ones are absent:
+    what the view answers is what is credited now, and a reversed payment
+    credits nothing. Its record survives in the audit trail."""
+    require_console_access(session, tournament, fencer)
+    bank.require_payments_enabled(tournament)
+    return [
+        _manual_payment_out(session, tournament, payment)
+        for payment in _live_manual_payments(session, tournament)
+    ]
+
+
+@router.post("/manual", response_model=ManualPaymentOut, status_code=201)
+def record_manual_payment(
+    data: ManualPaymentIn,
+    tournament: TournamentDep,
+    session: SessionDep,
+    fencer: FencerDep,
+    mailer: MailerDep,
+):
+    """Record a payment that arrived outside the bank feed — cash at the desk,
+    a transfer to another account, a card terminal — and credit it exactly as
+    an ingested transaction is credited.
+
+    Gated on the payments setting like every other path in this router, and for
+    the reason the gate exists: where Squire tracks no amounts, an amount means
+    nothing it could keep. A tournament that needs amounts tracked wants Squire
+    handling its payments — the line `add-manual-paid-marking` drew, and this
+    keeps (design add-manual-payment-entry D7).
+
+    The record is a `ManualPayment` and **not** a row in the bank transactions:
+    that list is the statement ledger, and a row no bank sent would falsify it
+    for every reader (design D2)."""
+    require_console_access(session, tournament, fencer)
+    bank.require_payments_enabled(tournament)
+    registration = session.scalar(
+        select(Registration).where(
+            Registration.tournament_id == tournament.id,
+            Registration.id == data.registration_id,
+        )
+    )
+    if registration is None:
+        raise HTTPException(status_code=404, detail="registration_not_found")
+    # money is credited to a live reservation or one already settled; a
+    # cancelled or expired registration is not revived by a payment being
+    # typed in, exactly as it is not revived by one being ingested
+    if registration.state not in (RegistrationState.RESERVED, RegistrationState.PAID):
+        raise HTTPException(status_code=409, detail="registration_not_live")
+    amount_cents = int((data.amount * 100).quantize(Decimal("1"), rounding=ROUND_HALF_UP))
+    if amount_cents <= 0:
+        raise HTTPException(status_code=422, detail="amount_not_positive")
+
+    payment = ManualPayment(
+        tournament_id=tournament.id,
+        registration_id=registration.id,
+        amount_cents=amount_cents,
+        currency=data.currency,
+        received_on=data.received_on,
+        method=data.method,
+        note=data.note,
+        # the label the audit trail uses, not a foreign key: the record must
+        # still read correctly when the account that made it is gone
+        recorded_by=f"{fencer.display_name} <{fencer.email}>",
+    )
+    which = matching.manual_payment_currency(payment, tournament)
+    if which is None:
+        raise HTTPException(status_code=409, detail="currency_not_accepted")
+    session.add(payment)
+    session.flush()
+    session.add(
+        PaymentEvent(
+            tournament_id=tournament.id,
+            registration_id=registration.id,
+            kind="manual_payment_recorded",
+            detail=(
+                f"recorded payment {payment.id}: {registration.audit_label},"
+                f" {payment.amount_cents} cents {payment.currency}"
+                f" by {payment.method} on {payment.received_on},"
+                f" recorded by {payment.recorded_by}"
+            ),
+        )
+    )
+    matching.credit_manual_payment(session, tournament, mailer, registration, payment, which)
+    session.commit()
+    return _manual_payment_out(session, tournament, payment)
+
+
+@router.delete("/manual/{payment_id}", response_model=ManualPaymentOut)
+def remove_manual_payment(
+    payment_id: int,
+    tournament: TournamentDep,
+    session: SessionDep,
+    fencer: FencerDep,
+):
+    """Reverse a recorded payment. A soft delete, so the wrong entry and its
+    reversal both survive — and there is no edit endpoint for the same reason:
+    a correction is a removal and a new record, so that what was credited and
+    what took it back are both readable afterwards."""
+    require_console_access(session, tournament, fencer)
+    bank.require_payments_enabled(tournament)
+    payment = session.get(ManualPayment, payment_id)
+    if payment is None or payment.tournament_id != tournament.id:
+        raise HTTPException(status_code=404, detail="manual_payment_not_found")
+    if payment.removed_at is not None:
+        raise HTTPException(status_code=409, detail="already_removed")
+    which = matching.manual_payment_currency(payment, tournament)
+    if which is None:
+        raise HTTPException(status_code=409, detail="currency_not_accepted")
+    out = _manual_payment_out(session, tournament, payment)
+    matching.uncredit_manual_payment(session, tournament, payment.registration, payment, which)
+    payment.removed_at = datetime.now(UTC)
+    session.commit()
+    return out

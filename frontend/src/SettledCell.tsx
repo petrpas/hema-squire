@@ -4,12 +4,18 @@ import type { SheetRow } from "./api";
 import PaidStamp from "./PaidStamp";
 
 /** Whether the organizer has said this registration is settled, and the control
- *  that says it.
+ *  that says it — the boned-out Payments phase's whole content.
  *
- *  The only place in Squire where a person asserts that money arrived. Every
- *  other route to the paid state stands on a credited bank transaction, which
- *  is right where Squire collects and useless where it does not (spec
- *  payments, "An organizer may mark a registration settled by hand").
+ *  Only ever drawn where Squire handles no payments. There the mark is the one
+ *  route to the paid state, so a paid row *is* a marked row — which is also how
+ *  registrations marked before the mark was stored keep reading correctly — and
+ *  no reason is asked for: where no ledger exists, every row is a hand-settled
+ *  row and the phrase would be ceremony (spec payments).
+ *
+ *  Where Squire does collect, the same mark is a waiver and has no column of
+ *  its own: it is offered on the state cell it changes (`StateCell`), because a
+ *  column empty on almost every row would not earn its width in a table that is
+ *  already wide.
  *
  *  A row with no registration behind it — an imported row not yet issued —
  *  cannot be settled, and offers nothing rather than an action that would
@@ -24,7 +30,7 @@ export default function SettledCell({
   busy,
 }: {
   row: SheetRow;
-  onToggle: (row: SheetRow) => void;
+  onToggle: (row: SheetRow, reason?: string | null) => Promise<void>;
   busy: boolean;
 }) {
   const { t } = useTranslation();
@@ -36,7 +42,7 @@ export default function SettledCell({
       disabled={busy}
       aria-pressed={row.paid}
       title={t(row.paid ? "console.settled.unset" : "console.settled.set")}
-      onClick={() => onToggle(row)}
+      onClick={() => void onToggle(row)}
     >
       {row.paid ? (
         <PaidStamp id={row.id} label={t("registration.state.paid")} />

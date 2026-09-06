@@ -115,9 +115,10 @@ def test_part_paid_registration_carries_its_remaining_balance(client, auth_heade
     row = sheet_row(client, organizer, vs)
     assert row["total_amount"] == 1000
     assert row["outstanding_amount"] == "400.00"
-    # the tournament prices in no EUR, so the sibling says so rather than lying
-    # with a zero
-    assert row["outstanding_eur_amount"] is None
+    # one balance and the currency it is in — never a second figure for the
+    # lane nobody paid into
+    assert row["outstanding_currency"] == "CZK"
+    assert "outstanding_eur_amount" not in row
 
 
 def test_settled_registration_reads_zero(client, auth_headers, mailbox):
@@ -127,6 +128,38 @@ def test_settled_registration_reads_zero(client, auth_headers, mailbox):
     import_rows(client, organizer, [f"1;01.08.2026;1000,00;CZK;{vs};;;;;"])
 
     assert sheet_row(client, organizer, vs)["outstanding_amount"] == "0.00"
+
+
+def test_a_shortfall_the_tolerance_accepted_is_still_stated(client, auth_headers, mailbox):
+    """The tolerance decides the *state*, not this column.
+
+    A euro transfer the payer's bank converted lands short of the local price;
+    the tolerance accepts it and the registration becomes paid. Reading the
+    column as zero then told the organizer their books balanced when they did
+    not — on one real tournament, nine rows read "0 Kč" with 21 to 43 Kč
+    missing behind each of them and the difference recorded nowhere (owner
+    decision, 2026-09-06)."""
+    organizer = auth_headers()
+    setup(client, organizer)
+    _, vs = enroll(client, auth_headers)
+    # 960 against a 1000 total: inside the default 5% tolerance, so it settles
+    import_rows(client, organizer, [f"1;01.08.2026;960,00;CZK;{vs};;;;;"])
+
+    row = sheet_row(client, organizer, vs)
+    assert row["paid"] is True
+    assert row["outstanding_amount"] == "40.00"
+
+
+def test_a_trivial_overpayment_reads_as_one(client, auth_headers, mailbox):
+    organizer = auth_headers()
+    setup(client, organizer)
+    _, vs = enroll(client, auth_headers)
+    import_rows(client, organizer, [f"1;01.08.2026;1030,00;CZK;{vs};;;;;"])
+
+    row = sheet_row(client, organizer, vs)
+    assert row["paid"] is True
+    # negative: what is over, stated with the sign it has
+    assert row["outstanding_amount"] == "-30.00"
 
 
 def test_balance_is_recomputed_on_rerun_not_stored(client, auth_headers, mailbox):

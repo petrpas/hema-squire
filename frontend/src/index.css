@@ -1441,8 +1441,6 @@ fieldset.form-field > legend {
   max-width: none;
 }
 
-
-
 /* Anchored to the marker's left edge rather than centered under it: every
    label + marker pair leads its row (design D3), so the marker sits near the
    row's own left edge, and a box centered on it routinely hung half past the
@@ -1509,6 +1507,48 @@ fieldset.form-field > legend {
 
 .settled-cell:hover:not(:disabled) .settled-unset {
   color: var(--ink);
+}
+
+/* The state cell doubling as the waiver's control where Squire collects. Drawn
+   as the state it sets, not as a button: the affordance is the pointer and the
+   pressed state, exactly as the settled cell's is. */
+.state-cell {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+
+.state-cell:disabled {
+  cursor: default;
+}
+
+/* What a hand-settled registration's balance reads. Nothing was credited and
+   nothing is due, so the figure the column would otherwise show is true of
+   neither, and the word replaces it rather than sitting beside it. */
+.waived-balance {
+  color: var(--ink-faded);
+}
+
+/* The word is its own hint marker where a reason was given: an organizer's
+   sentence can run to a line, and a money column set to the width of the
+   longest one stops being a money column. The box is `help-hint`'s, so the two
+   read as one thing.
+
+   The marker itself carries no marking at all — no glyph, no underline, no
+   help cursor. A cell that is already the only word in a column of figures is
+   conspicuous enough to be tried, and each of those would have been a second
+   mark saying only that the first one has more behind it. */
+.waived-hint {
+  margin-left: 0;
+}
+
+.waived-marker:hover + .help-hint-box,
+.waived-marker:focus + .help-hint-box {
+  display: block;
 }
 
 /* Lift a sticky table header's cell clear of the sibling headers' shared
@@ -1611,7 +1651,6 @@ fieldset.form-field > legend {
 .rail-card p + p {
   margin-top: 0.4rem;
 }
-
 
 .rail-subhead {
   margin-top: 1rem;

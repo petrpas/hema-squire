@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { type Transaction, api } from "../api";
+import { formatMoney } from "../money";
 import QueueCard from "./QueueCard";
 
 /** The flagged-transaction queue: every VS-matched transaction that did not
@@ -104,6 +105,30 @@ export default function FlaggedPanel({
                   {t(`payments.flagged.reasons.${tx.status_reason}`, {
                     defaultValue: tx.status_reason ?? "",
                   })}
+                  {/* what settled this registration, where a person did. The
+                      organizer is deciding whether this is further money or
+                      the same money arriving twice, and that decision needs
+                      the earlier act in front of it (spec payments-console) */}
+                  {tx.settled_by_recorded_payment && (
+                    <div>
+                      {t("payments.flagged.settledByPayment", {
+                        amount: formatMoney(
+                          tx.settled_by_recorded_payment.amount,
+                          tx.settled_by_recorded_payment.currency,
+                        ),
+                        date: new Date(
+                          tx.settled_by_recorded_payment.received_on,
+                        ).toLocaleDateString("cs"),
+                      })}
+                    </div>
+                  )}
+                  {tx.settled_by_hand_reason && (
+                    <div>
+                      {t("payments.flagged.settledByHand", {
+                        reason: tx.settled_by_hand_reason,
+                      })}
+                    </div>
+                  )}
                 </td>
                 <td className="col-actions">
                   <div className="row-actions">

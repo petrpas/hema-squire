@@ -23,7 +23,10 @@ import FlaggedPanel from "./payments/FlaggedPanel";
 import LikelyPanel from "./payments/LikelyPanel";
 import IntakePanel from "./payments/IntakePanel";
 import PaymentLinksPanel from "./payments/PaymentLinksPanel";
+import RecordedPaymentsPanel from "./payments/RecordedPaymentsPanel";
+import RecordPaymentDialog from "./payments/RecordPaymentDialog";
 import UnmatchedPanel from "./payments/UnmatchedPanel";
+import WaivedBalance from "./WaivedBalance";
 import QueuePanel from "./QueuePanel";
 import { useAuth } from "./RequireAuth";
 import * as routes from "./routes";
@@ -31,7 +34,7 @@ import SetupPanel from "./SetupPanel";
 import SheetArea from "./SheetArea";
 import TeamsPanel from "./TeamsPanel";
 import useOperations from "./useOperations";
-import { formatMoneyWithEur } from "./money";
+import { formatMoney, formatMoneyWithEur } from "./money";
 import { registeredMoment } from "./momentText";
 import { parseInteger } from "./numeric";
 import { checkNumeric, checkString, type FieldError } from "./validation";
@@ -118,10 +121,15 @@ export const PHASE_COLUMNS: Record<Phase, string[]> = {
 
 /** The boned-out Payments phase's own columns. A second entry rather than a
  *  condition inside `PHASE_COLUMNS.payments`, so a column stays a property of a
- *  phase and none has to be read as sometimes present (spec etl-console). What
- *  is owed is kept beside the mark deliberately: a hand-settled row reads as
- *  paid while still showing its whole total, and hiding the second half would
- *  make the first half look like the only truth. */
+ *  phase and none has to be read as sometimes present (spec etl-console).
+ *
+ *  The mark has a column of its own only here, where it is the phase's whole
+ *  content. Where Squire collects, the table is already wide and a column that
+ *  is empty on almost every row would not earn its width: the waiver is
+ *  offered on the state cell it changes, and recording a payment sits at the
+ *  end of the row with the other row actions. What is owed is kept beside the
+ *  mark deliberately: a hand-settled row reads as paid, and its balance says
+ *  waived rather than showing a debt nobody has. */
 export const BONED_PAYMENTS_COLUMNS = ["total_amount", "outstanding", "settled"];
 
 // Manual edits on these columns become field_edit rules. Notes are not among
@@ -280,10 +288,16 @@ export function absorbedInto(row: SheetRow, rows: SheetRow[]): number | null {
   return rows.find((candidate) => candidate.id === row._merged_into)?.number ?? null;
 }
 
-function StateBadge({ id, state }: { id: string; state: string }) {
+export function StateBadge({ id, state }: { id: string; state: string }) {
   const { t } = useTranslation();
   if (state === "paid") return <PaidStamp id={id} label={t("registration.state.paid")} />;
-  return <span className="state-text">{state}</span>;
+  // the stored value is an enum, not a word anybody reads: every other state
+  // was printing its English identifier into a Czech table
+  return (
+    <span className="state-text">
+      {t(`registration.state.${state}`, { defaultValue: state })}
+    </span>
+  );
 }
 
 /** `timezone` is the tournament's own zone, the frame every moment in the
@@ -321,15 +335,28 @@ export function CellDisplay({
   switch (column) {
     case "total_amount":
     case "outstanding": {
+      // a registration settled by hand owes nothing and was credited nothing,
+      // so the figure the balance would show is true of neither. Read from the
+      // sheet's own value rather than recomputed here: a reader who took the
+      // full total for a fault would be misreading the one true thing about
+      // the row (spec etl-console, Outstanding balance in the Payments phase
+      // table)
+      if (column === "outstanding" && row.settled_by_hand) {
+        return <WaivedBalance reason={row.settled_by_hand_reason ?? null} />;
+      }
       // an imported row has no registration behind it and so owes nothing —
       // a dash, not a zero it never agreed to
       const value = column === "outstanding" ? row.outstanding_amount : row.total_amount;
       if (value === null || value === undefined) return <>—</>;
-      // only the balance has a EUR sibling on the row; the sheet carries no
-      // EUR total, so that one reads in the local currency alone
-      const eur = column === "outstanding" ? row.outstanding_eur_amount : null;
       if (currency === null) return <>{value}</>;
-      return <>{formatMoneyWithEur(value, eur, currency)}</>;
+      // The price reads in both currencies, because both are what the place
+      // costs. The balance reads in one, because a balance has only the lane
+      // the money came in: the backend decided which (Registration.
+      // balance_cents), and printing the other lane beside it made a pair that
+      // read as a conversion — a fencer who had paid 1 100 Kč in full was
+      // shown "0 Kč (45 €)".
+      if (column === "total_amount") return <>{formatMoneyWithEur(value, null, currency)}</>;
+      return <>{formatMoney(value, row.outstanding_currency ?? currency.local_currency)}</>;
     }
     case "state":
       return <StateBadge id={row.id} state={row.state} />;
@@ -525,23 +552,32 @@ export default function Console({
   const phases = offeredPhases(detail ?? tournament);
   const boned = phase === "payments" && paymentsBonedOut(detail ?? tournament);
   const [settling, setSettling] = useState(false);
+  const [recording, setRecording] = useState<SheetRow | null>(null);
+  const collects = (detail ?? tournament).feature_payments;
 
-  /** The organizer's word that a registration was settled. A write to the
-   *  registration, not a rule: every other manual edit in this console persists
-   *  as a rule replayed over the projection, which would reach the table and
-   *  the export and neither the public participant list nor the registration's
-   *  own state. Deliberate, and confined to this one action (spec etl-console,
-   *  "The Payments phase is boned out where Squire collects nothing"). */
-  async function toggleSettled(row: SheetRow) {
+  /** Settled with nothing passing through Squire. A write to the registration,
+   *  not a rule: every other manual edit in this console persists as a rule
+   *  replayed over the projection, which would reach the table and the export
+   *  and neither the public participant list nor the registration's own state.
+   *  Deliberate, and confined to this action and the recorded payment beside it
+   *  (spec etl-console).
+   *
+   *  Where Squire handles the payments the mark is the waiver and a reason is
+   *  required, so the cell asks for one and hands it here. Where it does not,
+   *  the reason is optional and none is asked for. */
+  async function toggleSettled(row: SheetRow, reason?: string | null) {
     const id = row.registration_id;
     if (typeof id !== "number") return;
     setSettling(true);
     try {
-      await api.markSettled(tournament.slug, id, !row.paid);
+      await api.markSettled(tournament.slug, id, !row.paid, reason);
       refresh();
     } finally {
       setSettling(false);
     }
+    // a refusal is left to throw: the caller is a dialog, and it keeps itself
+    // open and states the reason. Swallowing it here left a row that did not
+    // change and nothing at all saying why
   }
   const columns = [
     ...BASE_COLUMNS,
@@ -639,10 +675,11 @@ export default function Console({
                   <IssueOnArrival slug={tournament.slug} onIssued={refresh} />
                 </>
               ) : phase === "payments" ? (
-                /* one table at a time: the fencer list and four queues stacked
-                   could not be read as five different things. Proposals lead
+                /* one table at a time: the fencer list and five queues stacked
+                   could not be read as six different things. Proposals lead
                    the queues — the one with the most work in it and the one an
-                   organizer empties fastest */
+                   organizer empties fastest; the recorded payments come last,
+                   being the one view holding no decision */
                 <>
                   <QueueTabStrip />
                   <LikelyPanel
@@ -670,6 +707,11 @@ export default function Console({
                     reload={queueReload}
                     onChanged={refresh}
                   />
+                  <RecordedPaymentsPanel
+                    slug={tournament.slug}
+                    reload={queueReload}
+                    onChanged={refresh}
+                  />
                 </>
               ) : null
             }
@@ -687,12 +729,31 @@ export default function Console({
             onValidate={cellCheck}
             onDelete={(row) => void addRule("row_delete", row.id, {})}
             onRestore={(row) => void addRule("row_restore", row.id, {})}
-            onToggleSettled={boned ? toggleSettled : undefined}
+            /* the mark is offered on every tournament: as the boned-out
+               phase's own column, and as the waiver on the state cell where
+               Squire collects */
+            onToggleSettled={phase === "payments" ? toggleSettled : undefined}
+            collects={collects}
+            onRecordPayment={
+              phase === "payments" && collects ? setRecording : undefined
+            }
             settling={settling}
             onRatify={ratifyMatch}
             onSearch={setMatchRow}
           />
           </QueueTabs>
+        )}
+        {recording && detail && (
+          <RecordPaymentDialog
+            slug={tournament.slug}
+            row={recording}
+            currency={detail.local_currency}
+            eurOffered={detail.eur_payments_enabled}
+            /* `refresh` is already the console's "the money moved" signal
+               and bumps every queue with it */
+            onRecorded={refresh}
+            onClose={() => setRecording(null)}
+          />
         )}
 
         <aside className="rail">

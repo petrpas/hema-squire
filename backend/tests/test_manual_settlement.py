@@ -1,10 +1,17 @@
-"""The organizer who collected the money says so (spec payments, "An organizer
+"""Settled with nothing passing through Squire (spec payments, "An organizer
 may mark a registration settled by hand").
 
-Nothing else in Squire lets a person assert that a registration is paid: the
-state is reached only from a credited transaction, even on a tournament Squire
-collects for. That is right where it collects and useless where it does not, and
-this is the one place a human verdict is allowed."""
+One mark meaning one thing on every kind of tournament. Where Squire handles no
+payments it is the organizer's word that they collected the money themselves,
+and it is the only way a registration reaches the paid state there. Where
+Squire handles the payments it is a **waiver** — a free place, a comped
+entrant — and it asks for a reason, because a paid row holding nothing beside a
+live ledger is otherwise read as a fault.
+
+It used to be refused wherever Squire collected. What that refusal protected
+against was a *silent* second writer to the paid state; this one is stored,
+explained, audited, and a statement arriving afterwards is flagged rather than
+credited (`add-manual-payment-entry` D4)."""
 
 from sqlalchemy import select
 
@@ -58,9 +65,10 @@ def registration_id(entry) -> int:
     return registration_row(entry["vs"]).id
 
 
-def settled(client, organizer, registration_id, value=True):
+def settled(client, organizer, registration_id, value=True, reason=None):
+    query = f"settled={value}" + (f"&reason={reason}" if reason else "")
     return client.post(
-        f"/api/tournaments/cup/registrations/{registration_id}/settled?settled={value}",
+        f"/api/tournaments/cup/registrations/{registration_id}/settled?{query}",
         headers=organizer,
     )
 
@@ -154,16 +162,78 @@ def test_both_directions_are_recorded_against_the_organizer(client, auth_headers
 # ------------------------------------------------------------- the refusals
 
 
-def test_refused_where_squire_handles_the_payments(client, auth_headers):
+def test_a_reason_is_required_where_squire_collects(client, auth_headers):
+    """The reversal of `add-manual-paid-marking` D2, and its replacement: the
+    mark is allowed here, but not unexplained."""
     organizer = auth_headers()
     collecting_tournament(client, organizer)
     entry = enroll(client, auth_headers, "a@example.com")
 
     response = settled(client, organizer, registration_id(entry))
-    assert response.status_code == 409
-    assert response.json()["detail"] == "payments_handled_by_squire"
+    assert response.status_code == 422
+    assert response.json()["detail"] == "reason_required"
     # and the registration is untouched, which is what the refusal is for
     assert registration_row(entry["vs"]).state == RegistrationState.RESERVED
+
+
+def test_a_waiver_on_a_collecting_tournament(client, auth_headers):
+    organizer = auth_headers()
+    collecting_tournament(client, organizer)
+    entry = enroll(client, auth_headers, "a@example.com")
+
+    response = settled(client, organizer, registration_id(entry), reason="volná účast")
+    assert response.status_code == 200, response.text
+
+    row = registration_row(entry["vs"])
+    assert row.state == RegistrationState.PAID
+    assert row.settled_by_hand_at is not None
+    assert row.settled_by_hand_reason == "volná účast"
+    # nothing arrived, so no total of received money moves — the whole of the
+    # second ask (design D5)
+    assert row.amount_paid_cents == 0
+    assert (row.amount_paid_eur_cents or 0) == 0
+
+
+def test_the_reason_is_optional_where_squire_collects_nothing(client, auth_headers):
+    organizer = auth_headers()
+    self_collecting_tournament(client, organizer)
+    entry = enroll(client, auth_headers, "a@example.com")
+
+    assert settled(client, organizer, registration_id(entry)).status_code == 200
+    row = registration_row(entry["vs"])
+    assert row.settled_by_hand_at is not None
+    assert row.settled_by_hand_reason is None
+
+
+def test_the_mark_is_stored_and_cleared(client, auth_headers):
+    """Stored rather than deduced from a paid state with empty counters, which
+    a waived registration holding a recorded payment would defeat (design
+    D4)."""
+    organizer = auth_headers()
+    collecting_tournament(client, organizer)
+    entry = enroll(client, auth_headers, "a@example.com")
+
+    settled(client, organizer, registration_id(entry), reason="sponzor")
+    settled(client, organizer, registration_id(entry), value=False)
+
+    row = registration_row(entry["vs"])
+    assert row.state == RegistrationState.RESERVED
+    assert row.settled_by_hand_at is None
+    assert row.settled_by_hand_reason is None
+
+
+def test_the_reason_is_carried_into_the_audit(client, auth_headers):
+    organizer = auth_headers(email="org@example.com", name="Organizátor")
+    collecting_tournament(client, organizer)
+    entry = enroll(client, auth_headers, "a@example.com")
+
+    settled(client, organizer, registration_id(entry), reason="volná účast")
+
+    event = db_session().scalars(
+        select(PaymentEvent).where(PaymentEvent.kind == MARK_SETTLED)
+    ).one()
+    assert "org@example.com" in event.detail
+    assert "volná účast" in event.detail
 
 
 def test_refused_without_console_access(client, auth_headers):
@@ -279,3 +349,65 @@ def test_switching_to_squire_handled_payments_leaves_the_marks(client, auth_head
     row = registration_row(entry["vs"])
     assert row.state == RegistrationState.PAID
     assert row.amount_paid_cents == 0
+
+
+def test_unmarking_a_registration_the_money_settled_is_refused(client, auth_headers):
+    """Unmarking is this mark's to reverse and nothing else's. Clearing a mark
+    a registration never had would return it to reserved with its credit
+    stranded (design add-manual-payment-entry D4)."""
+    organizer = auth_headers()
+    collecting_tournament(client, organizer)
+    entry = enroll(client, auth_headers, "a@example.com")
+    reg_id = registration_id(entry)
+
+    # paid by money, not by anybody's word
+    assert client.post(
+        "/api/tournaments/cup/payments/manual",
+        json={
+            "registration_id": reg_id,
+            "amount": "1200.00",
+            "currency": "CZK",
+            "received_on": "2026-08-01",
+            "method": "cash",
+        },
+        headers=organizer,
+    ).status_code == 201
+    assert registration_row(entry["vs"]).state == RegistrationState.PAID
+
+    response = settled(client, organizer, reg_id, value=False)
+    assert response.status_code == 409
+    assert response.json()["detail"] == "not_settled_by_hand"
+    row = registration_row(entry["vs"])
+    assert row.state == RegistrationState.PAID
+    assert row.amount_paid_cents == 120000
+
+
+def test_a_registration_with_no_variable_symbol_is_marked(client, auth_headers):
+    """The 500 this test exists for. A tournament whose organizer keeps the
+    roster mints no variable symbols — Squire never told any payer a number to
+    quote (`issuing.py`) — and `RegistrationOut.vs` was declared `int`, so the
+    response could not be serialised.
+
+    The write had already committed by then, so the mark *took* and only
+    appeared on the next reload: the failure read as a refresh problem rather
+    than as an error, which is how it survived being noticed."""
+    organizer = auth_headers()
+    collecting_tournament(client, organizer)
+    entry = enroll(client, auth_headers, "a@example.com")
+
+    session = db_session()
+    registration = session.scalar(
+        select(Registration).where(Registration.vs == entry["vs"])
+    )
+    reg_id = registration.id
+    registration.vs = None
+    session.commit()
+
+    response = settled(client, organizer, reg_id, reason="kupon")
+    assert response.status_code == 200, response.text
+    assert response.json()["vs"] is None
+    assert registration_row_by_id(reg_id).settled_by_hand_reason == "kupon"
+
+
+def registration_row_by_id(registration_id: int) -> Registration:
+    return db_session().get(Registration, registration_id)

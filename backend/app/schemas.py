@@ -28,6 +28,7 @@ from app.models import (
     Currency,
     DisciplineKind,
     ExtraCategory,
+    PaymentMethod,
     PaymentMode,
     RefundState,
     RegistrationsKeptBy,
@@ -881,15 +882,23 @@ class DiscountBreakdownOut(BaseModel):
 
 class RegistrationOut(BaseModel):
     state: RegistrationState
-    vs: int
+    # Absent on a registration that was never given one: a tournament whose
+    # organizer keeps the roster mints no symbols, because Squire never told
+    # any payer a number to quote (`issuing.py`, `tournament-mode`). Declared
+    # `int` until now, which made every response carrying such a registration a
+    # 500 — the write had already committed, so the change appeared on the next
+    # reload and looked like a refresh problem rather than an error.
+    vs: int | None
     total_amount: int
-    # total_amount less what has been credited so far; the single figure the
-    # fencer needs, never a total and a payment history to subtract by hand
+    # what is still owed, or negative what is over, and the currency that
+    # figure is stated in. One balance rather than one per currency lane: the
+    # lanes are alternative prices for the same place, so the lane nobody paid
+    # into is not a second debt (see Registration.balance_cents)
     outstanding_amount: decimal.Decimal
-    # the EUR pair, absent (not zero) when the tournament does not price in
-    # EUR — both are stored figures, never derived from the local ones
+    outstanding_currency: Currency
+    # the EUR price, absent (not zero) when the tournament does not price in
+    # EUR — a stored figure, never derived from the local one
     total_eur: int | None = None
-    outstanding_eur_amount: decimal.Decimal | None = None
     expires_at: datetime.datetime | None
     registered_at: datetime.datetime
     paid_at: datetime.datetime | None
@@ -1024,6 +1033,46 @@ class OpenTournamentOut(BaseModel):
         return tolerant_organizers(value)
 
 
+class ManualPaymentIn(BaseModel):
+    """A payment the organizer says arrived, which Squire never saw.
+
+    The amount is in whole units of the currency named, as every money figure
+    crossing this API is; the endpoint converts it once. `received_on` is the
+    day the money arrived rather than the day it was typed in, and nothing
+    reads it as a clock."""
+
+    registration_id: int
+    # positivity is checked at the endpoint rather than declared here: a
+    # `Field(gt=0)` on a Decimal puts a Decimal into the validation error's
+    # context, and the 422 body then fails to serialise
+    amount: decimal.Decimal
+    currency: Currency
+    received_on: datetime.date
+    method: PaymentMethod
+    note: str | None = Field(default=None, max_length=500)
+
+
+class ManualPaymentOut(BaseModel):
+    """A recorded payment as the console reads it: the fencer by name, since
+    the registration id is not a thing anyone recognises, and the organizer who
+    said so, since a paid roster must always be able to answer who said it."""
+
+    id: int
+    registration_id: int
+    fencer_name: str
+    amount: decimal.Decimal
+    currency: Currency
+    received_on: datetime.date
+    method: PaymentMethod
+    note: str | None
+    recorded_by: str
+    created_at: datetime.datetime
+    # whether removing this payment would return the registration to reserved,
+    # so the console can say what removal will do before it is confirmed rather
+    # than after (spec payments-console)
+    removal_unsettles: bool
+
+
 class TransactionOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -1059,6 +1108,15 @@ class TransactionOut(BaseModel):
     # the manual link dialog for an unmatched transaction (design Decisions
     # 5 and 6) — filled by routers.payments._transaction_out
     candidate_vs: list[int] = []
+    # Why the registration this transaction names was already settled, where a
+    # person settled it. The organizer reading a flagged row is deciding
+    # whether this is further money or the same money arriving twice, and that
+    # decision needs the earlier act in front of it (spec payments-console,
+    # "The flagged queue names a hand-settled cause"). Absent on every ordinary
+    # conflict, which is the majority: a registration paid by an earlier
+    # transaction makes no hand-settled claim
+    settled_by_hand_reason: str | None = None
+    settled_by_recorded_payment: ManualPaymentOut | None = None
 
 
 class ExpiredHoldingOut(BaseModel):

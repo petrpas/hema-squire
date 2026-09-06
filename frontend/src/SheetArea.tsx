@@ -1,4 +1,4 @@
-import { IconArrowBackUp, IconTrash } from "@tabler/icons-react";
+import { IconArrowBackUp, IconCoins, IconTrash } from "@tabler/icons-react";
 import { useTranslation } from "react-i18next";
 
 import type { SheetRow, TournamentDetail } from "./api";
@@ -18,6 +18,7 @@ import { usesHRIdentity } from "./identity";
 import { useSheetVisible } from "./payments/QueueTabs";
 import MatchCell from "./MatchCell";
 import SettledCell from "./SettledCell";
+import StateCell from "./StateCell";
 import type { FieldError } from "./validation";
 
 /** The fencer table and the document it sits in: the main area of every phase
@@ -49,6 +50,8 @@ export default function SheetArea({
   onRatify,
   onSearch,
   onToggleSettled,
+  collects,
+  onRecordPayment,
   settling,
 }: {
   phase: Phase;
@@ -73,9 +76,22 @@ export default function SheetArea({
   onEdit: (row: SheetRow, column: string, raw: string) => void;
   onValidate: (column: string, raw: string) => FieldError | null;
   onDelete: (row: SheetRow) => void;
-  /** Marks a registration settled, or unmarks it — offered only on the
-   *  boned-out payments phase, where it is the phase's whole content. */
-  onToggleSettled?: (row: SheetRow) => void;
+  /** Marks a registration settled, or unmarks it. Offered on the Payments
+   *  phase of every tournament: on the boned-out one it is the phase's whole
+   *  content, and on a collecting one it is the waiver.
+   *
+   *  Rejects when the mark is refused, so the waiver's dialog can stay open
+   *  and say why rather than closing on a row that did not change. */
+  onToggleSettled?: (row: SheetRow, reason?: string | null) => Promise<void>;
+  /** Whether Squire handles this tournament's payments. Where it does, the
+   *  waiver is offered on the state cell rather than in a column of its own,
+   *  and a paid row is not evidence of a mark — money reaches such a
+   *  tournament by other routes. */
+  collects?: boolean;
+  /** Opens the record-payment dialog for a row. Offered only where Squire
+   *  handles the payments: where it tracks no amounts, an amount means nothing
+   *  it could keep. */
+  onRecordPayment?: (row: SheetRow) => void;
   settling?: boolean;
   onRestore: (row: SheetRow) => void;
   onRatify: (row: SheetRow) => void;
@@ -88,6 +104,10 @@ export default function SheetArea({
   // column even where every row it lists happens to offer nothing, so the
   // table does not change width as rows come and go
   const actionable = phaseRemovesRows(phase);
+  // The end-of-row column, which Import and Fencers use for delete and restore
+  // and Payments now uses for recording a payment. Asked of the phase rather
+  // than of the rows, as `actionable` is, so the table keeps its width.
+  const rowActions = actionable || onRecordPayment !== undefined;
 
   return (
     <main className="sheet-area">
@@ -134,7 +154,7 @@ export default function SheetArea({
                 {/* the column exists only where the phase offers something to
                     do to a row; drawn empty it is a gap at the end of every
                     row with nothing to explain it */}
-                {actionable && <th className="col-actions" />}
+                {rowActions && <th className="col-actions" />}
               </tr>
             </thead>
             <tbody>
@@ -163,6 +183,12 @@ export default function SheetArea({
                       >
                         {column === "settled" && onToggleSettled ? (
                           <SettledCell
+                            row={row}
+                            onToggle={onToggleSettled}
+                            busy={settling ?? false}
+                          />
+                        ) : column === "state" && collects && onToggleSettled ? (
+                          <StateCell
                             row={row}
                             onToggle={onToggleSettled}
                             busy={settling ?? false}
@@ -206,8 +232,23 @@ export default function SheetArea({
                       </td>
                     );
                   })}
-                  {actionable && (
+                  {rowActions && (
                     <td className="col-actions">
+                      {/* money that arrived where the feed does not reach.
+                          Sits with the row actions rather than in a column,
+                          because it is an action and not a value */}
+                      {onRecordPayment && typeof row.registration_id === "number" && (
+                        <button
+                          className="row-action"
+                          title={t("payments.record.action")}
+                          onClick={() => onRecordPayment(row)}
+                        >
+                          <IconCoins size={16} stroke={1.5} />
+                          <span className="visually-hidden">
+                            {t("payments.record.action")}
+                          </span>
+                        </button>
+                      )}
                       {rowAction(row, phase) === null ? null : rowAction(row, phase) ===
                         "restore" ? (
                         <button

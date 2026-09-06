@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import delete, func, select, update
 from sqlalchemy.exc import IntegrityError
 
-from app import accounts, emails, pricing, rownumbers, setup, spayd
+from app import accounts, amendment, emails, pricing, rownumbers, setup, spayd
 from app.auth import require_console_access
 from app.availability import (
     full_disciplines,
@@ -16,6 +16,7 @@ from app.availability import (
     taken_seats,
     taken_team_slots,
     team_queue_length,
+    team_waitlist_flags,
 )
 from app.mail import Mailer, get_mailer
 from app.models import (
@@ -162,17 +163,18 @@ def _team_out(team: Team, tournament: Tournament, at) -> dict:
 
 
 def registration_out(session, registration: Registration, tournament: Tournament) -> dict:
-    outstanding_eur_cents = registration.outstanding_eur_cents
+    balance, balance_currency = registration.balance_cents(tournament)
     at = registration.registered_at.date()
     return {
         "state": registration.state,
         "vs": registration.vs,
         "total_amount": registration.total_amount,
-        "outstanding_amount": _cents_to_amount(registration.outstanding_cents),
+        # one balance and the currency it is in, not a figure per lane: the
+        # two lanes are alternative prices, and the uncredited one is not a
+        # debt (see Registration.balance_cents)
+        "outstanding_amount": _cents_to_amount(balance),
+        "outstanding_currency": balance_currency,
         "total_eur": registration.total_eur,
-        "outstanding_eur_amount": (
-            _cents_to_amount(outstanding_eur_cents) if outstanding_eur_cents is not None else None
-        ),
         "expires_at": registration.expires_at,
         "registered_at": registration.registered_at,
         "paid_at": registration.paid_at,
@@ -377,32 +379,6 @@ def _resolve_teams(tournament: Tournament, entries) -> list[tuple[Discipline, ob
     return [(by_slug[e.slug], e) for e in entries]
 
 
-def _team_waitlist_flags(
-    session,
-    team_entries: list[tuple[Discipline, object]],
-    *,
-    exclude_registration_id: int | None = None,
-) -> list[bool]:
-    """One waitlisted flag per team entry, in submission order, assigning
-    remaining capacity sequentially so two teams entered into the same
-    discipline in one submission are not both charged into the same last-open
-    slot. `exclude_registration_id` excludes a registration's own current
-    teams from the count, so recomputing on amendment does not count a team
-    against itself (design team-disciplines 4.3)."""
-    counts: dict[int, int] = {}
-    flags = []
-    for discipline, _ in team_entries:
-        if discipline.id not in counts:
-            counts[discipline.id] = taken_team_slots(
-                session, discipline, exclude_registration_id=exclude_registration_id
-            )
-        taken = counts[discipline.id]
-        waitlisted = taken >= discipline.capacity
-        counts[discipline.id] = taken if waitlisted else taken + 1
-        flags.append(waitlisted)
-    return flags
-
-
 def _validate_options(selections, extras_by_id: dict[int, ExtraItem]) -> None:
     """An item that declares an option must be answered, and one that declares
     none must not be. A half-filled t-shirt row is a support ticket, so the
@@ -587,7 +563,7 @@ def register(
         team_flags = (
             [True] * len(team_entries)
             if settled
-            else _team_waitlist_flags(session, team_entries)
+            else team_waitlist_flags(session, team_entries)
         )
         for (discipline, team_in), waitlisted in zip(team_entries, team_flags, strict=True):
             registration.teams.append(
@@ -707,114 +683,24 @@ def amend_registration(
     team_entries = _resolve_teams(tournament, data.teams)
     _validate_options(data.extras, {item.id: item for item in tournament.extra_items})
 
-    was_paid = registration.state == RegistrationState.PAID
-    previous_total = registration.total_amount
-
-    # drop the current selection before checking capacity, so the fencer's own
-    # existing seats are not counted as taken against themselves
-    session.execute(
-        delete(RegistrationDiscipline).where(
-            RegistrationDiscipline.registration_id == registration.id
-        )
+    amendment.apply_amendment(
+        session,
+        tournament,
+        registration,
+        selected,
+        mailer,
+        seat_all=False,
+        notice=amendment.FENCER,
+        extras=data.extras,
+        team_entries=team_entries,
+        fields={
+            "weapon_rentals": data.weapon_rentals,
+            "afterparty": data.afterparty,
+            "aftersparring": data.aftersparring,
+            "accommodation": data.accommodation,
+            "notes": data.notes,
+        },
     )
-    session.execute(
-        delete(RegistrationExtra).where(RegistrationExtra.registration_id == registration.id)
-    )
-
-    # teams are replaced too, but selectively: a team whose id the client
-    # resubmits keeps its roster (and row); one it does not is dropped with
-    # its roster (design team-disciplines D6, task 4.3 — "editing the names
-    # inside a team is not [an amendment]" but adding/removing a team is)
-    existing_teams = {t.id: t for t in registration.teams}
-    keep_ids = {e.id for _, e in team_entries if e.id is not None and e.id in existing_teams}
-    remove_ids = [tid for tid in existing_teams if tid not in keep_ids]
-    if remove_ids:
-        session.execute(delete(TeamMember).where(TeamMember.team_id.in_(remove_ids)))
-        session.execute(delete(Team).where(Team.id.in_(remove_ids)))
-        # `registration.teams` was already loaded above (to build
-        # `existing_teams`), so the ORM does not know to drop the deleted rows
-        # from its cached collection on its own — same reasoning as
-        # tournaments.delete_discipline's `tournament.disciplines.remove(...)`
-        for tid in remove_ids:
-            registration.teams.remove(existing_teams[tid])
-    session.flush()
-
-    # unlike register(), amendment never rejects for fullness: a discipline
-    # that is full joins as a substitute placement in place, and every other
-    # selected discipline is unaffected by it (design Decision 3 — rejecting
-    # the whole submission would discard the parts that were fine). Teams
-    # follow the same never-reject rule: a full team discipline waitlists the
-    # team instead (design team-disciplines, spec "Team capacity and the team
-    # waitlist"). `exclude_registration_id` keeps this registration's own
-    # (soon-to-be-replaced) teams out of the capacity count, so a kept team is
-    # not counted against itself.
-    full = full_disciplines(session, selected)
-    team_flags = _team_waitlist_flags(
-        session, team_entries, exclude_registration_id=registration.id
-    )
-
-    registration.weapon_rentals = data.weapon_rentals
-    registration.afterparty = data.afterparty
-    registration.aftersparring = data.aftersparring
-    registration.accommodation = data.accommodation
-    registration.notes = data.notes
-    for discipline in selected:
-        registration.entries.append(
-            RegistrationDiscipline(
-                discipline=discipline, is_substitute=discipline.slug in full
-            )
-        )
-    for selection in data.extras:
-        value = (selection.option_value or "").strip()
-        registration.extra_selections.append(
-            RegistrationExtra(
-                extra_item_id=selection.extra_item_id,
-                qty=selection.qty,
-                option_value=value or None,
-            )
-        )
-    for (discipline, team_in), waitlisted in zip(team_entries, team_flags, strict=True):
-        if team_in.id is not None and team_in.id in keep_ids:
-            team = existing_teams[team_in.id]
-            team.discipline = discipline
-            team.name = team_in.name
-            team.waitlisted = waitlisted
-        else:
-            registration.teams.append(
-                Team(
-                    tournament_id=tournament.id,
-                    discipline=discipline,
-                    name=team_in.name,
-                    waitlisted=waitlisted,
-                )
-            )
-    session.flush()
-
-    # vs and expires_at are read-only through this path: amending must not
-    # renew the hold or reissue the QR (Decision 3, the load-bearing guarantee)
-    totals = pricing.registration_total(registration, tournament)
-    registration.total_amount = totals.local
-    registration.total_eur = totals.eur
-    overpaid = registration.outstanding_cents < 0 or (registration.outstanding_eur_cents or 0) < 0
-    if was_paid and overpaid:
-        registration.refund_state = RefundState.PENDING
-
-    session.add(
-        PaymentEvent(
-            tournament_id=tournament.id,
-            registration_id=registration.id,
-            kind="registration_amended",
-            detail=f"{registration.audit_label}: {previous_total} -> {registration.total_amount}",
-        )
-    )
-    session.commit()
-
-    underpaid = registration.outstanding_cents > 0 or (registration.outstanding_eur_cents or 0) > 0
-    if was_paid:
-        if underpaid:
-            emails.send_surcharge_due(mailer, tournament, fencer, registration)
-    else:
-        emails.send_amendment_confirmation(mailer, tournament, fencer, registration)
     return registration_out(session, registration, tournament)
 
 
@@ -880,17 +766,6 @@ MARK_SETTLED = "settled_by_hand"
 UNMARK_SETTLED = "unsettled_by_hand"
 
 
-def _require_squire_collects_nothing(tournament: Tournament) -> None:
-    """Refuse a hand-mark on a tournament whose payments Squire handles.
-
-    The mirror of `bank.require_payments_enabled`, and for the same reason: the
-    paid state has one writer per tournament. Where Squire collects, that writer
-    is the reconciliation, and a mark made by hand could be contradicted by the
-    next statement with neither knowing (design add-manual-paid-marking D2)."""
-    if tournament.feature_payments:
-        raise HTTPException(status_code=409, detail="payments_handled_by_squire")
-
-
 @router.post("/registrations/{registration_id}/settled", response_model=RegistrationOut)
 def mark_settled(
     registration_id: int,
@@ -898,26 +773,50 @@ def mark_settled(
     session: SessionDep,
     fencer: FencerDep,
     settled: bool = True,
+    reason: str | None = None,
 ):
-    """Record the organizer's word that a registration has been settled, on a
-    tournament whose payments Squire does not handle.
+    """Record that a registration is settled with **nothing passing through
+    Squire**, on any tournament.
+
+    One mark meaning one thing in both places. Where Squire handles no
+    payments, that is the organizer's word that they collected the money
+    themselves, and it is the only way a registration reaches the paid state
+    there. Where Squire handles the payments, it is a waiver — a free place, a
+    comped entrant — standing beside the money that reaches such a tournament
+    by transaction and by recorded payment.
 
     **Writes the verdict, not an amount.** `amount_paid_cents` and its EUR twin
-    are left exactly as they are — which on such a tournament is zero. Those
-    counters mean money that passed through Squire; the reconciliation fills
-    them from a statement it read, the export carries them, and the outstanding
-    column is computed against them. A figure written into them from a mark
-    would afterwards be indistinguishable from one Squire observed (design D1).
+    are left exactly as they are. A mark that wrote the outstanding amount into
+    them would put money into every sum of what the tournament received that
+    nobody ever paid, and it would afterwards be indistinguishable from money
+    Squire observed (design add-manual-payment-entry D5).
 
-    So a hand-settled registration reads as paid while still owing its whole
-    total. That is the honest reading of both columns at once: the fencer owes
-    the organizer nothing, and Squire received nothing.
+    So a hand-settled registration reads as paid while what it is owed remains
+    what it always was, and every surface showing both states the balance as
+    *waived* rather than owed.
+
+    This used to be refused wherever Squire collected, on the reasoning that
+    the paid state has one writer per tournament and a mark could be
+    contradicted by the next statement with neither knowing
+    (`add-manual-paid-marking` D2). What that forbade was a **silent** second
+    writer. This one leaves a stored mark, a reason and an event naming a
+    person, and a statement arriving afterwards is flagged rather than credited
+    (`matching.py`, the branch on a registration that is not reserved) — so a
+    person decides, which is all the old refusal was protecting.
+
+    The reason is required where Squire handles the payments and optional where
+    it does not: where a live ledger is read, a paid row holding nothing beside
+    rows holding credits is a puzzle a reader will otherwise solve as a fault,
+    and one short phrase answers it. Where no ledger exists, every row is that
+    row (design D4).
 
     `paid_at` is stamped, because it answers *when this became paid* and a mark
     is when it did — and clearing it on the reverse mirrors what unlinking a
     payment already does (`matching.py:662`)."""
     require_console_access(session, tournament, fencer)
-    _require_squire_collects_nothing(tournament)
+    reason = (reason or "").strip() or None
+    if settled and tournament.feature_payments and reason is None:
+        raise HTTPException(status_code=422, detail="reason_required")
     registration = session.scalar(
         select(Registration).where(
             Registration.tournament_id == tournament.id,
@@ -931,16 +830,35 @@ def mark_settled(
     if registration.state not in (RegistrationState.RESERVED, RegistrationState.PAID):
         raise HTTPException(status_code=409, detail="registration_not_live")
 
+    # unmarking is this mark's to reverse and nothing else's. Where Squire
+    # collects, a registration paid by a credited transaction or a recorded
+    # payment carries no mark, and clearing one it never had would return it to
+    # reserved with its credit stranded — a state no reader could explain
+    if (
+        not settled
+        and tournament.feature_payments
+        and registration.settled_by_hand_at is None
+    ):
+        raise HTTPException(status_code=409, detail="not_settled_by_hand")
+
     registration.state = RegistrationState.PAID if settled else RegistrationState.RESERVED
     registration.paid_at = _now() if settled else None
+    # stored rather than deduced from a paid state with empty counters: that
+    # deduction stopped being sound once a waived registration could also hold
+    # a payment recorded by hand (design add-manual-payment-entry D4)
+    registration.settled_by_hand_at = _now() if settled else None
+    registration.settled_by_hand_reason = reason if settled else None
     session.add(
         PaymentEvent(
             tournament_id=tournament.id,
             registration_id=registration.id,
             kind=MARK_SETTLED if settled else UNMARK_SETTLED,
             # who said so: a roster stating that someone has paid can always
-            # answer who said it and when (design D3)
-            detail=f"{registration.audit_label}: {fencer.display_name} <{fencer.email}>",
+            # answer who said it and when (design add-manual-paid-marking D3)
+            detail=(
+                f"{registration.audit_label}: {fencer.display_name} <{fencer.email}>"
+                + (f" — {reason}" if settled and reason else "")
+            ),
         )
     )
     session.commit()
