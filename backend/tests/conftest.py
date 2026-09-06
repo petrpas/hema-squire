@@ -128,19 +128,26 @@ def publish(client, headers, slug):
     tournament in /open, /held, /mine, or accepting registrations must call
     this after completing its mandatory setup.
 
-    Retries once with a filled-in bank account if that is the only thing
-    missing: most callers are indifferent to it, and a priced tournament
-    cannot publish without it (fix-payment-instructions-visibility)."""
+    Fills in the mandatory items a caller is indifferent to and retries: the
+    place, the organizer list and the bank account. Most tests set none of the
+    three — a priced tournament cannot publish without an account
+    (fix-payment-instructions-visibility), and since data work waits for
+    publication (gate-data-work-behind-publication) every import, payments and
+    matching test now comes through here. What is not filled in is what a test
+    chooses: its disciplines and their prices. A tournament missing one of
+    those cannot publish, and that is the test saying so."""
+    filler = {
+        "location": "Brno",
+        "organizers": [{"name": "Org", "link": None}],
+        "bank_account": "CZ6508000000192000145399",
+    }
     response = client.post(f"/api/tournaments/{slug}/publish", headers=headers)
-    if response.status_code == 422 and "bank_account" in response.json()["detail"].get(
-        "missing", []
-    ):
-        client.patch(
-            f"/api/tournaments/{slug}",
-            json={"bank_account": "CZ6508000000192000145399"},
-            headers=headers,
-        )
-        response = client.post(f"/api/tournaments/{slug}/publish", headers=headers)
+    if response.status_code == 422:
+        missing = response.json()["detail"].get("missing", [])
+        patch = {key: value for key, value in filler.items() if key in missing}
+        if patch:
+            client.patch(f"/api/tournaments/{slug}", json=patch, headers=headers)
+            response = client.post(f"/api/tournaments/{slug}/publish", headers=headers)
     assert response.status_code == 200, response.text
     return response.json()
 

@@ -266,12 +266,63 @@ def test_a_published_manual_tournament_keeps_its_address(client, auth_headers):
 def test_an_organizer_kept_tournament_is_not_ticked(client, auth_headers):
     organizer = auth_headers()
     make_tournament(client, organizer, slug="mine")
-    make_tournament(client, organizer, slug="theirs")
+    make_tournament(
+        client,
+        organizer,
+        slug="theirs",
+        external_registration_url="https://elsewhere.example/e",
+    )
+    # the mode moves before publication and freezes at it (spec
+    # tournament-mode), and both are published so that the exclusion under test
+    # is the only one either could fall to
     set_kept_by(client, organizer, "organizer", slug="theirs")
+    publish(client, organizer, "mine")
+    publish(client, organizer, "theirs")
 
     session = db_session()
     considered = {t.slug for t in tournaments_to_tick(session)}
     assert considered == {"mine"}
+
+
+def test_a_draft_is_not_ticked_either(client, auth_headers):
+    """The third exclusion: a draft holds nobody for a clock to run against
+    (spec registration, One dormancy predicate governs the lifecycle passes).
+    Asserted beside its neighbours because all three are made in one place."""
+    organizer = auth_headers()
+    make_tournament(client, organizer, slug="draft")
+    make_tournament(client, organizer, slug="live")
+    publish(client, organizer, "live")
+
+    session = db_session()
+    assert {t.slug for t in tournaments_to_tick(session)} == {"live"}
+
+
+def test_publication_starts_the_clocks(client, auth_headers):
+    """And no registration is rewritten by it: the cause is read live off the
+    tournament, so the same registration answers differently on either side of
+    publication."""
+    organizer = auth_headers()
+    make_tournament(client, organizer, bank_account=IBAN)
+    enable_payments(client, organizer, "cup")
+    session = db_session()
+    tournament = tournament_row(session=session)
+    registration = Registration(
+        tournament_id=tournament.id,
+        fencer_id=tournament.owner_id,
+        state=RegistrationState.RESERVED,
+        total_amount=1200,
+        clocks_dormant=False,
+    )
+    session.add(registration)
+    session.commit()
+    assert app_setup.dormancy_cause(tournament, registration) == (
+        app_setup.DORMANT_UNPUBLISHED
+    )
+
+    publish(client, organizer, "cup")
+    session.refresh(tournament)
+    session.refresh(registration)
+    assert app_setup.dormancy_cause(tournament, registration) is None
 
 
 def test_a_held_tournament_is_not_ticked_either(client, auth_headers):
@@ -279,6 +330,7 @@ def test_a_held_tournament_is_not_ticked_either(client, auth_headers):
     kind: one is behind its clocks, the other was never under them."""
     organizer = auth_headers()
     make_tournament(client, organizer)
+    publish(client, organizer, "cup")
     session = db_session()
     tournament = tournament_row(session=session)
     tournament.date = date.today() - timedelta(days=1)

@@ -8,7 +8,7 @@ console-operations, An operation is a record, not a request).
 import io
 from datetime import datetime, timedelta
 
-from conftest import settle
+from conftest import publish, settle
 from sqlalchemy.orm import Session
 
 from app import operations
@@ -72,6 +72,8 @@ def setup(client, organizer):
         json={"slug": "SA", "weapon": "SA", "capacity": 200, "fee": 800},
         headers=organizer,
     )
+    # data work waits for publication (spec tournament-publication)
+    publish(client, organizer, "cup")
 
 
 def upload(client, organizer, content):

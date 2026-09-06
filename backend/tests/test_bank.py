@@ -9,7 +9,7 @@ from app.bank import (
     parse_fio_json,
 )
 from app.main import app
-from tests.conftest import enable_payments, settle
+from tests.conftest import enable_payments, publish, settle
 
 FIO_JSON = {
     "accountStatement": {
@@ -86,6 +86,15 @@ def setup_tournament(client, organizer, fio_token=None):
         headers=organizer,
     )
     enable_payments(client, organizer, "cup")
+    # a discipline and a publish only so the tournament can take money at all:
+    # payments wait for publication (spec tournament-publication), and a
+    # tournament with nothing to enter cannot be published
+    client.post(
+        "/api/tournaments/cup/disciplines",
+        json={"slug": "SA", "weapon": "SA", "capacity": 20, "fee": 800},
+        headers=organizer,
+    )
+    publish(client, organizer, "cup")
     if fio_token:
         client.patch(
             "/api/tournaments/cup", json={"fio_token": fio_token}, headers=organizer

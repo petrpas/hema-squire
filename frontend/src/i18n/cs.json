@@ -193,6 +193,7 @@
     "titleImport": "Nahraná tabulka",
     "refresh": "obnovit",
     "error": "Data se nepodařilo načíst. Jsi organizátorem tohoto turnaje?",
+    "awaitsPublication": "Turnaj není zveřejněn a nezpracovává zatím žádná data.",
     "footerStats": "{{rows}} registrací · {{paid}} zaplaceno",
     "footerNote": "Spis veden řádně.",
     "footerRevision": "rev. {{n}}",
@@ -233,6 +234,7 @@
       "silent": "Žádný e-mail neodešel.",
       "error": {
         "failed": "Opravu se nepodařilo provést.",
+        "not_published": "Turnaj není zveřejněn, oprava se neprovedla.",
         "row_has_registration": "Za tímto řádkem stojí registrace; ta se mění, nepřepisuje se.",
         "field_is_not_amendable": "Tenhle sloupec se u vystavené registrace neopravuje.",
         "rentals_must_be_a_list": "Zápůjčky se zadávají jako názvy oddělené čárkou.",

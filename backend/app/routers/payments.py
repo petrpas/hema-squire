@@ -20,7 +20,7 @@ from app import (
     scheduler,
     statements,
 )
-from app.auth import require_console_access
+from app.auth import require_console_access, require_published
 from app.mail import Mailer, get_mailer
 from app.models import (
     BankTransaction,
@@ -122,6 +122,7 @@ async def import_statement(
     land in the operation's outcome, not in this response.
     """
     require_console_access(session, tournament, fencer)
+    require_published(tournament)
     bank.require_payments_enabled(tournament)
     _refuse_while_duplicates_pending(session, tournament)
     content = await file.read()
@@ -186,6 +187,7 @@ def fio_poll(
     days_back: int = 14,
 ):
     require_console_access(session, tournament, fencer)
+    require_published(tournament)
     bank.require_payments_enabled(tournament)
     _refuse_while_duplicates_pending(session, tournament)
     if not tournament.fio_token:
@@ -208,6 +210,7 @@ def process_lifecycle(
     lifecycle this drives is the payment lifecycle, and settling seating by
     hand has its own action on the tournament."""
     require_console_access(session, tournament, fencer)
+    require_published(tournament)
     bank.require_payments_enabled(tournament)
     demoted = scheduler.settle_seating_if_due(session, tournament)
     expired = scheduler.process_expiries(session, tournament, mailer)
@@ -229,6 +232,7 @@ def link_transaction(
     """Manually link an unmatched transaction to one or more registrations.
     Persists as a payment_link rule: survives reruns, removable via the rules API."""
     require_console_access(session, tournament, fencer)
+    require_published(tournament)
     bank.require_payments_enabled(tournament)
     transaction = session.get(BankTransaction, data.transaction_id)
     if transaction is None or transaction.tournament_id != tournament.id:
@@ -318,6 +322,7 @@ def confirm_proposal(
     indistinguishable from a payment linked by hand — which is what it is.
     """
     require_console_access(session, tournament, fencer)
+    require_published(tournament)
     bank.require_payments_enabled(tournament)
     transaction = _proposal(session, tournament, transaction_id)
     registration = session.scalar(
@@ -359,6 +364,7 @@ def reject_proposal(
     payment has not thereby stopped being somebody's name (design, Open
     Questions)."""
     require_console_access(session, tournament, fencer)
+    require_published(tournament)
     transaction = _proposal(session, tournament, transaction_id)
     refused = list(transaction.rejected_fencer_ids or [])
     if transaction.proposed_fencer_id is not None:
@@ -522,6 +528,7 @@ def resettle_payments(
     nothing: the money is already on the registration and only the verdict on
     whether it was close enough is asked again."""
     require_console_access(session, tournament, fencer)
+    require_published(tournament)
     bank.require_payments_enabled(tournament)
     return {"settled": matching.resettle_within_tolerance(session, tournament, mailer)}
 
@@ -542,6 +549,7 @@ def clear_payments(tournament: TournamentDep, session: SessionDep, fencer: Fence
     it before calling (spec payments-clearing, Clearing the payments is warned
     about and irreversible)."""
     require_console_access(session, tournament, fencer)
+    require_published(tournament)
     bank.require_payments_enabled(tournament)
     try:
         return paymentsclear.clear_payments(session, tournament)
@@ -663,6 +671,7 @@ def reinstate_transaction(
     refused for capacity): the accepted amount is credited unconditionally,
     since the organizer has already reviewed and decided to accept it."""
     require_console_access(session, tournament, fencer)
+    require_published(tournament)
     bank.require_payments_enabled(tournament)
     transaction = _flagged_transaction(session, tournament, transaction_id)
     registration = _flagged_registration(session, tournament, transaction)
@@ -703,6 +712,7 @@ def mark_transaction_for_refund(
     fencer: FencerDep,
 ):
     require_console_access(session, tournament, fencer)
+    require_published(tournament)
     bank.require_payments_enabled(tournament)
     transaction = _flagged_transaction(session, tournament, transaction_id)
     registration = _flagged_registration(session, tournament, transaction)
@@ -809,6 +819,7 @@ def record_manual_payment(
     that list is the statement ledger, and a row no bank sent would falsify it
     for every reader (design D2)."""
     require_console_access(session, tournament, fencer)
+    require_published(tournament)
     bank.require_payments_enabled(tournament)
     registration = session.scalar(
         select(Registration).where(
@@ -874,6 +885,7 @@ def remove_manual_payment(
     a correction is a removal and a new record, so that what was credited and
     what took it back are both readable afterwards."""
     require_console_access(session, tournament, fencer)
+    require_published(tournament)
     bank.require_payments_enabled(tournament)
     payment = session.get(ManualPayment, payment_id)
     if payment is None or payment.tournament_id != tournament.id:

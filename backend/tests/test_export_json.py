@@ -327,6 +327,10 @@ def test_v3_currency_and_option_fields_round_trip(client, auth_headers):
 
     # re-exporting the restored deployment proves the selection's option value
     # survived the round trip, not just the item's definition
+    # the document carries no publication record, so what restore lands is a
+    # draft — one holding registrations, which it keeps and may be read, and
+    # which must be published before it exports again (spec data-export)
+    publish(restore_client, new_organizer, "cup")
     again = restore_client.get(
         "/api/tournaments/cup/export/json", headers=new_organizer
     ).json()
@@ -381,6 +385,7 @@ def test_tiers_round_trip(client, auth_headers):
     slugs = {d["slug"]: d for d in detail["disciplines"]}
     assert slugs.keys() == {"LS-A", "LS-B"}
     assert slugs["LS-A"]["name"] == "Longsword Top"
+    publish(restore_client, new_organizer, "tiers")
     export2 = restore_client.get(
         "/api/tournaments/tiers/export/json", headers=new_organizer
     ).json()
@@ -430,6 +435,7 @@ def test_individual_and_team_in_one_weapon_round_trip(client, auth_headers):
         "/api/tournaments/restore", json=document, headers=new_organizer
     )
     assert restore.status_code == 201, restore.text
+    publish(restore_client, new_organizer, "mixed")
     export2 = restore_client.get(
         "/api/tournaments/mixed/export/json", headers=new_organizer
     ).json()
@@ -568,6 +574,14 @@ def test_opening_moment_round_trips(client, auth_headers):
         },
         headers=organizer,
     )
+    # a discipline and a publish only so the tournament can be exported at all
+    # (spec data-export, Exporting waits for publication)
+    client.post(
+        "/api/tournaments/evening/disciplines",
+        json={"slug": "SA", "weapon": "SA", "capacity": 10, "fee": 800},
+        headers=organizer,
+    )
+    publish(client, organizer, "evening")
     before = client.get("/api/tournaments/evening", headers=organizer).json()
     assert before["registration_opens_at"] == "2026-09-01T16:00:00Z"
 
@@ -605,6 +619,12 @@ def test_document_without_an_opening_time_restores_with_the_default_zone(client,
         },
         headers=organizer,
     )
+    client.post(
+        "/api/tournaments/older/disciplines",
+        json={"slug": "SA", "weapon": "SA", "capacity": 10, "fee": 800},
+        headers=organizer,
+    )
+    publish(client, organizer, "older")
     document = client.get("/api/tournaments/older/export/json", headers=organizer).json()
     document["schema_version"] = 7
     del document["tournament"]["registration_opens_time"]

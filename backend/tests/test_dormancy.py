@@ -101,9 +101,12 @@ def placements(vs):
 
 
 class FakeTournament:
-    def __init__(self, feature_payments, kept_by=RegistrationsKeptBy.SQUIRE):
+    def __init__(
+        self, feature_payments, kept_by=RegistrationsKeptBy.SQUIRE, published=True
+    ):
         self.feature_payments = feature_payments
         self.registrations_kept_by = kept_by
+        self.published_at = datetime(2026, 1, 1, tzinfo=UTC) if published else None
 
 
 class FakeRegistration:
@@ -136,6 +139,21 @@ def test_dormancy_cause_over_the_closed_set(payments, kept_by, issued, expected)
     registration = FakeRegistration(issued)
     assert app_setup.dormancy_cause(tournament, registration) == expected
     assert app_setup.clocks_run(tournament, registration) == (expected is None)
+
+
+@pytest.mark.parametrize("payments,kept_by,issued", [
+    (True, SQUIRE, False),
+    (False, ORGANIZER, True),
+])
+def test_a_draft_is_dormant_whatever_else_holds(payments, kept_by, issued):
+    """Unpublished is the widest cause and answers first: a draft holds nobody
+    for a clock to run against, whatever its payments setting or the origin of
+    the registration (spec registration, One dormancy predicate governs the
+    lifecycle passes)."""
+    tournament = FakeTournament(payments, kept_by, published=False)
+    registration = FakeRegistration(issued)
+    assert app_setup.dormancy_cause(tournament, registration) == app_setup.DORMANT_UNPUBLISHED
+    assert app_setup.clocks_run(tournament, registration) is False
 
 
 # ------------------------------------------- the regression: nobody is demoted

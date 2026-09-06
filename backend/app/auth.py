@@ -99,3 +99,22 @@ def require_console_access(session: Session, tournament: Tournament, fencer: Fen
 def require_tournament_owner(tournament: Tournament, fencer: Fencer) -> None:
     if tournament.owner_id != fencer.id:
         raise HTTPException(status_code=403, detail="not_tournament_owner")
+
+
+def require_published(tournament: Tournament) -> None:
+    """A draft holds no participants and no money: every write of a
+    tournament's data is refused until it is published (spec
+    tournament-publication, A tournament is a draft until it is published).
+
+    A sibling of `require_console_access` rather than a condition inside it.
+    That one is asked by reads and writes alike — the console's tables ask it,
+    and so does the statement import — and the reads stay open on a draft
+    (design D1). So this is called by the writers, one line each.
+
+    Refused rather than ignored, and 409 rather than 404 (design D5): the
+    console stops sending these once its phases state their wait, so what
+    reaches here is a retry, a tab left open from before publication, or a
+    script, and each should learn why instead of seeing a tournament that
+    appears not to exist."""
+    if tournament.published_at is None:
+        raise HTTPException(status_code=409, detail={"code": "not_published"})

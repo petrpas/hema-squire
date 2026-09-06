@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
 
 from app import hr_sync, rules, sheet
-from app.auth import require_console_access
+from app.auth import require_console_access, require_published
 from app.models import Tournament, TournamentOrganizer
 from app.routers.tournaments import FencerDep, SessionDep, TournamentDep
 
@@ -50,6 +50,7 @@ def take_snapshot(
     fetcher: FetcherDep,
 ):
     require_console_access(session, tournament, fencer)
+    require_published(tournament)
     base = sheet.base_rows(session, tournament)
     rows, _ = rules.replay(base, rules.active_rules(session, tournament))
     hr_ids = sorted(

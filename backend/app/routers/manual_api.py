@@ -10,7 +10,7 @@ import datetime
 from fastapi import APIRouter, HTTPException
 
 from app import manualrows, setup
-from app.auth import require_console_access
+from app.auth import require_console_access, require_published
 from app.models import DisciplineKind, ExtraCategory, Tournament
 from app.routers.tournaments import FencerDep, SessionDep, TournamentDep
 from app.schemas import ManualEntryIn, ManualRowOut
@@ -57,6 +57,7 @@ def create_manual_row(
     fencer: FencerDep,
 ):
     require_console_access(session, tournament, fencer)
+    require_published(tournament)
     _resolve_manual_entry(tournament, data)
     # the moment the organizer states, or now read in the tournament's own zone
     # — the frame every moment in the table is read in (design D5)

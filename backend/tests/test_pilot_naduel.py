@@ -30,6 +30,7 @@ from app.hr_match import HRMatchResult, get_hr_matcher
 from app.importer import ParsedFencer, get_import_parser
 from app.main import app
 from tests.conftest import outcome as operation_outcome
+from tests.conftest import publish
 
 
 # the v1 archive predates slugs: `disciplines` entries are {weapon, gender,
@@ -184,6 +185,9 @@ def test_pilot_replay_reproduces_v1_final_state(client, auth_headers, archive):
             json={"slug": code, "weapon": code, "capacity": 64, "fee": 800},
             headers=organizer,
         )
+    # the replay is data work from end to end, and data work waits for
+    # publication (spec tournament-publication)
+    publish(client, organizer, "na-duel-2026")
 
     parser = ArchiveParser(archive["parsed"])
     matcher = ArchiveMatcher(archive["parsed"], archive["matched"])

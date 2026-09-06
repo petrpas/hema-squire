@@ -187,6 +187,7 @@
     "titleImport": "Imported table",
     "refresh": "refresh",
     "error": "Could not load data. Are you an organizer of this tournament?",
+    "awaitsPublication": "This tournament is not published and does no data work yet.",
     "footerStats": "{{rows}} registered · {{paid}} paid",
     "footerNote": "File maintained in good order.",
     "footerRevision": "rev. {{n}}",
@@ -227,6 +228,7 @@
       "silent": "No mail was sent.",
       "error": {
         "failed": "The correction could not be applied.",
+        "not_published": "The tournament is not published; the correction was not applied.",
         "row_has_registration": "This row has a registration; it is amended, not overwritten.",
         "field_is_not_amendable": "This column is not one an issued registration is corrected through.",
         "rentals_must_be_a_list": "Borrowed items are given as names separated by commas.",

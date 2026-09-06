@@ -4,6 +4,7 @@ import { Link, useNavigate } from "react-router-dom";
 
 import AccountMenu from "./AccountMenu";
 import AmendmentNotice from "./AmendmentNotice";
+import AwaitsPublication from "./AwaitsPublication";
 import DedupPanel from "./dedup/DedupPanel";
 import DedupView from "./dedup/DedupView";
 import ExportPanel from "./ExportPanel";
@@ -579,7 +580,16 @@ export default function Console({
       // a refused edit says so rather than leaving the cell to look saved: the
       // table refreshes to what the tournament actually holds either way
       const detail = error instanceof ApiError ? error.detail : null;
-      setRefusal(typeof detail === "string" ? detail : "failed");
+      // a string reason, or the `{ code }` the coded refusals answer with —
+      // the publication gate among them, which a tab left open from before
+      // publication can still reach (design D5)
+      const code =
+        typeof detail === "string"
+          ? detail
+          : typeof (detail as { code?: unknown } | null)?.code === "string"
+            ? (detail as { code: string }).code
+            : "failed";
+      setRefusal(code);
     }
     refresh();
   }
@@ -681,6 +691,11 @@ export default function Console({
   // from the refreshed detail where there is one, so applying a mode in Setup
   // adds and removes phases at once rather than on the next load
   const phases = offeredPhases(detail ?? tournament);
+  // Decided once, here, from the publication record, rather than each panel
+  // asking for itself: a phase where five panels each explain the same wait
+  // states it four times too often (design D3). Setup is exempt —
+  // configuration is what a draft is for.
+  const published = Boolean((detail ?? tournament).published_at);
   const boned = phase === "payments" && paymentsBonedOut(detail ?? tournament);
   const [settling, setSettling] = useState(false);
   const [recording, setRecording] = useState<SheetRow | null>(null);
@@ -767,6 +782,13 @@ export default function Console({
             onDeleted={() => navigate(routes.picker())}
             onDirtyChange={setSetupDirty}
           />
+        ) : !published ? (
+          /* every phase but Setup states its wait in place of its body — its
+             table, its panels, its parameter rail and its controls (spec
+             etl-console, The console states what it is waiting for on a
+             draft). The strip above is drawn unchanged, so the phase is still
+             reachable, still in its place, and still at its own address */
+          <AwaitsPublication />
         ) : phase === "teams" ? (
           <TeamsPanel slug={tournament.slug} />
         ) : phase === "queue" ? (

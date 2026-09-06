@@ -5,7 +5,7 @@ etl-console, The ledger idiom / HR matching review).
 
 import io
 
-from conftest import outcome, settle
+from conftest import outcome, publish, settle
 
 from app.hr_index import HRProfile, StubHRIndex, get_hr_index
 from app.hr_match import HRMatchResult, get_hr_matcher
@@ -90,6 +90,8 @@ def setup(client, organizer):
         json={"slug": "SA", "weapon": "SA", "capacity": 20, "fee": 800},
         headers=organizer,
     )
+    # data work waits for publication (spec tournament-publication)
+    publish(client, organizer, "cup")
     response = client.post(
         "/api/tournaments/cup/import",
         files={"file": ("regs.csv", io.BytesIO(CSV.encode()), "text/csv")},

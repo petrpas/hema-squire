@@ -22,6 +22,7 @@ from app.models import (
 # One predicate answers for every lifecycle pass (design unify-lifecycle-
 # dormancy D1); a pass that grows a condition of its own is the defect this
 # set exists to prevent.
+DORMANT_UNPUBLISHED = "unpublished"
 DORMANT_PAYMENTS_OFF = "payments_off"
 DORMANT_ORGANIZER_KEPT = "organizer_kept"
 DORMANT_ISSUED_FROM_IMPORT = "issued_from_import"
@@ -395,11 +396,16 @@ def dormancy_cause(tournament: Tournament, registration: Registration) -> str | 
     What is dormant is the passage of time, never the money. A dormant
     registration is matched, linked and credited like any other.
 
-    The organizer-kept cause is here even though the scheduler never selects
-    such a tournament at all (design add-registrations-kept-by D3). The
-    exclusion covers the scheduler's own pass; it does not cover the paths a
-    human reaches — the count the console states before settling, and the
-    settlement an organizer triggers by hand. Those ask this."""
+    The organizer-kept and unpublished causes are here even though the
+    scheduler never selects such a tournament at all (design
+    add-registrations-kept-by D3, and this change's D4). The exclusion covers
+    the scheduler's own pass; it does not cover the paths a human reaches — the
+    count the console states before settling, and the settlement an organizer
+    triggers by hand. Those ask this."""
+    if tournament.published_at is None:
+        # first because it is the broadest and the cheapest to decide: a draft
+        # holds nobody at all (spec tournament-publication)
+        return DORMANT_UNPUBLISHED
     if not tournament.feature_payments:
         return DORMANT_PAYMENTS_OFF
     if tournament.registrations_kept_by is RegistrationsKeptBy.ORGANIZER:

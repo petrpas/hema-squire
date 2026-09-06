@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
 
 from app import amendment, matching, rules, sheet
-from app.auth import require_console_access
+from app.auth import require_console_access, require_published
 from app.hr_index import HRIndex, get_hr_index
 from app.mail import Mailer, get_mailer
 from app.models import Rule, RuleJournalEntry
@@ -48,6 +48,7 @@ def create_rule(
     mailer: MailerDep,
 ):
     require_console_access(session, tournament, fencer)
+    require_published(tournament)
     rule = rules.create_rule(
         session,
         tournament,
@@ -108,6 +109,7 @@ def update_rule(
     fencer: FencerDep,
 ):
     require_console_access(session, tournament, fencer)
+    require_published(tournament)
     rule = _get_rule(session, tournament, rule_id)
     return rules.update_rule(session, rule, fencer, data.payload)
 
@@ -121,6 +123,7 @@ def delete_rule(
     mailer: MailerDep,
 ):
     require_console_access(session, tournament, fencer)
+    require_published(tournament)
     rule = _get_rule(session, tournament, rule_id)
     rules.delete_rule(session, rule, fencer)
     if rule.kind == "payment_link":

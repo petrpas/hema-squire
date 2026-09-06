@@ -12,7 +12,7 @@ import io
 from datetime import UTC, datetime, timedelta
 
 import pytest
-from conftest import enable_payments, outcome
+from conftest import enable_payments, outcome, publish
 from sqlalchemy import select
 
 from app.bank import get_fio_client
@@ -92,7 +92,14 @@ def setup(client, organizer, *, fee=800, early_fee=None, early_until=None):
                 headers=organizer)
     client.patch(
         "/api/tournaments/cup",
-        json={"location": "Brno", "organizers": [{"name": "Cup Org", "link": None}]},
+        json={
+            "location": "Brno",
+            "organizers": [{"name": "Cup Org", "link": None}],
+            # set here rather than left to the publish helper, because a test
+            # that turns payments on afterwards needs a published tournament to
+            # stay setup-complete
+            "bank_account": "CZ6508000000192000145399",
+        },
         headers=organizer,
     )
     if early_until is not None:
@@ -101,6 +108,9 @@ def setup(client, organizer, *, fee=800, early_fee=None, early_until=None):
             json={"early_bird_until": early_until},
             headers=organizer,
         )
+    # issuing waits for publication (spec imported-registrations, Issuing waits
+    # for publication): every roster on this file needs a published tournament
+    publish(client, organizer, "cup")
     app.dependency_overrides[get_import_parser] = lambda: RosterParser()
 
 
@@ -548,11 +558,8 @@ def test_a_row_whose_person_already_registered_is_left_alone(client, auth_header
     """A registration is unique per tournament and fencer, so a row naming
     somebody who registered in the application has nothing to issue. Left alone
     rather than refused: there is nothing wrong with the row."""
-    from conftest import publish
-
     organizer = auth_headers()
     setup(client, organizer)
-    publish(client, organizer, "cup")
     enrolled = auth_headers(email="jan@example.com", name="Jan Novák")
     entered = client.post(
         "/api/tournaments/cup/register", json={"disciplines": ["SA"]}, headers=enrolled
@@ -606,7 +613,7 @@ def test_an_issued_roster_fills_the_discipline_for_later_registrations(
     fencer registering afterwards meets a discipline the roster has filled."""
     organizer = auth_headers()
     setup(client, organizer)
-    from conftest import enable_payments, publish
+    from conftest import enable_payments
 
     patched = client.patch(
         "/api/tournaments/cup/disciplines/SA",
@@ -615,7 +622,6 @@ def test_an_issued_roster_fills_the_discipline_for_later_registrations(
     )
     assert patched.status_code == 200, patched.text
     enable_payments(client, organizer, "cup")
-    publish(client, organizer, "cup")
     import_roster(client, organizer, [row("First", "first@example.com"),
                                       row("Second", "second@example.com")])
     issue(client, organizer)
@@ -655,10 +661,9 @@ def test_the_lifecycle_passes_leave_issued_registrations_alone(
     implementation sets the flag correctly and mails anyway."""
     organizer = auth_headers()
     setup(client, organizer)
-    from conftest import enable_payments, publish
+    from conftest import enable_payments
 
     enable_payments(client, organizer, "cup")
-    publish(client, organizer, "cup")
     import_roster(client, organizer, [row("Jan", "jan@example.com"),
                                       row("Eva", "eva@example.com")])
     issue(client, organizer)
@@ -682,10 +687,9 @@ def test_the_lifecycle_passes_leave_issued_registrations_alone(
 def test_configuration_changes_do_not_wake_the_clocks(client, auth_headers, mailbox):
     organizer = auth_headers()
     setup(client, organizer)
-    from conftest import enable_payments, publish
+    from conftest import enable_payments
 
     enable_payments(client, organizer, "cup")
-    publish(client, organizer, "cup")
     import_roster(client, organizer, [row("Jan", "jan@example.com")])
     issue(client, organizer)
 
@@ -706,10 +710,9 @@ def test_dormant_clocks_do_not_stop_money(client, auth_headers, mailbox):
     """What is dormant is the passage of time, not the money."""
     organizer = auth_headers()
     setup(client, organizer)
-    from conftest import enable_payments, import_statement, publish
+    from conftest import enable_payments, import_statement
 
     enable_payments(client, organizer, "cup")
-    publish(client, organizer, "cup")
     import_roster(client, organizer, [row("Jan", "jan@example.com")])
     issue(client, organizer)
     vs = registrations()[0].vs

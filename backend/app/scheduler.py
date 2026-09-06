@@ -393,22 +393,26 @@ def run_tournament_tick(
 def tournaments_to_tick(session: Session) -> list[Tournament]:
     """The tournaments one lifecycle pass considers.
 
-    Two exclusions, and they are different in kind. A tournament already held
+    Three exclusions, and they are different in kind. A tournament already held
     is behind every clock it had. A tournament whose registrations its
     organizer keeps was never under one: Squire does not own its roster, so no
-    pass may see it at all.
+    pass may see it at all. A draft is a tournament being written, and holds
+    nobody for a clock to run against — it can hold no participant at all
+    (spec tournament-publication, A tournament is a draft until it is
+    published).
 
-    The second is made here, once, rather than as a condition inside each pass.
-    That is the difference between a guard and a guarantee — a registration
-    created on such a tournament by any path, including one that forgets to
-    mark it dormant, is safe because the passes are never reached (design
-    add-registrations-kept-by D2). A named function rather than an inline
+    The last two are made here, once, rather than as a condition inside each
+    pass. That is the difference between a guard and a guarantee — a
+    registration created on such a tournament by any path, including one that
+    forgets to mark it dormant, is safe because the passes are never reached
+    (design add-registrations-kept-by D2). A named function rather than an inline
     select so the exclusion can be asserted directly, without standing up a
     scheduler."""
     return list(
         session.scalars(
             select(Tournament).where(
                 Tournament.date >= date.today(),
+                Tournament.published_at.is_not(None),
                 Tournament.registrations_kept_by != RegistrationsKeptBy.ORGANIZER,
             )
         ).all()

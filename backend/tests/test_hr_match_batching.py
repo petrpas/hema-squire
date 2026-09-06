@@ -8,7 +8,7 @@ retries, and a 500 on /import/match.
 import io
 import json
 
-from conftest import settle
+from conftest import publish, settle
 from pydantic_ai.messages import ModelResponse, ToolCallPart
 from pydantic_ai.models.function import AgentInfo, FunctionModel
 
@@ -141,6 +141,8 @@ def test_identical_rows_are_one_question_and_both_count_as_matched(
         json={"slug": "SA", "weapon": "SA", "capacity": 20, "fee": 800},
         headers=organizer,
     )
+    # data work waits for publication (spec tournament-publication)
+    publish(client, organizer, "cup")
     app.dependency_overrides[get_import_parser] = lambda: TwoRowParser()
     assert client.post(
         "/api/tournaments/cup/import",

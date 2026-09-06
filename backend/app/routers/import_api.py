@@ -6,7 +6,7 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app import dedup, hr_match, importclear, importer, issuing, operations, sheet
-from app.auth import require_console_access
+from app.auth import require_console_access, require_published
 from app.hr_index import HRIndex, get_hr_index
 from app.models import Fencer, Operation, OperationKind, Tournament
 from app.routers.registrations import next_vs
@@ -64,6 +64,7 @@ async def import_table(
     minutes, runs as an operation (design D2).
     """
     require_console_access(session, tournament, fencer)
+    require_published(tournament)
     _refuse_while_busy(session, tournament)
     data = await file.read()
     try:
@@ -134,6 +135,7 @@ def clear_import(tournament: TournamentDep, session: SessionDep, fencer: FencerD
     the console confirms it before calling (spec table-import, Clearing is
     warned about and irreversible)."""
     require_console_access(session, tournament, fencer)
+    require_published(tournament)
     try:
         return importclear.clear_imports(session, tournament)
     except importclear.CreditedRegistrationsError as credited:
@@ -154,6 +156,7 @@ async def run_matching(
     index: HRIndexDep,
 ):
     require_console_access(session, tournament, fencer)
+    require_published(tournament)
     if matcher is None:
         raise HTTPException(status_code=503, detail="llm_not_configured")
     rows = sheet.source_rows(session, tournament, index)
@@ -183,6 +186,7 @@ async def run_dedup(
     llm: DedupDep,
 ):
     require_console_access(session, tournament, fencer)
+    require_published(tournament)
     if llm is None:
         raise HTTPException(status_code=503, detail="llm_not_configured")
     rows = sheet.source_rows(session, tournament)
@@ -254,6 +258,7 @@ def issue_registrations(tournament: TournamentDep, session: SessionDep, fencer: 
     to report on that the response cannot.
     """
     require_console_access(session, tournament, fencer)
+    require_published(tournament)
     if tournament.feature_payments:
         raise HTTPException(status_code=409, detail="intake_issues_instead")
     if dedup.unresolved_groups(session, tournament):
@@ -279,6 +284,7 @@ def dedup_decide(
     fencer: FencerDep,
 ):
     require_console_access(session, tournament, fencer)
+    require_published(tournament)
     rows = dedup.premerge_rows(session, tournament)
     outcome = dedup.decide(
         session, tournament, fencer, rows, data.key, data.accept, data.fields, data.note

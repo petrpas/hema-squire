@@ -2,7 +2,7 @@
 
 import io
 
-from conftest import outcome, settle
+from conftest import outcome, publish, settle
 
 from app.importer import ImportParser, ParsedFencer, get_import_parser
 from app.main import app
@@ -59,6 +59,9 @@ def setup(client, organizer):
         json={"slug": "SA", "weapon": "SA", "capacity": 20, "fee": 800},
         headers=organizer,
     )
+    # data work waits for publication (spec tournament-publication): a draft
+    # refuses every import on this file
+    publish(client, organizer, "cup")
 
 
 def upload(client, organizer, content=CSV, filename="regs.csv"):
@@ -340,6 +343,7 @@ def setup_split_tournament(client, organizer):
         },
         headers=organizer,
     )
+    publish(client, organizer, "split")
 
 
 class BracketAwareParser:

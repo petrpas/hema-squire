@@ -8,7 +8,7 @@ from sqlalchemy import delete, func, select, update
 from sqlalchemy.exc import IntegrityError
 
 from app import accounts, amendment, emails, pricing, rownumbers, setup, spayd
-from app.auth import require_console_access
+from app.auth import require_console_access, require_published
 from app.availability import (
     full_disciplines,
     live_registration,
@@ -814,6 +814,7 @@ def mark_settled(
     is when it did — and clearing it on the reverse mirrors what unlinking a
     payment already does (`matching.py:662`)."""
     require_console_access(session, tournament, fencer)
+    require_published(tournament)
     reason = (reason or "").strip() or None
     if settled and tournament.feature_payments and reason is None:
         raise HTTPException(status_code=422, detail="reason_required")
@@ -877,6 +878,7 @@ def admit_substitute(
     mailer: MailerDep,
 ):
     require_console_access(session, tournament, fencer)
+    require_published(tournament)
     registration = session.get(Registration, registration_id)
     if registration is None or registration.tournament_id != tournament.id:
         raise HTTPException(status_code=404, detail="registration_not_found")
@@ -964,6 +966,7 @@ def return_to_queue(
     organizer's route for a paid registration is cancellation, which carries
     the refund path."""
     require_console_access(session, tournament, fencer)
+    require_published(tournament)
     registration = session.get(Registration, registration_id)
     if registration is None or registration.tournament_id != tournament.id:
         raise HTTPException(status_code=404, detail="registration_not_found")

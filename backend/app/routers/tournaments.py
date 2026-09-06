@@ -13,6 +13,7 @@ from app import money_bounds, scheduler, setup, taxonomy
 from app.auth import (
     current_fencer,
     require_console_access,
+    require_published,
     require_role,
     require_tournament_owner,
 )
@@ -1155,6 +1156,7 @@ def settle_seating(tournament: TournamentDep, session: SessionDep, fencer: Fence
     taking seats. Not reversible: the organizer's route to correct an
     individual case afterwards is promotion."""
     require_console_access(session, tournament, fencer)
+    require_published(tournament)
     if tournament.seating_settled_at is not None:
         raise HTTPException(status_code=409, detail="seating_already_settled")
     demoted = scheduler.settle_seating(session, tournament)

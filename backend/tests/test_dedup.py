@@ -2,7 +2,7 @@
 
 import io
 
-from conftest import outcome, settle
+from conftest import outcome, publish, settle
 
 from app.dedup import MergeProposal, ThreeBands, default_merge, get_dedup_llm
 from app.hr_match import HRMatchResult, get_hr_matcher
@@ -97,6 +97,8 @@ def setup(client, organizer, parser=None):
         json={"slug": "SA", "weapon": "SA", "capacity": 20, "fee": 800},
         headers=organizer,
     )
+    # data work waits for publication (spec tournament-publication)
+    publish(client, organizer, "cup")
     app.dependency_overrides[get_import_parser] = lambda: parser or FakeParser()
     response = client.post(
         "/api/tournaments/cup/import",

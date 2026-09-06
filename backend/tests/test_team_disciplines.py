@@ -759,6 +759,10 @@ def test_v6_roundtrip_with_teams_and_rosters(client, auth_headers):
     restore = restore_client.post("/api/tournaments/restore", json=doc, headers=new_organizer)
     assert restore.status_code == 201, restore.text
 
+    # the document carries no publication record: what restore lands is a draft
+    # holding registrations, and it must be published before it exports again
+    # (spec data-export, Exporting waits for publication)
+    publish(restore_client, new_organizer, "cup")
     export2 = restore_client.get("/api/tournaments/cup/export/json", headers=new_organizer).json()
     reg_teams = {r["fencer_email"]: r["teams"] for r in export2["registrations"]}
     wolves = reg_teams["f1@example.com"][0]
