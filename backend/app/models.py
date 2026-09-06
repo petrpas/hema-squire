@@ -673,6 +673,15 @@ class Registration(Base):
     # and once as a registration.
     source_row_id: Mapped[str | None] = mapped_column(String(80), unique=True)
     reminded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # the day the money arrived, not the moment Squire learned of it: a
+    # transaction's statement date, or the `received_on` of a payment the
+    # organizer recorded. A bare day carries no clock, so it is stored as the
+    # instant that day begins in the tournament's own zone
+    # (`setup.start_of_local_day`).
+    #
+    # The one exception is a registration settled by hand, which records no
+    # payment: with no statement day behind it, the mark stamps its own moment
+    # (spec `payments`; routers.registrations).
     paid_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     cancelled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     refundable: Mapped[bool | None]

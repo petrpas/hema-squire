@@ -75,3 +75,29 @@ function zoned(
   }
   return format({});
 }
+
+/** A stored day, as the Payments phase table states it: the day alone, read in
+ *  the tournament's zone.
+ *
+ *  Two columns use it. `paid_at` is a day a statement stated without a clock,
+ *  stored as the instant that day begins where the tournament is held — read
+ *  in the reader's own zone it would fall a day either side (change
+ *  paid-at-is-value-date D7). `expires_at` is a genuine instant, and one at
+ *  23:00 local has the same problem.
+ *
+ *  A value carrying no offset is spelled back out rather than resolved, on the
+ *  same reasoning `registeredMoment` spells out an imported row's stamp. */
+export function dayIn(value: string | null, timezone: string | null): string {
+  if (value === null) return ABSENT;
+  if (!OFFSET.test(value)) return statedDay(value);
+  const at = Date.parse(value);
+  if (Number.isNaN(at)) return value;
+  return day(at, timezone);
+}
+
+function statedDay(value: string): string {
+  const parts = STATED.exec(value);
+  if (!parts) return value;
+  const [, year, month, date] = parts;
+  return new Date(Number(year), Number(month) - 1, Number(date)).toLocaleDateString("cs");
+}

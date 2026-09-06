@@ -11,6 +11,9 @@ The record itself is a `ManualPayment` and never a row in the bank
 transactions: that list is the statement ledger.
 """
 
+from datetime import UTC, date, datetime, time
+from zoneinfo import ZoneInfo
+
 import pytest
 from sqlalchemy import select
 
@@ -517,3 +520,43 @@ def test_a_waived_registration_holds_no_money(client, auth_headers, mailbox):
     assert client.get(
         "/api/tournaments/cup/payments/expired-holding", headers=organizer
     ).json() == []
+
+
+# ---- the paid date is the day the money arrived (change paid-at-is-value-date) ----
+
+
+def test_recorded_payment_dates_by_received_on_not_by_when_it_was_typed(
+    client, auth_headers, mailbox
+):
+    """Cash taken at the desk on the 1st and entered on the 4th settles the
+    registration on the 1st. `received_on` is the day the organizer says the
+    money arrived, and it is the day the registration carries (spec
+    `payments`)."""
+    organizer = auth_headers()
+    make_tournament(client, organizer)
+    _, vs = enroll(client, auth_headers)
+
+    record(client, organizer, registration_by_vs(vs).id, received_on="2026-08-01")
+
+    assert registration_by_vs(vs).paid_at.replace(tzinfo=UTC) == datetime.combine(
+        date(2026, 8, 1), time(0, 0), tzinfo=ZoneInfo("Europe/Prague")
+    ).astimezone(UTC)
+
+
+def test_a_second_recorded_payment_completing_it_gives_its_own_day(
+    client, auth_headers, mailbox
+):
+    """A registration settled by two recorded payments takes the day of the
+    one that completed it (design paid-at-is-value-date D3)."""
+    organizer = auth_headers()
+    make_tournament(client, organizer)
+    _, vs = enroll(client, auth_headers)
+
+    record(client, organizer, registration_by_vs(vs).id, amount="600.00", received_on="2026-08-01")
+    assert registration_by_vs(vs).paid_at is None
+
+    record(client, organizer, registration_by_vs(vs).id, amount="400.00", received_on="2026-08-09")
+
+    assert registration_by_vs(vs).paid_at.replace(tzinfo=UTC) == datetime.combine(
+        date(2026, 8, 9), time(0, 0), tzinfo=ZoneInfo("Europe/Prague")
+    ).astimezone(UTC)

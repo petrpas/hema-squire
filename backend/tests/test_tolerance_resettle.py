@@ -12,6 +12,8 @@ credit happened when the payment arrived — it reaches nothing outside the
 back.
 """
 
+from datetime import date
+
 import pytest
 from sqlalchemy import select
 
@@ -23,6 +25,8 @@ from tests.test_matching import (
     db_session,
     enroll,
     import_rows,
+    local_midnight,
+    paid_at_of,
     registration_by_vs,
     setup,
 )
@@ -212,3 +216,21 @@ def test_refused_where_payments_are_disabled(client, auth_headers, mailbox):
 
     assert countable(client, organizer, "nopay").status_code == 409
     assert resettle(client, organizer, "nopay").status_code == 409
+
+
+def test_the_settlement_is_dated_to_the_transaction_not_to_the_widening(
+    client, auth_headers, mailbox
+):
+    """The money arrived on the 1st; the organizer widened the tolerance
+    weeks later. The registration is dated to the money, and the organizer's
+    act is recorded where decisions are recorded — as the transaction's reason
+    and as an event (design paid-at-is-value-date D4)."""
+    organizer = auth_headers()
+    setup(client, organizer)
+    _, vs = short_payment(client, auth_headers, organizer)
+
+    set_tolerance(client, organizer, 5)
+    assert resettle(client, organizer).json() == {"settled": 1}
+
+    assert paid_at_of(vs) == local_midnight(date(2026, 8, 1))
+    assert transactions()[0].status_reason == "tolerance_widened"

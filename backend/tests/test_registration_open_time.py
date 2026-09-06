@@ -7,6 +7,7 @@ instant, closing is the whole of its local day. These are unit tests over
 """
 
 import datetime
+import zoneinfo
 from datetime import UTC
 
 import pytest
@@ -407,3 +408,37 @@ def test_date_only_tournament_opens_at_the_start_of_its_local_day(client, auth_h
     assert body["registration_opens"] == "2026-09-01"
     assert body["registration_opens_time"] is None
     assert body["registration_opens_at"] == "2026-08-31T22:00:00Z"
+
+
+# ---- start_of_local_day (change paid-at-is-value-date, task 1.3) ----
+
+# America/Santiago, 2026: clocks go forward at 24:00 on 5 September, so
+# midnight on the 6th is a local time the zone skips.
+SANTIAGO_SKIPS_MIDNIGHT = datetime.date(2026, 9, 6)
+
+
+def test_start_of_local_day_is_the_local_midnight():
+    """A bare day belongs to the place the tournament is held. The start of
+    1 September in Prague is 22:00Z on 31 August, not 00:00Z on the 1st."""
+    assert setup.start_of_local_day(datetime.date(2026, 9, 1), PRAGUE) == utc(2026, 8, 31, 22, 0)
+
+
+def test_start_of_local_day_in_a_zone_ahead_of_utc():
+    assert setup.start_of_local_day(datetime.date(2026, 9, 1), "Asia/Tokyo") == utc(
+        2026, 8, 31, 15, 0
+    )
+
+
+def test_start_of_local_day_on_a_day_whose_midnight_the_zone_skips():
+    """No zone repeats midnight in 2026, but one skips it: Santiago moves the
+    clock at 24:00. The resolved instant must still fall on the day asked for
+    — an hour into it — rather than on the day before."""
+    instant = setup.start_of_local_day(SANTIAGO_SKIPS_MIDNIGHT, "America/Santiago")
+    local = instant.astimezone(zoneinfo.ZoneInfo("America/Santiago"))
+    assert local.date() == SANTIAGO_SKIPS_MIDNIGHT
+
+
+def test_start_of_local_day_falls_back_on_an_unknown_zone():
+    assert setup.start_of_local_day(datetime.date(2026, 9, 1), "Mars/Olympus_Mons") == utc(
+        2026, 8, 31, 22, 0
+    )

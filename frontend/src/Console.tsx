@@ -39,7 +39,7 @@ import SheetArea from "./SheetArea";
 import TeamsPanel from "./TeamsPanel";
 import useOperations from "./useOperations";
 import { formatMoney, formatMoneyWithEur } from "./money";
-import { registeredMoment } from "./momentText";
+import { dayIn, registeredMoment } from "./momentText";
 import { parseInteger } from "./numeric";
 import { checkNumeric, checkString, type FieldError } from "./validation";
 import {
@@ -504,10 +504,11 @@ export function CellDisplay({
     case "registered_at":
       return <>{registeredMoment(row.registered_at, timezone)}</>;
     case "expires_at":
-    case "paid_at": {
-      const value = row[column];
-      return <>{value ? new Date(value as string).toLocaleDateString("cs") : "—"}</>;
-    }
+    case "paid_at":
+      // both read where the tournament is, like the registration moment above:
+      // `paid_at` holds a statement day stored as that zone's midnight, and an
+      // expiry late in the local evening slips a day for a reader further east
+      return <>{dayIn(row[column] as string | null, timezone)}</>;
     default: {
       const value = row[column];
       return <>{value === null || value === undefined || value === "" ? "—" : String(value)}</>;

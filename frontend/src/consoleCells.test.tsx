@@ -89,6 +89,42 @@ describe("registered cell", () => {
   });
 });
 
+// The paid date is the day the money arrived, stored as the instant that day
+// begins where the tournament is held (spec `payments`). Read in the reader's
+// own zone it falls a day either side, which is what these pin down.
+describe("the payment day columns", () => {
+  it("states the paid day in the tournament's zone, not the reader's", () => {
+    // midnight on 3 August in Prague; a reader further west would see 2 August
+    expect(cell("paid_at", { paid_at: "2026-08-02T22:00:00+00:00" }, "Europe/Prague")).toBe(
+      "3. 8. 2026",
+    );
+  });
+
+  it("states a tournament in a zone ahead of UTC by its own day", () => {
+    // midnight on 3 August in Tokyo
+    expect(cell("paid_at", { paid_at: "2026-08-02T15:00:00+00:00" }, "Asia/Tokyo")).toBe(
+      "3. 8. 2026",
+    );
+  });
+
+  it("keeps an expiry late in the local evening on its own day", () => {
+    // 23:00 on 20 March in Prague, which is the 21st for a reader in Tokyo
+    expect(cell("expires_at", { expires_at: "2026-03-20T22:00:00+00:00" }, "Europe/Prague")).toBe(
+      "20. 3. 2026",
+    );
+  });
+
+  it("keeps the em dash on a registration that was never paid", () => {
+    expect(cell("paid_at", {}, "Europe/Prague")).toBe("—");
+  });
+
+  it("falls back to the reader's zone rather than throwing on an unknown zone", () => {
+    expect(
+      cell("paid_at", { paid_at: "2026-08-02T22:00:00+00:00" }, "Mars/Olympus_Mons"),
+    ).toMatch(/2026/);
+  });
+});
+
 describe("an edited cell", () => {
   it("records a typed HR id as a verdict, not as a correction", () => {
     expect(ruleKindFor("hr_id")).toBe("match_resolution");

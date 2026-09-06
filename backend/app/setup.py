@@ -269,6 +269,23 @@ def local_date(tournament: Tournament, now: datetime.datetime) -> datetime.date:
     return now.astimezone(zone_for(tournament)).date()
 
 
+def start_of_local_day(day: datetime.date, timezone: str) -> datetime.datetime:
+    """The instant a calendar day begins in that zone, in UTC.
+
+    The one conversion from a bare day to an instant. Two callers need it and
+    for the same reason: a date nobody attached a clock to belongs to the place
+    the tournament is held, not to UTC. Registration opens on a day with no
+    stated time, and a bank statement gives a payment a day and never an hour
+    (design paid-at-is-value-date D1).
+
+    `fold=0` takes the *first* of an ambiguous local midnight, the one the
+    autumn clock change repeats — the same choice `opening_instant` has always
+    made, kept here so it is made once. A zone identifier that no longer
+    resolves falls back to the default rather than raising (`_zone`)."""
+    local = datetime.datetime.combine(day, datetime.time(0, 0), tzinfo=_zone(timezone))
+    return local.astimezone(datetime.UTC)
+
+
 def opening_instant(
     opens: datetime.date | None,
     opens_time: datetime.time | None,
@@ -291,9 +308,9 @@ def opening_instant(
     """
     if opens is None:
         return None
-    local = datetime.datetime.combine(
-        opens, opens_time or datetime.time(0, 0), tzinfo=_zone(timezone)
-    )
+    if opens_time is None:
+        return start_of_local_day(opens, timezone)
+    local = datetime.datetime.combine(opens, opens_time, tzinfo=_zone(timezone))
     return local.astimezone(datetime.UTC)
 
 

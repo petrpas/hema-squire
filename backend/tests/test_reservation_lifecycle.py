@@ -10,6 +10,7 @@ turn into positive coverage there; that coverage is added fresh here.
 
 import io
 from datetime import UTC, datetime, timedelta
+from zoneinfo import ZoneInfo
 
 import pytest
 from sqlalchemy import select
@@ -451,6 +452,34 @@ def test_organizer_reinstate_resolves_transaction_and_audits(client, auth_header
     # no longer in the flagged queue
     queue = client.get("/api/tournaments/cup/payments/unmatched", headers=organizer).json()
     assert flagged["id"] not in [t["id"] for t in queue]
+
+
+def test_organizer_reinstate_dates_the_registration_to_the_transaction(
+    client, auth_headers, fio
+):
+    """Reinstatement settles inline rather than through `matching._settle`, so
+    it converts the day itself — and it must reach the same answer: the day
+    the money arrived, not the day the organizer decided (design
+    paid-at-is-value-date D5)."""
+    organizer = auth_headers()
+    setup_tournament(client, organizer, capacity=10)
+    fencer = auth_headers(email="f1@example.com", name="F1")
+    initial = register(client, fencer).json()
+    expire(initial["vs"], hours_ago=72)
+
+    fio.transactions = [transfer(initial["vs"], 1000)]
+    client.post("/api/tournaments/cup/payments/fio-poll", headers=organizer)
+    flagged = unmatched_transaction(client, organizer)
+    client.post(
+        f"/api/tournaments/cup/payments/transactions/{flagged['id']}/reinstate",
+        headers=organizer,
+    )
+
+    paid_at = registration_by_vs(initial["vs"]).paid_at.replace(tzinfo=UTC)
+    # `transfer` dates every transaction 15 July; the tournament is in Prague
+    assert paid_at == datetime(
+        2026, 7, 15, tzinfo=ZoneInfo("Europe/Prague")
+    ).astimezone(UTC)
 
 
 def test_organizer_mark_for_refund_resolves_transaction_and_audits(client, auth_headers, fio):

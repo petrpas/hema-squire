@@ -18,6 +18,7 @@ from app import (
     paymentsclear,
     rules,
     scheduler,
+    setup,
     statements,
 )
 from app.auth import require_console_access, require_published
@@ -681,7 +682,10 @@ def reinstate_transaction(
         raise HTTPException(status_code=409, detail="capacity_unavailable")
 
     registration.state = RegistrationState.PAID
-    registration.paid_at = datetime.now(UTC)
+    # the transaction's own day, like any other credit — this path settles
+    # inline rather than through `matching._settle`, so it converts the day
+    # itself (design paid-at-is-value-date D5)
+    registration.paid_at = setup.start_of_local_day(transaction.date, tournament.timezone)
     which = matching.match_currency(transaction, tournament)
     if which == "local":
         registration.amount_paid_cents += transaction.amount_cents

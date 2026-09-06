@@ -16,14 +16,14 @@ looks like afterward. The two currency lanes are never summed.
 """
 
 import re
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from typing import Literal
 
 from pydantic import BaseModel
 from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
-from app import bank, emails, nameresolve
+from app import bank, emails, nameresolve, setup
 from app import rules as rules_engine
 from app.availability import taken_seats
 from app.mail import Mailer
@@ -257,6 +257,7 @@ def _settle(
     origin: str,
     amount_cents: int,
     *,
+    value_date: date,
     reinstated: bool = False,
 ) -> MatchOutcome:
     """Decide the registration's resulting state from `which`'s outstanding
@@ -272,7 +273,13 @@ def _settle(
     fencer receives (design add-manual-payment-entry D3).
 
     `origin` labels the event details: `VS 2501001` where a statement carried
-    the money, `recorded payment 7` where a person did."""
+    the money, `recorded payment 7` where a person did.
+
+    `value_date` is the day that money arrived, as its own source states it:
+    the transaction's statement date, or the `received_on` an organizer typed.
+    Required rather than derived from `transaction`, because the None branch is
+    the recorded payment — the caller that knows a *better* day than the clock
+    — and a fallback would quietly lose it (design paid-at-is-value-date D2)."""
     remaining = (
         registration.outstanding_cents
         if which == "local"
@@ -296,7 +303,7 @@ def _settle(
         return "partial"
 
     registration.state = RegistrationState.PAID
-    registration.paid_at = datetime.now(UTC)
+    registration.paid_at = setup.start_of_local_day(value_date, tournament.timezone)
     overpaid = remaining < -tolerance
     if overpaid:
         registration.refund_state = RefundState.PENDING
@@ -516,6 +523,7 @@ def _evaluate_single_vs(
     transaction.matched_registration_id = registration.id
     outcome = _settle(
         session, tournament, mailer, transaction, registration, which, f"VS {vs}", paid_cents,
+        value_date=transaction.date,
         reinstated=reinstated,
     )
     if outcome == "partial":
@@ -717,6 +725,7 @@ def apply_payment_links(session: Session, tournament: Tournament, mailer: Mailer
                 which,
                 f"VS {registration.vs}",
                 amount,
+                value_date=transaction.date,
             )
         rule.payload = {**rule.payload, "credited": credited}
         transaction.status = "matched"
@@ -828,6 +837,7 @@ def credit_manual_payment(
         which,
         f"recorded payment {payment.id}",
         payment.amount_cents,
+        value_date=payment.received_on,
     )
 
 
@@ -952,7 +962,10 @@ def resettle_within_tolerance(session: Session, tournament: Tournament, mailer: 
         if registration is None:
             continue
         registration.state = RegistrationState.PAID
-        registration.paid_at = datetime.now(UTC)
+        # the day the money arrived, not the day the organizer widened the
+        # tolerance: their act is recorded as this transaction's reason and as
+        # the event below (design paid-at-is-value-date D4)
+        registration.paid_at = setup.start_of_local_day(transaction.date, tournament.timezone)
         transaction.status = "matched"
         transaction.status_reason = "tolerance_widened"
         _event(

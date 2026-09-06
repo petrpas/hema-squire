@@ -810,9 +810,13 @@ def mark_settled(
     and one short phrase answers it. Where no ledger exists, every row is that
     row (design D4).
 
-    `paid_at` is stamped, because it answers *when this became paid* and a mark
-    is when it did — and clearing it on the reverse mirrors what unlinking a
-    payment already does (`matching.py:662`)."""
+    `paid_at` is stamped with the moment of the mark, and this is the one path
+    where it is a clock. Everywhere else the field carries the day the money
+    arrived — a transaction's statement date, a recorded payment's
+    `received_on` (spec `payments`). Here no money arrived: there is no
+    statement day to read and no date anybody typed, and the day this became
+    settled is the day somebody said so. Clearing it on the reverse mirrors
+    what unlinking a payment already does (`matching.py:662`)."""
     require_console_access(session, tournament, fencer)
     require_published(tournament)
     reason = (reason or "").strip() or None

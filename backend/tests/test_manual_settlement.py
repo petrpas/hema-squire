@@ -13,6 +13,8 @@ against was a *silent* second writer to the paid state; this one is stored,
 explained, audited, and a statement arriving afterwards is flagged rather than
 credited (`add-manual-payment-entry` D4)."""
 
+from datetime import UTC, datetime
+
 from sqlalchemy import select
 
 from app.db import get_session
@@ -99,6 +101,24 @@ def test_the_organizer_marks_a_registration_settled(client, auth_headers):
     row = registration_row(entry["vs"])
     assert row.state == RegistrationState.PAID
     assert row.paid_at is not None
+
+
+def test_the_mark_stamps_the_moment_of_the_mark(client, auth_headers):
+    """The one settlement whose date is a clock. Everywhere else `paid_at`
+    carries the day the money arrived; here no money arrived, there is no
+    statement day to read, and the day this became settled is the day somebody
+    said so (spec `payments`; change paid-at-is-value-date D5)."""
+    organizer = auth_headers()
+    self_collecting_tournament(client, organizer)
+    entry = enroll(client, auth_headers, "a@example.com")
+
+    before = datetime.now(UTC)
+    settled(client, organizer, registration_id(entry))
+    after = datetime.now(UTC)
+
+    paid_at = registration_row(entry["vs"]).paid_at.replace(tzinfo=UTC)
+    # a moment inside the request, not a midnight the way a statement day is
+    assert before <= paid_at <= after
 
 
 def test_the_mark_records_no_amount(client, auth_headers):

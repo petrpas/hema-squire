@@ -1,5 +1,6 @@
 import io
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, time, timedelta
+from zoneinfo import ZoneInfo
 
 import pytest
 from sqlalchemy import select
@@ -640,3 +641,113 @@ def test_reevaluated_flagged_transaction_not_credited_twice(client, auth_headers
     import_rows(client, organizer, ["3;03.08.2026;1,00;CZK;9999998;;;;;"])
     state_after = client.get("/api/tournaments/cup/my-registration", headers=fencer).json()
     assert state_after == state
+
+
+# ---- the paid date is the day the money arrived (change paid-at-is-value-date) ----
+
+
+def paid_at_of(vs) -> datetime | None:
+    """A registration's paid date as an instant. SQLite drops the tzinfo a
+    `DateTime(timezone=True)` column carries; every stored instant is UTC, as
+    `matching._within_grace` already assumes."""
+    stored = registration_by_vs(vs).paid_at
+    return None if stored is None else stored.replace(tzinfo=UTC)
+
+
+def local_midnight(day, zone="Europe/Prague") -> datetime:
+    """The instant a day begins in the tournament's zone — what `paid_at`
+    holds for a day a statement stated without a clock."""
+    return datetime.combine(day, time(0, 0), tzinfo=ZoneInfo(zone)).astimezone(UTC)
+
+
+def test_paid_date_is_the_statement_day_not_the_import_day(client, auth_headers, mailbox):
+    """The whole point: a statement imported a week late dates the payment to
+    the day the money arrived, not to the day somebody pressed import."""
+    organizer = auth_headers()
+    setup(client, organizer)
+    _, vs = enroll(client, auth_headers)
+
+    import_rows(client, organizer, [f"1;03.08.2026;1 000,00;CZK;{vs};;;;;"])
+
+    assert paid_at_of(vs) == local_midnight(date(2026, 8, 3))
+
+
+def test_one_import_of_many_days_dates_each_registration_to_its_own(client, auth_headers, mailbox):
+    """A fortnight imported in one sitting is a fortnight of dates, not one."""
+    organizer = auth_headers()
+    setup(client, organizer)
+    _, first_vs = enroll(client, auth_headers)
+    _, second_vs = enroll(client, auth_headers, email="eva@example.com", name="Eva")
+
+    import_rows(
+        client, organizer,
+        [
+            f"1;03.08.2026;1 000,00;CZK;{first_vs};;;;;",
+            f"2;17.08.2026;1 000,00;CZK;{second_vs};;;;;",
+        ],
+    )
+
+    assert paid_at_of(first_vs) == local_midnight(date(2026, 8, 3))
+    assert paid_at_of(second_vs) == local_midnight(date(2026, 8, 17))
+
+
+def test_two_half_payments_take_the_day_of_the_one_that_completed_it(
+    client, auth_headers, mailbox
+):
+    """The registration was covered when the second arrived, so that is the
+    day it carries (design paid-at-is-value-date D3)."""
+    organizer = auth_headers()
+    setup(client, organizer)
+    _, vs = enroll(client, auth_headers)
+
+    import_rows(client, organizer, [f"1;05.08.2026;900,00;CZK;{vs};;;;;"])
+    assert paid_at_of(vs) is None
+
+    import_rows(client, organizer, [f"2;12.08.2026;100,00;CZK;{vs};;;;;"])
+    assert paid_at_of(vs) == local_midnight(date(2026, 8, 12))
+
+
+def test_the_day_is_read_in_the_tournaments_own_zone(client, auth_headers, mailbox):
+    """A day carries no clock, so it belongs to the place the tournament is
+    held. The stored instant is that zone's midnight, never UTC's."""
+    organizer = auth_headers()
+    setup(client, organizer)
+    client.patch("/api/tournaments/cup", json={"timezone": "Asia/Tokyo"}, headers=organizer)
+    _, vs = enroll(client, auth_headers)
+
+    import_rows(client, organizer, [f"1;03.08.2026;1 000,00;CZK;{vs};;;;;"])
+
+    assert paid_at_of(vs) == local_midnight(date(2026, 8, 3), "Asia/Tokyo")
+
+
+def test_a_linked_credit_dates_by_the_transaction_and_clears_when_withdrawn(
+    client, auth_headers, mailbox
+):
+    """One transfer settling three registrations dates all three to its own
+    day — the link path reaches the same settle — and removing the link
+    returns them to reserved holding no date."""
+    organizer = auth_headers()
+    setup(client, organizer)
+    _, vs_a = enroll(client, auth_headers, "a@example.com", "Adéla")
+    _, vs_b = enroll(client, auth_headers, "b@example.com", "Boris")
+    _, vs_c = enroll(client, auth_headers, "c@example.com", "Cyril")
+
+    import_rows(
+        client, organizer,
+        [f"1;09.08.2026;3 000,00;CZK;;;;platba za {vs_a} {vs_b} a {vs_c};klub;"],
+    )
+    for vs in (vs_a, vs_b, vs_c):
+        assert paid_at_of(vs) == local_midnight(date(2026, 8, 9))
+
+    rules = client.get(
+        "/api/tournaments/cup/rules", params={"phase": "payments"}, headers=organizer
+    ).json()
+    (rule,) = [r for r in rules if r["kind"] == "payment_link"]
+    assert client.delete(
+        f"/api/tournaments/cup/rules/{rule['id']}", headers=organizer
+    ).status_code == 204
+
+    for vs in (vs_a, vs_b, vs_c):
+        registration = registration_by_vs(vs)
+        assert registration.state == RegistrationState.RESERVED
+        assert registration.paid_at is None
