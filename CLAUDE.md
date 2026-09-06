@@ -30,3 +30,31 @@ Navigation lives in the route table in `App.tsx`; no screen owns navigation
 callbacks as props. A path is never spelled out twice — build it from the
 functions in `routes.ts` (`home`, `detail`, `picker`, `consolePath`, `admin`,
 `profile`) whether navigating with `<Link>` or `navigate()`.
+
+## Running tests
+
+Default invocation inside an agent loop:
+
+    pytest <scope> -q --maxfail=3 --tb=short --show-capture=no
+
+- Scope to what changed (`tests/payments`, `tests/registration`). The full suite belongs to CI
+  and the pre-push hook, not to a per-edit hook.
+- Never pass `--cov` during the loop. Coverage reports are for CI.
+- On failure: triage with `--tb=line`, then re-run the single failing test with `--tb=long`.
+  Do not dump multiple full tracebacks at once.
+- Hypothesis: use `--hypothesis-profile=dev` (max_examples=20). The `ci` profile runs the
+  full budget.
+- The OpenSpec spec is the source of truth for behavior; tests are its encoding. Read the
+  spec before reading test files to infer intent.
+
+### Writing tests
+
+A new test must assert a behavioral invariant or a contract boundary. Do not write tests for
+framework guarantees (Pydantic validation, SQLAlchemy defaults, FastAPI route registration),
+trivial accessors, or the shape of mock call arguments.
+
+# Openspec
+
+`openspec/changes/archive/` is superseded history, not current behavior. The authoritative
+state lives in `openspec/specs/`. Do not consult the archive unless explicitly asked to
+reconstruct why a past decision was made.
