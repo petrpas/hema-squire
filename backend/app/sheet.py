@@ -156,6 +156,27 @@ def _hr_proposal(
     return proposed, payload, hr_match.derive_tier(name, nationality, proposed, index)
 
 
+def _add_source_rows(rows: dict[str, Row], source: dict[str, Row]) -> None:
+    """Add the rows nothing has issued yet, and carry what the parser doubted
+    onto the ones something has.
+
+    A registration issued for a fencer-list row takes that row's id and stands
+    in its place, so without this the source row is computed and thrown away —
+    and with it every problem the parser recorded. What was doubtful about a row
+    does not stop being true because the row became billable: an organizer who
+    imported a roster with an unreadable email would otherwise lose the flag at
+    the moment they load a statement, which is before they have read it.
+
+    Only the problems come across. Everything else about an issued row is the
+    registration's to state, and the registration is what the reader is looking
+    at."""
+    for row_id, row in source.items():
+        if row_id in rows:
+            rows[row_id]["problems"] = row["problems"]
+        else:
+            rows[row_id] = row
+
+
 def base_rows(
     session: Session, tournament: Tournament, index: HRIndex | None = None
 ) -> dict[str, Row]:
@@ -288,13 +309,11 @@ def base_rows(
             "problems": None,
             "_deleted": False,
         }
-    # `setdefault`, not `update`: a source row that has been issued a
-    # registration is already present above, as that registration, and must not
-    # be drawn a second time as the row it came from
-    for row_id, row in _imported_rows(session, tournament, index).items():
-        rows.setdefault(row_id, row)
-    for row_id, row in _manual_rows(session, tournament, index).items():
-        rows.setdefault(row_id, row)
+    # A source row that has been issued a registration is already present
+    # above, as that registration, and must not be drawn a second time as the
+    # row it came from
+    _add_source_rows(rows, _imported_rows(session, tournament, index))
+    _add_source_rows(rows, _manual_rows(session, tournament, index))
     numbers = rownumbers.numbers_for(session, tournament)
     for row_id, row in rows.items():
         # None rather than a positional fallback: a visible gap beats a number

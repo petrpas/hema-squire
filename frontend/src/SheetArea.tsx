@@ -10,6 +10,7 @@ import {
   absorbedInto,
   editableHere,
   phaseRemovesRows,
+  phaseSummary,
   rowAction,
   rowNumber,
 } from "./Console";
@@ -17,6 +18,7 @@ import EditableCell from "./EditableCell";
 import { usesHRIdentity } from "./identity";
 import { useSheetVisible } from "./payments/QueueTabs";
 import MatchCell from "./MatchCell";
+import PhaseSummary from "./PhaseSummary";
 import SettledCell from "./SettledCell";
 import StateCell from "./StateCell";
 import type { FieldError } from "./validation";
@@ -108,6 +110,9 @@ export default function SheetArea({
   // and Payments now uses for recording a payment. Asked of the phase rather
   // than of the rows, as `actionable` is, so the table keeps its width.
   const rowActions = actionable || onRecordPayment !== undefined;
+  // read from the rows this phase lists, so a count and the table beneath it
+  // are two statements about the same thing
+  const summary = phaseSummary(phase, visibleRows);
 
   return (
     <main className="sheet-area">
@@ -115,9 +120,10 @@ export default function SheetArea({
         {/* the Import view is a record of one uploaded file, not the
             tournament's list of fencers, and says so */}
         <h1>{t(phase === "import" ? "console.titleImport" : "console.title")}</h1>
-        <button className="secondary" onClick={refresh}>
-          {t("console.refresh")}
-        </button>
+        <PhaseSummary
+          text={summary === null ? null : t(summary.key, { count: summary.count })}
+          onRefresh={refresh}
+        />
       </div>
 
       {queues && <div className="sheet-queues">{queues}</div>}

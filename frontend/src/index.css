@@ -3530,10 +3530,55 @@ label.checklist-row > input[type="checkbox"] {
    a merge would make of them beneath, under the same 2px rule a document header
    takes, because it is the conclusion of what stands above it. */
 
-.dedup-count {
+/* The count a phase states beside its title, and the button that reads it
+   again. One class for both, since Deduplication's line is where the idiom
+   began and every phase now speaks it. */
+
+.phase-summary {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+/* Where a header carries an action of its own, it and the refresh travel
+   together at the end of the line: three things spread across a header would
+   put the least important of them in the middle. */
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.phase-count {
   font-family: var(--font-data);
   font-size: 12px;
   color: var(--ink-faded);
+}
+
+/* Small, unlettered and level with the line it follows: the refresh is not the
+   phase's work, and a lettered button beside the title would read as though it
+   were. It states itself on hover and to a screen reader instead. */
+
+.phase-refresh {
+  display: flex;
+  align-items: center;
+  padding: 0.15rem;
+  border: none;
+  border-radius: var(--radius);
+  background: none;
+  color: var(--ink-faded);
+  cursor: pointer;
+}
+
+.phase-refresh:hover {
+  color: var(--ink);
+  background: var(--paper-raised);
+}
+
+.phase-refresh:focus-visible {
+  outline: var(--border-w) solid var(--ink);
+  outline-offset: 1px;
 }
 
 .dedup-lane {

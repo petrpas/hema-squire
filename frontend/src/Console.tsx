@@ -215,6 +215,59 @@ export function editableHere(column: string, phase: Phase): boolean {
   return EDITABLE_COLUMNS.has(column);
 }
 
+/** Whether Matching still owes this row a verdict. A machine's proposal is not
+ *  a verdict, and neither is the absence of one (spec `etl-console`, The ledger
+ *  idiom). */
+export function awaitsVerdict(row: SheetRow): boolean {
+  return (
+    row.match_verdict === undefined ||
+    !["confirmed", "none_found"].includes(row.match_verdict as string)
+  );
+}
+
+/** What a phase states about itself beside its title: the count of its own
+ *  work still waiting, and the key that says what that work is.
+ *
+ *  One reading per phase, and always the same kind of reading — what is left to
+ *  decide, not how much there is. The document footer already states the size
+ *  of the list, so a header counting rows would say one thing twice.
+ *
+ *  Null where the phase has not been given a line yet. Export is the one such
+ *  phase that draws a table: what it would count is a question about the export
+ *  itself, and it is not answered here.
+ */
+export function phaseSummary(
+  phase: Phase,
+  rows: SheetRow[],
+): { key: string; count: number } | null {
+  const live = rows.filter((row) => !row._deleted);
+  const flagged = () => ({
+    key: "console.summary.problems",
+    count: live.filter((row) => typeof row.problems === "string" && row.problems.trim() !== "")
+      .length,
+  });
+  switch (phase) {
+    // The same reading on both, because it is the same question: which rows did
+    // the parser not read cleanly. The flag now survives issuing (`sheet.py`,
+    // `_add_source_rows`), so the fencer list states it for as long as it is
+    // true rather than only in the minutes before an intake runs.
+    case "import":
+    case "fencers":
+      return flagged();
+    case "matching":
+      return { key: "console.summary.unverdicted", count: live.filter(awaitsVerdict).length };
+    case "payments":
+      // settled by hand is settled: the money reached the organizer, and the
+      // row owes nothing whatever its counters say
+      return {
+        key: "console.summary.unpaid",
+        count: live.filter((row) => !row.paid && !row.settled_by_hand).length,
+      };
+    default:
+      return null;
+  }
+}
+
 /** The rule an edited cell becomes. An id typed into the table is a verdict,
  *  carrying the same weight and the same consequences as one picked out of
  *  search — an emptied cell says the fencer has no profile (spec
@@ -620,15 +673,9 @@ export default function Console({
 
   const rows = sheet?.rows ?? [];
   const visibleRows = rowsForPhase(rows, phase);
-  // The rows Matching still owes a verdict: a machine's proposal is not a
-  // verdict, and neither is the absence of one (spec etl-console, The ledger
-  // idiom).
-  const pendingVerdicts = rows.filter(
-    (row) =>
-      !row._deleted &&
-      (row.match_verdict === undefined ||
-        !["confirmed", "none_found"].includes(row.match_verdict)),
-  ).length;
+  // The rows Matching still owes a verdict, which its own summary line counts
+  // too — one predicate, so the panel and the header cannot disagree
+  const pendingVerdicts = rows.filter((row) => !row._deleted && awaitsVerdict(row)).length;
   const activeRows = rows.filter((row) => !row._deleted);
   const paidCount = activeRows.filter((row) => row.paid).length;
   // from the refreshed detail where there is one, so applying a mode in Setup

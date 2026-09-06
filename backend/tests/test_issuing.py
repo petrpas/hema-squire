@@ -60,7 +60,9 @@ class RosterParser:
                     borrow=[r for r in (raw["borrow"] or "").split("|") if r],
                     after_party="Yes" if raw["afterparty"] == "y" else "No",
                     notes=None,
-                    problems=None,
+                    # the roster CSV has no problems column; a name ending in
+                    # "?" is how a test asks the parser to doubt a row
+                    problems="doubtful" if raw["name"].endswith("?") else None,
                 )
             )
         return parsed
@@ -1473,3 +1475,22 @@ def test_an_empty_list_is_refused(client, auth_headers, mailbox):
 
     assert edit(client, organizer, target, []).status_code == 422
     assert edit(client, organizer, target, "SA").status_code == 422
+
+
+def test_issuing_keeps_what_the_parser_doubted(client, auth_headers, mailbox):
+    """A registration takes its row's place in the table, and the flag comes
+    with it. What was doubtful about the row does not stop being true because
+    the row became billable — and the organizer meets the flag on the phase
+    where they work, not only in the minutes before an intake runs."""
+    organizer = auth_headers()
+    setup(client, organizer)
+    import_roster(client, organizer, [row("Jan?", "jan@example.com"),
+                                      row("Eva", "eva@example.com")])
+    before = {r["name"]: r["problems"] for r in sheet_rows(client, organizer)}
+    assert before["Jan?"] == "doubtful"
+
+    issue(client, organizer)
+
+    after = {r["name"]: r["problems"] for r in sheet_rows(client, organizer)}
+    assert after["Jan?"] == "doubtful"
+    assert after["Eva"] is None

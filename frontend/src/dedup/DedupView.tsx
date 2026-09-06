@@ -80,7 +80,7 @@ export default function DedupView({
     <main className="sheet-area">
       <div className="sheet-header">
         <h1>{t("phase.dedup")}</h1>
-        <span className="dedup-count">{t("dedup.pending", { count: pending.length })}</span>
+        <span className="phase-count">{t("dedup.pending", { count: pending.length })}</span>
       </div>
 
       <div className="sheet-scroll">

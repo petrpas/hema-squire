@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { ApiError, type Queue, api } from "./api";
+import PhaseSummary from "./PhaseSummary";
 import QueueEntryLine from "./QueueEntryLine";
 
 /** The organizer's view of where the line falls in every individual
@@ -67,13 +68,18 @@ export default function QueuePanel({
     <main className="sheet-area">
       <div className="sheet-header">
         <h1>{t("queue.title")}</h1>
-        <button
-          className="btn-danger"
-          onClick={() => setConfirming(true)}
-          disabled={isSettled || busy}
-        >
-          {t("queue.settle")}
-        </button>
+        <span className="header-actions">
+          <button
+            className="btn-danger"
+            onClick={() => setConfirming(true)}
+            disabled={isSettled || busy}
+          >
+            {t("queue.settle")}
+          </button>
+          {/* no line of its own yet: what this view counts is stated per
+              discipline, above each queue */}
+          <PhaseSummary text={null} onRefresh={refresh} />
+        </span>
       </div>
 
       <div className="sheet-scroll">

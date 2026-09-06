@@ -237,8 +237,6 @@
     "summary": {
       "problems_one": "{{count}} row with a problem",
       "problems_other": "{{count}} rows with a problem",
-      "unissued_one": "{{count}} row waiting to be issued",
-      "unissued_other": "{{count}} rows waiting to be issued",
       "unverdicted_one": "{{count}} row awaiting a verdict",
       "unverdicted_other": "{{count}} rows awaiting a verdict",
       "unpaid_one": "{{count}} registration unpaid",

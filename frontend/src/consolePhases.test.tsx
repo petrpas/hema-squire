@@ -13,6 +13,7 @@ import {
   phaseRemovesRows,
   rowAction,
   rowsForPhase,
+  phaseSummary,
   ruleKindFor,
   type Phase,
 } from "./Console";
@@ -376,5 +377,70 @@ describe("the payments columns", () => {
     // for it; the queues sit above the table rather than replacing it
     expect(PHASE_COLUMNS.payments.length).toBeGreaterThan(0);
     expect(PHASE_COLUMNS.dedup).toEqual([]);
+  });
+});
+
+describe("what a phase states beside its title", () => {
+  it("counts the rows Import could not read cleanly", () => {
+    const rows = [
+      row("imp:a1", { problems: "no email" }),
+      row("imp:a2", { problems: null }),
+      row("imp:a3", { problems: "   " }),
+    ];
+    expect(phaseSummary("import", rows)).toEqual({
+      key: "console.summary.problems",
+      count: 1,
+    });
+  });
+
+  it("asks the fencer list the same question, since issuing no longer clears the flag", () => {
+    const rows = [
+      row("imp:a1", { registration_id: 7, problems: "afterparty answer ambiguous" }),
+      row("imp:a2", { registration_id: 8 }),
+    ];
+    expect(phaseSummary("fencers", rows)).toEqual({
+      key: "console.summary.problems",
+      count: 1,
+    });
+  });
+
+  it("counts the rows Matching still owes a verdict, a proposal being no verdict", () => {
+    const rows = [
+      row("imp:a1", { match_verdict: "confirmed" }),
+      row("imp:a2", { match_verdict: "none_found" }),
+      row("imp:a3", { match_verdict: "proposed" }),
+      row("imp:a4"),
+    ];
+    expect(phaseSummary("matching", rows)?.count).toBe(2);
+  });
+
+  it("does not count a settled-by-hand row as unpaid: the money reached the organizer", () => {
+    const rows = [
+      row("imp:a1", { paid: true }),
+      row("imp:a2", { paid: false, settled_by_hand: true }),
+      row("imp:a3", { paid: false }),
+    ];
+    expect(phaseSummary("payments", rows)?.count).toBe(1);
+  });
+
+  it("counts nothing that has been deleted, on any phase", () => {
+    const rows = [
+      row("imp:a1", { problems: "no email", _deleted: true }),
+      row("imp:a2", { problems: "no email" }),
+    ];
+    expect(phaseSummary("import", rows)?.count).toBe(1);
+  });
+
+  it("states zero rather than falling silent", () => {
+    // a header that appeared only when there was work would move the title
+    // every time the last decision was made
+    expect(phaseSummary("matching", [row("imp:a1", { match_verdict: "confirmed" })])).toEqual({
+      key: "console.summary.unverdicted",
+      count: 0,
+    });
+  });
+
+  it("gives Export no line, which leaves it the button alone", () => {
+    expect(phaseSummary("export", [row("imp:a1")])).toBeNull();
   });
 });

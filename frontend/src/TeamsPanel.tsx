@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import PaidStamp from "./PaidStamp";
+import PhaseSummary from "./PhaseSummary";
 import { type ConsoleTeamDiscipline, api } from "./api";
 
 /** Read-only, per team discipline (spec: "Organizer's read-only teams
@@ -11,10 +12,11 @@ import { type ConsoleTeamDiscipline, api } from "./api";
 export default function TeamsPanel({ slug }: { slug: string }) {
   const { t } = useTranslation();
   const [disciplines, setDisciplines] = useState<ConsoleTeamDiscipline[] | null>(null);
+  const [reload, setReload] = useState(0);
 
   useEffect(() => {
     api.consoleTeams(slug).then(setDisciplines, () => setDisciplines([]));
-  }, [slug]);
+  }, [slug, reload]);
 
   if (disciplines === null) return <p>{t("common.loading")}</p>;
 
@@ -22,6 +24,18 @@ export default function TeamsPanel({ slug }: { slug: string }) {
     <main className="sheet-area">
       <div className="sheet-header">
         <h1>{t("teams.title")}</h1>
+        {/* a team short of its own minimum is the view's outstanding work: it
+            is entered, and it cannot compete as it stands */}
+        <PhaseSummary
+          text={t("console.summary.belowMinimum", {
+            count: disciplines.reduce(
+              (total, discipline) =>
+                total + discipline.teams.filter((team) => team.below_minimum).length,
+              0,
+            ),
+          })}
+          onRefresh={() => setReload((n) => n + 1)}
+        />
       </div>
       <div className="sheet-scroll">
         {disciplines.length === 0 ? (
