@@ -783,14 +783,14 @@ class Registration(Base):
             return None
         return self.total_eur * 100 - self.amount_paid_eur_cents
 
-    def tolerance_cents(self, tournament: "Tournament", which: str) -> float:
+    def tolerance_cents(self, tournament: Tournament, which: str) -> float:
         """Tolerance as a percentage of the registration's stable total in this
         currency lane — not of a shrinking remainder, which would tighten with
         every partial payment already credited."""
         total = self.total_amount if which == "local" else (self.total_eur or 0)
         return total * 100 * tournament.amount_tolerance_percent / 100
 
-    def balance_cents(self, tournament: "Tournament") -> tuple[int, Currency]:
+    def balance_cents(self, tournament: Tournament) -> tuple[int, Currency]:
         """What is still owed — or, negative, what is over — and the currency
         that figure is stated in. One number, never two.
 

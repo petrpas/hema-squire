@@ -98,6 +98,10 @@ export function TournamentSettingsFields({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Settled by publication (spec tournament-mode): a draft chooses, a
+  // published tournament reads. Stated rather than hidden, because "which mode
+  // is this?" is a question the surface should answer.
+  const modeFixed = Boolean(detail.published_at);
   const modeChanged = mode !== detail.registrations_kept_by;
   // What the payments setting *does* depends on the mode above it, so the copy
   // does too. In automatic mode, payments on is the whole machinery: variable
@@ -108,7 +112,6 @@ export function TournamentSettingsFields({
   // both would have to be vague about the only thing the organizer wants to
   // know (spec payments, tournament-mode).
   const modeKey = mode === "organizer" ? "manual" : "automatic";
-  const held = detail.in_app_registrations ?? 0;
   // Turning a flag on is never warned — there is nothing to lose.
   const losing = (["feature_payments", ...TOURNAMENT_FEATURES] as const).filter(
     (flag) => detail[flag] && !flags[flag] && inUse(usage, flag),
@@ -138,7 +141,12 @@ export function TournamentSettingsFields({
   }
 
   function submit() {
-    if (!onConfirm && (modeChanged || losing.length > 0) && !confirming) {
+    // A mode change is no longer confirmed. Its whole content was a count of
+    // the in-app registrations Squire would stop managing, and the only
+    // tournaments that can still change are drafts, which hold none: the
+    // registration gate requires publication (design Decision 3). What is
+    // worth saying is said beside each answer, at the moment of choosing.
+    if (!onConfirm && losing.length > 0 && !confirming) {
       setConfirming(true);
       return;
     }
@@ -149,20 +157,6 @@ export function TournamentSettingsFields({
     <>
       {confirming ? (
         <>
-          {modeChanged && (
-            <>
-              <p>
-                {mode === "organizer"
-                  ? t("setup.settings.mode.confirmToManual")
-                  : t("setup.settings.mode.confirmToAutomatic")}
-              </p>
-              {mode === "organizer" && held > 0 && (
-                <p className="rail-hint">
-                  {t("setup.settings.mode.alreadyHeld", { count: held })}
-                </p>
-              )}
-            </>
-          )}
           {losing.length > 0 && (
             <>
               <p>{t("setup.settings.confirmIntro")}</p>
@@ -203,23 +197,37 @@ export function TournamentSettingsFields({
               at all (spec tournament-mode). */}
           <div className="settings-tier">
             <h3>{t("setup.settings.mode.title")}</h3>
-            <div className="mode-options">
-              {(["squire", "organizer"] as const).map((value) => (
-                <div className="mode-option" key={value}>
-                  <label className="qualification-option">
-                    <input
-                      type="radio"
-                      name="tournament-mode"
-                      checked={mode === value}
-                      onChange={() => setMode(value)}
-                    />
-                    {t(`setup.settings.mode.${value}`)}
-                    <HelpHint text={t(`setup.settings.mode.hint.${value}`)} />
-                  </label>
-                  <p className="rail-hint">{t(`setup.settings.mode.consequence.${value}`)}</p>
-                </div>
-              ))}
-            </div>
+            {modeFixed ? (
+              <div className="mode-option">
+                <p>
+                  {t(`setup.settings.mode.${detail.registrations_kept_by}`)}
+                  <HelpHint
+                    text={t(`setup.settings.mode.hint.${detail.registrations_kept_by}`)}
+                  />
+                </p>
+                {/* why the control is absent, so the reading is "manual, and
+                    settled" rather than an inexplicably missing choice */}
+                <p className="rail-hint">{t("setup.settings.mode.fixedAtPublication")}</p>
+              </div>
+            ) : (
+              <div className="mode-options">
+                {(["squire", "organizer"] as const).map((value) => (
+                  <div className="mode-option" key={value}>
+                    <label className="qualification-option">
+                      <input
+                        type="radio"
+                        name="tournament-mode"
+                        checked={mode === value}
+                        onChange={() => setMode(value)}
+                      />
+                      {t(`setup.settings.mode.${value}`)}
+                      <HelpHint text={t(`setup.settings.mode.hint.${value}`)} />
+                    </label>
+                    <p className="rail-hint">{t(`setup.settings.mode.consequence.${value}`)}</p>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Tier 2 — payments. Beside the mode rather than among the three

@@ -113,26 +113,29 @@ An amendment to an existing registration SHALL be refused for the same reason, s
 - **WHEN** a fencer holding a registration on a tournament that has since become manual attempts to amend it
 - **THEN** the amendment is refused with the same reason
 
-### Requirement: Changing the mode is confirmed and states its effect
-Changing a tournament's mode SHALL require confirmation, and the confirmation SHALL state what the change does rather than that a setting is changing. Both directions SHALL be confirmed, because both have consequences.
+### Requirement: The mode is fixed at publication
+A tournament's mode SHALL be settled by publication. It SHALL be chosen when the tournament is created and SHALL be freely changeable for as long as the tournament is a draft; publishing SHALL fix it, and no action thereafter SHALL change it.
 
-Changing to manual SHALL state that in-app registration will close and that Squire will stop sending mail and stop expiring reservations. Where the tournament already holds in-app registrations, the confirmation SHALL state how many, because those are the fencers whose registration Squire will stop managing.
+An attempt to change the mode on a published tournament SHALL be **refused with a stated reason**, never accepted and never silently ignored, so that an organizer who tries learns why rather than wondering whether it took.
 
-Changing to automatic SHALL state that in-app registration will open according to the tournament's registration window and that the lifecycle will begin running against the tournament's registrations.
+Publication is the boundary because publication is where the promise is made. A published manual tournament has told the world where to register; a published automatic one has opened its own form. Both statements are made at publication rather than at the first person who acts on them, and both become false the moment the mode moves.
 
-Declining SHALL change nothing. Confirming SHALL apply the change immediately, without a save control, as the rest of `OTHER` does.
+Being fixed SHALL be a property of the mode alone. The payments setting and the features fixed by `tournament-features` SHALL remain changeable after publication, as they are: they govern what Squire does with money and what Setup offers, and nothing downstream of either assumes it holds still.
 
-No registration SHALL be deleted, expired, cancelled or demoted by the change itself, in either direction. What the change alters is what Squire will do next, never what has already happened.
+A published tournament SHALL NOT be capable of being made incomplete by a change of mode. The mandatory items a mode implies — the external registration address on a manual tournament — are guaranteed by the completeness rule at the moment of publication, and this is what keeps that guarantee true afterwards.
 
-#### Scenario: Switching to manual counts what is affected
-- **WHEN** the organizer of a tournament holding twelve in-app registrations switches it to manual
-- **THEN** the confirmation states that registration will close, that Squire will send nothing further, and that twelve registrations are already held
+#### Scenario: A draft switches freely
+- **WHEN** the organizer of an unpublished tournament changes its mode
+- **THEN** the change is accepted, whichever direction it goes
 
-#### Scenario: Declining changes nothing
-- **WHEN** the organizer declines the confirmation
-- **THEN** the value is unchanged and nothing is written
+#### Scenario: Publication settles it
+- **WHEN** the organizer of a published tournament attempts to change its mode
+- **THEN** the attempt is refused with a stated reason and the mode is unchanged
 
-#### Scenario: The change writes no registration
-- **WHEN** a tournament with reserved, paid and expired registrations is switched in either direction
-- **THEN** every registration keeps its state, its placements, its variable symbol and its credited amount
+#### Scenario: The other settings are unaffected
+- **WHEN** the organizer of a published tournament turns the payments setting off, or turns a feature on
+- **THEN** both changes are accepted as before
 
+#### Scenario: No published tournament is made incomplete by a mode
+- **WHEN** any published tournament is read
+- **THEN** nothing it is missing is missing on account of a mode changed after it was published

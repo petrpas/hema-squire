@@ -718,13 +718,30 @@ def set_registrations_kept_by(
     axis: those decide what the console shows, and this decides whether Squire
     owns the roster at all (spec tournament-mode).
 
-    Writes the value and nothing else, in either direction. No registration is
-    deleted, expired, cancelled or demoted by the change — what it alters is
-    what Squire will do next, never what has already happened. The organizer
-    has confirmed the effect before the request is made; the confirmation is
-    the console's, and stating it here as well would be a second gate on a
-    decision already taken."""
+    Settled by publication (spec tournament-mode). A draft switches freely in
+    either direction; a published tournament is refused, because publication is
+    where the promise was made — a published manual tournament has told the
+    world where to register, a published automatic one has opened its own form,
+    and both statements become false the moment the mode moves. The refusal
+    lives here as well as in the console because this endpoint is the authority
+    and the console is not its only caller (design Decision 2).
+
+    A request naming the mode the tournament already has is accepted rather
+    than refused. It asks for nothing, and refusing it would turn an idempotent
+    write into an error.
+
+    Writes the value and nothing else. No registration is deleted, expired,
+    cancelled or demoted by the change — what it alters is what Squire will do
+    next, never what has already happened. On a draft there is in any case
+    nothing to move: the registration gate requires publication, and the
+    registrations an import issues are dormant by origin and unaffected by the
+    mode."""
     require_console_access(session, tournament, fencer)
+    if (
+        tournament.published_at is not None
+        and data.registrations_kept_by is not tournament.registrations_kept_by
+    ):
+        raise HTTPException(status_code=409, detail="mode_frozen")
     tournament.registrations_kept_by = data.registrations_kept_by
     session.commit()
     session.refresh(tournament)

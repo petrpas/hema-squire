@@ -32,8 +32,18 @@ Each has a local answer. The common answer is that the question should not arise
 - Freezing the payments setting. It stays changeable, and it should.
 - Freezing anything else that publication does not already freeze.
 - A migration path from manual to automatic. This removes the need for one on a
-  published tournament; on a draft the switch is free and nothing has happened
-  yet that a migration would have to carry.
+  published tournament; on a draft the switch stays free.
+
+  Written first as "on a draft nothing has happened yet that a migration would
+  have to carry", which verification found to be untrue: issuing has no
+  publication gate, so a draft may import a roster and issue registrations with
+  no variable symbol (`issuing.py:257`), then switch to automatic and publish
+  carrying them. The symbol-less registrations in Context are therefore closed
+  for published tournaments and left open on drafts. The answer is not a
+  migration and not a second guard on this switch, but the rule that an
+  unpublished tournament holds no participants at all and every data operation
+  is inactive until publication — which removes the source rather than
+  policing what it produced. Its own change; this one does not wait for it.
 - Any way back for an organizer who publishes wrongly, beyond what already
   exists for a wrong slug or a wrong variable-symbol series: cancel and recreate.
 

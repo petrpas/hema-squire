@@ -56,6 +56,7 @@ function detail(overrides: Partial<TournamentDetail> = {}): TournamentDetail {
   return {
     slug: "cup",
     registrations_kept_by: "squire",
+    published_at: null,
     in_app_registrations: 0,
     feature_schedule: false,
     feature_payments: false,
@@ -125,26 +126,54 @@ it("states all three tiers in one section", () => {
 
 // ------------------------------------------------------------ the mode tier
 
-it("confirms a mode change and states what stops", () => {
-  const patch = vi.spyOn(api, "setRegistrationsKeptBy");
+it("asks no confirmation for a mode change, and writes it", async () => {
+  // The confirmation's whole content was a count of in-app registrations, and
+  // the only tournaments that can still switch are drafts, which hold none
+  // (spec tournament-mode, design Decision 3).
+  const patch = vi
+    .spyOn(api, "setRegistrationsKeptBy")
+    .mockResolvedValue(detail({ registrations_kept_by: "organizer" }));
+  vi.spyOn(api, "setTournamentFlags").mockResolvedValue(detail());
   mount(
-    <TournamentSettingsDialog
-      detail={detail({ in_app_registrations: 12 })}
-      onApplied={vi.fn()}
-      onClose={vi.fn()}
-    />,
+    <TournamentSettingsDialog detail={detail()} onApplied={vi.fn()} onClose={vi.fn()} />,
   );
 
   act(() => {
     modeRadios()[1].click();
   });
   act(() => buttonNamed(t("setup.settings.apply"))?.click());
+  await settle();
 
-  expect(document.body.textContent).toContain(t("setup.settings.mode.confirmToManual"));
-  expect(document.body.textContent).toContain(
-    t("setup.settings.mode.alreadyHeld", { count: 12 }),
+  expect(patch).toHaveBeenCalledWith("cup", "organizer");
+});
+
+it("states the mode instead of offering it once the tournament is published", () => {
+  mount(
+    <TournamentSettingsDialog
+      detail={detail({ registrations_kept_by: "organizer", published_at: "2026-09-01T00:00:00Z" })}
+      onApplied={vi.fn()}
+      onClose={vi.fn()}
+    />,
   );
-  expect(patch).not.toHaveBeenCalled();
+
+  expect(modeRadios()).toHaveLength(0);
+  expect(document.body.textContent).toContain(t("setup.settings.mode.organizer"));
+  expect(document.body.textContent).toContain(t("setup.settings.mode.fixedAtPublication"));
+});
+
+it("still offers the payments setting and the inclusions once published", () => {
+  mount(
+    <TournamentSettingsDialog
+      detail={detail({ published_at: "2026-09-01T00:00:00Z" })}
+      onApplied={vi.fn()}
+      onClose={vi.fn()}
+    />,
+  );
+
+  expect(
+    document.querySelectorAll('input[name="tournament-payments"]').length,
+  ).toBeGreaterThan(0);
+  expect(document.querySelectorAll('input[type="checkbox"]').length).toBeGreaterThan(0);
 });
 
 it("writes the mode before the flags, so a later failure keeps the bigger choice", async () => {
@@ -195,15 +224,23 @@ it("says the mode was applied when only the flag write failed", async () => {
 });
 
 it("declining the confirmation writes nothing", () => {
+  // the confirmation that remains is the one about losing a feature in use;
+  // a mode change no longer raises one
   const mode = vi.spyOn(api, "setRegistrationsKeptBy");
   const flags = vi.spyOn(api, "setTournamentFlags");
   mount(
-    <TournamentSettingsDialog detail={detail()} onApplied={vi.fn()} onClose={vi.fn()} />,
+    <TournamentSettingsDialog
+      detail={detail({
+        feature_extras: true,
+        extra_items: [{ id: 1 }] as TournamentDetail["extra_items"],
+      })}
+      onApplied={vi.fn()}
+      onClose={vi.fn()}
+    />,
   );
 
-  act(() => {
-    modeRadios()[1].click();
-  });
+  const boxes = checkboxes();
+  act(() => boxes[boxes.length - 1].click());
   act(() => buttonNamed(t("setup.settings.apply"))?.click());
   act(() => buttonNamed(t("common.back"))?.click());
 

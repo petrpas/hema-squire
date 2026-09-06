@@ -236,6 +236,28 @@
         "registration_not_live": "Tato registrace už není živá a tady se neopravuje.",
         "no_registration_for_row": "K tomuto řádku není žádná registrace, kterou by šlo změnit."
       }
+    },
+    "summary": {
+      "problems_one": "{{count}} řádek s problémem",
+      "problems_few": "{{count}} řádky s problémem",
+      "problems_many": "{{count}} řádku s problémem",
+      "problems_other": "{{count}} řádků s problémem",
+      "unissued_one": "{{count}} řádek čeká na vystavení",
+      "unissued_few": "{{count}} řádky čekají na vystavení",
+      "unissued_many": "{{count}} řádku čeká na vystavení",
+      "unissued_other": "{{count}} řádků čeká na vystavení",
+      "unverdicted_one": "{{count}} řádek čeká na verdikt",
+      "unverdicted_few": "{{count}} řádky čekají na verdikt",
+      "unverdicted_many": "{{count}} řádku čeká na verdikt",
+      "unverdicted_other": "{{count}} řádků čeká na verdikt",
+      "unpaid_one": "{{count}} registrace nezaplacena",
+      "unpaid_few": "{{count}} registrace nezaplaceny",
+      "unpaid_many": "{{count}} registrace nezaplaceno",
+      "unpaid_other": "{{count}} registrací nezaplaceno",
+      "belowMinimum_one": "{{count}} tým pod minimem",
+      "belowMinimum_few": "{{count}} týmy pod minimem",
+      "belowMinimum_many": "{{count}} týmu pod minimem",
+      "belowMinimum_other": "{{count}} týmů pod minimem"
     }
   },
   "row": {
@@ -608,11 +630,7 @@
           "squire": "Squire se stará o všechno: přihlášky, odhlášky, seznamy, změny…",
           "organizer": "Přihlášky si sbírám sám, do Squire nahraju seznam lidí."
         },
-        "confirmToManual": "Přihlašování ve Squire se zavře a Squire pro tento turnaj přestane posílat maily a rušit rezervace.",
-        "confirmToAutomatic": "Přihlašování se otevře podle termínů turnaje a Squire začne vést registrace, které turnaj drží.",
-        "alreadyHeld_one": "Jedna registrace už tady je. Squire ji přestane vést.",
-        "alreadyHeld_few": "Jsou tady {{count}} registrace. Squire je přestane vést.",
-        "alreadyHeld_other": "Je tady {{count}} registrací. Squire je přestane vést."
+        "fixedAtPublication": "Rozhodnuto při zveřejnění turnaje. Dokud je turnaj rozepsaný, jde měnit volně; zveřejnění ho ustálí."
       },
       "payments": {
         "title": "Platby",
@@ -1149,6 +1167,7 @@
     "slug_taken": "tento zkratkový tvar už turnaj používá",
     "discipline_slug_taken": "zkratkový tvar {{value}} už tahle disciplína používá",
     "discipline_slug_frozen": "zkratkový tvar nejde měnit — disciplína už má registrace",
+    "mode_frozen": "režim nejde měnit — ustálil se, když byl turnaj zveřejněn",
     "discipline_kind_frozen": "druh disciplíny nejde měnit — disciplína už má registrace",
     "discipline_name_required": "u zbraně mimo taxonomii je název povinný",
     "qualification_criteria_required": "je potřeba doplnit kritéria kvalifikace",

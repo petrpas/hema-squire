@@ -107,9 +107,7 @@ it("asks for no confirmation on a tournament that does not exist yet", async () 
   act(() => buttonNamed(t("setup.settings.apply"))?.click());
   await settle();
 
-  expect(document.body.textContent).not.toContain(
-    t("setup.settings.mode.confirmToManual"),
-  );
+  expect(document.body.textContent).not.toContain(t("setup.settings.confirmIntro"));
   expect(confirm).toHaveBeenCalled();
 });
 
@@ -130,9 +128,11 @@ it("cancelling reports nothing and creates nothing", () => {
   expect(confirm).not.toHaveBeenCalled();
 });
 
-it("still confirms on a tournament that exists", () => {
-  // the draft path is the exception; an existing tournament keeps its warnings
-  const detail = { ...draft(), slug: "cup", in_app_registrations: 4 };
+it("asks nothing extra for a mode change on a tournament that exists", () => {
+  // The draft path used to be the exception. Now no path confirms a mode
+  // change: it can only be made while the tournament is a draft, which holds
+  // no in-app registration for a warning to count (spec tournament-mode).
+  const detail = { ...draft(), slug: "cup", in_app_registrations: 0 };
   mount(
     <TournamentSettingsFields detail={detail} onApplied={vi.fn()} onClose={vi.fn()} />,
   );
@@ -142,5 +142,5 @@ it("still confirms on a tournament that exists", () => {
   act(() => radios[1].click());
   act(() => buttonNamed(t("setup.settings.apply"))?.click());
 
-  expect(document.body.textContent).toContain(t("setup.settings.mode.confirmToManual"));
+  expect(document.body.textContent).not.toContain(t("setup.settings.confirmIntro"));
 });

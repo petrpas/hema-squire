@@ -230,6 +230,18 @@
         "registration_not_live": "This registration is no longer live and is not corrected here.",
         "no_registration_for_row": "This row has no registration to amend."
       }
+    },
+    "summary": {
+      "problems_one": "{{count}} row with a problem",
+      "problems_other": "{{count}} rows with a problem",
+      "unissued_one": "{{count}} row waiting to be issued",
+      "unissued_other": "{{count}} rows waiting to be issued",
+      "unverdicted_one": "{{count}} row awaiting a verdict",
+      "unverdicted_other": "{{count}} rows awaiting a verdict",
+      "unpaid_one": "{{count}} registration unpaid",
+      "unpaid_other": "{{count}} registrations unpaid",
+      "belowMinimum_one": "{{count}} team below its minimum",
+      "belowMinimum_other": "{{count}} teams below their minimum"
     }
   },
   "row": {
@@ -601,10 +613,7 @@
           "squire": "Squire looks after all of it: entries, withdrawals, lists, changes…",
           "organizer": "You collect the entries yourself and upload the list to Squire."
         },
-        "confirmToManual": "In-app registration will close, and Squire will stop sending mail and stop expiring reservations for this tournament.",
-        "confirmToAutomatic": "In-app registration will open according to the tournament's dates, and Squire will begin managing the registrations it holds.",
-        "alreadyHeld_one": "One registration is already held here. Squire will stop managing it.",
-        "alreadyHeld_other": "{{count}} registrations are already held here. Squire will stop managing them."
+        "fixedAtPublication": "Settled when the tournament was published. It can be chosen freely for as long as a tournament is a draft; publishing fixes it."
       },
       "payments": {
         "title": "Payments",
@@ -1132,6 +1141,7 @@
     "slug_taken": "another tournament already uses this slug",
     "discipline_slug_taken": "this discipline already uses the slug {{value}}",
     "discipline_slug_frozen": "the slug cannot change — this discipline already has registrations",
+    "mode_frozen": "the mode cannot change — it was settled when this tournament was published",
     "discipline_kind_frozen": "the kind cannot change — this discipline already has registrations",
     "discipline_name_required": "a name is required for a weapon outside the taxonomy",
     "qualification_criteria_required": "qualification criteria are required",
