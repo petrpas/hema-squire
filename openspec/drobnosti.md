@@ -24,14 +24,22 @@
     plánovač průchody dál spouští sám. Vrátit jako akce nad tabulkou neplatičů
 4. ~~Smazání šermíře~~ (hotovo 2026-09-06) — maže se jen na Importu a Šermířích
    - jen v tabulkách Import a Šermíři, vyhodit z platby a párování na HR
-5. Šermíři
+5. ~~Šermíři~~ (hotovo 2026-09-06) — edit disciplín i zápůjček
    - nejde mi edit disciplín
    - **diagnóza (2026-09-06):** buňka se otevře jen na Šermířích a jen u řádku
      bez `registration_id` (`Console.tsx`). Protože vystavení registrací je teď
      součástí intaku, po importu má registraci každý řádek — podmínka je fakticky
      mrtvá a buňka se neotevře nikdy
    - **rozhodnuto:** otevřít i u vystavených registrací a při úpravě přepočítat,
-     co registrace dluží. Rozepsáno jako change `edit-issued-disciplines`
-     (2026-09-06) — artefakty hotové, implementace nezačatá
+     co registrace dluží. Change `edit-issued-disciplines` (archivován
+     2026-09-06)
+   - **navíc:** zápůjčky se u položkově ceněného turnaje vůbec neúčtovaly —
+     vystavení je psalo jen do starých polí, která položkový pricer nečte (na
+     pilotu 32 kusů za 1 600 Kč mimo všechny ceny). Vystavení je teď převádí na
+     položky a buňka *Zapůjčeno* se edituje stejně jako disciplíny; druh
+     pravidla je obecný `registration_amendment`, takže afterparty a merch
+     přibydou sloupcem a validátorem. Change `amend-issued-extras` (archivován
+     2026-09-06). Nasazení chce `alembic upgrade head` — migrace
+     `c4f2a91b7e30` přejmenuje uložená pravidla
 6. ~~Párování na HR~~ (hotovo 2026-09-06) — editovatelné zůstalo hr_id a verdikt
    - zrušit editovatelnost tabulky kromě pole HRID a match
