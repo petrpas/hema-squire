@@ -43,4 +43,4 @@ holds nothing.
 - [x] 6.1 `pytest`, `ruff check .`
 - [x] 6.2 `vitest`, `npm run lint`, `npm run build`
 - [ ] 6.3 The console opened on a real draft. A screen that now says the same sentence in seven places is a layout claim and wants an eye
-- [ ] 6.4 Walk the hole this change exists to close: on a draft, import a roster and confirm nothing issues; publish; confirm the import then runs and the registrations take the symbols their mode calls for
+- [x] 6.4 Walk the hole this change exists to close: on a draft, import a roster and confirm nothing issues; publish; confirm the import then runs and the registrations take the symbols their mode calls for
