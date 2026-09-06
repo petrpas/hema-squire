@@ -104,6 +104,14 @@ describe("manual-edits entry", () => {
       "— → LS, RAP",
     );
   });
+
+  it("states a day column in the tournament's zone, as the table's cell does", () => {
+    // midnight on 3 August in Prague: read in the reader's own zone this is
+    // 2 August, and the entry would report on a different day than the cell
+    expect(
+      text({ field: "paid_at", before: null, after: "2026-08-02T22:00:00+00:00" }),
+    ).toContain("— → 3. 8. 2026");
+  });
 });
 
 describe("manual-edits rail", () => {

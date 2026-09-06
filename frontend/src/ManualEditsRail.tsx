@@ -2,7 +2,7 @@ import { IconX } from "@tabler/icons-react";
 import { useTranslation } from "react-i18next";
 
 import type { NetChange, SheetRow } from "./api";
-import { registeredMoment } from "./momentText";
+import { dayIn, registeredMoment } from "./momentText";
 
 /** The manual-edits log: what the phase's rules made the table differ from the
  *  source data, one entry per changed cell (spec `edit-rules`, Audit of applied
@@ -42,8 +42,10 @@ export function valueText(
   if (field === "match_verdict" && typeof value === "string" && value in VERDICT_KEYS)
     return t(VERDICT_KEYS[value]);
   if (field === "registered_at") return registeredMoment(value as string, timezone);
-  if (field === "expires_at" || field === "paid_at")
-    return new Date(value as string).toLocaleDateString("cs");
+  // read where the tournament is, exactly as the table's own cells read them:
+  // an entry that spelled a day differently from the cell it is reporting on
+  // would be reporting on a different day (`Console.tsx`, CellDisplay)
+  if (field === "expires_at" || field === "paid_at") return dayIn(value as string, timezone);
   if (Array.isArray(value))
     return value.length > 0 ? value.join(", ") : t("rail.edit.empty");
   if (typeof value === "boolean") return value ? "✓" : t("rail.edit.empty");
