@@ -49,9 +49,12 @@ def _seed_discipline(
     )
 
 
-@pytest.fixture
-def pre_migration_db(tmp_path) -> Path:
-    db_path = tmp_path / "discipline_identity.sqlite"
+@pytest.fixture(scope="module")
+def _pre_migration_template(tmp_path_factory) -> Path:
+    # built once per module and copied per test (conftest
+    # `migration_db_copy`), so each test still gets a database it may
+    # migrate or downgrade freely without rebuilding this one
+    db_path = tmp_path_factory.mktemp("discipline_identity") / "discipline_identity.sqlite"
     result = _run_alembic("upgrade", PREVIOUS_REVISION, db_path=db_path)
     assert result.returncode == 0, result.stderr
     conn = sqlite3.connect(db_path)
@@ -64,14 +67,19 @@ def pre_migration_db(tmp_path) -> Path:
     return db_path
 
 
-@pytest.fixture
-def migrated_db(pre_migration_db) -> Path:
+@pytest.fixture(scope="module")
+def _migrated_template(_pre_migration_template) -> Path:
     # pinned to the revision under test, not "head" — a later migration
     # (add-field-validation's discipline slug rewrite) legitimately touches
     # the same table and would otherwise make this test depend on it
-    result = _run_alembic("upgrade", "52ba5b743d48", db_path=pre_migration_db)
+    result = _run_alembic("upgrade", "52ba5b743d48", db_path=_pre_migration_template)
     assert result.returncode == 0, result.stderr
-    return pre_migration_db
+    return _pre_migration_template
+
+
+@pytest.fixture
+def migrated_db(_migrated_template, migration_db_copy) -> Path:
+    return migration_db_copy(_migrated_template)
 
 
 def test_upgrade_backfills_slug_equal_to_old_code_and_classification(migrated_db):

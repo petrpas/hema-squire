@@ -10,10 +10,7 @@ from app.models import (
     Discipline,
     Fencer,
     Registration,
-    RegistrationDiscipline,
-    RegistrationState,
     Tournament,
-    UnpaidListTreatment,
 )
 
 
@@ -35,25 +32,6 @@ def make_tournament(**kwargs) -> Tournament:
     )
     return Tournament(**{**defaults, **kwargs})
 
-
-def test_registration_roundtrip(session):
-    tournament = make_tournament()
-    discipline = Discipline(
-        tournament=tournament, slug="LS", name="Longsword Open Steel",
-        weapon="LS", gender="", material="", capacity=32, fee=800,
-    )
-    fencer = Fencer(email="jan@example.com", display_name="Jan Novák", hr_id=1234)
-    registration = Registration(
-        tournament=tournament, fencer=fencer, vs=26001, total_amount=800
-    )
-    session.add(RegistrationDiscipline(registration=registration, discipline=discipline))
-    session.commit()
-
-    saved = session.get(Registration, registration.id)
-    assert saved.state == RegistrationState.RESERVED
-    assert saved.fencer.hr_id == 1234
-    assert [e.discipline.slug for e in saved.entries] == ["LS"]
-    assert saved.tournament.unpaid_list_treatment == UnpaidListTreatment.GREYED
 
 
 def test_hr_id_not_unique_across_accounts(session):

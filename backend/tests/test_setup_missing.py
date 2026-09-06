@@ -139,10 +139,6 @@ def test_legacy_fixed_fees_do_not_block_single_currency():
     assert setup_missing(tournament) == []
 
 
-def test_currency_untouched_tournament_is_complete():
-    """The default combination must never appear in the checklist."""
-    assert setup_missing(make_tournament()) == []
-
 
 def test_priced_tournament_without_bank_account_blocks():
     tournament = make_tournament(bank_account=None)

@@ -12,6 +12,9 @@ os.environ["HEMA_SQUIRE_DEBUG"] = "true"
 # all from one address; test_auth_throttle enables the limiter deliberately
 os.environ["HEMA_SQUIRE_RATE_LIMIT_ENABLED"] = "false"
 
+import shutil
+from pathlib import Path
+
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, select
@@ -23,6 +26,30 @@ from app.db import Base, apply_sqlite_pragmas, get_session
 from app.hr_index import get_hr_index, stub_index
 from app.main import app
 from app.models import Fencer, Role
+
+
+@pytest.fixture
+def migration_db_copy(tmp_path):
+    """Hand a test its own copy of a database some module-scoped fixture built.
+
+    The migration suites shell out to `alembic upgrade` to build their subject,
+    which costs about a second. Built once per module and copied per test, each
+    test still gets a database it may migrate, downgrade or corrupt freely,
+    without paying for the build. Sidecars are copied where they exist: a clean
+    subprocess exit checkpoints and removes them, but copying only the main file
+    would silently lose data if one ever survived.
+    """
+
+    def _copy(template: Path) -> Path:
+        db_path = tmp_path / template.name
+        shutil.copy(template, db_path)
+        for suffix in ("-wal", "-shm"):
+            sidecar = template.with_name(template.name + suffix)
+            if sidecar.exists():
+                shutil.copy(sidecar, db_path.with_name(db_path.name + suffix))
+        return db_path
+
+    return _copy
 
 
 @pytest.fixture

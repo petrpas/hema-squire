@@ -83,9 +83,12 @@ def _flags(db_path: Path) -> dict[str, dict[str, int]]:
     return {row[0]: dict(zip(FLAGS, row[1:], strict=True)) for row in rows}
 
 
-@pytest.fixture
-def pre_migration_db(tmp_path) -> Path:
-    db_path = tmp_path / "tournament_modes.sqlite"
+@pytest.fixture(scope="module")
+def _pre_migration_template(tmp_path_factory) -> Path:
+    # built once per module and copied per test (conftest
+    # `migration_db_copy`), so each test still gets a database it may
+    # migrate or downgrade freely without rebuilding this one
+    db_path = tmp_path_factory.mktemp("tournament_modes") / "tournament_modes.sqlite"
     result = _run_alembic("upgrade", PREVIOUS_REVISION, db_path=db_path)
     assert result.returncode == 0, result.stderr
     conn = sqlite3.connect(db_path)
@@ -124,11 +127,16 @@ def pre_migration_db(tmp_path) -> Path:
     return db_path
 
 
-@pytest.fixture
-def migrated_db(pre_migration_db) -> Path:
-    result = _run_alembic("upgrade", REVISION, db_path=pre_migration_db)
+@pytest.fixture(scope="module")
+def _migrated_template(_pre_migration_template) -> Path:
+    result = _run_alembic("upgrade", REVISION, db_path=_pre_migration_template)
     assert result.returncode == 0, result.stderr
-    return pre_migration_db
+    return _pre_migration_template
+
+
+@pytest.fixture
+def migrated_db(_migrated_template, migration_db_copy) -> Path:
+    return migration_db_copy(_migrated_template)
 
 
 def test_configured_tournament_keeps_everything_visible(migrated_db):

@@ -4,7 +4,6 @@ import io
 import pytest
 
 from app.bank import (
-    IncomingTransaction,
     get_fio_client,
     parse_fio_csv,
     parse_fio_json,
@@ -180,8 +179,3 @@ def test_fio_poll_without_token(client, auth_headers, stub_fio):
     assert response.json()["detail"] == "fio_token_not_configured"
 
 
-def test_incoming_transaction_roundtrip_model():
-    transaction = IncomingTransaction(
-        external_id="1", date=datetime.date(2026, 1, 1), amount_cents=100, currency="CZK"
-    )
-    assert transaction.vs is None

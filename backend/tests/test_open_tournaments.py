@@ -4,6 +4,8 @@ filtering, per-discipline counts, registration status, and own state."""
 from datetime import date, datetime, timedelta
 from zoneinfo import ZoneInfo
 
+import pytest
+
 from tests.conftest import publish
 
 TODAY = date.today()
@@ -231,8 +233,12 @@ def test_open_counts_team_disciplines_in_teams(client, auth_headers):
     assert (team["taken"], team["capacity"], team["queue_length"]) == (1, 5, 0)
 
 
-def test_mine_counts_team_disciplines_in_teams(client, auth_headers):
-    """Same dispatch on the own-scope list, which builds the same DTO."""
+@pytest.mark.parametrize("scope", ["mine", "held"])
+def test_past_scope_counts_team_disciplines_in_teams(client, auth_headers, scope):
+    """Same dispatch as the open list, on the two past-scope lists. Both build
+    the same DTO from the same query, so a regression that reached for the
+    fencer pair on a team discipline would 500 both — but they are separate
+    route handlers, so both are asked."""
     organizer = auth_headers()
     make_open_tournament(client, organizer, "cup", date=str(TODAY - timedelta(days=1)))
     client.post(
@@ -244,7 +250,7 @@ def test_mine_counts_team_disciplines_in_teams(client, auth_headers):
         headers=organizer,
     )
 
-    response = client.get("/api/tournaments/mine", headers=organizer)
+    response = client.get(f"/api/tournaments/{scope}", headers=organizer)
     assert response.status_code == 200
     cup = next(t for t in response.json() if t["slug"] == "cup")
     team = next(d for d in cup["disciplines"] if d["slug"] == "Team-LS")

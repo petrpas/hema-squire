@@ -63,13 +63,21 @@ def _seed_pre_migration_schema(db_path: Path) -> None:
     conn.close()
 
 
-@pytest.fixture
-def migrated_db(tmp_path) -> Path:
-    db_path = tmp_path / "vs_migration.sqlite"
+@pytest.fixture(scope="module")
+def _migrated_template(tmp_path_factory) -> Path:
+    # built once per module and copied per test (conftest
+    # `migration_db_copy`): the alembic run below is the expensive part and
+    # is identical for every test in this file
+    db_path = tmp_path_factory.mktemp("vs_migration") / "vs_migration.sqlite"
     _run_alembic("upgrade", PREVIOUS_REVISION, db_path=db_path)
     _seed_pre_migration_schema(db_path)
     _run_alembic("upgrade", "head", db_path=db_path)
     return db_path
+
+
+@pytest.fixture
+def migrated_db(_migrated_template, migration_db_copy) -> Path:
+    return migration_db_copy(_migrated_template)
 
 
 def test_migration_assigns_a_series_to_every_tournament(migrated_db):

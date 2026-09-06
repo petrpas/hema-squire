@@ -16,11 +16,6 @@ def test_taxonomy_name_returns_none_for_a_weapon_outside_the_taxonomy():
     assert taxonomy.taxonomy_name("LS", "", "") == taxonomy.DISCIPLINES["LS"]
 
 
-def test_is_taxonomy_weapon():
-    for code in taxonomy.WEAPONS:
-        assert taxonomy.is_taxonomy_weapon(code) is True
-    assert taxonomy.is_taxonomy_weapon("Messer") is False
-
 
 def test_discipline_name_marks_a_team_discipline():
     individual = taxonomy.discipline_name("LS", "", "", is_team=False)

@@ -48,9 +48,12 @@ def _seed_tournament(conn: sqlite3.Connection, tid: int, slug: str) -> None:
     )
 
 
-@pytest.fixture
-def pre_migration_db(tmp_path) -> Path:
-    db_path = tmp_path / "registrations_kept_by.sqlite"
+@pytest.fixture(scope="module")
+def _pre_migration_template(tmp_path_factory) -> Path:
+    # built once per module and copied per test (conftest
+    # `migration_db_copy`), so each test still gets a database it may
+    # migrate or downgrade freely without rebuilding this one
+    db_path = tmp_path_factory.mktemp("registrations_kept_by") / "registrations_kept_by.sqlite"
     result = _run_alembic("upgrade", PREVIOUS_REVISION, db_path=db_path)
     assert result.returncode == 0, result.stderr
     conn = sqlite3.connect(db_path)
@@ -65,6 +68,11 @@ def pre_migration_db(tmp_path) -> Path:
     conn.commit()
     conn.close()
     return db_path
+
+
+@pytest.fixture
+def pre_migration_db(_pre_migration_template, migration_db_copy) -> Path:
+    return migration_db_copy(_pre_migration_template)
 
 
 def _kept_by(db_path: Path) -> dict[str, str]:

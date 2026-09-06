@@ -79,13 +79,21 @@ def _seed(db_path: Path) -> None:
     conn.close()
 
 
-@pytest.fixture
-def migrated_db(tmp_path) -> Path:
-    db_path = tmp_path / "row_numbers.sqlite"
+@pytest.fixture(scope="module")
+def _migrated_template(tmp_path_factory) -> Path:
+    # built once per module and copied per test (conftest
+    # `migration_db_copy`): the alembic run below is the expensive part and
+    # is identical for every test in this file
+    db_path = tmp_path_factory.mktemp("row_numbers") / "row_numbers.sqlite"
     _run_alembic("upgrade", PREVIOUS_REVISION, db_path=db_path)
     _seed(db_path)
     _run_alembic("upgrade", "head", db_path=db_path)
     return db_path
+
+
+@pytest.fixture
+def migrated_db(_migrated_template, migration_db_copy) -> Path:
+    return migration_db_copy(_migrated_template)
 
 
 def test_backfill_numbers_registrations_then_the_latest_batch(migrated_db):

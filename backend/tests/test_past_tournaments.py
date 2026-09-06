@@ -104,24 +104,6 @@ def test_held_orders_by_date_descending(client, auth_headers):
     assert [t["slug"] for t in listed] == ["newer", "older"]
 
 
-def test_held_counts_team_disciplines_in_teams(client, auth_headers):
-    organizer = auth_headers()
-    publish_past(client, organizer, "cup")
-    client.post(
-        "/api/tournaments/cup/disciplines",
-        json={
-            "slug": "Team-LS", "weapon": "LS", "capacity": 5, "fee": 3000,
-            "kind": "team", "team_min": 3, "team_max": 4,
-        },
-        headers=organizer,
-    )
-
-    response = client.get("/api/tournaments/held", headers=organizer)
-    assert response.status_code == 200
-    cup = next(t for t in response.json() if t["slug"] == "cup")
-    team = next(d for d in cup["disciplines"] if d["slug"] == "Team-LS")
-    assert (team["taken"], team["capacity"]) == (0, 5)
-
 
 # ---------------------------------------------------------------------------
 # own scope — the Mine tab

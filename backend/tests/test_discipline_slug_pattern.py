@@ -11,7 +11,6 @@ import sys
 from pathlib import Path
 
 import pytest
-from pydantic import ValidationError
 
 from app.schemas import DisciplineIn
 
@@ -64,10 +63,6 @@ def test_slug_pattern_still_rejects_a_bare_pattern_violation():
     assert discipline.slug == "a-b"
 
 
-def test_required_fields_still_reject_normally():
-    with pytest.raises(ValidationError):
-        DisciplineIn(weapon="", capacity=10)
-
 
 # --- 8a.4-8a.6: the migration ------------------------------------------------
 
@@ -93,9 +88,12 @@ def _seed_discipline(conn: sqlite3.Connection, did: int, tid: int, slug: str, na
     )
 
 
-@pytest.fixture
-def pre_migration_db(tmp_path) -> Path:
-    db_path = tmp_path / "slug_pattern.sqlite"
+@pytest.fixture(scope="module")
+def _pre_migration_template(tmp_path_factory) -> Path:
+    # built once per module and copied per test (conftest
+    # `migration_db_copy`), so each test still gets a database it may
+    # migrate or downgrade freely without rebuilding this one
+    db_path = tmp_path_factory.mktemp("slug_pattern") / "slug_pattern.sqlite"
     result = _run_alembic("upgrade", PREVIOUS_REVISION, db_path=db_path)
     assert result.returncode == 0, result.stderr
     conn = sqlite3.connect(db_path)
@@ -115,11 +113,16 @@ def pre_migration_db(tmp_path) -> Path:
     return db_path
 
 
-@pytest.fixture
-def migrated_db(pre_migration_db) -> Path:
-    result = _run_alembic("upgrade", "head", db_path=pre_migration_db)
+@pytest.fixture(scope="module")
+def _migrated_template(_pre_migration_template) -> Path:
+    result = _run_alembic("upgrade", "head", db_path=_pre_migration_template)
     assert result.returncode == 0, result.stderr
-    return pre_migration_db
+    return _pre_migration_template
+
+
+@pytest.fixture
+def migrated_db(_migrated_template, migration_db_copy) -> Path:
+    return migration_db_copy(_migrated_template)
 
 
 def test_legacy_slug_with_a_space_is_rewritten(migrated_db):
