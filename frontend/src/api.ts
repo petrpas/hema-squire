@@ -439,6 +439,12 @@ export interface SheetRow {
    *  one true thing about the row. */
   settled_by_hand?: boolean;
   settled_by_hand_reason?: string | null;
+  /** What the waiver forgave, as a decimal string in `outstanding_currency` —
+   *  null where it forgave the whole price, and on every row no waiver
+   *  touched. A waiver owes nothing, so `outstanding_amount` is zero on such a
+   *  row and cannot say how much was written off; the outstanding column names
+   *  the sum wherever a payment already stood against the price. */
+  waived_amount?: string | null;
   registered_at: string | null;
   total_amount: number | null;
   /** What is still owed, or negative what is over, as a decimal string — the

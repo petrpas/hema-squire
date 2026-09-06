@@ -209,6 +209,8 @@
       "meaning": "Vyrovnáno je tvůj záznam, že ti peníze dorazily. Squire sám nedostal nic, takže částka, kterou šermíř dluží, zůstává, jak byla."
     },
     "waived": "odpuštěno",
+    "waived_all": "odpuštěno vše",
+    "waived_amount": "odpuštěno {{amount}}",
     "waiver": {
       "title": "Označit zaplaceno bez platby",
       "meaning": "Zaznamená, že tato registrace nic nedluží a že na ni nedorazily žádné peníze. Nic se nepřipisuje, takže se nezmění žádný součet přijatých částek.",

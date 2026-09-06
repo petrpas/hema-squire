@@ -203,6 +203,8 @@
       "meaning": "Settled records your word that the money reached you. Squire has received nothing itself, so what each fencer is owed stays as it is."
     },
     "waived": "waived",
+    "waived_all": "all waived",
+    "waived_amount": "{{amount}} waived",
     "waiver": {
       "title": "Settle without a payment",
       "meaning": "Records that this registration owes nothing and that no money arrived for it. Nothing is credited, so no total of what the tournament received moves.",

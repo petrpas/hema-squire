@@ -26,6 +26,7 @@ from sqlalchemy.orm import Session, selectinload
 from app import hr_match, importer, manualrows, rownumbers, setup, taxonomy
 from app.hr_index import DbHRIndex, HRIndex, evidence_fields
 from app.models import (
+    Currency,
     ExtraCategory,
     ImportedRow,
     ManualRow,
@@ -202,6 +203,23 @@ def base_rows(
         )
         extra_rentals, extra_afterparty, extra_other = _extras_summary(registration)
         balance, balance_currency = registration.balance_cents(tournament)
+        # What a waiver forgave, where money had already arrived against the
+        # price. A waiver owes nothing, so `balance` is zero on such a row and
+        # cannot say how much was written off; the console states the figure
+        # rather than the bare word wherever a payment stands behind it (owner
+        # decision, 2026-09-06). Null where nothing was credited — the whole
+        # price was forgiven, and the cell says so in words.
+        remaining, _lane = registration.remaining_cents(tournament)
+        credited = (
+            registration.amount_paid_eur_cents
+            if balance_currency == Currency.EUR
+            else registration.amount_paid_cents
+        )
+        waived = (
+            _money(remaining)
+            if registration.settled_by_hand_at is not None and credited
+            else None
+        )
         notes = registration.notes
         if extra_other:
             summary = "; ".join(extra_other)
@@ -237,6 +255,9 @@ def base_rows(
             # reads it and states the balance as waived rather than owed
             "settled_by_hand": registration.settled_by_hand_at is not None,
             "settled_by_hand_reason": registration.settled_by_hand_reason,
+            # what the waiver forgave, where it forgave only part; null where
+            # it forgave the whole price
+            "waived_amount": waived,
             "registered_at": registration.registered_at.isoformat(),
             "total_amount": registration.total_amount,
             # what is still owed, as a decimal string exactly as
@@ -377,6 +398,7 @@ def _imported_rows(
             "paid": False,
             "settled_by_hand": False,
             "settled_by_hand_reason": None,
+            "waived_amount": None,
             "registration_id": None,
             "registered_at": record.get("registration_time"),
             "total_amount": None,
@@ -412,7 +434,8 @@ def _unparsed_row(row_id: str, row: ImportedRow) -> Row:
         "paid": False,
         "settled_by_hand": False,
         "settled_by_hand_reason": None,
-            "registration_id": None,
+        "waived_amount": None,
+        "registration_id": None,
         "registered_at": None,
         "total_amount": None,
         "expires_at": None,
@@ -462,7 +485,8 @@ def _manual_row(row: ManualRow, index: HRIndex | None = None) -> Row:
         "paid": False,
         "settled_by_hand": False,
         "settled_by_hand_reason": None,
-            "registration_id": None,
+        "waived_amount": None,
+        "registration_id": None,
         "registered_at": row.registered_at.isoformat(),
         "total_amount": None,
         "expires_at": None,

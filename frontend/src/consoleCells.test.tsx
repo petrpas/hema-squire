@@ -156,7 +156,43 @@ describe("money cells", () => {
     ).toBe("16 €");
   });
 
-  it("reads a waived balance as the word alone, with the reason on hover", () => {
+  it("names what a partial waiver forgave, not the bare word", () => {
+    // a fencer who paid 1 250 Kč of 1 750 Kč and had the rest written off is
+    // not the same fact as one who paid nothing (owner decision, 2026-09-06)
+    const html = moneyCell("outstanding", {
+      outstanding_amount: "0.00",
+      settled_by_hand: true,
+      settled_by_hand_reason: null,
+      waived_amount: "500.00",
+      outstanding_currency: "CZK",
+    });
+    expect(html).toContain("odpuštěno 500 Kč");
+  });
+
+  it("says the whole price was forgiven where nothing had been credited", () => {
+    const html = moneyCell("outstanding", {
+      outstanding_amount: "0.00",
+      settled_by_hand: true,
+      settled_by_hand_reason: null,
+      waived_amount: null,
+    });
+    expect(html).toContain("odpuštěno vše");
+  });
+
+  it("names no sum where the money had already covered the price", () => {
+    // the waiver forgave nothing, so there is nothing to name
+    const html = moneyCell("outstanding", {
+      outstanding_amount: "0.00",
+      settled_by_hand: true,
+      settled_by_hand_reason: null,
+      waived_amount: "0.00",
+    });
+    expect(html).toContain("odpuštěno");
+    expect(html).not.toContain("odpuštěno vše");
+    expect(html).not.toContain("0 Kč");
+  });
+
+  it("reads a waived balance as the words alone, with the reason on hover", () => {
     // an organizer's reason runs as long as a sentence — "volný vstup za čtvrté
     // místo dosažené v loňském roce" — and a money column set to the width of
     // the longest one stops being a money column
@@ -165,7 +201,7 @@ describe("money cells", () => {
       settled_by_hand: true,
       settled_by_hand_reason: "volný vstup za čtvrté místo dosažené v loňském roce",
     });
-    expect(html).toContain("odpuštěno");
+    expect(html).toContain("odpuštěno vše");
     // the figure it would otherwise owe is gone: nothing was credited and
     // nothing is due, so it is true of neither
     expect(html).not.toContain("1750");

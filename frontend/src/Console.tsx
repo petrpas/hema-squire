@@ -335,14 +335,22 @@ export function CellDisplay({
   switch (column) {
     case "total_amount":
     case "outstanding": {
-      // a registration settled by hand owes nothing and was credited nothing,
-      // so the figure the balance would show is true of neither. Read from the
-      // sheet's own value rather than recomputed here: a reader who took the
-      // full total for a fault would be misreading the one true thing about
-      // the row (spec etl-console, Outstanding balance in the Payments phase
-      // table)
+      // a registration settled by hand owes nothing, so the figure the balance
+      // would show is not what it owes. What the waiver forgave is read from
+      // the sheet's own value rather than recomputed here: a reader who took
+      // the full total for a fault would be misreading the one true thing
+      // about the row (spec etl-console, Outstanding balance in the Payments
+      // phase table)
       if (column === "outstanding" && row.settled_by_hand) {
-        return <WaivedBalance reason={row.settled_by_hand_reason ?? null} />;
+        return (
+          <WaivedBalance
+            reason={row.settled_by_hand_reason ?? null}
+            amount={row.waived_amount ?? null}
+            currency={
+              currency === null ? null : row.outstanding_currency ?? currency.local_currency
+            }
+          />
+        );
       }
       // an imported row has no registration behind it and so owes nothing —
       // a dash, not a zero it never agreed to

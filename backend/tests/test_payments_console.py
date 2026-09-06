@@ -9,13 +9,14 @@ see it.
 import contextlib
 
 import pytest
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session
 from sqlalchemy.pool import StaticPool
 
 from app.db import Base, get_session
 from app.mail import get_mailer
 from app.main import app
+from app.models import Registration
 from tests.test_matching import age_reserved, enroll, import_rows, setup
 
 
@@ -148,6 +149,61 @@ def test_a_shortfall_the_tolerance_accepted_is_still_stated(client, auth_headers
     row = sheet_row(client, organizer, vs)
     assert row["paid"] is True
     assert row["outstanding_amount"] == "40.00"
+
+
+def waive(client, organizer, vs, reason="volny vstup"):
+    """The waiver, addressed to the registration behind the symbol."""
+    session = next(app.dependency_overrides[get_session]())
+    registration = session.scalar(
+        select(Registration).where(Registration.vs == vs)
+    )
+    return client.post(
+        f"/api/tournaments/cup/registrations/{registration.id}/settled"
+        f"?settled=true&reason={reason}",
+        headers=organizer,
+    )
+
+
+def test_a_waiver_over_a_part_payment_states_what_it_forgave(client, auth_headers, mailbox):
+    """A waiver owes nothing, so the balance column reads zero and cannot say
+    how much was written off. The row carries the figure separately, and the
+    console names it: a fencer who paid 600 of 1000 and had the rest forgiven
+    is not the same fact as one who paid nothing (owner decision,
+    2026-09-06)."""
+    organizer = auth_headers()
+    setup(client, organizer)
+    _, vs = enroll(client, auth_headers)
+    import_rows(client, organizer, [f"1;01.08.2026;600,00;CZK;{vs};;;;;"])
+
+    assert waive(client, organizer, vs).status_code == 200
+
+    row = sheet_row(client, organizer, vs)
+    assert row["settled_by_hand"] is True
+    assert row["outstanding_amount"] == "0.00"
+    assert row["waived_amount"] == "400.00"
+
+
+def test_a_waiver_over_nothing_names_no_figure(client, auth_headers, mailbox):
+    """Nothing was credited, so the whole price was forgiven and there is no
+    part to name; the console says so in words."""
+    organizer = auth_headers()
+    setup(client, organizer)
+    _, vs = enroll(client, auth_headers)
+
+    assert waive(client, organizer, vs).status_code == 200
+
+    row = sheet_row(client, organizer, vs)
+    assert row["settled_by_hand"] is True
+    assert row["waived_amount"] is None
+
+
+def test_an_unwaived_row_carries_no_waived_figure(client, auth_headers, mailbox):
+    organizer = auth_headers()
+    setup(client, organizer)
+    _, vs = enroll(client, auth_headers)
+    import_rows(client, organizer, [f"1;01.08.2026;600,00;CZK;{vs};;;;;"])
+
+    assert sheet_row(client, organizer, vs)["waived_amount"] is None
 
 
 def test_a_trivial_overpayment_reads_as_one(client, auth_headers, mailbox):

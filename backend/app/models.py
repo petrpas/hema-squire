@@ -819,15 +819,26 @@ class Registration(Base):
         A waiver is the one exception and owes nothing at all, whatever its
         counters hold, because no money was ever supposed to pass.
         """
-        if self.amount_paid_eur_cents and not self.amount_paid_cents and self.total_eur is not None:
-            currency = Currency.EUR
-            remaining = self.outstanding_eur_cents or 0
-        else:
-            currency = tournament.local_currency
-            remaining = self.outstanding_cents
+        remaining, currency = self.remaining_cents(tournament)
         if self.settled_by_hand_at is not None:
             return 0, currency
         return remaining, currency
+
+    def remaining_cents(self, tournament: Tournament) -> tuple[int, Currency]:
+        """The same figure `balance_cents` states, before the waiver is applied
+        to it: what the counters leave uncovered, in the lane the money came
+        in.
+
+        A waiver forgives whatever stood at the moment it was given, and that
+        is not always the whole price — a fencer who paid part and had the rest
+        written off is owed a console cell saying which part (owner decision,
+        2026-09-06). `balance_cents` cannot say it, because a waiver owes
+        nothing and its figure is therefore zero; this is where the amount the
+        waiver forgave is still readable.
+        """
+        if self.amount_paid_eur_cents and not self.amount_paid_cents and self.total_eur is not None:
+            return self.outstanding_eur_cents or 0, Currency.EUR
+        return self.outstanding_cents, tournament.local_currency
 
     # legacy billable extras (pre-itemized tournaments) and free-text fields
     weapon_rentals: Mapped[list[str]] = mapped_column(JSON, default=list)
