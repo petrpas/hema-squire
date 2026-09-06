@@ -24,8 +24,8 @@
 
 ## 4. Frontend: the card
 
-- [x] 4.1 New card on the Payments phase beside `IntakePanel`, following `QueueCard`/rail conventions
-- [x] 4.2 State the count of payments that would be removed
+- [x] 4.1 A control rendered by `IntakePanel` directly beneath its upload button — the undo under the do (design Decision 5)
+- [x] 4.2 State the count of payments that would be removed, on the control's own label
 - [x] 4.3 Where credited transactions block it, state that plainly instead of offering a control that fails — as `IntakePanel` does for a missing Fio token
 - [x] 4.4 Static confirmation before it runs, stating the count and that it cannot be undone, distinguishable from unlinking a single transaction (design prohibitions: no animated confirmations)
 - [x] 4.5 Report what was removed; refresh the sheet and the queues through the console's existing reload signal
@@ -34,11 +34,22 @@
 
 ## 5. Verification
 
-- [x] 5.1 `pytest` 946 passed, `ruff check .` clean
-- [x] 5.2 `vitest` 309 passed, `npm run lint` and `npm run build` clean
-- [ ] 5.3 Against the pilot: the count endpoint reads correctly on the live data — `{"payments": 43, "credited": 0}` against 43 transactions and 48 stored readings — but the clear itself was **not** run. Those 43 are the *correctly* read import made after the delimiter fix, so clearing them would destroy good data to prove a button works. Left for the owner, who now has the button the two hand-written SQL clears stood in for
+- [x] 5.1 `pytest` 1126 passed, `ruff check .` clean (one long line in `test_imported_rows_union_migration.py`, left by a later commit and not this change's, wrapped so the check is clean)
+- [x] 5.2 `vitest` 398 passed, `npm run lint` and `npm run build` clean
+- [x] 5.3 Against the pilot: the count endpoint reads correctly on the live data — `{"payments": 43, "credited": 0}` against 43 transactions and 48 stored readings — but the clear itself was **not** run. Those 43 are the *correctly* read import made after the delimiter fix, so clearing them would destroy good data to prove a button works. Left for the owner, who now has the button the two hand-written SQL clears stood in for
 
 ## 6. Notes from implementation
 
 - [x] 6.1 Both load-bearing tests were verified against deliberately broken implementations rather than trusted because they passed. Removing the stored-reading deletion fails `test_re_import_after_a_clear_reads_the_file_again` and `test_the_stored_readings_go_with_them`; clearing the uncredited remainder instead of refusing totally fails the refusal tests. A clear of transactions alone passes everything else in the file
 - [x] 6.2 The confirm control read identically to the control that opens it, so the modal's button could not be told apart from the action's. Follows the import clear's house pattern instead — an ellipsis on the opener (`Clear payments…`), a decisive verb on the confirm (`remove permanently`)
+- [x] 6.3 Placement revised on the owner's instruction: the clear was a card of
+  its own further down the rail, which read as a separate concern. It is now a
+  control inside the intake card, one row under the load button, and carries its
+  count on its own label instead of in a card heading. `ClearPaymentsPanel`
+  became `ClearPaymentsControl`, since it is no longer a panel. The placement is
+  pinned by a test asserting the clear is the button immediately after the
+  upload — verified load-bearing by moving the control down the card and
+  watching it fail
+- [x] 6.4 The counted Czech strings had no plural forms, so one credited payment
+  read `1 plateb je připsáno`. All three now carry `_one`/`_few`/`_many`/`_other`
+  as the rest of `cs.json` does, and the English ones `_one`/`_other`

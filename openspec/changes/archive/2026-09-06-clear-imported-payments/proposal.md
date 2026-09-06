@@ -43,8 +43,8 @@ both or it does not clear anything.
 - **It clears what arrived by import, not what arrived by matching.** Payment
   links the organizer made are rules and go with the transactions they name;
   registrations, their totals and their states are untouched.
-- **A new card on the Payments phase**, beside the intake card that uploads the
-  statement in the first place — the undo lives next to the do.
+- **A control inside the intake card**, directly beneath the button that
+  uploads the statement in the first place — the undo lives under the do.
 - Czech and English strings for the action, its confirmation, its refusal and
   its report.
 
@@ -68,8 +68,9 @@ This change refuses in that case and says so.
 ordered by dependency in one transaction; `DELETE` and a count endpoint on the
 payments router. No migration: this removes rows, it adds no columns.
 
-**Frontend** (`frontend/src/payments/`): a card on the Payments phase beside
-`IntakePanel`, with the count, the confirmation and the report; `api.ts`;
+**Frontend** (`frontend/src/payments/`): a control rendered by `IntakePanel`
+under its upload button, with the count, the confirmation and the report;
+`api.ts`;
 `i18n/{en,cs}.json`. It uses the console's existing queue-reload signal, so the
 four resolution queues empty without the organizer reloading.
 

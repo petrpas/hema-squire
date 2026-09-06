@@ -105,12 +105,21 @@ registrations issued for cleared rows, and a transaction linked to one of those
 returns to the unresolved queue rather than vanishing. That direction is already
 decided there; this change does not revisit it.
 
-### Decision 5 — The card lives beside the intake card
+### Decision 5 — The clear sits inside the intake card, under the load
 
 The undo belongs next to the do. `IntakePanel` is where a statement is uploaded,
 the Fio poll is triggered and the lifecycle is run; the clear is the fourth thing
 one can do to a tournament's money, and putting it anywhere else would leave an
 organizer hunting for it at the moment they are least inclined to hunt.
+
+Next to it turned out to mean *inside* it. A card of its own further down the
+rail still read as a separate concern, and the pairing that matters — load a
+statement, undo that load — was not visible in one glance. So the control is a
+control, not a panel: it renders directly beneath the button that loads a
+statement, with no heading and no card of its own, and states its count on its
+own label (`Clear payments (43)…`). Where credited money blocks it, the button
+gives way to a stated reason, exactly as the missing-Fio-token hint gives way to
+the poll button two rows down.
 
 ## Risks / Trade-offs
 
