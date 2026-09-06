@@ -3,26 +3,39 @@ import { useTranslation } from "react-i18next";
 
 import { ApiError, type IngestAndMatch, type TournamentDetail, api } from "../api";
 import { conclusionText, kindName } from "../operationText";
+import ClearPaymentsControl from "./ClearPaymentsControl";
 import IssuedReport from "./IssuedReport";
 import IssuePreflight from "./IssuePreflight";
 import type { OperationsView } from "../useOperations";
 
 /** Getting the tournament's money into the console: a statement from any bank,
- *  a poll of the bank's API, and the lifecycle passes on demand.
+ *  a poll of the bank's API, and the undo of either.
  *
  *  One card rather than three, because they are one concern. Each action states
  *  why it cannot run instead of offering a control that fails when used
  *  (design add-payments-intake D5).
+ *
+ *  The lifecycle passes — expiries and reminders — used to be a fourth button
+ *  here. `POST /payments/process` still runs them and the scheduler still
+ *  reaches them on its own; what this card no longer does is let an organizer
+ *  fire them by hand, because in manual mode they decide nothing (every
+ *  registration is dormant) while still being able to stamp seating settled.
+ *  They come back as actions over the debtors table, where they can name who
+ *  they act on.
  */
 export default function IntakePanel({
   slug,
   detail,
   operations,
+  reload,
   onChanged,
 }: {
   slug: string;
   detail: TournamentDetail | null;
   operations: OperationsView;
+  /** Bumped by the console whenever the money may have moved; the clear's
+   *  count follows it. */
+  reload: number;
   onChanged: () => void;
 }) {
   const { t } = useTranslation();
@@ -95,19 +108,6 @@ export default function IntakePanel({
     }
   }
 
-  async function runLifecycle() {
-    setWorking(true);
-    setError(null);
-    try {
-      await api.processLifecycle(slug);
-      onChanged();
-    } catch {
-      setError(t("payments.intake.lifecycleFailed"));
-    } finally {
-      setWorking(false);
-    }
-  }
-
   return (
     <section className="rail-card">
       <h2>{t("payments.intake.title")}</h2>
@@ -135,21 +135,22 @@ export default function IntakePanel({
         {running?.kind === "statement" ? t("common.loading") : t("payments.intake.upload")}
       </button>
 
+      {/* the load's undo, directly beneath it: a statement read wrongly is
+          undone where it was loaded, not from a card further down the rail */}
+      <ClearPaymentsControl
+        slug={slug}
+        reload={reload}
+        busy={busy}
+        onCleared={onChanged}
+      />
+
       {detail?.fio_token_configured ? (
         <button className="secondary param-save" disabled={busy} onClick={() => void poll()}>
           {t("payments.intake.poll")}
         </button>
       ) : (
-        <p className="rail-hint">{t("payments.intake.noToken")}</p>
+        <p className="rail-hint instead-of-control">{t("payments.intake.noToken")}</p>
       )}
-
-      <button
-        className="secondary param-save"
-        disabled={busy}
-        onClick={() => void runLifecycle()}
-      >
-        {t("payments.intake.lifecycle")}
-      </button>
 
       {busy && running !== null && (
         <p className="rail-hint">

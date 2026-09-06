@@ -1287,6 +1287,13 @@ fieldset.form-field > legend {
   display: flex;
   flex-direction: column;
   gap: 0.9rem;
+}
+
+/* Only where something follows it in the same tier. Inside a settings tier the
+   rule below already carries the separation, and this margin stacked on top of
+   it made the gap above the rule nearly twice the gap below — reading as if
+   the rule belonged to the tier beneath, with the one above left hanging. */
+.mode-options:not(:last-child) {
   margin-bottom: 1rem;
 }
 
@@ -1311,7 +1318,9 @@ fieldset.form-field > legend {
    setup-navigation). */
 .settings-tier + .settings-tier {
   border-top: var(--border-w) solid var(--hairline);
-  margin-top: 1.1rem;
+  /* the same gap either side of the rule: it separates two tiers, so leaning
+     it towards the one below reads as if it belonged to that tier */
+  margin-top: 0.9rem;
   padding-top: 0.9rem;
 }
 
@@ -1409,6 +1418,30 @@ fieldset.form-field > legend {
 .help-hint-marker:focus + .help-hint-box {
   display: block;
 }
+
+/* Anchored to the heading rather than to the marker. A marker trailing a
+   heading sits near the right edge of a narrow rail card, and a box hung off
+   it — leftward, rightward or centred — reaches past the card and then past the
+   window, which is the direction that has no room beside a table. Spanning the
+   heading instead makes the card's own width the box's width, so it cannot
+   overflow on either side whatever the heading's length. The marker gives up
+   being the positioning context for this; the heading takes it. */
+.rail-card h2 {
+  position: relative;
+}
+
+.help-hint-center {
+  position: static;
+}
+
+.help-hint-center .help-hint-box {
+  left: 0;
+  right: 0;
+  width: auto;
+  max-width: none;
+}
+
+
 
 /* Anchored to the marker's left edge rather than centered under it: every
    label + marker pair leads its row (design D3), so the marker sits near the
@@ -1570,6 +1603,15 @@ fieldset.form-field > legend {
   color: var(--ink-faded);
   font-size: 12px;
 }
+
+/* The global reset zeroes every margin, so paragraphs stacked in a card ran
+   together into one block — a stated refusal read as part of the hint above
+   it. Smaller than the gap a button takes (.param-save, 0.6rem), so a run of
+   prose still reads as prose and not as a list of controls. */
+.rail-card p + p {
+  margin-top: 0.4rem;
+}
+
 
 .rail-subhead {
   margin-top: 1rem;
@@ -3636,5 +3678,61 @@ label.checklist-row > input[type="checkbox"] {
 
 .tertiary:disabled {
   color: var(--ink-faded);
+  cursor: default;
+}
+
+/* A hint stating why a control is unavailable stands where the control would
+   have stood, so it takes the gap the control would have taken (.param-save)
+   rather than sitting flush against whatever precedes it. */
+.rail-hint.instead-of-control {
+  margin-top: 0.6rem;
+}
+
+/* ===== amount tolerance ===== */
+
+/* One parameter, so the field and its save share a row: a full-width save bar
+   under a single input reads as if a whole panel were being committed. */
+.tolerance-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.5rem;
+}
+
+.tolerance-row input {
+  flex: 1;
+  min-width: 0;
+  font: var(--field-size) var(--font-ui);
+  padding: 0.4rem 0;
+  border: none;
+  border-bottom: var(--border-w) solid var(--ink);
+  border-radius: 0;
+  background: transparent;
+  color: var(--ink);
+}
+
+/* `button.secondary` carries an element in its selector, so a bare class does
+   not outweigh its padding: the icon was squeezed to nothing inside it. */
+button.secondary.tolerance-save {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.9rem;
+  height: 1.9rem;
+  padding: 0;
+}
+
+.tolerance-save svg {
+  width: 13px;
+  height: 13px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: square;
+  stroke-linejoin: miter;
+}
+
+button.secondary.tolerance-save:disabled {
+  opacity: 0.5;
   cursor: default;
 }

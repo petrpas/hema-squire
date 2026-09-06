@@ -9,6 +9,7 @@ import {
   type Phase,
   absorbedInto,
   editableHere,
+  phaseRemovesRows,
   rowAction,
   rowNumber,
 } from "./Console";
@@ -83,6 +84,10 @@ export default function SheetArea({
   const { t } = useTranslation();
   const hrIdentity = usesHRIdentity(phase);
   const sheetVisible = useSheetVisible();
+  // asked of the phase, not of the rows: a phase that removes rows keeps the
+  // column even where every row it lists happens to offer nothing, so the
+  // table does not change width as rows come and go
+  const actionable = phaseRemovesRows(phase);
 
   return (
     <main className="sheet-area">
@@ -126,7 +131,10 @@ export default function SheetArea({
                     {t(`column.${column}`)}
                   </th>
                 ))}
-                <th className="col-actions" />
+                {/* the column exists only where the phase offers something to
+                    do to a row; drawn empty it is a gap at the end of every
+                    row with nothing to explain it */}
+                {actionable && <th className="col-actions" />}
               </tr>
             </thead>
             <tbody>
@@ -198,26 +206,28 @@ export default function SheetArea({
                       </td>
                     );
                   })}
-                  <td className="col-actions">
-                    {rowAction(row, phase) === null ? null : rowAction(row, phase) ===
-                      "restore" ? (
-                      <button
-                        className="row-action"
-                        title={t("actions.restore")}
-                        onClick={() => onRestore(row)}
-                      >
-                        <IconArrowBackUp size={16} stroke={1.5} />
-                      </button>
-                    ) : (
-                      <button
-                        className="row-action"
-                        title={t("actions.delete")}
-                        onClick={() => onDelete(row)}
-                      >
-                        <IconTrash size={16} stroke={1.5} />
-                      </button>
-                    )}
-                  </td>
+                  {actionable && (
+                    <td className="col-actions">
+                      {rowAction(row, phase) === null ? null : rowAction(row, phase) ===
+                        "restore" ? (
+                        <button
+                          className="row-action"
+                          title={t("actions.restore")}
+                          onClick={() => onRestore(row)}
+                        >
+                          <IconArrowBackUp size={16} stroke={1.5} />
+                        </button>
+                      ) : (
+                        <button
+                          className="row-action"
+                          title={t("actions.delete")}
+                          onClick={() => onDelete(row)}
+                        >
+                          <IconTrash size={16} stroke={1.5} />
+                        </button>
+                      )}
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>

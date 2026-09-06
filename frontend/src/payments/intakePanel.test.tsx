@@ -69,6 +69,7 @@ function render(props: Partial<Parameters<typeof IntakePanel>[0]> = {}) {
       slug="cup"
       detail={detail(false)}
       operations={operations()}
+      reload={0}
       onChanged={() => {}}
       {...props}
     />,
@@ -106,7 +107,6 @@ it("disables every action while other work is running, naming it", async () => {
 
   expect(buttonNamed(t("payments.intake.upload"))?.disabled).toBe(true);
   expect(buttonNamed(t("payments.intake.poll"))?.disabled).toBe(true);
-  expect(buttonNamed(t("payments.intake.lifecycle"))?.disabled).toBe(true);
   expect(host?.textContent).toContain(t("operation.kind.parse"));
 });
 
@@ -198,16 +198,16 @@ it("polls the bank and reports what it brought in", async () => {
   expect(host?.textContent).toContain(t("payments.intake.polled", { new: 3, matched: 2 }));
 });
 
-it("runs the lifecycle passes on demand", async () => {
-  const process = vi.spyOn(api, "processLifecycle").mockResolvedValue(undefined);
-  const onChanged = vi.fn();
-  render({ onChanged });
+// The lifecycle passes are no longer fired from here: in manual mode they
+// decide nothing, every registration being dormant, while still able to stamp
+// seating settled. `POST /payments/process` and the scheduler keep them; the
+// organizer gets them back as actions over the debtors table.
 
-  act(() => void buttonNamed(t("payments.intake.lifecycle"))?.click());
+it("does not offer the lifecycle passes", async () => {
+  render();
   await settle();
 
-  expect(process).toHaveBeenCalledWith("cup");
-  expect(onChanged).toHaveBeenCalled();
+  expect(buttonNamed(t("payments.intake.lifecycle"))).toBeUndefined();
 });
 
 // Intake issues registrations for the fencer list before it matches anything,
@@ -305,4 +305,29 @@ it("says nothing about issuing where an import issued nothing", async () => {
 
   expect(host?.textContent).toContain(t("payments.intake.imported", { new: 2, matched: 1 }));
   expect(host?.textContent).not.toContain(t("payments.intake.issued", { count: 0 }));
+});
+
+// The clear is the load's undo, so it lives in this card directly beneath the
+// control that loads a statement, rather than in a card of its own further
+// down the rail (spec `payments-clearing`).
+
+it("offers the clear directly beneath the control that loads a statement", async () => {
+  vi.spyOn(api, "clearablePayments").mockResolvedValue({ payments: 43, credited: 0 });
+  render({ detail: detail(true) });
+  await settle();
+
+  const buttons = [...(host?.querySelectorAll("button") ?? [])].map((button) =>
+    button.textContent?.trim(),
+  );
+  expect(buttons.indexOf(t("payments.clear.action", { payments: 43 }))).toBe(
+    buttons.indexOf(t("payments.intake.upload")) + 1,
+  );
+});
+
+it("does not offer the clear while other work is running", async () => {
+  vi.spyOn(api, "clearablePayments").mockResolvedValue({ payments: 43, credited: 0 });
+  render({ detail: detail(true), operations: operations({ running: running("parse") }) });
+  await settle();
+
+  expect(buttonNamed(t("payments.clear.action", { payments: 43 }))?.disabled).toBe(true);
 });

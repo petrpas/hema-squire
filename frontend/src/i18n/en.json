@@ -233,7 +233,7 @@
     "email": "E-mail",
     "reg_name": "Name as registered",
     "match_verdict": "Match",
-    "merge_note": "Merge note",
+    "merge_note": "Note",
     "outstanding": "Outstanding",
     "settled": "Settled"
   },
@@ -569,8 +569,8 @@
           "organizer": "You keep the list of entrants yourself — a form of your own, a spreadsheet, a club mailing list — and bring it into Squire by import. Squire cleans it, matches it against HEMA Ratings, prices it and exports it. It writes to nobody and holds no registration form."
         },
         "consequence": {
-          "squire": "Fencers register in Squire. It keeps the state of every entry and the lists for you.",
-          "organizer": "Nobody can register in Squire, and Squire sends nobody anything."
+          "squire": "Squire looks after all of it: entries, withdrawals, lists, changes…",
+          "organizer": "You collect the entries yourself and upload the list to Squire."
         },
         "confirmToManual": "In-app registration will close, and Squire will stop sending mail and stop expiring reservations for this tournament.",
         "confirmToAutomatic": "In-app registration will open according to the tournament's dates, and Squire will begin managing the registrations it holds.",
@@ -601,17 +601,17 @@
         },
         "consequence": {
           "automatic": {
-            "squire": "Squire handles the payments: it asks for the money, watches for it and chases it.",
+            "squire": "Squire handles the payments: it asks for the money, watches who has paid and chases the rest.",
             "self": "You handle the payments yourself. Squire still works out every price and shows it to the fencer; what arrives is yours to track."
           },
           "manual": {
             "squire": "You handle the payments yourself. Squire can help by matching them against the bank statement.",
-            "self": "You handle the payments yourself. Squire prices the roster for the export and leaves the money alone."
+            "self": "You handle the payments yourself. In Squire you only mark who has paid and who has not."
           }
         }
       },
       "includes": {
-        "title": "What the tournament includes"
+        "title": "Optional extras"
       },
       "feature": {
         "schedule": "Tournament schedule",
@@ -932,8 +932,13 @@
     },
     "setAside": "{{count}} belonged to another tournament on this account — nothing to do, its own console will match it.",
     "tolerance": {
-      "title": "Matching tolerance",
-      "hint": "How far a transferred amount may differ from what is owed and still count as payment. Applies on the next rerun."
+      "title": "Amount matching tolerance (%)",
+      "hint": "How far a transferred amount may differ from what is owed and still count as payment. It applies to payments still to come; nothing already decided is recomputed on its own.",
+      "resettleable_one": "{{count}} payment came in a little short and falls within this tolerance.",
+      "resettleable_other": "{{count}} payments came in a little short and fall within this tolerance.",
+      "resettle": "Count them as paid",
+      "settled_one": "{{count}} registration marked paid. The fencer has been mailed.",
+      "settled_other": "{{count}} registrations marked paid. The fencers have been mailed."
     },
     "queue": {
       "failed": "This list could not be loaded.",
@@ -992,10 +997,10 @@
     },
     "intake": {
       "title": "Payment intake",
-      "hint": "A statement export from any bank, as CSV or XLSX.",
+      "hint": "An account statement (.csv, .xlsx)",
       "upload": "Import statement",
       "poll": "Poll the bank now",
-      "noToken": "No bank API token is configured for this tournament, so it cannot be polled.",
+      "noToken": "Bank API: no token configured",
       "lifecycle": "Run expiries and reminders now",
       "imported": "Imported: {{new}} new, {{matched}} matched.",
       "polled": "Polled: {{new}} new, {{matched}} matched.",
@@ -1011,15 +1016,15 @@
       "issued": "Issued {{count}} registrations."
     },
     "clear": {
-      "title": "Clear payments",
-      "hint": "Removes every payment taken in, and how each statement row was read.",
-      "action": "Clear payments…",
-      "blockedByCredit": "Clearing is unavailable: {{count}} payments have been credited to a fencer. Unlink them first.",
-      "result": "Removed {{count}} payments.",
+      "action": "Clear payments ({{payments}})…",
+      "blockedByCredit": "Clearing is unavailable: unlink the payments first.",
+      "result_one": "Removed {{count}} payment.",
+      "result_other": "Removed {{count}} payments.",
       "failed": "The payments could not be cleared.",
       "confirm": {
         "title": "Clear the payments?",
-        "body": "This removes {{count}} payments and everything recorded about them.",
+        "body_one": "This removes {{count}} payment and everything recorded about it.",
+        "body_other": "This removes {{count}} payments and everything recorded about them.",
         "reread": "How each statement row was read is removed too, so importing the file again reads it afresh.",
         "final": "This cannot be undone.",
         "confirm": "remove permanently"

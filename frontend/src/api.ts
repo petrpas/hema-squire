@@ -1019,6 +1019,16 @@ export const api = {
   /** What clearing the tournament's payments would remove, and what stands in
    *  its way — read before offering the action, so a refusal is stated rather
    *  than discovered. */
+  /** How many short payments the tolerance as it stands would now let
+   *  through — stated by the tolerance card before the organizer commits. */
+  resettleablePayments: (slug: string) =>
+    request<{ resettleable: number }>(`/api/tournaments/${slug}/payments/resettle`),
+  /** Re-decide those, crediting nothing: the money is already on the
+   *  registration and only the verdict on it is asked again. */
+  resettlePayments: (slug: string) =>
+    request<{ settled: number }>(`/api/tournaments/${slug}/payments/resettle`, {
+      method: "POST",
+    }),
   clearablePayments: (slug: string) =>
     request<ClearablePayments>(`/api/tournaments/${slug}/payments/clear`),
   /** Remove every payment taken in, and the stored readings behind them. */

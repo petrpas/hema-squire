@@ -10,6 +10,7 @@ import {
   editableHere,
   parseDisciplines,
   editsForPhase,
+  phaseRemovesRows,
   rowAction,
   rowsForPhase,
   type Phase,
@@ -216,6 +217,16 @@ describe("what a row offers to have done to it", () => {
     expect(rowAction(row("reg:1"), "payments")).toBeNull();
   });
 
+  it("removes rows on Import and the fencer list, and on no other phase", () => {
+    // the answer the actions column is drawn from: a phase that offers nothing
+    // draws no column rather than an empty one
+    const removing = PHASES.filter(phaseRemovesRows);
+    expect(removing).toEqual(["import", "fencers"]);
+    for (const phase of PHASES.filter((p) => !phaseRemovesRows(p))) {
+      expect(rowAction(row("reg:1"), phase)).toBeNull();
+    }
+  });
+
   it("offers to bring back every removed row a phase lists, and no other", () => {
     const rows = [
       row("reg:1"),
@@ -262,11 +273,19 @@ describe("which cells a phase opens for editing", () => {
   });
 
   it("keeps identity editable where it is claimed", () => {
-    // Import, the fencer list, and Matching, where a correction belongs
-    for (const phase of ["import", "fencers", "matching"] as Phase[]) {
+    // Import and the fencer list, where a correction belongs
+    for (const phase of ["import", "fencers"] as Phase[]) {
       for (const column of identity) {
         expect(editableHere(column, phase)).toBe(true);
       }
+    }
+  });
+
+  it("closes the claim on Matching, which compares it rather than corrects it", () => {
+    // the claim is the text the evidence is read against: editing it there
+    // moves the answer while the question is being asked
+    for (const column of identity) {
+      expect(editableHere(column, "matching")).toBe(false);
     }
   });
 

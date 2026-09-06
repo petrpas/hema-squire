@@ -21,7 +21,6 @@ import TolerancePanel from "./TolerancePanel";
 import ExpiredHoldingPanel from "./payments/ExpiredHoldingPanel";
 import FlaggedPanel from "./payments/FlaggedPanel";
 import LikelyPanel from "./payments/LikelyPanel";
-import ClearPaymentsPanel from "./payments/ClearPaymentsPanel";
 import IntakePanel from "./payments/IntakePanel";
 import PaymentLinksPanel from "./payments/PaymentLinksPanel";
 import UnmatchedPanel from "./payments/UnmatchedPanel";
@@ -166,6 +165,13 @@ export function editableHere(column: string, phase: Phase, row?: SheetRow): bool
   if (ROW_ONLY_COLUMNS.has(column)) {
     return phase === "fencers" && (row?.registration_id ?? null) === null;
   }
+  // Matching decides one thing: which profile the row is. Its table shows the
+  // claim beside the evidence so that decision can be made, and correcting the
+  // claim there would edit the very text the reader is comparing against —
+  // moving the answer while the question is being asked. The claim is the
+  // organizer's to fix on Import and on the fencer list; here only the binding
+  // itself is, through `hr_id` and the verdict beside it.
+  if (phase === "matching") return column === "hr_id";
   if (IDENTITY_COLUMNS.includes(column)) return !usesHRIdentity(phase);
   return EDITABLE_COLUMNS.has(column);
 }
@@ -234,8 +240,25 @@ export function rowsForPhase(rows: SheetRow[], phase: Phase): SheetRow[] {
  *  about the roster, made where the roster is worked; the payments table states
  *  who has paid, and a delete sitting at the end of a row about money reads as
  *  an action on the money. */
+/** The phases where a row may be taken out of the table, or put back.
+ *
+ *  Import and the fencer list, and nowhere else. Those two are where the
+ *  roster is settled; every phase after them reads it. A delete at the end of
+ *  a row about money reads as an action on the money, and one at the end of a
+ *  row about an HR profile reads as unbinding the profile — neither is what it
+ *  does, and both are reachable one tab to the left where the row is plainly a
+ *  row. */
+const ROW_REMOVING_PHASES = new Set<string>(["import", "fencers"]);
+
+/** Whether the phase offers anything at the end of a row at all — asked of the
+ *  phase and not of the rows it happens to list, so the table keeps its width
+ *  as rows are deleted and restored. */
+export function phaseRemovesRows(phase: Phase): boolean {
+  return ROW_REMOVING_PHASES.has(phase);
+}
+
 export function rowAction(row: SheetRow, phase: Phase): "delete" | "restore" | null {
-  if (phase === "payments") return null;
+  if (!phaseRemovesRows(phase)) return null;
   if (row._merged_into !== undefined) return null;
   return row._deleted ? "restore" : "delete";
 }
@@ -718,14 +741,10 @@ export default function Console({
                 slug={tournament.slug}
                 detail={detail}
                 operations={operations}
+                reload={queueReload}
                 onChanged={refresh}
               />
               <TolerancePanel detail={detail} slug={tournament.slug} onSaved={refresh} />
-              <ClearPaymentsPanel
-                slug={tournament.slug}
-                reload={queueReload}
-                onCleared={refresh}
-              />
             </>
           )}
           {phase === "export" && <ExportPanel slug={tournament.slug} />}

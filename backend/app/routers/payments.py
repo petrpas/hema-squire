@@ -481,6 +481,30 @@ def payment_links(tournament: TournamentDep, session: SessionDep, fencer: Fencer
     return out
 
 
+@router.get("/resettle")
+def resettleable_payments(
+    tournament: TournamentDep, session: SessionDep, fencer: FencerDep
+) -> dict[str, int]:
+    """How many short payments the tolerance as it stands would now let
+    through. Read by the tolerance card so the number is stated before the
+    organizer commits to it (spec payments, Re-deciding a short payment)."""
+    require_console_access(session, tournament, fencer)
+    bank.require_payments_enabled(tournament)
+    return {"resettleable": matching.resettleable(session, tournament)}
+
+
+@router.post("/resettle")
+def resettle_payments(
+    tournament: TournamentDep, session: SessionDep, fencer: FencerDep, mailer: MailerDep
+) -> dict[str, int]:
+    """Re-decide the short payments a widened tolerance now covers. Credits
+    nothing: the money is already on the registration and only the verdict on
+    whether it was close enough is asked again."""
+    require_console_access(session, tournament, fencer)
+    bank.require_payments_enabled(tournament)
+    return {"settled": matching.resettle_within_tolerance(session, tournament, mailer)}
+
+
 @router.get("/clear")
 def clearable_payments(tournament: TournamentDep, session: SessionDep, fencer: FencerDep):
     """What a clear would remove, and what stands in its way — so the console

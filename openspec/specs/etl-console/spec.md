@@ -200,8 +200,16 @@ of the table the profile stands behind.
 The identity columns SHALL be read-only on those phases, whether HR-backed or
 italic. An HR-backed value belongs to the profile and is changed by rebinding the
 id on Matching; a registered value is corrected where it is claimed, on the
-fencer list or on Import. Identity cells SHALL remain editable on Import, on the
-fencer list and on Matching, as they are today.
+fencer list or on Import. Identity cells SHALL be editable on Import and on the
+fencer list, and nowhere else.
+
+**Matching SHALL open no cell but the binding.** Its table exists to be read:
+the claim on one side, the register's evidence on the other. The claim is the
+text the evidence is judged against, so editing it there would move the answer
+while the question is being asked, and a reader returning to the row could not
+tell which side had been changed. Only `hr_id` and the verdict beside it SHALL
+be editable there; a wrong claim is corrected one tab to the left, where the row
+is plainly a row.
 
 The conclusion row of a deduplication candidate group is the one exception, and
 only where no profile stands behind the group: choosing which registered
@@ -402,7 +410,9 @@ Deleting a row SHALL be a manual, reversible operation: the row is excluded from
 
 A deleted row SHALL be listed on the phase whose deletion removed it and on every phase before that one in the fixed phase order, marked as deleted; the phases after it SHALL NOT list the row at all. The deletion is a decision taken at one step, and the steps that follow stand after it.
 
-The offer to restore a row SHALL be made wherever the row is listed and nowhere else, so that a row can always be brought back from the phase that removed it. Removing the deletion from that phase's manual-edits log SHALL restore the row equally.
+**Rows SHALL be removed and restored on Import and on the fencer list alone.** Those two are where the roster is settled; every phase after them reads it. A delete offered at the end of a row about money reads as an action on the money, and one at the end of a row about an HR profile reads as unbinding the profile — neither is what it does, and both are reachable one tab to the left where the row is plainly a row. A phase that offers no removal SHALL offer no restoration either, and SHALL attribute no deletion to itself.
+
+Within those two phases the offer to restore a row SHALL be made wherever the row is listed, so that a row can always be brought back from the phase that removed it. Removing the deletion from that phase's manual-edits log SHALL restore the row equally.
 
 A phase that lists no fencer table neither removes rows nor lists removed ones, and no deletion SHALL be attributed to it. A deleted row SHALL NOT be raised as a deduplication candidate, and a candidate group SHALL lose a member a deletion took out of the table.
 
@@ -426,9 +436,9 @@ Whether a row is listed SHALL NOT change what the sheet holds: a hidden row rema
 - **WHEN** the organizer returns to Fencers after deleting a row there
 - **THEN** the row is listed, struck through, and offers to be restored
 
-#### Scenario: A late deletion leaves the earlier phases alone
-- **WHEN** the organizer deletes a row on Payments and then opens Fencers
-- **THEN** the row is listed there, struck through, and can be restored from there
+#### Scenario: The later phases offer nothing on a row
+- **WHEN** the organizer opens Matching on HR, Payments or Export
+- **THEN** no row offers to be deleted or restored, and a row deleted on Fencers is simply absent
 
 #### Scenario: Restoring returns it to every phase
 - **WHEN** the organizer restores a row deleted on Fencers

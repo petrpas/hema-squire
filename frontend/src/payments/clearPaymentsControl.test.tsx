@@ -5,7 +5,7 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
 import { api } from "../api";
 import i18n from "../i18n";
-import ClearPaymentsPanel from "./ClearPaymentsPanel";
+import ClearPaymentsControl from "./ClearPaymentsControl";
 
 // Undoing an import of money (spec `payments-clearing`). What the organizer is
 // told before committing is as much the feature as the action: that it cannot
@@ -44,7 +44,7 @@ function totals(payments: number, credited = 0) {
 }
 
 function render(reload = 0) {
-  return mount(<ClearPaymentsPanel slug="cup" reload={reload} onCleared={() => {}} />);
+  return mount(<ClearPaymentsControl slug="cup" reload={reload} busy={false} onCleared={() => {}} />);
 }
 
 beforeEach(() => void vi.restoreAllMocks());
@@ -53,12 +53,12 @@ afterEach(() => {
   host = null;
 });
 
-it("states how many payments it would remove", async () => {
+it("states how many payments it would remove, on the control itself", async () => {
   totals(43);
   render();
   await settle();
 
-  expect(host?.querySelector(".rail-count")?.textContent).toBe("(43)");
+  expect(buttonNamed(t("payments.clear.action", { payments: 43 }))).toBeDefined();
 });
 
 it("offers nothing when the tournament has taken no money", async () => {
@@ -75,7 +75,7 @@ it("asks before clearing, and says the file will be read afresh", async () => {
   render();
   await settle();
 
-  act(() => void buttonNamed(t("payments.clear.action"))?.click());
+  act(() => void buttonNamed(t("payments.clear.action", { payments: 43 }))?.click());
 
   expect(clear).not.toHaveBeenCalled();
   expect(host?.textContent).toContain("43");
@@ -88,10 +88,10 @@ it("clears once confirmed and reports what went", async () => {
   totals(43);
   const clear = vi.spyOn(api, "clearPayments").mockResolvedValue({ payments: 43 });
   const onCleared = vi.fn();
-  mount(<ClearPaymentsPanel slug="cup" reload={0} onCleared={onCleared} />);
+  mount(<ClearPaymentsControl slug="cup" reload={0} busy={false} onCleared={onCleared} />);
   await settle();
 
-  act(() => void buttonNamed(t("payments.clear.action"))?.click());
+  act(() => void buttonNamed(t("payments.clear.action", { payments: 43 }))?.click());
   act(() => void buttonNamed(t("payments.clear.confirm.confirm"))?.click());
   await settle();
 
@@ -106,7 +106,7 @@ it("cancelling leaves the payments alone", async () => {
   render();
   await settle();
 
-  act(() => void buttonNamed(t("payments.clear.action"))?.click());
+  act(() => void buttonNamed(t("payments.clear.action", { payments: 43 }))?.click());
   act(() => void buttonNamed(t("common.cancel"))?.click());
 
   expect(clear).not.toHaveBeenCalled();
@@ -117,10 +117,8 @@ it("states that credited money makes clearing unavailable, instead of failing on
   render();
   await settle();
 
-  expect(buttonNamed(t("payments.clear.action"))).toBeUndefined();
-  expect(host?.textContent).toContain(
-    t("payments.clear.blockedByCredit", { count: 4 }),
-  );
+  expect(buttonNamed(t("payments.clear.action", { payments: 43 }))).toBeUndefined();
+  expect(host?.textContent).toContain(t("payments.clear.blockedByCredit"));
 });
 
 it("says so when the clear fails", async () => {
@@ -129,7 +127,7 @@ it("says so when the clear fails", async () => {
   render();
   await settle();
 
-  act(() => void buttonNamed(t("payments.clear.action"))?.click());
+  act(() => void buttonNamed(t("payments.clear.action", { payments: 43 }))?.click());
   act(() => void buttonNamed(t("payments.clear.confirm.confirm"))?.click());
   await settle();
 
@@ -147,7 +145,7 @@ it("follows the console when the money moves", async () => {
   document.body.append(host);
   const root = createRoot(host);
   const view = (reload: number) => (
-    <ClearPaymentsPanel slug="cup" reload={reload} onCleared={() => {}} />
+    <ClearPaymentsControl slug="cup" reload={reload} busy={false} onCleared={() => {}} />
   );
   act(() => root.render(view(0)));
   await settle();

@@ -6,31 +6,36 @@ import { type ClearablePayments, api } from "../api";
 /** Undoing an import of money.
  *
  *  A statement read wrongly puts every payment in the tournament wrong, and
- *  until this existed the only way out was to edit the database. The undo lives
- *  beside the intake card that does the importing.
+ *  until this existed the only way out was to edit the database. It sits
+ *  directly under the control that loads a statement, because it is that
+ *  control's undo — not a separate concern with a card of its own.
  *
  *  Two things it owes the organizer. That clearing removes the stored readings
  *  of the statement rows as well as the payments, so a corrected file is read
  *  afresh — which the confirmation says plainly, because nothing on screen
  *  would otherwise explain why a re-import behaves differently. And that where
  *  money has been credited the clear is unavailable, stated here rather than
- *  discovered by pressing it.
+ *  discovered by pressing it, as the intake card states a missing Fio token.
  */
-export default function ClearPaymentsPanel({
+export default function ClearPaymentsControl({
   slug,
   reload,
+  busy,
   onCleared,
 }: {
   slug: string;
   /** Bumped by the console whenever the money may have moved, so the count
    *  here follows an import without the organizer reloading. */
   reload: number;
+  /** The intake card's own idea of being busy: an operation the clear must not
+   *  race is one the organizer must not start it during. */
+  busy: boolean;
   onCleared: () => void;
 }) {
   const { t } = useTranslation();
   const [totals, setTotals] = useState<ClearablePayments | null>(null);
   const [confirming, setConfirming] = useState(false);
-  const [busy, setBusy] = useState(false);
+  const [working, setWorking] = useState(false);
   const [failed, setFailed] = useState(false);
   const [cleared, setCleared] = useState<number | null>(null);
 
@@ -41,7 +46,7 @@ export default function ClearPaymentsPanel({
   useEffect(load, [load, reload]);
 
   async function clear() {
-    setBusy(true);
+    setWorking(true);
     setFailed(false);
     try {
       const body = await api.clearPayments(slug);
@@ -52,7 +57,7 @@ export default function ClearPaymentsPanel({
     } catch {
       setFailed(true);
     } finally {
-      setBusy(false);
+      setWorking(false);
     }
   }
 
@@ -64,35 +69,26 @@ export default function ClearPaymentsPanel({
 
   return (
     <>
-      <section className="rail-card">
-        <h2>
-          {t("payments.clear.title")} <span className="rail-count">({payments})</span>
-        </h2>
-        <p className="rail-hint">{t("payments.clear.hint")}</p>
+      {credited > 0 ? (
+        // a fact about the tournament, not an outcome of trying: stated
+        // instead of offering a control that fails (spec payments-clearing)
+        <p className="rail-hint instead-of-control">{t("payments.clear.blockedByCredit")}</p>
+      ) : (
+        payments > 0 && (
+          <button
+            className="secondary param-save"
+            disabled={busy || working}
+            onClick={() => setConfirming(true)}
+          >
+            {t("payments.clear.action", { payments })}
+          </button>
+        )
+      )}
 
-        {credited > 0 ? (
-          // a fact about the tournament, not an outcome of trying: stated
-          // instead of offering a control that fails (spec payments-clearing)
-          <p className="rail-hint">
-            {t("payments.clear.blockedByCredit", { count: credited })}
-          </p>
-        ) : (
-          payments > 0 && (
-            <button
-              className="secondary param-save"
-              disabled={busy}
-              onClick={() => setConfirming(true)}
-            >
-              {t("payments.clear.action")}
-            </button>
-          )
-        )}
-
-        {failed && <p className="login-error">{t("payments.clear.failed")}</p>}
-        {cleared !== null && (
-          <p className="rail-hint">{t("payments.clear.result", { count: cleared })}</p>
-        )}
-      </section>
+      {failed && <p className="login-error">{t("payments.clear.failed")}</p>}
+      {cleared !== null && (
+        <p className="rail-hint">{t("payments.clear.result", { count: cleared })}</p>
+      )}
 
       {confirming && (
         <div className="modal-backdrop" onClick={() => setConfirming(false)}>
@@ -104,17 +100,13 @@ export default function ClearPaymentsPanel({
             <p>{t("payments.clear.confirm.reread")}</p>
             <p>{t("payments.clear.confirm.final")}</p>
             <div className="modal-actions">
-              <button
-                type="button"
-                className="secondary"
-                onClick={() => setConfirming(false)}
-              >
+              <button type="button" className="secondary" onClick={() => setConfirming(false)}>
                 {t("common.cancel")}
               </button>
               <button
                 type="button"
                 className="btn-primary"
-                disabled={busy}
+                disabled={working}
                 onClick={() => void clear()}
               >
                 {t("payments.clear.confirm.confirm")}

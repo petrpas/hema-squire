@@ -239,7 +239,7 @@
     "email": "E-mail",
     "reg_name": "Jméno z přihlášky",
     "match_verdict": "Spárování",
-    "merge_note": "Poznámka ke sloučení",
+    "merge_note": "Pozn.",
     "outstanding": "Zbývá",
     "settled": "Vyrovnáno"
   },
@@ -576,8 +576,8 @@
           "organizer": "Seznam přihlášených si vedeš sám — vlastní formulář, tabulka, klubová konference — a do Squire ho dostaneš importem. Squire ho vyčistí, spáruje s HEMA Ratings, nacení a vyexportuje. Nikomu nepíše a žádnou přihlášku nedrží."
         },
         "consequence": {
-          "squire": "Šermíři se hlásí ve Squire. Ten za tebe vede stav přihlášek a seznamy.",
-          "organizer": "Ve Squire se nikdo nepřihlásí a Squire nikomu nic neposílá."
+          "squire": "Squire se stará o všechno: přihlášky, odhlášky, seznamy, změny…",
+          "organizer": "Přihlášky si sbírám sám, do Squire nahraju seznam lidí."
         },
         "confirmToManual": "Přihlašování ve Squire se zavře a Squire pro tento turnaj přestane posílat maily a rušit rezervace.",
         "confirmToAutomatic": "Přihlašování se otevře podle termínů turnaje a Squire začne vést registrace, které turnaj drží.",
@@ -609,17 +609,17 @@
         },
         "consequence": {
           "automatic": {
-            "squire": "Squire obstarává platby, řekne si o peníze, hlídá je a upomíná.",
+            "squire": "Squire obstarává platby, řekne si o peníze, hlídá kdo zaplatil, upomíná ostatní.",
             "self": "Platby si řešíš sám. Squire ceny spočítá a ukáže je šermířům; co přišlo, si hlídáš ty."
           },
           "manual": {
             "squire": "Platby si řešíš sám. Squire ti může pomoct s párováním podle výpisu.",
-            "self": "Platby si řešíš sám. Squire soupisku nacení pro export a peněz se nedotkne."
+            "self": "Platby si řešíš sám. Ve Squire jen nastavíš, kdo zaplatil a kdo ne."
           }
         }
       },
       "includes": {
-        "title": "Co turnaj zahrnuje"
+        "title": "Rozšiřující možnosti"
       },
       "feature": {
         "schedule": "Program turnaje",
@@ -941,8 +941,17 @@
     },
     "setAside": "{{count}} patřilo jinému turnaji na tomto účtu — není třeba nic dělat, spáruje je jeho vlastní konzole.",
     "tolerance": {
-      "title": "Tolerance párování",
-      "hint": "O kolik se smí poslaná částka lišit od dlužné a přesto se počítat jako zaplaceno. Projeví se při dalším spuštění."
+      "title": "Tolerance párování částky (%)",
+      "hint": "O kolik se smí poslaná částka lišit od dlužné a přesto se počítat jako zaplaceno. Použije se na platby, které teprve přijdou; co je už rozhodnuté, se nepřepočítá samo.",
+      "resettleable_one": "{{count}} platba přišla o něco nižší a do téhle tolerance se vejde.",
+      "resettleable_few": "{{count}} platby přišly o něco nižší a do téhle tolerance se vejdou.",
+      "resettleable_many": "{{count}} platby přišlo o něco nižší a do téhle tolerance se vejde.",
+      "resettleable_other": "{{count}} plateb přišlo o něco nižší a do téhle tolerance se vejde.",
+      "resettle": "Uznat je jako zaplacené",
+      "settled_one": "{{count}} registrace označena jako zaplacená. Šermíři přišel mail.",
+      "settled_few": "{{count}} registrace označeny jako zaplacené. Šermířům přišel mail.",
+      "settled_many": "{{count}} registrace označeno jako zaplacené. Šermířům přišel mail.",
+      "settled_other": "{{count}} registrací označeno jako zaplacených. Šermířům přišel mail."
     },
     "queue": {
       "failed": "Seznam se nepodařilo načíst.",
@@ -1001,10 +1010,10 @@
     },
     "intake": {
       "title": "Příjem plateb",
-      "hint": "Výpis z libovolné banky, jako CSV nebo XLSX.",
+      "hint": "Výpis účtu (.csv, .xlsx)",
       "upload": "Načíst výpis",
       "poll": "Stáhnout z banky",
-      "noToken": "Turnaj nemá nastavený token k bankovnímu API, stahovat tedy nelze.",
+      "noToken": "Bankovní API: není nastaven token",
       "lifecycle": "Spustit expirace a upomínky",
       "imported": "Načteno: {{new}} nových, {{matched}} spárováno.",
       "polled": "Staženo: {{new}} nových, {{matched}} spárováno.",
@@ -1020,15 +1029,19 @@
       "issued": "Vystaveno {{count}} registrací."
     },
     "clear": {
-      "title": "Smazat platby",
-      "hint": "Odstraní všechny přijaté platby i to, jak se přečetl každý řádek výpisu.",
-      "action": "Smazat platby…",
-      "blockedByCredit": "Mazání není dostupné: {{count}} plateb je připsáno šermíři. Nejdřív je odpojte.",
-      "result": "Odstraněno {{count}} plateb.",
+      "action": "Smazat platby ({{payments}})…",
+      "blockedByCredit": "Mazání není dostupné: odpojte platby.",
+      "result_one": "Odstraněna {{count}} platba.",
+      "result_few": "Odstraněny {{count}} platby.",
+      "result_many": "Odstraněno {{count}} platby.",
+      "result_other": "Odstraněno {{count}} plateb.",
       "failed": "Platby se nepodařilo smazat.",
       "confirm": {
         "title": "Smazat platby?",
-        "body": "Odstraní se {{count}} plateb a vše, co je o nich zaznamenáno.",
+        "body_one": "Odstraní se {{count}} platba a vše, co je o ní zaznamenáno.",
+        "body_few": "Odstraní se {{count}} platby a vše, co je o nich zaznamenáno.",
+        "body_many": "Odstraní se {{count}} platby a vše, co je o nich zaznamenáno.",
+        "body_other": "Odstraní se {{count}} plateb a vše, co je o nich zaznamenáno.",
         "reread": "Odstraní se i to, jak se přečetl každý řádek výpisu, takže se soubor při dalším načtení přečte znovu.",
         "final": "Tuto akci nelze vzít zpět.",
         "confirm": "trvale odstranit"

@@ -764,3 +764,100 @@ def unapply_payment_link(session: Session, tournament: Tournament, rule) -> None
             )
         )
     session.commit()
+def _settles_now(transaction: BankTransaction, tournament: Tournament) -> Registration | None:
+    """The registration a `partial` transaction would settle under the
+    tournament's tolerance as it stands now, or None where it would not.
+
+    The test is `_settle`'s own — `remaining > tolerance` against
+    `_tolerance_cents` — asked again rather than restated, so a change to what
+    "close enough" means reaches this and the live matching pass together.
+
+    Only a reservation still owing money qualifies. A registration that has
+    since been paid by other means, expired or been demoted is not waiting on
+    a tolerance, and re-deciding it here would overwrite an answer something
+    else already gave.
+
+    **`matched_registration_id` is what keeps uncredited money out**, not the
+    `partial` filter on the query above it. A transaction the tolerance refused
+    before crediting — a bare token with the wrong amount, say — is finished
+    before `_evaluate_transaction` names a registration on it, so it has none to
+    settle and cannot be reached from here however the query is widened. The
+    filter narrows the work; this guard is what makes the narrowing true."""
+    if transaction.matched_registration_id is None:
+        return None
+    registration = transaction.matched_registration
+    if registration is None or registration.state != RegistrationState.RESERVED:
+        return None
+    which = match_currency(transaction, tournament)
+    if which is None:
+        return None
+    remaining = (
+        registration.outstanding_cents if which == "local" else registration.outstanding_eur_cents
+    )
+    if remaining > _tolerance_cents(registration, tournament, which):
+        return None
+    return registration
+
+
+def _partial_transactions(session: Session, tournament: Tournament) -> list[BankTransaction]:
+    return list(
+        session.scalars(
+            select(BankTransaction)
+            .where(
+                BankTransaction.tournament_id == tournament.id,
+                BankTransaction.status == "partial",
+            )
+            .order_by(BankTransaction.date, BankTransaction.id)
+        ).all()
+    )
+
+
+def resettleable(session: Session, tournament: Tournament) -> int:
+    """How many short payments the tolerance as it stands would now let
+    through, so the console can state the number before the organizer commits
+    to it rather than report it afterwards."""
+    return sum(
+        1
+        for transaction in _partial_transactions(session, tournament)
+        if _settles_now(transaction, tournament) is not None
+    )
+
+
+def resettle_within_tolerance(session: Session, tournament: Tournament, mailer: Mailer) -> int:
+    """Re-decide the short payments a widened tolerance now covers.
+
+    **No money moves.** These transactions were credited when they arrived —
+    `_evaluate_transaction` credits before `_settle` decides — and what was
+    left open was only the verdict on whether the amount was close enough. So
+    this re-asks that one question and nothing else: it credits nothing, it
+    touches no transaction the tolerance did not decide, and it never reaches a
+    payment nobody has looked at.
+
+    **It only ever loosens.** A tightened tolerance leaves what is already
+    settled alone. Symmetry would say a registration outside the new tolerance
+    should go back to owing money, but Squire has told that fencer they are
+    paid, by mail; taking it back is not something a percentage field does on
+    its own (spec `payments`, Re-deciding a short payment).
+
+    Returns how many registrations were settled."""
+    bank.require_payments_enabled(tournament)
+    settled = 0
+    for transaction in _partial_transactions(session, tournament):
+        registration = _settles_now(transaction, tournament)
+        if registration is None:
+            continue
+        registration.state = RegistrationState.PAID
+        registration.paid_at = datetime.now(UTC)
+        transaction.status = "matched"
+        transaction.status_reason = "tolerance_widened"
+        _event(
+            session, transaction, "payment_matched",
+            f"tolerance {tournament.amount_tolerance_percent}%: "
+            f"{registration.audit_label} settled short",
+            registration,
+        )
+        session.flush()
+        emails.send_payment_received(mailer, tournament, registration.fencer, registration)
+        settled += 1
+    session.commit()
+    return settled

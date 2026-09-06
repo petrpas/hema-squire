@@ -53,7 +53,9 @@ def _seed(db_path: Path) -> None:
             local_currency="CZK")
     _insert(conn, "fencers", id=1, email="a@example.com", password_hash="x",
             display_name="A", role="organizer", language="cs")
-    batches = {1: ["aaaa", "bbbb"], 2: ["aaaa", "bbbb", "cccc"], 3: ["aaaa", "bbbb", "cccc", "dddd"]}
+    batches = {1: ["aaaa", "bbbb"],
+               2: ["aaaa", "bbbb", "cccc"],
+               3: ["aaaa", "bbbb", "cccc", "dddd"]}
     for batch_id, keys in batches.items():
         _insert(conn, "import_batches", id=batch_id, tournament_id=1,
                 filename="regs.csv", uploaded_by=1, row_count=len(keys))
