@@ -24,9 +24,7 @@ fencer list, which is the phase that reads what a fencer asked for.
 - **WHEN** the organizer opens Matching on HR, Payments or Export
 - **THEN** no rentals cell opens for editing
 
-## MODIFIED Requirements
-
-### Requirement: Note and problem markers
+### Requirement: Note and problem markers on both views
 A row's note and its parse problems SHALL NOT occupy table columns of their own. Each SHALL be shown as a marker in a narrow column, and the marker SHALL be shown only on a row that carries such content — a row with no note SHALL show nothing in the note column, not a dash and not an empty marker.
 
 Activating a marker SHALL disclose the full text in place, as static bordered text that closes on dismissal. The disclosed text SHALL be read-only: a note is the fencer's words or the parser's, and a problem is the parser's report, neither of which the organizer rewrites.
@@ -54,3 +52,9 @@ The problem marker SHALL be offered on both as well. It began as a property of a
 #### Scenario: A registration's note is reachable
 - **WHEN** an in-app registration carries a note from the fencer
 - **THEN** its marker appears on the fencer list and discloses that note
+
+## REMOVED Requirements
+
+### Requirement: Note and problem markers
+**Reason**: The problem marker stopped being a property of an imported row alone. A row now carries problems that outlive parsing — a borrowed item the tournament lends nothing by — and the requirement's rule that the fencer list offers no problem column would hide exactly those.
+**Migration**: Replaced in full by **Note and problem markers on both views**, which keeps every rule about the two markers and offers the problem marker on the fencer list as well.

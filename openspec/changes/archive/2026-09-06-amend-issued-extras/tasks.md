@@ -41,4 +41,4 @@
 
 - [x] 6.1 `pytest` and `ruff check .` clean; the fencer's own amendment tests untouched
 - [x] 6.2 `vitest`, `npm run lint` and `npm run build` clean
-- [ ] 6.3 Against the pilot roster: correct a rental on an issued registration and confirm the fencer list, the outstanding column and the export all state the same thing afterwards
+- [x] 6.3 Against the pilot roster: correct a rental on an issued registration and confirm the fencer list, the outstanding column and the export all state the same thing afterwards
