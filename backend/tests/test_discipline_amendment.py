@@ -43,7 +43,7 @@ def mailbox():
     yield mailer
     app.dependency_overrides.pop(get_mailer, None)
 
-IBAN = "CZ6520100000002000145399"
+IBAN = "CZ6508000000192000145399"
 
 
 def setup(client, organizer, *, sb_capacity=20, early_fee=None, early_until=None):
@@ -278,11 +278,19 @@ def test_an_overpaid_registration_is_marked_for_refund(client, auth_headers, mai
     setup(client, organizer)
     listed = issued_row(client, organizer, [row("Jan", "jan@example.com", disciplines="SA|SB")])
     registration = registration_of(listed["id"])
-    client.post(
-        f"/api/tournaments/cup/payments/registrations/{registration.id}/record",
-        json={"amount": "1300", "currency": "CZK", "note": "cash"},
+    response = client.post(
+        "/api/tournaments/cup/payments/manual",
+        json={
+            "registration_id": registration.id,
+            "amount": "1300.00",
+            "currency": "CZK",
+            "received_on": "2026-08-01",
+            "method": "cash",
+        },
         headers=organizer,
     )
+    assert response.status_code in (200, 201), response.text
+    assert registration_of(listed["id"]).state is RegistrationState.PAID
 
     amend(client, organizer, listed["id"], ["SB"])
 
@@ -402,3 +410,28 @@ def test_an_amendment_records_a_payment_event(client, auth_headers, mailbox):
     session = db_session()
     kinds = [event.kind for event in session.scalars(select(PaymentEvent))]
     assert "registration_amended" in kinds
+
+
+def test_the_console_is_told_what_changed_about_the_money(client, auth_headers, mailbox):
+    """The half of the edit the organizer cannot see in the cell."""
+    organizer = auth_headers()
+    setup(client, organizer)
+    listed = issued_row(client, organizer)
+
+    reported = amend(client, organizer, listed["id"], ["SA", "SB"]).json()["amendment"]
+
+    assert reported["previous_total"] == "800"
+    assert reported["total"] == "1300"
+    assert reported["notified"] is True
+
+
+def test_a_cheaper_correction_reports_no_letter(client, auth_headers, mailbox):
+    organizer = auth_headers()
+    setup(client, organizer)
+    listed = issued_row(client, organizer, [row("Jan", "jan@example.com", disciplines="SA|SB")])
+
+    reported = amend(client, organizer, listed["id"], ["SA"]).json()["amendment"]
+
+    assert reported["previous_total"] == "1300"
+    assert reported["total"] == "800"
+    assert reported["notified"] is False

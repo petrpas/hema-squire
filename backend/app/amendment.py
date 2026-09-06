@@ -13,6 +13,9 @@ What differs between the two callers is passed in rather than sniffed at:
 whether a full discipline seats or queues, and which notice goes out.
 """
 
+from dataclasses import dataclass
+from decimal import Decimal
+
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
@@ -46,6 +49,19 @@ FENCER = "fencer"
 SURCHARGE_ONLY = "surcharge_only"
 
 
+@dataclass
+class AmendmentResult:
+    """What the amendment did to the money, and whether the fencer was told.
+
+    Reported back to the console because it is the half of the edit the
+    organizer cannot see in the cell: the disciplines are in front of them, the
+    price and the letter are not (spec discipline-amendment)."""
+
+    previous_total: Decimal | None
+    total: Decimal | None
+    notified: bool
+
+
 def apply_amendment(
     session: Session,
     tournament: Tournament,
@@ -58,7 +74,7 @@ def apply_amendment(
     extras: list | None = None,
     team_entries: list | None = None,
     fields: dict | None = None,
-) -> None:
+) -> AmendmentResult:
     """Replace a registration's selection, re-price it and tell whoever is owed
     telling. Commits.
 
@@ -186,12 +202,15 @@ def apply_amendment(
     # a paid registration send a surcharge demand for money nobody owed
     underpaid = registration.balance_cents(tournament)[0] > 0
     fencer = registration.fencer
+    notified = False
     if notice == FENCER:
         if was_paid:
             if underpaid:
                 emails.send_surcharge_due(mailer, tournament, fencer, registration)
+                notified = True
         else:
             emails.send_amendment_confirmation(mailer, tournament, fencer, registration)
+            notified = True
     elif notice == SURCHARGE_ONLY:
         # only where the correction costs the fencer: the total went up *and*
         # there is money outstanding to ask for. The second half matters —
@@ -199,7 +218,18 @@ def apply_amendment(
         # and a demand for money nobody owes is the defect the fencer's own
         # path already guards against
         if underpaid and registration.total_amount > previous_total:
-            emails.send_surcharge_due(mailer, tournament, fencer, registration)
+            # dormancy does not suppress it: what is dormant is the passage of
+            # time, not a statement about money that has just changed
+            emails.send_surcharge_due(
+                mailer, tournament, fencer, registration, despite_dormancy=True
+            )
+            # what the console is told went out. A tournament Squire collects
+            # nothing for sends no payment mail at all, and reporting a letter
+            # that was never composed would be worse than reporting none
+            notified = tournament.feature_payments
+    return AmendmentResult(
+        previous_total=previous_total, total=registration.total_amount, notified=notified
+    )
 
 
 def dormant_by_origin(registration: Registration) -> bool:
@@ -269,7 +299,7 @@ def reapply_amendments(
     amendments: list[list[str]],
     base: list[str],
     mailer: Mailer,
-) -> None:
+) -> AmendmentResult:
     """Put the registration into the state the amendments that remain produce.
 
     Not an inverse of the operation just undone. Withdrawal is a replay, as it
@@ -282,7 +312,7 @@ def reapply_amendments(
     Priced and placed on the same terms the amendment itself was, and silent
     unless the result leaves the fencer owing more."""
     slugs = amendments[-1] if amendments else base
-    apply_amendment(
+    return apply_amendment(
         session,
         tournament,
         registration,

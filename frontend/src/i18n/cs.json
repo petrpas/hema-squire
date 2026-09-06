@@ -223,6 +223,18 @@
         "registration_not_live": "Tuto registraci nelze označit.",
         "not_settled_by_hand": "Tuto registraci vyrovnaly peníze, ne ruční označení."
       }
+    },
+    "amendment": {
+      "repriced": "Opraveno. Registrace byla {{previous}}, nyní je {{total}}.",
+      "unchanged": "Opraveno. Registrace zůstává {{total}}.",
+      "notified": "Závodníkovi byl odeslán doplatek.",
+      "silent": "Žádný e-mail neodešel.",
+      "error": {
+        "failed": "Opravu se nepodařilo provést.",
+        "row_has_registration": "Za tímto řádkem stojí registrace; její disciplíny se mění, nepřepisují se.",
+        "registration_not_live": "Tato registrace už není živá a tady se neopravuje.",
+        "no_registration_for_row": "K tomuto řádku není žádná registrace, kterou by šlo změnit."
+      }
     }
   },
   "row": {

@@ -96,7 +96,10 @@ def _account_text(tournament: Tournament) -> str:
 
 
 def _payment_mail_suppressed(
-    tournament: Tournament, registration: Registration | None = None
+    tournament: Tournament,
+    registration: Registration | None = None,
+    *,
+    despite_dormancy: bool = False,
 ) -> bool:
     """Whether this payment message is not sent at all. Guarded here, at the one
     place every such message is composed, rather than at each of the several
@@ -120,9 +123,18 @@ def _payment_mail_suppressed(
 
     What is dormant is the passage of time and not the money: such a
     registration is still matched, still linked and still credited. It is only
-    not told."""
+    The one exception is a statement about money that has just changed under
+    the fencer's feet. An organizer's discipline correction that leaves an
+    issued registration owing more is told, dormant or not (spec
+    `discipline-amendment`, The fencer is told only where the correction costs
+    them): what dormancy suspends is the passage of time — the reminders and
+    the expiry notice — and the surcharge carries information the fencer cannot
+    get any other way and must act on. `despite_dormancy` is how that one
+    message says so; nothing else passes it."""
     if not tournament.feature_payments:
         return True
+    if despite_dormancy:
+        return False
     return registration is not None and registration.clocks_dormant
 
 
@@ -421,13 +433,22 @@ def send_amendment_confirmation(
 
 
 def send_surcharge_due(
-    mailer: Mailer, tournament: Tournament, fencer: Fencer, registration: Registration
+    mailer: Mailer,
+    tournament: Tournament,
+    fencer: Fencer,
+    registration: Registration,
+    *,
+    despite_dormancy: bool = False,
 ) -> None:
-    """A paid registration amended upward: payment instructions for exactly
-    the difference in each currency, against the same VS the fencer already
-    paid once. The two currencies' outstanding amounts are independent —
-    a price change need not move both the same way."""
-    if _payment_mail_suppressed(tournament, registration):
+    """A registration amended upward: payment instructions for exactly the
+    difference in each currency, against the same VS the fencer already paid
+    once. The two currencies' outstanding amounts are independent — a price
+    change need not move both the same way.
+
+    `despite_dormancy` is the organizer's discipline correction: an issued
+    registration that now owes more is told, because the change is theirs to
+    act on and nothing else will tell them."""
+    if _payment_mail_suppressed(tournament, registration, despite_dormancy=despite_dormancy):
         return
     lang = tournament.language
     outstanding_local = (Decimal(registration.outstanding_cents) / 100).quantize(

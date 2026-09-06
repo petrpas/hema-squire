@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { Link, useNavigate } from "react-router-dom";
 
 import AccountMenu from "./AccountMenu";
+import AmendmentNotice from "./AmendmentNotice";
 import DedupPanel from "./dedup/DedupPanel";
 import DedupView from "./dedup/DedupView";
 import ExportPanel from "./ExportPanel";
@@ -39,7 +40,9 @@ import { registeredMoment } from "./momentText";
 import { parseInteger } from "./numeric";
 import { checkNumeric, checkString, type FieldError } from "./validation";
 import {
+  ApiError,
   type Account,
+  type Amendment,
   type NetChange,
   type Sheet,
   type SheetRow,
@@ -138,17 +141,20 @@ export const BONED_PAYMENTS_COLUMNS = ["total_amount", "outstanding", "settled"]
 // Note and problem markers).
 const EDITABLE_COLUMNS = new Set(["name", "nationality", "club", "hr_id"]);
 
-/** Columns a row owns only while it is still a row.
+/** Columns the fencer list owns, and no other phase.
  *
- *  Disciplines are the one of these. A row's are what the fencer entered and
- *  the organizer may correct them; an issued registration's are its entries,
- *  which decide what it is billed and where it is seated — so a cell edit there
- *  would move the table and not the money, and the row would read one thing
- *  while the registration charged another.
+ *  Disciplines are the one of these. Offered on the fencer list and nowhere
+ *  else: the phases after it read the roster rather than settle it, and Import
+ *  has no registration to amend.
  *
- *  Offered on the fencer list and nowhere else: the phases after it read the
- *  roster rather than settle it. */
-const ROW_ONLY_COLUMNS = new Set(["disciplines"]);
+ *  Whether a registration stands behind the row decides what the edit *does* —
+ *  a correction to the row, or an amendment of the registration — and not
+ *  whether the cell opens (spec `etl-console`, The disciplines cell is not
+ *  closed by the row having a registration). It used to decide both, from a
+ *  time when issuing was a button the organizer pressed when they were ready;
+ *  issuing is a step of payment intake now, so every imported row has a
+ *  registration within seconds of arriving and the cell opened for nothing. */
+const FENCER_LIST_COLUMNS = new Set(["disciplines"]);
 
 /** Slugs out of the text a discipline cell is edited as. Separators are loose
  *  on purpose — a comma is what the cell shows, and a space is what someone
@@ -169,9 +175,9 @@ export function parseDisciplines(raw: string): string[] {
  *  cell is read-only there too: making only those editable would put the
  *  affordance on exactly the rows that are hardest to identify, and the rule it
  *  created would stop being displayed the moment the row was matched. */
-export function editableHere(column: string, phase: Phase, row?: SheetRow): boolean {
-  if (ROW_ONLY_COLUMNS.has(column)) {
-    return phase === "fencers" && (row?.registration_id ?? null) === null;
+export function editableHere(column: string, phase: Phase): boolean {
+  if (FENCER_LIST_COLUMNS.has(column)) {
+    return phase === "fencers";
   }
   // Matching decides one thing: which profile the row is. Its table shows the
   // claim beside the evidence so that decision can be made, and correcting the
@@ -187,10 +193,25 @@ export function editableHere(column: string, phase: Phase, row?: SheetRow): bool
 /** The rule an edited cell becomes. An id typed into the table is a verdict,
  *  carrying the same weight and the same consequences as one picked out of
  *  search — an emptied cell says the fencer has no profile (spec
- *  `etl-console`, A typed id is a verdict). Every other cell is the
- *  organizer's correction of what the fencer told us. */
-export function ruleKindFor(field: string): "match_resolution" | "field_edit" {
-  return field === "hr_id" ? "match_resolution" : "field_edit";
+ *  `etl-console`, A typed id is a verdict).
+ *
+ *  Disciplines become one of two kinds, decided by whether a registration
+ *  stands behind the row. A field edit writes the projected row, which is the
+ *  right thing for a row that is still a row and carried into the registration
+ *  when it is issued. Where a registration already exists, the edit amends it:
+ *  its entries are replaced and its total recomputed, so the table and the
+ *  money move together (spec `discipline-amendment`).
+ *
+ *  Every other cell is the organizer's correction of what the fencer told us. */
+export function ruleKindFor(
+  field: string,
+  row?: SheetRow,
+): "match_resolution" | "field_edit" | "discipline_amendment" {
+  if (field === "hr_id") return "match_resolution";
+  if (field === "disciplines" && (row?.registration_id ?? null) !== null) {
+    return "discipline_amendment";
+  }
+  return "field_edit";
 }
 
 /** The number the leftmost column shows: the fencer's fixed number, on every
@@ -417,6 +438,10 @@ export default function Console({
   const [detail, setDetail] = useState<TournamentDetail | null>(null);
   const [error, setError] = useState(false);
   const [matchRow, setMatchRow] = useState<SheetRow | null>(null);
+  // the last discipline correction's effect on the money, stated once and then
+  // gone; null on every other edit, which the table alone accounts for
+  const [amendment, setAmendment] = useState<Amendment | null>(null);
+  const [refusal, setRefusal] = useState<string | null>(null);
   const [account, setAccount] = useState<Account | null>(null);
   const [setupDirty, setSetupDirty] = useState(false);
   const [pendingPhase, setPendingPhase] = useState<Phase | null>(null);
@@ -453,7 +478,19 @@ export default function Console({
   const operations = useOperations(tournament.slug, refresh);
 
   async function addRule(kind: string, target: string, payload: Record<string, unknown>) {
-    await api.createRule(tournament.slug, { phase, kind, target, payload });
+    setAmendment(null);
+    setRefusal(null);
+    try {
+      const created = await api.createRule(tournament.slug, { phase, kind, target, payload });
+      // an amendment moved money and may have written to the fencer; every
+      // other kind changed only what the table says, which the table shows
+      setAmendment(created.amendment ?? null);
+    } catch (error) {
+      // a refused edit says so rather than leaving the cell to look saved: the
+      // table refreshes to what the tournament actually holds either way
+      const detail = error instanceof ApiError ? error.detail : null;
+      setRefusal(typeof detail === "string" ? detail : "failed");
+    }
     refresh();
   }
 
@@ -493,7 +530,7 @@ export default function Console({
     if (field === "disciplines") {
       // a list, not the text it was typed as: the row's own shape, which
       // pricing, seating and issuing all read
-      void addRule(ruleKindFor(field), row.id, { field, value: parseDisciplines(raw) });
+      void addRule(ruleKindFor(field, row), row.id, { field, value: parseDisciplines(raw) });
       return;
     }
     const value =
@@ -507,7 +544,7 @@ export default function Console({
         : raw === ""
           ? null
           : raw;
-    void addRule(ruleKindFor(field), row.id, { field, value });
+    void addRule(ruleKindFor(field, row), row.id, { field, value });
   }
 
   /** Undoing a log entry removes every rule behind it, so the cell returns to
@@ -831,6 +868,14 @@ export default function Console({
 
       {/* the tournament's running work, wherever the organizer stands */}
       <OperationsIndicator running={operations.running} />
+
+      {/* what a discipline correction did to the money, which the cell cannot
+          show (spec discipline-amendment) */}
+      <AmendmentNotice
+        amendment={amendment}
+        refusal={refusal}
+        currency={detail?.local_currency ?? null}
+      />
 
       {matchRow && (
         <MatchDialog

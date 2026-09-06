@@ -1212,6 +1212,18 @@ class RulePayloadIn(BaseModel):
     payload: dict
 
 
+class AmendmentOut(BaseModel):
+    """What an organizer's discipline correction did beyond the cell.
+
+    The disciplines are in front of the organizer; the price and the letter are
+    not, and both are consequences of the edit they have just made (spec
+    `discipline-amendment`). Absent on every other kind of rule."""
+
+    previous_total: decimal.Decimal | None
+    total: decimal.Decimal | None
+    notified: bool
+
+
 class RuleOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -1222,6 +1234,7 @@ class RuleOut(BaseModel):
     payload: dict
     created_by: int
     created_at: datetime.datetime
+    amendment: AmendmentOut | None = None
 
 
 class NetChangeOut(BaseModel):

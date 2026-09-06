@@ -172,7 +172,7 @@ export default function SheetArea({
                   {columns.map((column) => {
                     const phaseOwned =
                       PHASE_COLUMNS[phase].includes(column) || column === "settled";
-                    const editable = editableHere(column, phase, row) && !row._deleted;
+                    const editable = editableHere(column, phase) && !row._deleted;
                     const isMatch = column === "match";
                     return (
                       <td

@@ -99,6 +99,15 @@ describe("an edited cell", () => {
       expect(ruleKindFor(column)).toBe("field_edit");
     }
   });
+
+  it("records a disciplines edit as an amendment where a registration stands behind the row", () => {
+    // the registration's entries decide what it is billed and where it is
+    // seated, so the edit moves both or neither (spec `discipline-amendment`)
+    expect(ruleKindFor("disciplines", row({ registration_id: 7 }))).toBe(
+      "discipline_amendment",
+    );
+    expect(ruleKindFor("disciplines", row({}))).toBe("field_edit");
+  });
 });
 
 describe("an identity cell after matching", () => {

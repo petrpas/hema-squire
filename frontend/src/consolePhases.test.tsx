@@ -13,6 +13,7 @@ import {
   phaseRemovesRows,
   rowAction,
   rowsForPhase,
+  ruleKindFor,
   type Phase,
 } from "./Console";
 
@@ -303,21 +304,23 @@ describe("which cells a phase opens for editing", () => {
     }
   });
 
-  it("opens disciplines on the fencer list, while the row is still a row", () => {
-    expect(editableHere("disciplines", "fencers", row("imp:a1"))).toBe(true);
+  it("opens disciplines on the fencer list", () => {
+    expect(editableHere("disciplines", "fencers")).toBe(true);
   });
 
-  it("closes disciplines once a registration stands in the row's place", () => {
-    // the entries are the registration's: they decide what it is billed and
-    // where it is seated, so a cell edit would move the table and not the money
-    expect(
-      editableHere("disciplines", "fencers", row("imp:a1", { registration_id: 7 })),
-    ).toBe(false);
+  it("opens disciplines whether or not a registration stands behind the row", () => {
+    // what the edit *does* follows from the registration; whether the cell
+    // opens does not. Issuing is a step of payment intake, so a cell closed on
+    // a row with a registration is a cell that never opens at all
+    expect(ruleKindFor("disciplines", row("imp:a1"))).toBe("field_edit");
+    expect(ruleKindFor("disciplines", row("imp:a1", { registration_id: 7 }))).toBe(
+      "discipline_amendment",
+    );
   });
 
   it("opens disciplines on no other phase", () => {
     for (const phase of ["import", "matching", "payments", "export"] as Phase[]) {
-      expect(editableHere("disciplines", phase, row("imp:a1"))).toBe(false);
+      expect(editableHere("disciplines", phase)).toBe(false);
     }
   });
 });

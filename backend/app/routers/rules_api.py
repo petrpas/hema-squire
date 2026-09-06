@@ -9,7 +9,14 @@ from app.hr_index import HRIndex, get_hr_index
 from app.mail import Mailer, get_mailer
 from app.models import Rule, RuleJournalEntry
 from app.routers.tournaments import FencerDep, SessionDep, TournamentDep
-from app.schemas import NetChangeOut, RuleIn, RuleOut, RulePayloadIn, SheetOut
+from app.schemas import (
+    AmendmentOut,
+    NetChangeOut,
+    RuleIn,
+    RuleOut,
+    RulePayloadIn,
+    SheetOut,
+)
 
 router = APIRouter(prefix="/api/tournaments/{slug}", tags=["rules"])
 
@@ -52,11 +59,16 @@ def create_rule(
         index,
     )
     if rule.kind == "discipline_amendment":
-        _settle_amendments(session, tournament, rule, mailer)
+        result = _settle_amendments(session, tournament, rule, mailer)
+        out = RuleOut.model_validate(rule)
+        out.amendment = None if result is None else AmendmentOut(**result.__dict__)
+        return out
     return rule
 
 
-def _settle_amendments(session, tournament, rule: Rule, mailer: Mailer) -> None:
+def _settle_amendments(
+    session, tournament, rule: Rule, mailer: Mailer
+) -> amendment.AmendmentResult | None:
     """Put the registration behind a row into the state its standing discipline
     amendments produce.
 
@@ -66,8 +78,8 @@ def _settle_amendments(session, tournament, rule: Rule, mailer: Mailer) -> None:
     is the registration reaches it from here."""
     registration = amendment.registration_for_row(session, tournament, rule.target)
     if registration is None:
-        return
-    amendment.reapply_amendments(
+        return None
+    return amendment.reapply_amendments(
         session,
         tournament,
         registration,

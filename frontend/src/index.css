@@ -3426,6 +3426,35 @@ label.checklist-row > input[type="checkbox"] {
   word-break: break-all;
 }
 
+/* ===== amendment notice =====
+
+   What an organizer's discipline correction did beyond the cell: the price
+   either side of it, and whether the fencer was written to. Static text that
+   leaves by fade-out, like the operations indicator beside it — it appears
+   without motion and never animates in. */
+
+.amendment-notice {
+  position: fixed;
+  /* the rail's own column, and clear of the operations indicator's card below,
+     so a correction landing while work runs does not sit on top of it */
+  right: 1rem;
+  width: calc(300px - 2rem);
+  bottom: 8.5rem;
+  z-index: 4;
+  padding: 0.6rem 0.8rem;
+  background: var(--paper-raised);
+  border: var(--border-w) solid var(--hairline);
+  border-radius: var(--radius);
+  font-size: var(--label-size);
+  line-height: 1.45;
+  opacity: 1;
+  transition: opacity 600ms;
+}
+
+.amendment-notice.leaving {
+  opacity: 0;
+}
+
 /* ===== operations indicator =====
 
    What the console is doing, in the corner of every phase. Text that changes

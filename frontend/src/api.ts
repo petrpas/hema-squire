@@ -482,6 +482,17 @@ export interface SheetRow {
   [key: string]: unknown;
 }
 
+export type Amendment = {
+  /** What the registration was priced at before the correction, and after it.
+   *  The pair, not the difference: an organizer reads a correction by seeing
+   *  where it came from. */
+  previous_total: string | null;
+  total: string | null;
+  /** Whether the fencer was written to. Only a correction that leaves them
+   *  owing more is (spec `discipline-amendment`). */
+  notified: boolean;
+};
+
 /** One entry of the manual-edits log: a cell's difference from the source
  *  data, carrying every rule behind it so it can be undone whole. */
 export interface NetChange {
@@ -1009,11 +1020,14 @@ export const api = {
   deleteLogo: (slug: string) =>
     request<void>(logoUrl(slug), { method: "DELETE" }),
   sheet: (slug: string) => request<Sheet>(`/api/tournaments/${slug}/sheet`),
+  /** Creates a rule. `amendment` comes back only for a discipline amendment:
+   *  what the correction did to the registration's total, and whether the
+   *  fencer was written to — the half of the edit the cell does not show. */
   createRule: (
     slug: string,
     rule: { phase: string; kind: string; target: string; payload: Record<string, unknown> },
   ) =>
-    request<{ id: number }>(`/api/tournaments/${slug}/rules`, {
+    request<{ id: number; amendment?: Amendment | null }>(`/api/tournaments/${slug}/rules`, {
       method: "POST",
       body: JSON.stringify(rule),
     }),
