@@ -137,6 +137,33 @@ describe("an identity cell after matching", () => {
 });
 
 
+describe("the rentals cell", () => {
+  // a name the tournament lends nothing by is billed nothing, and the total is
+  // short with no sign of it anywhere else (owner decision, 2026-09-06)
+  it("lists what the row borrows", () => {
+    expect(cell("weapon_rentals", { weapon_rentals: ["Sabre", "Buckler"] }, null)).toBe(
+      "<span>Sabre</span><span>, Buckler</span>",
+    );
+  });
+
+  it("reads a dash where the row borrows nothing", () => {
+    expect(cell("weapon_rentals", { weapon_rentals: [] }, null)).toBe("—");
+  });
+
+  it("marks the item nothing prices, and says why on hover", () => {
+    const html = cell(
+      "weapon_rentals",
+      { weapon_rentals: ["Sabre", "Sword"], unpriced_rentals: ["Sword"] },
+      null,
+    );
+    // both stay listed: the fencer did ask for it
+    expect(html).toContain("Sabre");
+    expect(html).toContain("unpriced-rental");
+    expect(html).toContain("help-hint-box");
+    expect(html).toContain("nepůjčuje");
+  });
+});
+
 describe("money cells", () => {
   it("states the outstanding balance with its unit", () => {
     expect(moneyCell("outstanding", { outstanding_amount: "400.00" })).toBe("400 Kč");

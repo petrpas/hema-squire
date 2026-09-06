@@ -18,6 +18,7 @@ import OperationsIndicator from "./OperationsIndicator";
 import ManualEditsRail from "./ManualEditsRail";
 import ManualEntryPanel from "./manual/ManualEntryPanel";
 import PaidStamp from "./PaidStamp";
+import RentalsCell from "./RentalsCell";
 import TolerancePanel from "./TolerancePanel";
 import ExpiredHoldingPanel from "./payments/ExpiredHoldingPanel";
 import FlaggedPanel from "./payments/FlaggedPanel";
@@ -407,7 +408,11 @@ export function CellDisplay({
       return <NoteMarker kind={column === "notes" ? "note" : "problem"} text={value} />;
     }
     case "weapon_rentals":
-      return <>{row.weapon_rentals.length > 0 ? row.weapon_rentals.join(", ") : "—"}</>;
+      // a name the tournament lends nothing by is billed nothing, and says so
+      // here rather than leaving the total quietly short
+      return (
+        <RentalsCell rentals={row.weapon_rentals} unpriced={row.unpriced_rentals ?? []} />
+      );
     case "afterparty":
       return <>{row.afterparty ? "✓" : "—"}</>;
     case "registered_at":

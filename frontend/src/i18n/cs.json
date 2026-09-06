@@ -208,6 +208,7 @@
       "unset": "Zrušit označení",
       "meaning": "Vyrovnáno je tvůj záznam, že ti peníze dorazily. Squire sám nedostal nic, takže částka, kterou šermíř dluží, zůstává, jak byla."
     },
+    "unpriced_rental": "Tuhle položku turnaj nepůjčuje, takže za ni nic neúčtuje.",
     "waived": "odpuštěno",
     "waived_all": "odpuštěno vše",
     "waived_amount": "odpuštěno {{amount}}",

@@ -476,6 +476,10 @@ export interface SheetRow {
   expires_at: string | null;
   paid_at: string | null;
   weapon_rentals: string[];
+  /** Of those, the ones this tournament lends nothing by that name and so
+   *  bills nothing for. Empty on a tournament priced by a flat rental fee,
+   *  where a rental is billed whatever it is called. */
+  unpriced_rentals?: string[];
   afterparty: boolean;
   aftersparring: boolean;
   notes: string | null;

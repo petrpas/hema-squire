@@ -292,6 +292,124 @@ def test_extras_are_priced_with_the_disciplines(client, auth_headers, mailbox):
     assert registrations()[0].total_amount == 800 + 500 + 100 + 250
 
 
+def offer(client, organizer, name, category, price):
+    response = client.post(
+        "/api/tournaments/cup/extra-items",
+        json={"name": name, "category": category, "price": price, "max_qty": 1},
+        headers=organizer,
+    )
+    assert response.status_code == 201, response.text
+
+
+def sheet_row(client, organizer, name):
+    rows = client.get("/api/tournaments/cup/sheet", headers=organizer).json()["rows"]
+    return next(row for row in rows if row["name"] == name)
+
+
+def test_rentals_are_priced_where_the_tournament_prices_by_items(
+    client, auth_headers, mailbox
+):
+    """The bug this covers: a row's rentals were written into the older
+    per-registration fields alone, which a tournament that prices by items does
+    not bill from. Every borrowed weapon on the pilot was issued free — 32 of
+    them across 19 registrations, and 1 600 Kč in no total anywhere."""
+    organizer = auth_headers()
+    setup(client, organizer)
+    offer(client, organizer, "Sabre", "rental", 50)
+    offer(client, organizer, "Buckler", "rental", 50)
+    import_roster(
+        client,
+        organizer,
+        [row("Jan", "jan@example.com", disciplines="SA", borrow="Sabre|Buckler")],
+    )
+
+    issue(client, organizer)
+
+    registration = registrations()[0]
+    assert registration.total_amount == 800 + 50 + 50
+    # the selections are what carries the price, and the row's own answers stay
+    # where the fencer list and the confirmation mail read them
+    assert sorted(s.item.name for s in registration.extra_selections) == [
+        "Buckler",
+        "Sabre",
+    ]
+    assert registration.weapon_rentals == ["Sabre", "Buckler"]
+
+
+def test_an_afterparty_is_taken_up_where_one_item_offers_it(
+    client, auth_headers, mailbox
+):
+    organizer = auth_headers()
+    setup(client, organizer)
+    offer(client, organizer, "Afterparty", "afterparty", 250)
+    import_roster(client, organizer, [row("Jan", "jan@example.com", afterparty="y")])
+
+    issue(client, organizer)
+
+    assert registrations()[0].total_amount == 800 + 250
+
+
+def test_an_afterparty_nobody_can_name_is_not_guessed(client, auth_headers, mailbox):
+    """Two evenings on offer and a row that says only yes. Which one it means
+    is not in the row, and billing somebody for an evening they did not pick is
+    worse than billing them for none."""
+    organizer = auth_headers()
+    setup(client, organizer)
+    offer(client, organizer, "Afterparty", "afterparty", 250)
+    offer(client, organizer, "Afterparty with dinner", "afterparty", 500)
+    import_roster(client, organizer, [row("Jan", "jan@example.com", afterparty="y")])
+
+    issue(client, organizer)
+
+    assert registrations()[0].total_amount == 800
+    assert registrations()[0].afterparty is True
+
+
+def test_a_rental_the_tournament_does_not_lend_is_named_on_the_row(
+    client, auth_headers, mailbox
+):
+    """It cannot be priced — nothing on the tournament is called that — so the
+    row says which item nothing was billed for rather than leaving the total
+    quietly short (owner decision, 2026-09-06)."""
+    organizer = auth_headers()
+    setup(client, organizer)
+    offer(client, organizer, "Sabre", "rental", 50)
+    import_roster(
+        client,
+        organizer,
+        [row("Jan", "jan@example.com", disciplines="SA", borrow="Sabre|Sword")],
+    )
+
+    # named while the row is still a row, so the item list can be put right
+    assert sheet_row(client, organizer, "Jan")["unpriced_rentals"] == ["Sword"]
+
+    issue(client, organizer)
+
+    assert registrations()[0].total_amount == 800 + 50
+    issued = sheet_row(client, organizer, "Jan")
+    assert issued["weapon_rentals"] == ["Sabre", "Sword"]
+    assert issued["unpriced_rentals"] == ["Sword"]
+
+
+def test_a_flat_fee_tournament_names_no_unpriced_rental(client, auth_headers, mailbox):
+    """Priced the older way, a rental is billed by the flat fee whatever it is
+    called, so there is no name for a row to fail to match."""
+    organizer = auth_headers()
+    setup(client, organizer)
+    client.patch(
+        "/api/tournaments/cup",
+        json={"weapon_rental_fee": 100},
+        headers=organizer,
+    )
+    import_roster(
+        client, organizer, [row("Jan", "jan@example.com", borrow="whatever")]
+    )
+
+    assert sheet_row(client, organizer, "Jan")["unpriced_rentals"] == []
+    issue(client, organizer)
+    assert registrations()[0].total_amount == 800 + 100
+
+
 def test_a_later_fee_change_does_not_move_an_issued_total(client, auth_headers, mailbox):
     organizer = auth_headers()
     setup(client, organizer)

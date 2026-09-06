@@ -24,7 +24,7 @@ import datetime
 from decimal import ROUND_HALF_UP, Decimal
 from typing import Literal, NamedTuple
 
-from app.models import Discipline, ExtraItem, Registration, Tournament
+from app.models import Discipline, ExtraCategory, ExtraItem, Registration, Tournament
 
 # which currency column a computation reads: the tournament's local currency,
 # or its optional second, EUR-denominated one
@@ -212,6 +212,26 @@ def _itemized_selection_breakdown(
 
     total = sum(subtotals.values(), Decimal(0))
     return int(total.quantize(Decimal("1"), rounding=ROUND_HALF_UP)), outcomes
+
+
+def unpriced_rentals(tournament: Tournament, names: list[str]) -> list[str]:
+    """The borrowed items in `names` this tournament lends nothing by that name.
+
+    On a tournament that prices by items, a rental is billed through the item
+    it names; a name matching none of them is billed nothing at all. The
+    console states those names on the row rather than leaving the organizer to
+    find a total that is quietly short (owner decision, 2026-09-06).
+
+    Empty on a tournament priced the older way, where a rental is billed by the
+    flat rental fee whatever it is called, so there is nothing for a name to
+    fail to match.
+    """
+    if not uses_itemized_pricing(tournament):
+        return []
+    lent = {
+        item.name for item in tournament.extra_items if item.category == ExtraCategory.RENTAL
+    }
+    return [name for name in names if name not in lent]
 
 
 def _itemized_selection_total(

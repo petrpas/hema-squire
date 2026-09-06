@@ -3504,6 +3504,15 @@ label.checklist-row > input[type="checkbox"] {
   margin-top: 0.1rem;
 }
 
+/* A borrowed item this tournament lends nothing by that name, and therefore
+   bills nothing for. Same italic as a declared identity, and for the same
+   reason: the fencer did ask for it, so it is a value with another source
+   rather than a lesser one. The sentence is in the hint. */
+.unpriced-rental {
+  font-style: italic;
+  cursor: help;
+}
+
 .identity-declared {
   /* the value the fencer registered under, on a row no HR profile stands
      behind (spec etl-console, HR identity in the phases after matching). The

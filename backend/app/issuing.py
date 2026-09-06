@@ -35,9 +35,12 @@ from app.hr_index import name_key
 from app.models import (
     Discipline,
     DisciplineKind,
+    ExtraCategory,
+    ExtraItem,
     Fencer,
     Registration,
     RegistrationDiscipline,
+    RegistrationExtra,
     RegistrationsKeptBy,
     RegistrationState,
     Tournament,
@@ -293,6 +296,7 @@ def _issue_one(
     else:  # pragma: no cover - the loop always breaks or raises
         raise RuntimeError("vs allocation exhausted its retries")
 
+    _select_extras(tournament, registration, row)
     # priced from what the row itself holds, at the row's own moment: the same
     # call an in-app registration is priced by, which reads
     # `registration.registered_at` — so early-bird applies as it did the day the
@@ -301,6 +305,52 @@ def _issue_one(
     registration.total_amount = totals.local
     registration.total_eur = totals.eur
     return registration
+
+
+def _select_extras(tournament: Tournament, registration: Registration, row: dict) -> None:
+    """Turn what the row borrows and answers into the item selections the
+    tournament prices by.
+
+    A row states its rentals as names and its afterparty as a yes, which is the
+    older shape and the only one a fencer list can carry. A tournament that
+    prices by items bills neither: `pricing.selection_total` reads the item
+    selections there and the legacy fields only on a tournament that has no
+    items at all. Issuing wrote the row's answers into the legacy fields alone,
+    so every rental on such a tournament was issued free — on the pilot, 32
+    borrowed weapons across 19 registrations, 1 600 Kč nowhere in any total.
+
+    The legacy fields stay written beside the selections. They are what the
+    fencer list and the confirmation mail read the row's answers from, and a
+    name this tournament lends nothing by keeps its place there — stated by the
+    row, priced by nothing, which is what `unpriced_rentals` names.
+
+    An afterparty is taken up only where exactly one item offers one. Where
+    several do, the row's bare yes does not say which, and guessing would bill
+    somebody for an evening they did not pick.
+    """
+    if not pricing.uses_itemized_pricing(tournament):
+        return
+    by_name: dict[str, ExtraItem] = {
+        item.name: item
+        for item in tournament.extra_items
+        if item.category == ExtraCategory.RENTAL
+    }
+    # one of each, however often a row names it: a fencer borrows a sabre, not
+    # two, and the importer is asked to state each item once for that reason
+    for name in dict.fromkeys(row.get("weapon_rentals") or []):
+        item = by_name.get(name)
+        if item is not None:
+            registration.extra_selections.append(RegistrationExtra(item=item, qty=1))
+    if row.get("afterparty"):
+        offered = [
+            item
+            for item in tournament.extra_items
+            if item.category == ExtraCategory.AFTERPARTY
+        ]
+        if len(offered) == 1:
+            registration.extra_selections.append(
+                RegistrationExtra(item=offered[0], qty=1)
+            )
 
 
 def would_skip(session: Session, tournament: Tournament) -> list[Skipped]:

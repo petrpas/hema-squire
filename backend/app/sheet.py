@@ -23,7 +23,7 @@ from collections import defaultdict
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
-from app import hr_match, importer, manualrows, rownumbers, setup, taxonomy
+from app import hr_match, importer, manualrows, pricing, rownumbers, setup, taxonomy
 from app.hr_index import DbHRIndex, HRIndex, evidence_fields
 from app.models import (
     Currency,
@@ -276,6 +276,12 @@ def base_rows(
             else None,
             "paid_at": registration.paid_at.isoformat() if registration.paid_at else None,
             "weapon_rentals": registration.weapon_rentals or extra_rentals,
+            # of those, the ones this tournament lends nothing by that name and
+            # therefore billed nothing for. Stated on the row, because a total
+            # that is quietly short is not something an organizer can find
+            "unpriced_rentals": pricing.unpriced_rentals(
+                tournament, registration.weapon_rentals or []
+            ),
             "afterparty": registration.afterparty or extra_afterparty,
             "aftersparring": registration.aftersparring,
             "notes": notes,
@@ -405,6 +411,11 @@ def _imported_rows(
             "expires_at": None,
             "paid_at": None,
             "weapon_rentals": record.get("borrow", []),
+            # named before the row is issued anything, so the item list can be
+            # put right while the row is still a row
+            "unpriced_rentals": pricing.unpriced_rentals(
+                tournament, record.get("borrow", []) or []
+            ),
             "afterparty": record.get("after_party") == "Yes",
             "aftersparring": record.get("aftersparring") == "Yes",
             "accommodation": record.get("accommodation"),
@@ -441,6 +452,7 @@ def _unparsed_row(row_id: str, row: ImportedRow) -> Row:
         "expires_at": None,
         "paid_at": None,
         "weapon_rentals": [],
+        "unpriced_rentals": [],
         "afterparty": False,
         "aftersparring": False,
         "accommodation": None,
@@ -492,6 +504,9 @@ def _manual_row(row: ManualRow, index: HRIndex | None = None) -> Row:
         "expires_at": None,
         "paid_at": None,
         "weapon_rentals": list(row.weapon_rentals),
+        # a hand-entered row's rentals are checked against the lent items as it
+        # is written (`routers.manual_api`), so none of them can be unnamed here
+        "unpriced_rentals": [],
         "afterparty": row.afterparty,
         "aftersparring": False,
         "accommodation": None,

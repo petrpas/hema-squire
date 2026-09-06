@@ -117,6 +117,15 @@ the early-bird deadline SHALL NOT move what an already-issued registration owes.
 A row that states no discipline SHALL NOT be issued a registration, and SHALL be
 reported as such rather than issued with a total of zero.
 
+On a tournament that prices by items, what the row borrows and the afterparty it
+takes SHALL be issued as selections of those items, so that they are priced as
+the tournament prices them. A borrowed item the tournament lends nothing by that
+name SHALL be billed nothing and SHALL be named on the row, so that a total
+short by an unpriced item can be seen rather than only computed. Where several
+items offer an afterparty, a row's bare yes SHALL NOT be resolved to one of
+them: it does not say which, and billing an evening nobody picked is worse than
+billing none.
+
 #### Scenario: Early bird priced at the fencer's own moment
 - **WHEN** a row registered before the early-bird deadline is issued a registration after that deadline has passed
 - **THEN** its total is the early-bird price
@@ -128,6 +137,18 @@ reported as such rather than issued with a total of zero.
 #### Scenario: Extras are priced with the disciplines
 - **WHEN** a row entering one discipline also borrows a weapon and takes the afterparty
 - **THEN** its total is the discipline fee plus the rental fee plus the afterparty fee, each at the row's own moment
+
+#### Scenario: Rentals are priced where the tournament prices by items
+- **WHEN** a row borrowing two of a tournament's rental items is issued a registration
+- **THEN** the registration holds a selection of each item and its total includes both their prices
+
+#### Scenario: A borrowed item nothing lends is named on the row
+- **WHEN** a row borrows an item the tournament offers under no name
+- **THEN** nothing is billed for it, and the row states that item as one nothing prices
+
+#### Scenario: An afterparty nobody can name is not guessed
+- **WHEN** a row says it takes the afterparty on a tournament offering two of them
+- **THEN** neither is billed
 
 #### Scenario: A row with no discipline is not issued
 - **WHEN** the list holds a row that entered no discipline
