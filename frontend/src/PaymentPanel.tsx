@@ -144,7 +144,7 @@ export default function PaymentPanel({ slug }: { slug: string }) {
         <h2 className="payment-slip-title">{t("payment.title")}</h2>
 
         {eur && (
-          <nav className="stage-control" role="tablist">
+          <div className="stage-control" role="tablist">
             <button
               type="button"
               role="tab"
@@ -163,7 +163,7 @@ export default function PaymentPanel({ slug }: { slug: string }) {
             >
               EUR
             </button>
-          </nav>
+          </div>
         )}
       </div>
 

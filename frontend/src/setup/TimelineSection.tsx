@@ -107,8 +107,7 @@ export function TimelineSection({
     validation.clearAll();
     setError(null);
     setDirty(false);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [detail]);
+  }, [detail, validation.clearAll]);
 
   useSectionSaver(registry, "timeline", "timeline", {
     pendingCount: dirty ? 1 : 0,

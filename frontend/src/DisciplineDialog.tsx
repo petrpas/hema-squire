@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-
-import { type DisciplineGender, type DisciplineKind, type DisciplineMaterial } from "./api";
+import type { DisciplineGender, DisciplineKind, DisciplineMaterial } from "./api";
 import HelpHint from "./HelpHint";
 import { disciplineName, LEGACY_WEAPONS, normalizeSlug, taxonomyCode } from "./TournamentFace";
 
@@ -105,6 +104,11 @@ export default function DisciplineDialog({
   // values before the touched flags above have had a chance to matter.
   const skipFirstDerivation = useRef(initial !== null);
 
+  // The three the rule wants added are read for their current value, not
+  // watched: a derivation that re-ran when `nameTouched` flipped would fire
+  // exactly as the organizer starts typing, which is the moment it is meant
+  // to stop. Only a classification change derives.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: derivation follows the classification alone, by design D3
   useEffect(() => {
     if (skipFirstDerivation.current) {
       skipFirstDerivation.current = false;
@@ -116,7 +120,6 @@ export default function DisciplineDialog({
     if (!slugTouched) {
       setSlug(weapon ? generateDraftSlug(otherSlugs, kind, weapon, gender, material) : "");
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [kind, weapon, gender, material]);
 
   const trimmedName = name.trim();

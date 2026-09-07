@@ -66,7 +66,7 @@ export function DangerZoneSection({
           </button>
         </div>
       ) : (
-        <button className="secondary" onClick={() => setConfirming(true)}>
+        <button type="button" className="secondary" onClick={() => setConfirming(true)}>
           {hasRegistrations ? t("setup.danger.cancelButton") : t("setup.danger.deleteButton")}
         </button>
       )}

@@ -52,8 +52,7 @@ export function BankAccountSection({
     setError(null);
     setDirty(false);
     setUnchecked(false);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [detail]);
+  }, [detail, validation.clearAll]);
 
   function check(): FieldErrorValue | null {
     return checkString("bank_account", "TournamentUpdate.bank_account", value);

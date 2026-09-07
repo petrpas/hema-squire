@@ -36,8 +36,7 @@ export function CurrencySection({
     validation.clearAll();
     setError(null);
     setDirty(false);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [detail]);
+  }, [detail, i18n.language, validation.clearAll]);
 
   function rateCheck(): FieldErrorValue | null {
     if (mode !== "local_eur") return null;

@@ -99,7 +99,10 @@ export function IdentitySection({
     (entry) => {
       setValues((current) => ({ ...current, location: entry.value }));
       setDirty(true);
-      validation.clearIfValid("location", () => IDENTITY_TEXT_CHECKS.location?.(entry.value) ?? null);
+      validation.clearIfValid(
+        "location",
+        () => IDENTITY_TEXT_CHECKS.location?.(entry.value) ?? null,
+      );
     },
   );
 
@@ -166,8 +169,7 @@ export function IdentitySection({
     setQualificationCriteria(detail.qualification_criteria ?? "");
     validation.clearAll();
     setDirty(false);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [detail]);
+  }, [detail, validation.clearAll]);
 
   useSectionSaver(registry, "tournament", "identity", {
     pendingCount: dirty ? 1 : 0,

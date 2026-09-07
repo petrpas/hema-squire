@@ -33,8 +33,7 @@ export function ExportSheetSection({
     validation.clearAll();
     setError(null);
     setDirty(false);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [detail]);
+  }, [detail, validation.clearAll]);
 
   function check(): FieldErrorValue | null {
     return checkUrl("output_sheet_url", "TournamentUpdate.output_sheet_url", value);

@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-
 import { ApiError, api, type Currency, type PaymentMethod, type SheetRow } from "../api";
 import { formatMoney } from "../money";
 
@@ -150,10 +149,11 @@ export default function RecordPaymentDialog({
         )}
 
         <div className="modal-actions">
-          <button className="secondary" onClick={onClose}>
+          <button type="button" className="secondary" onClick={onClose}>
             {t("common.cancel")}
           </button>
           <button
+            type="button"
             className="btn-primary"
             disabled={busy || !amount.trim()}
             onClick={() => void confirm()}

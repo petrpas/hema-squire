@@ -1,7 +1,7 @@
-import { type KeyboardEvent } from "react";
+import type { KeyboardEvent } from "react";
 import { useTranslation } from "react-i18next";
 
-import { type TournamentFlags } from "../api";
+import type { TournamentFlags } from "../api";
 import { type SetupTab, setupTabTitleKey } from "./shared";
 
 export function SetupTabBar({
@@ -31,7 +31,7 @@ export function SetupTabBar({
   }
 
   return (
-    <nav className="stage-control setup-tabs" role="tablist">
+    <div className="stage-control setup-tabs" role="tablist">
       {tabs.map((id, index) => (
         <button
           key={id}
@@ -57,6 +57,6 @@ export function SetupTabBar({
           )}
         </button>
       ))}
-    </nav>
+    </div>
   );
 }

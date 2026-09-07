@@ -23,6 +23,17 @@ import {
 } from "../validation";
 import { _int, recalculateMissing, type SaverRegistry, useSectionSaver } from "./shared";
 
+/** A row's identity for React, which a discount has none of: two rows may
+ *  carry the same name while one is still being typed, and a removed row must
+ *  not hand its open fields to the row below it. Stripped before the save. */
+type DiscountDraft = Discount & { rowId: string };
+
+let nextRowId = 0;
+
+function withRowIds(discounts: Discount[]): DiscountDraft[] {
+  return discounts.map((discount) => ({ ...discount, rowId: `row-${nextRowId++}` }));
+}
+
 function emptyDiscount(): Discount {
   return {
     name: "",
@@ -44,7 +55,7 @@ export function DiscountsSection({
   registry: SaverRegistry;
 }) {
   const { t } = useTranslation();
-  const [drafts, setDrafts] = useState<Discount[]>(detail.discounts);
+  const [drafts, setDrafts] = useState<DiscountDraft[]>(() => withRowIds(detail.discounts));
   const [dirty, setDirty] = useState(false);
   const eur = showsEur(detail);
   const rate = Number(detail.eur_rate);
@@ -87,7 +98,7 @@ export function DiscountsSection({
   }
 
   useEffect(() => {
-    setDrafts(detail.discounts);
+    setDrafts(withRowIds(detail.discounts));
     setDirty(false);
   }, [detail]);
 
@@ -155,7 +166,9 @@ export function DiscountsSection({
     },
     flush: async () => {
       try {
-        await api.updateTournament(slug, { discounts: drafts });
+        await api.updateTournament(slug, {
+          discounts: drafts.map(({ rowId: _rowId, ...discount }) => discount),
+        });
         setDirty(false);
         return [{ change: "discounts", section: "discounts", error: null }];
       } catch (err) {
@@ -211,7 +224,7 @@ export function DiscountsSection({
               };
             }
             return (
-              <tr key={index}>
+              <tr key={discount.rowId}>
                 <td>
                   <input
                     ref={fieldRef("name")}
@@ -343,6 +356,7 @@ export function DiscountsSection({
                 )}
                 <td className="col-actions">
                   <button
+                    type="button"
                     className="row-action"
                     title={t("actions.delete")}
                     onClick={() => {
@@ -359,9 +373,10 @@ export function DiscountsSection({
         </tbody>
       </table>
       <button
+        type="button"
         className="link-button"
         onClick={() => {
-          setDrafts([...drafts, emptyDiscount()]);
+          setDrafts([...drafts, ...withRowIds([emptyDiscount()])]);
           setDirty(true);
         }}
       >
@@ -369,6 +384,7 @@ export function DiscountsSection({
       </button>
       {eur && (
         <button
+          type="button"
           className="link-button"
           disabled={!Number.isFinite(rate) || rate <= 0}
           onClick={recalculateAll}

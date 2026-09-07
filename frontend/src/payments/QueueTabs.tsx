@@ -135,7 +135,7 @@ export function QueueTabStrip() {
   const groups = [all.slice(0, 1), all.slice(1)].filter((group) => group.length > 0);
 
   return (
-    <nav className="queue-tabs" role="tablist" aria-label={t("payments.queue.tabs")}>
+    <div className="queue-tabs" role="tablist" aria-label={t("payments.queue.tabs")}>
       {groups.map((group) => (
         <div className="stage-control" role="presentation" key={group[0]?.title}>
           {group.map((tab) => {
@@ -167,6 +167,6 @@ export function QueueTabStrip() {
           })}
         </div>
       ))}
-    </nav>
+    </div>
   );
 }

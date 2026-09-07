@@ -53,6 +53,7 @@ export default function MatchCell({
   return (
     <span className="match-cell">
       <button
+        type="button"
         className="badge-button"
         title={ratifiable ? t("match.ratify") : t("match.title")}
         onClick={ratifiable ? onRatify : onSearch}
@@ -66,6 +67,7 @@ export default function MatchCell({
       </button>
       {ratifiable && (
         <button
+          type="button"
           className="row-action"
           title={t("match.search")}
           onClick={onSearch}

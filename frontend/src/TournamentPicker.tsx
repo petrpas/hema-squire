@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useNavigate } from "react-router-dom";
-
 import AccountMenu from "./AccountMenu";
 import {
   type Account,
@@ -278,7 +277,7 @@ export default function TournamentPicker() {
           </ul>
         )}
         {canCreate && (
-          <button className="secondary" onClick={() => setCreating(true)}>
+          <button type="button" className="secondary" onClick={() => setCreating(true)}>
             {t("picker.newTournament")}
           </button>
         )}

@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-
 import { api, type ImportResult, type ImportStatus } from "./api";
 import { conclusionText, kindName } from "./operationText";
 import type { OperationsView } from "./useOperations";
@@ -102,6 +101,7 @@ export default function ImportPanel({
           }}
         />
         <button
+          type="button"
           className="secondary param-save"
           disabled={busy}
           onClick={() => inputRef.current?.click()}
@@ -110,6 +110,7 @@ export default function ImportPanel({
         </button>
         {hasImports && (
           <button
+            type="button"
             className="secondary param-save"
             disabled={busy}
             onClick={() => setConfirming(true)}

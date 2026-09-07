@@ -27,7 +27,12 @@ export default function DedupPanel({
   return (
     <section className="rail-card">
       <h2>{t("dedup.title")}</h2>
-      <button className="secondary param-save" disabled={runner.busy} onClick={runner.run}>
+      <button
+        type="button"
+        className="secondary param-save"
+        disabled={runner.busy}
+        onClick={runner.run}
+      >
         {runner.running ? t("common.loading") : t("dedup.run")}
       </button>
       {runner.busy && !runner.running && operations.running !== null && (

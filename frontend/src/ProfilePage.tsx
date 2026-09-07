@@ -37,8 +37,7 @@ function AccountSection({
     setLanguage(account.language);
     validation.clearAll();
     setDirty(false);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [account]);
+  }, [account, validation.clearAll]);
 
   function displayNameCheck() {
     return checkString("display_name", "AccountUpdate.display_name", displayName, {
@@ -119,6 +118,7 @@ function AccountSection({
       </div>
       {error && <p className="login-error">{error}</p>}
       <button
+        type="button"
         className="secondary param-save"
         onClick={() => void save()}
         disabled={!dirty || busy}

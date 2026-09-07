@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-
 import { api, type HRProfile, type SheetRow } from "./api";
 
 /** Searching the fighters index for a profile the row should be bound to.
@@ -51,7 +50,7 @@ export default function MatchDialog({
         <ul className="match-results">
           {results.map((profile) => (
             <li key={profile.hr_id}>
-              <button onClick={() => onResolve(profile.hr_id, profile)}>
+              <button type="button" onClick={() => onResolve(profile.hr_id, profile)}>
                 <strong>{profile.name}</strong>
                 <span className="muted">
                   {profile.nationality ?? "—"} · {profile.club ?? "—"} · #{profile.hr_id}
@@ -64,10 +63,10 @@ export default function MatchDialog({
           )}
         </ul>
         <div className="modal-actions">
-          <button className="link-button" onClick={() => onResolve(null)}>
+          <button type="button" className="link-button" onClick={() => onResolve(null)}>
             {t("match.notFound")}
           </button>
-          <button className="secondary" onClick={onClose}>
+          <button type="button" className="secondary" onClick={onClose}>
             {t("common.cancel")}
           </button>
         </div>

@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-
 import {
   ApiError,
   api,
@@ -226,7 +225,7 @@ export default function LinkDialog({
             <ul className="link-candidates">
               {offered.map((vs) => (
                 <li key={vs}>
-                  <button className="row-action" onClick={() => addVs(vs)}>
+                  <button type="button" className="row-action" onClick={() => addVs(vs)}>
                     {vs}
                   </button>
                 </li>
@@ -249,7 +248,7 @@ export default function LinkDialog({
                 }
               }}
             />
-            <button className="secondary" onClick={addTyped}>
+            <button type="button" className="secondary" onClick={addTyped}>
               {t("payments.link.add")}
             </button>
           </div>
@@ -264,6 +263,7 @@ export default function LinkDialog({
               <li key={`reg-${id}`}>
                 {byId.get(id)?.name ?? id}
                 <button
+                  type="button"
                   className="row-action"
                   title={t("payments.link.remove")}
                   onClick={() => toggle(id)}
@@ -276,6 +276,7 @@ export default function LinkDialog({
               <li key={`vs-${vs}`}>
                 {vs}
                 <button
+                  type="button"
                   className="row-action"
                   title={t("payments.link.remove")}
                   onClick={() => setTypedVs((c) => c.filter((v) => v !== vs))}
@@ -295,10 +296,11 @@ export default function LinkDialog({
         {failed && <p className="login-error">{t("payments.link.failed")}</p>}
 
         <div className="modal-actions">
-          <button className="secondary" onClick={onClose}>
+          <button type="button" className="secondary" onClick={onClose}>
             {t("common.cancel")}
           </button>
           <button
+            type="button"
             className="btn-primary"
             disabled={busy || nothingChosen}
             onClick={() => void confirm()}

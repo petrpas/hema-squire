@@ -78,65 +78,60 @@ export default function PaymentLinksPanel({
       loading={links === null}
       failed={failed}
     >
-      <>
-        <table className="sheet-table">
-          <thead>
-            <tr>
-              <th>{t("payments.links.date")}</th>
-              <th>{t("payments.links.payer")}</th>
-              <th>{t("payments.links.amount")}</th>
-              <th>{t("payments.links.message")}</th>
-              <th>{t("payments.links.fencer")}</th>
-              <th>{t("payments.links.origin")}</th>
-              <th className="col-actions" />
-            </tr>
-          </thead>
-          <tbody>
-            {(links ?? []).map((link) => {
-              const tx = link.transaction;
-              return (
-                <tr key={link.rule_id}>
-                  <td>{tx === null ? "—" : new Date(tx.date).toLocaleDateString("cs")}</td>
-                  <td>{tx?.payer_name ?? "—"}</td>
-                  <td>
-                    {tx === null
-                      ? "—"
-                      : formatMoney(tx.amount_cents / 100, tx.currency as Currency)}
-                  </td>
-                  {/* the bank's own words, in full: judging the link is the work */}
-                  <td className="muted">{tx?.message ?? "—"}</td>
-                  <td>
-                    {/* the person, not the number. The symbols follow only
+      <table className="sheet-table">
+        <thead>
+          <tr>
+            <th>{t("payments.links.date")}</th>
+            <th>{t("payments.links.payer")}</th>
+            <th>{t("payments.links.amount")}</th>
+            <th>{t("payments.links.message")}</th>
+            <th>{t("payments.links.fencer")}</th>
+            <th>{t("payments.links.origin")}</th>
+            <th className="col-actions" />
+          </tr>
+        </thead>
+        <tbody>
+          {(links ?? []).map((link) => {
+            const tx = link.transaction;
+            return (
+              <tr key={link.rule_id}>
+                <td>{tx === null ? "—" : new Date(tx.date).toLocaleDateString("cs")}</td>
+                <td>{tx?.payer_name ?? "—"}</td>
+                <td>{tx === null ? "—" : formatMoney(tx.amount_cents / 100, tx.currency as Currency)}</td>
+                {/* the bank's own words, in full: judging the link is the work */}
+                <td className="muted">{tx?.message ?? "—"}</td>
+                <td>
+                  {/* the person, not the number. The symbols follow only
                         where the payer quoted any */}
-                    {link.fencers.join(", ") || "—"}
-                    {link.vs.length > 0 && <span className="muted"> · {link.vs.join(", ")}</span>}
-                  </td>
-                  <td className="muted">
-                    {link.auto_created ? t("payments.links.auto") : t("payments.links.manual")}
-                  </td>
-                  <td className="col-actions">
-                    <button
-                      className="row-action"
-                      title={t("payments.links.remove")}
-                      disabled={busyId === link.rule_id}
-                      onClick={() => void remove(link.rule_id)}
-                    >
-                      <IconUnlink size={16} stroke={1.5} />
-                      <span className="visually-hidden">{t("payments.links.remove")}</span>
-                    </button>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-        {/* a link whose transaction is gone still holds a fencer's credit, so
+                  {link.fencers.join(", ") || "—"}
+                  {link.vs.length > 0 && <span className="muted"> · {link.vs.join(", ")}</span>}
+                </td>
+                <td className="muted">
+                  {link.auto_created ? t("payments.links.auto") : t("payments.links.manual")}
+                </td>
+                <td className="col-actions">
+                  <button
+                    type="button"
+                    className="row-action"
+                    title={t("payments.links.remove")}
+                    disabled={busyId === link.rule_id}
+                    onClick={() => void remove(link.rule_id)}
+                  >
+                    <IconUnlink size={16} stroke={1.5} />
+                    <span className="visually-hidden">{t("payments.links.remove")}</span>
+                  </button>
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+      {/* a link whose transaction is gone still holds a fencer's credit, so
             it is shown and undoable rather than hidden */}
-        {(links ?? []).some((link) => link.transaction === null) && (
-          <p className="rail-hint">{t("payments.links.orphaned")}</p>
-        )}
-        {removeFailed && <p className="login-error">{t("payments.links.failed")}</p>}
-      </>
+      {(links ?? []).some((link) => link.transaction === null) && (
+        <p className="rail-hint">{t("payments.links.orphaned")}</p>
+      )}
+      {removeFailed && <p className="login-error">{t("payments.links.failed")}</p>}
     </QueueCard>
   );
 }

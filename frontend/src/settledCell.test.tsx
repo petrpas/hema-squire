@@ -139,6 +139,6 @@ it("offers the mark on a registration that carries no variable symbol", () => {
 it("does not fire while a mark is in flight", () => {
   const toggle = vi.fn().mockResolvedValue(undefined);
   mount(<SettledCell row={row()} onToggle={toggle} busy />);
-  act(() => (host?.querySelector("button") as HTMLButtonElement).click());
+  act(() => (host!.querySelector("button") as HTMLButtonElement).click());
   expect(toggle).not.toHaveBeenCalled();
 });

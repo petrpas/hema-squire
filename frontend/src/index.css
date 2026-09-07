@@ -57,7 +57,9 @@ h6 {
   *,
   *::before,
   *::after {
+    /* biome-ignore lint/complexity/noImportantStyles: a reduced-motion reset has to beat every component's own transition */
     transition: none !important;
+    /* biome-ignore lint/complexity/noImportantStyles: a reduced-motion reset has to beat every component's own animation */
     animation: none !important;
   }
 }
@@ -1793,9 +1795,19 @@ tr.row-deleted td.col-actions {
   opacity: 1;
 }
 
+/* A button so the cell can be reached and opened from a keyboard; nothing
+   about it is drawn as one. */
 .cell-editable {
   min-height: 1.2rem;
   cursor: text;
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  color: inherit;
+  text-align: inherit;
 }
 
 /* Exempt from --field-size, deliberately: this field takes its size from the
@@ -2190,10 +2202,16 @@ tr.row-deleted td.col-actions {
   }
 }
 
+/* The sheet that dismisses the account menu. It is a button so that a
+   keyboard can reach the dismissal at all; nothing about it is drawn. */
 .menu-backdrop {
   position: fixed;
   inset: 0;
   z-index: 5;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: default;
 }
 
 .account-menu-dropdown {

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { type Currency, type CurrencyMode, type ExtraCategory, type TournamentFlags } from "../api";
+import type { Currency, CurrencyMode, ExtraCategory, TournamentFlags } from "../api";
 import { parseInteger } from "../numeric";
 import { LEGACY_WEAPONS } from "../TournamentFace";
 

@@ -1,7 +1,6 @@
 import { IconTrash } from "@tabler/icons-react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-
 import { api, type ManualPayment } from "../api";
 import { formatMoney } from "../money";
 import QueueCard from "./QueueCard";
@@ -91,6 +90,7 @@ export default function RecordedPaymentsPanel({
                 <td className="muted">{payment.recorded_by}</td>
                 <td className="col-actions">
                   <button
+                    type="button"
                     className="row-action"
                     title={t("payments.recorded.remove")}
                     onClick={() => setRemoving(payment)}
@@ -120,10 +120,15 @@ export default function RecordedPaymentsPanel({
               <p className="rail-hint">{t("payments.recorded.removeUnsettles")}</p>
             )}
             <div className="modal-actions">
-              <button className="secondary" onClick={() => setRemoving(null)}>
+              <button type="button" className="secondary" onClick={() => setRemoving(null)}>
                 {t("common.cancel")}
               </button>
-              <button className="btn-primary" disabled={busy} onClick={() => void remove(removing)}>
+              <button
+                type="button"
+                className="btn-primary"
+                disabled={busy}
+                onClick={() => void remove(removing)}
+              >
                 {t("payments.recorded.removeConfirm")}
               </button>
             </div>

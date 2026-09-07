@@ -89,7 +89,7 @@ export default function DedupView({
         ) : groups.length === 0 ? (
           <p className="sheet-empty">
             {t("dedup.empty")}{" "}
-            <button className="tertiary" disabled={runner.busy} onClick={runner.run}>
+            <button type="button" className="tertiary" disabled={runner.busy} onClick={runner.run}>
               {runner.running ? t("common.loading") : t("dedup.run")}
             </button>
           </p>

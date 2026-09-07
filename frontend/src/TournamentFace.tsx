@@ -85,6 +85,7 @@ const COMBINING_MARKS = /[̀-ͯ]/g;
  * decides the fallback. */
 export function normalizeSlug(value: string): string {
   const folded = value.normalize("NFKD").replace(COMBINING_MARKS, "");
+  // biome-ignore lint/suspicious/noControlCharactersInRegex: \x00-\x7F is the ASCII range, named by its bounds
   const ascii = folded.replace(/[^\x00-\x7F]/g, "");
   const collapsed = ascii.replace(/[^A-Za-z0-9-]+/g, "-");
   return collapsed.replace(/^-+|-+$/g, "");
@@ -124,7 +125,9 @@ export function InfoHeader({ detail }: { detail: TournamentDetailData }) {
           className="detail-facts"
           parts={[
             new Date(detail.date).toLocaleDateString("cs"),
-            detail.location?.trim() ? <InlineProse source={detail.location} /> : null,
+            detail.location?.trim() ? (
+              <InlineProse key="location" source={detail.location} />
+            ) : null,
             detail.qualification_open
               ? t("detail.qualificationOpen")
               : t("detail.qualificationRequired", { criteria: detail.qualification_criteria }),
@@ -155,6 +158,7 @@ export function InfoHeader({ detail }: { detail: TournamentDetailData }) {
         {detail.organizers.length > 0 && (
           <p className="rail-hint">
             {detail.organizers.map((organizer, index) => (
+              // biome-ignore lint/suspicious/noArrayIndexKey: a read-only list rebuilt from props; position is the only identity these rows have
               <span key={index}>
                 {index > 0 && ", "}
                 {organizer.link ? (
@@ -348,6 +352,7 @@ export function DiscountList({
         <h3 className="register-section">{t("discounts.title")}</h3>
         <div className="checklist">
           {detail.discounts.map((discount, index) => (
+            // biome-ignore lint/suspicious/noArrayIndexKey: a read-only list rebuilt from props; position is the only identity these rows have
             <label key={index} className="checklist-row discount-row">
               <input type="checkbox" disabled checked={breakdown[index]?.applied ?? false} />
               <span className="checklist-name">{discount.name}</span>
@@ -364,6 +369,7 @@ export function DiscountList({
       <h2>{t("discounts.title")}</h2>
       <ul className="detail-list">
         {detail.discounts.map((discount, index) => (
+          // biome-ignore lint/suspicious/noArrayIndexKey: a read-only list rebuilt from props; position is the only identity these rows have
           <li key={index}>
             <div className="detail-row">
               <strong>{discount.name}</strong>
@@ -585,6 +591,11 @@ export function RegistrationForm({
       });
   }
 
+  // The two helpers the effect calls are rebuilt on every render, so listing
+  // them would re-price on every keystroke. What they actually read is in the
+  // dependency array instead — except `extraOption`, which carries an item's
+  // written option and never its price.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: the helpers' own inputs are listed; the helpers are not stable
   useEffect(() => {
     if (disciplines.size === 0 && teams.length === 0) {
       setTotal(0);
@@ -617,8 +628,7 @@ export function RegistrationForm({
     return () => clearTimeout(handle);
     // `detail` is a dep too: the preview's `detail` changes identity on every
     // save (a fencer's never does mid-form), and a saved price change must
-    // reach the running total, not just the per-row price
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // reach the running total, not just the per-row price.
   }, [disciplines, teams, extraQty, legacyQty, afterparty, detail]);
 
   function addTeam(slug: string) {
@@ -788,6 +798,7 @@ export function RegistrationForm({
                   </div>
                   {teams.map((team, index) =>
                     team.slug === d.slug ? (
+                      // biome-ignore lint/suspicious/noArrayIndexKey: a read-only list rebuilt from props; position is the only identity these rows have
                       <div key={index} className="checklist-row team-row">
                         <span className="checklist-name">{team.name}</span>
                         <span className="checklist-price">{fee}</span>
@@ -868,6 +879,7 @@ export function RegistrationForm({
         <p className="rail-hint">{t("preview.cannotSubmit")}</p>
       ) : (
         <button
+          type="button"
           className="btn-primary param-save"
           disabled={busy || (disciplines.size === 0 && teams.length === 0)}
           onClick={() => void submit()}

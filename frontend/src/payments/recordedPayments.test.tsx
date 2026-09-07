@@ -109,7 +109,7 @@ it("collapses to its heading when nothing was recorded", async () => {
   await settle();
 
   expect(host?.textContent).toContain(t("payments.recorded.title"));
-  expect(host?.querySelector("tbody tr")).toBeNull();
+  expect(host!.querySelector("tbody tr")).toBeNull();
 });
 
 it("reports its own failure", async () => {
@@ -127,13 +127,13 @@ it("says what removal will do before it is confirmed", async () => {
   mount(<RecordedPaymentsPanel slug="cup" reload={0} onChanged={changed} />);
   await settle();
 
-  act(() => (host?.querySelector("td.col-actions button") as HTMLButtonElement).click());
+  act(() => (host!.querySelector("td.col-actions button") as HTMLButtonElement).click());
   // the reversal may unsettle a row the roster already shows as paid, and that
   // is not a consequence to discover afterwards
   expect(host?.textContent).toContain(t("payments.recorded.removeUnsettles"));
   expect(remove).not.toHaveBeenCalled();
 
-  act(() => (host?.querySelector(".modal-actions .btn-primary") as HTMLButtonElement).click());
+  act(() => (host!.querySelector(".modal-actions .btn-primary") as HTMLButtonElement).click());
   await settle();
   expect(remove).toHaveBeenCalledWith("cup", 7);
   expect(changed).toHaveBeenCalled();
@@ -144,7 +144,7 @@ it("does not warn about unsettling where removal would not", async () => {
   mount(<RecordedPaymentsPanel slug="cup" reload={0} onChanged={vi.fn()} />);
   await settle();
 
-  act(() => (host?.querySelector("td.col-actions button") as HTMLButtonElement).click());
+  act(() => (host!.querySelector("td.col-actions button") as HTMLButtonElement).click());
   expect(host?.textContent).not.toContain(t("payments.recorded.removeUnsettles"));
 });
 
@@ -224,7 +224,7 @@ it("keeps what was typed when the endpoint refuses", async () => {
   await settle();
 
   expect(host?.textContent).toContain(t("payments.record.error.currency_not_accepted"));
-  expect((host?.querySelector(".form-field input") as HTMLInputElement).value).toBe("700");
+  expect((host!.querySelector(".form-field input") as HTMLInputElement).value).toBe("700");
   expect(close).not.toHaveBeenCalled();
 });
 
@@ -319,5 +319,5 @@ it("offers no end-of-row action where no payment can be recorded", () => {
       onSearch={() => {}}
     />,
   );
-  expect(host?.querySelector("td.col-actions")).toBeNull();
+  expect(host!.querySelector("td.col-actions")).toBeNull();
 });

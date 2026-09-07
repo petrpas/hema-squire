@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-
 import { api, type ClearablePayments } from "../api";
 
 /** Undoing an import of money.
@@ -76,6 +75,7 @@ export default function ClearPaymentsControl({
       ) : (
         payments > 0 && (
           <button
+            type="button"
             className="secondary param-save"
             disabled={busy || working}
             onClick={() => setConfirming(true)}

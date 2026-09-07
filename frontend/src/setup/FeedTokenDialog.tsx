@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-
 import { ApiError, api } from "../api";
 
 /** Records the bank feed token, and never shows one.
@@ -84,11 +83,12 @@ export default function FeedTokenDialog({
         )}
 
         <div className="modal-actions">
-          <button className="secondary" onClick={onClose}>
+          <button type="button" className="secondary" onClick={onClose}>
             {t("common.cancel")}
           </button>
           {configured && (
             <button
+              type="button"
               className="link-button"
               disabled={busy}
               onClick={() => void write(() => api.clearFioToken(slug))}
@@ -97,6 +97,7 @@ export default function FeedTokenDialog({
             </button>
           )}
           <button
+            type="button"
             className="btn-primary"
             disabled={!given || busy}
             onClick={() => void write(() => api.setFioToken(slug, given))}

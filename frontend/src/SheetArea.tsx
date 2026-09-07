@@ -247,6 +247,7 @@ export default function SheetArea({
                           because it is an action and not a value */}
                         {onRecordPayment && typeof row.registration_id === "number" && (
                           <button
+                            type="button"
                             className="row-action"
                             title={t("payments.record.action")}
                             onClick={() => onRecordPayment(row)}
@@ -258,6 +259,7 @@ export default function SheetArea({
                         {rowAction(row, phase) === null ? null : rowAction(row, phase) ===
                           "restore" ? (
                           <button
+                            type="button"
                             className="row-action"
                             title={t("actions.restore")}
                             onClick={() => onRestore(row)}
@@ -266,6 +268,7 @@ export default function SheetArea({
                           </button>
                         ) : (
                           <button
+                            type="button"
                             className="row-action"
                             title={t("actions.delete")}
                             onClick={() => onDelete(row)}

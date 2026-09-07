@@ -456,6 +456,9 @@ export function DisciplinesSection({
     },
   });
 
+  // "new" names no row, and a row can be removed while its dialog is open
+  const dialogRow = rows.find((row) => row.rowId === dialogRowId);
+
   return (
     <section className="rail-card">
       <h2>{t("setup.disciplines.title")}</h2>
@@ -562,6 +565,7 @@ export function DisciplinesSection({
                   <td className="col-actions">
                     <div className="row-actions">
                       <button
+                        type="button"
                         className="row-action"
                         title={t("actions.moveUp")}
                         disabled={index === 0}
@@ -571,6 +575,7 @@ export function DisciplinesSection({
                       </button>
                       {!row.identityFrozen && (
                         <button
+                          type="button"
                           className="row-action"
                           title={t("setup.disciplines.reopen")}
                           onClick={() => setDialogRowId(row.rowId)}
@@ -579,6 +584,7 @@ export function DisciplinesSection({
                         </button>
                       )}
                       <button
+                        type="button"
                         className="row-action"
                         title={t("actions.delete")}
                         onClick={() => removeRow(row)}
@@ -675,11 +681,12 @@ export function DisciplinesSection({
           })}
         </tbody>
       </table>
-      <button className="link-button" onClick={() => setDialogRowId("new")}>
+      <button type="button" className="link-button" onClick={() => setDialogRowId("new")}>
         + {t("setup.disciplines.add")}
       </button>
       {eur && (
         <button
+          type="button"
           className="link-button"
           disabled={!Number.isFinite(rate) || rate <= 0}
           onClick={recalculateAll}
@@ -689,11 +696,7 @@ export function DisciplinesSection({
       )}
       {dialogRowId !== null && (
         <DisciplineDialog
-          initial={
-            dialogRowId === "new"
-              ? null
-              : rowIdentity(rows.find((row) => row.rowId === dialogRowId)!)
-          }
+          initial={dialogRow === undefined ? null : rowIdentity(dialogRow)}
           otherNames={rows.filter((row) => row.rowId !== dialogRowId).map((row) => row.name)}
           otherSlugs={
             new Set(rows.filter((row) => row.rowId !== dialogRowId).map((row) => row.slug))

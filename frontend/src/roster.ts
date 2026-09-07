@@ -1,4 +1,4 @@
-import { type RosterMember, type TeamEntry } from "./api";
+import type { RosterMember, TeamEntry } from "./api";
 
 /** Order-sensitive: a roster is a list, so a reorder is a real change
  *  (design D3). Compares every field the editor can alter. */

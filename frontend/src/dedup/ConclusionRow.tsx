@@ -48,7 +48,7 @@ export default function ConclusionRow({
       }
       const value = fields[column];
       const text = value === null || value === undefined || value === "" ? "—" : String(value);
-      return text === "—" ? <>{text}</> : <span className="identity-declared">{text}</span>;
+      return text === "—" ? text : <span className="identity-declared">{text}</span>;
     }
     if (column === "registered_at")
       return <>{registeredMoment(survivor?.registered_at ?? null, timezone)}</>;

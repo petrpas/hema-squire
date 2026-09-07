@@ -76,7 +76,7 @@ export default function PleaSection({
   return (
     <div>
       {plea.state === "denied" && <p className="plea-status">{t("picker.pleaDenied")}</p>}
-      <button className="secondary" onClick={() => setShowForm(true)}>
+      <button type="button" className="secondary" onClick={() => setShowForm(true)}>
         {t("picker.requestOrganizer")}
       </button>
     </div>

@@ -25,6 +25,7 @@ export default function HelpHint({
   const hintId = useId();
   return (
     <span className={align === "center" ? "help-hint help-hint-center" : "help-hint"}>
+      {/* biome-ignore lint/a11y/noNoninteractiveTabindex: a tooltip trigger must be focusable to be read, and activates nothing */}
       <span className="help-hint-marker" tabIndex={0} aria-describedby={hintId}>
         i
       </span>

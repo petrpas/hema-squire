@@ -90,6 +90,7 @@ function AccountsSection({
               <td className="col-actions">
                 {account.hr_id !== null && (
                   <button
+                    type="button"
                     className="row-action"
                     title={t("admin.accounts.unbind")}
                     disabled={busy === account.id}
@@ -138,6 +139,7 @@ function PleaQueueSection({ pleas, onChanged }: { pleas: PleaQueueItem[]; onChan
                 {plea.message && <div className="edit-meta">{plea.message}</div>}
               </div>
               <button
+                type="button"
                 className="row-action"
                 title={t("admin.pleas.grant")}
                 disabled={busy === plea.id}
@@ -146,6 +148,7 @@ function PleaQueueSection({ pleas, onChanged }: { pleas: PleaQueueItem[]; onChan
                 <IconCheck size={16} stroke={1.5} />
               </button>
               <button
+                type="button"
                 className="row-action"
                 title={t("admin.pleas.deny")}
                 disabled={busy === plea.id}
@@ -197,7 +200,7 @@ export default function AdminPanel() {
             <AccountsSection accounts={accounts} onChanged={refresh} />
           </div>
         )}
-        <button className="link-button" onClick={() => navigate(-1)}>
+        <button type="button" className="link-button" onClick={() => navigate(-1)}>
           {t("admin.back")}
         </button>
       </div>

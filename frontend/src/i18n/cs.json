@@ -6,7 +6,8 @@
     "loading": "Načítání…",
     "logout": "Odhlásit",
     "cancel": "Zrušit",
-    "back": "Zpět"
+    "back": "Zpět",
+    "close": "Zavřít"
   },
   "notFound": {
     "title": "Stránka nenalezena",

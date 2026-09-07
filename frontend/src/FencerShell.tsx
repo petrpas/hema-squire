@@ -1,9 +1,9 @@
-import { type ReactNode } from "react";
+import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 
 import AccountMenu from "./AccountMenu";
-import { type Account } from "./api";
+import type { Account } from "./api";
 import FencerIdentity from "./FencerIdentity";
 import { home } from "./routes";
 import { useTabBand } from "./useTabBand";
@@ -44,7 +44,7 @@ export default function FencerShell({
           no width branch in JavaScript, so nothing re-renders on a resize and
           there is no first-paint flash of the wrong layout. */}
       <header className="topbar">
-        <button className="logo-button" title={t("app.title")}>
+        <button type="button" className="logo-button" title={t("app.title")}>
           <span className="logo">{t("app.title")}</span>
         </button>
         <nav className="stage-control stage-control-band" ref={band}>

@@ -122,6 +122,7 @@ export default function ManualEditsRail({
                 </div>
               </div>
               <button
+                type="button"
                 className="row-action"
                 title={t("actions.removeRule")}
                 onClick={() => onUndo(entry.rule_ids)}

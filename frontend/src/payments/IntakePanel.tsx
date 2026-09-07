@@ -128,6 +128,7 @@ export default function IntakePanel({
         }}
       />
       <button
+        type="button"
         className="secondary param-save"
         disabled={busy}
         onClick={() => inputRef.current?.click()}
@@ -140,7 +141,12 @@ export default function IntakePanel({
       <ClearPaymentsControl slug={slug} reload={reload} busy={busy} onCleared={onChanged} />
 
       {detail?.fio_token_configured ? (
-        <button className="secondary param-save" disabled={busy} onClick={() => void poll()}>
+        <button
+          type="button"
+          className="secondary param-save"
+          disabled={busy}
+          onClick={() => void poll()}
+        >
           {t("payments.intake.poll")}
         </button>
       ) : (

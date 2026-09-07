@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { type HRProfile, type RosterMember } from "./api";
+import type { HRProfile, RosterMember } from "./api";
 import HRSearchPicker from "./HRSearch";
 
 /** Names one roster member, in one place: the name is typed once, the HEMA

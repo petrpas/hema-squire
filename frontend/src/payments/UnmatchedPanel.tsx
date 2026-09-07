@@ -75,6 +75,7 @@ export default function UnmatchedPanel({
                 <td className="muted">{tx.message ?? "—"}</td>
                 <td className="col-actions">
                   <button
+                    type="button"
                     className="row-action"
                     title={t("payments.unmatched.link")}
                     onClick={() => setLinking(tx)}

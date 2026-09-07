@@ -83,83 +83,83 @@ export default function FlaggedPanel({
       loading={transactions === null}
       failed={failed}
     >
-      <>
-        <table className="sheet-table">
-          <thead>
-            <tr>
-              <th>{t("payments.flagged.vs")}</th>
-              <th>{t("payments.flagged.amount")}</th>
-              <th>{t("payments.flagged.reason")}</th>
-              <th className="col-actions" />
-            </tr>
-          </thead>
-          <tbody>
-            {flagged.map((tx) => (
-              <tr key={tx.id}>
-                <td>{tx.vs ?? "—"}</td>
-                <td>
-                  {(tx.amount_cents / 100).toLocaleString("cs", { maximumFractionDigits: 2 })}{" "}
-                  {tx.currency}
-                </td>
-                <td className="muted">
-                  {t(`payments.flagged.reasons.${tx.status_reason}`, {
-                    defaultValue: tx.status_reason ?? "",
-                  })}
-                  {/* what settled this registration, where a person did. The
+      <table className="sheet-table">
+        <thead>
+          <tr>
+            <th>{t("payments.flagged.vs")}</th>
+            <th>{t("payments.flagged.amount")}</th>
+            <th>{t("payments.flagged.reason")}</th>
+            <th className="col-actions" />
+          </tr>
+        </thead>
+        <tbody>
+          {flagged.map((tx) => (
+            <tr key={tx.id}>
+              <td>{tx.vs ?? "—"}</td>
+              <td>
+                {(tx.amount_cents / 100).toLocaleString("cs", { maximumFractionDigits: 2 })}{" "}
+                {tx.currency}
+              </td>
+              <td className="muted">
+                {t(`payments.flagged.reasons.${tx.status_reason}`, {
+                  defaultValue: tx.status_reason ?? "",
+                })}
+                {/* what settled this registration, where a person did. The
                       organizer is deciding whether this is further money or
                       the same money arriving twice, and that decision needs
                       the earlier act in front of it (spec payments-console) */}
-                  {tx.settled_by_recorded_payment && (
-                    <div>
-                      {t("payments.flagged.settledByPayment", {
-                        amount: formatMoney(
-                          tx.settled_by_recorded_payment.amount,
-                          tx.settled_by_recorded_payment.currency,
-                        ),
-                        date: new Date(
-                          tx.settled_by_recorded_payment.received_on,
-                        ).toLocaleDateString("cs"),
-                      })}
-                    </div>
-                  )}
-                  {tx.settled_by_hand_reason && (
-                    <div>
-                      {t("payments.flagged.settledByHand", {
-                        reason: tx.settled_by_hand_reason,
-                      })}
-                    </div>
-                  )}
-                </td>
-                <td className="col-actions">
-                  <div className="row-actions">
-                    {tx.reinstate_available && (
-                      <button
-                        className="row-action"
-                        title={t("payments.flagged.reinstate")}
-                        disabled={busyId === tx.id}
-                        onClick={() => void reinstate(tx.id)}
-                      >
-                        <IconArrowBackUp size={16} stroke={1.5} />
-                        <span className="visually-hidden">{t("payments.flagged.reinstate")}</span>
-                      </button>
-                    )}
-                    <button
-                      className="row-action"
-                      title={t("payments.flagged.markForRefund")}
-                      disabled={busyId === tx.id}
-                      onClick={() => void markForRefund(tx.id)}
-                    >
-                      <IconReceiptRefund size={16} stroke={1.5} />
-                      <span className="visually-hidden">{t("payments.flagged.markForRefund")}</span>
-                    </button>
+                {tx.settled_by_recorded_payment && (
+                  <div>
+                    {t("payments.flagged.settledByPayment", {
+                      amount: formatMoney(
+                        tx.settled_by_recorded_payment.amount,
+                        tx.settled_by_recorded_payment.currency,
+                      ),
+                      date: new Date(tx.settled_by_recorded_payment.received_on).toLocaleDateString(
+                        "cs",
+                      ),
+                    })}
                   </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        {errorId !== null && <p className="login-error">{t("payments.flagged.actionFailed")}</p>}
-      </>
+                )}
+                {tx.settled_by_hand_reason && (
+                  <div>
+                    {t("payments.flagged.settledByHand", {
+                      reason: tx.settled_by_hand_reason,
+                    })}
+                  </div>
+                )}
+              </td>
+              <td className="col-actions">
+                <div className="row-actions">
+                  {tx.reinstate_available && (
+                    <button
+                      type="button"
+                      className="row-action"
+                      title={t("payments.flagged.reinstate")}
+                      disabled={busyId === tx.id}
+                      onClick={() => void reinstate(tx.id)}
+                    >
+                      <IconArrowBackUp size={16} stroke={1.5} />
+                      <span className="visually-hidden">{t("payments.flagged.reinstate")}</span>
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    className="row-action"
+                    title={t("payments.flagged.markForRefund")}
+                    disabled={busyId === tx.id}
+                    onClick={() => void markForRefund(tx.id)}
+                  >
+                    <IconReceiptRefund size={16} stroke={1.5} />
+                    <span className="visually-hidden">{t("payments.flagged.markForRefund")}</span>
+                  </button>
+                </div>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      {errorId !== null && <p className="login-error">{t("payments.flagged.actionFailed")}</p>}
     </QueueCard>
   );
 }

@@ -18,6 +18,18 @@ import {
 import OrganizerRow from "./OrganizerRow";
 import { type SaverRegistry, useSectionSaver } from "./shared";
 
+/** A row's identity for React, which the stored organizer has none of: two
+ *  organizers may share a name, and a removed row must not hand its field
+ *  state to the row that slides up into its place. Client-side only — the
+ *  flush sends name and link and nothing else. */
+type OrganizerDraft = Organizer & { rowId: string };
+
+let nextRowId = 0;
+
+function withRowIds(organizers: Organizer[]): OrganizerDraft[] {
+  return organizers.map((organizer) => ({ ...organizer, rowId: `row-${nextRowId++}` }));
+}
+
 export function OrganizersSection({
   detail,
   slug,
@@ -30,17 +42,18 @@ export function OrganizersSection({
   suggestions: SetupSuggestions;
 }) {
   const { t } = useTranslation();
-  const [organizers, setOrganizers] = useState<Organizer[]>(detail.organizers);
+  const [organizers, setOrganizers] = useState<OrganizerDraft[]>(() =>
+    withRowIds(detail.organizers),
+  );
   const [dirty, setDirty] = useState(false);
   const validation = useFieldValidation();
   const fieldRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
   useEffect(() => {
-    setOrganizers(detail.organizers);
+    setOrganizers(withRowIds(detail.organizers));
     validation.clearAll();
     setDirty(false);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [detail]);
+  }, [detail, validation.clearAll]);
 
   function patch(index: number, fields: Partial<Organizer>) {
     const current = organizers[index];
@@ -113,7 +126,7 @@ export function OrganizersSection({
         <tbody>
           {organizers.map((organizer, index) => (
             <OrganizerRow
-              key={index}
+              key={organizer.rowId}
               organizer={organizer}
               index={index}
               candidates={suggestions.organizers}
@@ -135,9 +148,10 @@ export function OrganizersSection({
         </tbody>
       </table>
       <button
+        type="button"
         className="link-button"
         onClick={() => {
-          setOrganizers([...organizers, { name: "", link: null }]);
+          setOrganizers([...organizers, ...withRowIds([{ name: "", link: null }])]);
           setDirty(true);
         }}
       >

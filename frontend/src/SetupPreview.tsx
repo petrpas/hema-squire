@@ -31,10 +31,18 @@ export default function SetupPreview({
     <div className="setup-preview">
       <p className="setup-preview-heading">{t("preview.heading")}</p>
       <nav className="stage-control preview-tabs">
-        <button className={tab === "face" ? "active" : ""} onClick={() => setTab("face")}>
+        <button
+          type="button"
+          className={tab === "face" ? "active" : ""}
+          onClick={() => setTab("face")}
+        >
           {t("preview.tabs.face")}
         </button>
-        <button className={tab === "form" ? "active" : ""} onClick={() => setTab("form")}>
+        <button
+          type="button"
+          className={tab === "form" ? "active" : ""}
+          onClick={() => setTab("form")}
+        >
           {t("preview.tabs.form")}
         </button>
       </nav>

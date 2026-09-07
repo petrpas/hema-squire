@@ -202,7 +202,8 @@ export function ExtraItemsSection({
 
   function removeRow(row: ExtraRow) {
     setRows((prev) => prev.filter((r) => r.rowId !== row.rowId));
-    if (!row.isNew && row.id !== null) setRemoved((prev) => new Set(prev).add(row.id!));
+    const id = row.id;
+    if (!row.isNew && id !== null) setRemoved((prev) => new Set(prev).add(id));
   }
 
   function addRow() {
@@ -265,8 +266,9 @@ export function ExtraItemsSection({
 
       const results = new Map<string, string | null>();
       for (const row of rowsRef.current.filter((row) => !row.isNew && extraRowDirty(row, detail))) {
+        if (row.id === null) continue;
         try {
-          await api.updateExtraItem(slug, row.id!, extraRowInput(row));
+          await api.updateExtraItem(slug, row.id, extraRowInput(row));
           results.set(row.rowId, null);
           outcomes.push({ change: row.name, section: "extra", error: null });
         } catch (err) {
@@ -451,6 +453,7 @@ export function ExtraItemsSection({
                   </td>
                   <td className="col-actions">
                     <button
+                      type="button"
                       className="row-action"
                       title={t("actions.delete")}
                       onClick={() => removeRow(row)}
@@ -545,11 +548,12 @@ export function ExtraItemsSection({
           })}
         </tbody>
       </table>
-      <button className="link-button" onClick={addRow}>
+      <button type="button" className="link-button" onClick={addRow}>
         + {t("setup.extras.add")}
       </button>
       {eur && (
         <button
+          type="button"
           className="link-button"
           disabled={!Number.isFinite(rate) || rate <= 0}
           onClick={recalculateAll}

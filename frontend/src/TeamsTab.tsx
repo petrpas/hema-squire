@@ -5,8 +5,20 @@ import { api, type RosterMember, type TeamEntry } from "./api";
 import RosterMemberDialog from "./RosterMemberDialog";
 import { rosterChanged, summarizeSaves } from "./roster";
 
-function initialRoster(team: TeamEntry): RosterMember[] {
-  return team.members.length > 0 ? team.members : team.prefill ? [team.prefill] : [];
+/** A draft row's identity for React, which a roster member has none of: two
+ *  members may share every field, and a row that is removed or moved up must
+ *  not hand its open name field to whichever member takes its place. Client
+ *  side only — the save sends the four stored fields and nothing else. */
+type DraftMember = RosterMember & { rowId: string };
+
+let nextRowId = 0;
+
+function withRowIds(members: RosterMember[]): DraftMember[] {
+  return members.map((member) => ({ ...member, rowId: `row-${nextRowId++}` }));
+}
+
+function initialRoster(team: TeamEntry): DraftMember[] {
+  return withRowIds(team.members.length > 0 ? team.members : team.prefill ? [team.prefill] : []);
 }
 
 /** Adds, removes, renames, rebinds, and reorders a team's roster in the
@@ -18,8 +30,8 @@ function RosterEditor({
   onChange,
 }: {
   team: TeamEntry;
-  members: RosterMember[];
-  onChange: (members: RosterMember[]) => void;
+  members: DraftMember[];
+  onChange: (members: DraftMember[]) => void;
 }) {
   const { t } = useTranslation();
   // one slot: naming a member happens in the dialog, whether the member is
@@ -49,7 +61,9 @@ function RosterEditor({
   function confirmDialog(member: RosterMember) {
     const index = dialog?.index ?? null;
     onChange(
-      index === null ? [...members, member] : members.map((m, i) => (i === index ? member : m)),
+      index === null
+        ? [...members, ...withRowIds([member])]
+        : members.map((m, i) => (i === index ? { ...member, rowId: m.rowId } : m)),
     );
     setDialog(null);
   }
@@ -65,7 +79,7 @@ function RosterEditor({
       {/* one line per member: their name, their HRID, their club, their row actions */}
       <ul className="detail-list">
         {members.map((member, index) => (
-          <li key={index}>
+          <li key={member.rowId}>
             <div className="checklist-row team-row">
               <input
                 className="cell-input"
@@ -138,7 +152,7 @@ export default function TeamsTab({
   onTeamUpdated: (team: TeamEntry) => void;
 }) {
   const { t } = useTranslation();
-  const [drafts, setDrafts] = useState<Map<number, RosterMember[]>>(
+  const [drafts, setDrafts] = useState<Map<number, DraftMember[]>>(
     () => new Map(teams.map((team) => [team.id, initialRoster(team)])),
   );
   const [busy, setBusy] = useState(false);
@@ -213,6 +227,7 @@ export default function TeamsTab({
         </p>
       )}
       <button
+        type="button"
         className="btn-primary param-save param-save-inline"
         disabled={busy || dirtyTeams.length === 0}
         onClick={() => void saveAll()}

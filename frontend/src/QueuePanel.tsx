@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-
 import { ApiError, api, type Queue } from "./api";
 import PhaseSummary from "./PhaseSummary";
 import QueueEntryLine from "./QueueEntryLine";
@@ -70,6 +69,7 @@ export default function QueuePanel({
         <h1>{t("queue.title")}</h1>
         <span className="header-actions">
           <button
+            type="button"
             className="btn-danger"
             onClick={() => setConfirming(true)}
             disabled={isSettled || busy}
@@ -123,6 +123,7 @@ export default function QueuePanel({
                           <QueueEntryLine entry={entry} timezone={timezone} />
                         </span>
                         <button
+                          type="button"
                           className="link-button"
                           disabled={busy}
                           onClick={() =>
@@ -151,6 +152,7 @@ export default function QueuePanel({
                           <QueueEntryLine entry={entry} timezone={timezone} />
                         </span>
                         <button
+                          type="button"
                           className="link-button"
                           disabled={busy || discipline.free === 0}
                           onClick={() =>

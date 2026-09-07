@@ -6,7 +6,8 @@
     "loading": "Loading…",
     "logout": "Log out",
     "cancel": "Cancel",
-    "back": "Back"
+    "back": "Back",
+    "close": "Close"
   },
   "notFound": {
     "title": "Page not found",

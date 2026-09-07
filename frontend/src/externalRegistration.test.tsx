@@ -3,7 +3,7 @@ import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, expect, it, vi } from "vitest";
 
-import { type TournamentDetail } from "./api";
+import type { TournamentDetail } from "./api";
 import ExternalRegistrationNotice from "./ExternalRegistrationNotice";
 import i18n from "./i18n";
 import { registrationStatus } from "./openingMoment";

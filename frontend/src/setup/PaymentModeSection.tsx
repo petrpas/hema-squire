@@ -78,8 +78,7 @@ export function PaymentModeSection({
     validation.clearAll();
     setError(null);
     setDirty(false);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [detail]);
+  }, [detail, validation.clearAll]);
 
   const checks: Record<string, () => FieldErrorValue | null> = {
     reservation_validity_days: () =>

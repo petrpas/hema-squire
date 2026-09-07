@@ -98,6 +98,7 @@ export default function LikelyPanel({
                     off the row. The word survives as the tooltip */}
                 <div className="row-actions">
                   <button
+                    type="button"
                     className="row-action"
                     title={t("payments.likely.confirm")}
                     disabled={busy === tx.id}
@@ -107,6 +108,7 @@ export default function LikelyPanel({
                     <span className="visually-hidden">{t("payments.likely.confirm")}</span>
                   </button>
                   <button
+                    type="button"
                     className="row-action"
                     title={t("payments.likely.reject")}
                     disabled={busy === tx.id}

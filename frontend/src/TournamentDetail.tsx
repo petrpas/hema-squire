@@ -9,7 +9,7 @@ import {
   type TournamentDetail as TournamentDetailData,
 } from "./api";
 import ExternalRegistrationNotice from "./ExternalRegistrationNotice";
-import { type HomeTab } from "./FencerShell";
+import type { HomeTab } from "./FencerShell";
 import { formatMoney, formatMoneyWithEur } from "./money";
 import NotFound from "./NotFound";
 import OpeningNotice from "./OpeningNotice";
@@ -133,6 +133,7 @@ function RegistrationLines({
           {team.members.length > 0 && (
             <ul className="detail-list">
               {team.members.map((member, index) => (
+                // biome-ignore lint/suspicious/noArrayIndexKey: a read-only list rebuilt from props; position is the only identity these rows have
                 <li key={index} className="muted">
                   {member.name}
                   {member.club && ` · ${member.club}`}
@@ -172,6 +173,7 @@ function RegistrationLines({
         .filter((d) => d.applied)
         .map((d, index) => (
           <AmountLine
+            // biome-ignore lint/suspicious/noArrayIndexKey: a read-only list rebuilt from props; position is the only identity these rows have
             key={`discount-${index}`}
             label={d.name}
             amount={
@@ -289,10 +291,11 @@ function RegistrationPanel({
                 : t("cancel.confirm")}
           </p>
           <div className="modal-actions">
-            <button className="secondary" onClick={() => setConfirming(null)}>
+            <button type="button" className="secondary" onClick={() => setConfirming(null)}>
               {t("common.cancel")}
             </button>
             <button
+              type="button"
               className="btn-danger"
               disabled={busy}
               onClick={() => {
@@ -314,12 +317,12 @@ function RegistrationPanel({
         (canAmend || registration.state !== "cancelled") && (
           <div className="action-pair">
             {canAmend && (
-              <button className="btn-danger" onClick={() => setConfirming("amend")}>
+              <button type="button" className="btn-danger" onClick={() => setConfirming("amend")}>
                 {t("registration.amend")}
               </button>
             )}
             {registration.state !== "cancelled" && (
-              <button className="btn-danger" onClick={() => setConfirming("cancel")}>
+              <button type="button" className="btn-danger" onClick={() => setConfirming("cancel")}>
                 {t("cancel.button")}
               </button>
             )}
@@ -436,6 +439,7 @@ export default function TournamentDetail() {
         <h1>{detail?.display_name}</h1>
         <nav className="stage-control detail-tabs stage-control-band" ref={band}>
           <button
+            type="button"
             className={tab === "tournament" ? "active" : ""}
             onClick={() => selectTab("tournament")}
           >
@@ -443,6 +447,7 @@ export default function TournamentDetail() {
           </button>
           {secondTabOffered && (
             <button
+              type="button"
               className={tab === "registration" ? "active" : ""}
               onClick={() => selectTab("registration")}
             >
@@ -450,7 +455,11 @@ export default function TournamentDetail() {
             </button>
           )}
           {teamsTabOffered && (
-            <button className={tab === "teams" ? "active" : ""} onClick={() => selectTab("teams")}>
+            <button
+              type="button"
+              className={tab === "teams" ? "active" : ""}
+              onClick={() => selectTab("teams")}
+            >
               {t("detail.tabs.teams")}
             </button>
           )}

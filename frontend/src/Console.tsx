@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useNavigate } from "react-router-dom";
-
 import AccountMenu from "./AccountMenu";
 import AmendmentNotice from "./AmendmentNotice";
 import AwaitsPublication from "./AwaitsPublication";
@@ -426,7 +425,7 @@ export function CellDisplay({
     const { text, declared } = identityValue(row, column, hrIdentity);
     // the italic is the whole of the marking: no dash, no badge, no second
     // column (spec `etl-console`, HR identity in the phases after matching)
-    return declared ? <span className="identity-declared">{text}</span> : <>{text}</>;
+    return declared ? <span className="identity-declared">{text}</span> : text;
   }
   switch (column) {
     case "total_amount":
@@ -720,6 +719,7 @@ export default function Console({ tournament, phase }: { tournament: Tournament;
         <nav className="stage-control">
           {STAGES.map((stage) => (
             <button
+              type="button"
               key={stage}
               className={stage === "pre" ? "active" : ""}
               disabled={stage !== "pre"}
@@ -742,6 +742,7 @@ export default function Console({ tournament, phase }: { tournament: Tournament;
           <div key={p} className="step-slot">
             {index > 0 && <div className="step-connector" />}
             <button
+              type="button"
               className={`step ${p === phase ? "active" : ""}`}
               onClick={() => requestPhase(p)}
             >

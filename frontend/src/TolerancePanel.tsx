@@ -40,8 +40,7 @@ export default function TolerancePanel({
     setValue(String(detail.amount_tolerance_percent));
     validation.clearAll();
     setDirty(false);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [detail]);
+  }, [detail, validation.clearAll]);
 
   const check = () => checkPercent("amount_tolerance_percent", value);
 
@@ -123,6 +122,7 @@ export default function TolerancePanel({
             "save" below it. The name stays on the control for anything not
             reading the shape. */}
         <button
+          type="button"
           className="secondary tolerance-save"
           onClick={() => void save()}
           disabled={!dirty || busy}
@@ -149,7 +149,12 @@ export default function TolerancePanel({
           <p className="rail-hint instead-of-control">
             {t("payments.tolerance.resettleable", { count: resettleable })}
           </p>
-          <button className="secondary param-save" onClick={() => void resettle()} disabled={busy}>
+          <button
+            type="button"
+            className="secondary param-save"
+            onClick={() => void resettle()}
+            disabled={busy}
+          >
             {t("payments.tolerance.resettle")}
           </button>
         </>

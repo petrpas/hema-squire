@@ -26,18 +26,31 @@ export default function EditableCell({
     if (editing) inputRef.current?.select();
   }, [editing]);
 
+  function open() {
+    setDraft(value === null || value === undefined ? "" : String(value));
+    setError(null);
+    setEditing(true);
+  }
+
   if (!editing) {
+    // A cell that only opens on a double click cannot be edited from a
+    // keyboard at all. Enter and F2 open it as well — F2 because that is what
+    // a cell in a table opens with everywhere else — and the cell is a tab
+    // stop so that those keys can reach it.
     return (
-      <div
+      <button
+        type="button"
         className="cell-editable"
-        onDoubleClick={() => {
-          setDraft(value === null || value === undefined ? "" : String(value));
-          setError(null);
-          setEditing(true);
+        onDoubleClick={open}
+        onKeyDown={(event) => {
+          if (event.key === "Enter" || event.key === "F2") {
+            event.preventDefault();
+            open();
+          }
         }}
       >
         {display}
-      </div>
+      </button>
     );
   }
 

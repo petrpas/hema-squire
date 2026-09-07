@@ -129,6 +129,7 @@ export function PublishSection({
         </>
       ) : (
         <button
+          type="button"
           className="btn-primary"
           disabled={missing.length > 0}
           onClick={() => setConfirming(true)}

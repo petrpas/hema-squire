@@ -70,6 +70,7 @@ export default function MatchPanel({
       </h2>
       <p className="rail-hint">{t("match.runHint")}</p>
       <button
+        type="button"
         className="secondary param-save"
         disabled={running !== null}
         onClick={() => void run()}
@@ -98,6 +99,7 @@ export default function MatchPanel({
           : t("match.indexStatus", { fighters: hrStatus.fighters })}
       </p>
       <button
+        type="button"
         className="secondary param-save"
         disabled={refreshing}
         onClick={() => void refreshIndex()}

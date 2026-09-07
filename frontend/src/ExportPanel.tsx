@@ -59,13 +59,23 @@ export default function ExportPanel({ slug }: { slug: string }) {
     <section className="rail-card">
       <h2>{t("export.title")}</h2>
       <p className="rail-hint">{t("export.hint")}</p>
-      <button className="secondary param-save" disabled={busy} onClick={() => void fetchRatings()}>
+      <button
+        type="button"
+        className="secondary param-save"
+        disabled={busy}
+        onClick={() => void fetchRatings()}
+      >
         {busy ? t("common.loading") : t("export.fetchRatings")}
       </button>
-      <button className="secondary param-save" disabled={busy} onClick={() => void runSheets()}>
+      <button
+        type="button"
+        className="secondary param-save"
+        disabled={busy}
+        onClick={() => void runSheets()}
+      >
         {busy ? t("common.loading") : t("export.runSheets")}
       </button>
-      <button className="secondary param-save" onClick={() => void downloadJson()}>
+      <button type="button" className="secondary param-save" onClick={() => void downloadJson()}>
         {t("export.downloadJson")}
       </button>
       {message && <p className="rail-hint">{message}</p>}

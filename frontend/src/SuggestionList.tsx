@@ -14,11 +14,14 @@ export default function SuggestionList({
   if (!suggestions.visible) return null;
 
   return (
+    // biome-ignore lint/a11y/noNoninteractiveElementToInteractiveRole: ul/listbox is the ARIA authoring practices' combobox popup
     <ul className="suggestion-list" id={suggestions.listId} role="listbox" aria-label={label}>
       {suggestions.matches.map((entry, index) => (
+        // biome-ignore lint/a11y/useFocusableInteractive: focus stays on the input; the active option is named by aria-activedescendant
         <li
           key={`${entry.value} ${entry.secondary ?? ""}`}
           id={`${suggestions.listId}-${index}`}
+          // biome-ignore lint/a11y/noNoninteractiveElementToInteractiveRole: li/option is the ARIA authoring practices' combobox popup
           role="option"
           aria-selected={index === suggestions.active}
           className={

@@ -91,6 +91,7 @@ export function TeamSection({ slug }: { slug: string }) {
               <td>{member.display_name}</td>
               <td className="col-actions">
                 <button
+                  type="button"
                   className="row-action"
                   title={t("actions.delete")}
                   disabled={busy}
@@ -111,7 +112,12 @@ export function TeamSection({ slug }: { slug: string }) {
           placeholder={t("setup.team.addPlaceholder")}
           onChange={(event) => setEmail(event.target.value)}
         />
-        <button className="secondary" disabled={busy || !email} onClick={() => void add()}>
+        <button
+          type="button"
+          className="secondary"
+          disabled={busy || !email}
+          onClick={() => void add()}
+        >
           {t("setup.team.add")}
         </button>
       </div>
@@ -124,6 +130,7 @@ export function TeamSection({ slug }: { slug: string }) {
           onChange={(event) => setTransferEmail(event.target.value)}
         />
         <button
+          type="button"
           className="secondary"
           disabled={busy || !transferEmail}
           onClick={() => void transfer()}

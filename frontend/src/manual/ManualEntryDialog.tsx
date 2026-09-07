@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-
 import { api, type ManualEntryIn, type TournamentDetail } from "../api";
 import FieldError, { invalidProps } from "../FieldError";
 import { parseInteger } from "../numeric";
@@ -73,7 +72,7 @@ export default function ManualEntryDialog({
       name: name.trim(),
       nationality: nationality.trim() || null,
       club: club.trim() || null,
-      hr_id: parsedHrId && parsedHrId.ok ? parsedHrId.value : null,
+      hr_id: parsedHrId?.ok ? parsedHrId.value : null,
       email: email.trim() || null,
       registered_at: registeredAt || null,
       disciplines,

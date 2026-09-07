@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { type RosterMember, type TeamEntry } from "./api";
+import type { RosterMember, TeamEntry } from "./api";
 import { rosterChanged, summarizeSaves } from "./roster";
 
 function member(overrides: Partial<RosterMember> = {}): RosterMember {

@@ -79,6 +79,7 @@ export default function TeamsPanel({ slug }: { slug: string }) {
                       {team.members.length > 0 && (
                         <ul className="detail-list">
                           {team.members.map((member, index) => (
+                            // biome-ignore lint/suspicious/noArrayIndexKey: a read-only list rebuilt from props; position is the only identity these rows have
                             <li key={index} className="muted">
                               {member.name}
                               {member.club && ` · ${member.club}`}

@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-
 import { ApiError } from "./api";
 
 /** Why a registration on a collecting tournament is settled with no money.
@@ -76,10 +75,15 @@ export default function WaiverReasonDialog({
         )}
 
         <div className="modal-actions">
-          <button className="secondary" onClick={onClose}>
+          <button type="button" className="secondary" onClick={onClose}>
             {t("common.cancel")}
           </button>
-          <button className="btn-primary" disabled={!given || busy} onClick={() => void confirm()}>
+          <button
+            type="button"
+            className="btn-primary"
+            disabled={!given || busy}
+            onClick={() => void confirm()}
+          >
             {t("console.waiver.confirm")}
           </button>
         </div>

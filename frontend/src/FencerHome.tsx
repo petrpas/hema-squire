@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { Link, useOutletContext } from "react-router-dom";
 import { api, logoUrl, type OpenTournament } from "./api";
 import DotJoined from "./DotJoined";
-import { type HomeTab } from "./FencerShell";
+import type { HomeTab } from "./FencerShell";
 import InlineProse from "./InlineProse";
 import { openingHourIn } from "./openingMoment";
 import { detail } from "./routes";
@@ -80,13 +80,14 @@ function CardHeading({ tournament, badge }: { tournament: OpenTournament; badge:
           parts={[
             new Date(tournament.date).toLocaleDateString("cs"),
             tournament.location?.trim() ? (
-              <InlineProse source={tournament.location} links={false} />
+              <InlineProse key="location" source={tournament.location} links={false} />
             ) : null,
           ]}
         />
         {tournament.organizers.length > 0 && (
           <p className="home-card-organizers">
             {tournament.organizers.map((organizer, index) => (
+              // biome-ignore lint/suspicious/noArrayIndexKey: a read-only list rebuilt from props; position is the only identity these rows have
               <span key={index}>
                 {index > 0 && ", "}
                 {organizer.link ? (

@@ -153,24 +153,24 @@ export default function DedupGroup({
       <div className="dedup-actions">
         {open ? (
           <>
-            <button className="secondary" onClick={confirm}>
+            <button type="button" className="secondary" onClick={confirm}>
               {t("dedup.accept")}
             </button>
-            <button className="row-action" onClick={separate}>
+            <button type="button" className="row-action" onClick={separate}>
               {t("dedup.reject")}
             </button>
           </>
         ) : group.verdict === "merged" ? (
           <>
-            <button className="row-action" onClick={separate}>
+            <button type="button" className="row-action" onClick={separate}>
               {t("dedup.reject")}
             </button>
-            <button className="row-action" onClick={reopen}>
+            <button type="button" className="row-action" onClick={reopen}>
               {t("dedup.reopen")}
             </button>
           </>
         ) : (
-          <button className="secondary" onClick={() => onDecide(true)}>
+          <button type="button" className="secondary" onClick={() => onDecide(true)}>
             {t("dedup.accept")}
           </button>
         )}
