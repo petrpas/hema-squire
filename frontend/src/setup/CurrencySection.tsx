@@ -32,11 +32,21 @@ export function CurrencySection({
 
   useEffect(() => {
     setMode(detail.currency_mode);
-    setRate(detail.eur_rate ? formatForLocale(Number(detail.eur_rate), i18n.language) : "");
     validation.clearAll();
     setError(null);
     setDirty(false);
-  }, [detail, i18n.language, validation.clearAll]);
+  }, [detail, validation.clearAll]);
+
+  // The rate is seeded on its own because it is the only field here that the
+  // display language touches — it is written in the locale's own decimal mark.
+  // Seeding it from the effect above would mean re-running that whole reseed
+  // on a language change, which reverts the chosen mode and clears `dirty`,
+  // and a section that is no longer dirty is one the save bar stops offering
+  // to save. Unsaved typing is left alone for the same reason.
+  useEffect(() => {
+    if (dirty) return;
+    setRate(detail.eur_rate ? formatForLocale(Number(detail.eur_rate), i18n.language) : "");
+  }, [detail.eur_rate, i18n.language, dirty]);
 
   function rateCheck(): FieldErrorValue | null {
     if (mode !== "local_eur") return null;

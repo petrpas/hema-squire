@@ -207,6 +207,7 @@ export default function SheetArea({
                             />
                           ) : editable ? (
                             <EditableCell
+                              label={t(`column.${column}`)}
                               display={
                                 <CellDisplay
                                   row={row}

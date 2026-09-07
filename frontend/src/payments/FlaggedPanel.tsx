@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { api, type Transaction } from "../api";
-import { formatMoney } from "../money";
+import { formatMoney, formatTransactionAmount } from "../money";
 import QueueCard from "./QueueCard";
 
 /** The flagged-transaction queue: every VS-matched transaction that did not
@@ -96,10 +96,7 @@ export default function FlaggedPanel({
           {flagged.map((tx) => (
             <tr key={tx.id}>
               <td>{tx.vs ?? "—"}</td>
-              <td>
-                {(tx.amount_cents / 100).toLocaleString("cs", { maximumFractionDigits: 2 })}{" "}
-                {tx.currency}
-              </td>
+              <td>{formatTransactionAmount(tx.amount_cents, tx.currency)}</td>
               <td className="muted">
                 {t(`payments.flagged.reasons.${tx.status_reason}`, {
                   defaultValue: tx.status_reason ?? "",

@@ -1,15 +1,21 @@
 import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 import FieldError, { invalidProps } from "./FieldError";
 import type { FieldError as FieldErrorValue } from "./validation";
 
 export default function EditableCell({
   display,
+  label,
   value,
   onSave,
   validate,
 }: {
   display: React.ReactNode;
+  /** The column's own heading. The cell is a button, and a button whose only
+   *  content is an empty column announces itself as "button" and nothing
+   *  else — so the name is given here rather than left to the text. */
+  label: string;
   value: unknown;
   onSave: (value: string) => void;
   /** Checked on blur/Enter; a returned error keeps the cell in edit mode
@@ -17,6 +23,7 @@ export default function EditableCell({
    * `add-field-validation`). */
   validate?: (raw: string) => FieldErrorValue | null;
 }) {
+  const { t } = useTranslation();
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState("");
   const [error, setError] = useState<FieldErrorValue | null>(null);
@@ -26,8 +33,10 @@ export default function EditableCell({
     if (editing) inputRef.current?.select();
   }, [editing]);
 
+  const shown = value === null || value === undefined ? "" : String(value);
+
   function open() {
-    setDraft(value === null || value === undefined ? "" : String(value));
+    setDraft(shown);
     setError(null);
     setEditing(true);
   }
@@ -41,6 +50,11 @@ export default function EditableCell({
       <button
         type="button"
         className="cell-editable"
+        aria-label={
+          shown === ""
+            ? t("console.cell.editEmpty", { column: label })
+            : t("console.cell.edit", { column: label, value: shown })
+        }
         onDoubleClick={open}
         onKeyDown={(event) => {
           if (event.key === "Enter" || event.key === "F2") {

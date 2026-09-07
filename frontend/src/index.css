@@ -1796,10 +1796,14 @@ tr.row-deleted td.col-actions {
 }
 
 /* A button so the cell can be reached and opened from a keyboard; nothing
-   about it is drawn as one. */
+   about it is drawn as one, and — `user-select` — nothing about it behaves as
+   one either. Chrome and Safari refuse to let a drag select a button's text,
+   which would stop an organizer selecting a name out of the sheet and copying
+   it, the thing this cell is read for most. */
 .cell-editable {
   min-height: 1.2rem;
   cursor: text;
+  user-select: text;
   display: block;
   width: 100%;
   padding: 0;
