@@ -67,7 +67,7 @@ export default function ExpiredHoldingPanel({
           {(rows ?? []).map((row) => (
             <tr key={row.registration_id}>
               <td>{row.fencer_name}</td>
-              <td>{row.vs}</td>
+              <td>{row.vs ?? "—"}</td>
               <td>
                 {formatMoney(row.credited_amount, currency)}
                 {row.credited_eur_amount && (

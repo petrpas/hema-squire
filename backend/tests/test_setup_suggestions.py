@@ -68,9 +68,9 @@ def test_distinct_organizers_keys_on_the_pair():
             )
         ]
     )
-    assert pairs == [
-        {"name": "SHBU", "link": "https://a.example"},
-        {"name": "SHBU", "link": "https://b.example"},
+    assert [(p.name, p.link) for p in pairs] == [
+        ("SHBU", "https://a.example"),
+        ("SHBU", "https://b.example"),
     ]
 
 
@@ -79,16 +79,16 @@ def test_distinct_organizers_treats_empty_link_as_absent():
     pairs = _distinct_organizers(
         [FakeTournament([{"name": "SHBU", "link": ""}, {"name": "SHBU", "link": None}])]
     )
-    assert pairs == [{"name": "SHBU", "link": None}]
+    assert [(p.name, p.link) for p in pairs] == [("SHBU", None)]
 
 
 def test_distinct_organizers_tolerates_bare_strings():
     """`Tournament.organizers` may still hold bare strings on a
     restored-from-old-export deployment (models.py:210)."""
     pairs = _distinct_organizers([FakeTournament(["SHBU", {"name": "Jiný spolek", "link": None}])])
-    assert pairs == [
-        {"name": "SHBU", "link": None},
-        {"name": "Jiný spolek", "link": None},
+    assert [(p.name, p.link) for p in pairs] == [
+        ("SHBU", None),
+        ("Jiný spolek", None),
     ]
 
 

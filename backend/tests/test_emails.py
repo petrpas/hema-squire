@@ -285,13 +285,15 @@ def test_the_composition_reminder_refuses_too(client, auth_headers, mailbox):
     from app.mail import NoRecipientError
 
     session, registration = _addressless_registration(client, auth_headers, mailbox)
-    # the reminder states the deadline, so it needs one to reach the message
-    registration.tournament.team_composition_deadline = datetime.date(2026, 11, 1)
+    # the reminder states the deadline, and the scheduler passes the one it
+    # narrowed to reach the reminder window at all
+    deadline = datetime.date(2026, 11, 1)
+    registration.tournament.team_composition_deadline = deadline
     session.commit()
 
     with pytest.raises(NoRecipientError):
         emails.send_composition_reminder(
-            mailbox, registration.tournament, registration.fencer, []
+            mailbox, registration.tournament, registration.fencer, [], deadline
         )
 
     assert mailbox.sent == []

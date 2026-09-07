@@ -8,6 +8,7 @@ A team discipline is counted in teams, never in fencers: `taken_seats`/
 exclusive by `discipline.kind` (design team-disciplines D1/2.6) — calling the
 wrong pair for a discipline's kind is a programming error, asserted below."""
 
+from collections.abc import Sequence
 from datetime import UTC, datetime
 
 from sqlalchemy import func, select
@@ -142,7 +143,7 @@ def team_queue_length(session: Session, discipline: Discipline) -> int:
 
 def team_waitlist_flags(
     session: Session,
-    team_entries: list[tuple[Discipline, object]],
+    team_entries: Sequence[tuple[Discipline, object]],
     *,
     exclude_registration_id: int | None = None,
 ) -> list[bool]:

@@ -317,11 +317,12 @@ def process_composition_reminders(session: Session, tournament: Tournament, mail
     entirely when the tournament has no deadline, is outside the notice
     window, is waitlisted, already reminded, or already at its minimum — none
     of which is a case for a reminder."""
-    if tournament.team_composition_deadline is None:
+    deadline = tournament.team_composition_deadline
+    if deadline is None:
         return 0
     today = _now().date()
-    window_start = tournament.team_composition_deadline - timedelta(days=tournament.reminder_day)
-    if not (window_start <= today <= tournament.team_composition_deadline):
+    window_start = deadline - timedelta(days=tournament.reminder_day)
+    if not (window_start <= today <= deadline):
         return 0
 
     candidates = session.scalars(
@@ -337,14 +338,16 @@ def process_composition_reminders(session: Session, tournament: Tournament, mail
 
     by_fencer: dict[int, list[Team]] = {}
     for team in candidates:
-        if len(team.members) >= team.discipline.team_min:
+        # a team discipline always carries both bounds (`DisciplineIn` enforces
+        # it on write); no minimum recorded means no team is below one
+        if len(team.members) >= (team.discipline.team_min or 0):
             continue
         by_fencer.setdefault(team.registration.fencer_id, []).append(team)
 
     sent = 0
     for teams in by_fencer.values():
         fencer = teams[0].registration.fencer
-        emails.send_composition_reminder(mailer, tournament, fencer, teams)
+        emails.send_composition_reminder(mailer, tournament, fencer, teams, deadline)
         for team in teams:
             team.composition_reminded_at = _now()
         sent += len(teams)

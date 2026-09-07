@@ -123,7 +123,10 @@ def read_table(filename: str, data: bytes) -> list[dict[str, str]]:
         import openpyxl
 
         workbook = openpyxl.load_workbook(io.BytesIO(data), read_only=True)
-        rows_iter = workbook.active.iter_rows(values_only=True)
+        sheet = workbook.active
+        if sheet is None:  # a workbook carrying no sheet at all
+            return []
+        rows_iter = sheet.iter_rows(values_only=True)
         header = next(rows_iter, None)
         return [] if header is None else _table_rows(header, rows_iter)
     raise UnsupportedFormatError(filename)
@@ -405,7 +408,10 @@ def undecided_rows(
     ]
 
 
-def batches(rows: list[ImportedRow], size: int = PARSE_BATCH_SIZE) -> list[list[ImportedRow]]:
+def batches[Row](rows: list[Row], size: int = PARSE_BATCH_SIZE) -> list[list[Row]]:
+    """Chunk a list for one model call. Generic over the row: the registration
+    import hands it `ImportedRow`, the statement import hands it raw dicts, and
+    the slicing is the same work either way."""
     return [rows[start : start + size] for start in range(0, len(rows), size)]
 
 

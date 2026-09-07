@@ -40,7 +40,8 @@ class Resolution:
     from the top two scores."""
 
     proposed: Fencer | None
-    ranked: list[Ranked]
+    # keyed by fencer id, which is what `roster` ranks by
+    ranked: list[Ranked[int]]
     reason: str | None
 
 

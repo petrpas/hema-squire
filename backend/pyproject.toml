@@ -26,6 +26,7 @@ dependencies = [
 
 [dependency-groups]
 dev = [
+    "basedpyright>=1.40.0",
     "httpx>=0.28.1",
     "pytest>=9.1.1",
     "ruff>=0.15.22",
@@ -49,3 +50,19 @@ known-third-party = ["alembic"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["."]
+
+[tool.basedpyright]
+pythonVersion = "3.14"
+venvPath = "."
+venv = ".venv"
+typeCheckingMode = "standard"
+
+# Scope, phase 2 of `openspec/changes/static-analysis-spec.md`. Only `app/` is
+# gated. Still outside the gate, to be widened in a later phase:
+#   tests/    — the fakes (StubRule, FakeTournament) are passed to functions
+#               typed against the real models, so making them check means
+#               introducing protocols at those seams, not annotating.
+#   scripts/  — seeding and one-off maintenance, not shipped code.
+#   alembic/  — generated migrations.
+include = ["app"]
+exclude = ["**/__pycache__", "**/node_modules"]

@@ -41,6 +41,7 @@ from app.routers.tournaments import FencerDep, SessionDep, TournamentDep
 from app.schemas import (
     ExpiredHoldingOut,
     IngestAndMatchOut,
+    IssueSkipOut,
     LinkIn,
     ManualPaymentIn,
     ManualPaymentOut,
@@ -100,7 +101,7 @@ def _ingest_and_match(session, tournament, mailer, source, transactions) -> Inge
         issued=issued.issued,
         already_issued=issued.already,
         skipped=[
-            {"row_id": skip.row_id, "name": skip.name, "reason": skip.reason}
+            IssueSkipOut(row_id=skip.row_id, name=skip.name, reason=skip.reason)
             for skip in issued.skipped
         ],
     )
@@ -129,7 +130,8 @@ async def import_statement(
     content = await file.read()
     filename = file.filename or "statement.csv"
 
-    if not bank.is_fio_export(content):
+    is_fio = bank.is_fio_export(content)
+    if not is_fio:
         if parser is None:
             raise HTTPException(status_code=409, detail="no_statement_parser")
         try:
@@ -159,11 +161,13 @@ async def import_statement(
         ) from None
 
     def body(work_session: Session, work_operation: Operation) -> dict:
-        work_tournament = work_session.get(Tournament, work_operation.tournament_id)
-        if bank.is_fio_export(content):
+        work_tournament = operations.reload(work_session, Tournament, work_operation.tournament_id)
+        if is_fio:
             transactions = bank.parse_fio_csv(content)
             operations.advance(work_session, work_operation, 1)
         else:
+            # the same `is_fio` refused a missing parser in the request above
+            assert parser is not None
             transactions = statements.parse(
                 work_session,
                 work_tournament,
@@ -601,7 +605,11 @@ def expired_holding(tournament: TournamentDep, session: SessionDep, fencer: Fenc
     ).all()
     if not rows:
         return []
-    expired_at = dict(rows)
+    # built by comprehension rather than `dict(rows)`: the `is_not(None)` above
+    # already excluded a null registration id, and this is what says so
+    expired_at = {
+        registration_id: at for registration_id, at in rows if registration_id is not None
+    }
     registrations = session.scalars(
         select(Registration).where(
             Registration.id.in_(expired_at),

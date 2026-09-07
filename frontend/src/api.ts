@@ -882,7 +882,7 @@ export interface ManualPaymentInput {
 export interface ExpiredHolding {
   registration_id: number;
   fencer_name: string;
-  vs: number;
+  vs: number | null;
   /** A decimal string, as every credited amount the API states is. */
   credited_amount: string;
   credited_eur_amount: string | null;

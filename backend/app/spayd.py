@@ -10,6 +10,7 @@ import re
 from decimal import Decimal
 
 import qrcode
+from qrcode.image.pil import PilImage
 
 _MSG_FORBIDDEN = re.compile(r"[*\n\r]")
 
@@ -33,7 +34,7 @@ def spayd_string(
 
 
 def qr_png(data: str) -> bytes:
-    image = qrcode.make(data)
+    image = qrcode.make(data, image_factory=PilImage)
     buffer = io.BytesIO()
     image.save(buffer, format="PNG")
     return buffer.getvalue()

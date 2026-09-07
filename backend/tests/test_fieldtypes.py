@@ -2,10 +2,12 @@
 D2, D4): tolerant numeric parsing, the global string rules, and the
 scheme-restricted URL type — task 2.5."""
 
-import pytest
-from pydantic import BaseModel, ValidationError
+from typing import Annotated
 
-from app.fieldtypes import HttpUrlStr, MultilineStr, SingleLineStr, TolerantDecimal, TolerantInt
+import pytest
+from pydantic import BaseModel, Field, ValidationError
+
+from app.fieldtypes import HttpUrl, Multiline, SingleLine, TolerantDecimal, TolerantInt
 
 
 class _Decimal(BaseModel):
@@ -17,15 +19,15 @@ class _Int(BaseModel):
 
 
 class _SingleLine(BaseModel):
-    value: SingleLineStr(20)
+    value: Annotated[str, SingleLine, Field(max_length=20)]
 
 
 class _Multiline(BaseModel):
-    value: MultilineStr(20)
+    value: Annotated[str, Multiline, Field(max_length=20)]
 
 
 class _Url(BaseModel):
-    value: HttpUrlStr(200)
+    value: Annotated[str, SingleLine, HttpUrl, Field(max_length=200)]
 
 
 def _error_code(exc: ValidationError) -> str:

@@ -9,6 +9,7 @@ HRating/HRank always refresh, every other cell is written only when blank
 """
 
 import unicodedata
+from collections.abc import Callable
 from typing import Protocol
 
 from app.hr_index import HRRating
@@ -193,7 +194,11 @@ class GspreadSheetsClient:
         sheet.update(grid, "A1")
 
 
-def get_sheets_client_factory():
+# A per-tournament client, or None where the tournament names no output sheet.
+type SheetsClientFactory = Callable[[Tournament], GspreadSheetsClient | None]
+
+
+def get_sheets_client_factory() -> SheetsClientFactory | None:
     """FastAPI dependency returning a per-tournament client factory, or None
     when Google credentials are not configured."""
     from app.config import settings

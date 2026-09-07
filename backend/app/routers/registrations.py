@@ -1,7 +1,8 @@
 import base64
+from collections.abc import Sequence
 from datetime import UTC, datetime, time, timedelta
 from decimal import ROUND_HALF_UP, Decimal
-from typing import Annotated
+from typing import Annotated, Protocol
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import delete, func, select, update
@@ -41,6 +42,7 @@ from app.routers.tournaments import FencerDep, SessionDep, TournamentDep
 from app.schemas import (
     AvailabilityOut,
     DiscountBreakdownOut,
+    DiscountEffect,
     ParticipantListOut,
     ParticipantOut,
     PaymentInstructionsOut,
@@ -364,11 +366,20 @@ def _resolve_selection(tournament: Tournament, data) -> tuple[list, list[tuple]]
     return selected, extras
 
 
-def _resolve_teams(tournament: Tournament, entries) -> list[tuple[Discipline, object]]:
+class _TeamEntry(Protocol):
+    """What `_resolve_teams` reads off a team entry, and all it reads."""
+
+    slug: str
+
+
+def _resolve_teams[Entry: _TeamEntry](
+    tournament: Tournament, entries: Sequence[Entry]
+) -> list[tuple[Discipline, Entry]]:
     """Validate team entries (RegisterIn/PricePreviewIn's `teams`) against the
     tournament's team disciplines. Works for both `TeamEntryIn` (register/
     amend, carries `id`/`name`) and `PreviewTeamIn` (preview, carries only
-    `slug`) — nothing here reads more than `.slug`."""
+    `slug`) — nothing here reads more than `.slug`, and each caller gets its
+    own entry type back rather than a widened one."""
     by_slug = {d.slug: d for d in tournament.disciplines}
     unknown = [e.slug for e in entries if e.slug not in by_slug]
     if unknown:
@@ -434,7 +445,7 @@ def price_preview(data: PricePreviewIn, tournament: TournamentDep):
         discounts=[
             DiscountBreakdownOut(
                 name=d.name,
-                effect=d.effect,
+                effect=DiscountEffect.model_validate(d.effect),
                 applied=d.applied,
                 deducted=d.deducted,
                 deducted_eur=d.deducted_eur,
@@ -720,6 +731,11 @@ def my_registration_payment(tournament: TournamentDep, session: SessionDep, fenc
         raise HTTPException(status_code=409, detail="no_payment_due")
     if not tournament.bank_account:
         raise HTTPException(status_code=404, detail="no_bank_account")
+    vs = registration.vs
+    if vs is None:
+        # a symbol is allocated with the registration wherever Squire collects;
+        # without one there is no payment instruction to give
+        raise HTTPException(status_code=409, detail="no_payment_symbol")
 
     # built by the same helpers the confirmation email uses, so the two can
     # never drift apart
@@ -730,7 +746,7 @@ def my_registration_payment(tournament: TournamentDep, session: SessionDep, fenc
         currency=tournament.local_currency,
         iban=tournament.bank_account,
         account_domestic=accounts.to_domestic(tournament.bank_account),
-        vs=registration.vs,
+        vs=vs,
         message=message,
         expires_at=registration.expires_at,
         spayd=primary,
@@ -747,12 +763,13 @@ def my_registration_payment(tournament: TournamentDep, session: SessionDep, fenc
 def cancel_registration(tournament: TournamentDep, session: SessionDep, fencer: FencerDep):
     registration = get_my_registration(session, tournament, fencer)
     was_paid = registration.state == RegistrationState.PAID
-    registration.cancelled_at = _now()
+    cancelled_at = _now()
+    registration.cancelled_at = cancelled_at
     registration.state = RegistrationState.CANCELLED
     if was_paid:
         refundable = (
             tournament.refundable_until is not None
-            and registration.cancelled_at.date() <= tournament.refundable_until
+            and cancelled_at.date() <= tournament.refundable_until
         )
         registration.refundable = refundable
         registration.refund_state = (
@@ -1040,11 +1057,11 @@ def update_roster(
     `setup.amendment_availability`, so a roster save succeeds even after the
     amendment window has closed (design team-disciplines 4.4/4.5)."""
     team = _team_for_roster_edit(session, tournament, fencer, team_id)
-    if len(data.members) > team.discipline.team_max:
-        raise HTTPException(
-            status_code=422,
-            detail={"roster_over_maximum": team.discipline.team_max},
-        )
+    # a team discipline always carries a maximum (`DisciplineIn` enforces it on
+    # write); no maximum recorded is no maximum to exceed
+    team_max = team.discipline.team_max
+    if team_max is not None and len(data.members) > team_max:
+        raise HTTPException(status_code=422, detail={"roster_over_maximum": team_max})
     session.execute(delete(TeamMember).where(TeamMember.team_id == team.id))
     session.flush()
     for ordinal, member in enumerate(data.members):

@@ -143,17 +143,18 @@ def score(query: str, name: str) -> float:
 
 
 @dataclass(frozen=True)
-class Ranked:
+class Ranked[Key]:
     """One candidate and how well it matched. `key` is whatever the caller
     ranked by — a fencer id, usually — carried through untouched so this module
-    needs to know nothing about what a fencer is."""
+    needs to know nothing about what a fencer is. Generic in it, so the caller
+    gets its own key type back rather than having to widen or re-narrow."""
 
-    key: object
+    key: Key
     name: str
     score: float
 
 
-def rank(query: str, candidates: list[tuple[object, str]]) -> list[Ranked]:
+def rank[Key](query: str, candidates: list[tuple[Key, str]]) -> list[Ranked[Key]]:
     """Every candidate, best first. Ties keep the order they were given in, so
     the ranking is a function of its inputs and nothing else.
 
@@ -166,7 +167,7 @@ def rank(query: str, candidates: list[tuple[object, str]]) -> list[Ranked]:
     return sorted(ranked, key=lambda r: -r.score)
 
 
-def clear_winner(ranked: list[Ranked]) -> Ranked | None:
+def clear_winner[Key](ranked: list[Ranked[Key]]) -> Ranked[Key] | None:
     """The one candidate strong enough and far enough ahead to be proposed, or
     None where the answer belongs to a person.
 

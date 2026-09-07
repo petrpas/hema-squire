@@ -8,7 +8,10 @@ from app.routers.tournaments import FencerDep, SessionDep, TournamentDep
 
 router = APIRouter(prefix="/api/tournaments", tags=["export"])
 
-SheetsFactoryDep = Annotated[object, Depends(sheets_export.get_sheets_client_factory)]
+SheetsFactoryDep = Annotated[
+    sheets_export.SheetsClientFactory | None,
+    Depends(sheets_export.get_sheets_client_factory),
+]
 
 
 @router.get("/{slug}/export/json")

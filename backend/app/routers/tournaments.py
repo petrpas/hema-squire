@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, Response, UploadFile
 from PIL import Image, UnidentifiedImageError
 from sqlalchemy import delete, false, func, or_, select
 from sqlalchemy.orm import Session, selectinload
+from sqlalchemy.sql.elements import ColumnElement
 
 from app import bank, money_bounds, scheduler, setup, taxonomy
 from app.auth import (
@@ -62,13 +63,16 @@ from app.schemas import (
     ExtraItemOut,
     FioTokenIn,
     FioTokenOut,
+    MyRegistrationState,
     OpenDisciplineOut,
     OpenTournamentOut,
+    OrganizerOut,
     OwnerTransferIn,
     QueueDisciplineOut,
     QueueEntryOut,
     QueueOut,
     RegistrationsKeptByIn,
+    RosterMemberOut,
     SettleSeatingOut,
     SetupSuggestionsOut,
     TeamAdd,
@@ -207,7 +211,9 @@ def list_tournaments(session: SessionDep):
     return outs
 
 
-def _my_registration_state(session: Session, tournament: Tournament, fencer: Fencer) -> str:
+def _my_registration_state(
+    session: Session, tournament: Tournament, fencer: Fencer
+) -> MyRegistrationState:
     """The caller's own standing on one tournament, as the fencer-facing lists
     report it. A reservation holding nothing but substitute entries reads as
     `substitute`; a cancelled or scheduler-expired one reads as `cancelled`."""
@@ -285,7 +291,10 @@ def _published_tournaments(session: Session, *, upcoming: bool | None) -> list[T
     today or later (ascending), False those before today (descending), None
     every one of them (descending)."""
     today = datetime.now(UTC).date()
-    conditions = [Tournament.cancelled_at.is_(None), Tournament.published_at.is_not(None)]
+    conditions: list[ColumnElement[bool]] = [
+        Tournament.cancelled_at.is_(None),
+        Tournament.published_at.is_not(None),
+    ]
     if upcoming is True:
         conditions.append(Tournament.date >= today)
     elif upcoming is False:
@@ -417,7 +426,9 @@ def _distinct_recent(values: Iterable[str | None], cap: int = SUGGESTION_CAP) ->
     return result
 
 
-def _distinct_organizers(tournaments: list[Tournament], cap: int = SUGGESTION_CAP) -> list[dict]:
+def _distinct_organizers(
+    tournaments: list[Tournament], cap: int = SUGGESTION_CAP
+) -> list[OrganizerOut]:
     """Distinct organizer name+link pairs, most recent first. The pair is the
     identity: one club used with two links is two entries, so the organizer can
     tell them apart. An absent link and an empty one are the same thing, so a
@@ -427,7 +438,7 @@ def _distinct_organizers(tournaments: list[Tournament], cap: int = SUGGESTION_CA
     may still hold bare strings on a restored-from-old-export deployment
     (models.py:210); a bare string yields the name with no link."""
     seen: set[tuple[str, str | None]] = set()
-    result: list[dict] = []
+    result: list[OrganizerOut] = []
     for tournament in tournaments:
         for entry in tolerant_organizers(tournament.organizers or []):
             if not isinstance(entry, dict):
@@ -440,7 +451,7 @@ def _distinct_organizers(tournaments: list[Tournament], cap: int = SUGGESTION_CA
             if key in seen:
                 continue
             seen.add(key)
-            result.append({"name": name, "link": link})
+            result.append(OrganizerOut(name=name, link=link))
             if len(result) == cap:
                 return result
     return result
@@ -1023,7 +1034,7 @@ def update_discipline(
         raise HTTPException(status_code=409, detail="discipline_slug_frozen")
     if data.kind != discipline.kind and referenced:
         raise HTTPException(status_code=409, detail="discipline_kind_frozen")
-    if slug_changed:
+    if slug_changed and normalized_slug is not None:
         if any(d.slug == normalized_slug for d in tournament.disciplines if d.id != discipline.id):
             raise HTTPException(
                 status_code=409, detail=f"discipline_slug_taken: {normalized_slug}"
@@ -1092,6 +1103,12 @@ def console_teams(tournament: TournamentDep, session: SessionDep, fencer: Fencer
     for discipline in tournament.disciplines:
         if discipline.kind != DisciplineKind.TEAM:
             continue
+        # a team discipline always carries both bounds (`DisciplineIn` enforces
+        # it on every write, `setup.guard_published_completeness` before
+        # publishing); read as no bound rather than refuse the view, since
+        # nothing is below a minimum that was never recorded
+        team_min = discipline.team_min or 0
+        team_max = discipline.team_max or 0
         teams = session.scalars(
             select(Team)
             .where(Team.discipline_id == discipline.id)
@@ -1114,23 +1131,23 @@ def console_teams(tournament: TournamentDep, session: SessionDep, fencer: Fencer
                     waitlisted=team.waitlisted,
                     waitlist_position=position,
                     members=[
-                        {
-                            "name": m.name,
-                            "hr_id": m.hr_id,
-                            "club": m.club,
-                            "nationality": m.nationality,
-                        }
+                        RosterMemberOut(
+                            name=m.name,
+                            hr_id=m.hr_id,
+                            club=m.club,
+                            nationality=m.nationality,
+                        )
                         for m in team.members
                     ],
-                    below_minimum=deadline_passed and len(team.members) < discipline.team_min,
+                    below_minimum=deadline_passed and len(team.members) < team_min,
                 )
             )
         result.append(
             ConsoleTeamDisciplineOut(
                 slug=discipline.slug,
                 name=discipline.name,
-                team_min=discipline.team_min,
-                team_max=discipline.team_max,
+                team_min=team_min,
+                team_max=team_max,
                 teams=team_rows,
             )
         )
@@ -1214,9 +1231,9 @@ def settle_seating(tournament: TournamentDep, session: SessionDep, fencer: Fence
     if tournament.seating_settled_at is not None:
         raise HTTPException(status_code=409, detail="seating_already_settled")
     demoted = scheduler.settle_seating(session, tournament)
-    return SettleSeatingOut(
-        demoted=demoted, seating_settled_at=tournament.seating_settled_at
-    )
+    settled_at = tournament.seating_settled_at
+    assert settled_at is not None, "settle_seating stamps the tournament"
+    return SettleSeatingOut(demoted=demoted, seating_settled_at=settled_at)
 
 
 def _normalized_extra_item_fields(data: ExtraItemIn) -> dict:

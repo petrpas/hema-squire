@@ -21,6 +21,7 @@ consulted only by the frontend's recalculate-missing action.
 """
 
 import datetime
+from collections.abc import Sequence
 from decimal import ROUND_HALF_UP, Decimal
 from typing import Literal, NamedTuple
 
@@ -143,7 +144,7 @@ def _itemized_selection_breakdown(
     extras: list[tuple[ExtraItem, int]],
     at: datetime.date,
     which: PriceColumn,
-    team_disciplines: list[Discipline] = (),
+    team_disciplines: Sequence[Discipline] = (),
 ) -> tuple[int, list[DiscountOutcome]]:
     """The total together with one `DiscountOutcome` per configured discount,
     in configured order — inactive discounts included, so a caller can report
@@ -240,7 +241,7 @@ def _itemized_selection_total(
     extras: list[tuple[ExtraItem, int]],
     at: datetime.date,
     which: PriceColumn,
-    team_disciplines: list[Discipline] = (),
+    team_disciplines: Sequence[Discipline] = (),
 ) -> int:
     total, _ = _itemized_selection_breakdown(
         tournament, disciplines, extras, at, which, team_disciplines
@@ -257,7 +258,7 @@ def selection_total(
     afterparty: bool,
     at: datetime.date,
     which: PriceColumn = "local",
-    team_disciplines: list[Discipline] = (),
+    team_disciplines: Sequence[Discipline] = (),
 ) -> int:
     """Amount due, in one currency, for a set of active (non-substitute)
     picks, independent of whether they're persisted — the pricing entry point
@@ -295,7 +296,7 @@ def selection_totals(
     weapon_rentals: list[str],
     afterparty: bool,
     at: datetime.date,
-    team_disciplines: list[Discipline] = (),
+    team_disciplines: Sequence[Discipline] = (),
 ) -> Totals:
     """Both currencies' totals for a selection, each independently computed
     and summed from its own column (design Decision 1) — the totals need not
@@ -331,7 +332,7 @@ def selection_discounts(
     disciplines: list[Discipline],
     extras: list[tuple[ExtraItem, int]],
     at: datetime.date,
-    team_disciplines: list[Discipline] = (),
+    team_disciplines: Sequence[Discipline] = (),
 ) -> list[DiscountBreakdown]:
     """The per-discount breakdown for a selection, in configured order,
     reporting exactly what `selection_totals` applied rather than a separate

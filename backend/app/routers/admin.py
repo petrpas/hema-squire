@@ -51,7 +51,8 @@ def _shared_hr_ids(session: Session) -> set[int]:
         .group_by(Fencer.hr_id)
         .having(func.count(Fencer.id) > 1)
     )
-    return set(rows)
+    # the `isnot(None)` above already excluded them; the filter is what says so
+    return {hr_id for hr_id in rows if hr_id is not None}
 
 
 @router.get("/accounts", response_model=list[AdminAccountOut])

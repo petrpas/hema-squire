@@ -16,12 +16,46 @@ from app import accounts, constraints, setup
 from app.constraints import DEFAULT_TIMEZONE
 from app.errors import FieldValueError
 from app.fieldtypes import (
-    DisciplineSlugStr,
-    HttpUrlStr,
-    MultilineStr,
-    SingleLineStr,
+    BankAccountStr,
+    ClubStr,
+    DisciplineNameStr,
+    DisciplineRulesetStr,
+    DisciplineScheduleWhenStr,
+    DisciplineScheduleWhereStr,
+    DisciplineSlug,
+    DisciplineWeaponStr,
+    DiscountNameStr,
+    DisplayNameStr,
+    ExternalRegistrationUrlStr,
+    ExtraItemNameStr,
+    ExtraItemOptionLabelStr,
+    ExtraItemRemarkStr,
+    ExtraItemScheduleWhenStr,
+    ExtraItemScheduleWhereStr,
+    FioTokenStr,
+    HrCategoryKeyStr,
+    HrCategoryValueStr,
+    ManualEntryClubStr,
+    ManualEntryNameStr,
+    ManualEntryNationalityStr,
+    ManualEntryNotesStr,
+    OptionValueStr,
+    OrganizerLinkStr,
+    OrganizerNameStr,
+    OutputSheetUrlStr,
+    PleaMessageStr,
+    RosterMemberClubStr,
+    RosterMemberNameStr,
+    RosterMemberNationalityStr,
+    TeamNameStr,
     TolerantDecimal,
     TolerantInt,
+    TournamentDescriptionStr,
+    TournamentDisplayNameStr,
+    TournamentLocationStr,
+    TournamentQualificationCriteriaStr,
+    TournamentRegistrationInstructionsStr,
+    TournamentSubtitleStr,
 )
 from app.i18n import catalog
 from app.models import (
@@ -45,14 +79,9 @@ OPTION_VALUE_MAX_LENGTH = constraints.OPTION_VALUE_MAX_LENGTH
 class SignupIn(BaseModel):
     email: EmailStr
     password: str = Field(min_length=constraints.PASSWORD_MIN_LENGTH)
-    display_name: (
-        SingleLineStr(
-            constraints.DISPLAY_NAME_MAX_LENGTH, min_length=constraints.DISPLAY_NAME_MIN_LENGTH
-        )
-        | None
-    ) = None
+    display_name: DisplayNameStr | None = None
     hr_id: int | None = None
-    club: SingleLineStr(constraints.CLUB_MAX_LENGTH) | None = None
+    club: ClubStr | None = None
     language: str = "cs"
 
     @field_validator("language")
@@ -79,7 +108,7 @@ class AccountOut(BaseModel):
 
 
 class PleaIn(BaseModel):
-    message: MultilineStr(constraints.PLEA_MESSAGE_MAX_LENGTH) | None = None
+    message: PleaMessageStr | None = None
 
 
 class PleaOut(BaseModel):
@@ -93,13 +122,8 @@ class PleaOut(BaseModel):
 
 class AccountUpdate(BaseModel):
     email: EmailStr | None = None
-    display_name: (
-        SingleLineStr(
-            constraints.DISPLAY_NAME_MAX_LENGTH, min_length=constraints.DISPLAY_NAME_MIN_LENGTH
-        )
-        | None
-    ) = None
-    club: SingleLineStr(constraints.CLUB_MAX_LENGTH) | None = None
+    display_name: DisplayNameStr | None = None
+    club: ClubStr | None = None
     language: str | None = None
 
     @field_validator("language")
@@ -129,8 +153,8 @@ class DisciplineIn(BaseModel):
     # checked for uniqueness by the router, which is where a conflict can be
     # named against the tournament's other disciplines. Normalized ahead of
     # its own pattern (design add-field-validation D6) — see fieldtypes.py.
-    slug: DisciplineSlugStr() = None
-    name: SingleLineStr(constraints.DISCIPLINE_NAME_MAX_LENGTH) | None = None
+    slug: DisciplineSlug = None
+    name: DisciplineNameStr | None = None
     # display order among the tournament's disciplines; omitted means "leave
     # the current position alone" on update, "append at the end" on create
     # (the ORM column default), since most callers never touch ordering
@@ -138,10 +162,7 @@ class DisciplineIn(BaseModel):
     # the five taxonomy weapons are offered as suggestions, but any weapon is
     # accepted (design discipline-identity D4); gender and material stay
     # closed sets
-    weapon: SingleLineStr(
-        constraints.DISCIPLINE_WEAPON_MAX_LENGTH,
-        min_length=constraints.DISCIPLINE_WEAPON_MIN_LENGTH,
-    )
+    weapon: DisciplineWeaponStr
     gender: Literal["", "W", "M"] = ""
     material: Literal["", "Plastic"] = ""
     # individual is the default and behaves exactly as before team disciplines
@@ -162,10 +183,10 @@ class DisciplineIn(BaseModel):
     fee_eur: TolerantInt | None = Field(default=None, ge=0, le=constraints.MONEY_MAX["EUR"])
     fee_early_eur: TolerantInt | None = Field(default=None, ge=0, le=constraints.MONEY_MAX["EUR"])
     # optional schedule + ruleset reference; informational, never affect pricing
-    schedule_when: SingleLineStr(constraints.DISCIPLINE_SCHEDULE_WHEN_MAX_LENGTH) | None = None
-    schedule_where: SingleLineStr(constraints.DISCIPLINE_SCHEDULE_WHERE_MAX_LENGTH) | None = None
+    schedule_when: DisciplineScheduleWhenStr | None = None
+    schedule_where: DisciplineScheduleWhereStr | None = None
     # inline markdown, not a URL: parsing it as one would refuse `[EN](...)`
-    ruleset: SingleLineStr(constraints.DISCIPLINE_RULESET_MAX_LENGTH) | None = None
+    ruleset: DisciplineRulesetStr | None = None
 
     @model_validator(mode="after")
     def _team_bounds(self) -> DisciplineIn:
@@ -217,9 +238,7 @@ class DisciplineOut(BaseModel):
 
 
 class ExtraItemIn(BaseModel):
-    name: SingleLineStr(
-        constraints.EXTRA_ITEM_NAME_MAX_LENGTH, min_length=constraints.EXTRA_ITEM_NAME_MIN_LENGTH
-    )
+    name: ExtraItemNameStr
     category: ExtraCategory
     # local-currency money: ceiling resolved per request (design 2.4a)
     price: TolerantInt = Field(ge=0)
@@ -228,12 +247,12 @@ class ExtraItemIn(BaseModel):
     price_eur: TolerantInt | None = Field(default=None, ge=0, le=constraints.MONEY_MAX["EUR"])
     max_qty: TolerantInt = Field(default=1, ge=constraints.EXTRA_ITEM_MAX_QTY_MIN)
     # optional descriptive fields; informational, never affect pricing
-    schedule_when: SingleLineStr(constraints.EXTRA_ITEM_SCHEDULE_WHEN_MAX_LENGTH) | None = None
-    schedule_where: SingleLineStr(constraints.EXTRA_ITEM_SCHEDULE_WHERE_MAX_LENGTH) | None = None
-    remark: MultilineStr(constraints.EXTRA_ITEM_REMARK_MAX_LENGTH) | None = None
+    schedule_when: ExtraItemScheduleWhenStr | None = None
+    schedule_where: ExtraItemScheduleWhereStr | None = None
+    remark: ExtraItemRemarkStr | None = None
     # optional single option the fencer answers on selection; choices empty
     # means free text. Never affects pricing.
-    option_label: SingleLineStr(constraints.EXTRA_ITEM_OPTION_LABEL_MAX_LENGTH) | None = None
+    option_label: ExtraItemOptionLabelStr | None = None
     option_choices: list[str] = []
 
     @model_validator(mode="after")
@@ -319,19 +338,15 @@ class DiscountEffect(BaseModel):
 
 
 class DiscountIn(BaseModel):
-    name: SingleLineStr(
-        constraints.DISCOUNT_NAME_MAX_LENGTH, min_length=constraints.DISCOUNT_NAME_MIN_LENGTH
-    )
+    name: DiscountNameStr
     condition: DiscountCondition
     effect: DiscountEffect
     scope: list[ScopeCategory] = ["discipline"]
 
 
 class OrganizerIn(BaseModel):
-    name: SingleLineStr(
-        constraints.ORGANIZER_NAME_MAX_LENGTH, min_length=constraints.ORGANIZER_NAME_MIN_LENGTH
-    )
-    link: HttpUrlStr(constraints.ORGANIZER_LINK_MAX_LENGTH) | None = None
+    name: OrganizerNameStr
+    link: OrganizerLinkStr | None = None
 
 
 class OrganizerOut(BaseModel):
@@ -361,37 +376,22 @@ class SetupSuggestionsOut(BaseModel):
 
 class TournamentCreate(BaseModel):
     slug: str = Field(pattern=constraints.TOURNAMENT_SLUG_PATTERN)
-    display_name: SingleLineStr(
-        constraints.TOURNAMENT_DISPLAY_NAME_MAX_LENGTH,
-        min_length=constraints.TOURNAMENT_DISPLAY_NAME_MIN_LENGTH,
-    )
+    display_name: TournamentDisplayNameStr
     date: datetime.date
     language: str = "cs"
 
 
 class TournamentUpdate(BaseModel):
-    display_name: (
-        SingleLineStr(
-            constraints.TOURNAMENT_DISPLAY_NAME_MAX_LENGTH,
-            min_length=constraints.TOURNAMENT_DISPLAY_NAME_MIN_LENGTH,
-        )
-        | None
-    ) = None
-    subtitle: SingleLineStr(constraints.TOURNAMENT_SUBTITLE_MAX_LENGTH) | None = None
+    display_name: TournamentDisplayNameStr | None = None
+    subtitle: TournamentSubtitleStr | None = None
     date: datetime.date | None = None
     language: str | None = None
-    location: SingleLineStr(constraints.TOURNAMENT_LOCATION_MAX_LENGTH) | None = None
-    description: MultilineStr(constraints.TOURNAMENT_DESCRIPTION_MAX_LENGTH) | None = None
+    location: TournamentLocationStr | None = None
+    description: TournamentDescriptionStr | None = None
     qualification_open: bool | None = None
-    qualification_criteria: (
-        MultilineStr(constraints.TOURNAMENT_QUALIFICATION_CRITERIA_MAX_LENGTH) | None
-    ) = None
-    registration_instructions: (
-        MultilineStr(constraints.TOURNAMENT_REGISTRATION_INSTRUCTIONS_MAX_LENGTH) | None
-    ) = None
-    external_registration_url: (
-        HttpUrlStr(constraints.EXTERNAL_REGISTRATION_URL_MAX_LENGTH) | None
-    ) = None
+    qualification_criteria: TournamentQualificationCriteriaStr | None = None
+    registration_instructions: TournamentRegistrationInstructionsStr | None = None
+    external_registration_url: ExternalRegistrationUrlStr | None = None
     local_currency: Currency | None = None
     eur_payments_enabled: bool | None = None
     # local-currency units per 1 EUR; a Setup convenience for recalculate-
@@ -440,24 +440,13 @@ class TournamentUpdate(BaseModel):
     reminder_day: int | None = Field(default=None, gt=0)
     amount_tolerance_percent: int | None = Field(default=None, ge=0, le=constraints.PERCENT_MAX)
     refundable_until: datetime.date | None = None
-    bank_account: (
-        SingleLineStr(
-            constraints.TOURNAMENT_BANK_ACCOUNT_MAX_LENGTH, pattern=constraints.BANK_ACCOUNT_PATTERN
-        )
-        | None
-    ) = None
+    bank_account: BankAccountStr | None = None
     # hours after expiry a VS-matched payment may still reinstate a
     # reservation, subject to capacity; 0 disables automatic reinstatement
     expiry_grace_hours: int | None = Field(default=None, ge=0)
     unpaid_list_treatment: UnpaidListTreatment | None = None
-    output_sheet_url: HttpUrlStr(constraints.TOURNAMENT_OUTPUT_SHEET_URL_MAX_LENGTH) | None = None
-    hr_category_map: (
-        dict[
-            SingleLineStr(constraints.HR_CATEGORY_MAP_KEY_MAX_LENGTH),
-            SingleLineStr(constraints.HR_CATEGORY_MAP_VALUE_MAX_LENGTH),
-        ]
-        | None
-    ) = None
+    output_sheet_url: OutputSheetUrlStr | None = None
+    hr_category_map: dict[HrCategoryKeyStr, HrCategoryValueStr] | None = None
     early_bird_until: datetime.date | None = None
     # local-currency money: ceiling resolved per request (design 2.4a); no
     # EUR-suffixed counterpart exists for these two legacy fixed fees, which
@@ -494,7 +483,7 @@ class TournamentUpdate(BaseModel):
         raise FieldValueError("fio_token", "recorded_on_its_own_endpoint", {})
 
     # accepts either form and stores the canonical IBAN (design Decision 1);
-    # runs after SingleLineStr's length/shape bound, which only catches
+    # runs after the field alias's length/shape bound, which only catches
     # something that is not plausibly an account at all
     @field_validator("bank_account")
     @classmethod
@@ -510,7 +499,7 @@ class FioTokenIn(BaseModel):
     database and it is the one that verifies it against the bank (design
     fio-token-in-setup Decision 2)."""
 
-    token: SingleLineStr(constraints.TOURNAMENT_FIO_TOKEN_MAX_LENGTH)
+    token: FioTokenStr
 
 
 class FioTokenOut(BaseModel):
@@ -759,11 +748,9 @@ class TeamEntryIn(BaseModel):
 
     id: int | None = None
     slug: str
-    # SingleLineStr trims and collapses whitespace before min_length is
+    # the single-line alias trims and collapses whitespace before min_length is
     # checked, so a whitespace-only name is already rejected as too_short
-    name: SingleLineStr(
-        constraints.TEAM_NAME_MAX_LENGTH, min_length=constraints.TEAM_NAME_MIN_LENGTH
-    )
+    name: TeamNameStr
 
 
 class PreviewTeamIn(BaseModel):
@@ -774,13 +761,10 @@ class PreviewTeamIn(BaseModel):
 
 
 class RosterMemberIn(BaseModel):
-    name: SingleLineStr(
-        constraints.ROSTER_MEMBER_NAME_MAX_LENGTH,
-        min_length=constraints.ROSTER_MEMBER_NAME_MIN_LENGTH,
-    )
+    name: RosterMemberNameStr
     hr_id: int | None = None
-    club: SingleLineStr(constraints.ROSTER_MEMBER_CLUB_MAX_LENGTH) | None = None
-    nationality: SingleLineStr(constraints.ROSTER_MEMBER_NATIONALITY_MAX_LENGTH) | None = None
+    club: RosterMemberClubStr | None = None
+    nationality: RosterMemberNationalityStr | None = None
 
 
 class RosterMemberOut(BaseModel):
@@ -819,7 +803,7 @@ class ExtraSelectionIn(BaseModel):
     qty: TolerantInt = Field(default=1, ge=constraints.EXTRA_SELECTION_QTY_MIN)
     # answer to the item's option; presence is validated against the item at
     # registration time (the schema cannot see which item this points at)
-    option_value: SingleLineStr(OPTION_VALUE_MAX_LENGTH) | None = None
+    option_value: OptionValueStr | None = None
 
 
 class RegisterIn(BaseModel):
@@ -846,12 +830,9 @@ class ManualEntryIn(BaseModel):
     a club anyone is a member of.
     """
 
-    name: SingleLineStr(
-        constraints.MANUAL_ENTRY_NAME_MAX_LENGTH,
-        min_length=constraints.MANUAL_ENTRY_NAME_MIN_LENGTH,
-    )
-    nationality: SingleLineStr(constraints.MANUAL_ENTRY_NATIONALITY_MAX_LENGTH) | None = None
-    club: SingleLineStr(constraints.MANUAL_ENTRY_CLUB_MAX_LENGTH) | None = None
+    name: ManualEntryNameStr
+    nationality: ManualEntryNationalityStr | None = None
+    club: ManualEntryClubStr | None = None
     hr_id: TolerantInt | None = None
     email: EmailStr | None = None
     # absent means now, read in the tournament's own zone by the router
@@ -859,7 +840,7 @@ class ManualEntryIn(BaseModel):
     disciplines: list[str] = []
     weapon_rentals: list[str] = []
     afterparty: bool = False
-    notes: MultilineStr(constraints.MANUAL_ENTRY_NOTES_MAX_LENGTH) | None = None
+    notes: ManualEntryNotesStr | None = None
 
     @field_validator("nationality", "club", "notes")
     @classmethod
@@ -1158,7 +1139,9 @@ class ExpiredHoldingOut(BaseModel):
 
     registration_id: int
     fencer_name: str
-    vs: int
+    # a registration Squire collects for carries a symbol; None where one was
+    # never allocated, which the console shows as an absent value
+    vs: int | None
     credited_amount: decimal.Decimal
     credited_eur_amount: decimal.Decimal | None
     expired_at: datetime.datetime

@@ -390,13 +390,16 @@ def issue(session: Session, tournament: Tournament, next_vs) -> IssueReport:
     # than what it has just created. A row that has been issued a registration
     # leaves `source_rows` — the registration stands in its place — so the
     # registrations carrying a row's id are exactly the rows already done
-    report.already = session.scalar(
-        select(func.count())
-        .select_from(Registration)
-        .where(
-            Registration.tournament_id == tournament.id,
-            Registration.source_row_id.is_not(None),
+    report.already = (
+        session.scalar(
+            select(func.count())
+            .select_from(Registration)
+            .where(
+                Registration.tournament_id == tournament.id,
+                Registration.source_row_id.is_not(None),
+            )
         )
+        or 0
     )
     claimed: set[str] = set()
     for row in pending(session, tournament):

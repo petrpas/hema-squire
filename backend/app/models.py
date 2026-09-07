@@ -792,6 +792,14 @@ class Registration(Base):
             return None
         return self.total_eur * 100 - self.amount_paid_eur_cents
 
+    def outstanding_in(self, which: str) -> int:
+        """The lane's outstanding as a number. A registration carrying no EUR
+        total owes nothing in EUR rather than owing an unknown — the same
+        reading `tolerance_cents` below takes of a missing total."""
+        if which == "local":
+            return self.outstanding_cents
+        return self.outstanding_eur_cents or 0
+
     def tolerance_cents(self, tournament: Tournament, which: str) -> float:
         """Tolerance as a percentage of the registration's stable total in this
         currency lane — not of a shrinking remainder, which would tighten with

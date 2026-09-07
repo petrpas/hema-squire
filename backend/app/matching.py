@@ -280,11 +280,7 @@ def _settle(
     Required rather than derived from `transaction`, because the None branch is
     the recorded payment — the caller that knows a *better* day than the clock
     — and a fallback would quietly lose it (design paid-at-is-value-date D2)."""
-    remaining = (
-        registration.outstanding_cents
-        if which == "local"
-        else registration.outstanding_eur_cents
-    )
+    remaining = registration.outstanding_in(which)
     tolerance = _tolerance_cents(registration, tournament, which)
     currency_code = tournament.local_currency if which == "local" else Currency.EUR
 
@@ -329,7 +325,9 @@ def _resolve_global(session: Session, tokens: list[int]) -> dict[int, Registrati
     if not tokens:
         return {}
     found = session.scalars(select(Registration).where(Registration.vs.in_(tokens))).all()
-    return {r.vs: r for r in found}
+    # `IN` never matches NULL, so a row here always carries a symbol; the
+    # filter is what says so rather than a new condition
+    return {r.vs: r for r in found if r.vs is not None}
 
 
 def _system_actor(session: Session, tournament: Tournament) -> Fencer:
@@ -578,9 +576,7 @@ def _evaluate_multi_vs(
         return
 
     due_cents = sum(
-        registration.outstanding_cents if which == "local"
-        else (registration.outstanding_eur_cents or 0)
-        for registration in registrations
+        registration.outstanding_in(which) for registration in registrations
     )
     tolerance = due_cents * tournament.amount_tolerance_percent / 100
     if abs(transaction.amount_cents - due_cents) > tolerance:
@@ -707,9 +703,7 @@ def apply_payment_links(session: Session, tournament: Tournament, mailer: Mailer
         for registration in registrations:
             if which is None or remaining <= 0 or registration.state != RegistrationState.RESERVED:
                 continue
-            due = registration.outstanding_cents if which == "local" else (
-                registration.outstanding_eur_cents or 0
-            )
+            due = registration.outstanding_in(which)
             amount = max(0, min(due, remaining))
             if amount <= 0:
                 continue
@@ -862,9 +856,7 @@ def uncredit_manual_payment(
         registration.amount_paid_cents -= payment.amount_cents
     else:
         registration.amount_paid_eur_cents -= payment.amount_cents
-    remaining = (
-        registration.outstanding_cents if which == "local" else registration.outstanding_eur_cents
-    )
+    remaining = registration.outstanding_in(which)
     tolerance = _tolerance_cents(registration, tournament, which)
     if registration.state == RegistrationState.PAID and remaining > tolerance:
         registration.state = RegistrationState.RESERVED
@@ -906,9 +898,7 @@ def _settles_now(transaction: BankTransaction, tournament: Tournament) -> Regist
     which = match_currency(transaction, tournament)
     if which is None:
         return None
-    remaining = (
-        registration.outstanding_cents if which == "local" else registration.outstanding_eur_cents
-    )
+    remaining = registration.outstanding_in(which)
     if remaining > _tolerance_cents(registration, tournament, which):
         return None
     return registration

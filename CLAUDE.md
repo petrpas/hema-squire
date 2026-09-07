@@ -76,6 +76,29 @@ Rules:
 - `!` is off in application code and allowed in `*.test.ts(x)`.
 - A dialog is `Modal` (`src/Modal.tsx`), never a div wearing a click handler.
 
+Backend work is finished only when both of these pass, from `backend/`:
+
+    uv run ruff check .
+    uv run basedpyright   # standard mode over `app/`
+
+Both run in CI alongside `uv run pytest`.
+
+Rules:
+- Annotate return types on public functions.
+- Never write a bare `# type: ignore` or `# pyright: ignore`. It is always
+  `# pyright: ignore[specificCode]` with a comment saying why, and it goes on
+  the line the checker reports — for a wrapped call, the argument's line, not
+  the call's.
+- Do not work around a checker error by casting to `Any` or widening a
+  parameter to `object`. Narrow the value, make the function generic, or state
+  the precondition the callers already hold.
+- `app/` is the gated scope. `tests/`, `scripts/` and `alembic/` are excluded
+  in `pyproject.toml`, which says why; do not widen `include` without clearing
+  the findings that come with it.
+- A column typed `Mapped[X | None]` is `X | None` at every read. Where a guard
+  earlier in the request already settled it, bind the narrowed value to a local
+  and use that, rather than re-reading the attribute.
+
 # Openspec
 
 `openspec/changes/archive/` is superseded history, not current behavior. The authoritative

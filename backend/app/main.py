@@ -128,10 +128,27 @@ def create_app() -> FastAPI:
     # slowapi reads the limiter off app.state and needs its own handler for the
     # 429; the decorated routes are in routers/auth.py
     app.state.limiter = limiter
-    app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
-    app.add_exception_handler(RequestValidationError, validation_exception_handler)
-    app.add_exception_handler(HTTPException, http_exception_handler)
-    app.add_exception_handler(FieldValidationError, field_validation_error_handler)
+    # Starlette types `add_exception_handler` as taking a handler over bare
+    # `Exception`. A handler narrowed to the exception it actually handles —
+    # which is how Starlette's and FastAPI's own documentation write them — is
+    # therefore not assignable under contravariance. The narrowing is the whole
+    # point of these handlers; it is the registration that cannot be expressed.
+    app.add_exception_handler(
+        RateLimitExceeded,
+        _rate_limit_exceeded_handler,  # pyright: ignore[reportArgumentType]
+    )
+    app.add_exception_handler(
+        RequestValidationError,
+        validation_exception_handler,  # pyright: ignore[reportArgumentType]
+    )
+    app.add_exception_handler(
+        HTTPException,
+        http_exception_handler,  # pyright: ignore[reportArgumentType]
+    )
+    app.add_exception_handler(
+        FieldValidationError,
+        field_validation_error_handler,  # pyright: ignore[reportArgumentType]
+    )
 
     @app.get("/api/health")
     def health() -> dict[str, str]:

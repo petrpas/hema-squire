@@ -147,6 +147,23 @@ def sweep_interrupted(session: Session) -> int:
     return len(stranded)
 
 
+def reload[Row](session: Session, model: type[Row], key: int) -> Row:
+    """Re-read by id a row a background body was handed.
+
+    The body runs on its own session — the request's is closed long before it
+    starts — so every row the request held has to be fetched again. It is
+    there: the request wrote the operation that names it. The raise is what
+    says so, rather than letting a `None` travel on into the work and surface
+    as an attribute error somewhere further in. Anything raised inside a body
+    concludes the operation as failed, which is where a vanished row belongs
+    (design D3).
+    """
+    row = session.get(model, key)
+    if row is None:  # pragma: no cover - the request wrote the row
+        raise LookupError(f"{model.__name__} {key} vanished before its work ran")
+    return row
+
+
 def run_now(operation_id: int, body: Callable[[Session, Operation], dict]) -> None:
     """Run `body` over its own session and conclude the operation either way.
 
@@ -170,7 +187,12 @@ def run_now(operation_id: int, body: Callable[[Session, Operation], dict]) -> No
         except Exception as error:
             logger.exception("operation %s failed", operation_id)
             session.rollback()
-            operation = session.get(Operation, operation_id)
+            # the rollback expired the instance; re-read it, and keep the one
+            # already in hand if the row is somehow gone, so that the failure
+            # being recorded is not replaced by a second one
+            refetched = session.get(Operation, operation_id)
+            if refetched is not None:
+                operation = refetched
             conclude(
                 session,
                 operation,

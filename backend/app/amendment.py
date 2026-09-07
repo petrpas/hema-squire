@@ -14,7 +14,6 @@ whether a full discipline seats or queues, and which notice goes out.
 """
 
 from dataclasses import dataclass
-from decimal import Decimal
 
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
@@ -58,8 +57,10 @@ class AmendmentResult:
     organizer cannot see in the cell: the disciplines are in front of them, the
     price and the letter are not (spec discipline-amendment)."""
 
-    previous_total: Decimal | None
-    total: Decimal | None
+    # whole units, as `Registration.total_amount` stores them; the console
+    # schema widens them to Decimal on the wire
+    previous_total: int
+    total: int
     notified: bool
 
 

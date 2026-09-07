@@ -145,7 +145,7 @@ def refresh_fighters(session: Session, fetcher: HRFetcher) -> dict:
             seen.add(fighter[0])
             unique.append(fighter)
 
-    diagnostics = {
+    diagnostics: dict[str, int | str] = {
         "fetched_chars": len(page),
         "parsed": len(unique),
         "previous": previous_count,

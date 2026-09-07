@@ -382,7 +382,10 @@ def restore_tournament(session: Session, data: dict, actor: Fencer) -> Tournamen
         # carry only legacy sequential VS, so a fresh series consumes none of
         # their range — same reasoning as the migration's backfill (design
         # Decision 7)
-        restore_year = _parse_date(doc["date"]).year
+        restored_date = _parse_date(doc["date"])
+        if restored_date is None:
+            raise HTTPException(status_code=422, detail="missing_date")
+        restore_year = restored_date.year
         doc["vs_year"] = restore_year
         doc["vs_series"] = _lowest_free_series(session, restore_year)
         doc["vs_next_seq"] = 1

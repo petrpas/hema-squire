@@ -102,25 +102,180 @@ def _clean_multiline(value: object) -> object:
     return _clean_string(value, collapse_whitespace=False)
 
 
-def SingleLineStr(
-    max_length: int, *, min_length: int | None = None, pattern: str | None = None
-) -> type:
-    """A trimmed, whitespace-collapsed, control-character-free string bounded
-    to `max_length` (design D4). Used for every single-line editable field.
-    Every constraint is a single `Field(...)` call — stacking a second one at
-    the assignment site silently drops the first's constraints from the
-    generated JSON schema, even though both still validate at runtime."""
-    return Annotated[
-        str,
-        BeforeValidator(_clean_single_line),
-        Field(max_length=max_length, min_length=min_length, pattern=pattern),
-    ]
+# Each alias below is a single `Field(...)` call. Stacking a second one at the
+# assignment site silently drops the first's constraints from the generated
+# JSON schema, even though both still validate at runtime — so a field's bound
+# belongs here, in its alias, and nowhere else.
+#
+# These are plain `Annotated` aliases rather than factory functions taking a
+# length, because a call expression is not valid in a type annotation: pyright
+# rejects `club: SingleLineStr(N)` outright, and no suppression makes that
+# shape check (design `add-field-validation` D4, restated for static analysis).
 
+# A trimmed, whitespace-collapsed, control-character-free string (design D4).
+# Used for every single-line editable field.
+SingleLine = BeforeValidator(_clean_single_line)
+# The same, keeping internal line breaks — for markdown bodies and other
+# multi-line fields (design D4).
+Multiline = BeforeValidator(_clean_multiline)
 
-def MultilineStr(max_length: int) -> type:
-    """A trimmed, control-character-free string that keeps internal line
-    breaks — for markdown bodies and other multi-line fields (design D4)."""
-    return Annotated[str, BeforeValidator(_clean_multiline), Field(max_length=max_length)]
+DisplayNameStr = Annotated[
+    str,
+    SingleLine,
+    Field(
+        max_length=constraints.DISPLAY_NAME_MAX_LENGTH,
+        min_length=constraints.DISPLAY_NAME_MIN_LENGTH,
+    ),
+]
+ClubStr = Annotated[str, SingleLine, Field(max_length=constraints.CLUB_MAX_LENGTH)]
+
+DisciplineNameStr = Annotated[
+    str, SingleLine, Field(max_length=constraints.DISCIPLINE_NAME_MAX_LENGTH)
+]
+DisciplineWeaponStr = Annotated[
+    str,
+    SingleLine,
+    Field(
+        max_length=constraints.DISCIPLINE_WEAPON_MAX_LENGTH,
+        min_length=constraints.DISCIPLINE_WEAPON_MIN_LENGTH,
+    ),
+]
+DisciplineRulesetStr = Annotated[
+    str, SingleLine, Field(max_length=constraints.DISCIPLINE_RULESET_MAX_LENGTH)
+]
+DisciplineScheduleWhenStr = Annotated[
+    str, SingleLine, Field(max_length=constraints.DISCIPLINE_SCHEDULE_WHEN_MAX_LENGTH)
+]
+DisciplineScheduleWhereStr = Annotated[
+    str, SingleLine, Field(max_length=constraints.DISCIPLINE_SCHEDULE_WHERE_MAX_LENGTH)
+]
+
+ExtraItemNameStr = Annotated[
+    str,
+    SingleLine,
+    Field(
+        max_length=constraints.EXTRA_ITEM_NAME_MAX_LENGTH,
+        min_length=constraints.EXTRA_ITEM_NAME_MIN_LENGTH,
+    ),
+]
+ExtraItemOptionLabelStr = Annotated[
+    str, SingleLine, Field(max_length=constraints.EXTRA_ITEM_OPTION_LABEL_MAX_LENGTH)
+]
+ExtraItemScheduleWhenStr = Annotated[
+    str, SingleLine, Field(max_length=constraints.EXTRA_ITEM_SCHEDULE_WHEN_MAX_LENGTH)
+]
+ExtraItemScheduleWhereStr = Annotated[
+    str, SingleLine, Field(max_length=constraints.EXTRA_ITEM_SCHEDULE_WHERE_MAX_LENGTH)
+]
+OptionValueStr = Annotated[str, SingleLine, Field(max_length=constraints.OPTION_VALUE_MAX_LENGTH)]
+
+DiscountNameStr = Annotated[
+    str,
+    SingleLine,
+    Field(
+        max_length=constraints.DISCOUNT_NAME_MAX_LENGTH,
+        min_length=constraints.DISCOUNT_NAME_MIN_LENGTH,
+    ),
+]
+OrganizerNameStr = Annotated[
+    str,
+    SingleLine,
+    Field(
+        max_length=constraints.ORGANIZER_NAME_MAX_LENGTH,
+        min_length=constraints.ORGANIZER_NAME_MIN_LENGTH,
+    ),
+]
+
+TournamentDisplayNameStr = Annotated[
+    str,
+    SingleLine,
+    Field(
+        max_length=constraints.TOURNAMENT_DISPLAY_NAME_MAX_LENGTH,
+        min_length=constraints.TOURNAMENT_DISPLAY_NAME_MIN_LENGTH,
+    ),
+]
+TournamentSubtitleStr = Annotated[
+    str, SingleLine, Field(max_length=constraints.TOURNAMENT_SUBTITLE_MAX_LENGTH)
+]
+TournamentLocationStr = Annotated[
+    str, SingleLine, Field(max_length=constraints.TOURNAMENT_LOCATION_MAX_LENGTH)
+]
+BankAccountStr = Annotated[
+    str,
+    SingleLine,
+    Field(
+        max_length=constraints.TOURNAMENT_BANK_ACCOUNT_MAX_LENGTH,
+        pattern=constraints.BANK_ACCOUNT_PATTERN,
+    ),
+]
+FioTokenStr = Annotated[
+    str, SingleLine, Field(max_length=constraints.TOURNAMENT_FIO_TOKEN_MAX_LENGTH)
+]
+HrCategoryKeyStr = Annotated[
+    str, SingleLine, Field(max_length=constraints.HR_CATEGORY_MAP_KEY_MAX_LENGTH)
+]
+HrCategoryValueStr = Annotated[
+    str, SingleLine, Field(max_length=constraints.HR_CATEGORY_MAP_VALUE_MAX_LENGTH)
+]
+
+TeamNameStr = Annotated[
+    str,
+    SingleLine,
+    Field(
+        max_length=constraints.TEAM_NAME_MAX_LENGTH,
+        min_length=constraints.TEAM_NAME_MIN_LENGTH,
+    ),
+]
+RosterMemberNameStr = Annotated[
+    str,
+    SingleLine,
+    Field(
+        max_length=constraints.ROSTER_MEMBER_NAME_MAX_LENGTH,
+        min_length=constraints.ROSTER_MEMBER_NAME_MIN_LENGTH,
+    ),
+]
+RosterMemberClubStr = Annotated[
+    str, SingleLine, Field(max_length=constraints.ROSTER_MEMBER_CLUB_MAX_LENGTH)
+]
+RosterMemberNationalityStr = Annotated[
+    str, SingleLine, Field(max_length=constraints.ROSTER_MEMBER_NATIONALITY_MAX_LENGTH)
+]
+
+ManualEntryNameStr = Annotated[
+    str,
+    SingleLine,
+    Field(
+        max_length=constraints.MANUAL_ENTRY_NAME_MAX_LENGTH,
+        min_length=constraints.MANUAL_ENTRY_NAME_MIN_LENGTH,
+    ),
+]
+ManualEntryClubStr = Annotated[
+    str, SingleLine, Field(max_length=constraints.MANUAL_ENTRY_CLUB_MAX_LENGTH)
+]
+ManualEntryNationalityStr = Annotated[
+    str, SingleLine, Field(max_length=constraints.MANUAL_ENTRY_NATIONALITY_MAX_LENGTH)
+]
+
+PleaMessageStr = Annotated[str, Multiline, Field(max_length=constraints.PLEA_MESSAGE_MAX_LENGTH)]
+ExtraItemRemarkStr = Annotated[
+    str, Multiline, Field(max_length=constraints.EXTRA_ITEM_REMARK_MAX_LENGTH)
+]
+ManualEntryNotesStr = Annotated[
+    str, Multiline, Field(max_length=constraints.MANUAL_ENTRY_NOTES_MAX_LENGTH)
+]
+TournamentDescriptionStr = Annotated[
+    str, Multiline, Field(max_length=constraints.TOURNAMENT_DESCRIPTION_MAX_LENGTH)
+]
+TournamentQualificationCriteriaStr = Annotated[
+    str,
+    Multiline,
+    Field(max_length=constraints.TOURNAMENT_QUALIFICATION_CRITERIA_MAX_LENGTH),
+]
+TournamentRegistrationInstructionsStr = Annotated[
+    str,
+    Multiline,
+    Field(max_length=constraints.TOURNAMENT_REGISTRATION_INSTRUCTIONS_MAX_LENGTH),
+]
 
 
 _ALLOWED_URL_SCHEMES = {"http", "https"}
@@ -140,17 +295,27 @@ def _validate_http_url(value: str) -> str:
     return value
 
 
-def HttpUrlStr(max_length: int) -> type:
-    """A link field: SHALL parse as a URL and SHALL carry only an `http`/
-    `https` scheme (design: URL fields are parsed and scheme-restricted).
-    `javascript:`/`data:` and other schemes are rejected as `bad_link_scheme`;
-    a value that does not parse as a URL at all is `bad_url`."""
-    return Annotated[
-        str,
-        BeforeValidator(_clean_single_line),
-        AfterValidator(_validate_http_url),
-        Field(max_length=max_length),
-    ]
+# A link field: SHALL parse as a URL and SHALL carry only an `http`/`https`
+# scheme (design: URL fields are parsed and scheme-restricted). `javascript:`/
+# `data:` and other schemes are rejected as `bad_link_scheme`; a value that
+# does not parse as a URL at all is `bad_url`.
+HttpUrl = AfterValidator(_validate_http_url)
+
+OrganizerLinkStr = Annotated[
+    str, SingleLine, HttpUrl, Field(max_length=constraints.ORGANIZER_LINK_MAX_LENGTH)
+]
+ExternalRegistrationUrlStr = Annotated[
+    str,
+    SingleLine,
+    HttpUrl,
+    Field(max_length=constraints.EXTERNAL_REGISTRATION_URL_MAX_LENGTH),
+]
+OutputSheetUrlStr = Annotated[
+    str,
+    SingleLine,
+    HttpUrl,
+    Field(max_length=constraints.TOURNAMENT_OUTPUT_SHEET_URL_MAX_LENGTH),
+]
 
 
 def _normalize_discipline_slug(value: object) -> object:
@@ -173,22 +338,57 @@ def _normalize_discipline_slug(value: object) -> object:
     return collapsed or None
 
 
-def DisciplineSlugStr() -> type:
-    """The discipline slug field, normalized ahead of its own pattern check
-    (design D6). The pattern and length are enforced by `_normalize_discipline_slug`
-    itself (restricted alphabet, truncation) rather than by a `Field(...)`
-    constraint here: attaching `Field(pattern=..., max_length=...)` to a
-    `str | None` union applies the constraint to the `None` branch too and
-    crashes, since normalizing to nothing returns `None` (the router's
-    existing fallback to a generated slug then applies)."""
-    return Annotated[str | None, BeforeValidator(_normalize_discipline_slug)]
+# The discipline slug field, normalized ahead of its own pattern check (design
+# D6). The pattern and length are enforced by `_normalize_discipline_slug`
+# itself (restricted alphabet, truncation) rather than by a `Field(...)`
+# constraint here: attaching `Field(pattern=..., max_length=...)` to a
+# `str | None` union applies the constraint to the `None` branch too and
+# crashes, since normalizing to nothing returns `None` (the router's existing
+# fallback to a generated slug then applies).
+DisciplineSlug = Annotated[str | None, BeforeValidator(_normalize_discipline_slug)]
 
 
 __all__ = [
-    "DisciplineSlugStr",
-    "HttpUrlStr",
-    "MultilineStr",
-    "SingleLineStr",
+    "BankAccountStr",
+    "ClubStr",
+    "DisciplineNameStr",
+    "DisciplineRulesetStr",
+    "DisciplineScheduleWhenStr",
+    "DisciplineScheduleWhereStr",
+    "DisciplineSlug",
+    "DisciplineWeaponStr",
+    "DiscountNameStr",
+    "DisplayNameStr",
+    "ExternalRegistrationUrlStr",
+    "ExtraItemNameStr",
+    "ExtraItemOptionLabelStr",
+    "ExtraItemRemarkStr",
+    "ExtraItemScheduleWhenStr",
+    "ExtraItemScheduleWhereStr",
+    "FioTokenStr",
+    "HrCategoryKeyStr",
+    "HrCategoryValueStr",
+    "ManualEntryClubStr",
+    "ManualEntryNameStr",
+    "ManualEntryNationalityStr",
+    "ManualEntryNotesStr",
+    "Multiline",
+    "OptionValueStr",
+    "OrganizerLinkStr",
+    "OrganizerNameStr",
+    "OutputSheetUrlStr",
+    "PleaMessageStr",
+    "RosterMemberClubStr",
+    "RosterMemberNameStr",
+    "RosterMemberNationalityStr",
+    "SingleLine",
+    "TeamNameStr",
     "TolerantDecimal",
     "TolerantInt",
+    "TournamentDescriptionStr",
+    "TournamentDisplayNameStr",
+    "TournamentLocationStr",
+    "TournamentQualificationCriteriaStr",
+    "TournamentRegistrationInstructionsStr",
+    "TournamentSubtitleStr",
 ]

@@ -154,7 +154,7 @@ def default_merge(records: list[Row]) -> dict:
                     union.append(item)
         merged[field] = union
     merged["afterparty"] = any(r.get("afterparty") for r in records)
-    notes = [r.get("notes") for r in records if r.get("notes")]
+    notes = [str(r["notes"]) for r in records if r.get("notes")]
     merged["notes"] = " | ".join(dict.fromkeys(notes)) or None
     merged["problems"] = None
     return merged

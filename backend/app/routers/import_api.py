@@ -105,8 +105,8 @@ async def import_table(
     batch_id = batch.id
 
     def body(work_session: Session, work_operation: Operation) -> dict:
-        work_tournament = work_session.get(Tournament, work_operation.tournament_id)
-        work_batch = work_session.get(importer.ImportBatch, batch_id)
+        work_tournament = operations.reload(work_session, Tournament, work_operation.tournament_id)
+        work_batch = operations.reload(work_session, importer.ImportBatch, batch_id)
         rows = importer.imported_rows(work_session, work_tournament)
         return importer.parse_undecided(
             work_session,
@@ -164,7 +164,7 @@ async def run_matching(
     operation = _start(session, tournament, fencer, OperationKind.MATCH, total)
 
     def body(work_session: Session, work_operation: Operation) -> dict:
-        work_tournament = work_session.get(Tournament, work_operation.tournament_id)
+        work_tournament = operations.reload(work_session, Tournament, work_operation.tournament_id)
         return hr_match.run_matching(
             work_session,
             work_tournament,
@@ -195,8 +195,8 @@ async def run_dedup(
     actor_id = fencer.id
 
     def body(work_session: Session, work_operation: Operation) -> dict:
-        work_tournament = work_session.get(Tournament, work_operation.tournament_id)
-        actor = work_session.get(Fencer, actor_id)
+        work_tournament = operations.reload(work_session, Tournament, work_operation.tournament_id)
+        actor = operations.reload(work_session, Fencer, actor_id)
         return dedup.run_dedup(
             work_session,
             work_tournament,

@@ -188,7 +188,8 @@ class DbHRIndex:
             .distinct()
             .order_by(HRFighter.nationality)
         )
-        return list(rows)
+        # the `isnot(None)` above already excluded them; the filter says so
+        return [nationality for nationality in rows if nationality is not None]
 
     def count(self) -> int:
         return self._session.scalar(select(func.count(HRFighter.hr_id))) or 0

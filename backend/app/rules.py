@@ -18,7 +18,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app import amendment
-from app.hr_index import country_code, evidence_fields
+from app.hr_index import HRIndex, country_code, evidence_fields
 from app.models import DisciplineKind, Fencer, Rule, RuleJournalEntry, Tournament
 
 Row = dict[str, Any]
@@ -406,7 +406,7 @@ def create_rule(
     kind: str,
     target: str,
     payload: dict,
-    index: object | None = None,
+    index: HRIndex | None = None,
 ) -> Rule:
     if kind not in HANDLERS:
         raise HTTPException(status_code=422, detail="unknown_rule_kind")

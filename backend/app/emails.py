@@ -1,6 +1,7 @@
 """Composition of fencer-facing emails, localized to the tournament's
 communication language."""
 
+import datetime
 from decimal import ROUND_HALF_UP, Decimal
 from typing import Literal
 
@@ -226,12 +227,20 @@ def payment_spayd(
     The two override amounts are independent — the same VS, but for whatever
     is outstanding in each currency (a surcharge due) rather than each
     currency's full total. Each defaults to that currency's stored total."""
+    account = tournament.bank_account
+    vs = registration.vs
+    if account is None or vs is None:
+        # every caller checks the account first and turns a missing one into
+        # `no_bank_account`/no QR; a symbol is allocated with the registration
+        # wherever Squire collects. Stated here so neither can arrive as a
+        # `None` inside a payment string a fencer would scan.
+        raise ValueError("a SPAYD string needs both a bank account and a symbol")
     local_due = registration.total_amount if local_amount is None else local_amount
     message = payment_message(tournament, registration)
     primary = spayd.spayd_string(
-        tournament.bank_account,
+        account,
         local_due,
-        registration.vs,
+        vs,
         message,
         currency=str(tournament.local_currency),
     )
@@ -239,9 +248,9 @@ def payment_spayd(
     if eur_due is None:
         return primary, None
     eur = spayd.spayd_string(
-        tournament.bank_account,
+        account,
         eur_due,
-        registration.vs,
+        vs,
         message,
         currency="EUR",
     )
@@ -362,12 +371,8 @@ def send_partial_payment_received(
     if _payment_mail_suppressed(tournament, registration):
         return
     lang = tournament.language
-    if which == "local":
-        outstanding = Decimal(registration.outstanding_cents) / 100
-        currency = tournament.local_currency
-    else:
-        outstanding = Decimal(registration.outstanding_eur_cents) / 100
-        currency = Currency.EUR
+    outstanding = Decimal(registration.outstanding_in(which)) / 100
+    currency = tournament.local_currency if which == "local" else Currency.EUR
     outstanding = outstanding.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
     subject = t("email.partial.subject", lang, tournament=tournament.display_name)
@@ -598,13 +603,18 @@ def send_payment_after_expiry(
 
 
 def send_composition_reminder(
-    mailer: Mailer, tournament: Tournament, fencer: Fencer, teams: list
+    mailer: Mailer,
+    tournament: Tournament,
+    fencer: Fencer,
+    teams: list,
+    deadline: datetime.date,
 ) -> None:
     """Reminds the entering fencer, once per team, that a roster is still
     below its discipline's minimum ahead of the composition deadline (spec:
     "Composition reminder to the entering fencer"). `teams` are this fencer's
     own short teams; the deadline is stated once since a tournament carries a
-    single one (design D7). Sends nothing and touches no pricing, VS, or
+    single one (design D7), and the caller passes the value it already narrowed
+    to reach the reminder window at all. Sends nothing and touches no pricing, VS, or
     capacity path — scheduler.process_composition_reminders stamps
     `composition_reminded_at` per team so a later tick does not resend it."""
     lang = tournament.language
@@ -625,6 +635,6 @@ def send_composition_reminder(
         name=fencer.display_name,
         tournament=tournament.display_name,
         teams="\n".join(lines),
-        deadline=tournament.team_composition_deadline.isoformat(),
+        deadline=deadline.isoformat(),
     )
     mailer.send(build_message(fencer.email, settings.email_sender, subject, body))
