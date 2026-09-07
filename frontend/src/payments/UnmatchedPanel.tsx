@@ -2,8 +2,8 @@ import { IconLink } from "@tabler/icons-react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { api, type Currency, type Transaction } from "../api";
-import { formatMoney } from "../money";
+import { api, type Transaction } from "../api";
+import { formatTransactionAmount } from "../money";
 import LinkDialog from "./LinkDialog";
 import QueueCard from "./QueueCard";
 
@@ -71,7 +71,7 @@ export default function UnmatchedPanel({
               <tr key={tx.id}>
                 <td>{new Date(tx.date).toLocaleDateString("cs")}</td>
                 <td>{tx.payer_name ?? "—"}</td>
-                <td>{formatMoney(tx.amount_cents / 100, tx.currency as Currency)}</td>
+                <td>{formatTransactionAmount(tx.amount_cents, tx.currency)}</td>
                 <td className="muted">{tx.message ?? "—"}</td>
                 <td className="col-actions">
                   <button

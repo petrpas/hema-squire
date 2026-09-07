@@ -1,15 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import {
-  ApiError,
-  api,
-  type Currency,
-  type IssuedSkip,
-  type RankedFencer,
-  type Transaction,
-} from "../api";
+import { ApiError, api, type IssuedSkip, type RankedFencer, type Transaction } from "../api";
 import Modal from "../Modal";
-import { formatMoney } from "../money";
+import { formatTransactionAmount } from "../money";
 import { nameMatches } from "../nameSearch";
 
 /** Linking a payment to the registrations it pays for.
@@ -171,7 +164,7 @@ export default function LinkDialog({
         <p className="muted link-context">
           {new Date(transaction.date).toLocaleDateString("cs")} ·{" "}
           {transaction.payer_name ?? t("payments.link.unknownPayer")} ·{" "}
-          {formatMoney(transaction.amount_cents / 100, transaction.currency as Currency)}
+          {formatTransactionAmount(transaction.amount_cents, transaction.currency)}
         </p>
         {transaction.message && <p className="link-message">{transaction.message}</p>}
 

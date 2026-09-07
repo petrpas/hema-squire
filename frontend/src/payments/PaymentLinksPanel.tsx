@@ -2,8 +2,8 @@ import { IconUnlink } from "@tabler/icons-react";
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { api, type Currency, type PaymentLink } from "../api";
-import { formatMoney } from "../money";
+import { api, type PaymentLink } from "../api";
+import { formatTransactionAmount } from "../money";
 import QueueCard from "./QueueCard";
 
 /** The tournament's active payment links.
@@ -97,9 +97,7 @@ export default function PaymentLinksPanel({
               <tr key={link.rule_id}>
                 <td>{tx === null ? "—" : new Date(tx.date).toLocaleDateString("cs")}</td>
                 <td>{tx?.payer_name ?? "—"}</td>
-                <td>
-                  {tx === null ? "—" : formatMoney(tx.amount_cents / 100, tx.currency as Currency)}
-                </td>
+                <td>{tx === null ? "—" : formatTransactionAmount(tx.amount_cents, tx.currency)}</td>
                 {/* the bank's own words, in full: judging the link is the work */}
                 <td className="muted">{tx?.message ?? "—"}</td>
                 <td>
