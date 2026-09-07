@@ -55,7 +55,12 @@
   },
   "javascript": {
     "formatter": {
-      "quoteStyle": "double"
+      "quoteStyle": "double",
+      // Quoting is left exactly as written. constraints.ts quotes every key
+      // so the block parses as a Python dict literal too — it is read as text
+      // by backend/tests/test_constraints_mirror.py — and "asNeeded" strips
+      // those quotes and breaks that test.
+      "quoteProperties": "preserve"
     }
   },
   "overrides": [
