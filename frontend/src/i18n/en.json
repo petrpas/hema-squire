@@ -6,7 +6,8 @@
     "loading": "Loading…",
     "logout": "Log out",
     "cancel": "Cancel",
-    "back": "Back"
+    "back": "Back",
+    "close": "Close"
   },
   "notFound": {
     "title": "Page not found",
@@ -245,6 +246,10 @@
       "unpaid_other": "{{count}} registrations unpaid",
       "belowMinimum_one": "{{count}} team below its minimum",
       "belowMinimum_other": "{{count}} teams below their minimum"
+    },
+    "cell": {
+      "edit": "Edit {{column}}: {{value}}",
+      "editEmpty": "Edit {{column}} – still empty"
     }
   },
   "row": {

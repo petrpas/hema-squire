@@ -1,10 +1,9 @@
 import { useEffect, useState } from "react";
 import { Outlet, useLocation, useSearchParams } from "react-router-dom";
-
-import FencerShell, { HOME_TABS, type HomeTab } from "./FencerShell";
-import { type FencerOutletContext, useUpcoming } from "./FencerHome";
-import { useAuth } from "./RequireAuth";
 import { type Account, api } from "./api";
+import { type FencerOutletContext, useUpcoming } from "./FencerHome";
+import FencerShell, { HOME_TABS, type HomeTab } from "./FencerShell";
+import { useAuth } from "./RequireAuth";
 
 function resolveTab(value: string | null): HomeTab {
   return value !== null && (HOME_TABS as readonly string[]).includes(value)

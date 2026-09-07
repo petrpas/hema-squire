@@ -14,9 +14,13 @@ export default function Prose({
   source?: string | null;
   className?: string;
 }) {
-  const html = useMemo(() => (source && source.trim() ? renderMarkdown(source) : ""), [source]);
+  const html = useMemo(() => (source?.trim() ? renderMarkdown(source) : ""), [source]);
   if (!html) return null;
   return (
-    <div className={["prose", className].filter(Boolean).join(" ")} dangerouslySetInnerHTML={{ __html: html }} />
+    <div
+      className={["prose", className].filter(Boolean).join(" ")}
+      // biome-ignore lint/security/noDangerouslySetInnerHtml: `renderMarkdown` returns DOMPurify output against a tag allowlist
+      dangerouslySetInnerHTML={{ __html: html }}
+    />
   );
 }

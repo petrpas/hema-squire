@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-
-import { type HRProfile, type SheetRow, api } from "./api";
+import { api, type HRProfile, type SheetRow } from "./api";
+import Modal from "./Modal";
 
 /** Searching the fighters index for a profile the row should be bound to.
  *
@@ -37,8 +37,8 @@ export default function MatchDialog({
   }, [query]);
 
   return (
-    <div className="modal-backdrop" onClick={onClose}>
-      <div className="modal" onClick={(event) => event.stopPropagation()}>
+    <Modal onClose={onClose}>
+      <div className="modal">
         <h2>
           {t("match.title")} — {row.name}
         </h2>
@@ -51,7 +51,7 @@ export default function MatchDialog({
         <ul className="match-results">
           {results.map((profile) => (
             <li key={profile.hr_id}>
-              <button onClick={() => onResolve(profile.hr_id, profile)}>
+              <button type="button" onClick={() => onResolve(profile.hr_id, profile)}>
                 <strong>{profile.name}</strong>
                 <span className="muted">
                   {profile.nationality ?? "—"} · {profile.club ?? "—"} · #{profile.hr_id}
@@ -64,14 +64,14 @@ export default function MatchDialog({
           )}
         </ul>
         <div className="modal-actions">
-          <button className="link-button" onClick={() => onResolve(null)}>
+          <button type="button" className="link-button" onClick={() => onResolve(null)}>
             {t("match.notFound")}
           </button>
-          <button className="secondary" onClick={onClose}>
+          <button type="button" className="secondary" onClick={onClose}>
             {t("common.cancel")}
           </button>
         </div>
       </div>
-    </div>
+    </Modal>
   );
 }

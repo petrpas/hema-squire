@@ -2,8 +2,8 @@ import { IconCheck, IconX } from "@tabler/icons-react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { type Currency, type Transaction, api } from "../api";
-import { formatMoney } from "../money";
+import { api, type Transaction } from "../api";
+import { formatTransactionAmount } from "../money";
 import QueueCard from "./QueueCard";
 
 /** Payments the resolver read a fencer's name in, waiting for a person.
@@ -85,7 +85,7 @@ export default function LikelyPanel({
             <tr key={tx.id}>
               <td>{new Date(tx.date).toLocaleDateString("cs")}</td>
               <td>{tx.payer_name ?? "—"}</td>
-              <td>{formatMoney(tx.amount_cents / 100, tx.currency as Currency)}</td>
+              <td>{formatTransactionAmount(tx.amount_cents, tx.currency)}</td>
               {/* the bank's own words, in full: judging them is the work */}
               <td className="muted">{tx.message ?? "—"}</td>
               <td>
@@ -98,26 +98,24 @@ export default function LikelyPanel({
                     off the row. The word survives as the tooltip */}
                 <div className="row-actions">
                   <button
+                    type="button"
                     className="row-action"
                     title={t("payments.likely.confirm")}
                     disabled={busy === tx.id}
                     onClick={() => void act(tx, true)}
                   >
                     <IconCheck size={16} stroke={1.5} />
-                    <span className="visually-hidden">
-                      {t("payments.likely.confirm")}
-                    </span>
+                    <span className="visually-hidden">{t("payments.likely.confirm")}</span>
                   </button>
                   <button
+                    type="button"
                     className="row-action"
                     title={t("payments.likely.reject")}
                     disabled={busy === tx.id}
                     onClick={() => void act(tx, false)}
                   >
                     <IconX size={16} stroke={1.5} />
-                    <span className="visually-hidden">
-                      {t("payments.likely.reject")}
-                    </span>
+                    <span className="visually-hidden">{t("payments.likely.reject")}</span>
                   </button>
                 </div>
               </td>

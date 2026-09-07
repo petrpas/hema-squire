@@ -1,13 +1,24 @@
 import { IconArrowUp, IconSearch, IconX } from "@tabler/icons-react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-
+import { api, type RosterMember, type TeamEntry } from "./api";
 import RosterMemberDialog from "./RosterMemberDialog";
-import { type RosterMember, type TeamEntry, api } from "./api";
 import { rosterChanged, summarizeSaves } from "./roster";
 
-function initialRoster(team: TeamEntry): RosterMember[] {
-  return team.members.length > 0 ? team.members : team.prefill ? [team.prefill] : [];
+/** A draft row's identity for React, which a roster member has none of: two
+ *  members may share every field, and a row that is removed or moved up must
+ *  not hand its open name field to whichever member takes its place. Client
+ *  side only — the save sends the four stored fields and nothing else. */
+type DraftMember = RosterMember & { rowId: string };
+
+let nextRowId = 0;
+
+function withRowIds(members: RosterMember[]): DraftMember[] {
+  return members.map((member) => ({ ...member, rowId: `row-${nextRowId++}` }));
+}
+
+function initialRoster(team: TeamEntry): DraftMember[] {
+  return withRowIds(team.members.length > 0 ? team.members : team.prefill ? [team.prefill] : []);
 }
 
 /** Adds, removes, renames, rebinds, and reorders a team's roster in the
@@ -19,8 +30,8 @@ function RosterEditor({
   onChange,
 }: {
   team: TeamEntry;
-  members: RosterMember[];
-  onChange: (members: RosterMember[]) => void;
+  members: DraftMember[];
+  onChange: (members: DraftMember[]) => void;
 }) {
   const { t } = useTranslation();
   // one slot: naming a member happens in the dialog, whether the member is
@@ -39,13 +50,21 @@ function RosterEditor({
   function moveMemberUp(index: number) {
     if (index <= 0) return;
     const next = [...members];
-    [next[index - 1], next[index]] = [next[index], next[index - 1]];
+    const above = next[index - 1];
+    const member = next[index];
+    if (above === undefined || member === undefined) return;
+    next[index - 1] = member;
+    next[index] = above;
     onChange(next);
   }
 
   function confirmDialog(member: RosterMember) {
     const index = dialog?.index ?? null;
-    onChange(index === null ? [...members, member] : members.map((m, i) => (i === index ? member : m)));
+    onChange(
+      index === null
+        ? [...members, ...withRowIds([member])]
+        : members.map((m, i) => (i === index ? { ...member, rowId: m.rowId } : m)),
+    );
     setDialog(null);
   }
 
@@ -60,14 +79,16 @@ function RosterEditor({
       {/* one line per member: their name, their HRID, their club, their row actions */}
       <ul className="detail-list">
         {members.map((member, index) => (
-          <li key={index}>
+          <li key={member.rowId}>
             <div className="checklist-row team-row">
               <input
                 className="cell-input"
                 value={member.name}
                 onChange={(event) => renameMember(index, event.target.value)}
               />
-              <span className="muted roster-hrid">{member.hr_id !== null ? `#${member.hr_id}` : ""}</span>
+              <span className="muted roster-hrid">
+                {member.hr_id !== null ? `#${member.hr_id}` : ""}
+              </span>
               <span className="muted roster-club">{member.club ?? ""}</span>
               <button
                 type="button"
@@ -107,7 +128,7 @@ function RosterEditor({
 
       {dialog && (
         <RosterMemberDialog
-          initial={dialog.index === null ? null : members[dialog.index]}
+          initial={dialog.index === null ? null : (members[dialog.index] ?? null)}
           onConfirm={confirmDialog}
           onClose={() => setDialog(null)}
         />
@@ -131,7 +152,7 @@ export default function TeamsTab({
   onTeamUpdated: (team: TeamEntry) => void;
 }) {
   const { t } = useTranslation();
-  const [drafts, setDrafts] = useState<Map<number, RosterMember[]>>(
+  const [drafts, setDrafts] = useState<Map<number, DraftMember[]>>(
     () => new Map(teams.map((team) => [team.id, initialRoster(team)])),
   );
   const [busy, setBusy] = useState(false);
@@ -179,7 +200,10 @@ export default function TeamsTab({
       ),
     );
     const { saved, failed } = summarizeSaves(
-      dirtyTeams.map((team, index) => ({ team, result: results[index] })),
+      dirtyTeams.flatMap((team, index) => {
+        const result = results[index];
+        return result === undefined ? [] : [{ team, result }];
+      }),
     );
     for (const team of saved) onTeamUpdated(team);
     setFailedTeams(failed.length > 0 ? failed : null);
@@ -198,9 +222,12 @@ export default function TeamsTab({
       ))}
 
       {failedTeams && (
-        <p className="login-error">{t("roster.saveFailedTeams", { teams: failedTeams.join(", ") })}</p>
+        <p className="login-error">
+          {t("roster.saveFailedTeams", { teams: failedTeams.join(", ") })}
+        </p>
       )}
       <button
+        type="button"
         className="btn-primary param-save param-save-inline"
         disabled={busy || dirtyTeams.length === 0}
         onClick={() => void saveAll()}

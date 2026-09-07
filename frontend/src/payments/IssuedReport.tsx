@@ -22,9 +22,7 @@ export default function IssuedReport({ outcome }: { outcome: IngestAndMatch }) {
 
   return (
     <>
-      {issued > 0 && (
-        <p className="rail-hint">{t("payments.intake.issued", { count: issued })}</p>
-      )}
+      {issued > 0 && <p className="rail-hint">{t("payments.intake.issued", { count: issued })}</p>}
       {skipped.length > 0 && (
         <>
           <p className="rail-hint">{t("issue.skippedHeading")}</p>

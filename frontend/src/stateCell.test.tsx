@@ -43,10 +43,7 @@ function row(overrides: Partial<SheetRow> = {}): SheetRow {
 }
 
 function type(input: HTMLInputElement, value: string) {
-  const setter = Object.getOwnPropertyDescriptor(
-    window.HTMLInputElement.prototype,
-    "value",
-  )!.set!;
+  const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value")!.set!;
   act(() => {
     setter.call(input, value);
     input.dispatchEvent(new Event("input", { bubbles: true }));
@@ -64,7 +61,7 @@ it("asks for a reason before waiving a reserved registration", () => {
   const toggle = vi.fn().mockResolvedValue(undefined);
   mount(<StateCell row={row()} onToggle={toggle} busy={false} />);
 
-  act(() => (host?.querySelector("button.state-cell") as HTMLButtonElement).click());
+  act(() => (host!.querySelector("button.state-cell") as HTMLButtonElement).click());
   expect(toggle).not.toHaveBeenCalled();
 
   const confirm = host?.querySelector(".modal-actions .btn-primary") as HTMLButtonElement;
@@ -74,12 +71,10 @@ it("asks for a reason before waiving a reserved registration", () => {
 it("waives it once a reason is given", () => {
   const toggle = vi.fn().mockResolvedValue(undefined);
   mount(<StateCell row={row()} onToggle={toggle} busy={false} />);
-  act(() => (host?.querySelector("button.state-cell") as HTMLButtonElement).click());
+  act(() => (host!.querySelector("button.state-cell") as HTMLButtonElement).click());
 
-  type(host?.querySelector(".modal input") as HTMLInputElement, "volná účast");
-  act(() =>
-    (host?.querySelector(".modal-actions .btn-primary") as HTMLButtonElement).click(),
-  );
+  type(host!.querySelector(".modal input") as HTMLInputElement, "volná účast");
+  act(() => (host!.querySelector(".modal-actions .btn-primary") as HTMLButtonElement).click());
 
   expect(toggle).toHaveBeenCalledWith(expect.anything(), "volná účast");
 });
@@ -94,10 +89,10 @@ it("unwaives without asking why", () => {
       busy={false}
     />,
   );
-  act(() => (host?.querySelector("button.state-cell") as HTMLButtonElement).click());
+  act(() => (host!.querySelector("button.state-cell") as HTMLButtonElement).click());
 
   expect(toggle).toHaveBeenCalled();
-  expect(host?.querySelector(".modal")).toBeNull();
+  expect(host!.querySelector(".modal")).toBeNull();
 });
 
 it("shows the waiver's reason on a waived row", () => {
@@ -113,9 +108,7 @@ it("shows the waiver's reason on a waived row", () => {
       busy={false}
     />,
   );
-  expect((host?.querySelector("button.state-cell") as HTMLButtonElement).title).toBe(
-    "sponzor",
-  );
+  expect((host!.querySelector("button.state-cell") as HTMLButtonElement).title).toBe("sponzor");
 });
 
 it("offers nothing on a registration the money settled", () => {
@@ -128,14 +121,20 @@ it("offers nothing on a registration the money settled", () => {
       busy={false}
     />,
   );
-  expect(host?.querySelector("button")).toBeNull();
+  expect(host!.querySelector("button")).toBeNull();
   expect(host?.textContent).toContain(t("registration.state.paid"));
 });
 
 it("offers nothing on a state the lifecycle or the fencer chose", () => {
   for (const state of ["expired", "cancelled"]) {
-    mount(<StateCell row={row({ state })} onToggle={vi.fn().mockResolvedValue(undefined)} busy={false} />);
-    expect(host?.querySelector("button")).toBeNull();
+    mount(
+      <StateCell
+        row={row({ state })}
+        onToggle={vi.fn().mockResolvedValue(undefined)}
+        busy={false}
+      />,
+    );
+    expect(host!.querySelector("button")).toBeNull();
     host?.remove();
   }
 });
@@ -148,7 +147,7 @@ it("offers nothing on a row with no registration behind it", () => {
       busy={false}
     />,
   );
-  expect(host?.querySelector("button")).toBeNull();
+  expect(host!.querySelector("button")).toBeNull();
 });
 
 it("does not fire while a mark is in flight", () => {
@@ -160,7 +159,7 @@ it("does not fire while a mark is in flight", () => {
       busy
     />,
   );
-  act(() => (host?.querySelector("button.state-cell") as HTMLButtonElement).click());
+  act(() => (host!.querySelector("button.state-cell") as HTMLButtonElement).click());
   expect(toggle).not.toHaveBeenCalled();
 });
 
@@ -170,18 +169,16 @@ it("keeps the dialog open and states a refusal", async () => {
   const { ApiError } = await import("./api");
   const toggle = vi.fn().mockRejectedValue(new ApiError(409, "not_settled_by_hand"));
   mount(<StateCell row={row()} onToggle={toggle} busy={false} />);
-  act(() => (host?.querySelector("button.state-cell") as HTMLButtonElement).click());
-  type(host?.querySelector(".modal input") as HTMLInputElement, "volná účast");
+  act(() => (host!.querySelector("button.state-cell") as HTMLButtonElement).click());
+  type(host!.querySelector(".modal input") as HTMLInputElement, "volná účast");
 
   await act(async () => {
-    (host?.querySelector(".modal-actions .btn-primary") as HTMLButtonElement).click();
+    (host!.querySelector(".modal-actions .btn-primary") as HTMLButtonElement).click();
     await Promise.resolve();
   });
 
-  expect(host?.querySelector(".modal")).not.toBeNull();
+  expect(host!.querySelector(".modal")).not.toBeNull();
   expect(host?.textContent).toContain(t("console.waiver.error.not_settled_by_hand"));
   // and what was typed survives, so the organizer is not made to type it again
-  expect((host?.querySelector(".modal input") as HTMLInputElement).value).toBe(
-    "volná účast",
-  );
+  expect((host!.querySelector(".modal input") as HTMLInputElement).value).toBe("volná účast");
 });

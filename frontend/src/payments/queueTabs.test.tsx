@@ -76,9 +76,7 @@ it("leads with the fencer table and opens on it", async () => {
   mount(phase([2, 7]));
   await settle();
 
-  const labels = [...(host?.querySelectorAll('[role="tab"]') ?? [])].map(
-    (tab) => tab.textContent,
-  );
+  const labels = [...(host?.querySelectorAll('[role="tab"]') ?? [])].map((tab) => tab.textContent);
   expect(labels[0]).toContain("Stav");
   expect(tabNamed("Stav")?.getAttribute("aria-selected")).toBe("true");
   expect(host?.textContent).toContain("tabulka");
@@ -89,9 +87,10 @@ it("gives the table no count of its own", async () => {
   await settle();
 
   expect(tabNamed("Stav")?.querySelector(".tab-count")).toBeNull();
-  expect([...(host?.querySelectorAll(".tab-count") ?? [])].map((n) => n.textContent)).toEqual(
-    ["2", "7"],
-  );
+  expect([...(host?.querySelectorAll(".tab-count") ?? [])].map((n) => n.textContent)).toEqual([
+    "2",
+    "7",
+  ]);
 });
 
 it("shows one thing at a time", async () => {

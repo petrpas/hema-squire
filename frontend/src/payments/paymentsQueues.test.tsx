@@ -3,7 +3,7 @@ import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
-import { type ExpiredHolding, type PaymentLink, api } from "../api";
+import { api, type ExpiredHolding, type PaymentLink } from "../api";
 import i18n from "../i18n";
 import SheetArea from "../SheetArea";
 import ExpiredHoldingPanel from "./ExpiredHoldingPanel";
@@ -136,8 +136,8 @@ it("marks an auto-created link apart from one made by hand", async () => {
   await settle();
 
   const rows = [...(host?.querySelectorAll("tbody tr") ?? [])];
-  expect(rows[0].textContent).toContain(t("payments.links.auto"));
-  expect(rows[1].textContent).toContain(t("payments.links.manual"));
+  expect(rows[0]!.textContent).toContain(t("payments.links.auto"));
+  expect(rows[1]!.textContent).toContain(t("payments.links.manual"));
 });
 
 it("states the payment as the bank wrote it, beside the fencer it credits", async () => {
@@ -200,7 +200,6 @@ it("shows no number while the count is not yet known", () => {
   expect(host?.querySelector(".rail-count")).toBeNull();
   expect(host?.textContent).not.toContain("body");
 });
-
 
 it("puts the phase's queues above the fencer table", () => {
   mount(

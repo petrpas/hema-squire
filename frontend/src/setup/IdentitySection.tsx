@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { ApiError, type SetupSuggestions, type TournamentDetail, api, logoUrl } from "../api";
+import { ApiError, api, logoUrl, type SetupSuggestions, type TournamentDetail } from "../api";
 import FieldError, { invalidProps } from "../FieldError";
 import HelpHint from "../HelpHint";
 import SuggestionAnchor from "../SuggestionAnchor";
@@ -51,23 +51,18 @@ const IDENTITY_RUN_3 = IDENTITY_FIELDS.slice(5);
 // text/textarea IDENTITY_FIELDS checked against TournamentUpdate's bounds
 // (dates are excluded — the browser's own date input is already typed)
 const IDENTITY_TEXT_CHECKS: Record<string, (value: string) => FieldErrorValue | null> = {
-  display_name: (value) => checkString("display_name", "TournamentUpdate.display_name", value, { required: true }),
+  display_name: (value) =>
+    checkString("display_name", "TournamentUpdate.display_name", value, { required: true }),
   subtitle: (value) => checkString("subtitle", "TournamentUpdate.subtitle", value),
   location: (value) => checkString("location", "TournamentUpdate.location", value),
-  description: (value) => checkString("description", "TournamentUpdate.description", value, { multiline: true }),
+  description: (value) =>
+    checkString("description", "TournamentUpdate.description", value, { multiline: true }),
   registration_instructions: (value) =>
-    checkString(
-      "registration_instructions",
-      "TournamentUpdate.registration_instructions",
-      value,
-      { multiline: true },
-    ),
+    checkString("registration_instructions", "TournamentUpdate.registration_instructions", value, {
+      multiline: true,
+    }),
   external_registration_url: (value) =>
-    checkString(
-      "external_registration_url",
-      "TournamentUpdate.external_registration_url",
-      value,
-    ),
+    checkString("external_registration_url", "TournamentUpdate.external_registration_url", value),
 };
 
 export function IdentitySection({
@@ -104,13 +99,20 @@ export function IdentitySection({
     (entry) => {
       setValues((current) => ({ ...current, location: entry.value }));
       setDirty(true);
-      validation.clearIfValid("location", () => IDENTITY_TEXT_CHECKS.location(entry.value));
+      validation.clearIfValid(
+        "location",
+        () => IDENTITY_TEXT_CHECKS.location?.(entry.value) ?? null,
+      );
     },
   );
 
   function qualificationCriteriaCheck(): FieldErrorValue | null {
     if (!qualificationOpen && qualificationCriteria.trim() === "") {
-      return { field: "qualification_criteria", code: "qualification_criteria_required", params: {} };
+      return {
+        field: "qualification_criteria",
+        code: "qualification_criteria_required",
+        params: {},
+      };
     }
     return checkString(
       "qualification_criteria",
@@ -167,8 +169,7 @@ export function IdentitySection({
     setQualificationCriteria(detail.qualification_criteria ?? "");
     validation.clearAll();
     setDirty(false);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [detail]);
+  }, [detail, validation.clearAll]);
 
   useSectionSaver(registry, "tournament", "identity", {
     pendingCount: dirty ? 1 : 0,
@@ -176,7 +177,9 @@ export function IdentitySection({
     validate: () =>
       validation.validateAll([
         ...Object.entries(IDENTITY_TEXT_CHECKS).map(
-          ([key, check]) => () => check(values[key] ?? ""),
+          ([key, check]) =>
+            () =>
+              check(values[key] ?? ""),
         ),
         qualificationCriteriaCheck,
       ]),
@@ -207,7 +210,9 @@ export function IdentitySection({
         const message =
           fieldErrors.length > 0
             ? fieldErrors.map((e) => t(`validation.${e.code}`, e.params)).join(" ")
-            : t("setup.saveBar.genericError", { status: err instanceof ApiError ? err.status : "?" });
+            : t("setup.saveBar.genericError", {
+                status: err instanceof ApiError ? err.status : "?",
+              });
         return [{ change: "identity", section: "identity", error: message }];
       }
     },

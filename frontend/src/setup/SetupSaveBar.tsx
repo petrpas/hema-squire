@@ -3,8 +3,8 @@ import { useTranslation } from "react-i18next";
 
 import {
   PriceChangeWarning,
-  type SaverRegistry,
   type SaveOutcome,
+  type SaverRegistry,
   type SetupTab,
   usePriceChangeGuard,
 } from "./shared";
@@ -108,6 +108,7 @@ export function SetupSaveBar({
           </p>
           <ul className="detail-list">
             {report.failures.map((failure, index) => (
+              // biome-ignore lint/suspicious/noArrayIndexKey: a read-only list rebuilt from props; position is the only identity these rows have
               <li key={index}>
                 {failure.change}: {failure.error}
               </li>

@@ -27,7 +27,8 @@ describe("checkString", () => {
 describe("bank account pattern", () => {
   // the loose shape only; the checksum is the backend's word (design
   // `accept-czech-account-format` D5)
-  const check = (value: string) => checkString("bank_account", "TournamentUpdate.bank_account", value);
+  const check = (value: string) =>
+    checkString("bank_account", "TournamentUpdate.bank_account", value);
 
   it.each([
     "CZ6508000000192000145399",
@@ -56,7 +57,11 @@ describe("checkMoney", () => {
 
   it("rejects the same figure over the EUR ceiling", () => {
     const error = checkMoney("fee_eur", "5000", "EUR");
-    expect(error).toEqual({ field: "fee_eur", code: "out_of_range", params: { min: 0, max: 1000 } });
+    expect(error).toEqual({
+      field: "fee_eur",
+      code: "out_of_range",
+      params: { min: 0, max: 1000 },
+    });
   });
 
   it("rejects a negative value", () => {

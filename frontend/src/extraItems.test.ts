@@ -52,8 +52,8 @@ describe("groupGoods", () => {
       item("Puklíř", "rental"),
     ]);
     expect(groups).toHaveLength(1);
-    expect(groups[0].category).toBe("rental");
-    expect(groups[0].items).toHaveLength(3);
+    expect(groups[0]!.category).toBe("rental");
+    expect(groups[0]!.items).toHaveLength(3);
   });
 
   it("keeps the tournament's row order within a group", () => {
@@ -63,7 +63,7 @@ describe("groupGoods", () => {
       item("Meč", "rental"),
       item("Puklíř", "rental"),
     ]);
-    expect(groups[0].items.map((i) => i.name)).toEqual(["Šavle", "Meč", "Puklíř"]);
+    expect(groups[0]!.items.map((i) => i.name)).toEqual(["Šavle", "Meč", "Puklíř"]);
   });
 
   it("leaves the programme's categories out of every group", () => {

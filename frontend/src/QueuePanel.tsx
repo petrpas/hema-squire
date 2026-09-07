@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-
-import { ApiError, type Queue, api } from "./api";
+import { ApiError, api, type Queue } from "./api";
+import Modal from "./Modal";
 import PhaseSummary from "./PhaseSummary";
 import QueueEntryLine from "./QueueEntryLine";
 
@@ -70,6 +70,7 @@ export default function QueuePanel({
         <h1>{t("queue.title")}</h1>
         <span className="header-actions">
           <button
+            type="button"
             className="btn-danger"
             onClick={() => setConfirming(true)}
             disabled={isSettled || busy}
@@ -92,7 +93,9 @@ export default function QueuePanel({
         {settled !== null && (
           <p className="rail-hint">{t("queue.settleDone", { count: settled })}</p>
         )}
-        {failure !== null && <p className="field-error">{t("queue.actionFailed", { reason: failure })}</p>}
+        {failure !== null && (
+          <p className="field-error">{t("queue.actionFailed", { reason: failure })}</p>
+        )}
 
         {queue.disciplines.length === 0 ? (
           <p className="sheet-empty">{t("queue.noDisciplines")}</p>
@@ -121,6 +124,7 @@ export default function QueuePanel({
                           <QueueEntryLine entry={entry} timezone={timezone} />
                         </span>
                         <button
+                          type="button"
                           className="link-button"
                           disabled={busy}
                           onClick={() =>
@@ -149,6 +153,7 @@ export default function QueuePanel({
                           <QueueEntryLine entry={entry} timezone={timezone} />
                         </span>
                         <button
+                          type="button"
                           className="link-button"
                           disabled={busy || discipline.free === 0}
                           onClick={() =>
@@ -170,8 +175,8 @@ export default function QueuePanel({
       </div>
 
       {confirming && (
-        <div className="modal-backdrop" onClick={() => setConfirming(false)}>
-          <div className="modal" onClick={(event) => event.stopPropagation()}>
+        <Modal onClose={() => setConfirming(false)}>
+          <div className="modal">
             <h2>{t("queue.settleTitle")}</h2>
             <p>{t("queue.settleBody", { count: queue.pending_demotions })}</p>
             <p>{t("queue.settleIrreversible")}</p>
@@ -195,7 +200,7 @@ export default function QueuePanel({
               </button>
             </div>
           </div>
-        </div>
+        </Modal>
       )}
     </main>
   );

@@ -1,15 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-
-import {
-  ApiError,
-  type Currency,
-  type IssuedSkip,
-  type RankedFencer,
-  type Transaction,
-  api,
-} from "../api";
-import { formatMoney } from "../money";
+import { ApiError, api, type IssuedSkip, type RankedFencer, type Transaction } from "../api";
+import Modal from "../Modal";
+import { formatTransactionAmount } from "../money";
 import { nameMatches } from "../nameSearch";
 
 /** Linking a payment to the registrations it pays for.
@@ -165,13 +158,13 @@ export default function LinkDialog({
   const nothingChosen = chosen.length === 0 && typedVs.length === 0;
 
   return (
-    <div className="modal-backdrop" onClick={onClose}>
-      <div className="modal modal-wide" onClick={(event) => event.stopPropagation()}>
+    <Modal onClose={onClose}>
+      <div className="modal modal-wide">
         <h2>{t("payments.link.title")}</h2>
         <p className="muted link-context">
           {new Date(transaction.date).toLocaleDateString("cs")} ·{" "}
           {transaction.payer_name ?? t("payments.link.unknownPayer")} ·{" "}
-          {formatMoney(transaction.amount_cents / 100, transaction.currency as Currency)}
+          {formatTransactionAmount(transaction.amount_cents, transaction.currency)}
         </p>
         {transaction.message && <p className="link-message">{transaction.message}</p>}
 
@@ -211,12 +204,8 @@ export default function LinkDialog({
                     onChange={() => toggle(fencer.registration_id)}
                   />
                   {fencer.name}
-                  {fencer.proposed && (
-                    <span className="chip">{t("payments.link.strongest")}</span>
-                  )}
-                  {fencer.rejected && (
-                    <span className="muted"> {t("payments.link.refused")}</span>
-                  )}
+                  {fencer.proposed && <span className="chip">{t("payments.link.strongest")}</span>}
+                  {fencer.rejected && <span className="muted"> {t("payments.link.refused")}</span>}
                 </label>
                 <span className="muted">{fencer.outstanding_amount}</span>
               </li>
@@ -230,7 +219,7 @@ export default function LinkDialog({
             <ul className="link-candidates">
               {offered.map((vs) => (
                 <li key={vs}>
-                  <button className="row-action" onClick={() => addVs(vs)}>
+                  <button type="button" className="row-action" onClick={() => addVs(vs)}>
                     {vs}
                   </button>
                 </li>
@@ -240,23 +229,23 @@ export default function LinkDialog({
         )}
 
         {symbolsInUse && (
-        <div className="link-entry">
-          <input
-            value={typed}
-            inputMode="numeric"
-            placeholder={t("payments.link.placeholder")}
-            onChange={(event) => setTyped(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key === "Enter") {
-                event.preventDefault();
-                addTyped();
-              }
-            }}
-          />
-          <button className="secondary" onClick={addTyped}>
-            {t("payments.link.add")}
-          </button>
-        </div>
+          <div className="link-entry">
+            <input
+              value={typed}
+              inputMode="numeric"
+              placeholder={t("payments.link.placeholder")}
+              onChange={(event) => setTyped(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  event.preventDefault();
+                  addTyped();
+                }
+              }}
+            />
+            <button type="button" className="secondary" onClick={addTyped}>
+              {t("payments.link.add")}
+            </button>
+          </div>
         )}
 
         <p className="rail-hint">{t("payments.link.selected")}</p>
@@ -268,6 +257,7 @@ export default function LinkDialog({
               <li key={`reg-${id}`}>
                 {byId.get(id)?.name ?? id}
                 <button
+                  type="button"
                   className="row-action"
                   title={t("payments.link.remove")}
                   onClick={() => toggle(id)}
@@ -280,6 +270,7 @@ export default function LinkDialog({
               <li key={`vs-${vs}`}>
                 {vs}
                 <button
+                  type="button"
                   className="row-action"
                   title={t("payments.link.remove")}
                   onClick={() => setTypedVs((c) => c.filter((v) => v !== vs))}
@@ -299,10 +290,11 @@ export default function LinkDialog({
         {failed && <p className="login-error">{t("payments.link.failed")}</p>}
 
         <div className="modal-actions">
-          <button className="secondary" onClick={onClose}>
+          <button type="button" className="secondary" onClick={onClose}>
             {t("common.cancel")}
           </button>
           <button
+            type="button"
             className="btn-primary"
             disabled={busy || nothingChosen}
             onClick={() => void confirm()}
@@ -311,6 +303,6 @@ export default function LinkDialog({
           </button>
         </div>
       </div>
-    </div>
+    </Modal>
   );
 }

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { type TournamentDetail, api } from "./api";
+import { api, type TournamentDetail } from "./api";
 import FieldError, { invalidProps } from "./FieldError";
 import HelpHint from "./HelpHint";
 import { parseInteger } from "./numeric";
@@ -40,8 +40,7 @@ export default function TolerancePanel({
     setValue(String(detail.amount_tolerance_percent));
     validation.clearAll();
     setDirty(false);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [detail]);
+  }, [detail, validation.clearAll]);
 
   const check = () => checkPercent("amount_tolerance_percent", value);
 
@@ -123,6 +122,7 @@ export default function TolerancePanel({
             "save" below it. The name stays on the control for anything not
             reading the shape. */}
         <button
+          type="button"
           className="secondary tolerance-save"
           onClick={() => void save()}
           disabled={!dirty || busy}
@@ -150,6 +150,7 @@ export default function TolerancePanel({
             {t("payments.tolerance.resettleable", { count: resettleable })}
           </p>
           <button
+            type="button"
             className="secondary param-save"
             onClick={() => void resettle()}
             disabled={busy}

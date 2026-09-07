@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { ApiError, type TournamentDetail, api } from "../api";
+import { ApiError, api, type TournamentDetail } from "../api";
 
 /** Whether the tournament still prices through the superseded fixed
  *  weapon-rental / afterparty parameters — the same condition

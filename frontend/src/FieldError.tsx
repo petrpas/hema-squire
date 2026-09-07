@@ -18,7 +18,13 @@ export function invalidProps(field: string, error: FieldErrorValue | undefined) 
 /** A field's error message: 12px `--stamp` text below the control, stating
  * what happened and, via its interpolated params, the limit that applies —
  * no exclamation mark (design `add-field-validation`). */
-export default function FieldError({ field, error }: { field: string; error: FieldErrorValue | undefined }) {
+export default function FieldError({
+  field,
+  error,
+}: {
+  field: string;
+  error: FieldErrorValue | undefined;
+}) {
   const { t } = useTranslation();
   if (!error) return null;
   return (

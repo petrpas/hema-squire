@@ -3,10 +3,9 @@ import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-
+import { ApiError, api, getToken, setToken } from "./api";
 import Login from "./Login";
 import RequireAuth from "./RequireAuth";
-import { ApiError, api, getToken, setToken } from "./api";
 
 // The three things that decide whether a fencer gets into the app from a
 // phone: a credential manager can see the fields, a slow submit says so, and
@@ -71,7 +70,7 @@ describe("credential managers can read the auth forms", () => {
     // switch to signup — the create-account control is the last link-button
     // the create-account control is the last link-button on the card
     const links = page.querySelectorAll("button.link-button");
-    const toSignup = links[links.length - 1];
+    const toSignup = links[links.length - 1]!;
     await act(async () => {
       toSignup.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
@@ -97,7 +96,7 @@ describe("credential managers can read the auth forms", () => {
 
     // the create-account control is the last link-button on the card
     const links = page.querySelectorAll("button.link-button");
-    const toSignup = links[links.length - 1];
+    const toSignup = links[links.length - 1]!;
     await act(async () => {
       toSignup.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
@@ -119,9 +118,9 @@ describe("a submission in flight is stated in words", () => {
     const resting = submit.textContent;
 
     await act(async () => {
-      page.querySelector("form")!.dispatchEvent(
-        new Event("submit", { bubbles: true, cancelable: true }),
-      );
+      page
+        .querySelector("form")!
+        .dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
     });
 
     expect(submit.disabled).toBe(true);
@@ -147,9 +146,9 @@ describe("a submission in flight is stated in words", () => {
     expect(slot.textContent).toBe("");
 
     await act(async () => {
-      page.querySelector("form")!.dispatchEvent(
-        new Event("submit", { bubbles: true, cancelable: true }),
-      );
+      page
+        .querySelector("form")!
+        .dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
     });
     await settle();
 

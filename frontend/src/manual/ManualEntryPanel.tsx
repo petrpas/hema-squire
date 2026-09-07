@@ -27,6 +27,7 @@ export default function ManualEntryPanel({
         {/* the dialog is built from the tournament's structure, so it opens
             only once that structure has arrived */}
         <button
+          type="button"
           className="secondary param-save"
           disabled={detail === null}
           onClick={() => setOpen(true)}

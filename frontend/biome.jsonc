@@ -1,0 +1,90 @@
+{
+  "$schema": "https://biomejs.dev/schemas/2.5.12/schema.json",
+  "files": {
+    // `public` holds static assets, not source: the favicon is an image, and
+    // the accessibility rules that apply to an inline SVG do not apply to it.
+    "includes": ["**", "!**/dist", "!**/node_modules", "!**/public", "!**/*.tsbuildinfo"]
+  },
+  // Matched to the code that was already here: two spaces, double quotes. The
+  // width is 100 because it is the width that reformatted the fewest files.
+  "formatter": {
+    "enabled": true,
+    "indentStyle": "space",
+    "indentWidth": 2,
+    "lineWidth": 100
+  },
+  "linter": {
+    "enabled": true,
+    "domains": {
+      "react": "recommended"
+    },
+    "rules": {
+      "preset": "recommended",
+      // The React hook rules are the one category ESLint gave that the type
+      // checker does not; the react domain turns them on, and they are named
+      // here so that a later change to the domain cannot quietly drop them.
+      "correctness": {
+        "useExhaustiveDependencies": {
+          "level": "error",
+          "options": {
+            // A dependency the effect body does not read is how a panel is told
+            // to re-run: `useEffect(refresh, [slug, reload])`, where `reload` is
+            // a counter the parent bumps. The rule reads those as surplus and
+            // would have us delete the only thing that triggers the reload. The
+            // half that finds a stale closure — a dependency that is missing —
+            // is the half worth having, and it stays on.
+            "reportUnnecessaryDependencies": false
+          }
+        },
+        "useHookAtTopLevel": "error"
+      },
+      "style": {
+        // Fires wherever a one-class rule follows a two-class rule that ends
+        // in the same element, which in a stylesheet this size is mostly rules
+        // about unrelated things. Reordering 2000 lines by specificity would
+        // risk the look of the app to quieten a warning about nothing.
+        "noDescendingSpecificity": "off"
+      },
+      "a11y": {
+        // Every autofocus in the app is on the first field of a dialog the
+        // user has just opened, which is where a keyboard user wants to land.
+        // The rule is aimed at autofocus on page load, which nothing here does.
+        "noAutofocus": "off"
+      }
+    }
+  },
+  "javascript": {
+    "formatter": {
+      "quoteStyle": "double",
+      // Quoting is left exactly as written. constraints.ts quotes every key
+      // so the block parses as a Python dict literal too — it is read as text
+      // by backend/tests/test_constraints_mirror.py — and "asNeeded" strips
+      // those quotes and breaks that test.
+      "quoteProperties": "preserve"
+    }
+  },
+  "overrides": [
+    {
+      // A test reaches into a captured mock call, whose shape is fixed by the
+      // assertion standing next to it. Narrowing each of those reads would
+      // state what the test has already established. In application code the
+      // rule stays on.
+      "includes": ["**/*.test.ts", "**/*.test.tsx"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noNonNullAssertion": "off"
+          }
+        }
+      }
+    }
+  ],
+  "assist": {
+    "enabled": true,
+    "actions": {
+      "source": {
+        "organizeImports": "on"
+      }
+    }
+  }
+}

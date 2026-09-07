@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { type Availability, type TournamentDetail as TournamentDetailData, api } from "./api";
+import { type Availability, api, type TournamentDetail as TournamentDetailData } from "./api";
 import {
-  DiscountList,
   DisciplinesInfo,
+  DiscountList,
   InfoHeader,
   OtherActionsInfo,
   RegistrationForm,
@@ -31,10 +31,18 @@ export default function SetupPreview({
     <div className="setup-preview">
       <p className="setup-preview-heading">{t("preview.heading")}</p>
       <nav className="stage-control preview-tabs">
-        <button className={tab === "face" ? "active" : ""} onClick={() => setTab("face")}>
+        <button
+          type="button"
+          className={tab === "face" ? "active" : ""}
+          onClick={() => setTab("face")}
+        >
           {t("preview.tabs.face")}
         </button>
-        <button className={tab === "form" ? "active" : ""} onClick={() => setTab("form")}>
+        <button
+          type="button"
+          className={tab === "form" ? "active" : ""}
+          onClick={() => setTab("form")}
+        >
           {t("preview.tabs.form")}
         </button>
       </nav>

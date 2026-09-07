@@ -1,7 +1,7 @@
-import { type KeyboardEvent } from "react";
+import type { KeyboardEvent } from "react";
 import { useTranslation } from "react-i18next";
 
-import { type TournamentFlags } from "../api";
+import type { TournamentFlags } from "../api";
 import { type SetupTab, setupTabTitleKey } from "./shared";
 
 export function SetupTabBar({
@@ -23,17 +23,15 @@ export function SetupTabBar({
   const { t } = useTranslation();
 
   function onKeyDown(event: KeyboardEvent<HTMLButtonElement>, index: number) {
-    if (event.key === "ArrowRight") {
-      event.preventDefault();
-      onSelect(tabs[(index + 1) % tabs.length]);
-    } else if (event.key === "ArrowLeft") {
-      event.preventDefault();
-      onSelect(tabs[(index - 1 + tabs.length) % tabs.length]);
-    }
+    const step = event.key === "ArrowRight" ? 1 : event.key === "ArrowLeft" ? -1 : 0;
+    if (step === 0) return;
+    event.preventDefault();
+    const next = tabs[(index + step + tabs.length) % tabs.length];
+    if (next) onSelect(next);
   }
 
   return (
-    <nav className="stage-control setup-tabs" role="tablist">
+    <div className="stage-control setup-tabs" role="tablist">
       {tabs.map((id, index) => (
         <button
           key={id}
@@ -59,6 +57,6 @@ export function SetupTabBar({
           )}
         </button>
       ))}
-    </nav>
+    </div>
   );
 }

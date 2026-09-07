@@ -73,7 +73,11 @@ export const FIELD_CONSTRAINTS: Record<string, FieldConstraint> = {
   "TournamentUpdate.deposit_amount": { "minimum": 0 },
   "TournamentUpdate.deposit_amount_eur": { "minimum": 0 },
   "TournamentUpdate.amount_tolerance_percent": { "minimum": 0, "maximum": 100 },
-  "TournamentUpdate.bank_account": { "maxLength": 50, "pattern": "^([A-Z]{2}[0-9]{2}(?: ?[A-Za-z0-9]){10,30}|[0-9]{1,6}(?: ?- ?)?[0-9]{2,10} ?/ ?[0-9]{4})$" },
+  "TournamentUpdate.bank_account": {
+    "maxLength": 50,
+    "pattern":
+      "^([A-Z]{2}[0-9]{2}(?: ?[A-Za-z0-9]){10,30}|[0-9]{1,6}(?: ?- ?)?[0-9]{2,10} ?/ ?[0-9]{4})$",
+  },
   "TournamentUpdate.expiry_grace_hours": { "minimum": 0 },
   "FioTokenIn.token": { "maxLength": 200 },
   "TournamentUpdate.output_sheet_url": { "maxLength": 500 },
@@ -101,7 +105,7 @@ export const FIELD_CONSTRAINTS: Record<string, FieldConstraint> = {
 // a tier): a team discipline's capacity counts teams, an individual's counts
 // fencers. Resolved per row, never a static FIELD_CONSTRAINTS entry, the
 // same way MONEY_MAX is resolved per currency.
-export const DISCIPLINE_CAPACITY_MAX: Record<string, number> = {
+export const DISCIPLINE_CAPACITY_MAX: Record<"individual" | "team", number> = {
   "individual": 200,
   "team": 64,
 };
@@ -120,7 +124,7 @@ export const EXTRA_ITEM_MAX_QTY_CEILING: Record<string, number> = {
 // currency the field actually carries — never a static bound in
 // FIELD_CONSTRAINTS above, since a local-currency field's ceiling depends on
 // the tournament it belongs to.
-export const MONEY_MAX: Record<string, number> = {
+export const MONEY_MAX: Record<"CZK" | "EUR", number> = {
   "CZK": 10000,
   "EUR": 1000,
 };

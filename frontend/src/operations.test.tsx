@@ -2,13 +2,12 @@
 import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-
+import { api, type Operation, type OperationsReport } from "./api";
 import DedupPanel from "./dedup/DedupPanel";
 import ImportPanel from "./ImportPanel";
+import i18n from "./i18n";
 import MatchPanel from "./MatchPanel";
 import OperationsIndicator from "./OperationsIndicator";
-import { type Operation, type OperationsReport, api } from "./api";
-import i18n from "./i18n";
 import useOperations, { type OperationsView } from "./useOperations";
 
 // Long console work is reported from the tournament's record, not from what a

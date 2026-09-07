@@ -92,7 +92,12 @@ export default function OrganizerRow({
         <FieldError field={`link-${index}`} error={errors[`link-${index}`]} />
       </td>
       <td className="col-actions">
-        <button className="row-action" title={t("actions.delete")} onClick={() => onRemove(index)}>
+        <button
+          type="button"
+          className="row-action"
+          title={t("actions.delete")}
+          onClick={() => onRemove(index)}
+        >
           <IconX size={16} stroke={1.5} />
         </button>
       </td>

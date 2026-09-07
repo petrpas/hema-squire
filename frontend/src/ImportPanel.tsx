@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-
-import { type ImportResult, type ImportStatus, api } from "./api";
+import { api, type ImportResult, type ImportStatus } from "./api";
+import Modal from "./Modal";
 import { conclusionText, kindName } from "./operationText";
 import type { OperationsView } from "./useOperations";
 
@@ -102,6 +102,7 @@ export default function ImportPanel({
           }}
         />
         <button
+          type="button"
           className="secondary param-save"
           disabled={busy}
           onClick={() => inputRef.current?.click()}
@@ -110,6 +111,7 @@ export default function ImportPanel({
         </button>
         {hasImports && (
           <button
+            type="button"
             className="secondary param-save"
             disabled={busy}
             onClick={() => setConfirming(true)}
@@ -143,8 +145,8 @@ export default function ImportPanel({
       </section>
 
       {confirming && (
-        <div className="modal-backdrop" onClick={() => setConfirming(false)}>
-          <div className="modal" onClick={(event) => event.stopPropagation()}>
+        <Modal onClose={() => setConfirming(false)}>
+          <div className="modal">
             <h2>{t("import.clearConfirm.title")}</h2>
             {/* what goes, in the terms the table shows it, and that it does not
                 come back (spec, Confirmation states the cost) */}
@@ -166,7 +168,7 @@ export default function ImportPanel({
               </button>
             </div>
           </div>
-        </div>
+        </Modal>
       )}
     </>
   );

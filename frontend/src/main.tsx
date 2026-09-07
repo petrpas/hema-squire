@@ -7,7 +7,10 @@ import "./i18n";
 import "./tokens.css";
 import "./index.css";
 
-createRoot(document.getElementById("root")!).render(
+const root = document.getElementById("root");
+if (root === null) throw new Error("no #root to mount on");
+
+createRoot(root).render(
   <StrictMode>
     <BrowserRouter>
       <App />

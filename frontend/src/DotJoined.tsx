@@ -22,6 +22,7 @@ export default function DotJoined({
   return (
     <span className={className}>
       {visible.map((part, index) => (
+        // biome-ignore lint/suspicious/noArrayIndexKey: a read-only list rebuilt from props; position is the only identity these rows have
         <Fragment key={index}>
           {index > 0 && DOT}
           {part}

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-
 import { ApiError } from "./api";
+import Modal from "./Modal";
 
 /** Why a registration on a collecting tournament is settled with no money.
  *
@@ -47,8 +47,8 @@ export default function WaiverReasonDialog({
   }
 
   return (
-    <div className="modal-backdrop" onClick={onClose}>
-      <div className="modal" onClick={(event) => event.stopPropagation()}>
+    <Modal onClose={onClose}>
+      <div className="modal">
         <h2>{t("console.waiver.title")}</h2>
         {name && <p className="muted link-context">{name}</p>}
         <p className="rail-hint">{t("console.waiver.meaning")}</p>
@@ -76,10 +76,11 @@ export default function WaiverReasonDialog({
         )}
 
         <div className="modal-actions">
-          <button className="secondary" onClick={onClose}>
+          <button type="button" className="secondary" onClick={onClose}>
             {t("common.cancel")}
           </button>
           <button
+            type="button"
             className="btn-primary"
             disabled={!given || busy}
             onClick={() => void confirm()}
@@ -88,6 +89,6 @@ export default function WaiverReasonDialog({
           </button>
         </div>
       </div>
-    </div>
+    </Modal>
   );
 }

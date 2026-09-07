@@ -7,13 +7,40 @@ const CURRENCY_SYMBOLS: Record<Currency, string> = {
   EUR: "€",
 };
 
-/** An amount with its currency unit, grouped for the active locale. */
-export function formatMoney(amount: number | string, currency: Currency): string {
+/** The figure alone, grouped for the active locale. A value that is not a
+ *  number is written back as it arrived rather than as `NaN`. */
+function grouped(amount: number | string): string {
   const value = typeof amount === "string" ? Number(amount) : amount;
-  const grouped = Number.isFinite(value)
+  return Number.isFinite(value)
     ? value.toLocaleString("cs", { maximumFractionDigits: 2 })
     : String(amount);
-  return `${grouped} ${CURRENCY_SYMBOLS[currency]}`;
+}
+
+/** An amount with its currency unit, grouped for the active locale. */
+export function formatMoney(amount: number | string, currency: Currency): string {
+  return `${grouped(amount)} ${CURRENCY_SYMBOLS[currency]}`;
+}
+
+function isKnownCurrency(code: string): code is Currency {
+  return code in CURRENCY_SYMBOLS;
+}
+
+/** A bank transaction's amount, in the currency the statement named it in.
+ *
+ *  Separate from `formatMoney` because the two currencies are not the same
+ *  kind of thing. A tournament prices in a closed set the app holds a unit
+ *  for; a statement carries whatever the bank sent, and a CZK account can
+ *  receive a transfer in any currency at all. A code with no unit here is
+ *  written out as itself — the organizer needs to see that a payment arrived
+ *  in something other than what the tournament prices in, and the code is the
+ *  only thing that says so.
+ *
+ *  Takes haléře/cents, the unit bank amounts are stored in. */
+export function formatTransactionAmount(amountCents: number, currency: string): string {
+  const amount = amountCents / 100;
+  return isKnownCurrency(currency)
+    ? formatMoney(amount, currency)
+    : `${grouped(amount)} ${currency}`;
 }
 
 /** Whether EUR is an accepted second currency alongside the local one. False

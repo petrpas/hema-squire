@@ -2,9 +2,8 @@ import { IconDots } from "@tabler/icons-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
-
+import type { Account } from "./api";
 import FencerIdentity from "./FencerIdentity";
-import { type Account } from "./api";
 import * as routes from "./routes";
 
 export default function AccountMenu({
@@ -25,6 +24,7 @@ export default function AccountMenu({
   return (
     <div className="account-menu">
       <button
+        type="button"
         className="account-menu-trigger"
         aria-label={t("menu.ariaLabel")}
         onClick={() => setOpen((value) => !value)}
@@ -33,7 +33,12 @@ export default function AccountMenu({
       </button>
       {open && (
         <>
-          <div className="menu-backdrop" onClick={close} />
+          <button
+            type="button"
+            className="menu-backdrop"
+            aria-label={t("common.close")}
+            onClick={close}
+          />
           <div className="account-menu-dropdown">
             {/* Shown only below 768px, where the top bar folds the identity in
                 here rather than carrying it permanently in the bar. */}
@@ -55,6 +60,7 @@ export default function AccountMenu({
               {t("menu.toOrganizer")}
             </Link>
             <button
+              type="button"
               onClick={() => {
                 close();
                 onLogout();

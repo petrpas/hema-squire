@@ -3,19 +3,19 @@ import { describe, expect, it } from "vitest";
 
 import type { NetChange, SheetRow } from "./api";
 import {
-  DEFAULT_PHASE,
   absorbedInto,
+  DEFAULT_PHASE,
+  editableHere,
+  editsForPhase,
   PHASE_COLUMNS,
   PHASES,
-  editableHere,
+  type Phase,
   parseDisciplines,
-  editsForPhase,
   phaseRemovesRows,
+  phaseSummary,
   rowAction,
   rowsForPhase,
-  phaseSummary,
   ruleKindFor,
-  type Phase,
 } from "./Console";
 
 // Which rows and which edits belong to which phase (spec `etl-console`,
@@ -187,14 +187,17 @@ describe("the two manual-edits logs", () => {
 
 describe("an absorbed row in the Import view", () => {
   it("says which row it was folded into", () => {
-    const rows = [row("imp:d2bb", { _deleted: true, _merged_into: "reg:7" }), row("reg:7", { number: 4 })];
-    expect(absorbedInto(rows[0], rows)).toBe(4);
+    const rows = [
+      row("imp:d2bb", { _deleted: true, _merged_into: "reg:7" }),
+      row("reg:7", { number: 4 }),
+    ];
+    expect(absorbedInto(rows[0]!, rows)).toBe(4);
   });
 
   it("says nothing on a row no merge touched", () => {
     expect(absorbedInto(row("imp:c1aa"), ROWS)).toBeNull();
   });
-})
+});
 
 describe("what a row offers to have done to it", () => {
   it("offers to delete a live row", () => {
@@ -361,7 +364,6 @@ describe("reading the disciplines typed into a cell", () => {
     expect(parseDisciplines("   ")).toEqual([]);
   });
 });
-
 
 describe("the payments columns", () => {
   it("states the balance beside the total", () => {

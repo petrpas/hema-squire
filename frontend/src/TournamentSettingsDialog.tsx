@@ -1,14 +1,14 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-
 import {
-  TOURNAMENT_FEATURES,
+  api,
   type RegistrationsKeptBy,
+  TOURNAMENT_FEATURES,
   type TournamentDetail,
   type TournamentFlags,
-  api,
 } from "./api";
 import HelpHint from "./HelpHint";
+import Modal from "./Modal";
 
 /** What each flag is called in the copy — the short key, so
  *  `setup.settings.feature.<name>` and the rest line up. Payments is here
@@ -170,9 +170,7 @@ export function TournamentSettingsFields({
                             .join(", "),
                         })
                       : t(`setup.settings.hiding.${FEATURE_NAMES[flag]}`, {
-                          count: usage[
-                            FEATURE_NAMES[flag] as "schedule" | "teams" | "extras"
-                          ],
+                          count: usage[FEATURE_NAMES[flag] as "schedule" | "teams" | "extras"],
                         })}
                   </li>
                 ))}
@@ -201,9 +199,7 @@ export function TournamentSettingsFields({
               <div className="mode-option">
                 <p>
                   {t(`setup.settings.mode.${detail.registrations_kept_by}`)}
-                  <HelpHint
-                    text={t(`setup.settings.mode.hint.${detail.registrations_kept_by}`)}
-                  />
+                  <HelpHint text={t(`setup.settings.mode.hint.${detail.registrations_kept_by}`)} />
                 </p>
                 {/* why the control is absent, so the reading is "manual, and
                     settled" rather than an inexplicably missing choice */}
@@ -248,9 +244,7 @@ export function TournamentSettingsFields({
                       checked={flags.feature_payments === value}
                       onChange={() => setFlags({ ...flags, feature_payments: value })}
                     />
-                    {t(
-                      `setup.settings.payments.label.${modeKey}.${value ? "squire" : "self"}`,
-                    )}
+                    {t(`setup.settings.payments.label.${modeKey}.${value ? "squire" : "self"}`)}
                     <HelpHint
                       text={t(
                         `setup.settings.payments.hint.${modeKey}.${value ? "squire" : "self"}`,
@@ -259,9 +253,7 @@ export function TournamentSettingsFields({
                   </label>
                   <p className="rail-hint">
                     {t(
-                      `setup.settings.payments.consequence.${modeKey}.${
-                        value ? "squire" : "self"
-                      }`,
+                      `setup.settings.payments.consequence.${modeKey}.${value ? "squire" : "self"}`,
                     )}
                   </p>
                 </div>
@@ -280,9 +272,7 @@ export function TournamentSettingsFields({
                   <input
                     type="checkbox"
                     checked={flags[feature]}
-                    onChange={(event) =>
-                      setFlags({ ...flags, [feature]: event.target.checked })
-                    }
+                    onChange={(event) => setFlags({ ...flags, [feature]: event.target.checked })}
                   />
                   {t(`setup.settings.feature.${FEATURE_NAMES[feature]}`)}
                   <HelpHint text={t(`setup.settings.hint.${FEATURE_NAMES[feature]}`)} />
@@ -322,11 +312,11 @@ export default function TournamentSettingsDialog({
 }) {
   const { t } = useTranslation();
   return (
-    <div className="modal-backdrop" onClick={onClose}>
-      <div className="modal modal-wide" onClick={(event) => event.stopPropagation()}>
+    <Modal onClose={onClose}>
+      <div className="modal modal-wide">
         <h2>{t("setup.settings.title")}</h2>
         <TournamentSettingsFields detail={detail} onApplied={onApplied} onClose={onClose} />
       </div>
-    </div>
+    </Modal>
   );
 }

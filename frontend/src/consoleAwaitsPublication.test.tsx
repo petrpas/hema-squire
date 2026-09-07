@@ -3,9 +3,8 @@ import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { MemoryRouter, Outlet, Route, Routes } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-
+import { api, type Sheet, type Tournament } from "./api";
 import Console, { type Phase } from "./Console";
-import { type Sheet, type Tournament, api } from "./api";
 // the console renders in the deployment language, which is Czech in tests
 import cs from "./i18n/cs.json";
 
@@ -44,10 +43,7 @@ function mount(tournament: Tournament, phase: Phase) {
       <MemoryRouter initialEntries={[path]}>
         <Routes>
           <Route element={<Outlet context={{ onLogout: () => {} }} />}>
-            <Route
-              path={path}
-              element={<Console tournament={tournament} phase={phase} />}
-            />
+            <Route path={path} element={<Console tournament={tournament} phase={phase} />} />
           </Route>
         </Routes>
       </MemoryRouter>,

@@ -3,7 +3,7 @@ import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, expect, it, vi } from "vitest";
 
-import { type TournamentDetail, api } from "./api";
+import { api, type TournamentDetail } from "./api";
 import i18n from "./i18n";
 import { TournamentSettingsFields } from "./TournamentSettingsDialog";
 
@@ -73,10 +73,8 @@ it("reports what was chosen instead of writing it", async () => {
       onConfirm={confirm}
     />,
   );
-  const radios = [
-    ...document.querySelectorAll<HTMLInputElement>('input[name="tournament-mode"]'),
-  ];
-  act(() => radios[1].click());
+  const radios = [...document.querySelectorAll<HTMLInputElement>('input[name="tournament-mode"]')];
+  act(() => radios[1]!.click());
   act(() => buttonNamed(t("setup.settings.apply"))?.click());
   await settle();
 
@@ -100,10 +98,8 @@ it("asks for no confirmation on a tournament that does not exist yet", async () 
       onConfirm={confirm}
     />,
   );
-  const radios = [
-    ...document.querySelectorAll<HTMLInputElement>('input[name="tournament-mode"]'),
-  ];
-  act(() => radios[1].click());
+  const radios = [...document.querySelectorAll<HTMLInputElement>('input[name="tournament-mode"]')];
+  act(() => radios[1]!.click());
   act(() => buttonNamed(t("setup.settings.apply"))?.click());
   await settle();
 
@@ -133,13 +129,9 @@ it("asks nothing extra for a mode change on a tournament that exists", () => {
   // change: it can only be made while the tournament is a draft, which holds
   // no in-app registration for a warning to count (spec tournament-mode).
   const detail = { ...draft(), slug: "cup", in_app_registrations: 0 };
-  mount(
-    <TournamentSettingsFields detail={detail} onApplied={vi.fn()} onClose={vi.fn()} />,
-  );
-  const radios = [
-    ...document.querySelectorAll<HTMLInputElement>('input[name="tournament-mode"]'),
-  ];
-  act(() => radios[1].click());
+  mount(<TournamentSettingsFields detail={detail} onApplied={vi.fn()} onClose={vi.fn()} />);
+  const radios = [...document.querySelectorAll<HTMLInputElement>('input[name="tournament-mode"]')];
+  act(() => radios[1]!.click());
   act(() => buttonNamed(t("setup.settings.apply"))?.click());
 
   expect(document.body.textContent).not.toContain(t("setup.settings.confirmIntro"));

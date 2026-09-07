@@ -1,8 +1,8 @@
 import { IconTrash } from "@tabler/icons-react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-
-import { type ManualPayment, api } from "../api";
+import { api, type ManualPayment } from "../api";
+import Modal from "../Modal";
 import { formatMoney } from "../money";
 import QueueCard from "./QueueCard";
 
@@ -91,14 +91,13 @@ export default function RecordedPaymentsPanel({
                 <td className="muted">{payment.recorded_by}</td>
                 <td className="col-actions">
                   <button
+                    type="button"
                     className="row-action"
                     title={t("payments.recorded.remove")}
                     onClick={() => setRemoving(payment)}
                   >
                     <IconTrash size={16} stroke={1.5} />
-                    <span className="visually-hidden">
-                      {t("payments.recorded.remove")}
-                    </span>
+                    <span className="visually-hidden">{t("payments.recorded.remove")}</span>
                   </button>
                 </td>
               </tr>
@@ -107,8 +106,8 @@ export default function RecordedPaymentsPanel({
         </table>
       </QueueCard>
       {removing && (
-        <div className="modal-backdrop" onClick={() => setRemoving(null)}>
-          <div className="modal" onClick={(event) => event.stopPropagation()}>
+        <Modal onClose={() => setRemoving(null)}>
+          <div className="modal">
             <h2>{t("payments.recorded.removeTitle")}</h2>
             <p>
               {t("payments.recorded.removeBody", {
@@ -122,10 +121,11 @@ export default function RecordedPaymentsPanel({
               <p className="rail-hint">{t("payments.recorded.removeUnsettles")}</p>
             )}
             <div className="modal-actions">
-              <button className="secondary" onClick={() => setRemoving(null)}>
+              <button type="button" className="secondary" onClick={() => setRemoving(null)}>
                 {t("common.cancel")}
               </button>
               <button
+                type="button"
                 className="btn-primary"
                 disabled={busy}
                 onClick={() => void remove(removing)}
@@ -134,7 +134,7 @@ export default function RecordedPaymentsPanel({
               </button>
             </div>
           </div>
-        </div>
+        </Modal>
       )}
     </>
   );

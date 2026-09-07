@@ -87,9 +87,7 @@ it("names the rows it could not issue, and why", async () => {
 });
 
 it("states the unresolved duplicates rather than failing silently", async () => {
-  vi.spyOn(api, "issueRegistrations").mockRejectedValue(
-    new ApiError(409, "dedup_pending"),
-  );
+  vi.spyOn(api, "issueRegistrations").mockRejectedValue(new ApiError(409, "dedup_pending"));
   render();
   await settle();
 

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { type Currency, type ExpiredHolding, api } from "../api";
+import { api, type Currency, type ExpiredHolding } from "../api";
 import { formatMoney } from "../money";
 import QueueCard from "./QueueCard";
 

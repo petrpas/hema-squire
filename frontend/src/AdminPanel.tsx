@@ -4,8 +4,8 @@ import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 
 import AccountMenu from "./AccountMenu";
+import { type Account, type AdminAccount, api, type PleaQueueItem, type Role } from "./api";
 import { useAuth } from "./RequireAuth";
-import { type Account, type AdminAccount, type PleaQueueItem, type Role, api } from "./api";
 
 const ROLES: Role[] = ["fencer", "organizer", "admin"];
 
@@ -90,6 +90,7 @@ function AccountsSection({
               <td className="col-actions">
                 {account.hr_id !== null && (
                   <button
+                    type="button"
                     className="row-action"
                     title={t("admin.accounts.unbind")}
                     disabled={busy === account.id}
@@ -107,13 +108,7 @@ function AccountsSection({
   );
 }
 
-function PleaQueueSection({
-  pleas,
-  onChanged,
-}: {
-  pleas: PleaQueueItem[];
-  onChanged: () => void;
-}) {
+function PleaQueueSection({ pleas, onChanged }: { pleas: PleaQueueItem[]; onChanged: () => void }) {
   const { t } = useTranslation();
   const [busy, setBusy] = useState<number | null>(null);
 
@@ -144,6 +139,7 @@ function PleaQueueSection({
                 {plea.message && <div className="edit-meta">{plea.message}</div>}
               </div>
               <button
+                type="button"
                 className="row-action"
                 title={t("admin.pleas.grant")}
                 disabled={busy === plea.id}
@@ -152,6 +148,7 @@ function PleaQueueSection({
                 <IconCheck size={16} stroke={1.5} />
               </button>
               <button
+                type="button"
                 className="row-action"
                 title={t("admin.pleas.deny")}
                 disabled={busy === plea.id}
@@ -203,7 +200,7 @@ export default function AdminPanel() {
             <AccountsSection accounts={accounts} onChanged={refresh} />
           </div>
         )}
-        <button className="link-button" onClick={() => navigate(-1)}>
+        <button type="button" className="link-button" onClick={() => navigate(-1)}>
           {t("admin.back")}
         </button>
       </div>

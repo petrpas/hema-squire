@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-
 import { ApiError, api } from "../api";
+import Modal from "../Modal";
 
 /** Records the bank feed token, and never shows one.
  *
@@ -54,8 +54,8 @@ export default function FeedTokenDialog({
   }
 
   return (
-    <div className="modal-backdrop" onClick={onClose}>
-      <div className="modal" onClick={(event) => event.stopPropagation()}>
+    <Modal onClose={onClose}>
+      <div className="modal">
         <h2>{t("setup.feedToken.title")}</h2>
         <p className="rail-hint">{t("setup.feedToken.advice")}</p>
         {configured && <p className="rail-hint">{t("setup.feedToken.recorded")}</p>}
@@ -84,11 +84,12 @@ export default function FeedTokenDialog({
         )}
 
         <div className="modal-actions">
-          <button className="secondary" onClick={onClose}>
+          <button type="button" className="secondary" onClick={onClose}>
             {t("common.cancel")}
           </button>
           {configured && (
             <button
+              type="button"
               className="link-button"
               disabled={busy}
               onClick={() => void write(() => api.clearFioToken(slug))}
@@ -97,6 +98,7 @@ export default function FeedTokenDialog({
             </button>
           )}
           <button
+            type="button"
             className="btn-primary"
             disabled={!given || busy}
             onClick={() => void write(() => api.setFioToken(slug, given))}
@@ -105,6 +107,6 @@ export default function FeedTokenDialog({
           </button>
         </div>
       </div>
-    </div>
+    </Modal>
   );
 }

@@ -1,11 +1,11 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-
-import { type ManualEntryIn, type TournamentDetail, api } from "../api";
+import { api, type ManualEntryIn, type TournamentDetail } from "../api";
 import FieldError, { invalidProps } from "../FieldError";
+import Modal from "../Modal";
+import { parseInteger } from "../numeric";
 import { useFieldValidation } from "../useFieldValidation";
 import { apiErrors, checkNumeric, checkString } from "../validation";
-import { parseInteger } from "../numeric";
 import { nowInZone } from "./nowInZone";
 
 /** A fencer entered by hand, from the tournament's own structure: its offered
@@ -53,8 +53,7 @@ export default function ManualEntryDialog({
   const checkClub = () => checkString("club", "ManualEntryIn.club", club);
   const checkNationality = () =>
     checkString("nationality", "ManualEntryIn.nationality", nationality);
-  const checkNotes = () =>
-    checkString("notes", "ManualEntryIn.notes", notes, { multiline: true });
+  const checkNotes = () => checkString("notes", "ManualEntryIn.notes", notes, { multiline: true });
   const checkHrId = () => checkNumeric("hr_id", "ManualEntryIn.hr_id", hrId);
 
   function toggle(list: string[], value: string, set: (next: string[]) => void) {
@@ -74,7 +73,7 @@ export default function ManualEntryDialog({
       name: name.trim(),
       nationality: nationality.trim() || null,
       club: club.trim() || null,
-      hr_id: parsedHrId && parsedHrId.ok ? parsedHrId.value : null,
+      hr_id: parsedHrId?.ok ? parsedHrId.value : null,
       email: email.trim() || null,
       registered_at: registeredAt || null,
       disciplines,
@@ -99,8 +98,8 @@ export default function ManualEntryDialog({
   }
 
   return (
-    <div className="modal-backdrop" onClick={onClose}>
-      <div className="modal" onClick={(event) => event.stopPropagation()}>
+    <Modal onClose={onClose}>
+      <div className="modal">
         <h2>{t("manualEntry.title")}</h2>
         <div className="form-fields">
           <label className="form-field">
@@ -250,7 +249,7 @@ export default function ManualEntryDialog({
           </button>
         </div>
       </div>
-    </div>
+    </Modal>
   );
 }
 

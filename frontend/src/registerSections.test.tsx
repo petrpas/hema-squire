@@ -47,18 +47,14 @@ function headings(extraItems: ExtraItem[], language: string): string[] {
   const html = renderToStaticMarkup(
     <RegistrationForm detail={detail} availability={[]} mode={{ kind: "preview" }} />,
   );
-  return [...html.matchAll(/class="register-section">([^<]*)</g)].map((match) => match[1]);
+  return [...html.matchAll(/class="register-section">([^<]*)</g)].map((match) => match[1]!);
 }
 
 describe("register form sections", () => {
   it("heads each goods category with its own name, in render order", () => {
     expect(
       headings(
-        [
-          item("Tričko turnaje", "merch"),
-          item("Šavle", "rental"),
-          item("Parkovné", "other_item"),
-        ],
+        [item("Tričko turnaje", "merch"), item("Šavle", "rental"), item("Parkovné", "other_item")],
         "cs",
       ),
     ).toEqual(["Turnaj", "Zapůjčení vybavení", "Merch", "Ostatní zboží", "Ostatní"]);

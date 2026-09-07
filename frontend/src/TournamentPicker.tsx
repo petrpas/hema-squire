@@ -1,20 +1,20 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useNavigate } from "react-router-dom";
-
 import AccountMenu from "./AccountMenu";
-import { useAuth } from "./RequireAuth";
-import { consolePath } from "./routes";
 import {
-  ApiError,
   type Account,
+  ApiError,
+  api,
   type RegistrationsKeptBy,
   type Tournament,
   type TournamentDetail,
   type TournamentFlags,
-  api,
 } from "./api";
 import FieldError, { invalidProps } from "./FieldError";
+import Modal from "./Modal";
+import { useAuth } from "./RequireAuth";
+import { consolePath } from "./routes";
 import { TournamentSettingsFields } from "./TournamentSettingsDialog";
 import { useFieldValidation } from "./useFieldValidation";
 import { apiErrors, checkString } from "./validation";
@@ -158,9 +158,9 @@ function TournamentCreateDialog({
   }
 
   return (
-    <div className="modal-backdrop" onClick={naming ? () => setNaming(false) : onClose}>
+    <Modal onClose={naming ? () => setNaming(false) : onClose}>
       {naming ? (
-        <div className="modal modal-wide" onClick={(event) => event.stopPropagation()}>
+        <div className="modal modal-wide">
           <h2>{t("setup.settings.title")}</h2>
           <TournamentSettingsFields
             detail={DRAFT_SETTINGS}
@@ -172,7 +172,7 @@ function TournamentCreateDialog({
           />
         </div>
       ) : (
-        <form className="modal" onClick={(event) => event.stopPropagation()} onSubmit={submit}>
+        <form className="modal" onSubmit={submit}>
           <h2>{t("picker.newTournament")}</h2>
           <p className="tiskopis-number">{t("picker.formNumber")}</p>
           <div className="form-fields">
@@ -228,7 +228,7 @@ function TournamentCreateDialog({
           </div>
         </form>
       )}
-    </div>
+    </Modal>
   );
 }
 
@@ -278,7 +278,7 @@ export default function TournamentPicker() {
           </ul>
         )}
         {canCreate && (
-          <button className="secondary" onClick={() => setCreating(true)}>
+          <button type="button" className="secondary" onClick={() => setCreating(true)}>
             {t("picker.newTournament")}
           </button>
         )}

@@ -2,27 +2,31 @@ import { IconX } from "@tabler/icons-react";
 import { type ReactNode, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
-
-import NotFound from "./NotFound";
+import {
+  type Availability,
+  api,
+  type RegistrationDetail,
+  type TournamentDetail as TournamentDetailData,
+} from "./api";
 import ExternalRegistrationNotice from "./ExternalRegistrationNotice";
+import type { HomeTab } from "./FencerShell";
+import { formatMoney, formatMoneyWithEur } from "./money";
+import NotFound from "./NotFound";
 import OpeningNotice from "./OpeningNotice";
+import { amendmentOpen, registrationStatus } from "./openingMoment";
 import PaidStamp from "./PaidStamp";
 import PaymentPanel from "./PaymentPanel";
-import TeamsTab from "./TeamsTab";
-import { type HomeTab } from "./FencerShell";
 import { home } from "./routes";
-import { amendmentOpen, registrationStatus } from "./openingMoment";
-import { useOpeningMoment } from "./useOpeningMoment";
-import { useTabBand } from "./useTabBand";
-import { type Availability, type RegistrationDetail, type TournamentDetail as TournamentDetailData, api } from "./api";
-import { formatMoney, formatMoneyWithEur } from "./money";
+import TeamsTab from "./TeamsTab";
 import {
-  DiscountList,
   DisciplinesInfo,
+  DiscountList,
   InfoHeader,
   OtherActionsInfo,
   RegistrationForm,
 } from "./TournamentFace";
+import { useOpeningMoment } from "./useOpeningMoment";
+import { useTabBand } from "./useTabBand";
 
 function RegistrationStateTag({
   registration,
@@ -124,13 +128,12 @@ function RegistrationLines({
           label={`${discipline.get(team.slug)?.name ?? team.slug}: ${team.name}${
             team.waitlisted ? ` (${t("registration.teamWaitlisted")})` : ""
           }`}
-          amount={
-            team.waitlisted ? undefined : formatMoneyWithEur(team.fee, team.fee_eur, detail)
-          }
+          amount={team.waitlisted ? undefined : formatMoneyWithEur(team.fee, team.fee_eur, detail)}
         >
           {team.members.length > 0 && (
             <ul className="detail-list">
               {team.members.map((member, index) => (
+                // biome-ignore lint/suspicious/noArrayIndexKey: a read-only list rebuilt from props; position is the only identity these rows have
                 <li key={index} className="muted">
                   {member.name}
                   {member.club && ` · ${member.club}`}
@@ -170,6 +173,7 @@ function RegistrationLines({
         .filter((d) => d.applied)
         .map((d, index) => (
           <AmountLine
+            // biome-ignore lint/suspicious/noArrayIndexKey: a read-only list rebuilt from props; position is the only identity these rows have
             key={`discount-${index}`}
             label={d.name}
             amount={
@@ -197,10 +201,7 @@ function RegistrationLines({
         <AmountLine
           className="muted"
           label={t("registration.outstandingLabel")}
-          amount={formatMoney(
-            registration.outstanding_amount,
-            registration.outstanding_currency,
-          )}
+          amount={formatMoney(registration.outstanding_amount, registration.outstanding_currency)}
         />
       )}
     </div>
@@ -271,9 +272,7 @@ function RegistrationPanel({
           quote, no variable symbol in use and no expiry to state, and a
           partial set would tell the fencer to do something the tournament is
           not asking of them (spec: fencer-home) */}
-      {registration.state === "reserved" && detail.feature_payments && (
-        <PaymentPanel slug={slug} />
-      )}
+      {registration.state === "reserved" && detail.feature_payments && <PaymentPanel slug={slug} />}
 
       {/* amend and cancel both rewrite something the fencer already holds, so
           both are destructive controls behind a confirmation, standing as one
@@ -292,10 +291,11 @@ function RegistrationPanel({
                 : t("cancel.confirm")}
           </p>
           <div className="modal-actions">
-            <button className="secondary" onClick={() => setConfirming(null)}>
+            <button type="button" className="secondary" onClick={() => setConfirming(null)}>
               {t("common.cancel")}
             </button>
             <button
+              type="button"
               className="btn-danger"
               disabled={busy}
               onClick={() => {
@@ -317,12 +317,12 @@ function RegistrationPanel({
         (canAmend || registration.state !== "cancelled") && (
           <div className="action-pair">
             {canAmend && (
-              <button className="btn-danger" onClick={() => setConfirming("amend")}>
+              <button type="button" className="btn-danger" onClick={() => setConfirming("amend")}>
                 {t("registration.amend")}
               </button>
             )}
             {registration.state !== "cancelled" && (
-              <button className="btn-danger" onClick={() => setConfirming("cancel")}>
+              <button type="button" className="btn-danger" onClick={() => setConfirming("cancel")}>
                 {t("cancel.button")}
               </button>
             )}
@@ -388,8 +388,7 @@ export default function TournamentDetail() {
   // register is offered only when open and at least one discipline or item has
   // an open slot (extra items carry no capacity, so their presence counts)
   const hasOpenSlot =
-    detail !== null &&
-    (availability.some((a) => a.free > 0) || detail.extra_items.length > 0);
+    detail !== null && (availability.some((a) => a.free > 0) || detail.extra_items.length > 0);
   const canRegister =
     !readOnly &&
     !hasActive &&
@@ -440,6 +439,7 @@ export default function TournamentDetail() {
         <h1>{detail?.display_name}</h1>
         <nav className="stage-control detail-tabs stage-control-band" ref={band}>
           <button
+            type="button"
             className={tab === "tournament" ? "active" : ""}
             onClick={() => selectTab("tournament")}
           >
@@ -447,6 +447,7 @@ export default function TournamentDetail() {
           </button>
           {secondTabOffered && (
             <button
+              type="button"
               className={tab === "registration" ? "active" : ""}
               onClick={() => selectTab("registration")}
             >
@@ -455,6 +456,7 @@ export default function TournamentDetail() {
           )}
           {teamsTabOffered && (
             <button
+              type="button"
               className={tab === "teams" ? "active" : ""}
               onClick={() => selectTab("teams")}
             >
@@ -509,9 +511,7 @@ export default function TournamentDetail() {
                   prev
                     ? {
                         ...prev,
-                        teams: prev.teams.map((team) =>
-                          team.id === updated.id ? updated : team,
-                        ),
+                        teams: prev.teams.map((team) => (team.id === updated.id ? updated : team)),
                       }
                     : prev,
                 )

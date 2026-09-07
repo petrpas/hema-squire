@@ -1,5 +1,5 @@
-import { Marked } from "marked";
 import DOMPurify from "dompurify";
+import { Marked } from "marked";
 
 // Organizers naturally start a document at `#`; demoting rather than dropping
 // keeps their structure while guaranteeing rendered prose never out-shouts the

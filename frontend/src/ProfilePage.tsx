@@ -2,15 +2,15 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import AccountMenu from "./AccountMenu";
+import { type Account, ApiError, api, type HRProfile, type Plea } from "./api";
 import FieldError, { invalidProps } from "./FieldError";
 import HRSearchPicker from "./HRSearch";
 import HRSearchStep from "./HRSearchStep";
-import { useWideViewport } from "./useWideViewport";
+import i18n from "./i18n";
 import PleaSection from "./PleaSection";
 import { useAuth } from "./RequireAuth";
-import { ApiError, type Account, type HRProfile, type Plea, api } from "./api";
-import i18n from "./i18n";
 import { useFieldValidation } from "./useFieldValidation";
+import { useWideViewport } from "./useWideViewport";
 import { apiErrors, checkString } from "./validation";
 
 const IMPLEMENTED_LANGUAGES = Object.keys(i18n.options.resources ?? {});
@@ -37,8 +37,7 @@ function AccountSection({
     setLanguage(account.language);
     validation.clearAll();
     setDirty(false);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [account]);
+  }, [account, validation.clearAll]);
 
   function displayNameCheck() {
     return checkString("display_name", "AccountUpdate.display_name", displayName, {
@@ -118,7 +117,12 @@ function AccountSection({
         </label>
       </div>
       {error && <p className="login-error">{error}</p>}
-      <button className="secondary param-save" onClick={() => void save()} disabled={!dirty || busy}>
+      <button
+        type="button"
+        className="secondary param-save"
+        onClick={() => void save()}
+        disabled={!dirty || busy}
+      >
         {t("rail.save")}
       </button>
     </section>

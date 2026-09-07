@@ -20,13 +20,14 @@ export default function InlineProse({
   className?: string;
 }) {
   const html = useMemo(
-    () => (source && source.trim() ? renderInline(source, { links }) : ""),
+    () => (source?.trim() ? renderInline(source, { links }) : ""),
     [source, links],
   );
   if (!html) return null;
   return (
     <span
       className={["prose-inline", className].filter(Boolean).join(" ")}
+      // biome-ignore lint/security/noDangerouslySetInnerHtml: `renderInline` returns DOMPurify output against a tag allowlist
       dangerouslySetInnerHTML={{ __html: html }}
     />
   );

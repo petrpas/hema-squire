@@ -62,7 +62,8 @@ export default function QueueCard({
       >
         {/* an empty queue says so rather than showing an empty frame: its tab
             already states the zero, and a blank panel reads as a fault */}
-        {body ?? (count === 0 ? <p className="rail-hint">{t("payments.queue.empty")}</p> : children)}
+        {body ??
+          (count === 0 ? <p className="rail-hint">{t("payments.queue.empty")}</p> : children)}
       </section>
     );
   }

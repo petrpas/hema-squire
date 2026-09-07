@@ -8,4 +8,9 @@ export default defineConfig({
       "/api": "http://localhost:8000",
     },
   },
+  test: {
+    // jsdom ships no `dialog` behaviour; `testSetup.ts` supplies the three
+    // methods the dialogs call on themselves.
+    setupFiles: ["./src/testSetup.ts"],
+  },
 });

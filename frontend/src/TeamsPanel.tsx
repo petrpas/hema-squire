@@ -1,9 +1,8 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-
+import { api, type ConsoleTeamDiscipline } from "./api";
 import PaidStamp from "./PaidStamp";
 import PhaseSummary from "./PhaseSummary";
-import { type ConsoleTeamDiscipline, api } from "./api";
 
 /** Read-only, per team discipline (spec: "Organizer's read-only teams
  *  view"). Offers no action — no admission, no roster editing on the
@@ -74,10 +73,13 @@ export default function TeamsPanel({ slug }: { slug: string }) {
                           )}
                         </span>
                       </div>
-                      <div className="detail-extra">{t("teams.enteredBy", { name: team.entering_fencer })}</div>
+                      <div className="detail-extra">
+                        {t("teams.enteredBy", { name: team.entering_fencer })}
+                      </div>
                       {team.members.length > 0 && (
                         <ul className="detail-list">
                           {team.members.map((member, index) => (
+                            // biome-ignore lint/suspicious/noArrayIndexKey: a read-only list rebuilt from props; position is the only identity these rows have
                             <li key={index} className="muted">
                               {member.name}
                               {member.club && ` · ${member.club}`}

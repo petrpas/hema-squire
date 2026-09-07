@@ -14,11 +14,7 @@ import type { TournamentDetail } from "./api";
  *  an action that leads nowhere is worse than none. A published tournament
  *  cannot be in that state — the address is mandatory to publish one — but a
  *  draft its organizer is previewing can. */
-export default function ExternalRegistrationNotice({
-  detail,
-}: {
-  detail: TournamentDetail;
-}) {
+export default function ExternalRegistrationNotice({ detail }: { detail: TournamentDetail }) {
   const { t } = useTranslation();
   const url = detail.external_registration_url;
   return (

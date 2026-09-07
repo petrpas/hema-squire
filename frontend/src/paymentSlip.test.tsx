@@ -2,9 +2,8 @@
 import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-
-import PaymentSlipBlock, { type SlipField } from "./PaymentSlipBlock";
 import i18n from "./i18n";
+import PaymentSlipBlock, { type SlipField } from "./PaymentSlipBlock";
 
 // Paying on the device the QR is displayed on: the code is inert there, so the
 // transfer details have to be copyable and the image has to reach a banking
@@ -75,7 +74,7 @@ describe("the transfer details can be copied", () => {
     Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true });
 
     const page = mount();
-    const copy = page.querySelectorAll(".slip-copy")[0];
+    const copy = page.querySelectorAll(".slip-copy")[0]!;
     await act(async () => {
       copy.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
@@ -94,9 +93,9 @@ describe("the transfer details can be copied", () => {
     expect(page.querySelector(".slip-copied.is-shown")).toBeNull();
 
     await act(async () => {
-      page.querySelectorAll(".slip-copy")[0].dispatchEvent(
-        new MouseEvent("click", { bubbles: true }),
-      );
+      page
+        .querySelectorAll(".slip-copy")[0]!
+        .dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
 
     const note = page.querySelector(".slip-copied.is-shown");
@@ -127,9 +126,9 @@ describe("the QR image can be taken into a banking app", () => {
     });
 
     expect(share).toHaveBeenCalledTimes(1);
-    const shared = share.mock.calls[0][0] as { files: File[] };
-    expect(shared.files[0].name).toBe("qr-20260042.png");
-    expect(shared.files[0].type).toBe("image/png");
+    const shared = share.mock.calls[0]![0] as { files: File[] };
+    expect(shared.files[0]!.name).toBe("qr-20260042.png");
+    expect(shared.files[0]!.type).toBe("image/png");
   });
 
   it("falls back to a download where it has none", async () => {
@@ -142,7 +141,9 @@ describe("the QR image can be taken into a banking app", () => {
 
     const page = mount();
     await act(async () => {
-      buttonSaying(page, "Uložit QR kód")!.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      buttonSaying(page, "Uložit QR kód")!.dispatchEvent(
+        new MouseEvent("click", { bubbles: true }),
+      );
     });
 
     expect(click).toHaveBeenCalledTimes(1);
@@ -161,7 +162,9 @@ describe("the QR image can be taken into a banking app", () => {
 
     const page = mount();
     await act(async () => {
-      buttonSaying(page, "Uložit QR kód")!.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      buttonSaying(page, "Uložit QR kód")!.dispatchEvent(
+        new MouseEvent("click", { bubbles: true }),
+      );
     });
 
     // no surprise download after the fencer backed out

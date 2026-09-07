@@ -3,7 +3,7 @@ import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
-import { ApiError, type Operation, type TournamentDetail, api } from "../api";
+import { ApiError, api, type Operation, type TournamentDetail } from "../api";
 import i18n from "../i18n";
 import type { OperationsView } from "../useOperations";
 import IntakePanel from "./IntakePanel";
@@ -111,9 +111,7 @@ it("disables every action while other work is running, naming it", async () => {
 });
 
 it("says a statement nothing can read was not imported", async () => {
-  vi.spyOn(api, "importStatement").mockRejectedValue(
-    new ApiError(409, "no_statement_parser"),
-  );
+  vi.spyOn(api, "importStatement").mockRejectedValue(new ApiError(409, "no_statement_parser"));
   render();
 
   const input = host?.querySelector('input[type="file"]') as HTMLInputElement;
@@ -122,9 +120,7 @@ it("says a statement nothing can read was not imported", async () => {
   act(() => void input.dispatchEvent(new Event("change", { bubbles: true })));
   await settle();
 
-  expect(host?.querySelector(".login-error")?.textContent).toBe(
-    t("payments.intake.noParser"),
-  );
+  expect(host?.querySelector(".login-error")?.textContent).toBe(t("payments.intake.noParser"));
 });
 
 it("says a table that is not a statement was not imported", async () => {
@@ -142,9 +138,7 @@ it("says a table that is not a statement was not imported", async () => {
   act(() => void input.dispatchEvent(new Event("change", { bubbles: true })));
   await settle();
 
-  expect(host?.querySelector(".login-error")?.textContent).toBe(
-    t("payments.intake.unreadable"),
-  );
+  expect(host?.querySelector(".login-error")?.textContent).toBe(t("payments.intake.unreadable"));
 });
 
 it("says a file that is not a table at all was not imported", async () => {
@@ -177,15 +171,21 @@ it("reports what a concluded import brought in", async () => {
   render({ operations: operations({ concluded }) });
   await settle();
 
-  expect(host?.textContent).toContain(
-    t("payments.intake.imported", { new: 2, matched: 1 }),
-  );
+  expect(host?.textContent).toContain(t("payments.intake.imported", { new: 2, matched: 1 }));
 });
 
 it("polls the bank and reports what it brought in", async () => {
   const poll = vi.spyOn(api, "fioPoll").mockResolvedValue({
-    new: 3, duplicate: 0, matched: 2, flagged: 0, unmatched: 1, partial: 0, set_aside: 0,
-    issued: 0, already_issued: 0, skipped: [],
+    new: 3,
+    duplicate: 0,
+    matched: 2,
+    flagged: 0,
+    unmatched: 1,
+    partial: 0,
+    set_aside: 0,
+    issued: 0,
+    already_issued: 0,
+    skipped: [],
   });
   const onChanged = vi.fn();
   render({ detail: detail(true), onChanged });
@@ -219,9 +219,7 @@ it("states what an import will issue, and that the symbols are not reclaimed", a
   render({ detail: detail(false) });
   await settle();
 
-  expect(host?.textContent).toContain(
-    t("payments.intake.willIssueWithSymbols", { count: 54 }),
-  );
+  expect(host?.textContent).toContain(t("payments.intake.willIssueWithSymbols", { count: 54 }));
 });
 
 it("says nothing about symbols where the organizer keeps the registrations", async () => {
@@ -230,9 +228,7 @@ it("says nothing about symbols where the organizer keeps the registrations", asy
   await settle();
 
   expect(host?.textContent).toContain(t("payments.intake.willIssue", { count: 54 }));
-  expect(host?.textContent).not.toContain(
-    t("payments.intake.willIssueWithSymbols", { count: 54 }),
-  );
+  expect(host?.textContent).not.toContain(t("payments.intake.willIssueWithSymbols", { count: 54 }));
 });
 
 it("announces nothing where there is nothing to issue", async () => {
@@ -249,9 +245,7 @@ it("states the pending duplicates instead, before anything is uploaded", async (
   await settle();
 
   expect(host?.textContent).toContain(t("payments.intake.dedupPending", { count: 3 }));
-  expect(host?.textContent).not.toContain(
-    t("payments.intake.willIssueWithSymbols", { count: 54 }),
-  );
+  expect(host?.textContent).not.toContain(t("payments.intake.willIssueWithSymbols", { count: 54 }));
 });
 
 it("reports a refused poll on the duplicates rather than as a failure", async () => {

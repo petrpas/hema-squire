@@ -3,12 +3,12 @@ import { useTranslation } from "react-i18next";
 
 import type { SheetRow, TournamentDetail } from "./api";
 import {
+  absorbedInto,
   CellDisplay,
+  editableHere,
   MARKER_COLUMNS,
   PHASE_COLUMNS,
   type Phase,
-  absorbedInto,
-  editableHere,
   phaseRemovesRows,
   phaseSummary,
   rowAction,
@@ -16,9 +16,9 @@ import {
 } from "./Console";
 import EditableCell from "./EditableCell";
 import { usesHRIdentity } from "./identity";
-import { useSheetVisible } from "./payments/QueueTabs";
 import MatchCell from "./MatchCell";
 import PhaseSummary from "./PhaseSummary";
+import { useSheetVisible } from "./payments/QueueTabs";
 import SettledCell from "./SettledCell";
 import StateCell from "./StateCell";
 import type { FieldError } from "./validation";
@@ -132,164 +132,164 @@ export default function SheetArea({
           whichever queue is being read. Everywhere else there are no tabs and
           it is always what the phase shows */}
       {sheetVisible && (
-      <div className="sheet-scroll">
-        {error ? (
-          <p className="sheet-empty">{t("console.error")}</p>
-        ) : visibleRows.length === 0 ? (
-          <p className="sheet-empty">{t("sheet.empty")}</p>
-        ) : (
-          <table className="sheet-table">
-            <thead>
-              <tr>
-                <th className="col-index">#</th>
-                {columns.map((column) => (
-                  <th
-                    key={column}
-                    className={[
-                      PHASE_COLUMNS[phase].includes(column) || column === "settled"
-                        ? "col-phase"
-                        : "",
-                      MARKER_COLUMNS.has(column) ? "col-marker" : "",
-                    ]
-                      .filter(Boolean)
-                      .join(" ")}
-                  >
-                    {t(`column.${column}`)}
-                  </th>
-                ))}
-                {/* the column exists only where the phase offers something to
+        <div className="sheet-scroll">
+          {error ? (
+            <p className="sheet-empty">{t("console.error")}</p>
+          ) : visibleRows.length === 0 ? (
+            <p className="sheet-empty">{t("sheet.empty")}</p>
+          ) : (
+            <table className="sheet-table">
+              <thead>
+                <tr>
+                  <th className="col-index">#</th>
+                  {columns.map((column) => (
+                    <th
+                      key={column}
+                      className={[
+                        PHASE_COLUMNS[phase].includes(column) || column === "settled"
+                          ? "col-phase"
+                          : "",
+                        MARKER_COLUMNS.has(column) ? "col-marker" : "",
+                      ]
+                        .filter(Boolean)
+                        .join(" ")}
+                    >
+                      {t(`column.${column}`)}
+                    </th>
+                  ))}
+                  {/* the column exists only where the phase offers something to
                     do to a row; drawn empty it is a gap at the end of every
                     row with nothing to explain it */}
-                {rowActions && <th className="col-actions" />}
-              </tr>
-            </thead>
-            <tbody>
-              {visibleRows.map((row) => (
-                <tr key={row.id} className={row._deleted ? "row-deleted" : ""}>
-                  <td className="col-index">
-                    {rowNumber(row)}
-                    {absorbedInto(row, rows) !== null && (
-                      <span className="row-absorbed" title={t("row.absorbed")}>
-                        {" \u2192 #"}
-                        {absorbedInto(row, rows)}
-                      </span>
-                    )}
-                  </td>
-                  {columns.map((column) => {
-                    const phaseOwned =
-                      PHASE_COLUMNS[phase].includes(column) || column === "settled";
-                    const editable = editableHere(column, phase) && !row._deleted;
-                    const isMatch = column === "match";
-                    return (
-                      <td
-                        key={column}
-                        className={`${phaseOwned ? "col-phase" : ""} ${
-                          isMatch ? "col-verdict" : ""
-                        } ${MARKER_COLUMNS.has(column) ? "col-marker" : ""}`}
-                      >
-                        {column === "settled" && onToggleSettled ? (
-                          <SettledCell
-                            row={row}
-                            onToggle={onToggleSettled}
-                            busy={settling ?? false}
-                          />
-                        ) : column === "state" && collects && onToggleSettled ? (
-                          <StateCell
-                            row={row}
-                            onToggle={onToggleSettled}
-                            busy={settling ?? false}
-                          />
-                        ) : isMatch ? (
-                          <MatchCell
-                            row={row}
-                            onRatify={() => onRatify(row)}
-                            onSearch={() => onSearch(row)}
-                          />
-                        ) : editable ? (
-                          <EditableCell
-                            display={
-                              <CellDisplay
-                                row={row}
-                                column={column}
-                                timezone={timezone}
-                                currency={currency}
-                                hrIdentity={hrIdentity}
-                              />
-                            }
-                            // a list is edited as the text it is shown as, so
-                            // the draft round-trips to itself when untouched
-                            value={
-                              column === "disciplines"
-                                ? row.disciplines.join(", ")
-                                : column === "weapon_rentals"
-                                  ? row.weapon_rentals.join(", ")
-                                  : row[column]
-                            }
-                            onSave={(raw) => onEdit(row, column, raw)}
-                            validate={(raw) => onValidate(column, raw)}
-                          />
-                        ) : (
-                          <CellDisplay
-                            row={row}
-                            column={column}
-                            timezone={timezone}
-                            currency={currency}
-                            hrIdentity={hrIdentity}
-                          />
-                        )}
-                      </td>
-                    );
-                  })}
-                  {rowActions && (
-                    <td className="col-actions">
-                      {/* money that arrived where the feed does not reach.
-                          Sits with the row actions rather than in a column,
-                          because it is an action and not a value */}
-                      {onRecordPayment && typeof row.registration_id === "number" && (
-                        <button
-                          className="row-action"
-                          title={t("payments.record.action")}
-                          onClick={() => onRecordPayment(row)}
-                        >
-                          <IconCoins size={16} stroke={1.5} />
-                          <span className="visually-hidden">
-                            {t("payments.record.action")}
-                          </span>
-                        </button>
-                      )}
-                      {rowAction(row, phase) === null ? null : rowAction(row, phase) ===
-                        "restore" ? (
-                        <button
-                          className="row-action"
-                          title={t("actions.restore")}
-                          onClick={() => onRestore(row)}
-                        >
-                          <IconArrowBackUp size={16} stroke={1.5} />
-                        </button>
-                      ) : (
-                        <button
-                          className="row-action"
-                          title={t("actions.delete")}
-                          onClick={() => onDelete(row)}
-                        >
-                          <IconTrash size={16} stroke={1.5} />
-                        </button>
+                  {rowActions && <th className="col-actions" />}
+                </tr>
+              </thead>
+              <tbody>
+                {visibleRows.map((row) => (
+                  <tr key={row.id} className={row._deleted ? "row-deleted" : ""}>
+                    <td className="col-index">
+                      {rowNumber(row)}
+                      {absorbedInto(row, rows) !== null && (
+                        <span className="row-absorbed" title={t("row.absorbed")}>
+                          {" \u2192 #"}
+                          {absorbedInto(row, rows)}
+                        </span>
                       )}
                     </td>
-                  )}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </div>
+                    {columns.map((column) => {
+                      const phaseOwned =
+                        PHASE_COLUMNS[phase].includes(column) || column === "settled";
+                      const editable = editableHere(column, phase) && !row._deleted;
+                      const isMatch = column === "match";
+                      return (
+                        <td
+                          key={column}
+                          className={`${phaseOwned ? "col-phase" : ""} ${
+                            isMatch ? "col-verdict" : ""
+                          } ${MARKER_COLUMNS.has(column) ? "col-marker" : ""}`}
+                        >
+                          {column === "settled" && onToggleSettled ? (
+                            <SettledCell
+                              row={row}
+                              onToggle={onToggleSettled}
+                              busy={settling ?? false}
+                            />
+                          ) : column === "state" && collects && onToggleSettled ? (
+                            <StateCell
+                              row={row}
+                              onToggle={onToggleSettled}
+                              busy={settling ?? false}
+                            />
+                          ) : isMatch ? (
+                            <MatchCell
+                              row={row}
+                              onRatify={() => onRatify(row)}
+                              onSearch={() => onSearch(row)}
+                            />
+                          ) : editable ? (
+                            <EditableCell
+                              label={t(`column.${column}`)}
+                              display={
+                                <CellDisplay
+                                  row={row}
+                                  column={column}
+                                  timezone={timezone}
+                                  currency={currency}
+                                  hrIdentity={hrIdentity}
+                                />
+                              }
+                              // a list is edited as the text it is shown as, so
+                              // the draft round-trips to itself when untouched
+                              value={
+                                column === "disciplines"
+                                  ? row.disciplines.join(", ")
+                                  : column === "weapon_rentals"
+                                    ? row.weapon_rentals.join(", ")
+                                    : row[column]
+                              }
+                              onSave={(raw) => onEdit(row, column, raw)}
+                              validate={(raw) => onValidate(column, raw)}
+                            />
+                          ) : (
+                            <CellDisplay
+                              row={row}
+                              column={column}
+                              timezone={timezone}
+                              currency={currency}
+                              hrIdentity={hrIdentity}
+                            />
+                          )}
+                        </td>
+                      );
+                    })}
+                    {rowActions && (
+                      <td className="col-actions">
+                        {/* money that arrived where the feed does not reach.
+                          Sits with the row actions rather than in a column,
+                          because it is an action and not a value */}
+                        {onRecordPayment && typeof row.registration_id === "number" && (
+                          <button
+                            type="button"
+                            className="row-action"
+                            title={t("payments.record.action")}
+                            onClick={() => onRecordPayment(row)}
+                          >
+                            <IconCoins size={16} stroke={1.5} />
+                            <span className="visually-hidden">{t("payments.record.action")}</span>
+                          </button>
+                        )}
+                        {rowAction(row, phase) === null ? null : rowAction(row, phase) ===
+                          "restore" ? (
+                          <button
+                            type="button"
+                            className="row-action"
+                            title={t("actions.restore")}
+                            onClick={() => onRestore(row)}
+                          >
+                            <IconArrowBackUp size={16} stroke={1.5} />
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            className="row-action"
+                            title={t("actions.delete")}
+                            onClick={() => onDelete(row)}
+                          >
+                            <IconTrash size={16} stroke={1.5} />
+                          </button>
+                        )}
+                      </td>
+                    )}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
       )}
 
       {sheetVisible && !error && visibleRows.length > 0 && (
         <div className="doc-footer">
-          <span>
-            {t("console.footerStats", { rows: activeRows.length, paid: paidCount })}
-          </span>
+          <span>{t("console.footerStats", { rows: activeRows.length, paid: paidCount })}</span>
           <span>
             {t("console.footerNote")}{" "}
             <span className="doc-footer-revision">

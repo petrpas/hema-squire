@@ -3,7 +3,7 @@ import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { type DedupGroup, type DedupMember, api } from "../api";
+import { api, type DedupGroup, type DedupMember } from "../api";
 import i18n from "../i18n";
 import type { OperationsView } from "../useOperations";
 import DedupView from "./DedupView";
@@ -133,7 +133,7 @@ describe("the candidate list", () => {
     // the only tables on the phase belong to candidate groups
     const tables = [...(host?.querySelectorAll("table") ?? [])];
     expect(tables.length).toBe(1);
-    expect(tables[0].className).toContain("dedup-table");
+    expect(tables[0]!.className).toContain("dedup-table");
   });
 
   it("counts the groups awaiting a decision, and not the settled ones", async () => {
@@ -171,7 +171,7 @@ describe("the conclusion", () => {
     await click(button(t("dedup.accept")));
 
     expect(decide).toHaveBeenCalledTimes(1);
-    const [, key, accept, fields] = decide.mock.calls[0];
+    const [, key, accept, fields] = decide.mock.calls[0]!;
     expect(key).toBe("abc123");
     expect(accept).toBe(true);
     expect((fields as Record<string, unknown>).name).toBe("Novák Jan");
@@ -186,7 +186,7 @@ describe("the conclusion", () => {
     await click(button(t("dedup.accept")));
 
     expect(decide).toHaveBeenCalledTimes(1);
-    expect(decide.mock.calls[0][4]).toBe("pozdější záznam doplňuje klub");
+    expect(decide.mock.calls[0]![4]).toBe("pozdější záznam doplňuje klub");
   });
 
   it("does not open the identity of a group a profile stands behind", async () => {
@@ -202,8 +202,8 @@ describe("the conclusion", () => {
     // the identity is the profile's and is rebound on Matching, not here; the
     // cells that do open are the merge's own fields
     const cells = [...(host?.querySelectorAll(".conclusion-row td") ?? [])];
-    expect(cells[0].querySelector(".conclusion-value")).toBeNull();
-    expect(cells[0].textContent).toBe("Jan Novak");
+    expect(cells[0]!.querySelector(".conclusion-value")).toBeNull();
+    expect(cells[0]!.textContent).toBe("Jan Novak");
     expect(host?.querySelector(".conclusion-row .conclusion-list")).not.toBeNull();
   });
 
@@ -214,7 +214,7 @@ describe("the conclusion", () => {
       (th) => th.textContent === t("column.hr_id"),
     );
     const cells = [...(host?.querySelectorAll(".conclusion-row td") ?? [])];
-    expect(cells[header - 1].querySelector(".conclusion-value")).toBeNull();
+    expect(cells[header - 1]!.querySelector(".conclusion-value")).toBeNull();
   });
 });
 
@@ -222,8 +222,12 @@ describe("a settled group", () => {
   it("states that the machine decided it and offers the opposite verdict", async () => {
     const decide = vi.spyOn(api, "dedupDecide").mockResolvedValue({ status: "rejected" });
     await mount([
-      group({ kind: "surely", verdict: "merged", decided_by: "llm",
-              conclusion: { fields: { name: "Jan Novák" }, note: "auto-merged" } }),
+      group({
+        kind: "surely",
+        verdict: "merged",
+        decided_by: "llm",
+        conclusion: { fields: { name: "Jan Novák" }, note: "auto-merged" },
+      }),
     ]);
 
     expect(text()).toContain(t("dedup.verdict.merged"));
@@ -235,8 +239,11 @@ describe("a settled group", () => {
 
   it("keeps its conclusion closed until it is reopened", async () => {
     await mount([
-      group({ verdict: "merged", decided_by: "organizer",
-              conclusion: { fields: { name: "Jan Novák" }, note: "sloučeno" } }),
+      group({
+        verdict: "merged",
+        decided_by: "organizer",
+        conclusion: { fields: { name: "Jan Novák" }, note: "sloučeno" },
+      }),
     ]);
 
     expect(host?.querySelector(".conclusion-value")).toBeNull();

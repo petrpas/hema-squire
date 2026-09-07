@@ -6,7 +6,7 @@ import { IDENTITY_COLUMNS, identityValue } from "../identity";
 import { registeredMoment } from "../momentText";
 import NoteMarker from "../NoteMarker";
 import ConclusionRow from "./ConclusionRow";
-import { GROUP_COLUMNS, asList } from "./mergeFields";
+import { asList, GROUP_COLUMNS } from "./mergeFields";
 
 /** One candidate duplicate group: the records, and the record a merge would
  *  make of them.
@@ -65,7 +65,10 @@ export default function DedupGroup({
         <h2>
           {t(`dedup.kind.${group.kind}`)}
           {group.kind === "same_id" && shared !== null && (
-            <span className="dedup-group-evidence"> · {t("column.hr_id")} {shared}</span>
+            <span className="dedup-group-evidence">
+              {" "}
+              · {t("column.hr_id")} {shared}
+            </span>
           )}
         </h2>
         <span className="dedup-verdict">
@@ -150,24 +153,24 @@ export default function DedupGroup({
       <div className="dedup-actions">
         {open ? (
           <>
-            <button className="secondary" onClick={confirm}>
+            <button type="button" className="secondary" onClick={confirm}>
               {t("dedup.accept")}
             </button>
-            <button className="row-action" onClick={separate}>
+            <button type="button" className="row-action" onClick={separate}>
               {t("dedup.reject")}
             </button>
           </>
         ) : group.verdict === "merged" ? (
           <>
-            <button className="row-action" onClick={separate}>
+            <button type="button" className="row-action" onClick={separate}>
               {t("dedup.reject")}
             </button>
-            <button className="row-action" onClick={reopen}>
+            <button type="button" className="row-action" onClick={reopen}>
               {t("dedup.reopen")}
             </button>
           </>
         ) : (
-          <button className="secondary" onClick={() => onDecide(true)}>
+          <button type="button" className="secondary" onClick={() => onDecide(true)}>
             {t("dedup.accept")}
           </button>
         )}

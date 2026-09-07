@@ -1,11 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import {
-  filterSuggestions,
-  organizerEntries,
-  plainEntries,
-  worthOffering,
-} from "./suggestions";
+import { filterSuggestions, organizerEntries, plainEntries, worthOffering } from "./suggestions";
 
 describe("filterSuggestions", () => {
   const entries = plainEntries(["Sokolovna Praha", "Tělocvična Brno", "Hala Ostrava"]);

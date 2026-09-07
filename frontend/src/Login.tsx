@@ -1,10 +1,9 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-
+import { ApiError, api, type HRProfile, setToken } from "./api";
 import FieldError, { invalidProps } from "./FieldError";
 import HRSearchPicker from "./HRSearch";
 import HRSearchStep from "./HRSearchStep";
-import { ApiError, type HRProfile, api, setToken } from "./api";
 import i18n from "./i18n";
 import { useFieldValidation } from "./useFieldValidation";
 import { useWideViewport } from "./useWideViewport";
@@ -216,11 +215,7 @@ function SignupForm({ onSignedUp, onCancel }: { onSignedUp: () => void; onCancel
             <button type="button" className="secondary" onClick={() => setPendingHr(null)}>
               {t("common.cancel")}
             </button>
-            <button
-              type="button"
-              className="btn-primary"
-              onClick={() => confirmHr(pendingHr)}
-            >
+            <button type="button" className="btn-primary" onClick={() => confirmHr(pendingHr)}>
               {t("signup.hr.confirmButton")}
             </button>
           </div>
@@ -298,9 +293,7 @@ export default function Login({ onLogin }: { onLogin: () => void }) {
       onLogin();
     } catch (err) {
       setError(
-        err instanceof ApiError && err.status === 401
-          ? t("login.invalid")
-          : t("login.failed"),
+        err instanceof ApiError && err.status === 401 ? t("login.invalid") : t("login.failed"),
       );
     } finally {
       setBusy(false);

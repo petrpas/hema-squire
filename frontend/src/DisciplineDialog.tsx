@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-
-import { type DisciplineGender, type DisciplineKind, type DisciplineMaterial } from "./api";
+import type { DisciplineGender, DisciplineKind, DisciplineMaterial } from "./api";
 import HelpHint from "./HelpHint";
-import { LEGACY_WEAPONS, disciplineName, normalizeSlug, taxonomyCode } from "./TournamentFace";
+import Modal from "./Modal";
+import { disciplineName, LEGACY_WEAPONS, normalizeSlug, taxonomyCode } from "./TournamentFace";
 
 const TAXONOMY_WEAPON_CODES = Object.keys(LEGACY_WEAPONS);
 const OTHER_WEAPON = "__other__";
@@ -105,6 +105,11 @@ export default function DisciplineDialog({
   // values before the touched flags above have had a chance to matter.
   const skipFirstDerivation = useRef(initial !== null);
 
+  // The three the rule wants added are read for their current value, not
+  // watched: a derivation that re-ran when `nameTouched` flipped would fire
+  // exactly as the organizer starts typing, which is the moment it is meant
+  // to stop. Only a classification change derives.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: derivation follows the classification alone, by design D3
   useEffect(() => {
     if (skipFirstDerivation.current) {
       skipFirstDerivation.current = false;
@@ -116,7 +121,6 @@ export default function DisciplineDialog({
     if (!slugTouched) {
       setSlug(weapon ? generateDraftSlug(otherSlugs, kind, weapon, gender, material) : "");
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [kind, weapon, gender, material]);
 
   const trimmedName = name.trim();
@@ -154,8 +158,8 @@ export default function DisciplineDialog({
   }
 
   return (
-    <div className="modal-backdrop" onClick={onClose}>
-      <div className="modal" onClick={(event) => event.stopPropagation()}>
+    <Modal onClose={onClose}>
+      <div className="modal">
         <h2>
           {t(initial ? "setup.disciplineDialog.editTitle" : "setup.disciplineDialog.addTitle")}
         </h2>
@@ -209,11 +213,7 @@ export default function DisciplineDialog({
           {weaponCustom && (
             <label className="form-field">
               <span>{t("setup.disciplines.weaponOther")}</span>
-              <input
-                autoFocus
-                value={weapon}
-                onChange={(event) => setWeapon(event.target.value)}
-              />
+              <input autoFocus value={weapon} onChange={(event) => setWeapon(event.target.value)} />
               <span className="muted">{t("setup.disciplines.weaponNoRatingHint")}</span>
             </label>
           )}
@@ -268,6 +268,6 @@ export default function DisciplineDialog({
           </button>
         </div>
       </div>
-    </div>
+    </Modal>
   );
 }

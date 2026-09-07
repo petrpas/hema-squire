@@ -53,6 +53,29 @@ A new test must assert a behavioral invariant or a contract boundary. Do not wri
 framework guarantees (Pydantic validation, SQLAlchemy defaults, FastAPI route registration),
 trivial accessors, or the shape of mock call arguments.
 
+# Code checks
+
+Frontend work is finished only when both of these pass, from `frontend/`:
+
+    npm run typecheck    # tsc --noEmit
+    npm run check        # biome check .
+
+`npm run check:fix` applies the safe fixes and the formatting. Both run in CI
+alongside `npm test` and `npm run build`.
+
+Rules:
+- Never write a bare suppression. A Biome one is
+  `// biome-ignore lint/<group>/<rule>: <reason>` on the line above the thing it
+  suppresses — which for a JSX attribute finding is the attribute, not the
+  element — and it must be a single comment line, since a second `//` line above
+  it breaks the attachment.
+- Disabling a rule is a decision and belongs in `biome.jsonc` with a comment
+  saying why, never in a scatter of inline ignores.
+- `noUncheckedIndexedAccess` is on: `array[i]` and `record[key]` are
+  `T | undefined`. Narrow them; do not cast the undefined away.
+- `!` is off in application code and allowed in `*.test.ts(x)`.
+- A dialog is `Modal` (`src/Modal.tsx`), never a div wearing a click handler.
+
 # Openspec
 
 `openspec/changes/archive/` is superseded history, not current behavior. The authoritative

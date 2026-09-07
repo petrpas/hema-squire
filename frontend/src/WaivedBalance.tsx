@@ -54,6 +54,7 @@ export default function WaivedBalance({
 
   return (
     <span className="help-hint waived-hint">
+      {/* biome-ignore lint/a11y/noNoninteractiveTabindex: a tooltip trigger must be focusable to be read, and activates nothing */}
       <span className="waived-balance waived-marker" tabIndex={0} aria-describedby={hintId}>
         {word}
       </span>

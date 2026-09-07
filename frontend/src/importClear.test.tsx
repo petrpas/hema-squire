@@ -2,9 +2,8 @@
 import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-
-import ImportPanel from "./ImportPanel";
 import { api } from "./api";
+import ImportPanel from "./ImportPanel";
 import i18n from "./i18n";
 import type { OperationsView } from "./useOperations";
 
@@ -111,9 +110,7 @@ describe("the clear action", () => {
 
   it("clears and refreshes the table once confirmed", async () => {
     withImports();
-    const clear = vi
-      .spyOn(api, "clearImports")
-      .mockResolvedValue({ rows: 40, files: 2 });
+    const clear = vi.spyOn(api, "clearImports").mockResolvedValue({ rows: 40, files: 2 });
     const onImported = vi.fn();
     mount(<ImportPanel slug="cup" operations={idle} onImported={onImported} />);
     await settle();

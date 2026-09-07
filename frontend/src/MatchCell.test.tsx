@@ -4,8 +4,8 @@ import { createRoot } from "react-dom/client";
 import { afterEach, describe, expect, it } from "vitest";
 
 import type { SheetRow } from "./api";
-import MatchCell from "./MatchCell";
 import i18n from "./i18n";
+import MatchCell from "./MatchCell";
 
 // What the verdict register offers per verdict (spec `etl-console`, The ledger
 // idiom): ratifying costs one click where there is a machine's proposal to

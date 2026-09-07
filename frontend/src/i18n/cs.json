@@ -6,7 +6,8 @@
     "loading": "Načítání…",
     "logout": "Odhlásit",
     "cancel": "Zrušit",
-    "back": "Zpět"
+    "back": "Zpět",
+    "close": "Zavřít"
   },
   "notFound": {
     "title": "Stránka nenalezena",
@@ -259,6 +260,10 @@
       "belowMinimum_few": "{{count}} týmy pod minimem",
       "belowMinimum_many": "{{count}} týmu pod minimem",
       "belowMinimum_other": "{{count}} týmů pod minimem"
+    },
+    "cell": {
+      "edit": "Upravit {{column}}: {{value}}",
+      "editEmpty": "Upravit {{column}} – zatím prázdné"
     }
   },
   "row": {

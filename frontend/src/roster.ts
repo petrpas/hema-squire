@@ -1,4 +1,4 @@
-import { type RosterMember, type TeamEntry } from "./api";
+import type { RosterMember, TeamEntry } from "./api";
 
 /** Order-sensitive: a roster is a list, so a reorder is a real change
  *  (design D3). Compares every field the editor can alter. */
@@ -6,6 +6,7 @@ export function rosterChanged(saved: RosterMember[], draft: RosterMember[]): boo
   if (saved.length !== draft.length) return true;
   return saved.some((member, index) => {
     const next = draft[index];
+    if (!next) return true;
     return (
       member.name !== next.name ||
       member.hr_id !== next.hr_id ||
@@ -24,9 +25,10 @@ export interface RosterSaveOutcome {
 
 /** Splits a fan-out's settled results into the teams to push down as saved
  *  and the names of the teams that did not save (design D4). */
-export function summarizeSaves(
-  outcomes: RosterSaveOutcome[],
-): { saved: TeamEntry[]; failed: string[] } {
+export function summarizeSaves(outcomes: RosterSaveOutcome[]): {
+  saved: TeamEntry[];
+  failed: string[];
+} {
   const saved: TeamEntry[] = [];
   const failed: string[] = [];
   for (const { team, result } of outcomes) {

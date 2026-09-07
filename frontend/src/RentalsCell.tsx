@@ -41,6 +41,7 @@ function UnpricedRental({ name }: { name: string }) {
   const hintId = useId();
   return (
     <span className="help-hint">
+      {/* biome-ignore lint/a11y/noNoninteractiveTabindex: a tooltip trigger must be focusable to be read, and activates nothing */}
       <span className="unpriced-rental" tabIndex={0} aria-describedby={hintId}>
         {name}
       </span>

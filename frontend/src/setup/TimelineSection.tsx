@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { ApiError, type TournamentDetail, api } from "../api";
+import { ApiError, api, type TournamentDetail } from "../api";
 import FieldError, { invalidProps } from "../FieldError";
 import HelpHint from "../HelpHint";
 import { useFieldValidation } from "../useFieldValidation";
@@ -107,8 +107,7 @@ export function TimelineSection({
     validation.clearAll();
     setError(null);
     setDirty(false);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [detail]);
+  }, [detail, validation.clearAll]);
 
   useSectionSaver(registry, "timeline", "timeline", {
     pendingCount: dirty ? 1 : 0,
@@ -145,7 +144,9 @@ export function TimelineSection({
         const message =
           fieldErrors.length > 0
             ? fieldErrors.map((e) => t(`validation.${e.code}`, e.params)).join(" ")
-            : t("setup.saveBar.genericError", { status: err instanceof ApiError ? err.status : "?" });
+            : t("setup.saveBar.genericError", {
+                status: err instanceof ApiError ? err.status : "?",
+              });
         setError(message);
         return [{ change: "timeline", section: "timeline", error: message }];
       }

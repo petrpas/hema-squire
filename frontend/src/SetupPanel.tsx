@@ -1,26 +1,26 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { useTranslation } from "react-i18next";
 
-import { type Account, type SetupSuggestions, type TournamentDetail, api } from "./api";
+import { type Account, api, type SetupSuggestions, type TournamentDetail } from "./api";
+import SetupPreview from "./SetupPreview";
 import { BankAccountSection } from "./setup/BankAccountSection";
 import { CurrencySection } from "./setup/CurrencySection";
 import { DangerZoneSection } from "./setup/DangerZoneSection";
-import { DiscountsSection } from "./setup/DiscountsSection";
 import { DisciplinesSection } from "./setup/DisciplinesSection";
+import { DiscountsSection } from "./setup/DiscountsSection";
 import { ExportSheetSection } from "./setup/ExportSheetSection";
 import { ExtraItemsSection } from "./setup/ExtraItemsSection";
 import { IdentitySection, VsSeriesSection } from "./setup/IdentitySection";
 import { LegacyFeesSection } from "./setup/LegacyFeesSection";
-import { SettingsSection } from "./setup/SettingsSection";
 import { OrganizersSection } from "./setup/OrganizersSection";
 import { PaymentModeSection } from "./setup/PaymentModeSection";
 import { PublishSection } from "./setup/PublishSection";
-import { missingTab, offeredSetupTabs, SaverRegistry, type SetupTab } from "./setup/shared";
+import { SettingsSection } from "./setup/SettingsSection";
 import { SetupSaveBar } from "./setup/SetupSaveBar";
 import { SetupTabBar } from "./setup/SetupTabBar";
+import { missingTab, offeredSetupTabs, SaverRegistry, type SetupTab } from "./setup/shared";
 import { TeamSection } from "./setup/TeamSection";
 import { TimelineSection } from "./setup/TimelineSection";
-import SetupPreview from "./SetupPreview";
 import { EMPTY_SUGGESTIONS } from "./suggestions";
 
 export default function SetupPanel({
@@ -66,9 +66,7 @@ export default function SetupPanel({
     api.setupSuggestions().then(setSuggestions, () => setSuggestions(EMPTY_SUGGESTIONS));
   }, []);
 
-  const totalPending = registry
-    .all()
-    .reduce((sum, entry) => sum + entry.saver.pendingCount, 0);
+  const totalPending = registry.all().reduce((sum, entry) => sum + entry.saver.pendingCount, 0);
 
   useEffect(() => {
     onDirtyChange(totalPending > 0);

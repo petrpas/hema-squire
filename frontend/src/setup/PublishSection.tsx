@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { ApiError, type TournamentDetail, type TournamentFlags, api } from "../api";
+import { ApiError, api, type TournamentDetail, type TournamentFlags } from "../api";
 import { FEATURE_NAMES } from "../TournamentSettingsDialog";
 import { concealedBy } from "./shared";
 
@@ -117,13 +117,19 @@ export function PublishSection({
             <button type="button" className="secondary" onClick={() => setConfirming(false)}>
               {t("common.cancel")}
             </button>
-            <button type="button" className="btn-primary" disabled={busy} onClick={() => void act()}>
+            <button
+              type="button"
+              className="btn-primary"
+              disabled={busy}
+              onClick={() => void act()}
+            >
               {t("setup.publish.confirmButton")}
             </button>
           </div>
         </>
       ) : (
         <button
+          type="button"
           className="btn-primary"
           disabled={missing.length > 0}
           onClick={() => setConfirming(true)}
