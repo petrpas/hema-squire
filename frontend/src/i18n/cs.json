@@ -576,6 +576,26 @@
       "label": "Účet",
       "hint": "Zadej číslo účtu nebo IBAN. Nepovinné, pokud je turnaj bezplatný."
     },
+    "feedToken": {
+      "set": "zadat token pro výpisy",
+      "reset": "změnit token pro výpisy",
+      "fioOnly": "token pro výpisy: jen účty Fio",
+      "state": {
+        "recorded": "Token je uložen, banku lze pro tento účet dotazovat.",
+        "none": "Token není uložen. Platby se stále načtou importem výpisu."
+      },
+      "unchecked": "Token je uložen, ale banka neodpověděla, takže ho nebylo možné ověřit.",
+      "title": "token pro výpisy z banky",
+      "advice": "V internetovém bankovnictví Fio otevři Nastavení, API, a přidej pro tento účet token s právem pouze ke čtení. Squire jen čte výpis; token, kterým lze poslat peníze, je víc, než potřebuje.",
+      "recorded": "Token už je uložen. Co zadáš, ten uložený nahradí — uložený token se nikdy nezobrazuje.",
+      "label": "Token",
+      "save": "Uložit",
+      "remove": "odstranit uložený token",
+      "error": {
+        "fio_token_rejected": "Banka s tímto tokenem účet nepřečetla. Zkontroluj ho v internetovém bankovnictví a zadej znovu.",
+        "failed": "Token se nepodařilo uložit."
+      }
+    },
     "currency": {
       "title": "Měna",
       "mode": {

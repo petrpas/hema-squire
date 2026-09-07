@@ -449,7 +449,6 @@ class TournamentUpdate(BaseModel):
     # hours after expiry a VS-matched payment may still reinstate a
     # reservation, subject to capacity; 0 disables automatic reinstatement
     expiry_grace_hours: int | None = Field(default=None, ge=0)
-    fio_token: SingleLineStr(constraints.TOURNAMENT_FIO_TOKEN_MAX_LENGTH) | None = None
     unpaid_list_treatment: UnpaidListTreatment | None = None
     output_sheet_url: HttpUrlStr(constraints.TOURNAMENT_OUTPUT_SHEET_URL_MAX_LENGTH) | None = None
     hr_category_map: (
@@ -482,6 +481,18 @@ class TournamentUpdate(BaseModel):
             return None
         return value.quantize(decimal.Decimal("0.01"), rounding=decimal.ROUND_HALF_UP)
 
+    # supplying a token here is refused rather than ignored. The field is
+    # carried only so that it can be: pydantic drops an unknown key silently,
+    # which would take a caller that still writes the old shape and leave their
+    # token unstored with a 200 in hand (design fio-token-in-setup Decision 2).
+    # A token is recorded through PUT /{slug}/fio-token, which verifies it
+    fio_token: Any = None
+
+    @field_validator("fio_token")
+    @classmethod
+    def _token_has_its_own_endpoint(cls, value: Any) -> Any:
+        raise FieldValueError("fio_token", "recorded_on_its_own_endpoint", {})
+
     # accepts either form and stores the canonical IBAN (design Decision 1);
     # runs after SingleLineStr's length/shape bound, which only catches
     # something that is not plausibly an account at all
@@ -491,6 +502,25 @@ class TournamentUpdate(BaseModel):
         if value is None:
             return None
         return accounts.parse(value)
+
+
+class FioTokenIn(BaseModel):
+    """The bank feed token, on its own request. It is not a field of
+    `TournamentUpdate` because there is exactly one way a token reaches the
+    database and it is the one that verifies it against the bank (design
+    fio-token-in-setup Decision 2)."""
+
+    token: SingleLineStr(constraints.TOURNAMENT_FIO_TOKEN_MAX_LENGTH)
+
+
+class FioTokenOut(BaseModel):
+    """What the console is told after recording or removing a token — never the
+    token. `verified` is false where the bank could not be reached to check:
+    the token is stored either way, and the organizer is told which happened
+    (spec tournament-admin)."""
+
+    configured: bool
+    verified: bool
 
 
 class TournamentFeaturesIn(BaseModel):

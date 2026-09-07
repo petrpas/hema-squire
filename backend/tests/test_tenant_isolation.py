@@ -51,6 +51,7 @@ BODIES: dict[tuple[str, str], object] = {
         "category": "rental",
         "price": 100,
     },
+    ("PUT", "/api/tournaments/{slug}/fio-token"): {"token": "feed"},
     ("PATCH", "/api/tournaments/{slug}/registrations-kept-by"): {
         "registrations_kept_by": "squire"
     },

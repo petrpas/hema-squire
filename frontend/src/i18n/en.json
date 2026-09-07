@@ -561,6 +561,26 @@
       "label": "Account",
       "hint": "Enter either an IBAN, for example \"CZ6508000000192000145399\", or the Czech domestic form, for example \"19-2000145399/0800\". Registrations cannot be paid until an account is recorded here — required as soon as the tournament charges anything."
     },
+    "feedToken": {
+      "set": "set feed token",
+      "reset": "replace feed token",
+      "fioOnly": "feed token: Fio accounts only",
+      "state": {
+        "recorded": "A feed token is recorded, so the bank can be polled for this account.",
+        "none": "No feed token is recorded. Payments still arrive by importing a statement."
+      },
+      "unchecked": "The token is recorded, but the bank could not be reached to check it.",
+      "title": "bank feed token",
+      "advice": "In Fio internet banking, open Settings, API, and add a token for this account with read-only rights. Squire only reads the statement; a token that can move money is more than it needs.",
+      "recorded": "A token is already recorded. What you enter here replaces it — the stored one is never shown.",
+      "label": "Token",
+      "save": "Record",
+      "remove": "remove the recorded token",
+      "error": {
+        "fio_token_rejected": "The bank would not read the account with this token. Check it in internet banking and enter it again.",
+        "failed": "The token could not be recorded."
+      }
+    },
     "currency": {
       "title": "Currency",
       "mode": {

@@ -9,7 +9,7 @@ from PIL import Image, UnidentifiedImageError
 from sqlalchemy import delete, false, func, or_, select
 from sqlalchemy.orm import Session, selectinload
 
-from app import money_bounds, scheduler, setup, taxonomy
+from app import bank, money_bounds, scheduler, setup, taxonomy
 from app.auth import (
     current_fencer,
     require_console_access,
@@ -60,6 +60,8 @@ from app.schemas import (
     DisciplineOut,
     ExtraItemIn,
     ExtraItemOut,
+    FioTokenIn,
+    FioTokenOut,
     OpenDisciplineOut,
     OpenTournamentOut,
     OwnerTransferIn,
@@ -99,6 +101,7 @@ def get_tournament(session: SessionDep, slug: str) -> Tournament:
 
 
 TournamentDep = Annotated[Tournament, Depends(get_tournament)]
+FioClientDep = Annotated[bank.FioClient, Depends(bank.get_fio_client)]
 
 
 def _lowest_free_series(session: Session, year: int) -> int:
@@ -663,6 +666,57 @@ def update_tournament(
     out.vs_series_editable = not _has_registrations(session, tournament)
     _apply_disciplines_frozen(session, tournament, out)
     return out
+
+
+@router.put("/{slug}/fio-token", response_model=FioTokenOut)
+def set_fio_token(
+    data: FioTokenIn,
+    tournament: TournamentDep,
+    session: SessionDep,
+    fencer: FencerDep,
+    fio: FioClientDep,
+):
+    """Record the bank feed token, verifying it against the bank first.
+
+    Its own endpoint rather than a field of the tournament PATCH, so that there
+    is exactly one way a token reaches the database and it is the one that
+    checks it (design fio-token-in-setup Decision 2). Without that, a mistyped
+    token is discovered weeks later by a scheduler sweep the organizer never
+    sees, on a tournament whose reservations were expiring against a feed that
+    was never arriving.
+
+    A token the bank refuses is refused here and nothing is stored. A bank that
+    cannot be reached is not evidence about the token, so the token is stored
+    and the answer says the check did not happen — refusing on an outage would
+    make recording a correct token depend on Fio being up that minute.
+
+    The account beside it is deliberately not consulted. The console offers this
+    only on a Fio account, but it offers it against the account being *typed*,
+    which may not be saved yet; checking the stored one here would refuse the
+    very case the console is designed to allow."""
+    require_console_access(session, tournament, fencer)
+    verified = True
+    try:
+        fio.verify(data.token)
+    except bank.FioTokenRejected as error:
+        raise HTTPException(status_code=422, detail="fio_token_rejected") from error
+    except bank.FioUnreachable:
+        verified = False
+    tournament.fio_token = data.token
+    session.commit()
+    return FioTokenOut(configured=True, verified=verified)
+
+
+@router.delete("/{slug}/fio-token", response_model=FioTokenOut)
+def clear_fio_token(tournament: TournamentDep, session: SessionDep, fencer: FencerDep):
+    """Remove the token. A tournament left without one behaves exactly as one
+    that never had one: no poll action, no deposit mode (spec
+    tournament-admin)."""
+    require_console_access(session, tournament, fencer)
+    tournament.fio_token = None
+    session.commit()
+    # nothing was checked, and nothing is configured to check
+    return FioTokenOut(configured=False, verified=False)
 
 
 @router.get("/{slug}/features", response_model=TournamentFeaturesOut)

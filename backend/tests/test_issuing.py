@@ -12,7 +12,7 @@ import io
 from datetime import UTC, datetime, timedelta
 
 import pytest
-from conftest import enable_payments, outcome, publish
+from conftest import AcceptingFio, enable_payments, outcome, publish, set_fio_token
 from sqlalchemy import select
 
 from app.bank import get_fio_client
@@ -1004,12 +1004,10 @@ def collecting_setup(client, organizer, *, fio_token=None):
     setup(client, organizer)
     enable_payments(client, organizer, "cup")
     if fio_token:
-        client.patch(
-            "/api/tournaments/cup", json={"fio_token": fio_token}, headers=organizer
-        )
+        set_fio_token(client, organizer, "cup", fio_token)
 
 
-class SilentFio:
+class SilentFio(AcceptingFio):
     """A bank with nothing to report: a poll of it is the issuing pass alone."""
 
     def __init__(self):

@@ -24,7 +24,7 @@ from app.models import (
     RegistrationState,
     Tournament,
 )
-from tests.conftest import enable_payments, publish
+from tests.conftest import enable_payments, publish, set_fio_token
 
 IBAN = "CZ6508000000192000145399"
 TOURNAMENT_DATE = "2026-12-05"
@@ -66,16 +66,16 @@ def make_tournament(client, organizer, *, mode="immediate", capacity=2, fee_eur=
         "location": "Brno",
         "organizers": [{"name": "Cup Org", "link": None}],
         "payment_mode": mode,
-        # the deposit mode holds a seat on a sliding per-registration window,
-        # which only a feed arriving by itself can answer, so it is offered
-        # only where one is configured (spec tournament-admin, "The deposit
-        # payment mode requires a payment feed that arrives by itself"). Set
-        # for every mode here so the fixture stays one shape
-        "fio_token": "test-feed-token",
     }
     payload.update(params)
     response = client.patch("/api/tournaments/cup", json=payload, headers=organizer)
     assert response.status_code == 200, response.text
+    # the deposit mode holds a seat on a sliding per-registration window, which
+    # only a feed arriving by itself can answer, so it is offered only where one
+    # is configured (spec tournament-admin, "The deposit payment mode requires a
+    # payment feed that arrives by itself"). Set for every mode here so the
+    # fixture stays one shape
+    set_fio_token(client, organizer, "cup", "test-feed-token")
     discipline = {"slug": "LS", "weapon": "LS", "capacity": capacity, "fee": 1000}
     if fee_eur is not None:
         discipline["fee_eur"] = fee_eur

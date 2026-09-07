@@ -200,6 +200,7 @@ export default function SetupPanel({
                   slug={slug}
                   registry={registry}
                   suggestions={suggestions}
+                  onSaved={onSaved}
                 />
               </>
             )}

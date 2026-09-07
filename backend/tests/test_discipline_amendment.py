@@ -15,7 +15,7 @@ defect `imported-registrations` forbids.
 """
 
 import pytest
-from conftest import enable_payments, publish
+from conftest import enable_payments, publish, set_fio_token
 from sqlalchemy import select
 
 from app.importer import get_import_parser
@@ -68,11 +68,11 @@ def setup(client, organizer, *, sb_capacity=20, early_fee=None, early_until=None
         "location": "Brno",
         "organizers": [{"name": "Cup Org", "link": None}],
         "bank_account": IBAN,
-        "fio_token": "test-token",
     }
     if early_until is not None:
         patch["early_bird_until"] = early_until
     response = client.patch("/api/tournaments/cup", json=patch, headers=organizer)
+    set_fio_token(client, organizer, "cup")
     assert response.status_code == 200, response.text
     publish(client, organizer, "cup")
     app.dependency_overrides[get_import_parser] = lambda: RosterParser()

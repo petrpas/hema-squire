@@ -1134,6 +1134,26 @@ button.secondary:disabled {
   color: var(--ink-faded);
 }
 
+/* A label sharing its line with an action that belongs to the same field — the
+   bank account and the feed token that reads it. The action holds its place
+   whether it is available or not, so a field that becomes eligible for one
+   changes the action's state and moves nothing under the cursor
+   (spec tournament-admin). */
+.field-label-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.field-label-row > .link-button,
+.field-label-row > .rail-hint {
+  text-transform: none;
+  letter-spacing: normal;
+  flex: none;
+  text-align: right;
+}
+
 /* a group of checkboxes is a fieldset, and a fieldset carries browser chrome
    this design has no room for: the border and inset padding go, the legend
    sits where a .form-field's own label sits */

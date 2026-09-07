@@ -22,6 +22,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from app import operations
+from app.bank import get_fio_client
 from app.db import Base, apply_sqlite_pragmas, get_session
 from app.hr_index import get_hr_index, stub_index
 from app.main import app
@@ -89,11 +90,36 @@ def client(engine, monkeypatch):
     app.dependency_overrides[get_session] = override_session
     # tests run on the stub fixture dataset; hr-integration tests override this
     app.dependency_overrides[get_hr_index] = stub_index
+    # recording a feed token verifies it against Fio, so every test that
+    # configures one would otherwise reach the network. The default accepts;
+    # tests about refusal or an outage override it with their own stub
+    app.dependency_overrides[get_fio_client] = lambda: AcceptingFio()
     try:
         with TestClient(app) as test_client:
             yield test_client
     finally:
         app.dependency_overrides.clear()
+
+
+class AcceptingFio:
+    """A bank that answers, holds no transactions, and accepts every token."""
+
+    def fetch(self, token, date_from, date_to):
+        return []
+
+    def verify(self, token):
+        return None
+
+
+def set_fio_token(client, headers, slug, token="test-token"):
+    """Configure a tournament's bank feed. Its own endpoint, because a token is
+    verified as it is recorded and the tournament PATCH does not accept one
+    (spec tournament-admin)."""
+    response = client.put(
+        f"/api/tournaments/{slug}/fio-token", json={"token": token}, headers=headers
+    )
+    assert response.status_code == 200, response.text
+    return response
 
 
 FEATURE_FLAGS = ("feature_schedule", "feature_payments", "feature_teams", "feature_extras")

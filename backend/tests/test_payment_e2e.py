@@ -21,7 +21,7 @@ from app.mail import get_mailer
 from app.main import app
 from app.models import Registration
 from app.spayd import spayd_string
-from tests.conftest import enable_payments, publish
+from tests.conftest import AcceptingFio, enable_payments, publish, set_fio_token
 
 IBAN = "CZ6508000000192000145399"
 
@@ -37,7 +37,11 @@ class CollectingMailer:
         return [m for m in self.sent if m["To"] == address]
 
 
-class FakeFio:
+class FakeFio(AcceptingFio):
+    """A bank whose feed the test fills in. Accepts every token, like the
+    suite's default, so recording one exercises the endpoint without reaching
+    Fio."""
+
     def __init__(self):
         self.transactions = []
 
@@ -83,12 +87,13 @@ def setup(client, organizer, capacity=10):
     enable_payments(client, organizer, "cup")
     client.patch(
         "/api/tournaments/cup",
-        json={"bank_account": IBAN, "fio_token": "test-token",
+        json={"bank_account": IBAN,
               "reservation_validity_days": 7, "reminder_day": 5,
               "amount_tolerance_percent": 5,
               "location": "Brno", "organizers": [{"name": "Cup Org", "link": None}]},
         headers=organizer,
     )
+    set_fio_token(client, organizer, "cup")
     client.post(
         "/api/tournaments/cup/disciplines",
         json={"slug": "LS", "weapon": "LS", "capacity": capacity, "fee": 1000},

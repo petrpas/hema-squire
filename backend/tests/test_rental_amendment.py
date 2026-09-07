@@ -10,7 +10,7 @@ that correcting the rentals does not quietly drop the fencer's afterparty.
 """
 
 import pytest
-from conftest import enable_payments, publish
+from conftest import enable_payments, publish, set_fio_token
 from sqlalchemy import select
 
 from app.importer import get_import_parser
@@ -71,10 +71,10 @@ def setup(client, organizer):
             "location": "Brno",
             "organizers": [{"name": "Cup Org", "link": None}],
             "bank_account": IBAN,
-            "fio_token": "test-token",
         },
         headers=organizer,
     ).status_code == 200
+    set_fio_token(client, organizer, "cup")
     publish(client, organizer, "cup")
     app.dependency_overrides[get_import_parser] = lambda: RosterParser()
 

@@ -12,7 +12,7 @@ a status code — a broken implementation gets the status code right.
 import io
 
 import pytest
-from conftest import import_statement, settle
+from conftest import import_statement, set_fio_token, settle
 from sqlalchemy import select
 
 from app.bank import ParsedStatementRow, get_statement_parser
@@ -315,9 +315,7 @@ def test_the_roster_survives(client, auth_headers, mailbox, parser):
 def test_payment_settings_survive(client, auth_headers, mailbox, parser):
     organizer = auth_headers()
     setup(client, organizer)
-    client.patch(
-        "/api/tournaments/cup", json={"fio_token": "secret-token"}, headers=organizer
-    )
+    set_fio_token(client, organizer, "cup", "secret-token")
     import_statement(client, organizer, statement(["2026-08-12,Nobody,50.00,CZK,,no"]))
 
     clear(client, organizer)

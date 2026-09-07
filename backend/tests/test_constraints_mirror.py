@@ -56,6 +56,10 @@ _NO_BOUND_NEEDED = {
     ("ManualEntryIn", "email"),
     ("ManualEntryIn", "registered_at"),
     ("ExtraSelectionIn", "extra_item_id"),
+    # carried only to be refused: a token supplied on the tournament save is
+    # rejected by its validator and never reaches a bound. The real one is on
+    # FioTokenIn.token, the endpoint that records it
+    ("TournamentUpdate", "fio_token"),
 }
 
 _REQUEST_MODELS = [
@@ -71,6 +75,7 @@ _REQUEST_MODELS = [
     "OrganizerIn",
     "TournamentCreate",
     "TournamentUpdate",
+    "FioTokenIn",
     "RuleIn",
     "TeamEntryIn",
     "RosterMemberIn",

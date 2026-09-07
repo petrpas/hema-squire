@@ -15,7 +15,7 @@ from app.mail import get_mailer
 from app.main import app
 from app.models import BankTransaction, Registration, RegistrationState, Tournament
 from app.scheduler import run_tournament_tick
-from tests.conftest import enable_payments, publish, set_features
+from tests.conftest import enable_payments, publish, set_features, set_fio_token
 
 IBAN = "CZ6508000000192000145399"
 
@@ -281,8 +281,6 @@ def test_stored_payment_settings_survive_the_feature_being_turned_off(
         json={
             "bank_account": IBAN,
             "payment_mode": "deposit",
-            # deposit mode needs a configured feed (spec tournament-admin)
-            "fio_token": "test-feed-token",
             "deposit_amount": 300,
             "reservation_validity_days": 5,
             "reminder_day": 3,
@@ -292,6 +290,9 @@ def test_stored_payment_settings_survive_the_feature_being_turned_off(
         headers=organizer,
     )
     assert configured.status_code == 200, configured.text
+    # deposit mode needs a configured feed to be publishable (spec
+    # tournament-admin)
+    set_fio_token(client, organizer, "cup", "test-feed-token")
     publish(client, organizer, "cup")
     _, paid = enroll(client, auth_headers)
     client.post(

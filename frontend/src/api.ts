@@ -69,6 +69,14 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
  *  absence of all four, advanced mode at least one — there is no separately
  *  stored mode value, so the name a tournament is given and the sections its
  *  console offers can never disagree (design tournament-modes D2). */
+/** What the server says after a feed token is recorded or removed — never the
+ *  token. `verified: false` means the bank could not be reached to check it,
+ *  not that it was refused; a refusal is an error, not this. */
+export interface FioTokenState {
+  configured: boolean;
+  verified: boolean;
+}
+
 export interface TournamentFlags {
   /** Disciplines specify where and when they occur. */
   feature_schedule: boolean;
@@ -940,6 +948,17 @@ export const api = {
       method: "PATCH",
       body: JSON.stringify(patch),
     }),
+  /** Its own request, and the only way a token is recorded: the server checks
+   *  it against the bank as it arrives, which the tournament PATCH — a save of
+   *  forty fields — is the wrong place to do. `verified` is false where the
+   *  bank could not be reached; the token is stored either way. */
+  setFioToken: (slug: string, token: string) =>
+    request<FioTokenState>(`/api/tournaments/${slug}/fio-token`, {
+      method: "PUT",
+      body: JSON.stringify({ token }),
+    }),
+  clearFioToken: (slug: string) =>
+    request<FioTokenState>(`/api/tournaments/${slug}/fio-token`, { method: "DELETE" }),
   getTournamentFlags: (slug: string) =>
     request<TournamentFlags>(`/api/tournaments/${slug}/features`),
   // written as a whole, never one flag at a time, so the whole set goes in one

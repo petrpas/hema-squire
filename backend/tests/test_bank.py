@@ -1,15 +1,19 @@
 import datetime
 import io
 
+import httpx
 import pytest
 
 from app.bank import (
+    FioTokenRejected,
+    FioUnreachable,
+    HttpFioClient,
     get_fio_client,
     parse_fio_csv,
     parse_fio_json,
 )
 from app.main import app
-from tests.conftest import enable_payments, publish, settle
+from tests.conftest import AcceptingFio, enable_payments, publish, set_fio_token, settle
 
 FIO_JSON = {
     "accountStatement": {
@@ -79,6 +83,63 @@ def test_parse_fio_csv_rejects_garbage():
         parse_fio_csv(b"some;random;csv\n1;2;3\n")
 
 
+def _verify_response(monkeypatch, *, status=None, raises=None):
+    """Point the real client's one outbound call at a canned answer. Verifying
+    is the only place `HttpFioClient` decides anything, so it is tested against
+    responses rather than through a stub of itself."""
+    def fake_get(url, timeout=None):
+        if raises is not None:
+            raise raises
+        return httpx.Response(status, request=httpx.Request("GET", url))
+
+    monkeypatch.setattr(httpx, "get", fake_get)
+
+
+def test_verify_accepts_a_working_token(monkeypatch):
+    _verify_response(monkeypatch, status=200)
+    HttpFioClient().verify("good-token")  # returns rather than raising
+
+
+def test_verify_rejects_a_token_fio_refuses(monkeypatch):
+    _verify_response(monkeypatch, status=404)
+    with pytest.raises(FioTokenRejected):
+        HttpFioClient().verify("bad-token")
+
+
+def test_verify_treats_an_unreachable_bank_as_no_evidence(monkeypatch):
+    _verify_response(monkeypatch, raises=httpx.ConnectError("refused"))
+    with pytest.raises(FioUnreachable):
+        HttpFioClient().verify("good-token")
+
+
+def test_verify_treats_fios_own_failure_as_no_evidence(monkeypatch):
+    # a 500 is Fio's fault; accusing the organizer's token would be the worse
+    # of the two errors
+    _verify_response(monkeypatch, status=500)
+    with pytest.raises(FioUnreachable):
+        HttpFioClient().verify("good-token")
+
+
+def test_verify_treats_the_rate_limit_as_no_evidence(monkeypatch):
+    # one call per 30s per token: a 409 means Fio recognised the token well
+    # enough to count it
+    _verify_response(monkeypatch, status=409)
+    with pytest.raises(FioUnreachable):
+        HttpFioClient().verify("good-token")
+
+
+def test_verify_ingests_nothing(monkeypatch, client, auth_headers):
+    organizer = auth_headers()
+    setup_tournament(client, organizer)
+    _verify_response(monkeypatch, status=200)
+    HttpFioClient().verify("good-token")
+    outstanding = client.get(
+        "/api/tournaments/cup/payments/transactions", headers=organizer
+    )
+    assert outstanding.status_code == 200
+    assert outstanding.json() == []
+
+
 def setup_tournament(client, organizer, fio_token=None):
     client.post(
         "/api/tournaments",
@@ -96,9 +157,7 @@ def setup_tournament(client, organizer, fio_token=None):
     )
     publish(client, organizer, "cup")
     if fio_token:
-        client.patch(
-            "/api/tournaments/cup", json={"fio_token": fio_token}, headers=organizer
-        )
+        set_fio_token(client, organizer, "cup", fio_token)
 
 
 def import_statement(client, headers, content=FIO_CSV):
@@ -144,14 +203,18 @@ def test_import_requires_organizer(client, auth_headers):
     assert import_statement(client, outsider).status_code == 403
 
 
-class StubFio:
+class StubFio(AcceptingFio):
     def __init__(self, transactions):
         self.transactions = transactions
         self.calls = []
+        self.verified = []
 
     def fetch(self, token, date_from, date_to):
         self.calls.append(token)
         return self.transactions
+
+    def verify(self, token):
+        self.verified.append(token)
 
 
 @pytest.fixture

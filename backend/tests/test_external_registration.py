@@ -13,7 +13,7 @@ from app import setup as app_setup
 from app.db import get_session
 from app.main import app
 from app.models import RegistrationsKeptBy, Tournament
-from tests.conftest import enable_payments, publish
+from tests.conftest import enable_payments, publish, set_fio_token
 
 IBAN = "CZ6508000000192000145399"
 URL = "https://prihlasky.example.org/turnaj-2026"
@@ -201,9 +201,7 @@ def test_configuring_the_feed_clears_it(client, auth_headers):
         json={"payment_mode": "deposit", "deposit_amount": 300},
         headers=organizer,
     )
-    client.patch(
-        "/api/tournaments/cup", json={"fio_token": "feed"}, headers=organizer
-    )
+    set_fio_token(client, organizer, "cup", "feed")
     detail = client.get("/api/tournaments/cup", headers=organizer).json()
     assert app_setup.MISSING_PAYMENT_FEED not in detail["setup_missing"]
     assert detail["fio_token_configured"] is True
@@ -253,8 +251,9 @@ def test_a_published_deposit_tournament_is_not_unpublished(client, auth_headers)
     """Completeness attaching later never un-publishes: the guarantee attached
     at the moment of publication (spec tournament-admin)."""
     organizer = auth_headers()
-    make_tournament(client, organizer, bank_account=IBAN, fio_token="feed")
+    make_tournament(client, organizer, bank_account=IBAN)
     enable_payments(client, organizer, "cup")
+    set_fio_token(client, organizer, "cup", "feed")
     client.patch(
         "/api/tournaments/cup",
         json={"payment_mode": "deposit", "deposit_amount": 300},

@@ -362,10 +362,24 @@ def to_transaction(row: ParsedStatementRow, raw: dict[str, str]) -> IncomingTran
 # --- Fio REST client (swappable for tests via get_fio_client) ---
 
 
+class FioTokenRejected(Exception):
+    """Fio answered, and would not read the account with this token. Evidence
+    about the token itself, so the organizer is asked for another one."""
+
+
+class FioUnreachable(Exception):
+    """Fio did not answer, or answered something that says nothing about the
+    token. No evidence either way, so the token is stored unverified rather
+    than refused — a bank being down must not make a correct token
+    unrecordable (design fio-token-in-setup Decision 3)."""
+
+
 class FioClient(Protocol):
     def fetch(self, token: str, date_from: datetime.date, date_to: datetime.date) -> list[
         IncomingTransaction
     ]: ...
+
+    def verify(self, token: str) -> None: ...
 
 
 class HttpFioClient:
@@ -376,6 +390,36 @@ class HttpFioClient:
         response = httpx.get(url, timeout=30)
         response.raise_for_status()
         return parse_fio_json(response.json())
+
+    def verify(self, token: str) -> None:
+        """Establish that a token reads its account, and nothing else. Returns
+        on success, raises `FioTokenRejected` or `FioUnreachable` otherwise.
+
+        A single day is asked for because the smallest window Fio offers is a
+        window, and the response body is never parsed: what is being
+        established is that the token authorizes the read. Verifying is not an
+        intake, and intake stays the organizer's own action (spec
+        tournament-admin).
+
+        Only a 4xx other than 409 is read as a refusal — a bad token is a 404.
+        A 5xx is Fio's own fault and says nothing about the token, and a 409 is
+        the rate limit (one call per 30 seconds per token), which means Fio
+        recognised the token well enough to count it. Both take the unreachable
+        path: telling an organizer their correct token was refused is the worse
+        of the two errors, and a verify closely followed by a poll records the
+        token rather than losing it."""
+        today = datetime.date.today()
+        url = f"{FIO_API_BASE}/periods/{token}/{today}/{today}/transactions.json"
+        try:
+            response = httpx.get(url, timeout=30)
+        except httpx.HTTPError as error:
+            # transport: connection refused, timeout, DNS. Says nothing about
+            # the token
+            raise FioUnreachable(str(error)) from error
+        if response.status_code == 409 or response.is_server_error:
+            raise FioUnreachable(str(response.status_code))
+        if response.is_error:
+            raise FioTokenRejected(str(response.status_code))
 
 
 _client = HttpFioClient()

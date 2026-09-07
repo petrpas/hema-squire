@@ -28,7 +28,7 @@ from app.models import (
     Registration,
     RegistrationState,
 )
-from tests.conftest import enable_payments, publish, set_features
+from tests.conftest import enable_payments, publish, set_features, set_fio_token
 from tests.test_matching import age_reserved, import_rows
 
 IBAN = "CZ6508000000192000145399"
@@ -69,10 +69,10 @@ def make_tournament(client, organizer, *, payments=True, fee_eur=None, **params)
         "reservation_validity_days": 7,
         "location": "Brno",
         "organizers": [{"name": "Cup Org", "link": None}],
-        "fio_token": "test-feed-token",
     }
     payload.update(params)
     assert client.patch("/api/tournaments/cup", json=payload, headers=organizer).status_code == 200
+    set_fio_token(client, organizer, "cup", "test-feed-token")
     discipline = {"slug": "LS", "weapon": "LS", "capacity": 10, "fee": 1000}
     if fee_eur is not None:
         discipline["fee_eur"] = fee_eur
