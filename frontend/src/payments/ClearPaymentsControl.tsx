@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { api, type ClearablePayments } from "../api";
+import Modal from "../Modal";
 
 /** Undoing an import of money.
  *
@@ -91,8 +92,8 @@ export default function ClearPaymentsControl({
       )}
 
       {confirming && (
-        <div className="modal-backdrop" onClick={() => setConfirming(false)}>
-          <div className="modal" onClick={(event) => event.stopPropagation()}>
+        <Modal onClose={() => setConfirming(false)}>
+          <div className="modal">
             <h2>{t("payments.clear.confirm.title")}</h2>
             <p>{t("payments.clear.confirm.body", { count: payments })}</p>
             {/* the half nothing else would explain: a re-import reads the file
@@ -113,7 +114,7 @@ export default function ClearPaymentsControl({
               </button>
             </div>
           </div>
-        </div>
+        </Modal>
       )}
     </>
   );

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { api, type ManualEntryIn, type TournamentDetail } from "../api";
 import FieldError, { invalidProps } from "../FieldError";
+import Modal from "../Modal";
 import { parseInteger } from "../numeric";
 import { useFieldValidation } from "../useFieldValidation";
 import { apiErrors, checkNumeric, checkString } from "../validation";
@@ -97,8 +98,8 @@ export default function ManualEntryDialog({
   }
 
   return (
-    <div className="modal-backdrop" onClick={onClose}>
-      <div className="modal" onClick={(event) => event.stopPropagation()}>
+    <Modal onClose={onClose}>
+      <div className="modal">
         <h2>{t("manualEntry.title")}</h2>
         <div className="form-fields">
           <label className="form-field">
@@ -248,7 +249,7 @@ export default function ManualEntryDialog({
           </button>
         </div>
       </div>
-    </div>
+    </Modal>
   );
 }
 

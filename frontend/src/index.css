@@ -1875,14 +1875,37 @@ tr.row-deleted td.col-actions {
 
 /* ===== modal ===== */
 
+/* The dialogs are the native element, so this is the `dialog` box itself —
+   the centring frame the old backdrop div was. Everything the user agent
+   gives a dialog (a border, a width, the margin that parks it near the top)
+   is reset, and the dim moves to `::backdrop`, where the top layer draws it
+   above every stacking context on the page rather than beside them. */
 .modal-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(43, 42, 38, 0.35);
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: inherit;
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 10;
+}
+
+/* `display: flex` above overrides the user agent's own rule, so a closed
+   dialog has to be hidden here or it stays on the page. */
+.modal-backdrop:not([open]) {
+  display: none;
+}
+
+.modal-backdrop::backdrop {
+  background: rgba(43, 42, 38, 0.35);
 }
 
 .modal {

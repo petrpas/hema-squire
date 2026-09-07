@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { DisciplineGender, DisciplineKind, DisciplineMaterial } from "./api";
 import HelpHint from "./HelpHint";
+import Modal from "./Modal";
 import { disciplineName, LEGACY_WEAPONS, normalizeSlug, taxonomyCode } from "./TournamentFace";
 
 const TAXONOMY_WEAPON_CODES = Object.keys(LEGACY_WEAPONS);
@@ -157,8 +158,8 @@ export default function DisciplineDialog({
   }
 
   return (
-    <div className="modal-backdrop" onClick={onClose}>
-      <div className="modal" onClick={(event) => event.stopPropagation()}>
+    <Modal onClose={onClose}>
+      <div className="modal">
         <h2>
           {t(initial ? "setup.disciplineDialog.editTitle" : "setup.disciplineDialog.addTitle")}
         </h2>
@@ -267,6 +268,6 @@ export default function DisciplineDialog({
           </button>
         </div>
       </div>
-    </div>
+    </Modal>
   );
 }

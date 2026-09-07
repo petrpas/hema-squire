@@ -2,6 +2,7 @@ import { IconTrash } from "@tabler/icons-react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { api, type ManualPayment } from "../api";
+import Modal from "../Modal";
 import { formatMoney } from "../money";
 import QueueCard from "./QueueCard";
 
@@ -105,8 +106,8 @@ export default function RecordedPaymentsPanel({
         </table>
       </QueueCard>
       {removing && (
-        <div className="modal-backdrop" onClick={() => setRemoving(null)}>
-          <div className="modal" onClick={(event) => event.stopPropagation()}>
+        <Modal onClose={() => setRemoving(null)}>
+          <div className="modal">
             <h2>{t("payments.recorded.removeTitle")}</h2>
             <p>
               {t("payments.recorded.removeBody", {
@@ -133,7 +134,7 @@ export default function RecordedPaymentsPanel({
               </button>
             </div>
           </div>
-        </div>
+        </Modal>
       )}
     </>
   );

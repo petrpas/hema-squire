@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { api, type HRProfile, type SheetRow } from "./api";
+import Modal from "./Modal";
 
 /** Searching the fighters index for a profile the row should be bound to.
  *
@@ -36,8 +37,8 @@ export default function MatchDialog({
   }, [query]);
 
   return (
-    <div className="modal-backdrop" onClick={onClose}>
-      <div className="modal" onClick={(event) => event.stopPropagation()}>
+    <Modal onClose={onClose}>
+      <div className="modal">
         <h2>
           {t("match.title")} — {row.name}
         </h2>
@@ -71,6 +72,6 @@ export default function MatchDialog({
           </button>
         </div>
       </div>
-    </div>
+    </Modal>
   );
 }

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ApiError, api, type Currency, type PaymentMethod, type SheetRow } from "../api";
+import Modal from "../Modal";
 import { formatMoney } from "../money";
 
 const METHODS: PaymentMethod[] = ["cash", "transfer", "card", "other"];
@@ -75,8 +76,8 @@ export default function RecordPaymentDialog({
   }
 
   return (
-    <div className="modal-backdrop" onClick={onClose}>
-      <div className="modal" onClick={(event) => event.stopPropagation()}>
+    <Modal onClose={onClose}>
+      <div className="modal">
         <h2>{t("payments.record.title")}</h2>
         <p className="muted link-context">{row.name}</p>
         <p className="rail-hint">
@@ -162,6 +163,6 @@ export default function RecordPaymentDialog({
           </button>
         </div>
       </div>
-    </div>
+    </Modal>
   );
 }

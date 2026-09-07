@@ -24,6 +24,7 @@ import { IDENTITY_COLUMNS, identityValue, usesHRIdentity } from "./identity";
 import ManualEditsRail from "./ManualEditsRail";
 import MatchDialog from "./MatchDialog";
 import MatchPanel from "./MatchPanel";
+import Modal from "./Modal";
 import ManualEntryPanel from "./manual/ManualEntryPanel";
 import { dayIn, registeredMoment } from "./momentText";
 import { formatMoney, formatMoneyWithEur } from "./money";
@@ -965,8 +966,8 @@ export default function Console({ tournament, phase }: { tournament: Tournament;
       )}
 
       {pendingPhase !== null && (
-        <div className="modal-backdrop" onClick={() => setPendingPhase(null)}>
-          <div className="modal" onClick={(event) => event.stopPropagation()}>
+        <Modal onClose={() => setPendingPhase(null)}>
+          <div className="modal">
             <h2>{t("console.leaveSetup.title")}</h2>
             <p>{t("console.leaveSetup.body")}</p>
             <div className="modal-actions">
@@ -985,7 +986,7 @@ export default function Console({ tournament, phase }: { tournament: Tournament;
               </button>
             </div>
           </div>
-        </div>
+        </Modal>
       )}
     </div>
   );

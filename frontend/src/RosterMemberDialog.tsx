@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { HRProfile, RosterMember } from "./api";
 import HRSearchPicker from "./HRSearch";
+import Modal from "./Modal";
 
 /** Names one roster member, in one place: the name is typed once, the HEMA
  *  Ratings search runs on that same name, and confirming either a result or
@@ -38,8 +39,8 @@ export default function RosterMemberDialog({
   }
 
   return (
-    <div className="modal-backdrop" onClick={onClose}>
-      <div className="modal" onClick={(event) => event.stopPropagation()}>
+    <Modal onClose={onClose}>
+      <div className="modal">
         <h2>{t(initial ? "roster.rebindTitle" : "roster.addTitle")}</h2>
         <div className="form-fields">
           <label className="form-field">
@@ -92,6 +93,6 @@ export default function RosterMemberDialog({
           </button>
         </div>
       </div>
-    </div>
+    </Modal>
   );
 }

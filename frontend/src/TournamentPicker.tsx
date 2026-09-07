@@ -12,6 +12,7 @@ import {
   type TournamentFlags,
 } from "./api";
 import FieldError, { invalidProps } from "./FieldError";
+import Modal from "./Modal";
 import { useAuth } from "./RequireAuth";
 import { consolePath } from "./routes";
 import { TournamentSettingsFields } from "./TournamentSettingsDialog";
@@ -157,9 +158,9 @@ function TournamentCreateDialog({
   }
 
   return (
-    <div className="modal-backdrop" onClick={naming ? () => setNaming(false) : onClose}>
+    <Modal onClose={naming ? () => setNaming(false) : onClose}>
       {naming ? (
-        <div className="modal modal-wide" onClick={(event) => event.stopPropagation()}>
+        <div className="modal modal-wide">
           <h2>{t("setup.settings.title")}</h2>
           <TournamentSettingsFields
             detail={DRAFT_SETTINGS}
@@ -171,7 +172,7 @@ function TournamentCreateDialog({
           />
         </div>
       ) : (
-        <form className="modal" onClick={(event) => event.stopPropagation()} onSubmit={submit}>
+        <form className="modal" onSubmit={submit}>
           <h2>{t("picker.newTournament")}</h2>
           <p className="tiskopis-number">{t("picker.formNumber")}</p>
           <div className="form-fields">
@@ -227,7 +228,7 @@ function TournamentCreateDialog({
           </div>
         </form>
       )}
-    </div>
+    </Modal>
   );
 }
 

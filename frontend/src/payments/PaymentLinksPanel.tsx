@@ -97,7 +97,9 @@ export default function PaymentLinksPanel({
               <tr key={link.rule_id}>
                 <td>{tx === null ? "—" : new Date(tx.date).toLocaleDateString("cs")}</td>
                 <td>{tx?.payer_name ?? "—"}</td>
-                <td>{tx === null ? "—" : formatMoney(tx.amount_cents / 100, tx.currency as Currency)}</td>
+                <td>
+                  {tx === null ? "—" : formatMoney(tx.amount_cents / 100, tx.currency as Currency)}
+                </td>
                 {/* the bank's own words, in full: judging the link is the work */}
                 <td className="muted">{tx?.message ?? "—"}</td>
                 <td>

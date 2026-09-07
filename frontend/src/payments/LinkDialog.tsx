@@ -8,6 +8,7 @@ import {
   type RankedFencer,
   type Transaction,
 } from "../api";
+import Modal from "../Modal";
 import { formatMoney } from "../money";
 import { nameMatches } from "../nameSearch";
 
@@ -164,8 +165,8 @@ export default function LinkDialog({
   const nothingChosen = chosen.length === 0 && typedVs.length === 0;
 
   return (
-    <div className="modal-backdrop" onClick={onClose}>
-      <div className="modal modal-wide" onClick={(event) => event.stopPropagation()}>
+    <Modal onClose={onClose}>
+      <div className="modal modal-wide">
         <h2>{t("payments.link.title")}</h2>
         <p className="muted link-context">
           {new Date(transaction.date).toLocaleDateString("cs")} ·{" "}
@@ -309,6 +310,6 @@ export default function LinkDialog({
           </button>
         </div>
       </div>
-    </div>
+    </Modal>
   );
 }

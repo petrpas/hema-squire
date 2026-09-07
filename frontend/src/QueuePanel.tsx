@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ApiError, api, type Queue } from "./api";
+import Modal from "./Modal";
 import PhaseSummary from "./PhaseSummary";
 import QueueEntryLine from "./QueueEntryLine";
 
@@ -174,8 +175,8 @@ export default function QueuePanel({
       </div>
 
       {confirming && (
-        <div className="modal-backdrop" onClick={() => setConfirming(false)}>
-          <div className="modal" onClick={(event) => event.stopPropagation()}>
+        <Modal onClose={() => setConfirming(false)}>
+          <div className="modal">
             <h2>{t("queue.settleTitle")}</h2>
             <p>{t("queue.settleBody", { count: queue.pending_demotions })}</p>
             <p>{t("queue.settleIrreversible")}</p>
@@ -199,7 +200,7 @@ export default function QueuePanel({
               </button>
             </div>
           </div>
-        </div>
+        </Modal>
       )}
     </main>
   );

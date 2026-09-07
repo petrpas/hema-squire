@@ -8,6 +8,7 @@ import {
   type TournamentFlags,
 } from "./api";
 import HelpHint from "./HelpHint";
+import Modal from "./Modal";
 
 /** What each flag is called in the copy — the short key, so
  *  `setup.settings.feature.<name>` and the rest line up. Payments is here
@@ -311,11 +312,11 @@ export default function TournamentSettingsDialog({
 }) {
   const { t } = useTranslation();
   return (
-    <div className="modal-backdrop" onClick={onClose}>
-      <div className="modal modal-wide" onClick={(event) => event.stopPropagation()}>
+    <Modal onClose={onClose}>
+      <div className="modal modal-wide">
         <h2>{t("setup.settings.title")}</h2>
         <TournamentSettingsFields detail={detail} onApplied={onApplied} onClose={onClose} />
       </div>
-    </div>
+    </Modal>
   );
 }
