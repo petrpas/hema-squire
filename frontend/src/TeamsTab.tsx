@@ -38,7 +38,11 @@ function RosterEditor({
   function moveMemberUp(index: number) {
     if (index <= 0) return;
     const next = [...members];
-    [next[index - 1], next[index]] = [next[index], next[index - 1]];
+    const above = next[index - 1];
+    const member = next[index];
+    if (above === undefined || member === undefined) return;
+    next[index - 1] = member;
+    next[index] = above;
     onChange(next);
   }
 
@@ -110,7 +114,7 @@ function RosterEditor({
 
       {dialog && (
         <RosterMemberDialog
-          initial={dialog.index === null ? null : members[dialog.index]}
+          initial={dialog.index === null ? null : (members[dialog.index] ?? null)}
           onConfirm={confirmDialog}
           onClose={() => setDialog(null)}
         />
@@ -182,7 +186,10 @@ export default function TeamsTab({
       ),
     );
     const { saved, failed } = summarizeSaves(
-      dirtyTeams.map((team, index) => ({ team, result: results[index] })),
+      dirtyTeams.flatMap((team, index) => {
+        const result = results[index];
+        return result === undefined ? [] : [{ team, result }];
+      }),
     );
     for (const team of saved) onTeamUpdated(team);
     setFailedTeams(failed.length > 0 ? failed : null);

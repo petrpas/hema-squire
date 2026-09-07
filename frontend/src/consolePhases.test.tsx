@@ -191,7 +191,7 @@ describe("an absorbed row in the Import view", () => {
       row("imp:d2bb", { _deleted: true, _merged_into: "reg:7" }),
       row("reg:7", { number: 4 }),
     ];
-    expect(absorbedInto(rows[0], rows)).toBe(4);
+    expect(absorbedInto(rows[0]!, rows)).toBe(4);
   });
 
   it("says nothing on a row no merge touched", () => {

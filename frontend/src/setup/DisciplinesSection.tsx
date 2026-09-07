@@ -336,6 +336,7 @@ export function DisciplinesSection({
       const next = [...prev];
       const above = next[index - 1];
       const row = next[index];
+      if (above === undefined || row === undefined) return prev;
       next[index - 1] = { ...row, ordinal: above.ordinal };
       next[index] = { ...above, ordinal: row.ordinal };
       return next;
@@ -491,9 +492,9 @@ export function DisciplinesSection({
                 value: row[key] as string,
                 onChange: (event: ChangeEvent<HTMLInputElement>) => {
                   patchRow(row.rowId, { [key]: event.target.value } as Partial<DisciplineRow>);
-                  validation.clearIfValid(scopedKey, check);
+                  if (check) validation.clearIfValid(scopedKey, check);
                 },
-                onBlur: () => validation.touch(scopedKey, check),
+                onBlur: () => check && validation.touch(scopedKey, check),
                 ...invalidProps(scopedKey, validation.errors[scopedKey]),
               };
             }

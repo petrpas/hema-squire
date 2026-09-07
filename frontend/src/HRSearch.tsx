@@ -39,8 +39,8 @@ export default function HRSearchPicker({
 
   useEffect(() => {
     if (!requireNationality || nationality !== "" || nationalities.length === 0) return;
-    const czech = nationalities.find((n) => /^cz/i.test(n));
-    setNationality(czech ?? nationalities[0]);
+    const czech = nationalities.find((n) => /^cz/i.test(n)) ?? nationalities[0];
+    if (czech) setNationality(czech);
   }, [requireNationality, nationality, nationalities]);
 
   async function search() {

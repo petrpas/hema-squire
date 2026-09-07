@@ -74,7 +74,7 @@ it("reports what was chosen instead of writing it", async () => {
     />,
   );
   const radios = [...document.querySelectorAll<HTMLInputElement>('input[name="tournament-mode"]')];
-  act(() => radios[1].click());
+  act(() => radios[1]!.click());
   act(() => buttonNamed(t("setup.settings.apply"))?.click());
   await settle();
 
@@ -99,7 +99,7 @@ it("asks for no confirmation on a tournament that does not exist yet", async () 
     />,
   );
   const radios = [...document.querySelectorAll<HTMLInputElement>('input[name="tournament-mode"]')];
-  act(() => radios[1].click());
+  act(() => radios[1]!.click());
   act(() => buttonNamed(t("setup.settings.apply"))?.click());
   await settle();
 
@@ -131,7 +131,7 @@ it("asks nothing extra for a mode change on a tournament that exists", () => {
   const detail = { ...draft(), slug: "cup", in_app_registrations: 0 };
   mount(<TournamentSettingsFields detail={detail} onApplied={vi.fn()} onClose={vi.fn()} />);
   const radios = [...document.querySelectorAll<HTMLInputElement>('input[name="tournament-mode"]')];
-  act(() => radios[1].click());
+  act(() => radios[1]!.click());
   act(() => buttonNamed(t("setup.settings.apply"))?.click());
 
   expect(document.body.textContent).not.toContain(t("setup.settings.confirmIntro"));

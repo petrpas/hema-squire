@@ -189,9 +189,9 @@ export function PaymentModeSection({
           onChange={(event) => {
             setValue(event.target.value);
             setDirty(true);
-            validation.clearIfValid(key, check);
+            if (check) validation.clearIfValid(key, check);
           }}
-          onBlur={() => validation.touch(key, check)}
+          onBlur={() => check && validation.touch(key, check)}
           {...invalidProps(key, validation.errors[key])}
         />
         <FieldError field={key} error={validation.errors[key]} />

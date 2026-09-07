@@ -133,7 +133,7 @@ describe("the candidate list", () => {
     // the only tables on the phase belong to candidate groups
     const tables = [...(host?.querySelectorAll("table") ?? [])];
     expect(tables.length).toBe(1);
-    expect(tables[0].className).toContain("dedup-table");
+    expect(tables[0]!.className).toContain("dedup-table");
   });
 
   it("counts the groups awaiting a decision, and not the settled ones", async () => {
@@ -171,7 +171,7 @@ describe("the conclusion", () => {
     await click(button(t("dedup.accept")));
 
     expect(decide).toHaveBeenCalledTimes(1);
-    const [, key, accept, fields] = decide.mock.calls[0];
+    const [, key, accept, fields] = decide.mock.calls[0]!;
     expect(key).toBe("abc123");
     expect(accept).toBe(true);
     expect((fields as Record<string, unknown>).name).toBe("Novák Jan");
@@ -186,7 +186,7 @@ describe("the conclusion", () => {
     await click(button(t("dedup.accept")));
 
     expect(decide).toHaveBeenCalledTimes(1);
-    expect(decide.mock.calls[0][4]).toBe("pozdější záznam doplňuje klub");
+    expect(decide.mock.calls[0]![4]).toBe("pozdější záznam doplňuje klub");
   });
 
   it("does not open the identity of a group a profile stands behind", async () => {
@@ -202,8 +202,8 @@ describe("the conclusion", () => {
     // the identity is the profile's and is rebound on Matching, not here; the
     // cells that do open are the merge's own fields
     const cells = [...(host?.querySelectorAll(".conclusion-row td") ?? [])];
-    expect(cells[0].querySelector(".conclusion-value")).toBeNull();
-    expect(cells[0].textContent).toBe("Jan Novak");
+    expect(cells[0]!.querySelector(".conclusion-value")).toBeNull();
+    expect(cells[0]!.textContent).toBe("Jan Novak");
     expect(host?.querySelector(".conclusion-row .conclusion-list")).not.toBeNull();
   });
 
@@ -214,7 +214,7 @@ describe("the conclusion", () => {
       (th) => th.textContent === t("column.hr_id"),
     );
     const cells = [...(host?.querySelectorAll(".conclusion-row td") ?? [])];
-    expect(cells[header - 1].querySelector(".conclusion-value")).toBeNull();
+    expect(cells[header - 1]!.querySelector(".conclusion-value")).toBeNull();
   });
 });
 

@@ -70,7 +70,7 @@ describe("credential managers can read the auth forms", () => {
     // switch to signup — the create-account control is the last link-button
     // the create-account control is the last link-button on the card
     const links = page.querySelectorAll("button.link-button");
-    const toSignup = links[links.length - 1];
+    const toSignup = links[links.length - 1]!;
     await act(async () => {
       toSignup.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
@@ -96,7 +96,7 @@ describe("credential managers can read the auth forms", () => {
 
     // the create-account control is the last link-button on the card
     const links = page.querySelectorAll("button.link-button");
-    const toSignup = links[links.length - 1];
+    const toSignup = links[links.length - 1]!;
     await act(async () => {
       toSignup.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });

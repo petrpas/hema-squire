@@ -19,12 +19,14 @@ const TAGS: Record<string, string> = {
   proposed: "tag tag-form-yellow",
 };
 
+const UNKNOWN_LABEL = "match.verdict.unknown";
+
 const LABELS: Record<string, string> = {
   confirmed: "match.verdict.confirmed",
   found: "match.verdict.found",
   proposed: "match.verdict.proposed",
   none_found: "match.verdict.noneFound",
-  unknown: "match.verdict.unknown",
+  unknown: UNKNOWN_LABEL,
 };
 
 /** The verdicts a machine reached, which an organizer's confirmation turns
@@ -46,7 +48,7 @@ export default function MatchCell({
   const verdict = row.match_verdict ?? "unknown";
   const ratifiable = isRatifiable(verdict) && row.hr_id !== null;
   const disabled = row._deleted === true;
-  const label = t(LABELS[verdict] ?? LABELS.unknown);
+  const label = t(LABELS[verdict] ?? UNKNOWN_LABEL);
 
   return (
     <span className="match-cell">

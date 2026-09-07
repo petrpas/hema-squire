@@ -74,7 +74,7 @@ describe("the transfer details can be copied", () => {
     Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true });
 
     const page = mount();
-    const copy = page.querySelectorAll(".slip-copy")[0];
+    const copy = page.querySelectorAll(".slip-copy")[0]!;
     await act(async () => {
       copy.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
@@ -94,7 +94,7 @@ describe("the transfer details can be copied", () => {
 
     await act(async () => {
       page
-        .querySelectorAll(".slip-copy")[0]
+        .querySelectorAll(".slip-copy")[0]!
         .dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
 
@@ -126,9 +126,9 @@ describe("the QR image can be taken into a banking app", () => {
     });
 
     expect(share).toHaveBeenCalledTimes(1);
-    const shared = share.mock.calls[0][0] as { files: File[] };
-    expect(shared.files[0].name).toBe("qr-20260042.png");
-    expect(shared.files[0].type).toBe("image/png");
+    const shared = share.mock.calls[0]![0] as { files: File[] };
+    expect(shared.files[0]!.name).toBe("qr-20260042.png");
+    expect(shared.files[0]!.type).toBe("image/png");
   });
 
   it("falls back to a download where it has none", async () => {

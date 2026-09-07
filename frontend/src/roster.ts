@@ -6,6 +6,7 @@ export function rosterChanged(saved: RosterMember[], draft: RosterMember[]): boo
   if (saved.length !== draft.length) return true;
   return saved.some((member, index) => {
     const next = draft[index];
+    if (!next) return true;
     return (
       member.name !== next.name ||
       member.hr_id !== next.hr_id ||

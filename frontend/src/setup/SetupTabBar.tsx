@@ -23,13 +23,11 @@ export function SetupTabBar({
   const { t } = useTranslation();
 
   function onKeyDown(event: KeyboardEvent<HTMLButtonElement>, index: number) {
-    if (event.key === "ArrowRight") {
-      event.preventDefault();
-      onSelect(tabs[(index + 1) % tabs.length]);
-    } else if (event.key === "ArrowLeft") {
-      event.preventDefault();
-      onSelect(tabs[(index - 1 + tabs.length) % tabs.length]);
-    }
+    const step = event.key === "ArrowRight" ? 1 : event.key === "ArrowLeft" ? -1 : 0;
+    if (step === 0) return;
+    event.preventDefault();
+    const next = tabs[(index + step + tabs.length) % tabs.length];
+    if (next) onSelect(next);
   }
 
   return (

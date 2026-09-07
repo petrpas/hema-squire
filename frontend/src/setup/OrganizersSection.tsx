@@ -43,8 +43,10 @@ export function OrganizersSection({
   }, [detail]);
 
   function patch(index: number, fields: Partial<Organizer>) {
+    const current = organizers[index];
+    if (current === undefined) return;
     const next = [...organizers];
-    next[index] = { ...next[index], ...fields };
+    next[index] = { ...current, ...fields };
     setOrganizers(next);
     setDirty(true);
   }
@@ -70,12 +72,12 @@ export function OrganizersSection({
     touchesPrice: false,
     validate: () => validation.validateAll(everyCheck()),
     focusFirstInvalid: () => {
-      for (let index = 0; index < organizers.length; index++) {
-        if (nameCheck(index, organizers[index].name)) {
+      for (const [index, organizer] of organizers.entries()) {
+        if (nameCheck(index, organizer.name)) {
           fieldRefs.current[`name-${index}`]?.focus();
           return;
         }
-        if (linkCheck(index, organizers[index].link ?? "")) {
+        if (linkCheck(index, organizer.link ?? "")) {
           fieldRefs.current[`link-${index}`]?.focus();
           return;
         }

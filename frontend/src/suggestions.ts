@@ -43,5 +43,5 @@ export function filterSuggestions(entries: SuggestionEntry[], query: string): Su
  *  a list whose single entry restates the current value is noise. */
 export function worthOffering(entries: SuggestionEntry[], query: string): boolean {
   if (entries.length === 0) return false;
-  return !(entries.length === 1 && entries[0].value === query.trim());
+  return !(entries.length === 1 && entries[0]?.value === query.trim());
 }

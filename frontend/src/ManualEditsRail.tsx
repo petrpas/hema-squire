@@ -39,8 +39,10 @@ export function valueText(
   t: Translate,
 ): string {
   if (value === null || value === undefined || value === "") return t("rail.edit.empty");
-  if (field === "match_verdict" && typeof value === "string" && value in VERDICT_KEYS)
-    return t(VERDICT_KEYS[value]);
+  if (field === "match_verdict" && typeof value === "string") {
+    const verdictKey = VERDICT_KEYS[value];
+    if (verdictKey) return t(verdictKey);
+  }
   if (field === "registered_at") return registeredMoment(value as string, timezone);
   // read where the tournament is, exactly as the table's own cells read them:
   // an entry that spelled a day differently from the cell it is reporting on

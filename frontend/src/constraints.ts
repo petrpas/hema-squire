@@ -105,7 +105,7 @@ export const FIELD_CONSTRAINTS: Record<string, FieldConstraint> = {
 // a tier): a team discipline's capacity counts teams, an individual's counts
 // fencers. Resolved per row, never a static FIELD_CONSTRAINTS entry, the
 // same way MONEY_MAX is resolved per currency.
-export const DISCIPLINE_CAPACITY_MAX: Record<string, number> = {
+export const DISCIPLINE_CAPACITY_MAX: Record<"individual" | "team", number> = {
   individual: 200,
   team: 64,
 };
@@ -124,7 +124,7 @@ export const EXTRA_ITEM_MAX_QTY_CEILING: Record<string, number> = {
 // currency the field actually carries — never a static bound in
 // FIELD_CONSTRAINTS above, since a local-currency field's ceiling depends on
 // the tournament it belongs to.
-export const MONEY_MAX: Record<string, number> = {
+export const MONEY_MAX: Record<"CZK" | "EUR", number> = {
   CZK: 10000,
   EUR: 1000,
 };

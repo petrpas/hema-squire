@@ -99,7 +99,7 @@ export function IdentitySection({
     (entry) => {
       setValues((current) => ({ ...current, location: entry.value }));
       setDirty(true);
-      validation.clearIfValid("location", () => IDENTITY_TEXT_CHECKS.location(entry.value));
+      validation.clearIfValid("location", () => IDENTITY_TEXT_CHECKS.location?.(entry.value) ?? null);
     },
   );
 

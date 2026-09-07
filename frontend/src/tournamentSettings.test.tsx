@@ -135,7 +135,7 @@ it("asks no confirmation for a mode change, and writes it", async () => {
   mount(<TournamentSettingsDialog detail={detail()} onApplied={vi.fn()} onClose={vi.fn()} />);
 
   act(() => {
-    modeRadios()[1].click();
+    modeRadios()[1]!.click();
   });
   act(() => buttonNamed(t("setup.settings.apply"))?.click());
   await settle();
@@ -183,7 +183,7 @@ it("writes the mode before the flags, so a later failure keeps the bigger choice
 
   mount(<TournamentSettingsDialog detail={detail()} onApplied={vi.fn()} onClose={vi.fn()} />);
   act(() => {
-    modeRadios()[1].click();
+    modeRadios()[1]!.click();
   });
   act(() => buttonNamed(t("setup.settings.apply"))?.click());
   act(() => buttonNamed(t("setup.settings.confirm"))?.click());
@@ -201,7 +201,7 @@ it("says the mode was applied when only the flag write failed", async () => {
 
   mount(<TournamentSettingsDialog detail={detail()} onApplied={applied} onClose={vi.fn()} />);
   act(() => {
-    modeRadios()[1].click();
+    modeRadios()[1]!.click();
   });
   act(() => buttonNamed(t("setup.settings.apply"))?.click());
   act(() => buttonNamed(t("setup.settings.confirm"))?.click());
@@ -228,7 +228,7 @@ it("declining the confirmation writes nothing", () => {
   );
 
   const boxes = checkboxes();
-  act(() => boxes[boxes.length - 1].click());
+  act(() => boxes[boxes.length - 1]!.click());
   act(() => buttonNamed(t("setup.settings.apply"))?.click());
   act(() => buttonNamed(t("common.back"))?.click());
 
@@ -251,7 +251,7 @@ it("warns before hiding a feature the tournament uses", () => {
     />,
   );
   const boxes = checkboxes();
-  const extras = boxes[boxes.length - 1];
+  const extras = boxes[boxes.length - 1]!;
   act(() => extras.click());
   act(() => buttonNamed(t("setup.settings.apply"))?.click());
 
@@ -263,7 +263,7 @@ it("turning a feature on is never warned", async () => {
   const flags = vi.spyOn(api, "setTournamentFlags").mockResolvedValue(detail());
   mount(<TournamentSettingsDialog detail={detail()} onApplied={vi.fn()} onClose={vi.fn()} />);
   const boxes = checkboxes();
-  const extras = boxes[boxes.length - 1];
+  const extras = boxes[boxes.length - 1]!;
   act(() => extras.click());
   act(() => buttonNamed(t("setup.settings.apply"))?.click());
   await settle();
@@ -292,7 +292,7 @@ it("says what payments do in the mode actually selected", () => {
   );
 
   act(() => {
-    modeRadios()[1].click();
+    modeRadios()[1]!.click();
   });
 
   const text = document.body.textContent ?? "";
@@ -312,7 +312,7 @@ it("choosing to handle payments yourself is written like any other flag", async 
     />,
   );
   act(() => {
-    paymentRadios()[1].click();
+    paymentRadios()[1]!.click();
   });
   act(() => buttonNamed(t("setup.settings.apply"))?.click());
   await settle();

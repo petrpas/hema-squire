@@ -47,7 +47,7 @@ function headings(extraItems: ExtraItem[], language: string): string[] {
   const html = renderToStaticMarkup(
     <RegistrationForm detail={detail} availability={[]} mode={{ kind: "preview" }} />,
   );
-  return [...html.matchAll(/class="register-section">([^<]*)</g)].map((match) => match[1]);
+  return [...html.matchAll(/class="register-section">([^<]*)</g)].map((match) => match[1]!);
 }
 
 describe("register form sections", () => {

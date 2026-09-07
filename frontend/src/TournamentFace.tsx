@@ -642,7 +642,7 @@ export function RegistrationForm({
   }
 
   function toggleItem(item: ExtraItem) {
-    setExtraQty((prev) => ({ ...prev, [item.id]: prev[item.id] > 0 ? 0 : 1 }));
+    setExtraQty((prev) => ({ ...prev, [item.id]: (prev[item.id] ?? 0) > 0 ? 0 : 1 }));
   }
 
   // sections follow the item categories, so membership is data: the actions

@@ -74,8 +74,9 @@ export default function QueueTabs({ primary, children }: { primary: string; chil
   const register = useCallback((title: string, count: number | null, failed: boolean) => {
     setTabs((current) => {
       const at = current.findIndex((tab) => tab.title === title);
-      if (at === -1) return [...current, { title, count, failed }];
-      if (current[at].count === count && current[at].failed === failed) return current;
+      const registered = current[at];
+      if (registered === undefined) return [...current, { title, count, failed }];
+      if (registered.count === count && registered.failed === failed) return current;
       const next = [...current];
       next[at] = { title, count, failed };
       return next;
@@ -119,13 +120,11 @@ export function QueueTabStrip() {
   const choose = strip.choose;
 
   function onKeyDown(event: KeyboardEvent<HTMLButtonElement>, index: number) {
-    if (event.key === "ArrowRight") {
-      event.preventDefault();
-      choose(all[(index + 1) % all.length].title);
-    } else if (event.key === "ArrowLeft") {
-      event.preventDefault();
-      choose(all[(index - 1 + all.length) % all.length].title);
-    }
+    const step = event.key === "ArrowRight" ? 1 : event.key === "ArrowLeft" ? -1 : 0;
+    if (step === 0) return;
+    event.preventDefault();
+    const next = all[(index + step + all.length) % all.length];
+    if (next) choose(next.title);
   }
 
   // two boxes, not one box with a gap in it: `stage-control` draws its rule
@@ -138,7 +137,7 @@ export function QueueTabStrip() {
   return (
     <nav className="queue-tabs" role="tablist" aria-label={t("payments.queue.tabs")}>
       {groups.map((group) => (
-        <div className="stage-control" role="presentation" key={group[0].title}>
+        <div className="stage-control" role="presentation" key={group[0]?.title}>
           {group.map((tab) => {
             const index = all.indexOf(tab);
             return (

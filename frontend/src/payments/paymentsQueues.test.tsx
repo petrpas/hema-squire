@@ -136,8 +136,8 @@ it("marks an auto-created link apart from one made by hand", async () => {
   await settle();
 
   const rows = [...(host?.querySelectorAll("tbody tr") ?? [])];
-  expect(rows[0].textContent).toContain(t("payments.links.auto"));
-  expect(rows[1].textContent).toContain(t("payments.links.manual"));
+  expect(rows[0]!.textContent).toContain(t("payments.links.auto"));
+  expect(rows[1]!.textContent).toContain(t("payments.links.manual"));
 });
 
 it("states the payment as the bank wrote it, beside the fencer it credits", async () => {

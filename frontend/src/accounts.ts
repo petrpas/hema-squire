@@ -26,7 +26,7 @@ const DOMESTIC = /^(?:[0-9]{1,6}-)?[0-9]{2,10}\/([0-9]{4})$/;
 export function bankCode(raw: string): string | null {
   const value = raw.trim().replace(/\s+/g, "").toUpperCase();
   const domestic = DOMESTIC.exec(value);
-  if (domestic) return domestic[1];
+  if (domestic) return domestic[1] ?? null;
   // in an IBAN the bank code is the first four characters of the BBAN, in both
   // countries Fio operates in
   if (IBAN.test(value)) return value.slice(4, 8);

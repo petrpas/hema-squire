@@ -92,18 +92,24 @@ export function DiscountsSection({
   }, [detail]);
 
   function update(index: number, patch: Partial<Discount>) {
+    const current = drafts[index];
+    if (current === undefined) return;
     const next = [...drafts];
-    next[index] = { ...next[index], ...patch };
+    next[index] = { ...current, ...patch };
     setDrafts(next);
     setDirty(true);
   }
 
   function updateCondition(index: number, patch: Partial<DiscountCondition>) {
-    update(index, { condition: { ...drafts[index].condition, ...patch } });
+    const current = drafts[index];
+    if (current === undefined) return;
+    update(index, { condition: { ...current.condition, ...patch } });
   }
 
   function updateEffect(index: number, patch: Partial<DiscountEffect>) {
-    update(index, { effect: { ...drafts[index].effect, ...patch } });
+    const current = drafts[index];
+    if (current === undefined) return;
+    update(index, { effect: { ...current.effect, ...patch } });
   }
 
   function recalculateAll() {
