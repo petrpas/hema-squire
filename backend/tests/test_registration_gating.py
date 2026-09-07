@@ -10,7 +10,7 @@ substitutes.
 
 from datetime import date, timedelta
 
-from tests.conftest import publish
+from tests.conftest import publish, today_local
 
 TODAY = date.today()
 
@@ -91,7 +91,7 @@ def test_before_opening_date_rejects_registration(client, auth_headers):
         organizer,
         location="Brno",
         organizers=[{"name": "Cup Org", "link": None}],
-        registration_opens=str(TODAY + timedelta(days=1)),
+        registration_opens=str(today_local() + timedelta(days=1)),
     )
     add_priced_discipline(client, organizer, slug)
     publish(client, organizer, slug)
@@ -131,7 +131,7 @@ def test_within_window_and_complete_setup_accepts_registration(client, auth_head
         organizer,
         location="Brno",
         organizers=[{"name": "Cup Org", "link": None}],
-        registration_opens=str(TODAY - timedelta(days=1)),
+        registration_opens=str(today_local() - timedelta(days=1)),
         registration_closes=str(TODAY + timedelta(days=1)),
     )
     add_priced_discipline(client, organizer, slug)

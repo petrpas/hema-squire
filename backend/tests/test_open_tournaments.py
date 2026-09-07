@@ -6,7 +6,7 @@ from zoneinfo import ZoneInfo
 
 import pytest
 
-from tests.conftest import publish
+from tests.conftest import publish, today_local
 
 TODAY = date.today()
 
@@ -124,11 +124,13 @@ def test_open_reports_substitute_paid_and_cancelled_states(client, auth_headers)
 
 
 def test_open_registration_status_opens_on_and_closed(client, auth_headers):
+    # the opening gate is read where the tournament is, not where the test runs
+    OPENS_TOMORROW = today_local() + timedelta(days=1)
     organizer = auth_headers()
     fencer = auth_headers(email="f1@example.com", name="F1")
 
     make_open_tournament(
-        client, organizer, "future-open", registration_opens=str(TODAY + timedelta(days=1))
+        client, organizer, "future-open", registration_opens=str(OPENS_TOMORROW)
     )
     make_open_tournament(
         client, organizer, "past-close", registration_closes=str(TODAY - timedelta(days=1))
@@ -137,7 +139,7 @@ def test_open_registration_status_opens_on_and_closed(client, auth_headers):
     listed = client.get("/api/tournaments/open", headers=fencer).json()
     future_open = next(t for t in listed if t["slug"] == "future-open")
     assert future_open["registration_status"] == "opens_on"
-    assert future_open["registration_opens_on"] == str(TODAY + timedelta(days=1))
+    assert future_open["registration_opens_on"] == str(OPENS_TOMORROW)
 
     past_close = next(t for t in listed if t["slug"] == "past-close")
     assert past_close["registration_status"] == "closed"
@@ -190,7 +192,7 @@ def test_open_entry_without_an_opening_time_has_no_moment_but_a_day(client, auth
     organizer = auth_headers()
     fencer = auth_headers(email="f1@example.com", name="F1")
     make_open_tournament(
-        client, organizer, "day-open", registration_opens=str(TODAY + timedelta(days=10))
+        client, organizer, "day-open", registration_opens=str(today_local() + timedelta(days=10))
     )
 
     entry = next(
