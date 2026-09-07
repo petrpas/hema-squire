@@ -12,7 +12,9 @@ os.environ["HEMA_SQUIRE_DEBUG"] = "true"
 # all from one address; test_auth_throttle enables the limiter deliberately
 os.environ["HEMA_SQUIRE_RATE_LIMIT_ENABLED"] = "false"
 
+import datetime
 import shutil
+import zoneinfo
 from pathlib import Path
 
 import pytest
@@ -23,10 +25,29 @@ from sqlalchemy.pool import StaticPool
 
 from app import operations
 from app.bank import get_fio_client
+from app.constraints import DEFAULT_TIMEZONE
 from app.db import Base, apply_sqlite_pragmas, get_session
 from app.hr_index import get_hr_index, stub_index
 from app.main import app
 from app.models import Fencer, Role
+
+
+def today_local() -> datetime.date:
+    """Today where the tournament is, for the dates that are read there.
+
+    The opening gate is resolved in the tournament's own timezone
+    (`setup.start_of_local_day`), while `date.today()` answers in whatever
+    timezone the process happens to run in. Those disagree for the last two
+    hours of every UTC day, and CI runs in UTC: a test that sets "opens
+    tomorrow" from the runner's clock is naming a Europe/Prague day that began
+    an hour ago, and the tournament is open when it meant to be shut.
+
+    Only for dates handed to that gate. Most deadlines in the app — seating,
+    dormancy, the scheduler sweep — are still read from the server's own
+    `date.today()`, and tests for those must keep using it or they will be
+    a day out. See the note in the commit that added this.
+    """
+    return datetime.datetime.now(zoneinfo.ZoneInfo(DEFAULT_TIMEZONE)).date()
 
 
 @pytest.fixture
