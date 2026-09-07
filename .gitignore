@@ -221,6 +221,9 @@ __marimo__/
 
 # Node
 node_modules/
+# `tsc -b` writes this incremental-build cache beside tsconfig.json; it churns
+# on every build and says nothing about the source
+*.tsbuildinfo
 
 # IDE
 .idea/
