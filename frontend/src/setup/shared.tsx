@@ -202,7 +202,12 @@ export class SaverRegistry {
 /** Registers (and, on unmount, unregisters) a section's saver. Sections stay
  * mounted for the life of the Setup phase (D2), so unregistration in
  * practice only happens when SetupPanel itself unmounts. */
-export function useSectionSaver(registry: SaverRegistry, tab: SetupTab, id: string, saver: SectionSaver) {
+export function useSectionSaver(
+  registry: SaverRegistry,
+  tab: SetupTab,
+  id: string,
+  saver: SectionSaver,
+) {
   useEffect(() => {
     registry.set(id, tab, saver);
   });
@@ -284,7 +289,10 @@ export function PriceChangeWarning({
 /** Option choices are typed as one comma-separated line; the backend trims and
  *  deduplicates, so this only has to split. */
 export function splitChoices(value: string): string[] {
-  return value.split(",").map((choice) => choice.trim()).filter(Boolean);
+  return value
+    .split(",")
+    .map((choice) => choice.trim())
+    .filter(Boolean);
 }
 
 export const EXTRA_CATEGORIES: ExtraCategory[] = [
@@ -298,7 +306,11 @@ export const EXTRA_CATEGORIES: ExtraCategory[] = [
 
 // action categories happen at a time and place (when/where, no quantity
 // limit); item categories are goods (quantity limit, no when/where) — D4
-export const ACTION_EXTRA_CATEGORIES = new Set<ExtraCategory>(["seminar", "afterparty", "other_action"]);
+export const ACTION_EXTRA_CATEGORIES = new Set<ExtraCategory>([
+  "seminar",
+  "afterparty",
+  "other_action",
+]);
 export function isActionCategory(category: ExtraCategory): boolean {
   return ACTION_EXTRA_CATEGORIES.has(category);
 }

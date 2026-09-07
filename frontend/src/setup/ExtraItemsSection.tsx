@@ -1,29 +1,35 @@
 import { IconX } from "@tabler/icons-react";
-import { Fragment, type ChangeEvent, useEffect, useRef, useState } from "react";
+import { type ChangeEvent, Fragment, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import {
   ApiError,
+  api,
   type Currency,
   type ExtraCategory,
   type ExtraItem,
   type ExtraItemInput,
   type TournamentDetail,
-  api,
 } from "../api";
 import { EXTRA_ITEM_MAX_QTY_CEILING } from "../constraints";
 import FieldError, { invalidProps } from "../FieldError";
 import HelpHint from "../HelpHint";
 import { showsEur } from "../money";
 import { useFieldValidation } from "../useFieldValidation";
-import { apiErrors, checkMoney, checkNumeric, checkString, type FieldError as FieldErrorValue } from "../validation";
+import {
+  apiErrors,
+  checkMoney,
+  checkNumeric,
+  checkString,
+  type FieldError as FieldErrorValue,
+} from "../validation";
 import {
   _int,
   EXTRA_CATEGORIES,
   isActionCategory,
   recalculateMissing,
-  type SaverRegistry,
   type SaveOutcome,
+  type SaverRegistry,
   splitChoices,
   useSectionSaver,
 } from "./shared";
@@ -95,16 +101,22 @@ function extraRowTouchesPrice(row: ExtraRow, detail: TournamentDetail): boolean 
 
 /** Per-field checks for one extra-item row, scoped by row id the same way
  * `disciplineRowChecks` is (design D3, task 6.1/6.4). */
-function extraRowChecks(row: ExtraRow, currency: Currency): Record<string, () => FieldErrorValue | null> {
+function extraRowChecks(
+  row: ExtraRow,
+  currency: Currency,
+): Record<string, () => FieldErrorValue | null> {
   const scoped = (field: string) => `${field}-${row.rowId}`;
   return {
     name: () => checkString(scoped("name"), "ExtraItemIn.name", row.name, { required: true }),
     price: () => checkMoney(scoped("price"), String(row.price), currency),
-    price_eur: () => checkMoney(scoped("price_eur"), row.price_eur === null ? "" : String(row.price_eur), "EUR"),
+    price_eur: () =>
+      checkMoney(scoped("price_eur"), row.price_eur === null ? "" : String(row.price_eur), "EUR"),
     max_qty: () => {
       if (isActionCategory(row.category)) return null;
       const key = scoped("max_qty");
-      const basic = checkNumeric(key, "ExtraItemIn.max_qty", String(row.max_qty), { required: true });
+      const basic = checkNumeric(key, "ExtraItemIn.max_qty", String(row.max_qty), {
+        required: true,
+      });
       if (basic) return basic;
       const ceiling = EXTRA_ITEM_MAX_QTY_CEILING[row.category];
       if (ceiling !== undefined && row.max_qty > ceiling) {
@@ -118,9 +130,14 @@ function extraRowChecks(row: ExtraRow, currency: Currency): Record<string, () =>
         : null,
     schedule_where: () =>
       isActionCategory(row.category)
-        ? checkString(scoped("schedule_where"), "ExtraItemIn.schedule_where", row.schedule_where ?? "")
+        ? checkString(
+            scoped("schedule_where"),
+            "ExtraItemIn.schedule_where",
+            row.schedule_where ?? "",
+          )
         : null,
-    remark: () => checkString(scoped("remark"), "ExtraItemIn.remark", row.remark ?? "", { multiline: true }),
+    remark: () =>
+      checkString(scoped("remark"), "ExtraItemIn.remark", row.remark ?? "", { multiline: true }),
     option_label: () =>
       checkString(scoped("option_label"), "ExtraItemIn.option_label", row.option_label ?? ""),
   };
@@ -200,7 +217,11 @@ export function ExtraItemsSection({
           row.price_eur === null ? "" : String(row.price_eur),
           rate,
         );
-        return { ...row, price: Number(price), price_eur: price_eur === "" ? null : Number(price_eur) };
+        return {
+          ...row,
+          price: Number(price),
+          price_eur: price_eur === "" ? null : Number(price_eur),
+        };
       }),
     );
   }
@@ -249,12 +270,17 @@ export function ExtraItemsSection({
           results.set(row.rowId, null);
           outcomes.push({ change: row.name, section: "extra", error: null });
         } catch (err) {
-          const fieldErrors = apiErrors(err).map((e) => ({ ...e, field: `${e.field}-${row.rowId}` }));
+          const fieldErrors = apiErrors(err).map((e) => ({
+            ...e,
+            field: `${e.field}-${row.rowId}`,
+          }));
           validation.applyApiErrors(fieldErrors);
           const message =
             fieldErrors.length > 0
               ? fieldErrors.map((e) => t(`validation.${e.code}`, e.params)).join(" ")
-              : t("setup.saveBar.genericError", { status: err instanceof ApiError ? err.status : "?" });
+              : t("setup.saveBar.genericError", {
+                  status: err instanceof ApiError ? err.status : "?",
+                });
           results.set(row.rowId, message);
           outcomes.push({ change: row.name, section: "extra", error: message });
         }
@@ -265,12 +291,17 @@ export function ExtraItemsSection({
           results.set(row.rowId, null);
           outcomes.push({ change: row.name, section: "extra", error: null });
         } catch (err) {
-          const fieldErrors = apiErrors(err).map((e) => ({ ...e, field: `${e.field}-${row.rowId}` }));
+          const fieldErrors = apiErrors(err).map((e) => ({
+            ...e,
+            field: `${e.field}-${row.rowId}`,
+          }));
           validation.applyApiErrors(fieldErrors);
           const message =
             fieldErrors.length > 0
               ? fieldErrors.map((e) => t(`validation.${e.code}`, e.params)).join(" ")
-              : t("setup.saveBar.genericError", { status: err instanceof ApiError ? err.status : "?" });
+              : t("setup.saveBar.genericError", {
+                  status: err instanceof ApiError ? err.status : "?",
+                });
           results.set(row.rowId, message);
           outcomes.push({ change: row.name, section: "extra", error: message });
         }
@@ -281,7 +312,9 @@ export function ExtraItemsSection({
         prev.map((row) => {
           const result = results.get(row.rowId);
           if (result === undefined) return row;
-          return result === null ? { ...row, isNew: false, error: null } : { ...row, error: result };
+          return result === null
+            ? { ...row, isNew: false, error: null }
+            : { ...row, error: result };
         }),
       );
       return outcomes;
@@ -308,7 +341,11 @@ export function ExtraItemsSection({
         <tbody>
           {rows.map((row) => {
             const checks = extraRowChecks(row, detail.local_currency);
-            function fieldProps(field: string, value: string, onValue: (value: string) => Partial<ExtraRow>) {
+            function fieldProps(
+              field: string,
+              value: string,
+              onValue: (value: string) => Partial<ExtraRow>,
+            ) {
               const check = checks[field];
               const scopedKey = `${field}-${row.rowId}`;
               return {
@@ -327,137 +364,183 @@ export function ExtraItemsSection({
               };
             }
             return (
-            <Fragment key={row.rowId}>
-              <tr>
-                <td>
-                  <input
-                    className="cell-input"
-                    {...fieldProps("name", row.name, (value) => ({ name: value }))}
-                  />
-                  <FieldError field={`name-${row.rowId}`} error={validation.errors[`name-${row.rowId}`]} />
-                </td>
-                <td>
-                  <select
-                    value={row.category}
-                    onChange={(event) => {
-                      const category = event.target.value as ExtraCategory;
-                      const action = isActionCategory(category);
-                      patchRow(row.rowId, {
-                        category,
-                        max_qty: action ? 1 : row.max_qty,
-                        schedule_when: action ? row.schedule_when : null,
-                        schedule_where: action ? row.schedule_where : null,
-                      });
-                    }}
-                  >
-                    {EXTRA_CATEGORIES.map((category) => (
-                      <option key={category} value={category}>
-                        {t(`setup.extras.categories.${category}`)}
-                      </option>
-                    ))}
-                  </select>
-                </td>
-                <td className="col-num">
-                  <input
-                    className="cell-input"
-                    type="text"
-                    inputMode="numeric"
-                    {...fieldProps("price", String(row.price), (value) => ({
-                      price: _int(value) ?? 0,
-                    }))}
-                  />
-                  <FieldError field={`price-${row.rowId}`} error={validation.errors[`price-${row.rowId}`]} />
-                </td>
-                {eur && (
+              <Fragment key={row.rowId}>
+                <tr>
+                  <td>
+                    <input
+                      className="cell-input"
+                      {...fieldProps("name", row.name, (value) => ({ name: value }))}
+                    />
+                    <FieldError
+                      field={`name-${row.rowId}`}
+                      error={validation.errors[`name-${row.rowId}`]}
+                    />
+                  </td>
+                  <td>
+                    <select
+                      value={row.category}
+                      onChange={(event) => {
+                        const category = event.target.value as ExtraCategory;
+                        const action = isActionCategory(category);
+                        patchRow(row.rowId, {
+                          category,
+                          max_qty: action ? 1 : row.max_qty,
+                          schedule_when: action ? row.schedule_when : null,
+                          schedule_where: action ? row.schedule_where : null,
+                        });
+                      }}
+                    >
+                      {EXTRA_CATEGORIES.map((category) => (
+                        <option key={category} value={category}>
+                          {t(`setup.extras.categories.${category}`)}
+                        </option>
+                      ))}
+                    </select>
+                  </td>
                   <td className="col-num">
                     <input
                       className="cell-input"
                       type="text"
                       inputMode="numeric"
-                      {...fieldProps("price_eur", row.price_eur === null ? "" : String(row.price_eur), (value) => ({
-                        price_eur: value === "" ? null : _int(value),
+                      {...fieldProps("price", String(row.price), (value) => ({
+                        price: _int(value) ?? 0,
                       }))}
                     />
-                    <FieldError field={`price_eur-${row.rowId}`} error={validation.errors[`price_eur-${row.rowId}`]} />
+                    <FieldError
+                      field={`price-${row.rowId}`}
+                      error={validation.errors[`price-${row.rowId}`]}
+                    />
                   </td>
-                )}
-                <td className="col-num">
-                  {!isActionCategory(row.category) && (
-                    <>
+                  {eur && (
+                    <td className="col-num">
                       <input
                         className="cell-input"
                         type="text"
                         inputMode="numeric"
-                        {...fieldProps("max_qty", String(row.max_qty), (value) => ({
-                          max_qty: _int(value) ?? 1,
-                        }))}
+                        {...fieldProps(
+                          "price_eur",
+                          row.price_eur === null ? "" : String(row.price_eur),
+                          (value) => ({
+                            price_eur: value === "" ? null : _int(value),
+                          }),
+                        )}
                       />
-                      <FieldError field={`max_qty-${row.rowId}`} error={validation.errors[`max_qty-${row.rowId}`]} />
-                    </>
+                      <FieldError
+                        field={`price_eur-${row.rowId}`}
+                        error={validation.errors[`price_eur-${row.rowId}`]}
+                      />
+                    </td>
                   )}
-                </td>
-                <td className="col-actions">
-                  <button
-                    className="row-action"
-                    title={t("actions.delete")}
-                    onClick={() => removeRow(row)}
-                  >
-                    <IconX size={16} stroke={1.5} />
-                  </button>
-                </td>
-              </tr>
-              <tr className="detail-subrow">
-                <td colSpan={eur ? 6 : 5}>
-                  <div className="param-fields">
-                    {isActionCategory(row.category) && (
+                  <td className="col-num">
+                    {!isActionCategory(row.category) && (
                       <>
-                        <label className="param-field">
-                          <span>{t("setup.extras.when")}</span>
-                          <input {...fieldProps("schedule_when", row.schedule_when ?? "", (value) => ({ schedule_when: value }))} />
-                          <FieldError field={`schedule_when-${row.rowId}`} error={validation.errors[`schedule_when-${row.rowId}`]} />
-                        </label>
-                        <label className="param-field">
-                          <span>{t("setup.extras.where")}</span>
-                          <input {...fieldProps("schedule_where", row.schedule_where ?? "", (value) => ({ schedule_where: value }))} />
-                          <FieldError field={`schedule_where-${row.rowId}`} error={validation.errors[`schedule_where-${row.rowId}`]} />
-                        </label>
+                        <input
+                          className="cell-input"
+                          type="text"
+                          inputMode="numeric"
+                          {...fieldProps("max_qty", String(row.max_qty), (value) => ({
+                            max_qty: _int(value) ?? 1,
+                          }))}
+                        />
+                        <FieldError
+                          field={`max_qty-${row.rowId}`}
+                          error={validation.errors[`max_qty-${row.rowId}`]}
+                        />
                       </>
                     )}
-                    <label className="param-field">
-                      <span>{t("setup.extras.remark")}</span>
-                      <input {...fieldProps("remark", row.remark ?? "", (value) => ({ remark: value }))} />
-                      <FieldError field={`remark-${row.rowId}`} error={validation.errors[`remark-${row.rowId}`]} />
-                    </label>
-                    <label className="param-field">
-                      <span>
-                        {t("setup.extras.optionLabel")}
-                        <HelpHint text={t("setup.extras.optionLabelHint")} />
-                      </span>
-                      <input {...fieldProps("option_label", row.option_label ?? "", (value) => ({ option_label: value }))} />
-                      <FieldError field={`option_label-${row.rowId}`} error={validation.errors[`option_label-${row.rowId}`]} />
-                    </label>
-                    {row.option_label && (
+                  </td>
+                  <td className="col-actions">
+                    <button
+                      className="row-action"
+                      title={t("actions.delete")}
+                      onClick={() => removeRow(row)}
+                    >
+                      <IconX size={16} stroke={1.5} />
+                    </button>
+                  </td>
+                </tr>
+                <tr className="detail-subrow">
+                  <td colSpan={eur ? 6 : 5}>
+                    <div className="param-fields">
+                      {isActionCategory(row.category) && (
+                        <>
+                          <label className="param-field">
+                            <span>{t("setup.extras.when")}</span>
+                            <input
+                              {...fieldProps("schedule_when", row.schedule_when ?? "", (value) => ({
+                                schedule_when: value,
+                              }))}
+                            />
+                            <FieldError
+                              field={`schedule_when-${row.rowId}`}
+                              error={validation.errors[`schedule_when-${row.rowId}`]}
+                            />
+                          </label>
+                          <label className="param-field">
+                            <span>{t("setup.extras.where")}</span>
+                            <input
+                              {...fieldProps(
+                                "schedule_where",
+                                row.schedule_where ?? "",
+                                (value) => ({ schedule_where: value }),
+                              )}
+                            />
+                            <FieldError
+                              field={`schedule_where-${row.rowId}`}
+                              error={validation.errors[`schedule_where-${row.rowId}`]}
+                            />
+                          </label>
+                        </>
+                      )}
                       <label className="param-field">
-                        <span>
-                          {t("setup.extras.optionChoices")}
-                          <HelpHint text={t("setup.extras.optionChoicesHint")} />
-                        </span>
+                        <span>{t("setup.extras.remark")}</span>
                         <input
-                          value={row.optionChoicesText}
-                          onChange={(event) =>
-                            patchRow(row.rowId, {
-                              optionChoicesText: event.target.value,
-                              option_choices: splitChoices(event.target.value),
-                            })
-                          }
+                          {...fieldProps("remark", row.remark ?? "", (value) => ({
+                            remark: value,
+                          }))}
+                        />
+                        <FieldError
+                          field={`remark-${row.rowId}`}
+                          error={validation.errors[`remark-${row.rowId}`]}
                         />
                       </label>
-                    )}
-                  </div>
-                  {row.error && <span className="login-error">{row.error}</span>}
-                </td>
-              </tr>
-            </Fragment>
+                      <label className="param-field">
+                        <span>
+                          {t("setup.extras.optionLabel")}
+                          <HelpHint text={t("setup.extras.optionLabelHint")} />
+                        </span>
+                        <input
+                          {...fieldProps("option_label", row.option_label ?? "", (value) => ({
+                            option_label: value,
+                          }))}
+                        />
+                        <FieldError
+                          field={`option_label-${row.rowId}`}
+                          error={validation.errors[`option_label-${row.rowId}`]}
+                        />
+                      </label>
+                      {row.option_label && (
+                        <label className="param-field">
+                          <span>
+                            {t("setup.extras.optionChoices")}
+                            <HelpHint text={t("setup.extras.optionChoicesHint")} />
+                          </span>
+                          <input
+                            value={row.optionChoicesText}
+                            onChange={(event) =>
+                              patchRow(row.rowId, {
+                                optionChoicesText: event.target.value,
+                                option_choices: splitChoices(event.target.value),
+                              })
+                            }
+                          />
+                        </label>
+                      )}
+                    </div>
+                    {row.error && <span className="login-error">{row.error}</span>}
+                  </td>
+                </tr>
+              </Fragment>
             );
           })}
         </tbody>

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { type HRStatus, api } from "./api";
+import { api, type HRStatus } from "./api";
 import { conclusionText, kindName } from "./operationText";
 import type { OperationsView } from "./useOperations";
 

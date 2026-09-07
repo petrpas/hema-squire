@@ -2,7 +2,7 @@ import { IconUnlink } from "@tabler/icons-react";
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { type Currency, type PaymentLink, api } from "../api";
+import { api, type Currency, type PaymentLink } from "../api";
 import { formatMoney } from "../money";
 import QueueCard from "./QueueCard";
 
@@ -109,14 +109,10 @@ export default function PaymentLinksPanel({
                     {/* the person, not the number. The symbols follow only
                         where the payer quoted any */}
                     {link.fencers.join(", ") || "—"}
-                    {link.vs.length > 0 && (
-                      <span className="muted"> · {link.vs.join(", ")}</span>
-                    )}
+                    {link.vs.length > 0 && <span className="muted"> · {link.vs.join(", ")}</span>}
                   </td>
                   <td className="muted">
-                    {link.auto_created
-                      ? t("payments.links.auto")
-                      : t("payments.links.manual")}
+                    {link.auto_created ? t("payments.links.auto") : t("payments.links.manual")}
                   </td>
                   <td className="col-actions">
                     <button
@@ -126,9 +122,7 @@ export default function PaymentLinksPanel({
                       onClick={() => void remove(link.rule_id)}
                     >
                       <IconUnlink size={16} stroke={1.5} />
-                      <span className="visually-hidden">
-                        {t("payments.links.remove")}
-                      </span>
+                      <span className="visually-hidden">{t("payments.links.remove")}</span>
                     </button>
                   </td>
                 </tr>

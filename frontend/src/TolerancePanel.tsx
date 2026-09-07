@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { type TournamentDetail, api } from "./api";
+import { api, type TournamentDetail } from "./api";
 import FieldError, { invalidProps } from "./FieldError";
 import HelpHint from "./HelpHint";
 import { parseInteger } from "./numeric";
@@ -149,11 +149,7 @@ export default function TolerancePanel({
           <p className="rail-hint instead-of-control">
             {t("payments.tolerance.resettleable", { count: resettleable })}
           </p>
-          <button
-            className="secondary param-save"
-            onClick={() => void resettle()}
-            disabled={busy}
-          >
+          <button className="secondary param-save" onClick={() => void resettle()} disabled={busy}>
             {t("payments.tolerance.resettle")}
           </button>
         </>

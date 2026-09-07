@@ -74,7 +74,9 @@ button.secondary {
   font-size: 12px;
   letter-spacing: 0.08em;
   font-weight: 500;
-  transition: background-color 120ms, border-color 120ms;
+  transition:
+    background-color 120ms,
+    border-color 120ms;
 }
 
 @media (hover: hover) {
@@ -633,7 +635,9 @@ button.secondary:disabled {
   border: var(--border-w) solid var(--hairline);
   font-size: 12px;
   font-family: var(--font-data);
-  transition: background-color 120ms, border-color 120ms;
+  transition:
+    background-color 120ms,
+    border-color 120ms;
 }
 
 .step.active {
@@ -1046,7 +1050,7 @@ button.secondary:disabled {
   border: none;
   background: transparent;
   color: var(--ink-faded);
-  font: 12px/1 var(--font-data);
+  font: 12px / 1 var(--font-data);
   cursor: pointer;
 }
 
@@ -1092,7 +1096,7 @@ button.secondary:disabled {
   border: 1px solid var(--ink);
   border-radius: var(--radius);
   color: var(--ink);
-  font: 12px/1.45 var(--font-ui);
+  font: 12px / 1.45 var(--font-ui);
   text-align: left;
   white-space: normal;
 }
@@ -1402,7 +1406,7 @@ fieldset.form-field > legend {
   border-radius: var(--radius);
   background: transparent;
   color: var(--ink-faded);
-  font: 10px/1 var(--font-ui);
+  font: 10px / 1 var(--font-ui);
   font-style: italic;
   text-transform: none;
   letter-spacing: normal;
@@ -1745,7 +1749,9 @@ fieldset.form-field > legend {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  transition: background-color 120ms, color 120ms;
+  transition:
+    background-color 120ms,
+    color 120ms;
 }
 
 /* The tightest target in the app: 0.2rem around an 18px glyph is about 24px

@@ -3,7 +3,7 @@ import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, expect, it, vi } from "vitest";
 
-import { type Transaction, api } from "../api";
+import { api, type Transaction } from "../api";
 import i18n from "../i18n";
 import LikelyPanel from "./LikelyPanel";
 
@@ -86,9 +86,7 @@ it("states the bank's own text beside the fencer proposed", async () => {
 
 it("confirming calls the endpoint and refreshes", async () => {
   vi.spyOn(api, "likelyTransactions").mockResolvedValue([proposal()]);
-  const confirm = vi
-    .spyOn(api, "confirmProposal")
-    .mockResolvedValue({ rule_id: 1, applied: 1 });
+  const confirm = vi.spyOn(api, "confirmProposal").mockResolvedValue({ rule_id: 1, applied: 1 });
   render();
   await settle();
 

@@ -3,7 +3,7 @@ import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
-import { ApiError, type SetupSuggestions, type TournamentDetail, api } from "../api";
+import { ApiError, api, type SetupSuggestions, type TournamentDetail } from "../api";
 import i18n from "../i18n";
 import { BankAccountSection } from "./BankAccountSection";
 import FeedTokenDialog from "./FeedTokenDialog";
@@ -126,7 +126,10 @@ it("says whether a token is recorded, without showing one", () => {
 
 // ------------------------------------------------------------ the dialog
 
-function renderDialog(configured = false, handlers: { onDone?: () => void; onClose?: () => void } = {}) {
+function renderDialog(
+  configured = false,
+  handlers: { onDone?: () => void; onClose?: () => void } = {},
+) {
   return mount(
     <FeedTokenDialog
       slug="cup"
@@ -159,9 +162,7 @@ it("writes nothing on an empty submission, so a look-and-save keeps the feed", (
 });
 
 it("records a typed token and reports the new state", async () => {
-  const set = vi
-    .spyOn(api, "setFioToken")
-    .mockResolvedValue({ configured: true, verified: true });
+  const set = vi.spyOn(api, "setFioToken").mockResolvedValue({ configured: true, verified: true });
   const onDone = vi.fn();
   const onClose = vi.fn();
   renderDialog(false, { onDone, onClose });
@@ -195,9 +196,7 @@ it("offers no removal where nothing is recorded", () => {
 });
 
 it("stays open on a refusal, with the reason at the field", async () => {
-  vi.spyOn(api, "setFioToken").mockRejectedValue(
-    new ApiError(422, "fio_token_rejected"),
-  );
+  vi.spyOn(api, "setFioToken").mockRejectedValue(new ApiError(422, "fio_token_rejected"));
   const onClose = vi.fn();
   renderDialog(false, { onClose });
 

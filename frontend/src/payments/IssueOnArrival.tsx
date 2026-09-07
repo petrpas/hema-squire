@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { type IssueReport, api } from "../api";
+import { api, type IssueReport } from "../api";
 
 /** Making the fencer list billable where no intake will do it.
  *
@@ -17,13 +17,7 @@ import { type IssueReport, api } from "../api";
  *  is nothing to confirm; what the organizer needs is only the rows it could
  *  not do, and the reason.
  */
-export default function IssueOnArrival({
-  slug,
-  onIssued,
-}: {
-  slug: string;
-  onIssued: () => void;
-}) {
+export default function IssueOnArrival({ slug, onIssued }: { slug: string; onIssued: () => void }) {
   const { t } = useTranslation();
   const [report, setReport] = useState<IssueReport | null>(null);
   const [blocked, setBlocked] = useState(false);

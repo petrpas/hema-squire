@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 
 import { type DisciplineGender, type DisciplineKind, type DisciplineMaterial } from "./api";
 import HelpHint from "./HelpHint";
-import { LEGACY_WEAPONS, disciplineName, normalizeSlug, taxonomyCode } from "./TournamentFace";
+import { disciplineName, LEGACY_WEAPONS, normalizeSlug, taxonomyCode } from "./TournamentFace";
 
 const TAXONOMY_WEAPON_CODES = Object.keys(LEGACY_WEAPONS);
 const OTHER_WEAPON = "__other__";
@@ -209,11 +209,7 @@ export default function DisciplineDialog({
           {weaponCustom && (
             <label className="form-field">
               <span>{t("setup.disciplines.weaponOther")}</span>
-              <input
-                autoFocus
-                value={weapon}
-                onChange={(event) => setWeapon(event.target.value)}
-              />
+              <input autoFocus value={weapon} onChange={(event) => setWeapon(event.target.value)} />
               <span className="muted">{t("setup.disciplines.weaponNoRatingHint")}</span>
             </label>
           )}

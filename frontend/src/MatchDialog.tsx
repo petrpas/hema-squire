@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { type HRProfile, type SheetRow, api } from "./api";
+import { api, type HRProfile, type SheetRow } from "./api";
 
 /** Searching the fighters index for a profile the row should be bound to.
  *

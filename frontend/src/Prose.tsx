@@ -17,6 +17,9 @@ export default function Prose({
   const html = useMemo(() => (source && source.trim() ? renderMarkdown(source) : ""), [source]);
   if (!html) return null;
   return (
-    <div className={["prose", className].filter(Boolean).join(" ")} dangerouslySetInnerHTML={{ __html: html }} />
+    <div
+      className={["prose", className].filter(Boolean).join(" ")}
+      dangerouslySetInnerHTML={{ __html: html }}
+    />
   );
 }

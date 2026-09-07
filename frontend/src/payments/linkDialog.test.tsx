@@ -3,7 +3,7 @@ import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
-import { ApiError, type RankedFencer, type Transaction, api } from "../api";
+import { ApiError, api, type RankedFencer, type Transaction } from "../api";
 import i18n from "../i18n";
 import LinkDialog from "./LinkDialog";
 
@@ -103,7 +103,10 @@ afterEach(() => {
   host = null;
 });
 
-function render(tx = transaction(), handlers: { onLinked?: () => void; onClose?: () => void } = {}) {
+function render(
+  tx = transaction(),
+  handlers: { onLinked?: () => void; onClose?: () => void } = {},
+) {
   return mount(
     <LinkDialog
       slug="cup"
@@ -144,9 +147,7 @@ it("sends both registrations in one request when a transfer covers two", async (
 });
 
 it("names an unrecognised VS and keeps the dialog open with the entry", async () => {
-  vi.spyOn(api, "linkTransaction").mockRejectedValue(
-    new ApiError(404, { unknown_vs: [2609999] }),
-  );
+  vi.spyOn(api, "linkTransaction").mockRejectedValue(new ApiError(404, { unknown_vs: [2609999] }));
   const onClose = vi.fn();
   render(transaction({ candidate_vs: [] }), { onClose });
 
@@ -191,7 +192,6 @@ it("cannot confirm with nothing selected", () => {
   render(transaction({ candidate_vs: [] }));
   expect(buttonNamed(t("payments.link.confirm"))?.disabled).toBe(true);
 });
-
 
 // ------------------------------------------------------- addressing a person
 
@@ -238,10 +238,7 @@ it("filters the roster as the organizer types", async () => {
   act(() => {
     // React tracks the input's value on the node, so assigning it directly is
     // ignored; the native setter is how a controlled input is driven in a test
-    const setter = Object.getOwnPropertyDescriptor(
-      window.HTMLInputElement.prototype,
-      "value",
-    )?.set;
+    const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value")?.set;
     setter?.call(search, "diviš");
     search.dispatchEvent(new Event("input", { bubbles: true }));
   });

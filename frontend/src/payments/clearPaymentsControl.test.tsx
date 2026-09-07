@@ -44,7 +44,9 @@ function totals(payments: number, credited = 0) {
 }
 
 function render(reload = 0) {
-  return mount(<ClearPaymentsControl slug="cup" reload={reload} busy={false} onCleared={() => {}} />);
+  return mount(
+    <ClearPaymentsControl slug="cup" reload={reload} busy={false} onCleared={() => {}} />,
+  );
 }
 
 beforeEach(() => void vi.restoreAllMocks());
@@ -131,9 +133,7 @@ it("says so when the clear fails", async () => {
   act(() => void buttonNamed(t("payments.clear.confirm.confirm"))?.click());
   await settle();
 
-  expect(host?.querySelector(".login-error")?.textContent).toBe(
-    t("payments.clear.failed"),
-  );
+  expect(host?.querySelector(".login-error")?.textContent).toBe(t("payments.clear.failed"));
 });
 
 it("follows the console when the money moves", async () => {

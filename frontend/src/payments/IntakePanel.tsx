@@ -1,12 +1,12 @@
 import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { ApiError, type IngestAndMatch, type TournamentDetail, api } from "../api";
+import { ApiError, api, type IngestAndMatch, type TournamentDetail } from "../api";
 import { conclusionText, kindName } from "../operationText";
+import type { OperationsView } from "../useOperations";
 import ClearPaymentsControl from "./ClearPaymentsControl";
 import IssuedReport from "./IssuedReport";
 import IssuePreflight from "./IssuePreflight";
-import type { OperationsView } from "../useOperations";
 
 /** Getting the tournament's money into the console: a statement from any bank,
  *  a poll of the bank's API, and the undo of either.
@@ -137,12 +137,7 @@ export default function IntakePanel({
 
       {/* the load's undo, directly beneath it: a statement read wrongly is
           undone where it was loaded, not from a card further down the rail */}
-      <ClearPaymentsControl
-        slug={slug}
-        reload={reload}
-        busy={busy}
-        onCleared={onChanged}
-      />
+      <ClearPaymentsControl slug={slug} reload={reload} busy={busy} onCleared={onChanged} />
 
       {detail?.fio_token_configured ? (
         <button className="secondary param-save" disabled={busy} onClick={() => void poll()}>
@@ -153,9 +148,7 @@ export default function IntakePanel({
       )}
 
       {busy && running !== null && (
-        <p className="rail-hint">
-          {t("operation.busy", { kind: kindName(t, running.kind) })}
-        </p>
+        <p className="rail-hint">{t("operation.busy", { kind: kindName(t, running.kind) })}</p>
       )}
       {polled && (
         <>

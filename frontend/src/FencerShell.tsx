@@ -3,10 +3,10 @@ import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 
 import AccountMenu from "./AccountMenu";
-import FencerIdentity from "./FencerIdentity";
-import { useTabBand } from "./useTabBand";
-import { home } from "./routes";
 import { type Account } from "./api";
+import FencerIdentity from "./FencerIdentity";
+import { home } from "./routes";
+import { useTabBand } from "./useTabBand";
 
 /** The four filter tabs the fencer's world is cut into. The first three
  *  partition every published tournament — upcoming with registration not open,

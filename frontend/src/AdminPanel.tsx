@@ -4,8 +4,8 @@ import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 
 import AccountMenu from "./AccountMenu";
+import { type Account, type AdminAccount, api, type PleaQueueItem, type Role } from "./api";
 import { useAuth } from "./RequireAuth";
-import { type Account, type AdminAccount, type PleaQueueItem, type Role, api } from "./api";
 
 const ROLES: Role[] = ["fencer", "organizer", "admin"];
 
@@ -107,13 +107,7 @@ function AccountsSection({
   );
 }
 
-function PleaQueueSection({
-  pleas,
-  onChanged,
-}: {
-  pleas: PleaQueueItem[];
-  onChanged: () => void;
-}) {
+function PleaQueueSection({ pleas, onChanged }: { pleas: PleaQueueItem[]; onChanged: () => void }) {
   const { t } = useTranslation();
   const [busy, setBusy] = useState<number | null>(null);
 

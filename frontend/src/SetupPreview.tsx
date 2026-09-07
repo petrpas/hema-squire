@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { type Availability, type TournamentDetail as TournamentDetailData, api } from "./api";
+import { type Availability, api, type TournamentDetail as TournamentDetailData } from "./api";
 import {
-  DiscountList,
   DisciplinesInfo,
+  DiscountList,
   InfoHeader,
   OtherActionsInfo,
   RegistrationForm,

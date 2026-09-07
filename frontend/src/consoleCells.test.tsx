@@ -119,9 +119,9 @@ describe("the payment day columns", () => {
   });
 
   it("falls back to the reader's zone rather than throwing on an unknown zone", () => {
-    expect(
-      cell("paid_at", { paid_at: "2026-08-02T22:00:00+00:00" }, "Mars/Olympus_Mons"),
-    ).toMatch(/2026/);
+    expect(cell("paid_at", { paid_at: "2026-08-02T22:00:00+00:00" }, "Mars/Olympus_Mons")).toMatch(
+      /2026/,
+    );
   });
 });
 
@@ -139,9 +139,7 @@ describe("an edited cell", () => {
   it("records a disciplines edit as an amendment where a registration stands behind the row", () => {
     // the registration's entries decide what it is billed and where it is
     // seated, so the edit moves both or neither (spec `discipline-amendment`)
-    expect(ruleKindFor("disciplines", row({ registration_id: 7 }))).toBe(
-      "registration_amendment",
-    );
+    expect(ruleKindFor("disciplines", row({ registration_id: 7 }))).toBe("registration_amendment");
     expect(ruleKindFor("disciplines", row({}))).toBe("field_edit");
   });
 
@@ -172,9 +170,7 @@ describe("an identity cell after matching", () => {
   };
 
   it("states the fencer's own words in italic while no profile is bound", () => {
-    expect(identityCell("club", REGISTERED)).toBe(
-      '<span class="identity-declared">Berlin</span>',
-    );
+    expect(identityCell("club", REGISTERED)).toBe('<span class="identity-declared">Berlin</span>');
   });
 
   it("states the profile's words, unmarked, once the match is resolved", () => {
@@ -187,7 +183,6 @@ describe("an identity cell after matching", () => {
     expect(cell("club", REGISTERED, null)).toBe("Berlin");
   });
 });
-
 
 describe("the rentals cell", () => {
   // a name the tournament lends nothing by is billed nothing, and the total is

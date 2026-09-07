@@ -54,11 +54,7 @@ describe("register form sections", () => {
   it("heads each goods category with its own name, in render order", () => {
     expect(
       headings(
-        [
-          item("Tričko turnaje", "merch"),
-          item("Šavle", "rental"),
-          item("Parkovné", "other_item"),
-        ],
+        [item("Tričko turnaje", "merch"), item("Šavle", "rental"), item("Parkovné", "other_item")],
         "cs",
       ),
     ).toEqual(["Turnaj", "Zapůjčení vybavení", "Merch", "Ostatní zboží", "Ostatní"]);

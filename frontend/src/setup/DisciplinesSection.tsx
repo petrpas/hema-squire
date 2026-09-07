@@ -1,9 +1,10 @@
 import { IconArrowUp, IconEdit, IconX } from "@tabler/icons-react";
-import { Fragment, type ChangeEvent, useEffect, useRef, useState } from "react";
+import { type ChangeEvent, Fragment, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import {
   ApiError,
+  api,
   type Currency,
   type Discipline,
   type DisciplineGender,
@@ -11,7 +12,6 @@ import {
   type DisciplineKind,
   type DisciplineMaterial,
   type TournamentDetail,
-  api,
 } from "../api";
 import { DISCIPLINE_CAPACITY_MAX } from "../constraints";
 import DisciplineDialog, { type DisciplineIdentity } from "../DisciplineDialog";
@@ -20,12 +20,18 @@ import HelpHint from "../HelpHint";
 import { showsEur } from "../money";
 import { parseInteger } from "../numeric";
 import { useFieldValidation } from "../useFieldValidation";
-import { apiErrors, checkMoney, checkNumeric, checkString, type FieldError as FieldErrorValue } from "../validation";
+import {
+  apiErrors,
+  checkMoney,
+  checkNumeric,
+  checkString,
+  type FieldError as FieldErrorValue,
+} from "../validation";
 import {
   _int,
   recalculateMissing,
-  type SaverRegistry,
   type SaveOutcome,
+  type SaverRegistry,
   TAXONOMY_WEAPON_CODES,
   useSectionSaver,
 } from "./shared";
@@ -159,7 +165,9 @@ function disciplineRowChecks(
     fee_eur: () => checkMoney(scoped("fee_eur"), row.fee_eur, "EUR"),
     team_min: () =>
       row.kind === "team"
-        ? checkNumeric(scoped("team_min"), "DisciplineIn.team_min", row.team_min, { required: true })
+        ? checkNumeric(scoped("team_min"), "DisciplineIn.team_min", row.team_min, {
+            required: true,
+          })
         : null,
     team_max: () => {
       if (row.kind !== "team") return null;
@@ -356,7 +364,9 @@ export function DisciplinesSection({
     validate: () => validation.validateAll(allDisciplineChecks()),
     focusFirstInvalid: () => {
       for (const row of rows) {
-        for (const [field, check] of Object.entries(disciplineRowChecks(row, detail.local_currency))) {
+        for (const [field, check] of Object.entries(
+          disciplineRowChecks(row, detail.local_currency),
+        )) {
           if (check()) {
             fieldRefs.current[`${field}-${row.rowId}`]?.focus();
             return;
@@ -391,12 +401,17 @@ export function DisciplinesSection({
           created.set(row.rowId, saved);
           outcomes.push({ change: saved.slug, section: "disciplines", error: null });
         } catch (err) {
-          const fieldErrors = apiErrors(err).map((e) => ({ ...e, field: `${e.field}-${row.rowId}` }));
+          const fieldErrors = apiErrors(err).map((e) => ({
+            ...e,
+            field: `${e.field}-${row.rowId}`,
+          }));
           validation.applyApiErrors(fieldErrors);
           const message =
             fieldErrors.length > 0
               ? fieldErrors.map((e) => t(`validation.${e.code}`, e.params)).join(" ")
-              : t("setup.saveBar.genericError", { status: err instanceof ApiError ? err.status : "?" });
+              : t("setup.saveBar.genericError", {
+                  status: err instanceof ApiError ? err.status : "?",
+                });
           results.set(row.rowId, message);
           outcomes.push({ change: row.slug, section: "disciplines", error: message });
         }
@@ -408,12 +423,17 @@ export function DisciplinesSection({
           created.set(row.rowId, saved);
           outcomes.push({ change: saved.slug, section: "disciplines", error: null });
         } catch (err) {
-          const fieldErrors = apiErrors(err).map((e) => ({ ...e, field: `${e.field}-${row.rowId}` }));
+          const fieldErrors = apiErrors(err).map((e) => ({
+            ...e,
+            field: `${e.field}-${row.rowId}`,
+          }));
           validation.applyApiErrors(fieldErrors);
           const message =
             fieldErrors.length > 0
               ? fieldErrors.map((e) => t(`validation.${e.code}`, e.params)).join(" ")
-              : t("setup.saveBar.genericError", { status: err instanceof ApiError ? err.status : "?" });
+              : t("setup.saveBar.genericError", {
+                  status: err instanceof ApiError ? err.status : "?",
+                });
           results.set(row.rowId, message);
           outcomes.push({ change: row.slug || row.name, section: "disciplines", error: message });
         }
@@ -426,7 +446,9 @@ export function DisciplinesSection({
           if (result === undefined) return row;
           if (result !== null) return { ...row, error: result };
           const saved = created.get(row.rowId);
-          return saved ? { ...disciplineToRow(saved), rowId: row.rowId } : { ...row, isNew: false, error: null };
+          return saved
+            ? { ...disciplineToRow(saved), rowId: row.rowId }
+            : { ...row, isNew: false, error: null };
         }),
       );
       return outcomes;
@@ -476,154 +498,178 @@ export function DisciplinesSection({
               };
             }
             return (
-            <Fragment key={row.rowId}>
-              <tr>
-                <td>
-                  <strong>{row.name}</strong>
-                </td>
-                <td>
-                  <span className="muted">{row.slug}</span>
-                </td>
-                <td className="col-num">
-                  <div className="cell-input-row">
-                    <input
-                      className="cell-input"
-                      type="text"
-                      inputMode="numeric"
-                      {...fieldProps("capacity", "capacity")}
-                    />
-                    <span className="muted">
-                      {row.kind === "team"
-                        ? t("setup.disciplines.capacityUnitTeam")
-                        : t("setup.disciplines.capacityUnitIndividual")}
-                    </span>
-                  </div>
-                  <FieldError field={`capacity-${row.rowId}`} error={validation.errors[`capacity-${row.rowId}`]} />
-                </td>
-                <td className="col-num">
-                  <div className="cell-input-row">
-                    <input
-                      className="cell-input"
-                      type="text"
-                      inputMode="numeric"
-                      {...fieldProps("fee", "fee")}
-                    />
-                    {row.kind === "team" && (
-                      <span className="muted">{t("setup.disciplines.feeUnitTeam")}</span>
-                    )}
-                  </div>
-                  <FieldError field={`fee-${row.rowId}`} error={validation.errors[`fee-${row.rowId}`]} />
-                </td>
-                {eur && (
+              <Fragment key={row.rowId}>
+                <tr>
+                  <td>
+                    <strong>{row.name}</strong>
+                  </td>
+                  <td>
+                    <span className="muted">{row.slug}</span>
+                  </td>
                   <td className="col-num">
                     <div className="cell-input-row">
                       <input
                         className="cell-input"
                         type="text"
                         inputMode="numeric"
-                        {...fieldProps("fee_eur", "fee_eur")}
+                        {...fieldProps("capacity", "capacity")}
                       />
+                      <span className="muted">
+                        {row.kind === "team"
+                          ? t("setup.disciplines.capacityUnitTeam")
+                          : t("setup.disciplines.capacityUnitIndividual")}
+                      </span>
                     </div>
-                    <FieldError field={`fee_eur-${row.rowId}`} error={validation.errors[`fee_eur-${row.rowId}`]} />
+                    <FieldError
+                      field={`capacity-${row.rowId}`}
+                      error={validation.errors[`capacity-${row.rowId}`]}
+                    />
                   </td>
-                )}
-                <td className="col-actions">
-                  <div className="row-actions">
-                    <button
-                      className="row-action"
-                      title={t("actions.moveUp")}
-                      disabled={index === 0}
-                      onClick={() => moveRowUp(index)}
-                    >
-                      <IconArrowUp size={16} stroke={1.5} />
-                    </button>
-                    {!row.identityFrozen && (
+                  <td className="col-num">
+                    <div className="cell-input-row">
+                      <input
+                        className="cell-input"
+                        type="text"
+                        inputMode="numeric"
+                        {...fieldProps("fee", "fee")}
+                      />
+                      {row.kind === "team" && (
+                        <span className="muted">{t("setup.disciplines.feeUnitTeam")}</span>
+                      )}
+                    </div>
+                    <FieldError
+                      field={`fee-${row.rowId}`}
+                      error={validation.errors[`fee-${row.rowId}`]}
+                    />
+                  </td>
+                  {eur && (
+                    <td className="col-num">
+                      <div className="cell-input-row">
+                        <input
+                          className="cell-input"
+                          type="text"
+                          inputMode="numeric"
+                          {...fieldProps("fee_eur", "fee_eur")}
+                        />
+                      </div>
+                      <FieldError
+                        field={`fee_eur-${row.rowId}`}
+                        error={validation.errors[`fee_eur-${row.rowId}`]}
+                      />
+                    </td>
+                  )}
+                  <td className="col-actions">
+                    <div className="row-actions">
                       <button
                         className="row-action"
-                        title={t("setup.disciplines.reopen")}
-                        onClick={() => setDialogRowId(row.rowId)}
+                        title={t("actions.moveUp")}
+                        disabled={index === 0}
+                        onClick={() => moveRowUp(index)}
                       >
-                        <IconEdit size={16} stroke={1.5} />
+                        <IconArrowUp size={16} stroke={1.5} />
                       </button>
-                    )}
-                    <button
-                      className="row-action"
-                      title={t("actions.delete")}
-                      onClick={() => removeRow(row)}
-                    >
-                      <IconX size={16} stroke={1.5} />
-                    </button>
-                  </div>
-                </td>
-              </tr>
-              <tr className="detail-subrow">
-                <td colSpan={eur ? 6 : 5}>
-                  <div className="param-fields">
-                    {/* the bounds belong to the team feature; a stored
+                      {!row.identityFrozen && (
+                        <button
+                          className="row-action"
+                          title={t("setup.disciplines.reopen")}
+                          onClick={() => setDialogRowId(row.rowId)}
+                        >
+                          <IconEdit size={16} stroke={1.5} />
+                        </button>
+                      )}
+                      <button
+                        className="row-action"
+                        title={t("actions.delete")}
+                        onClick={() => removeRow(row)}
+                      >
+                        <IconX size={16} stroke={1.5} />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+                <tr className="detail-subrow">
+                  <td colSpan={eur ? 6 : 5}>
+                    <div className="param-fields">
+                      {/* the bounds belong to the team feature; a stored
                         discipline keeps them and the completeness check keeps
                         reading them (design D4) */}
-                    {row.kind === "team" && detail.feature_teams && (
-                      <>
-                        <label className="param-field">
-                          <span>{t("setup.disciplines.teamMin")}</span>
-                          <input
-                            className="cell-input"
-                            type="text"
-                            inputMode="numeric"
-                            {...fieldProps("team_min", "team_min")}
-                          />
-                          <FieldError field={`team_min-${row.rowId}`} error={validation.errors[`team_min-${row.rowId}`]} />
-                        </label>
-                        <label className="param-field">
-                          <span>{t("setup.disciplines.teamMax")}</span>
-                          <input
-                            className="cell-input"
-                            type="text"
-                            inputMode="numeric"
-                            {...fieldProps("team_max", "team_max")}
-                          />
-                          <FieldError field={`team_max-${row.rowId}`} error={validation.errors[`team_max-${row.rowId}`]} />
-                        </label>
-                      </>
-                    )}
-                    {/* a discipline's time and place are the tournament
+                      {row.kind === "team" && detail.feature_teams && (
+                        <>
+                          <label className="param-field">
+                            <span>{t("setup.disciplines.teamMin")}</span>
+                            <input
+                              className="cell-input"
+                              type="text"
+                              inputMode="numeric"
+                              {...fieldProps("team_min", "team_min")}
+                            />
+                            <FieldError
+                              field={`team_min-${row.rowId}`}
+                              error={validation.errors[`team_min-${row.rowId}`]}
+                            />
+                          </label>
+                          <label className="param-field">
+                            <span>{t("setup.disciplines.teamMax")}</span>
+                            <input
+                              className="cell-input"
+                              type="text"
+                              inputMode="numeric"
+                              {...fieldProps("team_max", "team_max")}
+                            />
+                            <FieldError
+                              field={`team_max-${row.rowId}`}
+                              error={validation.errors[`team_max-${row.rowId}`]}
+                            />
+                          </label>
+                        </>
+                      )}
+                      {/* a discipline's time and place are the tournament
                         schedule; an extra service's own are not, and are
                         offered in every mode (design D8) */}
-                    {detail.feature_schedule && (
-                      <>
-                        <label className="param-field">
-                          <span>
-                            {t("setup.disciplines.when")}
-                            <HelpHint text={t("setup.disciplines.whenHint")} />
-                          </span>
-                          <input {...fieldProps("schedule_when", "schedule_when")} />
-                          <FieldError field={`schedule_when-${row.rowId}`} error={validation.errors[`schedule_when-${row.rowId}`]} />
-                        </label>
-                        <label className="param-field">
-                          <span>
-                            {t("setup.disciplines.where")}
-                            <HelpHint text={t("setup.disciplines.whereHint")} />
-                          </span>
-                          <input {...fieldProps("schedule_where", "schedule_where")} />
-                          <FieldError field={`schedule_where-${row.rowId}`} error={validation.errors[`schedule_where-${row.rowId}`]} />
-                        </label>
-                      </>
-                    )}
-                    <label className="param-field">
-                      <span>
-                        {t("setup.disciplines.ruleset")}
-                        <HelpHint text={t("setup.disciplines.rulesetHint")} />
-                      </span>
-                      <input {...fieldProps("ruleset", "ruleset")} />
-                      {/* inline markdown, like the tournament's location */}
-                      <span className="markdown-hint">{t("setup.inlineMarkdownHint")}</span>
-                      <FieldError field={`ruleset-${row.rowId}`} error={validation.errors[`ruleset-${row.rowId}`]} />
-                    </label>
-                  </div>
-                  {row.error && <span className="login-error">{row.error}</span>}
-                </td>
-              </tr>
-            </Fragment>
+                      {detail.feature_schedule && (
+                        <>
+                          <label className="param-field">
+                            <span>
+                              {t("setup.disciplines.when")}
+                              <HelpHint text={t("setup.disciplines.whenHint")} />
+                            </span>
+                            <input {...fieldProps("schedule_when", "schedule_when")} />
+                            <FieldError
+                              field={`schedule_when-${row.rowId}`}
+                              error={validation.errors[`schedule_when-${row.rowId}`]}
+                            />
+                          </label>
+                          <label className="param-field">
+                            <span>
+                              {t("setup.disciplines.where")}
+                              <HelpHint text={t("setup.disciplines.whereHint")} />
+                            </span>
+                            <input {...fieldProps("schedule_where", "schedule_where")} />
+                            <FieldError
+                              field={`schedule_where-${row.rowId}`}
+                              error={validation.errors[`schedule_where-${row.rowId}`]}
+                            />
+                          </label>
+                        </>
+                      )}
+                      <label className="param-field">
+                        <span>
+                          {t("setup.disciplines.ruleset")}
+                          <HelpHint text={t("setup.disciplines.rulesetHint")} />
+                        </span>
+                        <input {...fieldProps("ruleset", "ruleset")} />
+                        {/* inline markdown, like the tournament's location */}
+                        <span className="markdown-hint">{t("setup.inlineMarkdownHint")}</span>
+                        <FieldError
+                          field={`ruleset-${row.rowId}`}
+                          error={validation.errors[`ruleset-${row.rowId}`]}
+                        />
+                      </label>
+                    </div>
+                    {row.error && <span className="login-error">{row.error}</span>}
+                  </td>
+                </tr>
+              </Fragment>
             );
           })}
         </tbody>

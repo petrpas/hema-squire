@@ -3,9 +3,9 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
 import type { NetChange, SheetRow } from "./api";
-import ManualEditsRail, { entryText } from "./ManualEditsRail";
 import { rowsForPhase } from "./Console";
 import i18n from "./i18n";
+import ManualEditsRail, { entryText } from "./ManualEditsRail";
 
 // What an entry of the manual-edits log says (spec `etl-console`, Readable
 // manual-edits log): the row as the table numbers it, and the change in the
@@ -108,9 +108,9 @@ describe("manual-edits entry", () => {
   it("states a day column in the tournament's zone, as the table's cell does", () => {
     // midnight on 3 August in Prague: read in the reader's own zone this is
     // 2 August, and the entry would report on a different day than the cell
-    expect(
-      text({ field: "paid_at", before: null, after: "2026-08-02T22:00:00+00:00" }),
-    ).toContain("— → 3. 8. 2026");
+    expect(text({ field: "paid_at", before: null, after: "2026-08-02T22:00:00+00:00" })).toContain(
+      "— → 3. 8. 2026",
+    );
   });
 });
 
@@ -135,10 +135,7 @@ describe("an entry naming a row the phase does not list", () => {
   it("still names the fencer, since undoing it is what brings the row back", () => {
     // deleted on Import, the row is gone from the Fencers table; the entry that
     // removed it must still say who it was
-    const rows = [
-      row("imp:c1aa", "Jan Novák", 31),
-      row("reg:7", "Petra Malá", 4),
-    ].map((r) =>
+    const rows = [row("imp:c1aa", "Jan Novák", 31), row("reg:7", "Petra Malá", 4)].map((r) =>
       r.id === "imp:c1aa" ? ({ ...r, _deleted: true, _removed_in: "import" } as SheetRow) : r,
     );
     expect(rowsForPhase(rows, "fencers").map((r) => r.id)).toEqual(["reg:7"]);

@@ -10,13 +10,7 @@ import { useTranslation } from "react-i18next";
  *  organizer's to rewrite. Opening is a click or a keypress, not a hover: this
  *  is content to read, not a hint to glance at, and a marker reachable only by
  *  pointer would put a parse doubt out of reach of the keyboard. */
-export default function NoteMarker({
-  kind,
-  text,
-}: {
-  kind: "note" | "problem";
-  text: string;
-}) {
+export default function NoteMarker({ kind, text }: { kind: "note" | "problem"; text: string }) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const wrapper = useRef<HTMLSpanElement>(null);

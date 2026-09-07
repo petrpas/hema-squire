@@ -1,7 +1,7 @@
 import {
+  createContext,
   type KeyboardEvent,
   type ReactNode,
-  createContext,
   useCallback,
   useContext,
   useState,
@@ -64,35 +64,23 @@ export function useSheetVisible(): boolean {
   return tabs === null || tabs.active === tabs.primary;
 }
 
-export default function QueueTabs({
-  primary,
-  children,
-}: {
-  primary: string;
-  children: ReactNode;
-}) {
+export default function QueueTabs({ primary, children }: { primary: string; children: ReactNode }) {
   // the fencer list leads, and is seeded rather than registered: a queue
   // registers from an effect, and a child's effects run before its parent's, so
   // a tab that registered itself would arrive last however it was written
-  const [tabs, setTabs] = useState<Tab[]>([
-    { title: primary, count: null, failed: false },
-  ]);
+  const [tabs, setTabs] = useState<Tab[]>([{ title: primary, count: null, failed: false }]);
   const [chosen, setChosen] = useState<string | null>(null);
 
-  const register = useCallback(
-    (title: string, count: number | null, failed: boolean) => {
-      setTabs((current) => {
-        const at = current.findIndex((tab) => tab.title === title);
-        if (at === -1) return [...current, { title, count, failed }];
-        if (current[at].count === count && current[at].failed === failed)
-          return current;
-        const next = [...current];
-        next[at] = { title, count, failed };
-        return next;
-      });
-    },
-    [],
-  );
+  const register = useCallback((title: string, count: number | null, failed: boolean) => {
+    setTabs((current) => {
+      const at = current.findIndex((tab) => tab.title === title);
+      if (at === -1) return [...current, { title, count, failed }];
+      if (current[at].count === count && current[at].failed === failed) return current;
+      const next = [...current];
+      next[at] = { title, count, failed };
+      return next;
+    });
+  }, []);
 
   const unregister = useCallback((title: string) => {
     setTabs((current) => current.filter((tab) => tab.title !== title));
@@ -108,12 +96,8 @@ export default function QueueTabs({
   const active = tabs.some((tab) => tab.title === chosen) ? chosen : primary;
 
   return (
-    <QueueTabsContext.Provider
-      value={{ register, unregister, active, primary }}
-    >
-      <StripContext.Provider value={{ tabs, choose: setChosen }}>
-        {children}
-      </StripContext.Provider>
+    <QueueTabsContext.Provider value={{ register, unregister, active, primary }}>
+      <StripContext.Provider value={{ tabs, choose: setChosen }}>{children}</StripContext.Provider>
     </QueueTabsContext.Provider>
   );
 }
@@ -149,16 +133,10 @@ export function QueueTabStrip() {
   // left the top and bottom lines running through the air that was meant to
   // separate them. The groups are `presentation`, so the tabs remain the
   // tablist's own children
-  const groups = [all.slice(0, 1), all.slice(1)].filter(
-    (group) => group.length > 0,
-  );
+  const groups = [all.slice(0, 1), all.slice(1)].filter((group) => group.length > 0);
 
   return (
-    <nav
-      className="queue-tabs"
-      role="tablist"
-      aria-label={t("payments.queue.tabs")}
-    >
+    <nav className="queue-tabs" role="tablist" aria-label={t("payments.queue.tabs")}>
       {groups.map((group) => (
         <div className="stage-control" role="presentation" key={group[0].title}>
           {group.map((tab) => {
@@ -176,17 +154,13 @@ export function QueueTabStrip() {
                 onKeyDown={(event) => onKeyDown(event, index)}
               >
                 {tab.title}
-                {tab.count !== null && (
-                  <span className="tab-count">{tab.count}</span>
-                )}
+                {tab.count !== null && <span className="tab-count">{tab.count}</span>}
                 {/* a queue that could not be read has no count to show, and a tab
               merely missing its number states nothing. The mark is the
               console's own "this one wants attention" (Setup's tabs) */}
                 {tab.failed && (
                   <span className="tab-mark">
-                    <span className="visually-hidden">
-                      {t("payments.queue.failed")}
-                    </span>
+                    <span className="visually-hidden">{t("payments.queue.failed")}</span>
                   </span>
                 )}
               </button>

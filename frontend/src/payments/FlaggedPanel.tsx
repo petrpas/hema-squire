@@ -2,7 +2,7 @@ import { IconArrowBackUp, IconReceiptRefund } from "@tabler/icons-react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { type Transaction, api } from "../api";
+import { api, type Transaction } from "../api";
 import { formatMoney } from "../money";
 import QueueCard from "./QueueCard";
 
@@ -140,9 +140,7 @@ export default function FlaggedPanel({
                         onClick={() => void reinstate(tx.id)}
                       >
                         <IconArrowBackUp size={16} stroke={1.5} />
-                        <span className="visually-hidden">
-                          {t("payments.flagged.reinstate")}
-                        </span>
+                        <span className="visually-hidden">{t("payments.flagged.reinstate")}</span>
                       </button>
                     )}
                     <button
@@ -152,9 +150,7 @@ export default function FlaggedPanel({
                       onClick={() => void markForRefund(tx.id)}
                     >
                       <IconReceiptRefund size={16} stroke={1.5} />
-                      <span className="visually-hidden">
-                        {t("payments.flagged.markForRefund")}
-                      </span>
+                      <span className="visually-hidden">{t("payments.flagged.markForRefund")}</span>
                     </button>
                   </div>
                 </td>

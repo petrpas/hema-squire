@@ -1,9 +1,20 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { ApiError, type Organizer, type SetupSuggestions, type TournamentDetail, api } from "../api";
+import {
+  ApiError,
+  api,
+  type Organizer,
+  type SetupSuggestions,
+  type TournamentDetail,
+} from "../api";
 import { useFieldValidation } from "../useFieldValidation";
-import { apiErrors, checkString, checkUrl, type FieldError as FieldErrorValue } from "../validation";
+import {
+  apiErrors,
+  checkString,
+  checkUrl,
+  type FieldError as FieldErrorValue,
+} from "../validation";
 import OrganizerRow from "./OrganizerRow";
 import { type SaverRegistry, useSectionSaver } from "./shared";
 
@@ -85,7 +96,9 @@ export function OrganizersSection({
         const message =
           fieldErrors.length > 0
             ? fieldErrors.map((e) => t(`validation.${e.code}`, e.params)).join(" ")
-            : t("setup.saveBar.genericError", { status: err instanceof ApiError ? err.status : "?" });
+            : t("setup.saveBar.genericError", {
+                status: err instanceof ApiError ? err.status : "?",
+              });
         return [{ change: "organizers", section: "organizers", error: message }];
       }
     },

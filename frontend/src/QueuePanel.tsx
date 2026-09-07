@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { ApiError, type Queue, api } from "./api";
+import { ApiError, api, type Queue } from "./api";
 import PhaseSummary from "./PhaseSummary";
 import QueueEntryLine from "./QueueEntryLine";
 
@@ -92,7 +92,9 @@ export default function QueuePanel({
         {settled !== null && (
           <p className="rail-hint">{t("queue.settleDone", { count: settled })}</p>
         )}
-        {failure !== null && <p className="field-error">{t("queue.actionFailed", { reason: failure })}</p>}
+        {failure !== null && (
+          <p className="field-error">{t("queue.actionFailed", { reason: failure })}</p>
+        )}
 
         {queue.disciplines.length === 0 ? (
           <p className="sheet-empty">{t("queue.noDisciplines")}</p>

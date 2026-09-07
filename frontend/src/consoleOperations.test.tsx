@@ -3,9 +3,8 @@ import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { MemoryRouter, Outlet, Route, Routes } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-
+import { api, type Sheet, type Tournament } from "./api";
 import Console from "./Console";
-import { type Sheet, type Tournament, api } from "./api";
 
 // The fencer list follows a concluded operation: nothing the organizer does
 // (spec `etl-console`, The fencer list follows a concluded operation).

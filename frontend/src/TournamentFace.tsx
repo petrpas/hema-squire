@@ -5,16 +5,16 @@ import { useTranslation } from "react-i18next";
 import {
   ApiError,
   type Availability,
+  api,
+  type DisciplineGender,
+  type DisciplineMaterial,
   type Discount,
   type DiscountBreakdown,
   type DiscountCondition,
-  type DisciplineGender,
-  type DisciplineMaterial,
   type ExtraItem,
+  logoUrl,
   type RegistrationDetail,
   type TournamentDetail as TournamentDetailData,
-  api,
-  logoUrl,
 } from "./api";
 import { FIELD_CONSTRAINTS } from "./constraints";
 import DotJoined from "./DotJoined";
@@ -116,9 +116,7 @@ export function InfoHeader({ detail }: { detail: TournamentDetailData }) {
   // not rendered — DotJoined returns null rather than an empty rule.
   return (
     <section className="rail-card detail-info-header">
-      {detail.has_logo && (
-        <img className="detail-logo" src={logoUrl(detail.slug)} alt="" />
-      )}
+      {detail.has_logo && <img className="detail-logo" src={logoUrl(detail.slug)} alt="" />}
       <div className="detail-info-heading">
         <h1>{detail.display_name}</h1>
         {detail.subtitle && <p className="detail-subtitle">{detail.subtitle}</p>}
@@ -229,7 +227,9 @@ export function DisciplinesInfo({
               <div className="detail-row">
                 <strong>
                   {d.name}
-                  {isTeam && <span className="tag tag-file-blue team-flag">{t("detail.teamEvent")}</span>}
+                  {isTeam && (
+                    <span className="tag tag-file-blue team-flag">{t("detail.teamEvent")}</span>
+                  )}
                 </strong>
                 <DotJoined
                   parts={[
@@ -240,24 +240,17 @@ export function DisciplinesInfo({
                             amount: formatMoneyWithEur(d.fee, d.fee_eur, detail),
                           })
                         : formatMoneyWithEur(d.fee, d.fee_eur, detail),
-                    isTeam
-                      ? t("detail.rosterBounds", { min: d.team_min, max: d.team_max })
-                      : null,
+                    isTeam ? t("detail.rosterBounds", { min: d.team_min, max: d.team_max }) : null,
                     isTeam
                       ? t("detail.teamsCount", { taken, capacity: d.capacity })
                       : t("detail.fencersCount", { taken, capacity: d.capacity }),
-                    free <= 0
-                      ? t("detail.queueLength", { count: a?.queue_length ?? 0 })
-                      : null,
+                    free <= 0 ? t("detail.queueLength", { count: a?.queue_length ?? 0 }) : null,
                   ]}
                 />
               </div>
               {hasExtra && (
                 <div className="detail-extra">
-                  <DotJoined
-                    className=""
-                    parts={[d.schedule_when, d.schedule_where, ruleset]}
-                  />
+                  <DotJoined className="" parts={[d.schedule_when, d.schedule_where, ruleset]} />
                 </div>
               )}
             </li>
@@ -478,7 +471,11 @@ export type FormMode =
        *  registration, fencer-home). */
       onNotYetOpen: () => void;
     }
-  | { kind: "amend"; initial: RegistrationDetail; onRegistered: (registration: RegistrationDetail) => void }
+  | {
+      kind: "amend";
+      initial: RegistrationDetail;
+      onRegistered: (registration: RegistrationDetail) => void;
+    }
   | { kind: "preview" };
 
 export function RegistrationForm({
@@ -500,8 +497,8 @@ export function RegistrationForm({
   // each priced separately (spec: "Team section rendered"). `id` present
   // means an already-entered team whose roster is kept on amendment; absent
   // means a freshly added one (design team-disciplines 4.3)
-  const [teams, setTeams] = useState<{ id?: number; slug: string; name: string }[]>(
-    () => (initial?.teams ?? []).map((team) => ({ id: team.id, slug: team.slug, name: team.name })),
+  const [teams, setTeams] = useState<{ id?: number; slug: string; name: string }[]>(() =>
+    (initial?.teams ?? []).map((team) => ({ id: team.id, slug: team.slug, name: team.name })),
   );
   const [newTeamName, setNewTeamName] = useState<Record<string, string>>({});
   const [extraQty, setExtraQty] = useState<Record<number, number>>(() => {
@@ -670,11 +667,7 @@ export function RegistrationForm({
         checked={qty > 0}
         onToggle={() => toggleItem(item)}
       >
-        <ScheduleLines
-          when={item.schedule_when}
-          where={item.schedule_where}
-          remark={item.remark}
-        />
+        <ScheduleLines when={item.schedule_when} where={item.schedule_where} remark={item.remark} />
         {qty > 0 && (
           <ItemControls
             item={item}
@@ -752,28 +745,28 @@ export function RegistrationForm({
         {detail.disciplines
           .filter((d) => d.kind === "individual")
           .map((d) => {
-          const a = bySlug.get(d.slug);
-          const taken = a ? a.taken : 0;
-          const free = freePlaces(d.slug);
-          return (
-            <ChecklistRow
-              key={d.slug}
-              name={d.name}
-              price={d.fee === null ? "—" : formatMoneyWithEur(d.fee, d.fee_eur, detail)}
-              checked={disciplines.has(d.slug)}
-              onToggle={() => toggleDiscipline(d.slug)}
-            >
-              <ScheduleLines when={d.schedule_when} where={d.schedule_where} />
-              {free <= 0 ? (
-                <span className="checklist-full">
-                  {t("form.full", { taken, capacity: d.capacity })}
-                </span>
-              ) : (
-                <span>{t("form.freePlaces", { free, capacity: d.capacity })}</span>
-              )}
-            </ChecklistRow>
-          );
-        })}
+            const a = bySlug.get(d.slug);
+            const taken = a ? a.taken : 0;
+            const free = freePlaces(d.slug);
+            return (
+              <ChecklistRow
+                key={d.slug}
+                name={d.name}
+                price={d.fee === null ? "—" : formatMoneyWithEur(d.fee, d.fee_eur, detail)}
+                checked={disciplines.has(d.slug)}
+                onToggle={() => toggleDiscipline(d.slug)}
+              >
+                <ScheduleLines when={d.schedule_when} where={d.schedule_where} />
+                {free <= 0 ? (
+                  <span className="checklist-full">
+                    {t("form.full", { taken, capacity: d.capacity })}
+                  </span>
+                ) : (
+                  <span>{t("form.freePlaces", { free, capacity: d.capacity })}</span>
+                )}
+              </ChecklistRow>
+            );
+          })}
       </div>
 
       {teamDisciplines.length > 0 && (

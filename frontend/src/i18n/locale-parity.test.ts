@@ -36,7 +36,10 @@ describe("validation locale parity", () => {
     for (const [locale, messages] of Object.entries(LOCALES)) {
       for (const [key, text] of Object.entries(messages)) {
         const withoutPlaceholders = text.replace(/\{\{.*?\}\}/g, "");
-        expect(withoutPlaceholders, `${locale}.validation.${key} embeds a literal figure`).not.toMatch(/\d/);
+        expect(
+          withoutPlaceholders,
+          `${locale}.validation.${key} embeds a literal figure`,
+        ).not.toMatch(/\d/);
       }
     }
   });
@@ -47,9 +50,14 @@ describe("validation locale parity", () => {
 // only one of the two ships the raw key to the console — which is how
 // `operation.label.statement` reached the running indicator.
 
-const OPERATION_BUNDLES: Record<string, { kind: Record<string, string>; label: Record<string, string> }> = {
-  cs: (cs as { operation: { kind: Record<string, string>; label: Record<string, string> } }).operation,
-  en: (en as { operation: { kind: Record<string, string>; label: Record<string, string> } }).operation,
+const OPERATION_BUNDLES: Record<
+  string,
+  { kind: Record<string, string>; label: Record<string, string> }
+> = {
+  cs: (cs as { operation: { kind: Record<string, string>; label: Record<string, string> } })
+    .operation,
+  en: (en as { operation: { kind: Record<string, string>; label: Record<string, string> } })
+    .operation,
 };
 
 describe("operation locale parity", () => {

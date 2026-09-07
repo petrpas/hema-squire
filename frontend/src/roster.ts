@@ -24,9 +24,10 @@ export interface RosterSaveOutcome {
 
 /** Splits a fan-out's settled results into the teams to push down as saved
  *  and the names of the teams that did not save (design D4). */
-export function summarizeSaves(
-  outcomes: RosterSaveOutcome[],
-): { saved: TeamEntry[]; failed: string[] } {
+export function summarizeSaves(outcomes: RosterSaveOutcome[]): {
+  saved: TeamEntry[];
+  failed: string[];
+} {
   const saved: TeamEntry[] = [];
   const failed: string[] = [];
   for (const { team, result } of outcomes) {

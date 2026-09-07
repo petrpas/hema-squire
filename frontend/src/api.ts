@@ -96,8 +96,10 @@ export interface TournamentFlags {
  *  tournament out of the scheduler (design add-registrations-kept-by D1). */
 export type RegistrationsKeptBy = "squire" | "organizer";
 
-export const KEPT_BY_VALUES = ["squire", "organizer"] as const satisfies
-  readonly RegistrationsKeptBy[];
+export const KEPT_BY_VALUES = [
+  "squire",
+  "organizer",
+] as const satisfies readonly RegistrationsKeptBy[];
 
 /** The three features, in the order the settings surface lists them. Payments
  *  is deliberately absent: it suspends machinery rather than hiding controls,
@@ -982,12 +984,7 @@ export const api = {
    *  Where Squire handles the payments this is the waiver and the reason is
    *  required; where it does not, the reason is optional and the mark is the
    *  organizer's word that they collected the money themselves. */
-  markSettled: (
-    slug: string,
-    registrationId: number,
-    settled: boolean,
-    reason?: string | null,
-  ) =>
+  markSettled: (slug: string, registrationId: number, settled: boolean, reason?: string | null) =>
     request<RegistrationDetail>(
       `/api/tournaments/${slug}/registrations/${registrationId}/settled?settled=${settled}` +
         (reason ? `&reason=${encodeURIComponent(reason)}` : ""),
@@ -1040,8 +1037,7 @@ export const api = {
     }
     return response.json();
   },
-  deleteLogo: (slug: string) =>
-    request<void>(logoUrl(slug), { method: "DELETE" }),
+  deleteLogo: (slug: string) => request<void>(logoUrl(slug), { method: "DELETE" }),
   sheet: (slug: string) => request<Sheet>(`/api/tournaments/${slug}/sheet`),
   /** Creates a rule. `amendment` comes back only for a discipline amendment:
    *  what the correction did to the registration's total, and whether the
@@ -1068,13 +1064,10 @@ export const api = {
     vs: number[],
     registration_ids: number[] = [],
   ) =>
-    request<{ rule_id: number; applied: number }>(
-      `/api/tournaments/${slug}/payments/link`,
-      {
-        method: "POST",
-        body: JSON.stringify({ transaction_id, vs, registration_ids }),
-      },
-    ),
+    request<{ rule_id: number; applied: number }>(`/api/tournaments/${slug}/payments/link`, {
+      method: "POST",
+      body: JSON.stringify({ transaction_id, vs, registration_ids }),
+    }),
   expiredHolding: (slug: string) =>
     request<ExpiredHolding[]>(`/api/tournaments/${slug}/payments/expired-holding`),
   manualPayments: (slug: string) =>
@@ -1123,8 +1116,7 @@ export const api = {
    *  about and irreversible). */
   clearImports: (slug: string) =>
     request<ClearResult>(`/api/tournaments/${slug}/import`, { method: "DELETE" }),
-  importStatus: (slug: string) =>
-    request<ImportStatus>(`/api/tournaments/${slug}/import/status`),
+  importStatus: (slug: string) => request<ImportStatus>(`/api/tournaments/${slug}/import/status`),
   createManualRow: (slug: string, entry: ManualEntryIn) =>
     request<ManualRow>(`/api/tournaments/${slug}/manual-rows`, {
       method: "POST",
@@ -1155,10 +1147,8 @@ export const api = {
    *  upload, in place of the confirmation there no longer is. */
   /** The active payment links, resolved into the payment and the fencers each
    *  joins — the rule states neither in a form anyone can read. */
-  paymentLinks: (slug: string) =>
-    request<PaymentLink[]>(`/api/tournaments/${slug}/payments/links`),
-  issuableCount: (slug: string) =>
-    request<IssuableCount>(`/api/tournaments/${slug}/import/issue`),
+  paymentLinks: (slug: string) => request<PaymentLink[]>(`/api/tournaments/${slug}/payments/links`),
+  issuableCount: (slug: string) => request<IssuableCount>(`/api/tournaments/${slug}/import/issue`),
   /** Issue registrations where no intake will do it: a tournament whose
    *  payments Squire does not collect has none, so the Payments phase calls
    *  this on arrival. Refused where payments are on — there, intake issues.
@@ -1171,8 +1161,7 @@ export const api = {
     request<OperationStarted>(`/api/tournaments/${slug}/import/dedup`, { method: "POST" }),
   /** What the console polls: the tournament's running operation and the most
    *  recent concluded one of each kind (design D7). */
-  operations: (slug: string) =>
-    request<OperationsReport>(`/api/tournaments/${slug}/operations`),
+  operations: (slug: string) => request<OperationsReport>(`/api/tournaments/${slug}/operations`),
   dedupGroups: (slug: string) =>
     request<DedupGroup[]>(`/api/tournaments/${slug}/import/dedup/groups`),
   /** `fields` and `note` carry the conclusion as the organizer left it; omitted,
@@ -1190,23 +1179,21 @@ export const api = {
       body: JSON.stringify({ key, accept, fields, note }),
     }),
   exportSheet: (slug: string) =>
-    request<{ worksheets: string[]; fencers: number }>(
-      `/api/tournaments/${slug}/export/sheet`,
-      { method: "POST" },
-    ),
+    request<{ worksheets: string[]; fencers: number }>(`/api/tournaments/${slug}/export/sheet`, {
+      method: "POST",
+    }),
   hrStatus: () => request<HRStatus>("/api/hr/status"),
-  hrRefresh: () => request<{ status: string; fighters: number }>("/api/hr/refresh", {
-    method: "POST",
-  }),
+  hrRefresh: () =>
+    request<{ status: string; fighters: number }>("/api/hr/refresh", {
+      method: "POST",
+    }),
   ratingsSnapshot: (slug: string) =>
     request<{ status: string; fencers: number; ratings: number }>(
       `/api/tournaments/${slug}/ratings/snapshot`,
       { method: "POST" },
     ),
   ratingsLatest: (slug: string) =>
-    request<{ taken_at: string | null; ratings: number }>(
-      `/api/tournaments/${slug}/ratings`,
-    ),
+    request<{ taken_at: string | null; ratings: number }>(`/api/tournaments/${slug}/ratings`),
   account: () => request<Account>("/api/account"),
   updateAccount: (patch: {
     email?: string;
@@ -1270,8 +1257,7 @@ export const api = {
   openTournaments: () => request<OpenTournament[]>("/api/tournaments/open"),
   heldTournaments: () => request<OpenTournament[]>("/api/tournaments/held"),
   myTournaments: () => request<OpenTournament[]>("/api/tournaments/mine"),
-  availability: (slug: string) =>
-    request<Availability[]>(`/api/tournaments/${slug}/availability`),
+  availability: (slug: string) => request<Availability[]>(`/api/tournaments/${slug}/availability`),
   myRegistration: (slug: string) =>
     request<RegistrationDetail>(`/api/tournaments/${slug}/my-registration`),
   registerForTournament: (slug: string, data: RegisterPayload) =>
@@ -1336,10 +1322,9 @@ export const api = {
       { method: "POST" },
     ),
   rejectProposal: (slug: string, transactionId: number) =>
-    request<Transaction>(
-      `/api/tournaments/${slug}/payments/likely/${transactionId}/reject`,
-      { method: "POST" },
-    ),
+    request<Transaction>(`/api/tournaments/${slug}/payments/likely/${transactionId}/reject`, {
+      method: "POST",
+    }),
   /** The whole roster ordered by how well each fencer matches this payment's
    *  own text, with the strongest marked where there is one. */
   transactionRoster: (slug: string, transactionId: number) =>

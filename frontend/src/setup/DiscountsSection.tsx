@@ -4,16 +4,23 @@ import { useTranslation } from "react-i18next";
 
 import {
   ApiError,
+  api,
   type Discount,
   type DiscountCondition,
   type DiscountEffect,
   type TournamentDetail,
-  api,
 } from "../api";
 import FieldError, { invalidProps } from "../FieldError";
 import { showsEur } from "../money";
 import { useFieldValidation } from "../useFieldValidation";
-import { apiErrors, checkMoney, checkNumeric, checkPercent, checkString, type FieldError as FieldErrorValue } from "../validation";
+import {
+  apiErrors,
+  checkMoney,
+  checkNumeric,
+  checkPercent,
+  checkString,
+  type FieldError as FieldErrorValue,
+} from "../validation";
 import { _int, recalculateMissing, type SaverRegistry, useSectionSaver } from "./shared";
 
 function emptyDiscount(): Discount {
@@ -44,15 +51,23 @@ export function DiscountsSection({
   const validation = useFieldValidation();
   const fieldRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
-  function discountChecks(discount: Discount, index: number): Record<string, () => FieldErrorValue | null> {
+  function discountChecks(
+    discount: Discount,
+    index: number,
+  ): Record<string, () => FieldErrorValue | null> {
     const scoped = (field: string) => `${field}-${index}`;
     return {
       name: () => checkString(scoped("name"), "DiscountIn.name", discount.name, { required: true }),
       count: () =>
         discount.condition.kind === "discipline_count"
-          ? checkNumeric(scoped("count"), "DiscountCondition.count", String(discount.condition.count ?? ""), {
-              required: true,
-            })
+          ? checkNumeric(
+              scoped("count"),
+              "DiscountCondition.count",
+              String(discount.condition.count ?? ""),
+              {
+                required: true,
+              },
+            )
           : null,
       value:
         discount.effect.kind === "percent"
@@ -104,7 +119,11 @@ export function DiscountsSection({
         );
         return {
           ...discount,
-          effect: { ...discount.effect, value: Number(value), value_eur: valueEur === "" ? null : Number(valueEur) },
+          effect: {
+            ...discount.effect,
+            value: Number(value),
+            value_eur: valueEur === "" ? null : Number(valueEur),
+          },
         };
       }),
     );
@@ -139,7 +158,9 @@ export function DiscountsSection({
         const message =
           fieldErrors.length > 0
             ? fieldErrors.map((e) => t(`validation.${e.code}`, e.params)).join(" ")
-            : t("setup.saveBar.genericError", { status: err instanceof ApiError ? err.status : "?" });
+            : t("setup.saveBar.genericError", {
+                status: err instanceof ApiError ? err.status : "?",
+              });
         return [{ change: "discounts", section: "discounts", error: message }];
       }
     },
@@ -184,134 +205,149 @@ export function DiscountsSection({
               };
             }
             return (
-            <tr key={index}>
-              <td>
-                <input
-                  ref={fieldRef("name")}
-                  className="cell-input"
-                  value={discount.name}
-                  onChange={(event) => {
-                    update(index, { name: event.target.value });
-                    clearIfValid("name")();
-                  }}
-                  onBlur={touch("name")}
-                  {...fieldErrorProps("name")}
-                />
-                <FieldError field={`name-${index}`} error={validation.errors[`name-${index}`]} />
-              </td>
-              <td className="col-num">
-                <div className="param-fields">
-                  <select
-                    value={discount.condition.kind}
-                    onChange={(event) =>
-                      updateCondition(index, {
-                        kind: event.target.value as DiscountCondition["kind"],
-                      })
-                    }
-                  >
-                    <option value="discipline_count">
-                      {t("setup.discounts.conditionCount")}
-                    </option>
-                    <option value="early">{t("setup.discounts.conditionEarly")}</option>
-                  </select>
-                  {discount.condition.kind === "discipline_count" ? (
-                    <>
-                      <input
-                        ref={fieldRef("count")}
-                        className="cell-input"
-                        type="text"
-                        inputMode="numeric"
-                        value={discount.condition.count ?? ""}
-                        onChange={(event) => {
-                          updateCondition(index, { count: _int(event.target.value) ?? undefined });
-                          clearIfValid("count")();
-                        }}
-                        onBlur={touch("count")}
-                        {...fieldErrorProps("count")}
-                      />
-                      <FieldError field={`count-${index}`} error={validation.errors[`count-${index}`]} />
-                    </>
-                  ) : (
-                    <input
-                      className="cell-input"
-                      type="date"
-                      value={discount.condition.until ?? ""}
-                      onChange={(event) =>
-                        updateCondition(index, { until: event.target.value })
-                      }
-                    />
-                  )}
-                </div>
-              </td>
-              <td className="col-num">
-                <select
-                  value={discount.effect.kind}
-                  onChange={(event) => {
-                    const kind = event.target.value as DiscountEffect["kind"];
-                    // a percent effect is currency-neutral and carries no
-                    // second value (design Decision 1)
-                    updateEffect(index, { kind, value_eur: kind === "fixed" ? discount.effect.value_eur : null });
-                  }}
-                >
-                  <option value="fixed">
-                    {t("setup.discounts.fixed", { currency: detail.local_currency })}
-                  </option>
-                  <option value="percent">{t("setup.discounts.percent")}</option>
-                </select>
-              </td>
-              <td className="col-num">
-                <input
-                  ref={fieldRef("value")}
-                  className="cell-input"
-                  type="text"
-                  inputMode="numeric"
-                  value={discount.effect.value}
-                  onChange={(event) => {
-                    updateEffect(index, { value: _int(event.target.value) ?? 0 });
-                    clearIfValid("value")();
-                  }}
-                  onBlur={touch("value")}
-                  {...fieldErrorProps("value")}
-                />
-                <FieldError field={`value-${index}`} error={validation.errors[`value-${index}`]} />
-              </td>
-              {eur && (
-                <td className="col-num">
-                  {discount.effect.kind === "fixed" && (
-                    <>
-                      <input
-                        ref={fieldRef("value_eur")}
-                        className="cell-input"
-                        type="text"
-                        inputMode="numeric"
-                        value={discount.effect.value_eur ?? ""}
-                        onChange={(event) => {
-                          updateEffect(index, {
-                            value_eur: event.target.value === "" ? null : (_int(event.target.value) ?? null),
-                          });
-                          clearIfValid("value_eur")();
-                        }}
-                        onBlur={touch("value_eur")}
-                        {...fieldErrorProps("value_eur")}
-                      />
-                      <FieldError field={`value_eur-${index}`} error={validation.errors[`value_eur-${index}`]} />
-                    </>
-                  )}
+              <tr key={index}>
+                <td>
+                  <input
+                    ref={fieldRef("name")}
+                    className="cell-input"
+                    value={discount.name}
+                    onChange={(event) => {
+                      update(index, { name: event.target.value });
+                      clearIfValid("name")();
+                    }}
+                    onBlur={touch("name")}
+                    {...fieldErrorProps("name")}
+                  />
+                  <FieldError field={`name-${index}`} error={validation.errors[`name-${index}`]} />
                 </td>
-              )}
-              <td className="col-actions">
-                <button
-                  className="row-action"
-                  title={t("actions.delete")}
-                  onClick={() => {
-                    setDrafts(drafts.filter((_, i) => i !== index));
-                    setDirty(true);
-                  }}
-                >
-                  <IconX size={16} stroke={1.5} />
-                </button>
-              </td>
-            </tr>
+                <td className="col-num">
+                  <div className="param-fields">
+                    <select
+                      value={discount.condition.kind}
+                      onChange={(event) =>
+                        updateCondition(index, {
+                          kind: event.target.value as DiscountCondition["kind"],
+                        })
+                      }
+                    >
+                      <option value="discipline_count">
+                        {t("setup.discounts.conditionCount")}
+                      </option>
+                      <option value="early">{t("setup.discounts.conditionEarly")}</option>
+                    </select>
+                    {discount.condition.kind === "discipline_count" ? (
+                      <>
+                        <input
+                          ref={fieldRef("count")}
+                          className="cell-input"
+                          type="text"
+                          inputMode="numeric"
+                          value={discount.condition.count ?? ""}
+                          onChange={(event) => {
+                            updateCondition(index, {
+                              count: _int(event.target.value) ?? undefined,
+                            });
+                            clearIfValid("count")();
+                          }}
+                          onBlur={touch("count")}
+                          {...fieldErrorProps("count")}
+                        />
+                        <FieldError
+                          field={`count-${index}`}
+                          error={validation.errors[`count-${index}`]}
+                        />
+                      </>
+                    ) : (
+                      <input
+                        className="cell-input"
+                        type="date"
+                        value={discount.condition.until ?? ""}
+                        onChange={(event) => updateCondition(index, { until: event.target.value })}
+                      />
+                    )}
+                  </div>
+                </td>
+                <td className="col-num">
+                  <select
+                    value={discount.effect.kind}
+                    onChange={(event) => {
+                      const kind = event.target.value as DiscountEffect["kind"];
+                      // a percent effect is currency-neutral and carries no
+                      // second value (design Decision 1)
+                      updateEffect(index, {
+                        kind,
+                        value_eur: kind === "fixed" ? discount.effect.value_eur : null,
+                      });
+                    }}
+                  >
+                    <option value="fixed">
+                      {t("setup.discounts.fixed", { currency: detail.local_currency })}
+                    </option>
+                    <option value="percent">{t("setup.discounts.percent")}</option>
+                  </select>
+                </td>
+                <td className="col-num">
+                  <input
+                    ref={fieldRef("value")}
+                    className="cell-input"
+                    type="text"
+                    inputMode="numeric"
+                    value={discount.effect.value}
+                    onChange={(event) => {
+                      updateEffect(index, { value: _int(event.target.value) ?? 0 });
+                      clearIfValid("value")();
+                    }}
+                    onBlur={touch("value")}
+                    {...fieldErrorProps("value")}
+                  />
+                  <FieldError
+                    field={`value-${index}`}
+                    error={validation.errors[`value-${index}`]}
+                  />
+                </td>
+                {eur && (
+                  <td className="col-num">
+                    {discount.effect.kind === "fixed" && (
+                      <>
+                        <input
+                          ref={fieldRef("value_eur")}
+                          className="cell-input"
+                          type="text"
+                          inputMode="numeric"
+                          value={discount.effect.value_eur ?? ""}
+                          onChange={(event) => {
+                            updateEffect(index, {
+                              value_eur:
+                                event.target.value === ""
+                                  ? null
+                                  : (_int(event.target.value) ?? null),
+                            });
+                            clearIfValid("value_eur")();
+                          }}
+                          onBlur={touch("value_eur")}
+                          {...fieldErrorProps("value_eur")}
+                        />
+                        <FieldError
+                          field={`value_eur-${index}`}
+                          error={validation.errors[`value_eur-${index}`]}
+                        />
+                      </>
+                    )}
+                  </td>
+                )}
+                <td className="col-actions">
+                  <button
+                    className="row-action"
+                    title={t("actions.delete")}
+                    onClick={() => {
+                      setDrafts(drafts.filter((_, i) => i !== index));
+                      setDirty(true);
+                    }}
+                  >
+                    <IconX size={16} stroke={1.5} />
+                  </button>
+                </td>
+              </tr>
             );
           })}
         </tbody>

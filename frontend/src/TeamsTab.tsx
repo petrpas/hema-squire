@@ -1,9 +1,8 @@
 import { IconArrowUp, IconSearch, IconX } from "@tabler/icons-react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-
+import { api, type RosterMember, type TeamEntry } from "./api";
 import RosterMemberDialog from "./RosterMemberDialog";
-import { type RosterMember, type TeamEntry, api } from "./api";
 import { rosterChanged, summarizeSaves } from "./roster";
 
 function initialRoster(team: TeamEntry): RosterMember[] {
@@ -45,7 +44,9 @@ function RosterEditor({
 
   function confirmDialog(member: RosterMember) {
     const index = dialog?.index ?? null;
-    onChange(index === null ? [...members, member] : members.map((m, i) => (i === index ? member : m)));
+    onChange(
+      index === null ? [...members, member] : members.map((m, i) => (i === index ? member : m)),
+    );
     setDialog(null);
   }
 
@@ -67,7 +68,9 @@ function RosterEditor({
                 value={member.name}
                 onChange={(event) => renameMember(index, event.target.value)}
               />
-              <span className="muted roster-hrid">{member.hr_id !== null ? `#${member.hr_id}` : ""}</span>
+              <span className="muted roster-hrid">
+                {member.hr_id !== null ? `#${member.hr_id}` : ""}
+              </span>
               <span className="muted roster-club">{member.club ?? ""}</span>
               <button
                 type="button"
@@ -198,7 +201,9 @@ export default function TeamsTab({
       ))}
 
       {failedTeams && (
-        <p className="login-error">{t("roster.saveFailedTeams", { teams: failedTeams.join(", ") })}</p>
+        <p className="login-error">
+          {t("roster.saveFailedTeams", { teams: failedTeams.join(", ") })}
+        </p>
       )}
       <button
         className="btn-primary param-save param-save-inline"

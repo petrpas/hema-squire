@@ -3,7 +3,7 @@ import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { ApiError, type Discipline, type ExtraItem, type TournamentDetail, api } from "../api";
+import { ApiError, api, type Discipline, type ExtraItem, type TournamentDetail } from "../api";
 import i18n from "../i18n";
 import ManualEntryDialog from "./ManualEntryDialog";
 import ManualEntryPanel from "./ManualEntryPanel";

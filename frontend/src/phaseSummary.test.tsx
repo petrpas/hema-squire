@@ -1,9 +1,8 @@
 // @vitest-environment jsdom
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-
-import PhaseSummary from "./PhaseSummary";
 import i18n from "./i18n";
+import PhaseSummary from "./PhaseSummary";
 
 /** The header line and the button behind it: what the phase says about its own
  *  outstanding work, and the one control that reads it again. */

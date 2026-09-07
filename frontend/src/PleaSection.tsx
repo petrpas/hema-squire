@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { type Plea, api } from "./api";
+import { api, type Plea } from "./api";
 
 export default function PleaSection({
   plea,
@@ -60,7 +60,12 @@ export default function PleaSection({
           <button type="button" className="secondary" onClick={() => setShowForm(false)}>
             {t("common.cancel")}
           </button>
-          <button type="button" className="btn-primary" disabled={busy} onClick={() => void submit()}>
+          <button
+            type="button"
+            className="btn-primary"
+            disabled={busy}
+            onClick={() => void submit()}
+          >
             {t("picker.pleaSubmit")}
           </button>
         </div>

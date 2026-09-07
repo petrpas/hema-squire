@@ -2,9 +2,8 @@ import { IconDots } from "@tabler/icons-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
-
-import FencerIdentity from "./FencerIdentity";
 import { type Account } from "./api";
+import FencerIdentity from "./FencerIdentity";
 import * as routes from "./routes";
 
 export default function AccountMenu({

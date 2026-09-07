@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { ApiError, type Currency, type PaymentMethod, type SheetRow, api } from "../api";
+import { ApiError, api, type Currency, type PaymentMethod, type SheetRow } from "../api";
 import { formatMoney } from "../money";
 
 const METHODS: PaymentMethod[] = ["cash", "transfer", "card", "other"];

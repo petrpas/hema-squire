@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { type Operation, type OperationKind, type OperationsReport, api } from "./api";
+import { api, type Operation, type OperationKind, type OperationsReport } from "./api";
 
 /** How often the console asks how the running work is going. The operations it
  *  watches are measured in minutes, so this is fine-grained enough to look

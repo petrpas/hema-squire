@@ -2,7 +2,7 @@ import { IconX } from "@tabler/icons-react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { ApiError, type TeamMember, api } from "../api";
+import { ApiError, api, type TeamMember } from "../api";
 import HelpHint from "../HelpHint";
 
 export function TeamSection({ slug }: { slug: string }) {

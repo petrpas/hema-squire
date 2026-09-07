@@ -1,13 +1,12 @@
 import { type ReactNode, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useOutletContext } from "react-router-dom";
-
+import { api, logoUrl, type OpenTournament } from "./api";
 import DotJoined from "./DotJoined";
-import InlineProse from "./InlineProse";
 import { type HomeTab } from "./FencerShell";
-import { detail } from "./routes";
-import { type OpenTournament, api, logoUrl } from "./api";
+import InlineProse from "./InlineProse";
 import { openingHourIn } from "./openingMoment";
+import { detail } from "./routes";
 
 /** What `FencerLayout` provides its two child routes through the outlet
  *  (design D4): the resolved filter tab and the upcoming lists it fetches
@@ -39,9 +38,7 @@ function StatusBadge({ tournament }: { tournament: OpenTournament }) {
     const hour = openingHourIn(tournament.registration_opens_at, tournament.timezone);
     return (
       <span className="chip">
-        {hour
-          ? t("home.status.opensAt", { date, time: hour })
-          : t("home.status.opensOn", { date })}
+        {hour ? t("home.status.opensAt", { date, time: hour }) : t("home.status.opensOn", { date })}
       </span>
     );
   }
@@ -67,13 +64,7 @@ function BondBadge({ tournament }: { tournament: OpenTournament }) {
 /** Logo, then four lines: name, subtitle, date and place in the heavier
  *  weight, organizers. Every line degrades cleanly when its field is absent —
  *  no blank line and no stray middle dot is left behind. */
-function CardHeading({
-  tournament,
-  badge,
-}: {
-  tournament: OpenTournament;
-  badge: ReactNode;
-}) {
+function CardHeading({ tournament, badge }: { tournament: OpenTournament; badge: ReactNode }) {
   return (
     <div className="home-card-header">
       {tournament.has_logo && (
@@ -81,9 +72,7 @@ function CardHeading({
       )}
       <div className="home-card-heading">
         <h2>{tournament.display_name}</h2>
-        {tournament.subtitle && (
-          <p className="home-card-subtitle">{tournament.subtitle}</p>
-        )}
+        {tournament.subtitle && <p className="home-card-subtitle">{tournament.subtitle}</p>}
         {/* the card itself is the link to the tournament, so a location
             written as a markdown link contributes its label only */}
         <DotJoined

@@ -1,9 +1,8 @@
 import { useEffect, useState } from "react";
 import { Outlet, useNavigate, useOutletContext } from "react-router-dom";
-
-import Login from "./Login";
 import { ApiError, api, getToken, setToken } from "./api";
 import i18n from "./i18n";
+import Login from "./Login";
 
 type AuthContext = { onLogout: () => void };
 

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { type DedupGroup as Group, api } from "../api";
+import { api, type DedupGroup as Group } from "../api";
 import type { OperationsView } from "../useOperations";
 import DedupGroup from "./DedupGroup";
 import useDedupRun from "./useDedupRun";

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { type ClearablePayments, api } from "../api";
+import { api, type ClearablePayments } from "../api";
 
 /** Undoing an import of money.
  *

@@ -4,12 +4,7 @@ import { createRoot } from "react-dom/client";
 import { afterEach, expect, it, vi } from "vitest";
 
 import type { SheetRow, TournamentFlags } from "./api";
-import {
-  BONED_PAYMENTS_COLUMNS,
-  PHASE_COLUMNS,
-  offeredPhases,
-  paymentsBonedOut,
-} from "./Console";
+import { BONED_PAYMENTS_COLUMNS, offeredPhases, PHASE_COLUMNS, paymentsBonedOut } from "./Console";
 import i18n from "./i18n";
 import SettledCell from "./SettledCell";
 
@@ -91,9 +86,7 @@ it("the boned-out phase keeps what is owed beside the mark", () => {
 
 it("marks an unsettled registration", () => {
   const toggle = vi.fn().mockResolvedValue(undefined);
-  mount(
-    <SettledCell row={row()} onToggle={toggle} busy={false} />,
-  );
+  mount(<SettledCell row={row()} onToggle={toggle} busy={false} />);
 
   const button = host?.querySelector("button") as HTMLButtonElement;
   expect(button.getAttribute("aria-pressed")).toBe("false");

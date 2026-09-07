@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { ApiError, type PaymentMode, type TournamentDetail, api } from "../api";
+import { ApiError, api, type PaymentMode, type TournamentDetail } from "../api";
 import FieldError, { invalidProps } from "../FieldError";
 import HelpHint from "../HelpHint";
 import { showsEur } from "../money";
@@ -31,7 +31,10 @@ const UNPAID_TREATMENTS = ["greyed", "hidden"] as const;
  *  produced it — unset it resolves to the registration close, which itself
  *  resolves to the tournament date (setup.py::seating_deadline_for). Read
  *  from saved state: an unsaved edit on TIMELINE has not happened yet. */
-function effectiveDeadline(detail: TournamentDetail): { date: string; via: "own" | "close" | "date" } {
+function effectiveDeadline(detail: TournamentDetail): {
+  date: string;
+  via: "own" | "close" | "date";
+} {
   if (detail.seating_deadline) return { date: detail.seating_deadline, via: "own" };
   if (detail.registration_closes) return { date: detail.registration_closes, via: "close" };
   return { date: detail.date, via: "date" };
@@ -80,7 +83,11 @@ export function PaymentModeSection({
 
   const checks: Record<string, () => FieldErrorValue | null> = {
     reservation_validity_days: () =>
-      checkNumeric("reservation_validity_days", "TournamentUpdate.reservation_validity_days", windowDays),
+      checkNumeric(
+        "reservation_validity_days",
+        "TournamentUpdate.reservation_validity_days",
+        windowDays,
+      ),
     reminder_day: () => checkNumeric("reminder_day", "TournamentUpdate.reminder_day", reminderDay),
   };
   // the deposit is only a field — and only checkable — in deposit mode
@@ -125,7 +132,9 @@ export function PaymentModeSection({
         const message =
           fieldErrors.length > 0
             ? fieldErrors.map((e) => t(`validation.${e.code}`, e.params)).join(" ")
-            : t("setup.saveBar.genericError", { status: err instanceof ApiError ? err.status : "?" });
+            : t("setup.saveBar.genericError", {
+                status: err instanceof ApiError ? err.status : "?",
+              });
         setError(message);
         return [{ change: "paymentMode", section: "paymentMode", error: message }];
       }

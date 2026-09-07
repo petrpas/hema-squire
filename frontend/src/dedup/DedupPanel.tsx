@@ -36,12 +36,8 @@ export default function DedupPanel({
         </p>
       )}
       {runner.error && <p className="login-error">{t("dedup.notConfigured")}</p>}
-      {dedup?.status === "failed" && (
-        <p className="login-error">{conclusionText(t, dedup)}</p>
-      )}
-      {dedup?.status === "interrupted" && (
-        <p className="rail-hint">{conclusionText(t, dedup)}</p>
-      )}
+      {dedup?.status === "failed" && <p className="login-error">{conclusionText(t, dedup)}</p>}
+      {dedup?.status === "interrupted" && <p className="rail-hint">{conclusionText(t, dedup)}</p>}
     </section>
   );
 }

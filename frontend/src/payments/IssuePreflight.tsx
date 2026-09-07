@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { type IssuableCount, type TournamentDetail, api } from "../api";
+import { api, type IssuableCount, type TournamentDetail } from "../api";
 
 /** What an intake will do to the fencer list, said before it is asked to.
  *

@@ -1,11 +1,11 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { type ManualEntryIn, type TournamentDetail, api } from "../api";
+import { api, type ManualEntryIn, type TournamentDetail } from "../api";
 import FieldError, { invalidProps } from "../FieldError";
+import { parseInteger } from "../numeric";
 import { useFieldValidation } from "../useFieldValidation";
 import { apiErrors, checkNumeric, checkString } from "../validation";
-import { parseInteger } from "../numeric";
 import { nowInZone } from "./nowInZone";
 
 /** A fencer entered by hand, from the tournament's own structure: its offered
@@ -53,8 +53,7 @@ export default function ManualEntryDialog({
   const checkClub = () => checkString("club", "ManualEntryIn.club", club);
   const checkNationality = () =>
     checkString("nationality", "ManualEntryIn.nationality", nationality);
-  const checkNotes = () =>
-    checkString("notes", "ManualEntryIn.notes", notes, { multiline: true });
+  const checkNotes = () => checkString("notes", "ManualEntryIn.notes", notes, { multiline: true });
   const checkHrId = () => checkNumeric("hr_id", "ManualEntryIn.hr_id", hrId);
 
   function toggle(list: string[], value: string, set: (next: string[]) => void) {

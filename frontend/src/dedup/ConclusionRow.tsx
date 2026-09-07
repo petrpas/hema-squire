@@ -4,7 +4,7 @@ import type { DedupMember } from "../api";
 import { IDENTITY_COLUMNS, identityValue } from "../identity";
 import { registeredMoment } from "../momentText";
 import ConclusionCell from "./ConclusionCell";
-import { GROUP_COLUMNS, asList, editableInConclusion, isBound } from "./mergeFields";
+import { asList, editableInConclusion, GROUP_COLUMNS, isBound } from "./mergeFields";
 
 /** The record a merge would produce, in the same columns as the records it
  *  would merge — the verdict register of a candidate group (spec `etl-console`,
@@ -50,7 +50,8 @@ export default function ConclusionRow({
       const text = value === null || value === undefined || value === "" ? "—" : String(value);
       return text === "—" ? <>{text}</> : <span className="identity-declared">{text}</span>;
     }
-    if (column === "registered_at") return <>{registeredMoment(survivor?.registered_at ?? null, timezone)}</>;
+    if (column === "registered_at")
+      return <>{registeredMoment(survivor?.registered_at ?? null, timezone)}</>;
     if (column === "disciplines" || column === "weapon_rentals") {
       const values = asList(fields[column]);
       return <>{values.length > 0 ? values.join(", ") : "—"}</>;

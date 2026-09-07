@@ -3,7 +3,7 @@ import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { type DedupGroup, type DedupMember, api } from "../api";
+import { api, type DedupGroup, type DedupMember } from "../api";
 import i18n from "../i18n";
 import type { OperationsView } from "../useOperations";
 import DedupView from "./DedupView";
@@ -222,8 +222,12 @@ describe("a settled group", () => {
   it("states that the machine decided it and offers the opposite verdict", async () => {
     const decide = vi.spyOn(api, "dedupDecide").mockResolvedValue({ status: "rejected" });
     await mount([
-      group({ kind: "surely", verdict: "merged", decided_by: "llm",
-              conclusion: { fields: { name: "Jan Novák" }, note: "auto-merged" } }),
+      group({
+        kind: "surely",
+        verdict: "merged",
+        decided_by: "llm",
+        conclusion: { fields: { name: "Jan Novák" }, note: "auto-merged" },
+      }),
     ]);
 
     expect(text()).toContain(t("dedup.verdict.merged"));
@@ -235,8 +239,11 @@ describe("a settled group", () => {
 
   it("keeps its conclusion closed until it is reopened", async () => {
     await mount([
-      group({ verdict: "merged", decided_by: "organizer",
-              conclusion: { fields: { name: "Jan Novák" }, note: "sloučeno" } }),
+      group({
+        verdict: "merged",
+        decided_by: "organizer",
+        conclusion: { fields: { name: "Jan Novák" }, note: "sloučeno" },
+      }),
     ]);
 
     expect(host?.querySelector(".conclusion-value")).toBeNull();

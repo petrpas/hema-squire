@@ -1,9 +1,8 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-
-import PaymentSlipBlock, { type SlipField } from "./PaymentSlipBlock";
-import { ApiError, type PaymentInstructions, api } from "./api";
+import { ApiError, api, type PaymentInstructions } from "./api";
 import { formatMoney } from "./money";
+import PaymentSlipBlock, { type SlipField } from "./PaymentSlipBlock";
 
 // the endpoint's three named refusals, plus a catch-all for anything else
 // (network error, unexpected status) — every case is shown, never silently
@@ -94,7 +93,11 @@ export default function PaymentPanel({ slug }: { slug: string }) {
       (payment) => setState({ kind: "ready", payment }),
       (err) => {
         const detail = err instanceof ApiError ? err.detail : null;
-        if (detail === "no_payment_due" || detail === "no_bank_account" || detail === "not_unpaid") {
+        if (
+          detail === "no_payment_due" ||
+          detail === "no_bank_account" ||
+          detail === "not_unpaid"
+        ) {
           setState({ kind: "refused", reason: detail });
         } else {
           setState({
@@ -120,7 +123,9 @@ export default function PaymentPanel({ slug }: { slug: string }) {
     // no_payment_due keeps registration.fullyQueuedHint's key so the Czech
     // translation moves with the behaviour rather than being re-authored
     const key =
-      state.reason === "no_payment_due" ? "registration.fullyQueuedHint" : `payment.reason.${state.reason}`;
+      state.reason === "no_payment_due"
+        ? "registration.fullyQueuedHint"
+        : `payment.reason.${state.reason}`;
     return <p className="rail-hint">{t(key)}</p>;
   }
 

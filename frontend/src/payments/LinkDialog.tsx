@@ -3,11 +3,11 @@ import { useTranslation } from "react-i18next";
 
 import {
   ApiError,
+  api,
   type Currency,
   type IssuedSkip,
   type RankedFencer,
   type Transaction,
-  api,
 } from "../api";
 import { formatMoney } from "../money";
 import { nameMatches } from "../nameSearch";
@@ -211,12 +211,8 @@ export default function LinkDialog({
                     onChange={() => toggle(fencer.registration_id)}
                   />
                   {fencer.name}
-                  {fencer.proposed && (
-                    <span className="chip">{t("payments.link.strongest")}</span>
-                  )}
-                  {fencer.rejected && (
-                    <span className="muted"> {t("payments.link.refused")}</span>
-                  )}
+                  {fencer.proposed && <span className="chip">{t("payments.link.strongest")}</span>}
+                  {fencer.rejected && <span className="muted"> {t("payments.link.refused")}</span>}
                 </label>
                 <span className="muted">{fencer.outstanding_amount}</span>
               </li>
@@ -240,23 +236,23 @@ export default function LinkDialog({
         )}
 
         {symbolsInUse && (
-        <div className="link-entry">
-          <input
-            value={typed}
-            inputMode="numeric"
-            placeholder={t("payments.link.placeholder")}
-            onChange={(event) => setTyped(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key === "Enter") {
-                event.preventDefault();
-                addTyped();
-              }
-            }}
-          />
-          <button className="secondary" onClick={addTyped}>
-            {t("payments.link.add")}
-          </button>
-        </div>
+          <div className="link-entry">
+            <input
+              value={typed}
+              inputMode="numeric"
+              placeholder={t("payments.link.placeholder")}
+              onChange={(event) => setTyped(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  event.preventDefault();
+                  addTyped();
+                }
+              }}
+            />
+            <button className="secondary" onClick={addTyped}>
+              {t("payments.link.add")}
+            </button>
+          </div>
         )}
 
         <p className="rail-hint">{t("payments.link.selected")}</p>

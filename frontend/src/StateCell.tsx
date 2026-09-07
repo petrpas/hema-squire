@@ -34,9 +34,7 @@ export default function StateCell({
   const [asking, setAsking] = useState(false);
 
   const waived = row.settled_by_hand === true;
-  const offered =
-    typeof row.registration_id === "number" &&
-    (waived || row.state === "reserved");
+  const offered = typeof row.registration_id === "number" && (waived || row.state === "reserved");
 
   if (!offered) return <StateBadge id={row.id} state={row.state} />;
 
@@ -49,7 +47,7 @@ export default function StateCell({
         aria-pressed={waived}
         title={
           waived
-            ? row.settled_by_hand_reason ?? t("console.settled.unset")
+            ? (row.settled_by_hand_reason ?? t("console.settled.unset"))
             : t("console.waiver.title")
         }
         onClick={() => {

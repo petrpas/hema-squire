@@ -3,7 +3,7 @@ import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
-import { type ExpiredHolding, type PaymentLink, api } from "../api";
+import { api, type ExpiredHolding, type PaymentLink } from "../api";
 import i18n from "../i18n";
 import SheetArea from "../SheetArea";
 import ExpiredHoldingPanel from "./ExpiredHoldingPanel";
@@ -200,7 +200,6 @@ it("shows no number while the count is not yet known", () => {
   expect(host?.querySelector(".rail-count")).toBeNull();
   expect(host?.textContent).not.toContain("body");
 });
-
 
 it("puts the phase's queues above the fencer table", () => {
   mount(

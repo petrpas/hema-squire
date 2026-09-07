@@ -1,11 +1,10 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Navigate, useParams } from "react-router-dom";
-
+import { api, type Tournament } from "./api";
 import Console, { DEFAULT_PHASE, offeredPhases, PHASES, type Phase } from "./Console";
 import NotFound from "./NotFound";
 import * as routes from "./routes";
-import { type Tournament, api } from "./api";
 
 function isPhase(value: string | undefined): value is Phase {
   return value !== undefined && (PHASES as readonly string[]).includes(value);

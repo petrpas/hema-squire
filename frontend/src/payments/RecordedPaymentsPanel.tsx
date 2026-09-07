@@ -2,7 +2,7 @@ import { IconTrash } from "@tabler/icons-react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { type ManualPayment, api } from "../api";
+import { api, type ManualPayment } from "../api";
 import { formatMoney } from "../money";
 import QueueCard from "./QueueCard";
 
@@ -96,9 +96,7 @@ export default function RecordedPaymentsPanel({
                     onClick={() => setRemoving(payment)}
                   >
                     <IconTrash size={16} stroke={1.5} />
-                    <span className="visually-hidden">
-                      {t("payments.recorded.remove")}
-                    </span>
+                    <span className="visually-hidden">{t("payments.recorded.remove")}</span>
                   </button>
                 </td>
               </tr>
@@ -125,11 +123,7 @@ export default function RecordedPaymentsPanel({
               <button className="secondary" onClick={() => setRemoving(null)}>
                 {t("common.cancel")}
               </button>
-              <button
-                className="btn-primary"
-                disabled={busy}
-                onClick={() => void remove(removing)}
-              >
+              <button className="btn-primary" disabled={busy} onClick={() => void remove(removing)}>
                 {t("payments.recorded.removeConfirm")}
               </button>
             </div>

@@ -3,18 +3,18 @@ import { useTranslation } from "react-i18next";
 import { Link, useNavigate } from "react-router-dom";
 
 import AccountMenu from "./AccountMenu";
-import { useAuth } from "./RequireAuth";
-import { consolePath } from "./routes";
 import {
-  ApiError,
   type Account,
+  ApiError,
+  api,
   type RegistrationsKeptBy,
   type Tournament,
   type TournamentDetail,
   type TournamentFlags,
-  api,
 } from "./api";
 import FieldError, { invalidProps } from "./FieldError";
+import { useAuth } from "./RequireAuth";
+import { consolePath } from "./routes";
 import { TournamentSettingsFields } from "./TournamentSettingsDialog";
 import { useFieldValidation } from "./useFieldValidation";
 import { apiErrors, checkString } from "./validation";

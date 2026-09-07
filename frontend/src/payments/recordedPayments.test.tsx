@@ -3,10 +3,10 @@ import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
-import { ApiError, type ManualPayment, type SheetRow, api } from "../api";
+import { ApiError, api, type ManualPayment, type SheetRow } from "../api";
 import i18n from "../i18n";
-import SheetArea from "../SheetArea";
 import { formatMoney } from "../money";
+import SheetArea from "../SheetArea";
 import RecordedPaymentsPanel from "./RecordedPaymentsPanel";
 import RecordPaymentDialog from "./RecordPaymentDialog";
 
@@ -43,10 +43,7 @@ function buttonNamed(text: string) {
 }
 
 function type(input: HTMLInputElement, value: string) {
-  const setter = Object.getOwnPropertyDescriptor(
-    window.HTMLInputElement.prototype,
-    "value",
-  )!.set!;
+  const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value")!.set!;
   act(() => {
     setter.call(input, value);
     input.dispatchEvent(new Event("input", { bubbles: true }));
@@ -125,9 +122,7 @@ it("reports its own failure", async () => {
 
 it("says what removal will do before it is confirmed", async () => {
   vi.spyOn(api, "manualPayments").mockResolvedValue([payment()]);
-  const remove = vi
-    .spyOn(api, "removeManualPayment")
-    .mockResolvedValue(payment());
+  const remove = vi.spyOn(api, "removeManualPayment").mockResolvedValue(payment());
   const changed = vi.fn();
   mount(<RecordedPaymentsPanel slug="cup" reload={0} onChanged={changed} />);
   await settle();
@@ -138,18 +133,14 @@ it("says what removal will do before it is confirmed", async () => {
   expect(host?.textContent).toContain(t("payments.recorded.removeUnsettles"));
   expect(remove).not.toHaveBeenCalled();
 
-  act(() =>
-    (host?.querySelector(".modal-actions .btn-primary") as HTMLButtonElement).click(),
-  );
+  act(() => (host?.querySelector(".modal-actions .btn-primary") as HTMLButtonElement).click());
   await settle();
   expect(remove).toHaveBeenCalledWith("cup", 7);
   expect(changed).toHaveBeenCalled();
 });
 
 it("does not warn about unsettling where removal would not", async () => {
-  vi.spyOn(api, "manualPayments").mockResolvedValue([
-    payment({ removal_unsettles: false }),
-  ]);
+  vi.spyOn(api, "manualPayments").mockResolvedValue([payment({ removal_unsettles: false })]);
   mount(<RecordedPaymentsPanel slug="cup" reload={0} onChanged={vi.fn()} />);
   await settle();
 
@@ -265,7 +256,6 @@ it("offers the second currency only where the tournament prices in one", () => {
   // the currency select, plus the method one that is always there
   expect(host?.querySelectorAll("select").length).toBe(2);
 });
-
 
 // ---------------------------------------- where the record action sits
 

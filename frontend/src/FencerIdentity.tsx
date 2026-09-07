@@ -1,8 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
-
-import { profile } from "./routes";
 import { type Account } from "./api";
+import { profile } from "./routes";
 
 /** Who the fencer is: their display name over their hemaratings identity.
  *

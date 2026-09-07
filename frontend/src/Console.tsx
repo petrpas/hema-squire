@@ -5,55 +5,55 @@ import { Link, useNavigate } from "react-router-dom";
 import AccountMenu from "./AccountMenu";
 import AmendmentNotice from "./AmendmentNotice";
 import AwaitsPublication from "./AwaitsPublication";
-import DedupPanel from "./dedup/DedupPanel";
-import DedupView from "./dedup/DedupView";
-import ExportPanel from "./ExportPanel";
-import { IDENTITY_COLUMNS, identityValue, usesHRIdentity } from "./identity";
-import ImportPanel from "./ImportPanel";
-import IssueOnArrival from "./payments/IssueOnArrival";
-import QueueTabs, { QueueTabStrip } from "./payments/QueueTabs";
-import MatchDialog from "./MatchDialog";
-import MatchPanel from "./MatchPanel";
-import NoteMarker from "./NoteMarker";
-import OperationsIndicator from "./OperationsIndicator";
-import ManualEditsRail from "./ManualEditsRail";
-import ManualEntryPanel from "./manual/ManualEntryPanel";
-import PaidStamp from "./PaidStamp";
-import ProblemsCell from "./ProblemsCell";
-import RentalsCell from "./RentalsCell";
-import TolerancePanel from "./TolerancePanel";
-import ExpiredHoldingPanel from "./payments/ExpiredHoldingPanel";
-import FlaggedPanel from "./payments/FlaggedPanel";
-import LikelyPanel from "./payments/LikelyPanel";
-import IntakePanel from "./payments/IntakePanel";
-import PaymentLinksPanel from "./payments/PaymentLinksPanel";
-import RecordedPaymentsPanel from "./payments/RecordedPaymentsPanel";
-import RecordPaymentDialog from "./payments/RecordPaymentDialog";
-import UnmatchedPanel from "./payments/UnmatchedPanel";
-import WaivedBalance from "./WaivedBalance";
-import QueuePanel from "./QueuePanel";
-import { useAuth } from "./RequireAuth";
-import * as routes from "./routes";
-import SetupPanel from "./SetupPanel";
-import SheetArea from "./SheetArea";
-import TeamsPanel from "./TeamsPanel";
-import useOperations from "./useOperations";
-import { formatMoney, formatMoneyWithEur } from "./money";
-import { dayIn, registeredMoment } from "./momentText";
-import { parseInteger } from "./numeric";
-import { checkNumeric, checkString, type FieldError } from "./validation";
 import {
-  ApiError,
   type Account,
   type Amendment,
+  ApiError,
+  api,
   type NetChange,
   type Sheet,
   type SheetRow,
   type Tournament,
   type TournamentDetail,
   type TournamentFlags,
-  api,
 } from "./api";
+import DedupPanel from "./dedup/DedupPanel";
+import DedupView from "./dedup/DedupView";
+import ExportPanel from "./ExportPanel";
+import ImportPanel from "./ImportPanel";
+import { IDENTITY_COLUMNS, identityValue, usesHRIdentity } from "./identity";
+import ManualEditsRail from "./ManualEditsRail";
+import MatchDialog from "./MatchDialog";
+import MatchPanel from "./MatchPanel";
+import ManualEntryPanel from "./manual/ManualEntryPanel";
+import { dayIn, registeredMoment } from "./momentText";
+import { formatMoney, formatMoneyWithEur } from "./money";
+import NoteMarker from "./NoteMarker";
+import { parseInteger } from "./numeric";
+import OperationsIndicator from "./OperationsIndicator";
+import PaidStamp from "./PaidStamp";
+import ProblemsCell from "./ProblemsCell";
+import ExpiredHoldingPanel from "./payments/ExpiredHoldingPanel";
+import FlaggedPanel from "./payments/FlaggedPanel";
+import IntakePanel from "./payments/IntakePanel";
+import IssueOnArrival from "./payments/IssueOnArrival";
+import LikelyPanel from "./payments/LikelyPanel";
+import PaymentLinksPanel from "./payments/PaymentLinksPanel";
+import QueueTabs, { QueueTabStrip } from "./payments/QueueTabs";
+import RecordedPaymentsPanel from "./payments/RecordedPaymentsPanel";
+import RecordPaymentDialog from "./payments/RecordPaymentDialog";
+import UnmatchedPanel from "./payments/UnmatchedPanel";
+import QueuePanel from "./QueuePanel";
+import RentalsCell from "./RentalsCell";
+import { useAuth } from "./RequireAuth";
+import * as routes from "./routes";
+import SetupPanel from "./SetupPanel";
+import SheetArea from "./SheetArea";
+import TeamsPanel from "./TeamsPanel";
+import TolerancePanel from "./TolerancePanel";
+import useOperations from "./useOperations";
+import { checkNumeric, checkString, type FieldError } from "./validation";
+import WaivedBalance from "./WaivedBalance";
 
 const STAGES = ["pre", "in", "post"] as const;
 // Setup is step 0, ahead of the fencer-list phases (spec: etl-console).
@@ -118,14 +118,7 @@ export const PHASE_COLUMNS: Record<Phase, string[]> = {
   // problems sits beside notes here as it does on Import: a row now states
   // problems that outlive parsing — a borrowed item nothing prices — and this
   // is the phase where that item is read and corrected
-  fencers: [
-    "disciplines",
-    "weapon_rentals",
-    "afterparty",
-    "registered_at",
-    "notes",
-    "problems",
-  ],
+  fencers: ["disciplines", "weapon_rentals", "afterparty", "registered_at", "notes", "problems"],
   matching: ["hr_id", "hr_name", "hr_nationality", "hr_club", "match"],
   // Deduplication shows candidate groups, not the fencer list (design D1)
   dedup: [],
@@ -399,9 +392,7 @@ export function StateBadge({ id, state }: { id: string; state: string }) {
   // the stored value is an enum, not a word anybody reads: every other state
   // was printing its English identifier into a Czech table
   return (
-    <span className="state-text">
-      {t(`registration.state.${state}`, { defaultValue: state })}
-    </span>
+    <span className="state-text">{t(`registration.state.${state}`, { defaultValue: state })}</span>
   );
 }
 
@@ -452,7 +443,7 @@ export function CellDisplay({
             reason={row.settled_by_hand_reason ?? null}
             amount={row.waived_amount ?? null}
             currency={
-              currency === null ? null : row.outstanding_currency ?? currency.local_currency
+              currency === null ? null : (row.outstanding_currency ?? currency.local_currency)
             }
           />
         );
@@ -496,9 +487,7 @@ export function CellDisplay({
     case "weapon_rentals":
       // a name the tournament lends nothing by is billed nothing, and says so
       // here rather than leaving the total quietly short
-      return (
-        <RentalsCell rentals={row.weapon_rentals} unpriced={row.unpriced_rentals ?? []} />
-      );
+      return <RentalsCell rentals={row.weapon_rentals} unpriced={row.unpriced_rentals ?? []} />;
     case "afterparty":
       return <>{row.afterparty ? "✓" : "—"}</>;
     case "registered_at":
@@ -516,13 +505,7 @@ export function CellDisplay({
   }
 }
 
-export default function Console({
-  tournament,
-  phase,
-}: {
-  tournament: Tournament;
-  phase: Phase;
-}) {
+export default function Console({ tournament, phase }: { tournament: Tournament; phase: Phase }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { onLogout } = useAuth();
@@ -631,8 +614,7 @@ export default function Console({
     if (field === "disciplines" || field === "weapon_rentals") {
       // a list, not the text it was typed as: the row's own shape, which
       // pricing, seating and issuing all read
-      const value =
-        field === "disciplines" ? parseDisciplines(raw) : parseRentals(raw);
+      const value = field === "disciplines" ? parseDisciplines(raw) : parseRentals(raw);
       void addRule(ruleKindFor(field, row), row.id, { field, value });
       return;
     }
@@ -726,10 +708,7 @@ export default function Console({
     // open and states the reason. Swallowing it here left a row that did not
     // change and nothing at all saying why
   }
-  const columns = [
-    ...BASE_COLUMNS,
-    ...(boned ? BONED_PAYMENTS_COLUMNS : PHASE_COLUMNS[phase]),
-  ];
+  const columns = [...BASE_COLUMNS, ...(boned ? BONED_PAYMENTS_COLUMNS : PHASE_COLUMNS[phase])];
   const phaseEdits = editsForPhase(sheet?.edits ?? [], phase);
 
   return (
@@ -796,181 +775,171 @@ export default function Console({
           <QueuePanel slug={tournament.slug} timezone={detail?.timezone ?? null} />
         ) : (
           <>
-        {phase === "dedup" ? (
-          /* the phase's work is a handful of rows out of fifty, and the fencer
+            {phase === "dedup" ? (
+              /* the phase's work is a handful of rows out of fifty, and the fencer
              table states it where it is hardest to see (spec etl-console,
              Deduplication candidate review) */
-          <DedupView
-            slug={tournament.slug}
-            operations={operations}
-            onChanged={refresh}
-            timezone={detail?.timezone ?? null}
-          />
-        ) : (
-          /* the tabs' state lives above the table, because the fencer list is
+              <DedupView
+                slug={tournament.slug}
+                operations={operations}
+                onChanged={refresh}
+                timezone={detail?.timezone ?? null}
+              />
+            ) : (
+              /* the tabs' state lives above the table, because the fencer list is
              the first of them and gives way to whichever queue is read. Keyed
              by phase: the tabs belong to Payments, and a selection carried into
              a phase that draws no queues would leave the table hidden behind a
              tab that is not there */
-          <QueueTabs key={phase} primary={t("payments.tabs.fencers")}>
-          <SheetArea
-            phase={phase}
-            queues={
-              boned ? (
-                /* the phase's whole content is the mark, so what the mark
+              <QueueTabs key={phase} primary={t("payments.tabs.fencers")}>
+                <SheetArea
+                  phase={phase}
+                  queues={
+                    boned ? (
+                      /* the phase's whole content is the mark, so what the mark
                    means goes above the table where the queues would be: a row
                    reading paid while still showing its total is the honest
                    reading of both, and a reader who takes it for a fault is
                    misreading the one true thing about it */
-                <>
-                  <p className="rail-hint">{t("console.settled.meaning")}</p>
-                  {/* no intake exists here to issue the roster, so arriving
+                      <>
+                        <p className="rail-hint">{t("console.settled.meaning")}</p>
+                        {/* no intake exists here to issue the roster, so arriving
                       does it (design Decision 10) */}
-                  <IssueOnArrival slug={tournament.slug} onIssued={refresh} />
-                </>
-              ) : phase === "payments" ? (
-                /* one table at a time: the fencer list and five queues stacked
+                        <IssueOnArrival slug={tournament.slug} onIssued={refresh} />
+                      </>
+                    ) : phase === "payments" ? (
+                      /* one table at a time: the fencer list and five queues stacked
                    could not be read as six different things. Proposals lead
                    the queues — the one with the most work in it and the one an
                    organizer empties fastest; the recorded payments come last,
                    being the one view holding no decision */
-                <>
-                  <QueueTabStrip />
-                  <LikelyPanel
-                    slug={tournament.slug}
-                    reload={queueReload}
-                    onChanged={refresh}
-                  />
-                  <UnmatchedPanel
-                    slug={tournament.slug}
-                    reload={queueReload}
-                    onChanged={refresh}
-                  />
-                  <FlaggedPanel
-                    slug={tournament.slug}
-                    reload={queueReload}
-                    onChanged={refresh}
-                  />
-                  <ExpiredHoldingPanel
-                    slug={tournament.slug}
-                    reload={queueReload}
-                    currency={detail?.local_currency ?? "CZK"}
-                  />
-                  <PaymentLinksPanel
-                    slug={tournament.slug}
-                    reload={queueReload}
-                    onChanged={refresh}
-                  />
-                  <RecordedPaymentsPanel
-                    slug={tournament.slug}
-                    reload={queueReload}
-                    onChanged={refresh}
-                  />
-                </>
-              ) : null
-            }
-            rows={rows}
-            visibleRows={visibleRows}
-            columns={columns}
-            activeRows={activeRows}
-            paidCount={paidCount}
-            revision={sheet?.edits.length ?? 0}
-            timezone={detail?.timezone ?? null}
-            currency={detail ?? null}
-            error={error}
-            refresh={refresh}
-            onEdit={saveEdit}
-            onValidate={cellCheck}
-            onDelete={(row) => void addRule("row_delete", row.id, {})}
-            onRestore={(row) => void addRule("row_restore", row.id, {})}
-            /* the mark is offered on every tournament: as the boned-out
+                      <>
+                        <QueueTabStrip />
+                        <LikelyPanel
+                          slug={tournament.slug}
+                          reload={queueReload}
+                          onChanged={refresh}
+                        />
+                        <UnmatchedPanel
+                          slug={tournament.slug}
+                          reload={queueReload}
+                          onChanged={refresh}
+                        />
+                        <FlaggedPanel
+                          slug={tournament.slug}
+                          reload={queueReload}
+                          onChanged={refresh}
+                        />
+                        <ExpiredHoldingPanel
+                          slug={tournament.slug}
+                          reload={queueReload}
+                          currency={detail?.local_currency ?? "CZK"}
+                        />
+                        <PaymentLinksPanel
+                          slug={tournament.slug}
+                          reload={queueReload}
+                          onChanged={refresh}
+                        />
+                        <RecordedPaymentsPanel
+                          slug={tournament.slug}
+                          reload={queueReload}
+                          onChanged={refresh}
+                        />
+                      </>
+                    ) : null
+                  }
+                  rows={rows}
+                  visibleRows={visibleRows}
+                  columns={columns}
+                  activeRows={activeRows}
+                  paidCount={paidCount}
+                  revision={sheet?.edits.length ?? 0}
+                  timezone={detail?.timezone ?? null}
+                  currency={detail ?? null}
+                  error={error}
+                  refresh={refresh}
+                  onEdit={saveEdit}
+                  onValidate={cellCheck}
+                  onDelete={(row) => void addRule("row_delete", row.id, {})}
+                  onRestore={(row) => void addRule("row_restore", row.id, {})}
+                  /* the mark is offered on every tournament: as the boned-out
                phase's own column, and as the waiver on the state cell where
                Squire collects */
-            onToggleSettled={phase === "payments" ? toggleSettled : undefined}
-            collects={collects}
-            onRecordPayment={
-              phase === "payments" && collects ? setRecording : undefined
-            }
-            settling={settling}
-            onRatify={ratifyMatch}
-            onSearch={setMatchRow}
-          />
-          </QueueTabs>
-        )}
-        {recording && detail && (
-          <RecordPaymentDialog
-            slug={tournament.slug}
-            row={recording}
-            currency={detail.local_currency}
-            eurOffered={detail.eur_payments_enabled}
-            /* `refresh` is already the console's "the money moved" signal
+                  onToggleSettled={phase === "payments" ? toggleSettled : undefined}
+                  collects={collects}
+                  onRecordPayment={phase === "payments" && collects ? setRecording : undefined}
+                  settling={settling}
+                  onRatify={ratifyMatch}
+                  onSearch={setMatchRow}
+                />
+              </QueueTabs>
+            )}
+            {recording && detail && (
+              <RecordPaymentDialog
+                slug={tournament.slug}
+                row={recording}
+                currency={detail.local_currency}
+                eurOffered={detail.eur_payments_enabled}
+                /* `refresh` is already the console's "the money moved" signal
                and bumps every queue with it */
-            onRecorded={refresh}
-            onClose={() => setRecording(null)}
-          />
-        )}
+                onRecorded={refresh}
+                onClose={() => setRecording(null)}
+              />
+            )}
 
-        <aside className="rail">
-          <div className="rail-title">
-            {t("rail.operations")} · {t(`phase.${phase}`)}
-          </div>
+            <aside className="rail">
+              <div className="rail-title">
+                {t("rail.operations")} · {t(`phase.${phase}`)}
+              </div>
 
-          {/* a phase carries only its own operation's parameters; tournament
+              {/* a phase carries only its own operation's parameters; tournament
               configuration is Setup's, and a phase with none shows no panel
               (spec etl-console: "Operation parameters") */}
-          {phase === "import" && (
-            <ImportPanel
-              slug={tournament.slug}
-              operations={operations}
-              onImported={refresh}
-            />
-          )}
-          {/* the fencer list is entered and corrected here; making it billable
+              {phase === "import" && (
+                <ImportPanel slug={tournament.slug} operations={operations} onImported={refresh} />
+              )}
+              {/* the fencer list is entered and corrected here; making it billable
               is not an action of this phase and is not offered as one — payment
               intake issues registrations for it (design Decision 10) */}
-          {phase === "fencers" && (
-            <ManualEntryPanel detail={detail} slug={tournament.slug} onEntered={refresh} />
-          )}
-          {phase === "matching" && (
-            <MatchPanel
-              slug={tournament.slug}
-              operations={operations}
-              pending={pendingVerdicts}
-              onChanged={refresh}
-            />
-          )}
-          {phase === "dedup" && (
-            <DedupPanel
-              slug={tournament.slug}
-              operations={operations}
-              onChanged={refresh}
-            />
-          )}
-          {/* the four payment queues are the phase's main column, above the
+              {phase === "fencers" && (
+                <ManualEntryPanel detail={detail} slug={tournament.slug} onEntered={refresh} />
+              )}
+              {phase === "matching" && (
+                <MatchPanel
+                  slug={tournament.slug}
+                  operations={operations}
+                  pending={pendingVerdicts}
+                  onChanged={refresh}
+                />
+              )}
+              {phase === "dedup" && (
+                <DedupPanel slug={tournament.slug} operations={operations} onChanged={refresh} />
+              )}
+              {/* the four payment queues are the phase's main column, above the
               fencer table; the rail keeps what it keeps for every phase — the
               operation's parameters and the edits log (design
               add-payments-console-ui D1) */}
-          {phase === "payments" && !boned && (
-            <>
-              <IntakePanel
-                slug={tournament.slug}
-                detail={detail}
-                operations={operations}
-                reload={queueReload}
-                onChanged={refresh}
-              />
-              <TolerancePanel detail={detail} slug={tournament.slug} onSaved={refresh} />
-            </>
-          )}
-          {phase === "export" && <ExportPanel slug={tournament.slug} />}
+              {phase === "payments" && !boned && (
+                <>
+                  <IntakePanel
+                    slug={tournament.slug}
+                    detail={detail}
+                    operations={operations}
+                    reload={queueReload}
+                    onChanged={refresh}
+                  />
+                  <TolerancePanel detail={detail} slug={tournament.slug} onSaved={refresh} />
+                </>
+              )}
+              {phase === "export" && <ExportPanel slug={tournament.slug} />}
 
-          <ManualEditsRail
-            entries={phaseEdits}
-            rows={rows}
-            timezone={detail?.timezone ?? null}
-            onUndo={(ruleIds) => void undoEdit(ruleIds)}
-          />
-        </aside>
+              <ManualEditsRail
+                entries={phaseEdits}
+                rows={rows}
+                timezone={detail?.timezone ?? null}
+                onUndo={(ruleIds) => void undoEdit(ruleIds)}
+              />
+            </aside>
           </>
         )}
       </div>
@@ -1000,11 +969,7 @@ export default function Console({
             <h2>{t("console.leaveSetup.title")}</h2>
             <p>{t("console.leaveSetup.body")}</p>
             <div className="modal-actions">
-              <button
-                type="button"
-                className="secondary"
-                onClick={() => setPendingPhase(null)}
-              >
+              <button type="button" className="secondary" onClick={() => setPendingPhase(null)}>
                 {t("common.cancel")}
               </button>
               <button

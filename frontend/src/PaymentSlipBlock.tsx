@@ -30,9 +30,12 @@ function CopyableField({ field }: { field: SlipField }) {
   const [copied, setCopied] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  useEffect(() => () => {
-    if (timer.current !== null) clearTimeout(timer.current);
-  }, []);
+  useEffect(
+    () => () => {
+      if (timer.current !== null) clearTimeout(timer.current);
+    },
+    [],
+  );
 
   const offered = field.copy !== undefined && clipboardAvailable();
 
@@ -133,7 +136,12 @@ function SaveQr({ base64, filename }: { base64: string; filename: string }) {
   }
 
   return (
-    <button type="button" className="secondary slip-save-qr" onClick={() => void save()} disabled={busy}>
+    <button
+      type="button"
+      className="secondary slip-save-qr"
+      onClick={() => void save()}
+      disabled={busy}
+    >
       {t("payment.saveQr")}
     </button>
   );

@@ -3,8 +3,8 @@ import { useTranslation } from "react-i18next";
 
 import {
   PriceChangeWarning,
-  type SaverRegistry,
   type SaveOutcome,
+  type SaverRegistry,
   type SetupTab,
   usePriceChangeGuard,
 } from "./shared";

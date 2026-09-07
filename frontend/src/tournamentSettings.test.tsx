@@ -3,7 +3,7 @@ import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, expect, it, vi } from "vitest";
 
-import { type TournamentDetail, api } from "./api";
+import { api, type TournamentDetail } from "./api";
 import i18n from "./i18n";
 import { SettingsSection } from "./setup/SettingsSection";
 import TournamentSettingsDialog from "./TournamentSettingsDialog";
@@ -81,9 +81,7 @@ async function settle() {
 // --------------------------------------------------------- the three tiers
 
 it("offers the mode, payments and the three inclusions on one surface", () => {
-  mount(
-    <TournamentSettingsDialog detail={detail()} onApplied={vi.fn()} onClose={vi.fn()} />,
-  );
+  mount(<TournamentSettingsDialog detail={detail()} onApplied={vi.fn()} onClose={vi.fn()} />);
   expect(modeRadios()).toHaveLength(2);
   // payments is a named choice between two, like the mode above it — both
   // behavioural settings are answered rather than one being the absence of
@@ -134,9 +132,7 @@ it("asks no confirmation for a mode change, and writes it", async () => {
     .spyOn(api, "setRegistrationsKeptBy")
     .mockResolvedValue(detail({ registrations_kept_by: "organizer" }));
   vi.spyOn(api, "setTournamentFlags").mockResolvedValue(detail());
-  mount(
-    <TournamentSettingsDialog detail={detail()} onApplied={vi.fn()} onClose={vi.fn()} />,
-  );
+  mount(<TournamentSettingsDialog detail={detail()} onApplied={vi.fn()} onClose={vi.fn()} />);
 
   act(() => {
     modeRadios()[1].click();
@@ -170,28 +166,22 @@ it("still offers the payments setting and the inclusions once published", () => 
     />,
   );
 
-  expect(
-    document.querySelectorAll('input[name="tournament-payments"]').length,
-  ).toBeGreaterThan(0);
+  expect(document.querySelectorAll('input[name="tournament-payments"]').length).toBeGreaterThan(0);
   expect(document.querySelectorAll('input[type="checkbox"]').length).toBeGreaterThan(0);
 });
 
 it("writes the mode before the flags, so a later failure keeps the bigger choice", async () => {
   const order: string[] = [];
-  const mode = vi
-    .spyOn(api, "setRegistrationsKeptBy")
-    .mockImplementation(async () => {
-      order.push("mode");
-      return detail({ registrations_kept_by: "organizer" });
-    });
+  const mode = vi.spyOn(api, "setRegistrationsKeptBy").mockImplementation(async () => {
+    order.push("mode");
+    return detail({ registrations_kept_by: "organizer" });
+  });
   const flags = vi.spyOn(api, "setTournamentFlags").mockImplementation(async () => {
     order.push("flags");
     return detail({ registrations_kept_by: "organizer" });
   });
 
-  mount(
-    <TournamentSettingsDialog detail={detail()} onApplied={vi.fn()} onClose={vi.fn()} />,
-  );
+  mount(<TournamentSettingsDialog detail={detail()} onApplied={vi.fn()} onClose={vi.fn()} />);
   act(() => {
     modeRadios()[1].click();
   });
@@ -209,9 +199,7 @@ it("says the mode was applied when only the flag write failed", async () => {
   vi.spyOn(api, "setTournamentFlags").mockRejectedValue(new Error("nope"));
   const applied = vi.fn();
 
-  mount(
-    <TournamentSettingsDialog detail={detail()} onApplied={applied} onClose={vi.fn()} />,
-  );
+  mount(<TournamentSettingsDialog detail={detail()} onApplied={applied} onClose={vi.fn()} />);
   act(() => {
     modeRadios()[1].click();
   });
@@ -273,9 +261,7 @@ it("warns before hiding a feature the tournament uses", () => {
 
 it("turning a feature on is never warned", async () => {
   const flags = vi.spyOn(api, "setTournamentFlags").mockResolvedValue(detail());
-  mount(
-    <TournamentSettingsDialog detail={detail()} onApplied={vi.fn()} onClose={vi.fn()} />,
-  );
+  mount(<TournamentSettingsDialog detail={detail()} onApplied={vi.fn()} onClose={vi.fn()} />);
   const boxes = checkboxes();
   const extras = boxes[boxes.length - 1];
   act(() => extras.click());
@@ -285,11 +271,8 @@ it("turning a feature on is never warned", async () => {
   expect(flags).toHaveBeenCalled();
 });
 
-
 it("states both payment answers by what each gives, not by what it withholds", () => {
-  mount(
-    <TournamentSettingsDialog detail={detail()} onApplied={vi.fn()} onClose={vi.fn()} />,
-  );
+  mount(<TournamentSettingsDialog detail={detail()} onApplied={vi.fn()} onClose={vi.fn()} />);
   const text = document.body.textContent ?? "";
   expect(text).toContain(t("setup.settings.payments.consequence.automatic.squire"));
   expect(text).toContain(t("setup.settings.payments.consequence.automatic.self"));
@@ -303,9 +286,7 @@ it("says what payments do in the mode actually selected", () => {
   // tournament and the roster arrived by import, so everything else is already
   // suspended and what payments on adds is matching against the statement —
   // which is the only thing an organizer in that mode wants to know.
-  mount(
-    <TournamentSettingsDialog detail={detail()} onApplied={vi.fn()} onClose={vi.fn()} />,
-  );
+  mount(<TournamentSettingsDialog detail={detail()} onApplied={vi.fn()} onClose={vi.fn()} />);
   expect(document.body.textContent).toContain(
     t("setup.settings.payments.consequence.automatic.squire"),
   );
@@ -336,8 +317,5 @@ it("choosing to handle payments yourself is written like any other flag", async 
   act(() => buttonNamed(t("setup.settings.apply"))?.click());
   await settle();
 
-  expect(flags).toHaveBeenCalledWith(
-    "cup",
-    expect.objectContaining({ feature_payments: false }),
-  );
+  expect(flags).toHaveBeenCalledWith("cup", expect.objectContaining({ feature_payments: false }));
 });

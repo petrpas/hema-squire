@@ -40,7 +40,9 @@ describe("registeredMoment", () => {
   });
 
   it("falls back to the reader's zone before the tournament's has arrived", () => {
-    expect(registeredMoment("2026-03-14T13:32:52Z", null)).toMatch(/^\d+\. \d+\. 2026 \d{2}:\d{2}$/);
+    expect(registeredMoment("2026-03-14T13:32:52Z", null)).toMatch(
+      /^\d+\. \d+\. 2026 \d{2}:\d{2}$/,
+    );
   });
 
   it("gives an unreadable stamp back rather than showing Invalid Date", () => {

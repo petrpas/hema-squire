@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { type HRProfile, api } from "./api";
+import { api, type HRProfile } from "./api";
 
 /** Search-by-name HR candidate picker, shared by the Profile page's HR
  * binding and the signup window's optional HR step. The caller decides what

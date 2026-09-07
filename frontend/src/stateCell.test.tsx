@@ -43,10 +43,7 @@ function row(overrides: Partial<SheetRow> = {}): SheetRow {
 }
 
 function type(input: HTMLInputElement, value: string) {
-  const setter = Object.getOwnPropertyDescriptor(
-    window.HTMLInputElement.prototype,
-    "value",
-  )!.set!;
+  const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value")!.set!;
   act(() => {
     setter.call(input, value);
     input.dispatchEvent(new Event("input", { bubbles: true }));
@@ -77,9 +74,7 @@ it("waives it once a reason is given", () => {
   act(() => (host?.querySelector("button.state-cell") as HTMLButtonElement).click());
 
   type(host?.querySelector(".modal input") as HTMLInputElement, "volná účast");
-  act(() =>
-    (host?.querySelector(".modal-actions .btn-primary") as HTMLButtonElement).click(),
-  );
+  act(() => (host?.querySelector(".modal-actions .btn-primary") as HTMLButtonElement).click());
 
   expect(toggle).toHaveBeenCalledWith(expect.anything(), "volná účast");
 });
@@ -113,9 +108,7 @@ it("shows the waiver's reason on a waived row", () => {
       busy={false}
     />,
   );
-  expect((host?.querySelector("button.state-cell") as HTMLButtonElement).title).toBe(
-    "sponzor",
-  );
+  expect((host?.querySelector("button.state-cell") as HTMLButtonElement).title).toBe("sponzor");
 });
 
 it("offers nothing on a registration the money settled", () => {
@@ -134,7 +127,13 @@ it("offers nothing on a registration the money settled", () => {
 
 it("offers nothing on a state the lifecycle or the fencer chose", () => {
   for (const state of ["expired", "cancelled"]) {
-    mount(<StateCell row={row({ state })} onToggle={vi.fn().mockResolvedValue(undefined)} busy={false} />);
+    mount(
+      <StateCell
+        row={row({ state })}
+        onToggle={vi.fn().mockResolvedValue(undefined)}
+        busy={false}
+      />,
+    );
     expect(host?.querySelector("button")).toBeNull();
     host?.remove();
   }
@@ -181,7 +180,5 @@ it("keeps the dialog open and states a refusal", async () => {
   expect(host?.querySelector(".modal")).not.toBeNull();
   expect(host?.textContent).toContain(t("console.waiver.error.not_settled_by_hand"));
   // and what was typed survives, so the organizer is not made to type it again
-  expect((host?.querySelector(".modal input") as HTMLInputElement).value).toBe(
-    "volná účast",
-  );
+  expect((host?.querySelector(".modal input") as HTMLInputElement).value).toBe("volná účast");
 });

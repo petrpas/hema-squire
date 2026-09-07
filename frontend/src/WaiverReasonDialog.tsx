@@ -79,11 +79,7 @@ export default function WaiverReasonDialog({
           <button className="secondary" onClick={onClose}>
             {t("common.cancel")}
           </button>
-          <button
-            className="btn-primary"
-            disabled={!given || busy}
-            onClick={() => void confirm()}
-          >
+          <button className="btn-primary" disabled={!given || busy} onClick={() => void confirm()}>
             {t("console.waiver.confirm")}
           </button>
         </div>

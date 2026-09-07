@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { isFioAccount } from "../accounts";
-import { ApiError, type SetupSuggestions, type TournamentDetail, api } from "../api";
+import { ApiError, api, type SetupSuggestions, type TournamentDetail } from "../api";
 import FieldError, { invalidProps } from "../FieldError";
 import HelpHint from "../HelpHint";
 import SuggestionAnchor from "../SuggestionAnchor";
@@ -92,7 +92,9 @@ export function BankAccountSection({
         const message =
           fieldErrors.length > 0
             ? fieldErrors.map((e) => t(`validation.${e.code}`, e.params)).join(" ")
-            : t("setup.saveBar.genericError", { status: err instanceof ApiError ? err.status : "?" });
+            : t("setup.saveBar.genericError", {
+                status: err instanceof ApiError ? err.status : "?",
+              });
         setError(message);
         return [{ change: "bankAccount", section: "bankAccount", error: message }];
       }
