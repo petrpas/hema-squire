@@ -1,3 +1,6 @@
+import pytest
+
+
 def signup(client, **overrides):
     payload = {
         "email": "fencer@example.com",
@@ -175,3 +178,31 @@ def test_account_update_rejects_unknown_language(client):
     headers = headers_from(response)
     updated = client.patch("/api/account", json={"language": "xx"}, headers=headers)
     assert updated.status_code == 422
+
+
+@pytest.mark.parametrize("field", ["display_name", "email", "language"])
+def test_account_update_refuses_to_null_a_required_field(client, field):
+    """Omitting a field leaves it alone; nulling one is refused.
+
+    `display_name` and `language` are NOT NULL on the fencer, so an explicit
+    null failed the write. `email` is nullable on the column — a roster-only
+    record needs none — but an account that cleared its own address is one
+    nobody can log into again. Both answered 500; both now say what is wrong.
+    Found by the contract fuzzer (static-analysis change, phase 4).
+    """
+    headers = headers_from(signup(client))
+    refused = client.patch("/api/account", json={field: None}, headers=headers)
+    assert refused.status_code == 422
+    assert refused.json()["detail"]["errors"] == [
+        {"field": field, "code": "required", "params": {}}
+    ]
+
+
+def test_account_update_still_clears_a_nullable_field(client):
+    """The refusal above is about the two NOT NULL columns only — clearing a
+    club is a real edit and stays one."""
+    headers = headers_from(signup(client))
+    assert client.patch("/api/account", json={"club": "Klub"}, headers=headers).status_code == 200
+    cleared = client.patch("/api/account", json={"club": None}, headers=headers)
+    assert cleared.status_code == 200
+    assert cleared.json()["club"] is None

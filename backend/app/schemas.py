@@ -56,6 +56,7 @@ from app.fieldtypes import (
     TournamentQualificationCriteriaStr,
     TournamentRegistrationInstructionsStr,
     TournamentSubtitleStr,
+    UtcInstant,
 )
 from app.i18n import catalog
 from app.models import (
@@ -116,15 +117,48 @@ class PleaOut(BaseModel):
 
     state: RequestState | None
     message: str | None
-    created_at: datetime.datetime | None
-    decided_at: datetime.datetime | None
+    # instants Squire recorded, so they state the zone they were recorded in
+    created_at: UtcInstant | None
+    decided_at: UtcInstant | None
 
 
 class AccountUpdate(BaseModel):
+    """A partial account edit. Every field is optional; `None` means "leave it
+    alone" and the router reads `exclude_unset` to tell that from an explicit
+    null."""
+
     email: EmailStr | None = None
     display_name: DisplayNameStr | None = None
     club: ClubStr | None = None
     language: str | None = None
+
+    # Fields this edit may omit but may not null. The router writes whatever
+    # the request *set*, so an explicit null used to reach the column and the
+    # request answered 500 rather than saying what was wrong — twice, for two
+    # different reasons the contract fuzzer found separately (static-analysis
+    # change, phase 4):
+    #
+    #   display_name, language  NOT NULL on the fencer; the write failed on an
+    #                           integrity error.
+    #   email                   nullable on the fencer, because a roster-only
+    #                           record identifies a person and not an account
+    #                           (models.Fencer). But this endpoint edits an
+    #                           account, and an account with no address is one
+    #                           nobody can log into again — including whoever
+    #                           just cleared it. The 500 came later, from
+    #                           `AccountOut` refusing to serialize it.
+    #
+    # `club` is deliberately absent: its column is nullable and clearing it is
+    # a real edit, which `test_account_update_still_clears_a_nullable_field`
+    # holds to.
+    _NOT_NULLABLE = ("display_name", "email", "language")
+
+    @model_validator(mode="after")
+    def _no_explicit_null(self) -> AccountUpdate:
+        for field in self._NOT_NULLABLE:
+            if field in self.model_fields_set and getattr(self, field) is None:
+                raise FieldValueError(field, "required", {})
+        return self
 
     @field_validator("language")
     @classmethod

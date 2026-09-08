@@ -1,15 +1,18 @@
 import asyncio
 import logging
 from contextlib import asynccontextmanager
+from typing import Any
 
 from fastapi import FastAPI, HTTPException
 from fastapi.exceptions import RequestValidationError
+from fastapi.openapi.utils import get_openapi
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
 from app.config import DEV_SECRET_KEY, settings
 from app.errors import (
     FieldValidationError,
+    ValidationErrorResponse,
     field_validation_error_handler,
     http_exception_handler,
     validation_exception_handler,
@@ -168,7 +171,40 @@ def create_app() -> FastAPI:
     app.include_router(hr_api.router)
     app.include_router(hr_api.ratings_router)
     app.include_router(taxonomy_api.router)
+    _describe_real_validation_errors(app)
     return app
+
+
+def _describe_real_validation_errors(app: FastAPI) -> None:
+    """Publish the 422 body this application actually sends.
+
+    FastAPI documents every operation's 422 as its own `HTTPValidationError`,
+    whose `detail` is an array of pydantic errors. `app.errors` replaces that
+    response with an envelope whose `detail` is an object carrying `errors`,
+    so the generated document described a shape no client ever receives — a
+    generated client would type its own error handling wrongly and never be
+    told. Substituting the component leaves every `$ref` to it pointing at the
+    truth, so no route has to restate its own responses.
+    """
+    schemas = ValidationErrorResponse.model_json_schema(
+        ref_template="#/components/schemas/{model}"
+    )
+    nested = schemas.pop("$defs", {})
+
+    def openapi() -> dict[str, Any]:
+        if app.openapi_schema is None:
+            document = get_openapi(
+                title=app.title, version=app.version, routes=app.routes
+            )
+            components = document.setdefault("components", {}).setdefault("schemas", {})
+            components.update(nested)
+            components["HTTPValidationError"] = schemas
+            # FastAPI's own error model is now unreferenced
+            components.pop("ValidationError", None)
+            app.openapi_schema = document
+        return app.openapi_schema
+
+    app.openapi = openapi
 
 
 app = create_app()

@@ -17,6 +17,7 @@ import shutil
 import zoneinfo
 from pathlib import Path
 
+import hypothesis
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, select
@@ -30,6 +31,19 @@ from app.db import Base, apply_sqlite_pragmas, get_session
 from app.hr_index import get_hr_index, stub_index
 from app.main import app
 from app.models import Fencer, Role
+
+# Hypothesis budgets, named as CLAUDE.md's test guidance already refers to them.
+# `dev` is what an edit loop wants: enough inputs to catch a shape error, few
+# enough that the contract suite stays under a minute. `ci` is the fuller run.
+# `deadline=None` because these examples cross an ASGI stack into SQLite and a
+# per-example time limit measures the machine, not the code.
+hypothesis.settings.register_profile(
+    "dev", max_examples=20, deadline=None, suppress_health_check=[hypothesis.HealthCheck.too_slow]
+)
+hypothesis.settings.register_profile(
+    "ci", max_examples=50, deadline=None, suppress_health_check=[hypothesis.HealthCheck.too_slow]
+)
+hypothesis.settings.load_profile(os.environ.get("HYPOTHESIS_PROFILE", "dev"))
 
 
 def today_local() -> datetime.date:

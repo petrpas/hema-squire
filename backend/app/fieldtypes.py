@@ -8,6 +8,7 @@ validation codes (see `app/errors.py`) as its message, so the
 
 from __future__ import annotations
 
+import datetime
 import decimal
 import re
 import unicodedata
@@ -100,6 +101,30 @@ def _clean_single_line(value: object) -> object:
 
 def _clean_multiline(value: object) -> object:
     return _clean_string(value, collapse_whitespace=False)
+
+
+def _stamp_utc(value: datetime.datetime | None) -> datetime.datetime | None:
+    """Stamp UTC on an instant SQLite handed back naive.
+
+    Every instant Squire records is UTC, but SQLite drops tzinfo on round-trip
+    even for a `DateTime(timezone=True)` column. Serialized without a zone, a
+    client reads the instant as its own local time and states the wrong hour —
+    the failure `rules._utc` already fixes for the manual-edits log, and the
+    contract fuzzer caught again on the account plea (phase 4 of the
+    static-analysis change).
+
+    Only for instants Squire itself recorded. A stamp imported from someone
+    else's table has no zone to restore and is deliberately shown unshifted
+    (`frontend/src/consoleCells.test.tsx`, "an imported row's zone-less stamp"),
+    so those fields must not use this type.
+    """
+    if value is None or value.tzinfo is not None:
+        return value
+    return value.replace(tzinfo=datetime.UTC)
+
+
+# An instant Squire recorded, serialized with the zone it was recorded in.
+UtcInstant = Annotated[datetime.datetime, AfterValidator(_stamp_utc)]
 
 
 # Each alias below is a single `Field(...)` call. Stacking a second one at the
@@ -384,6 +409,7 @@ __all__ = [
     "SingleLine",
     "TeamNameStr",
     "TolerantDecimal",
+    "UtcInstant",
     "TolerantInt",
     "TournamentDescriptionStr",
     "TournamentDisplayNameStr",

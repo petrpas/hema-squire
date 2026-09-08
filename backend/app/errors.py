@@ -18,9 +18,43 @@ the client for anything not yet converted, so the migration is incremental.
 
 from __future__ import annotations
 
+from typing import Any
+
 from fastapi import HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
+from pydantic import BaseModel
+
+
+class ValidationErrorEntry(BaseModel):
+    """One field's rejection: which field, why, and the bound it broke."""
+
+    field: str
+    code: str
+    params: dict[str, Any] = {}
+
+
+class ValidationErrorDetail(BaseModel):
+    errors: list[ValidationErrorEntry]
+
+
+class ValidationErrorResponse(BaseModel):
+    """The envelope this module's handlers put every field rejection in.
+
+    Declared as a model for one reason: FastAPI documents a 422 as its own
+    `HTTPValidationError`, whose `detail` is an array of pydantic errors, and
+    that is not what a client receives from this application — `detail` is an
+    object carrying `errors`. `app.main` substitutes this schema for that one,
+    so the published document describes the response that is actually sent.
+    Found by the contract fuzzer, which validated a real 422 against the schema
+    and refused it (phase 4 of the static-analysis change).
+    """
+
+    # A union because the migration this module describes is incomplete: a
+    # router code named in `_ROUTER_CODE_FIELDS` becomes the envelope, and one
+    # that is not is still a bare string. Both are sent today, so both are
+    # published; when the last bare string goes, so does the `| str`.
+    detail: ValidationErrorDetail | str
 
 
 class FieldValueError(ValueError):
