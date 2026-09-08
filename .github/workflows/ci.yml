@@ -36,3 +36,37 @@ jobs:
       - run: npm run check
       - run: npm test
       - run: npm run build
+
+  # Blocking. Reads the whole history, not just the diff: a secret is exposed
+  # by being reachable, not by being current.
+  secrets:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITLEAKS_CONFIG: .gitleaks.toml
+
+  # Reports, never blocks. A CVE published against a transitive dependency is
+  # not a reason a deploy cannot go out; it is a reason somebody should look.
+  audit:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - run: uv sync --dev
+        working-directory: backend
+      - run: uv run pip-audit
+        working-directory: backend
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+        working-directory: frontend
+      - run: npm audit --audit-level=high
+        working-directory: frontend

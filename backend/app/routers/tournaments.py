@@ -1232,7 +1232,8 @@ def settle_seating(tournament: TournamentDep, session: SessionDep, fencer: Fence
         raise HTTPException(status_code=409, detail="seating_already_settled")
     demoted = scheduler.settle_seating(session, tournament)
     settled_at = tournament.seating_settled_at
-    assert settled_at is not None, "settle_seating stamps the tournament"
+    if settled_at is None:  # pragma: no cover - settle_seating stamps it
+        raise AssertionError("settle_seating stamps the tournament")
     return SettleSeatingOut(demoted=demoted, seating_settled_at=settled_at)
 
 

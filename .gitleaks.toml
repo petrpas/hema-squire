@@ -1,0 +1,40 @@
+# gitleaks configuration for hema-squire.
+#
+# The default rules are kept and extended. They are not enough on their own:
+# the dump removed in 27d9f02 carried two accounts' emails and scrypt password
+# hashes through 197 commits of a public repository, and gitleaks reported the
+# history clean, because an email address and a KDF hash match none of its
+# rules. The rules below are the ones that would have caught it.
+
+[extend]
+useDefault = true
+
+[[rules]]
+id = "squire-scrypt-password-hash"
+description = "scrypt password hash (app.auth.hash_password) outside the code that makes one"
+# `scrypt$<32 hex salt>$<128 hex digest>`, the exact shape hash_password emits
+regex = '''scrypt\$[0-9a-f]{32}\$[0-9a-f]{64,}'''
+tags = ["password", "hash", "personal-data"]
+
+[[rules]]
+id = "squire-fio-token"
+description = "Fio API token recorded against a tournament"
+# 64 alphanumerics quoted next to a fio_token key, as a dump or fixture writes it
+regex = '''(?i)"fio_token"\s*:\s*"[A-Za-z0-9]{40,}"'''
+tags = ["key", "bank"]
+
+[allowlist]
+description = "Known-clean paths, and the one historical commit already dealt with"
+# a444fe0 is where the dump was committed and 27d9f02 is where it was removed.
+# The blob is still reachable in history, so a full-history scan finds it every
+# time; it is listed here so the gate stays meaningful for everything new.
+# Delete this line if the history is ever rewritten — the finding should come
+# back if the blob does.
+commits = ["a444fe0aafcc329292d2b861838550e21aa09eb9"]
+paths = [
+  # npm integrity hashes
+  '''frontend/package-lock.json''',
+  '''backend/uv\.lock''',
+  # base64 PNG fixtures for the payment-slip QR codes
+  '''frontend/src/paymentSlip\.test\.tsx''',
+]

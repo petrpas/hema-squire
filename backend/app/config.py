@@ -3,7 +3,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 # The signing key every dev checkout shares. It is published in this repository,
 # so the application refuses to start on it unless debug is set explicitly
 # (app.main); anyone who can read GitHub can otherwise forge any account's token.
-DEV_SECRET_KEY = "dev-only-secret-change-me-in-production!"
+DEV_SECRET_KEY = "dev-only-secret-change-me-in-production!"  # noqa: S105 - see above
 
 
 class Settings(BaseSettings):

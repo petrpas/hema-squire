@@ -85,7 +85,11 @@ class HttpHRFetcher:
 
     def fighters_page(self) -> str:
         text = self._get(FIGHTERS_URL)
-        assert text is not None
+        if text is None:
+            # `_get` returns None only on 404. The listing answering one is a
+            # source change, not an invariant break — `refresh` catches this
+            # and records a failed refresh, which is where it belongs.
+            raise RuntimeError("the HR fighters listing answered 404")
         return text
 
     def fighter_page(self, hr_id: int) -> str | None:

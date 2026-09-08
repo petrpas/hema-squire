@@ -166,8 +166,9 @@ async def import_statement(
             transactions = bank.parse_fio_csv(content)
             operations.advance(work_session, work_operation, 1)
         else:
-            # the same `is_fio` refused a missing parser in the request above
-            assert parser is not None
+            if parser is None:  # pragma: no cover - refused in the request
+                # the same `is_fio` refused a missing parser above
+                raise AssertionError("a non-Fio statement needs a parser")
             transactions = statements.parse(
                 work_session,
                 work_tournament,

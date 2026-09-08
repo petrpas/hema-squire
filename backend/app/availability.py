@@ -64,9 +64,20 @@ def full_disciplines(session: Session, disciplines: list[Discipline]) -> set[str
     }
 
 
+def _require_kind(discipline: Discipline, kind: DisciplineKind) -> None:
+    """These counts are per-kind: a team discipline's capacity is consumed by
+    teams and an individual's by registrations, and the queries below are not
+    interchangeable. A caller reaching the wrong one is a programming error, so
+    it raises rather than returning a number that would be quietly wrong."""
+    if discipline.kind != kind:
+        raise AssertionError(
+            f"{discipline.slug} is a {discipline.kind} discipline, not {kind}"
+        )
+
+
 def taken_seats(session: Session, discipline: Discipline) -> int:
     """Capacity is consumed by paid registrations and unexpired reservations."""
-    assert discipline.kind == DisciplineKind.INDIVIDUAL
+    _require_kind(discipline, DisciplineKind.INDIVIDUAL)
     return (
         session.scalar(
             select(func.count())
@@ -83,7 +94,7 @@ def taken_seats(session: Session, discipline: Discipline) -> int:
 
 
 def queue_length(session: Session, discipline: Discipline) -> int:
-    assert discipline.kind == DisciplineKind.INDIVIDUAL
+    _require_kind(discipline, DisciplineKind.INDIVIDUAL)
     return (
         session.scalar(
             select(func.count())
@@ -110,7 +121,7 @@ def taken_team_slots(
     teams from the count — used when recomputing an amendment's waitlist
     status, so a registration's existing teams are not counted against
     themselves (design team-disciplines 4.3)."""
-    assert discipline.kind == DisciplineKind.TEAM
+    _require_kind(discipline, DisciplineKind.TEAM)
     conditions = [
         Team.discipline_id == discipline.id,
         Team.waitlisted.is_(False),
@@ -125,7 +136,7 @@ def taken_team_slots(
 
 
 def team_queue_length(session: Session, discipline: Discipline) -> int:
-    assert discipline.kind == DisciplineKind.TEAM
+    _require_kind(discipline, DisciplineKind.TEAM)
     return (
         session.scalar(
             select(func.count())

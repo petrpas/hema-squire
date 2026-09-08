@@ -28,6 +28,7 @@ dependencies = [
 dev = [
     "basedpyright>=1.40.0",
     "httpx>=0.28.1",
+    "pip-audit>=2.10.1",
     "pytest>=9.1.1",
     "ruff>=0.15.22",
 ]
@@ -36,7 +37,7 @@ dev = [
 line-length = 100
 
 [tool.ruff.lint]
-select = ["E", "F", "I", "UP", "B"]
+select = ["E", "F", "I", "UP", "B", "S", "ASYNC", "T20", "TID"]
 
 [tool.ruff.lint.isort]
 # `alembic/` is the migrations directory, but `alembic` the import is the
@@ -46,6 +47,19 @@ known-third-party = ["alembic"]
 
 [tool.ruff.lint.per-file-ignores]
 "alembic/versions/*" = ["E501"]
+"tests/**" = [
+    # assert is what a test is made of
+    "S101",
+    # fixtures carry literal passwords, password hashes and Fio tokens. They are
+    # fixtures: no deployment reads them and none of them opens anything.
+    "S105", "S106", "S107",
+    # the migration suites shell out to `alembic upgrade` with a literal argv —
+    # no shell, no interpolation
+    "S603",
+    # migration suites build SQL against table names they wrote themselves,
+    # because the ORM models have moved on from the schema under test
+    "S608",
+]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
