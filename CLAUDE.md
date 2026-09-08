@@ -98,6 +98,13 @@ Rules:
 - A column typed `Mapped[X | None]` is `X | None` at every read. Where a guard
   earlier in the request already settled it, bind the narrowed value to a local
   and use that, rather than re-reading the attribute.
+- No blocking I/O inside an `async def` — no `requests`, no bare `open()`, no
+  `time.sleep`. Ruff's `ASYNC` rules gate this.
+- No `assert` in `app/`. `-O` strips it, and every one of these guards is
+  load-bearing; raise instead. `assert` in `tests/` is fine and expected.
+- Never commit a database dump or a `.env`. `.gitignore` covers both and
+  gitleaks gates the history, including a rule for the password-hash shape
+  `auth.hash_password` emits.
 
 # Openspec
 
