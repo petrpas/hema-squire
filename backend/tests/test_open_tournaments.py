@@ -1,21 +1,23 @@
 """Task 1.4/1.5 — the fencer-facing open-tournaments list: publication/date
 filtering, per-discipline counts, registration status, and own state."""
 
-from datetime import date, datetime, timedelta
+from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
 import pytest
 
-from tests.conftest import publish, today_local
-
-TODAY = date.today()
+from tests.conftest import publish, today_local, today_utc
 
 
 def make_open_tournament(client, organizer, slug, **overrides):
     """Builds a setup-complete tournament and publishes it — the two steps
     that together used to be "complete setup" alone (design
     add-explicit-publishing)."""
-    payload = {"slug": slug, "display_name": slug.title(), "date": str(TODAY + timedelta(days=30))}
+    payload = {
+        "slug": slug,
+        "display_name": slug.title(),
+        "date": str(today_utc() + timedelta(days=30)),
+    }
     payload.update({k: v for k, v in overrides.items() if k in ("slug", "display_name", "date")})
     client.post("/api/tournaments", json=payload, headers=organizer)
     patch = {"location": "Brno", "organizers": [{"name": "Org", "link": None}]}
@@ -36,7 +38,11 @@ def test_open_hides_drafts_cancelled_and_past(client, auth_headers):
     # draft: missing setup (no location/organizers/disciplines)
     client.post(
         "/api/tournaments",
-        json={"slug": "draft", "display_name": "Draft", "date": str(TODAY + timedelta(days=30))},
+        json={
+            "slug": "draft",
+            "display_name": "Draft",
+            "date": str(today_utc() + timedelta(days=30)),
+        },
         headers=organizer,
     )
 
@@ -45,7 +51,8 @@ def test_open_hides_drafts_cancelled_and_past(client, auth_headers):
     client.post("/api/tournaments/gone/cancel", headers=organizer)
 
     # past
-    make_open_tournament(client, organizer, "past", date=str(TODAY - timedelta(days=1)))
+    # the listing splits upcoming from past in UTC, so yesterday is UTC's
+    make_open_tournament(client, organizer, "past", date=str(today_utc() - timedelta(days=1)))
 
     fencer = auth_headers(email="f1@example.com", name="F1")
     listed = client.get("/api/tournaments/open", headers=fencer).json()
@@ -133,7 +140,7 @@ def test_open_registration_status_opens_on_and_closed(client, auth_headers):
         client, organizer, "future-open", registration_opens=str(OPENS_TOMORROW)
     )
     make_open_tournament(
-        client, organizer, "past-close", registration_closes=str(TODAY - timedelta(days=1))
+        client, organizer, "past-close", registration_closes=str(today_local() - timedelta(days=1))
     )
 
     listed = client.get("/api/tournaments/open", headers=fencer).json()
@@ -151,7 +158,7 @@ def test_open_entry_carries_the_opening_moment(client, auth_headers):
     itself (change add-registration-open-time D6)."""
     organizer = auth_headers()
     fencer = auth_headers(email="f1@example.com", name="F1")
-    opens = TODAY + timedelta(days=10)
+    opens = today_local() + timedelta(days=10)
     make_open_tournament(
         client,
         organizer,
@@ -242,7 +249,7 @@ def test_past_scope_counts_team_disciplines_in_teams(client, auth_headers, scope
     fencer pair on a team discipline would 500 both — but they are separate
     route handlers, so both are asked."""
     organizer = auth_headers()
-    make_open_tournament(client, organizer, "cup", date=str(TODAY - timedelta(days=1)))
+    make_open_tournament(client, organizer, "cup", date=str(today_utc() - timedelta(days=1)))
     client.post(
         "/api/tournaments/cup/disciplines",
         json={

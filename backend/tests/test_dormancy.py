@@ -8,7 +8,7 @@ the scheduler moved the entire field into the substitute queue — seats taken
 from people who were never billed. It was invisible because a demoted
 registration is still RESERVED, which is all the payments-off test asserted."""
 
-from datetime import UTC, date, datetime, timedelta
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from sqlalchemy import select
@@ -29,7 +29,7 @@ from app.scheduler import (
     run_tournament_tick,
     settle_seating,
 )
-from tests.conftest import enable_payments, publish
+from tests.conftest import deadline_passed, enable_payments, publish
 
 
 class CollectingMailer:
@@ -87,7 +87,10 @@ def close_registration_yesterday(session):
     itself ahead, so the scheduler still selects it — the exact shape of a
     tournament whose entries have closed and whose event has not happened."""
     tournament = tournament_row(session)
-    tournament.registration_closes = date.today() - timedelta(days=1)
+    # with no explicit seating deadline this date is also the seating deadline
+    # (setup.seating_deadline_for), so it has to be past on every clock that
+    # reads it, not just the tournament's own
+    tournament.registration_closes = deadline_passed()
     session.commit()
     return tournament
 
@@ -213,7 +216,7 @@ def test_registration_after_a_payments_off_deadline_joins_the_queue(
     # registration_closes gates new submissions, so reopen the window while
     # leaving the seating deadline in the past — what an organizer does when
     # they take late entries after seating has closed
-    tournament.seating_deadline = date.today() - timedelta(days=1)
+    tournament.seating_deadline = deadline_passed()
     tournament.registration_closes = None
     session.commit()
 

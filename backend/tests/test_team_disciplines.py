@@ -26,7 +26,7 @@ from app.models import (
     TeamMember,
     Tournament,
 )
-from tests.conftest import publish
+from tests.conftest import publish, today_utc
 
 REGISTERED_AT = datetime(2026, 5, 1, 12, 0)
 
@@ -579,7 +579,8 @@ def test_roster_edit_moves_no_money_vs_or_email(client, auth_headers):
 
 def test_below_minimum_flag_only_after_deadline(client, auth_headers):
     organizer = auth_headers()
-    yesterday = (date.today() - timedelta(days=1)).isoformat()
+    # the composition deadline is compared in UTC (routers/tournaments.py)
+    yesterday = (today_utc() - timedelta(days=1)).isoformat()
     setup_team_tournament(client, organizer, deadline=yesterday)
     fencer = auth_headers(email="f1@example.com", name="F1")
     created = register_team(client, fencer, name="Wolves").json()
@@ -602,7 +603,7 @@ def test_below_minimum_flag_only_after_deadline(client, auth_headers):
 
 def test_no_flag_before_deadline_or_without_one(client, auth_headers):
     organizer = auth_headers()
-    tomorrow = (date.today() + timedelta(days=1)).isoformat()
+    tomorrow = (today_utc() + timedelta(days=1)).isoformat()
     setup_team_tournament(client, organizer, deadline=tomorrow)
     fencer = auth_headers(email="f1@example.com", name="F1")
     created = register_team(client, fencer, name="Wolves").json()
@@ -631,7 +632,7 @@ def test_roster_editable_day_before_tournament(client, auth_headers):
 
 def test_composition_reminder_sent_once_and_skips_complete_rosters(client, auth_headers):
     organizer = auth_headers()
-    soon = (date.today() + timedelta(days=3)).isoformat()
+    soon = (today_utc() + timedelta(days=3)).isoformat()
     setup_team_tournament(client, organizer, capacity=5, deadline=soon)
     # reminder_day defaults to 5, so a deadline 3 days out is within the window
     short = auth_headers(email="short@example.com", name="Short")

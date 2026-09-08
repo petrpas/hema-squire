@@ -24,7 +24,14 @@ from app.models import (
     RegistrationState,
     Tournament,
 )
-from tests.conftest import enable_payments, publish, set_fio_token
+from tests.conftest import (
+    deadline_ahead,
+    deadline_passed,
+    enable_payments,
+    publish,
+    set_fio_token,
+    today_local,
+)
 
 IBAN = "CZ6508000000192000145399"
 TOURNAMENT_DATE = "2026-12-05"
@@ -99,7 +106,7 @@ def set_seating_deadline(days_ago):
     deadline set it directly rather than through the API."""
     session = db_session()
     tournament = session.scalar(select(Tournament).where(Tournament.slug == "cup"))
-    tournament.seating_deadline = datetime.date.today() - timedelta(days=days_ago)
+    tournament.seating_deadline = deadline_passed(days_ago)
     session.commit()
 
 
@@ -262,8 +269,10 @@ def test_registration_close_still_refuses_after_the_seating_deadline(client, aut
     make_tournament(client, organizer, mode="reservation")
     session = db_session()
     tournament = session.scalar(select(Tournament).where(Tournament.slug == "cup"))
-    tournament.registration_closes = datetime.date.today() - timedelta(days=1)
-    tournament.seating_deadline = datetime.date.today() - timedelta(days=2)
+    # the close is read in the tournament's timezone; the seating deadline is
+    # read from two clocks, so it comes from the helper that clears both
+    tournament.registration_closes = today_local() - timedelta(days=1)
+    tournament.seating_deadline = deadline_passed(2)
     session.commit()
 
     fencer = auth_headers(email="late@example.com", name="Late")
@@ -488,7 +497,7 @@ def test_reservation_mode_is_reminded_before_the_seating_deadline(client, auth_h
 
     session = db_session()
     tournament = session.scalar(select(Tournament).where(Tournament.slug == "cup"))
-    tournament.seating_deadline = datetime.date.today() + timedelta(days=5)
+    tournament.seating_deadline = deadline_ahead(5)
     session.commit()
 
     assert process(client, organizer)["reminders"] == 1
@@ -514,7 +523,7 @@ def test_deposit_paid_registration_is_reminded_about_its_balance(client, auth_he
     row.amount_paid_cents = 30000
     row.expires_at = None  # deposit closed the window; the deadline remains
     tournament = session.scalar(select(Tournament).where(Tournament.slug == "cup"))
-    tournament.seating_deadline = datetime.date.today() + timedelta(days=5)
+    tournament.seating_deadline = deadline_ahead(5)
     session.commit()
     mailbox.sent.clear()
 

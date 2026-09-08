@@ -42,12 +42,79 @@ def today_local() -> datetime.date:
     tomorrow" from the runner's clock is naming a Europe/Prague day that began
     an hour ago, and the tournament is open when it meant to be shut.
 
-    Only for dates handed to that gate. Most deadlines in the app — seating,
-    dormancy, the scheduler sweep — are still read from the server's own
-    `date.today()`, and tests for those must keep using it or they will be
-    a day out. See the note in the commit that added this.
+    Only for dates handed to that gate — the opening and closing of
+    registration. The other deadlines are read in UTC; `today_utc` below is
+    theirs. Nothing in the app reads a date from the server's own
+    `date.today()` except `scheduler.settle_seating_if_due` and the Fio
+    window, so a test that builds a date that way is naming whichever day the
+    runner's timezone happens to be on and will be a day out for the hours the
+    runner runs ahead of UTC.
     """
     return datetime.datetime.now(zoneinfo.ZoneInfo(DEFAULT_TIMEZONE)).date()
+
+
+def today_utc() -> datetime.date:
+    """Today in UTC, for the deadlines the app compares in UTC.
+
+    Those are the seating deadline (`setup.seating_has_settled` and
+    `scheduler._reminder_due`, both asked with `_now().date()`), the team
+    composition deadline (`routers/tournaments.py`), and the boundary the open
+    tournaments listing splits upcoming from past on.
+
+    A test that builds these from `date.today()` agrees with the app only while
+    the runner's timezone is on the same day as UTC. On a runner ahead of UTC —
+    anywhere in CET/CEST after midnight local — it names tomorrow's date and the
+    deadline lands a day late.
+
+    That the app reads day boundaries from three different clocks is a real
+    inconsistency, not a test concern; it is written up in
+    `openspec/changes/date-boundaries-read-three-clocks.md` and needs decisions
+    that are not the tests' to make. This helper only keeps the tests honest
+    about which clock they are asserting against today.
+    """
+    return datetime.datetime.now(datetime.UTC).date()
+
+
+def deadline_passed(days_ago: int = 1) -> datetime.date:
+    """A date every clock the app reads agrees is in the past.
+
+    A deadline set here can be read by three different clocks. The server's
+    `date.today()` decides whether seating settles
+    (`scheduler.settle_seating_if_due`); `datetime.now(UTC).date()` decides
+    whether seating *has* settled (`setup.seating_has_settled`) and whether a
+    reminder is due (`scheduler._reminder_due`); the tournament's own timezone
+    decides whether registration has closed (`setup.local_date`). And an unset
+    seating deadline resolves to `registration_closes`
+    (`setup.seating_deadline_for`), so one date can be read by all three at
+    once.
+
+    They sit on different days for the hours the server runs ahead of or behind
+    UTC, and in that window no single date is "yesterday" for all of them — a
+    test that picks any one clock passes on one path and fails on another.
+    Taking the earliest makes the date unambiguously past for every reader.
+
+    That one deadline is read from three clocks is the inconsistency written up
+    in `openspec/changes/date-boundaries-read-three-clocks.md`. Until that is
+    decided, a test that wants a passed deadline has to clear all of them, and
+    this is where that knowledge lives rather than in each test.
+    """
+    earliest = min(today_utc(), today_local(), datetime.date.today())
+    return earliest - datetime.timedelta(days=days_ago)
+
+
+def deadline_ahead(days: int = 5) -> datetime.date:
+    """A seating deadline `days` out on the clock the reminder is anchored to.
+
+    Not the mirror of `deadline_passed`. A deadline still to come is only read
+    by `scheduler._reminder_due`, which asks in UTC, so the distance that
+    decides whether the reminder is due has to be measured from the UTC day —
+    taking the later of the two clocks would push a `reminder_day` horizon one
+    day out of the window and send nothing.
+
+    The settlement path cannot fire on this date either way: the server clock is
+    within a day of UTC, so a horizon of several days is ahead of both.
+    """
+    return today_utc() + datetime.timedelta(days=days)
 
 
 @pytest.fixture
