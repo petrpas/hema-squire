@@ -234,6 +234,11 @@ node_modules/
 # WAL mode (apply_sqlite_pragmas) leaves these beside the database file
 *.sqlite-wal
 *.sqlite-shm
+# Untracked while it describes an exposure that is not yet remediated: the repo
+# is public, and publishing the description before the fix only makes it easier
+# to find. Track it once the rotation it asks for is done.
+security_tbd.md
+
 # scripts/reset_local_db.py — carries emails and password hashes, never commit
 # one. The trailing `*` is load-bearing: a dump kept as a backup gets a suffix
 # (`.na-duel-def-20260905`), and the unsuffixed glob stopped matching it.
