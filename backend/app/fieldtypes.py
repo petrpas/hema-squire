@@ -123,6 +123,15 @@ def _stamp_utc(value: datetime.datetime | None) -> datetime.datetime | None:
     return value.replace(tzinfo=datetime.UTC)
 
 
+# A database row id arriving in a request body. Bounded because SQLite stores
+# an INTEGER as a signed 64-bit value: an id past that overflows in the driver
+# before any query can answer "no such row", and the request becomes a 500
+# rather than a 404. Found by the contract fuzzer on a `registration_id` of
+# 2**63 (static-analysis change, phase 4).
+ROW_ID_MAX = 2**63 - 1
+RowId = Annotated[int, Field(ge=1, le=ROW_ID_MAX)]
+
+
 # An instant Squire recorded, serialized with the zone it was recorded in.
 UtcInstant = Annotated[datetime.datetime, AfterValidator(_stamp_utc)]
 
@@ -406,6 +415,7 @@ __all__ = [
     "RosterMemberClubStr",
     "RosterMemberNameStr",
     "RosterMemberNationalityStr",
+    "RowId",
     "SingleLine",
     "TeamNameStr",
     "TolerantDecimal",

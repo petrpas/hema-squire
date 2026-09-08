@@ -324,10 +324,16 @@ def test_unknown_timezone_is_refused(client, auth_headers):
 
 
 def test_timezone_cannot_be_cleared(client, auth_headers):
+    """`required`, not `unknown_timezone`: the value sent was null, not a zone
+    nobody recognises. The refusal now comes from `TournamentUpdate`, which
+    derives from the table that this column is NOT NULL, so the null is
+    refused before it is assigned rather than after (static-analysis change,
+    phase 4). An unknown *name* still answers `unknown_timezone` — that check
+    is untouched, and the test below holds it."""
     organizer = auth_headers()
     response = setup_tournament(client, organizer, timezone=None)
     assert response.status_code == 422
-    assert field_error(response) == ("timezone", "unknown_timezone")
+    assert field_error(response) == ("timezone", "required")
 
 
 def test_known_timezone_is_stored_and_moves_the_moment(client, auth_headers):

@@ -560,3 +560,21 @@ def test_a_second_recorded_payment_completing_it_gives_its_own_day(
     assert registration_by_vs(vs).paid_at.replace(tzinfo=UTC) == datetime.combine(
         date(2026, 8, 9), time(0, 0), tzinfo=ZoneInfo("Europe/Prague")
     ).astimezone(UTC)
+
+
+def test_recording_refuses_a_registration_id_past_the_column(client, auth_headers):
+    """SQLite stores an INTEGER as a signed 64-bit value, so an id past that
+    overflowed in the driver before the query could answer "no such row" and
+    the request became a 500. `RowId` bounds it; the answer is now a 422.
+    Found by the contract fuzzer (static-analysis change, phase 4)."""
+    organizer = auth_headers()
+    make_tournament(client, organizer)
+    refused = client.post(
+        "/api/tournaments/cup/payments/manual",
+        json={
+            "registration_id": 2**63, "amount": 100, "currency": "CZK",
+            "received_on": "2026-11-01", "method": "cash",
+        },
+        headers=organizer,
+    )
+    assert refused.status_code == 422

@@ -175,6 +175,44 @@ def create_app() -> FastAPI:
     return app
 
 
+def _flatten_nested_any_of(node: object) -> None:
+    """Fold `anyOf: [{anyOf: [A, B]}, C]` into `anyOf: [A, B, C]`.
+
+    Pydantic renders `Decimal | None` that way — a Decimal is itself
+    `number | string`, and the optional wraps it — and the nesting means the
+    same thing as the flat list while being harder for every consumer to read.
+    Schemathesis is one such consumer: it took the string branch's `pattern`
+    and the number branch's value together and crashed generating a case for
+    `TournamentUpdate.eur_rate`, which made the contract suite fail about one
+    run in three. Flattening is lossless, so it is done for the document rather
+    than worked around for the one tool.
+
+    A constraint sitting beside the inner `anyOf` — `eur_rate` carries `gt: 0`
+    there — is carried onto each branch it is lifted out of, where it says the
+    same thing it said on their parent, rather than being dropped.
+    """
+    if isinstance(node, dict):
+        branches = node.get("anyOf")
+        if isinstance(branches, list):
+            flattened: list[object] = []
+            for branch in branches:
+                inner = isinstance(branch, dict) and branch.get("anyOf")
+                if isinstance(inner, list):
+                    siblings = {k: v for k, v in branch.items() if k != "anyOf"}
+                    flattened.extend(
+                        {**sub, **siblings} if isinstance(sub, dict) else sub
+                        for sub in inner
+                    )
+                else:
+                    flattened.append(branch)
+            node["anyOf"] = flattened
+        for value in node.values():
+            _flatten_nested_any_of(value)
+    elif isinstance(node, list):
+        for value in node:
+            _flatten_nested_any_of(value)
+
+
 def _describe_real_validation_errors(app: FastAPI) -> None:
     """Publish the 422 body this application actually sends.
 
@@ -199,6 +237,7 @@ def _describe_real_validation_errors(app: FastAPI) -> None:
             components = document.setdefault("components", {}).setdefault("schemas", {})
             components.update(nested)
             components["HTTPValidationError"] = schemas
+            _flatten_nested_any_of(document)
             # FastAPI's own error model is now unreferenced
             components.pop("ValidationError", None)
             app.openapi_schema = document

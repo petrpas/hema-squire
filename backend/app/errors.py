@@ -50,11 +50,34 @@ class ValidationErrorResponse(BaseModel):
     and refused it (phase 4 of the static-analysis change).
     """
 
-    # A union because the migration this module describes is incomplete: a
-    # router code named in `_ROUTER_CODE_FIELDS` becomes the envelope, and one
-    # that is not is still a bare string. Both are sent today, so both are
-    # published; when the last bare string goes, so does the `| str`.
-    detail: ValidationErrorDetail | str
+    # Three shapes, because the migration this module describes is incomplete.
+    # A router code named in `_ROUTER_CODE_FIELDS` becomes the envelope; one
+    # that is not stays a bare string; and a router raising a diagnostic of its
+    # own — `{"unknown_disciplines": [...]}`, `{"roster_over_maximum": n}` and
+    # about twenty more — sends that dict through untouched. All three are sent
+    # today, so all three are published: a union that says "one of these" is
+    # weak, but it is true, and the single array this used to promise was not.
+    # As codes move into `_ROUTER_CODE_FIELDS` the last two shapes go with them.
+    detail: ValidationErrorDetail | str | dict[str, Any]
+
+
+def reject_explicit_nulls(model: BaseModel, fields: frozenset[str] | tuple[str, ...]) -> None:
+    """Refuse a `null` explicitly sent for a field that may only be omitted.
+
+    A partial edit reads `model_dump(exclude_unset=True)`, which tells an
+    omitted field from a set one — and then writes whatever was set. A field
+    whose column is NOT NULL therefore took the null all the way to the
+    database and answered 500 on an integrity error rather than saying what was
+    wrong. Omitting still leaves the field alone; nulling it is refused with the
+    same `required` code a missing required field gets.
+
+    Found three times by the contract fuzzer, on two different models
+    (static-analysis change, phase 4), which is why it lives here rather than
+    being written out at each one.
+    """
+    for name in fields:
+        if name in model.model_fields_set and getattr(model, name, None) is None:
+            raise FieldValueError(name, "required", {})
 
 
 class FieldValueError(ValueError):

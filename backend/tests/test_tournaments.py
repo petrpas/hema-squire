@@ -1,3 +1,7 @@
+from app.models import Role
+from tests.conftest import publish
+
+
 def make_tournament(client, headers, slug="na-duel-2026"):
     response = client.post(
         "/api/tournaments",
@@ -407,3 +411,57 @@ def test_public_can_read_but_not_write(client, auth_headers):
     detail = client.get("/api/tournaments/na-duel-2026")
     assert detail.status_code == 200
     assert detail.json()["disciplines"][0]["fee_early"] == 600
+
+
+def test_tournament_update_refuses_to_null_a_required_field(client, auth_headers):
+    """Omitting a field leaves it alone; nulling one is refused.
+
+    The handler writes whatever the request *set*, and `exclude_unset` cannot
+    tell an omitted field from an explicit null — so a null reached a NOT NULL
+    column and the request answered 500 on an integrity error. Nineteen
+    patchable fields had the hole; the contract fuzzer reached one of them
+    (static-analysis change, phase 4). `TournamentUpdate` derives the refusal
+    from the table, so a column that becomes NOT NULL is covered without anyone
+    remembering to.
+    """
+    headers = auth_headers()
+    make_tournament(client, headers)
+    refused = client.patch(
+        "/api/tournaments/na-duel-2026", json={"afterparty_fee": None}, headers=headers
+    )
+    assert refused.status_code == 422
+    assert refused.json()["detail"]["errors"] == [
+        {"field": "afterparty_fee", "code": "required", "params": {}}
+    ]
+    # a nullable column still clears
+    cleared = client.patch(
+        "/api/tournaments/na-duel-2026", json={"subtitle": None}, headers=headers
+    )
+    assert cleared.status_code == 200
+
+
+def test_discipline_delete_refuses_once_a_registration_references_it(client, auth_headers):
+    """The edit path already refuses to change a referenced discipline's
+    identity; deleting it outright was not refused at all and failed on the
+    foreign key as a 500 (found by the contract fuzzer)."""
+    organizer = auth_headers()
+    make_tournament(client, organizer)
+    client.post(
+        "/api/tournaments/na-duel-2026/disciplines",
+        json={"slug": "LS", "weapon": "LS", "capacity": 4, "fee": 800},
+        headers=organizer,
+    )
+    publish(client, organizer, "na-duel-2026")
+    fencer = auth_headers(email="f1@example.com", name="F1", role=Role.FENCER)
+    entered = client.post(
+        "/api/tournaments/na-duel-2026/register",
+        json={"disciplines": ["LS"]},
+        headers=fencer,
+    )
+    assert entered.status_code == 201, entered.text
+
+    refused = client.delete(
+        "/api/tournaments/na-duel-2026/disciplines/LS", headers=organizer
+    )
+    assert refused.status_code == 409
+    assert refused.json()["detail"] == "discipline_referenced"

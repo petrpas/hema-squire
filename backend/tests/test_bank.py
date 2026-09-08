@@ -251,3 +251,17 @@ def test_fio_poll_without_token(client, auth_headers, stub_fio):
     assert response.json()["detail"] == "fio_token_not_configured"
 
 
+
+
+def test_fio_poll_refuses_an_unbounded_window(client, auth_headers, stub_fio):
+    """`days_back` becomes `today - timedelta(days=days_back)`. Unbounded, a
+    large enough int overflows the date and the request answered 500 rather
+    than refusing the number (found by the contract fuzzer, static-analysis
+    change phase 4)."""
+    organizer = auth_headers()
+    setup_tournament(client, organizer)
+    refused = client.post(
+        "/api/tournaments/cup/payments/fio-poll?days_back=999999999", headers=organizer
+    )
+    assert refused.status_code == 422
+    assert stub_fio.calls == []

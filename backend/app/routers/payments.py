@@ -2,7 +2,7 @@ from datetime import UTC, date, datetime, timedelta
 from decimal import ROUND_HALF_UP, Decimal
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
@@ -190,7 +190,11 @@ def fio_poll(
     fencer: FencerDep,
     fio: FioClientDep,
     mailer: MailerDep,
-    days_back: int = 14,
+    # Bounded, because `today - timedelta(days=days_back)` is what this becomes
+    # and an unbounded int overflows the date rather than answering: the
+    # contract fuzzer reached this with a 500. A year is past any outage a
+    # console poll is catching up on, and the scheduler's own window is 14 days.
+    days_back: int = Query(default=14, ge=1, le=365),
 ):
     require_console_access(session, tournament, fencer)
     require_published(tournament)

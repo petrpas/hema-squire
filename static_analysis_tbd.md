@@ -10,63 +10,36 @@ untracked for its own reasons. That one has an urgent item; this one has none.
 
 ---
 
-## 1. The contract suite reaches 15 operations out of 108
+## 1. ~~The contract suite reaches 15 operations out of 108~~ — done
 
-The biggest gap by a distance, and the one that makes the rest look better than
-it is.
+Seeded in `tests/contract_seed.py`, and the suite substitutes the real ids for
+the generated ones. Measured again afterwards:
 
-`tests/test_api_contract.py` passes on all 108 operations. Measured, the runs it
-passes on are:
+| | before | after |
+|---|---|---|
+| answered 404 | 75.6% | 9.6% |
+| answered 2xx | 4.3% | 32.6% |
+| operations reaching 2xx | 15 / 108 | **74 / 108** |
 
-| | |
-|---|---|
-| generated requests | 8 222 |
-| answered 404 | 6 215 (75.6%) |
-| answered 2xx | 353 (4.3%) |
-| operations that ever reached 2xx | **15 of 108** |
-| operations that never got past an error | **93** |
+It found six more bugs on the way, all listed in the commit. The 34 operations
+still short of a 2xx mostly need state a seed cannot reasonably hold — a
+settled seating, an expired reservation, a dedup group mid-decision — and are
+worth revisiting only if something looks wrong in one of them.
 
-The cause is structural, not a bug in the suite: the fuzzer starts from an empty
-database with a fresh organizer account, so everything under
-`/api/tournaments/{slug}/...` 404s on the slug before the handler runs. For 93
-operations — the whole payments console, the import pipeline, registrations,
-teams, rules, export — a green test means *the 404 path is sound*, and nothing
-more.
+One trade came with it, recorded in the test file: a path id is no longer
+fuzzed, so an id the route cannot handle is not reached through a path
+parameter. `RowId` bounds the body-side ones, and the path-side equivalent —
+`Annotated[int, Path(ge=1, le=ROW_ID_MAX)]` on the ten routes that take an id —
+has not been done and would close it.
 
-It also explains where the four bugs phase 4 found were: all of them on
-`/api/account` and `/api/account/plea`, which is the only place it could reach
-live code. Not because those endpoints are worse, but because that is where it
-looked. The same classes — an explicit null into a NOT NULL column, an instant
-serialized without its zone, a response that does not match its schema — are
-unaudited across the other 93.
+## 2. ~~About twenty `date-time` response fields are unaudited~~ — done
 
-**What it needs:** a seeded fixture the contract suite starts from — one
-published tournament with a discipline, a registration, and an import batch —
-so generation begins behind the 404 wall. Roughly an hour's work, and it should
-take the reached count from 15 to most of 108. Worth doing *before* phase 5,
-which is optional and worth much less.
-
-## 2. About twenty `date-time` response fields are unaudited
-
-Phase 4 caught `PleaOut.created_at` serialized with no offset, so a client reads
-a UTC instant as its own local time. `fieldtypes.UtcInstant` fixes that one and
-states the rule; `rules._utc` had already fixed the same failure for the
-manual-edits log.
-
-Twenty-odd other fields declare `format: date-time` and were never reached with
-data, so their zone behaviour is unknown: `RegistrationOut.expires_at`,
-`registered_at`, `paid_at`, `TransactionOut.last_evaluated_at`,
-`ManualPaymentOut.created_at`, `RuleOut.created_at`, and the rest.
-
-**This is not a sweep.** The frontend deliberately distinguishes the two forms —
-an offset-bearing stamp is shifted into the tournament's zone, a zone-less one
-is shown unshifted, and `frontend/src/consoleCells.test.tsx` holds that line
-under the name "an imported row's zone-less stamp". A stamp that came from
-someone else's table has no zone to restore. So each field needs deciding, not
-converting.
-
-Same subject as `openspec/changes/date-boundaries-read-three-clocks.md`, and it
-belongs with that analysis rather than on its own.
+Sixteen were naive and are now `UtcInstant`; the audit is in the phase-4
+follow-up commit. `server_time`, both `registration_opens_at` and
+`NetChangeOut.at` were already offset-aware and were left alone, and
+`ManualRowOut.registered_at` / `ManualEntryIn.registered_at` stay naive
+deliberately — an imported stamp has no zone to restore, which
+`frontend/src/consoleCells.test.tsx` holds to by name.
 
 ## 3. Tests and scripts are outside the basedpyright gate
 
@@ -110,11 +83,12 @@ Both were reported by schemathesis checks that are switched off in
   commit that touched any of them, and CI does not check formatting. Deliberately
   left out of `.pre-commit-config.yaml`, with a comment there saying so. It is a
   decision of its own; the diff is large and entirely mechanical.
-- **`ValidationErrorResponse.detail` carries a `| str` half.** That is the
-  incomplete migration `app/errors.py` describes in its module docstring — a
-  router code not named in `_ROUTER_CODE_FIELDS` still answers with a bare
-  string. When the last one is converted, the `| str` goes with it and the
-  published schema gets simpler.
+- **`ValidationErrorResponse.detail` is a three-way union.** The envelope, a
+  bare string, and an arbitrary diagnostic dict — the incomplete migration
+  `app/errors.py` describes in its module docstring. A union that says "one of
+  these" is weak, but it is true, and the single array FastAPI used to promise
+  was not. As router codes move into `_ROUTER_CODE_FIELDS` the last two shapes
+  go with them and the published schema gets simpler.
 - **Phase 5** — `deptry` (undeclared and unused dependencies) and `vulture`
   (dead code). The spec marks both optional and non-blocking, and `vulture`
   false-positives heavily on FastAPI's dependency injection, so it is an

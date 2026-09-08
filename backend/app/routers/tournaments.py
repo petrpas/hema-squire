@@ -1079,6 +1079,12 @@ def delete_discipline(
     discipline = next((d for d in tournament.disciplines if d.slug == discipline_slug), None)
     if discipline is None:
         raise HTTPException(status_code=404, detail="discipline_not_found")
+    # A registration referencing it is what the edit path already refuses to
+    # change the identity of; deleting it outright was not refused at all, and
+    # the delete failed on the foreign key as a 500 instead (found by the
+    # contract fuzzer). Same question, same helper, an answer this time.
+    if _discipline_referenced(session, discipline):
+        raise HTTPException(status_code=409, detail="discipline_referenced")
     session.delete(discipline)
     # the in-memory collection does not drop the row on delete()/flush() alone
     # (only a commit + expire would); guard_published_completeness reads it

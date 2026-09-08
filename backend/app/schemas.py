@@ -14,7 +14,7 @@ from pydantic import (
 
 from app import accounts, constraints, setup
 from app.constraints import DEFAULT_TIMEZONE
-from app.errors import FieldValueError
+from app.errors import FieldValueError, reject_explicit_nulls
 from app.fieldtypes import (
     BankAccountStr,
     ClubStr,
@@ -47,6 +47,7 @@ from app.fieldtypes import (
     RosterMemberClubStr,
     RosterMemberNameStr,
     RosterMemberNationalityStr,
+    RowId,
     TeamNameStr,
     TolerantDecimal,
     TolerantInt,
@@ -70,6 +71,7 @@ from app.models import (
     RegistrationState,
     RequestState,
     Role,
+    Tournament,
     UnpaidListTreatment,
 )
 
@@ -81,7 +83,7 @@ class SignupIn(BaseModel):
     email: EmailStr
     password: str = Field(min_length=constraints.PASSWORD_MIN_LENGTH)
     display_name: DisplayNameStr | None = None
-    hr_id: int | None = None
+    hr_id: RowId | None = None
     club: ClubStr | None = None
     language: str = "cs"
 
@@ -155,9 +157,7 @@ class AccountUpdate(BaseModel):
 
     @model_validator(mode="after")
     def _no_explicit_null(self) -> AccountUpdate:
-        for field in self._NOT_NULLABLE:
-            if field in self.model_fields_set and getattr(self, field) is None:
-                raise FieldValueError(field, "required", {})
+        reject_explicit_nulls(self, self._NOT_NULLABLE)
         return self
 
     @field_validator("language")
@@ -169,7 +169,7 @@ class AccountUpdate(BaseModel):
 
 
 class HRBindIn(BaseModel):
-    hr_id: int
+    hr_id: RowId
 
 
 class LoginIn(BaseModel):
@@ -416,6 +416,19 @@ class TournamentCreate(BaseModel):
 
 
 class TournamentUpdate(BaseModel):
+    # Derived from the table rather than listed, so a column that becomes NOT
+    # NULL is covered without anyone remembering to add it here. Nineteen
+    # fields today; the fuzzer reached one of them (`afterparty_fee`) and the
+    # other eighteen had the same hole.
+    _NOT_NULLABLE = frozenset(
+        column.name for column in Tournament.__table__.columns if not column.nullable
+    )
+
+    @model_validator(mode="after")
+    def _no_explicit_null(self) -> TournamentUpdate:
+        reject_explicit_nulls(self, self._NOT_NULLABLE)
+        return self
+
     display_name: TournamentDisplayNameStr | None = None
     subtitle: TournamentSubtitleStr | None = None
     date: datetime.date | None = None
@@ -612,11 +625,11 @@ class TournamentOut(BaseModel):
     date: datetime.date
     language: str
     owner_id: int | None
-    cancelled_at: datetime.datetime | None
-    published_at: datetime.datetime | None
+    cancelled_at: UtcInstant | None
+    published_at: UtcInstant | None
     payment_mode: PaymentMode
     seating_deadline: datetime.date | None
-    seating_settled_at: datetime.datetime | None
+    seating_settled_at: UtcInstant | None
     deposit_amount: int | None
     deposit_amount_eur: int | None
     reservation_validity_days: int
@@ -765,7 +778,7 @@ class PleaQueueOut(BaseModel):
     email: EmailStr | None
     display_name: str
     message: str | None
-    created_at: datetime.datetime
+    created_at: UtcInstant
 
 
 class PleaDecisionOut(BaseModel):
@@ -796,7 +809,7 @@ class PreviewTeamIn(BaseModel):
 
 class RosterMemberIn(BaseModel):
     name: RosterMemberNameStr
-    hr_id: int | None = None
+    hr_id: RowId | None = None
     club: RosterMemberClubStr | None = None
     nationality: RosterMemberNationalityStr | None = None
 
@@ -833,7 +846,7 @@ class TeamEntryOut(BaseModel):
 
 
 class ExtraSelectionIn(BaseModel):
-    extra_item_id: int
+    extra_item_id: RowId
     qty: TolerantInt = Field(default=1, ge=constraints.EXTRA_SELECTION_QTY_MIN)
     # answer to the item's option; presence is validated against the item at
     # registration time (the schema cannot see which item this points at)
@@ -882,6 +895,10 @@ class ManualEntryIn(BaseModel):
         return value or None
 
 
+# `registered_at` below stays a plain datetime deliberately, unlike the
+# `UtcInstant` fields elsewhere: this stamp came from the organizer's own table
+# and has no zone to restore. The console shows it unshifted, which
+# `frontend/src/consoleCells.test.tsx` holds to by name.
 class ManualRowOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -944,9 +961,9 @@ class RegistrationOut(BaseModel):
     # the EUR price, absent (not zero) when the tournament does not price in
     # EUR — a stored figure, never derived from the local one
     total_eur: int | None = None
-    expires_at: datetime.datetime | None
-    registered_at: datetime.datetime
-    paid_at: datetime.datetime | None
+    expires_at: UtcInstant | None
+    registered_at: UtcInstant
+    paid_at: UtcInstant | None
     weapon_rentals: list[str]
     afterparty: bool
     aftersparring: bool
@@ -1007,7 +1024,7 @@ class PaymentInstructionsOut(BaseModel):
     account_domestic: str | None = None
     vs: int
     message: str
-    expires_at: datetime.datetime | None
+    expires_at: UtcInstant | None
     spayd: str
     qr_png_base64: str
     # the EUR pair is absent, not empty, when the tournament takes no EUR
@@ -1086,7 +1103,7 @@ class ManualPaymentIn(BaseModel):
     day the money arrived rather than the day it was typed in, and nothing
     reads it as a clock."""
 
-    registration_id: int
+    registration_id: RowId
     # positivity is checked at the endpoint rather than declared here: a
     # `Field(gt=0)` on a Decimal puts a Decimal into the validation error's
     # context, and the 422 body then fails to serialise
@@ -1111,7 +1128,7 @@ class ManualPaymentOut(BaseModel):
     method: PaymentMethod
     note: str | None
     recorded_by: str
-    created_at: datetime.datetime
+    created_at: UtcInstant
     # whether removing this payment would return the registration to reserved,
     # so the console can say what removal will do before it is confirmed rather
     # than after (spec payments-console)
@@ -1145,7 +1162,7 @@ class TransactionOut(BaseModel):
     proposed_fencer_id: int | None = None
     proposed_fencer_name: str | None = None
     # when the matcher last considered this transaction (design Decision 2)
-    last_evaluated_at: datetime.datetime | None
+    last_evaluated_at: UtcInstant | None
     # only meaningful for a flagged transaction; whether reinstate is offered
     # (capacity re-checked at read time — see routers.payments._transaction_out)
     reinstate_available: bool = False
@@ -1178,7 +1195,7 @@ class ExpiredHoldingOut(BaseModel):
     vs: int | None
     credited_amount: decimal.Decimal
     credited_eur_amount: decimal.Decimal | None
-    expired_at: datetime.datetime
+    expired_at: UtcInstant
 
 
 class LinkIn(BaseModel):
@@ -1191,9 +1208,9 @@ class LinkIn(BaseModel):
     name-assisted-matching). At least one of the two must name something.
     """
 
-    transaction_id: int
+    transaction_id: RowId
     vs: list[int] = []
-    registration_ids: list[int] = []
+    registration_ids: list[RowId] = []
 
     @model_validator(mode="after")
     def _names_something(self):
@@ -1280,7 +1297,7 @@ class RuleOut(BaseModel):
     target: str
     payload: dict
     created_by: int
-    created_at: datetime.datetime
+    created_at: UtcInstant
     amendment: AmendmentOut | None = None
 
 
@@ -1338,7 +1355,7 @@ class QueueEntryOut(BaseModel):
     fencer: str
     club: str | None
     vs: int | None
-    registered_at: datetime.datetime
+    registered_at: UtcInstant
     # place in the substitute queue by registration time; None when seated
     queue_position: int | None = None
 
@@ -1360,7 +1377,7 @@ class QueueOut(BaseModel):
     # the resolved deadline, falling back to registration close and then the
     # tournament date (setup.seating_deadline_for) — never the raw column
     seating_deadline: datetime.date
-    seating_settled_at: datetime.datetime | None
+    seating_settled_at: UtcInstant | None
     # how many registrations settling now would move below the line; what the
     # console states before asking to confirm an irreversible settlement
     pending_demotions: int
@@ -1369,7 +1386,7 @@ class QueueOut(BaseModel):
 
 class SettleSeatingOut(BaseModel):
     demoted: int
-    seating_settled_at: datetime.datetime
+    seating_settled_at: UtcInstant
 
 
 class ParticipantOut(BaseModel):
@@ -1401,7 +1418,7 @@ class ParticipantListOut(BaseModel):
     # maintain it. A fact about when, never a judgement about currency: the
     # system cannot say whether a list is up to date, and saying so would be
     # wrong the moment the organizer imports again (design D2)
-    as_of: datetime.datetime | None
+    as_of: UtcInstant | None
 
 
 class RankedFencerOut(BaseModel):
