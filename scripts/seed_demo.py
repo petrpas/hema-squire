@@ -22,6 +22,7 @@ deployment Owner via HEMA_SQUIRE_OWNER_EMAIL.
 
 import json
 import sys
+import time
 import urllib.error
 import urllib.request
 from pathlib import Path
@@ -36,6 +37,11 @@ BASE = "http://localhost:8000"
 ORGANIZER = ("petr@example.com", "demo-heslo-123", "Petr Organizátor")
 ADMIN_DEMO = ("admin@example.com", "demo-heslo-123", "Anna Admin")
 SLUG = "na-duel-2026"
+# auth is throttled to a few requests a minute per address; the window is one
+# minute, so giving up after two of them means a real outage is not mistaken for
+# a throttle and waited on forever
+THROTTLE_WAIT_SECONDS = 120
+THROTTLE_POLL_SECONDS = 10
 
 
 def _grant_role(email: str, role: Role) -> None:
@@ -75,16 +81,29 @@ def call(method, path, token=None, body=None, files=None):
         )
     else:
         request = urllib.request.Request(BASE + path, headers=headers, method=method)
-    try:
-        with urllib.request.urlopen(request) as response:
-            return json.loads(response.read() or b"null")
-    except urllib.error.HTTPError as error:
-        # the body is where the API names the field it refused; the status
-        # alone gives nothing to act on. It goes into `msg`, which `reason`
-        # reads and the traceback prints, while this stays an HTTPError for the
-        # callers that catch one to stay idempotent.
-        error.msg = f"{error.msg} — {method} {path}: {error.read().decode()}"
-        raise
+    deadline = time.monotonic() + THROTTLE_WAIT_SECONDS
+    while True:
+        try:
+            with urllib.request.urlopen(request) as response:
+                return json.loads(response.read() or b"null")
+        except urllib.error.HTTPError as error:
+            # Signing up six demo accounts trips the throttle on the endpoints
+            # that verify passwords (app.ratelimit), which dev deliberately
+            # leaves on. That is the seed being seed-shaped, not a failure, so
+            # it waits the window out rather than the deployment turning a
+            # security control off for it. slowapi sends no Retry-After, so the
+            # wait is polled in short steps: the window is fixed and may be
+            # nearly over already. Reruns never reach here — they sign nobody up.
+            if error.code == 429 and time.monotonic() < deadline:
+                print(f"   throttled on {path}, waiting {THROTTLE_POLL_SECONDS}s")
+                time.sleep(THROTTLE_POLL_SECONDS)
+                continue
+            # the body is where the API names the field it refused; the status
+            # alone gives nothing to act on. It goes into `msg`, which `reason`
+            # reads and the traceback prints, while this stays an HTTPError for
+            # the callers that catch one to stay idempotent.
+            error.msg = f"{error.msg} — {method} {path}: {error.read().decode()}"
+            raise
 
 
 def main() -> None:
