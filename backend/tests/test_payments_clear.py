@@ -88,9 +88,11 @@ def transactions():
 
 
 def stored_readings():
-    return db_session().scalars(
-        select(ImportDecision).where(ImportDecision.kind == "statement_row")
-    ).all()
+    return (
+        db_session()
+        .scalars(select(ImportDecision).where(ImportDecision.kind == "statement_row"))
+        .all()
+    )
 
 
 # --- what a clear removes --------------------------------------------------
@@ -99,18 +101,14 @@ def stored_readings():
 def test_a_misread_statement_is_removed_altogether(client, auth_headers, mailbox, parser):
     organizer = auth_headers()
     setup(client, organizer)
-    import_statement(
-        client, organizer, statement(["2026-08-12,Jan Novák,1000.00,CZK,,entry fee"])
-    )
+    import_statement(client, organizer, statement(["2026-08-12,Jan Novák,1000.00,CZK,,entry fee"]))
     assert len(transactions()) == 1
 
     body = clear(client, organizer).json()
 
     assert body == {"payments": 1}
     assert transactions() == []
-    assert client.get(
-        "/api/tournaments/cup/payments/unmatched", headers=organizer
-    ).json() == []
+    assert client.get("/api/tournaments/cup/payments/unmatched", headers=organizer).json() == []
 
 
 def test_the_stored_readings_go_with_them(client, auth_headers, mailbox, parser):
@@ -118,9 +116,7 @@ def test_the_stored_readings_go_with_them(client, auth_headers, mailbox, parser)
     import invisibly."""
     organizer = auth_headers()
     setup(client, organizer)
-    import_statement(
-        client, organizer, statement(["2026-08-12,Jan Novák,1000.00,CZK,,fee"])
-    )
+    import_statement(client, organizer, statement(["2026-08-12,Jan Novák,1000.00,CZK,,fee"]))
     assert len(stored_readings()) == 1
 
     clear(client, organizer)
@@ -128,9 +124,7 @@ def test_the_stored_readings_go_with_them(client, auth_headers, mailbox, parser)
     assert stored_readings() == []
 
 
-def test_re_import_after_a_clear_reads_the_file_again(
-    client, auth_headers, mailbox, parser
-):
+def test_re_import_after_a_clear_reads_the_file_again(client, auth_headers, mailbox, parser):
     """The property this change exists for. A clear of the transactions alone
     would pass every other test here and fail this one."""
     organizer = auth_headers()
@@ -150,9 +144,7 @@ def test_re_import_after_a_clear_reads_the_file_again(
 def test_a_corrected_file_is_read_as_corrected(client, auth_headers, mailbox, parser):
     organizer = auth_headers()
     setup(client, organizer)
-    import_statement(
-        client, organizer, statement(["2026-08-12,Jan,1214.00,CZK,,truncated"])
-    )
+    import_statement(client, organizer, statement(["2026-08-12,Jan,1214.00,CZK,,truncated"]))
     clear(client, organizer)
 
     import_statement(
@@ -169,9 +161,7 @@ def test_several_statements_go_together(client, auth_headers, mailbox, parser):
     organizer = auth_headers()
     setup(client, organizer)
     for day in ("12", "13", "14"):
-        import_statement(
-            client, organizer, statement([f"2026-08-{day},Payer,100.00,CZK,,fee"])
-        )
+        import_statement(client, organizer, statement([f"2026-08-{day},Payer,100.00,CZK,,fee"]))
     assert len(transactions()) == 3
 
     assert clear(client, organizer).json() == {"payments": 3}
@@ -179,9 +169,7 @@ def test_several_statements_go_together(client, auth_headers, mailbox, parser):
     assert transactions() == []
 
 
-def test_a_link_to_a_cleared_transaction_goes_with_it(
-    client, auth_headers, mailbox, parser
-):
+def test_a_link_to_a_cleared_transaction_goes_with_it(client, auth_headers, mailbox, parser):
     organizer = auth_headers()
     setup(client, organizer)
     _, vs = enroll(client, auth_headers)
@@ -193,9 +181,7 @@ def test_a_link_to_a_cleared_transaction_goes_with_it(
         json={"transaction_id": transaction.id, "vs": [vs]},
         headers=organizer,
     )
-    assert db_session().scalars(
-        select(Rule).where(Rule.kind == "payment_link")
-    ).all()
+    assert db_session().scalars(select(Rule).where(Rule.kind == "payment_link")).all()
 
     # the link credited it, so unlink first — a credited transaction refuses
     for rule in db_session().scalars(select(Rule).where(Rule.kind == "payment_link")):
@@ -213,9 +199,7 @@ def test_credited_money_stops_the_clear(client, auth_headers, mailbox, parser):
     organizer = auth_headers()
     setup(client, organizer)
     _, vs = enroll(client, auth_headers)
-    import_statement(
-        client, organizer, statement([f"2026-08-12,Jan,1000.00,CZK,{vs},fee"])
-    )
+    import_statement(client, organizer, statement([f"2026-08-12,Jan,1000.00,CZK,{vs},fee"]))
     assert transactions()[0].matched_registration_id is not None
 
     response = clear(client, organizer)
@@ -260,9 +244,7 @@ def test_clearing_after_the_payments_are_unlinked(client, auth_headers, mailbox,
     organizer = auth_headers()
     setup(client, organizer)
     _, vs = enroll(client, auth_headers)
-    import_statement(
-        client, organizer, statement([f"2026-08-12,Jan,1000.00,CZK,{vs},fee"])
-    )
+    import_statement(client, organizer, statement([f"2026-08-12,Jan,1000.00,CZK,{vs},fee"]))
     assert clear(client, organizer).status_code == 409
 
     # unwind the credit the way the console does, then clear
@@ -285,9 +267,7 @@ def test_the_count_states_what_stands_in_the_way(client, auth_headers, mailbox, 
     import_statement(
         client,
         organizer,
-        statement(
-            [f"2026-08-12,Jan,1000.00,CZK,{vs},paid", "2026-08-13,Nobody,50.00,CZK,,no"]
-        ),
+        statement([f"2026-08-12,Jan,1000.00,CZK,{vs},paid", "2026-08-13,Nobody,50.00,CZK,,no"]),
     )
 
     assert clearable(client, organizer) == {"payments": 2, "credited": 1}

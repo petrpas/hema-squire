@@ -125,9 +125,7 @@ def test_mixed_submission_seats_the_open_and_queues_the_full(client, auth_header
     make_tournament(client, organizer)
     fill_tight(client, auth_headers)
 
-    _, mixed = enroll(
-        client, auth_headers, "mixed@example.com", "Mixed", disciplines=["LS", "SB"]
-    )
+    _, mixed = enroll(client, auth_headers, "mixed@example.com", "Mixed", disciplines=["LS", "SB"])
 
     entries = {e["slug"]: e for e in mixed["entries"]}
     assert entries["LS"]["is_substitute"] is False
@@ -141,9 +139,7 @@ def test_paid_registration_is_counted_in_the_queue_it_waits_in(client, auth_head
     organizer = auth_headers()
     make_tournament(client, organizer)
     fill_tight(client, auth_headers)
-    _, mixed = enroll(
-        client, auth_headers, "mixed@example.com", "Mixed", disciplines=["LS", "SB"]
-    )
+    _, mixed = enroll(client, auth_headers, "mixed@example.com", "Mixed", disciplines=["LS", "SB"])
     mark_paid(mixed["vs"])
 
     assert availability(client, "SB")["queue_length"] == 1
@@ -157,9 +153,7 @@ def test_paid_fencer_keeps_position_ahead_of_a_later_reserved_one(client, auth_h
         client, auth_headers, "mixed@example.com", "Mixed", disciplines=["LS", "SB"]
     )
     mark_paid(mixed["vs"])
-    later_fencer, _ = enroll(
-        client, auth_headers, "later@example.com", "Later", disciplines=["SB"]
-    )
+    later_fencer, _ = enroll(client, auth_headers, "later@example.com", "Later", disciplines=["SB"])
 
     def position(headers):
         body = client.get("/api/tournaments/cup/my-registration", headers=headers).json()
@@ -180,9 +174,7 @@ def admit(client, organizer, registration_id, slug):
 def free_tight_seat(client, first_fencer):
     """Cancel the registration holding SB's only seat, so a queued placement
     can be promoted into it."""
-    response = client.post(
-        "/api/tournaments/cup/my-registration/cancel", headers=first_fencer
-    )
+    response = client.post("/api/tournaments/cup/my-registration/cancel", headers=first_fencer)
     assert response.status_code == 200, response.text
 
 
@@ -192,9 +184,7 @@ def test_paid_registration_can_be_promoted_and_owes_only_the_difference(
     organizer = auth_headers()
     make_tournament(client, organizer)
     first, _ = fill_tight(client, auth_headers)
-    _, mixed = enroll(
-        client, auth_headers, "mixed@example.com", "Mixed", disciplines=["LS", "SB"]
-    )
+    _, mixed = enroll(client, auth_headers, "mixed@example.com", "Mixed", disciplines=["LS", "SB"])
     paid = mark_paid(mixed["vs"])
     paid_id = paid.id
     assert paid.total_amount == 1000  # the seated LS alone
@@ -249,9 +239,7 @@ def test_mixed_registration_is_demoted_not_expired(client, auth_headers):
     organizer = auth_headers()
     make_tournament(client, organizer)
     fill_tight(client, auth_headers)
-    _, mixed = enroll(
-        client, auth_headers, "mixed@example.com", "Mixed", disciplines=["LS", "SB"]
-    )
+    _, mixed = enroll(client, auth_headers, "mixed@example.com", "Mixed", disciplines=["LS", "SB"])
     lapse_window(mixed["vs"])
 
     result = run_expiries(client, organizer)

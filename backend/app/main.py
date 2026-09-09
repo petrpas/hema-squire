@@ -200,8 +200,7 @@ def _flatten_nested_any_of(node: object) -> None:
                 if isinstance(inner, list):
                     siblings = {k: v for k, v in branch.items() if k != "anyOf"}
                     flattened.extend(
-                        {**sub, **siblings} if isinstance(sub, dict) else sub
-                        for sub in inner
+                        {**sub, **siblings} if isinstance(sub, dict) else sub for sub in inner
                     )
                 else:
                     flattened.append(branch)
@@ -224,16 +223,12 @@ def _describe_real_validation_errors(app: FastAPI) -> None:
     told. Substituting the component leaves every `$ref` to it pointing at the
     truth, so no route has to restate its own responses.
     """
-    schemas = ValidationErrorResponse.model_json_schema(
-        ref_template="#/components/schemas/{model}"
-    )
+    schemas = ValidationErrorResponse.model_json_schema(ref_template="#/components/schemas/{model}")
     nested = schemas.pop("$defs", {})
 
     def openapi() -> dict[str, Any]:
         if app.openapi_schema is None:
-            document = get_openapi(
-                title=app.title, version=app.version, routes=app.routes
-            )
+            document = get_openapi(title=app.title, version=app.version, routes=app.routes)
             components = document.setdefault("components", {}).setdefault("schemas", {})
             components.update(nested)
             components["HTTPValidationError"] = schemas

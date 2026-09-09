@@ -60,9 +60,7 @@ def setup_tournament(client, organizer):
 
 
 def put_token(client, headers, token="secret-token"):
-    return client.put(
-        "/api/tournaments/cup/fio-token", json={"token": token}, headers=headers
-    )
+    return client.put("/api/tournaments/cup/fio-token", json={"token": token}, headers=headers)
 
 
 def detail(client, headers):
@@ -80,9 +78,7 @@ def test_a_working_token_is_stored(client, auth_headers):
     assert detail(client, organizer)["fio_token_configured"] is True
 
 
-def test_a_token_the_bank_refuses_is_refused_and_stored_nowhere(
-    client, auth_headers, refusing_fio
-):
+def test_a_token_the_bank_refuses_is_refused_and_stored_nowhere(client, auth_headers, refusing_fio):
     organizer = auth_headers()
     setup_tournament(client, organizer)
 
@@ -93,9 +89,7 @@ def test_a_token_the_bank_refuses_is_refused_and_stored_nowhere(
     assert detail(client, organizer)["fio_token_configured"] is False
 
 
-def test_an_unreachable_bank_stores_the_token_unverified(
-    client, auth_headers, silent_bank
-):
+def test_an_unreachable_bank_stores_the_token_unverified(client, auth_headers, silent_bank):
     """Fio being down is not evidence about the token: refusing would make
     recording a correct one depend on the bank's availability that minute."""
     organizer = auth_headers()
@@ -139,16 +133,12 @@ def test_recording_a_token_ingests_nothing(client, auth_headers):
 
     put_token(client, organizer)
 
-    transactions = client.get(
-        "/api/tournaments/cup/payments/transactions", headers=organizer
-    )
+    transactions = client.get("/api/tournaments/cup/payments/transactions", headers=organizer)
     assert transactions.status_code == 200
     assert transactions.json() == []
 
 
-def test_removing_a_token_leaves_the_tournament_as_one_that_never_had_one(
-    client, auth_headers
-):
+def test_removing_a_token_leaves_the_tournament_as_one_that_never_had_one(client, auth_headers):
     organizer = auth_headers()
     setup_tournament(client, organizer)
     publish(client, organizer, "cup")

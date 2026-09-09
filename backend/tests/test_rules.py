@@ -34,8 +34,12 @@ def enroll(client, auth_headers, email, name):
 def add_rule(client, organizer, target, field, value, phase="parsing", kind="field_edit"):
     response = client.post(
         "/api/tournaments/cup/rules",
-        json={"phase": phase, "kind": kind, "target": target,
-              "payload": {"field": field, "value": value}},
+        json={
+            "phase": phase,
+            "kind": kind,
+            "target": target,
+            "payload": {"field": field, "value": value},
+        },
         headers=organizer,
     )
     assert response.status_code == 201, response.text
@@ -192,8 +196,12 @@ def test_validation_and_authorization(client, auth_headers):
 
     denied = client.post(
         "/api/tournaments/cup/rules",
-        json={"phase": "parsing", "kind": "field_edit", "target": "reg:1",
-              "payload": {"field": "name", "value": "x"}},
+        json={
+            "phase": "parsing",
+            "kind": "field_edit",
+            "target": "reg:1",
+            "payload": {"field": "name", "value": "x"},
+        },
         headers=outsider,
     )
     assert denied.status_code == 403

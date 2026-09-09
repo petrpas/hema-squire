@@ -98,9 +98,7 @@ def register(client, headers, **overrides):
 
 def amend(client, headers, **overrides):
     payload = {"disciplines": ["LS"], **overrides}
-    return client.post(
-        "/api/tournaments/cup/my-registration/amend", json=payload, headers=headers
-    )
+    return client.post("/api/tournaments/cup/my-registration/amend", json=payload, headers=headers)
 
 
 def registration_by_vs(vs) -> Registration:
@@ -208,9 +206,7 @@ def test_repeated_expiry_not_penalized(client, auth_headers):
 # --- 9.3 Reserved amendment --------------------------------------------------
 
 
-def test_reserved_amendment_keeps_vs_and_window_and_recomputes_total(
-    client, auth_headers, mailbox
-):
+def test_reserved_amendment_keeps_vs_and_window_and_recomputes_total(client, auth_headers, mailbox):
     organizer = auth_headers()
     setup_tournament(client, organizer)
     item = client.post(
@@ -222,9 +218,7 @@ def test_reserved_amendment_keeps_vs_and_window_and_recomputes_total(
     initial = register(client, fencer).json()
     mailbox.sent.clear()
 
-    amended = amend(
-        client, fencer, extras=[{"extra_item_id": item["id"], "qty": 1}]
-    )
+    amended = amend(client, fencer, extras=[{"extra_item_id": item["id"], "qty": 1}])
     assert amended.status_code == 200, amended.text
     body = amended.json()
     assert body["vs"] == initial["vs"]
@@ -269,9 +263,7 @@ def test_paid_amendment_downward_records_overpayment_pending_refund(client, auth
         headers=organizer,
     ).json()
     fencer = auth_headers(email="f1@example.com", name="F1")
-    initial = register(
-        client, fencer, extras=[{"extra_item_id": item["id"], "qty": 1}]
-    ).json()
+    initial = register(client, fencer, extras=[{"extra_item_id": item["id"], "qty": 1}]).json()
     assert initial["total_amount"] == 1300
     mark_paid(initial["vs"])
 
@@ -351,16 +343,21 @@ def test_payment_inside_grace_with_free_seat_reinstates_and_pays(client, auth_he
     fio.transactions = [transfer(initial["vs"], 1000)]
     poll = client.post("/api/tournaments/cup/payments/fio-poll", headers=organizer).json()
     assert poll == {
-        "new": 1, "duplicate": 0, "matched": 1, "flagged": 0, "unmatched": 0, "partial": 0,
+        "new": 1,
+        "duplicate": 0,
+        "matched": 1,
+        "flagged": 0,
+        "unmatched": 0,
+        "partial": 0,
         "set_aside": 0,
         # intake issues before it matches; this roster is in-app, so it issues
         # nothing (spec payments-intake)
-        "issued": 0, "already_issued": 0, "skipped": [],
+        "issued": 0,
+        "already_issued": 0,
+        "skipped": [],
     }
 
-    registration = client.get(
-        "/api/tournaments/cup/my-registration", headers=fencer
-    ).json()
+    registration = client.get("/api/tournaments/cup/my-registration", headers=fencer).json()
     assert registration["state"] == "paid"
     assert "reinstated_in_grace" in event_kinds(initial["vs"])
 
@@ -447,9 +444,7 @@ def test_organizer_reinstate_resolves_transaction_and_audits(client, auth_header
     assert reinstated.status_code == 200, reinstated.text
     assert reinstated.json()["status"] == "matched"
 
-    registration = client.get(
-        "/api/tournaments/cup/my-registration", headers=fencer
-    ).json()
+    registration = client.get("/api/tournaments/cup/my-registration", headers=fencer).json()
     assert registration["state"] == "paid"
     assert "reinstated_by_organizer" in event_kinds(initial["vs"])
 
@@ -458,9 +453,7 @@ def test_organizer_reinstate_resolves_transaction_and_audits(client, auth_header
     assert flagged["id"] not in [t["id"] for t in queue]
 
 
-def test_organizer_reinstate_dates_the_registration_to_the_transaction(
-    client, auth_headers, fio
-):
+def test_organizer_reinstate_dates_the_registration_to_the_transaction(client, auth_headers, fio):
     """Reinstatement settles inline rather than through `matching._settle`, so
     it converts the day itself — and it must reach the same answer: the day
     the money arrived, not the day the organizer decided (design
@@ -483,9 +476,7 @@ def test_organizer_reinstate_dates_the_registration_to_the_transaction(
     assert settled_at is not None
     paid_at = settled_at.replace(tzinfo=UTC)
     # `transfer` dates every transaction 15 July; the tournament is in Prague
-    assert paid_at == datetime(
-        2026, 7, 15, tzinfo=ZoneInfo("Europe/Prague")
-    ).astimezone(UTC)
+    assert paid_at == datetime(2026, 7, 15, tzinfo=ZoneInfo("Europe/Prague")).astimezone(UTC)
 
 
 def test_organizer_mark_for_refund_resolves_transaction_and_audits(client, auth_headers, fio):
@@ -554,9 +545,7 @@ def test_amount_paid_cents_credited_on_match_and_reverted_by_unapply(client, aut
         files={"file": ("v.csv", io.BytesIO(csv), "text/csv")},
         headers=organizer,
     )
-    unmatched = client.get(
-        "/api/tournaments/cup/payments/unmatched", headers=organizer
-    ).json()
+    unmatched = client.get("/api/tournaments/cup/payments/unmatched", headers=organizer).json()
     transaction_id = unmatched[0]["id"]
     rule = client.post(
         "/api/tournaments/cup/payments/link",
@@ -584,7 +573,9 @@ def test_foreign_currency_credit_unchanged_by_later_rate_edit(client, auth_heade
         headers=organizer,
     )
     client.patch(
-        "/api/tournaments/cup", json={"eur_payments_enabled": True}, headers=organizer,
+        "/api/tournaments/cup",
+        json={"eur_payments_enabled": True},
+        headers=organizer,
     )
     fencer = auth_headers(email="f1@example.com", name="F1")
     initial = register(client, fencer).json()

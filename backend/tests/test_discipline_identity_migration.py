@@ -39,9 +39,7 @@ def _seed_tournament(conn: sqlite3.Connection, tid: int, slug: str) -> None:
     )
 
 
-def _seed_discipline(
-    conn: sqlite3.Connection, did: int, tid: int, code: str, name: str
-) -> None:
+def _seed_discipline(conn: sqlite3.Connection, did: int, tid: int, code: str, name: str) -> None:
     conn.execute(
         "INSERT INTO disciplines (id, tournament_id, code, name, kind, capacity) "
         "VALUES (?, ?, ?, ?, 'individual', 10)",

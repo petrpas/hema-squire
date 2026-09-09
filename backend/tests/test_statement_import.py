@@ -66,10 +66,7 @@ def foreign_csv(rows: list[str], header_extra: str = "") -> bytes:
 
 
 def fio_csv(rows: list[str]) -> bytes:
-    header = (
-        "ID pohybu;Datum;Objem;Měna;VS;KS;SS;Zpráva pro příjemce;"
-        "Název protiúčtu;Protiúčet"
-    )
+    header = "ID pohybu;Datum;Objem;Měna;VS;KS;SS;Zpráva pro příjemce;Název protiúčtu;Protiúčet"
     return ("meta;data\n\n" + header + "\n" + "\n".join(rows) + "\n").encode()
 
 
@@ -215,8 +212,7 @@ def test_a_table_that_is_not_a_statement_is_refused_before_the_model(
     # a registration export, uploaded to the wrong importer: it has dates, but
     # nothing that reads as money
     registrations = (
-        "Timestamp,Name,Club,Disciplines\n"
-        "01.04.2026 14:15:27,Jan Novák,Paridon,sabre\n"
+        "Timestamp,Name,Club,Disciplines\n01.04.2026 14:15:27,Jan Novák,Paridon,sabre\n"
     ).encode()
     response = upload(client, organizer, registrations)
 
@@ -243,10 +239,7 @@ def test_a_statement_read_with_the_wrong_delimiter_is_refused(
     setup(client, organizer)
 
     # every line one field, cut short at its first decimal comma
-    mangled = (
-        'Datum;"Objem";"Zpráva"\n'
-        '"07.04.2026";"1214,03";"CHEREAU"\n'
-    ).encode()
+    mangled = ('Datum;"Objem";"Zpráva"\n"07.04.2026";"1214,03";"CHEREAU"\n').encode()
     # read as the semicolons it is, this is a statement
     assert upload(client, organizer, mangled).status_code == 202
     settle(client, organizer, kind="statement")
@@ -264,10 +257,12 @@ def test_money_leaving_the_account_is_not_a_payment(client, auth_headers, mailbo
     upload(
         client,
         organizer,
-        foreign_csv([
-            f"2026-08-12,Jan Novák,1000.00,CZK,{vs},entry fee",
-            "2026-08-13,Bank,-150.00,CZK,,account fee",
-        ]),
+        foreign_csv(
+            [
+                f"2026-08-12,Jan Novák,1000.00,CZK,{vs},entry fee",
+                "2026-08-13,Bank,-150.00,CZK,,account fee",
+            ]
+        ),
     )
     concluded = settle(client, organizer, kind="statement")
     assert concluded["outcome"]["new"] == 1
@@ -287,9 +282,7 @@ def test_nothing_to_interpret_with(client, auth_headers, mailbox):
     finally:
         app.dependency_overrides.pop(get_statement_parser, None)
 
-    assert client.get(
-        "/api/tournaments/cup/payments/transactions", headers=organizer
-    ).json() == []
+    assert client.get("/api/tournaments/cup/payments/transactions", headers=organizer).json() == []
 
 
 def test_a_file_that_is_neither_csv_nor_spreadsheet(client, auth_headers, mailbox, parser):
@@ -305,9 +298,7 @@ def test_progress_is_counted_in_rows(client, auth_headers, mailbox, parser):
     setup(client, organizer)
     rows = []
     for index in range(45):
-        _, vs = enroll(
-            client, auth_headers, email=f"f{index}@example.com", name=f"Fencer {index}"
-        )
+        _, vs = enroll(client, auth_headers, email=f"f{index}@example.com", name=f"Fencer {index}")
         rows.append(f"2026-08-12,Payer {index},1000.00,CZK,{vs},entry fee")
 
     response = upload(client, organizer, foreign_csv(rows))

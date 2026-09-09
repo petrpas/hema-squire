@@ -74,30 +74,53 @@ GATED = [
     ("import clear", "delete", "/import", {}),
     ("hr matching", "post", "/import/match", {}),
     ("deduplication", "post", "/import/dedup", {}),
-    ("dedup verdict", "post", "/import/dedup/decide",
-     {"json": {"key": "k", "accept": True}}),
+    ("dedup verdict", "post", "/import/dedup/decide", {"json": {"key": "k", "accept": True}}),
     ("issuing", "post", "/import/issue", {}),
     ("ratings snapshot", "post", "/ratings/snapshot", {}),
     ("statement import", "post", "/payments/import-statement", {"files": a_file()}),
     ("bank poll", "post", "/payments/fio-poll", {}),
     ("lifecycle process", "post", "/payments/process", {}),
-    ("transaction link", "post", "/payments/link",
-     {"json": {"transaction_id": 1, "registration_ids": [1]}}),
+    (
+        "transaction link",
+        "post",
+        "/payments/link",
+        {"json": {"transaction_id": 1, "registration_ids": [1]}},
+    ),
     ("likely confirm", "post", "/payments/likely/1/confirm", {}),
     ("likely reject", "post", "/payments/likely/1/reject", {}),
     ("resettle", "post", "/payments/resettle", {}),
     ("payments clear", "delete", "/payments", {}),
     ("reinstate", "post", "/payments/transactions/1/reinstate", {}),
     ("mark for refund", "post", "/payments/transactions/1/mark-for-refund", {}),
-    ("recorded payment", "post", "/payments/manual",
-     {"json": {"registration_id": 1, "amount": "800.00", "currency": "CZK",
-               "received_on": "2026-05-01", "method": "cash"}}),
+    (
+        "recorded payment",
+        "post",
+        "/payments/manual",
+        {
+            "json": {
+                "registration_id": 1,
+                "amount": "800.00",
+                "currency": "CZK",
+                "received_on": "2026-05-01",
+                "method": "cash",
+            }
+        },
+    ),
     ("recorded payment removal", "delete", "/payments/manual/1", {}),
-    ("manual row", "post", "/manual-rows",
-     {"json": {"name": "Jan Novák", "disciplines": ["SA"]}}),
-    ("rule creation", "post", "/rules",
-     {"json": {"phase": "fencers", "kind": "edit", "target": "imp:1",
-               "payload": {"club": "Twerchhau"}}}),
+    ("manual row", "post", "/manual-rows", {"json": {"name": "Jan Novák", "disciplines": ["SA"]}}),
+    (
+        "rule creation",
+        "post",
+        "/rules",
+        {
+            "json": {
+                "phase": "fencers",
+                "kind": "edit",
+                "target": "imp:1",
+                "payload": {"club": "Twerchhau"},
+            }
+        },
+    ),
     ("rule edit", "patch", "/rules/1", {"json": {"payload": {"club": "Other"}}}),
     ("rule removal", "delete", "/rules/1", {}),
     ("settled mark", "post", "/registrations/1/settled", {}),
@@ -109,9 +132,7 @@ GATED = [
 ]
 
 
-@pytest.mark.parametrize(
-    "label,method,path,kwargs", GATED, ids=[case[0] for case in GATED]
-)
+@pytest.mark.parametrize("label,method,path,kwargs", GATED, ids=[case[0] for case in GATED])
 def test_a_draft_refuses_it(client, auth_headers, label, method, path, kwargs):
     """The reason names publication, and it is reached before the route looks
     anything up: the ids below name nothing, and the answer is still the
@@ -119,9 +140,7 @@ def test_a_draft_refuses_it(client, auth_headers, label, method, path, kwargs):
     organizer = auth_headers()
     setup_draft(client, organizer)
 
-    response = getattr(client, method)(
-        f"/api/tournaments/cup{path}", headers=organizer, **kwargs
-    )
+    response = getattr(client, method)(f"/api/tournaments/cup{path}", headers=organizer, **kwargs)
 
     assert response.status_code == 409, f"{label}: {response.text}"
     assert response.json()["detail"] == {"code": "not_published"}
@@ -139,9 +158,7 @@ def test_a_draft_is_left_holding_nothing(client, auth_headers):
     session = db_session()
     tournament = session.scalar(select(Tournament).where(Tournament.slug == "cup"))
     for model in (ImportedRow, ManualRow, Registration, Rule, ManualPayment):
-        held = session.scalars(
-            select(model).where(model.tournament_id == tournament.id)
-        ).all()
+        held = session.scalars(select(model).where(model.tournament_id == tournament.id)).all()
         assert held == [], f"{model.__name__} on a draft"
 
 
@@ -150,16 +167,12 @@ def test_publication_opens_the_data_work(client, auth_headers):
     same tournament, runs the moment it is published."""
     organizer = auth_headers()
     setup_draft(client, organizer)
-    refused = client.post(
-        "/api/tournaments/cup/import", headers=organizer, files=a_file()
-    )
+    refused = client.post("/api/tournaments/cup/import", headers=organizer, files=a_file())
     assert refused.status_code == 409
 
     publish(client, organizer, "cup")
 
-    accepted = client.post(
-        "/api/tournaments/cup/import", headers=organizer, files=a_file()
-    )
+    accepted = client.post("/api/tournaments/cup/import", headers=organizer, files=a_file())
     assert accepted.status_code == 202, accepted.text
 
 
@@ -183,9 +196,7 @@ def test_a_draft_that_already_holds_data_keeps_it(client, auth_headers):
     organizer = auth_headers()
     setup_draft(client, organizer)
     publish(client, organizer, "cup")
-    uploaded = client.post(
-        "/api/tournaments/cup/import", headers=organizer, files=a_file()
-    )
+    uploaded = client.post("/api/tournaments/cup/import", headers=organizer, files=a_file())
     assert uploaded.status_code == 202, uploaded.text
 
     # back to a draft, which no route can do — this is the state a deployment
@@ -200,19 +211,13 @@ def test_a_draft_that_already_holds_data_keeps_it(client, auth_headers):
     assert sheet.status_code == 200, sheet.text
     assert sheet.json()["rows"], "the rows it already held are still readable"
 
-    assert client.post(
-        "/api/tournaments/cup/import/issue", headers=organizer
-    ).status_code == 409
+    assert client.post("/api/tournaments/cup/import/issue", headers=organizer).status_code == 409
 
     publish(client, organizer, "cup")
-    assert client.get(
-        "/api/tournaments/cup/import/issue", headers=organizer
-    ).status_code == 200
+    assert client.get("/api/tournaments/cup/import/issue", headers=organizer).status_code == 200
 
 
-def test_a_draft_carries_no_symbol_less_registration_into_automatic_mode(
-    client, auth_headers
-):
+def test_a_draft_carries_no_symbol_less_registration_into_automatic_mode(client, auth_headers):
     """The hole this change exists to close (spec imported-registrations,
     Issuing waits for publication).
 
@@ -235,12 +240,11 @@ def test_a_draft_carries_no_symbol_less_registration_into_automatic_mode(
         headers=organizer,
     )
 
-    assert client.post(
-        "/api/tournaments/cup/import", headers=organizer, files=a_file()
-    ).status_code == 409
-    assert client.post(
-        "/api/tournaments/cup/import/issue", headers=organizer
-    ).status_code == 409
+    assert (
+        client.post("/api/tournaments/cup/import", headers=organizer, files=a_file()).status_code
+        == 409
+    )
+    assert client.post("/api/tournaments/cup/import/issue", headers=organizer).status_code == 409
 
     # back to automatic while it is still a draft, which is its right, and then
     # published: there is nothing to carry over
@@ -253,12 +257,13 @@ def test_a_draft_carries_no_symbol_less_registration_into_automatic_mode(
 
     session = db_session()
     tournament = session.scalar(select(Tournament).where(Tournament.slug == "cup"))
-    assert session.scalars(
-        select(Registration).where(Registration.tournament_id == tournament.id)
-    ).all() == []
+    assert (
+        session.scalars(
+            select(Registration).where(Registration.tournament_id == tournament.id)
+        ).all()
+        == []
+    )
 
     # and the import runs from here, taking the symbols the mode calls for
-    uploaded = client.post(
-        "/api/tournaments/cup/import", headers=organizer, files=a_file()
-    )
+    uploaded = client.post("/api/tournaments/cup/import", headers=organizer, files=a_file())
     assert uploaded.status_code == 202, uploaded.text

@@ -148,17 +148,13 @@ def test_drafts_and_cancelled_are_included(client, auth_headers):
     assert client.get(SUGGESTIONS, headers=headers).json()["locations"] == ["Tělocvična Zlín"]
 
 
-def test_legacy_bare_string_organizers_do_not_break_the_endpoint(
-    client, auth_headers, engine
-):
+def test_legacy_bare_string_organizers_do_not_break_the_endpoint(client, auth_headers, engine):
     """A restored-from-old-export deployment can hold bare strings; the endpoint
     serves them as name-with-no-link rather than failing."""
     headers = auth_headers()
     make_tournament(client, headers, "obnoveny", location="Olomouc")
     with Session(engine) as session:
-        tournament = session.scalars(
-            select(Tournament).where(Tournament.slug == "obnoveny")
-        ).one()
+        tournament = session.scalars(select(Tournament).where(Tournament.slug == "obnoveny")).one()
         tournament.organizers = ["Starý spolek"]
         session.commit()
 
@@ -204,9 +200,7 @@ def test_one_organizers_values_stay_their_own(client, auth_headers):
     assert second_body["organizers"] == [{"name": "Spolek B", "link": None}]
 
 
-def test_console_access_granted_after_the_fact_widens_the_scope(
-    client, auth_headers, engine
-):
+def test_console_access_granted_after_the_fact_widens_the_scope(client, auth_headers, engine):
     """spec: Access granted after the fact. Ownership and console membership
     both count, which is the pair the rest of the console checks."""
     owner = auth_headers(email="owner@example.com", name="Vlastník")
@@ -217,12 +211,8 @@ def test_console_access_granted_after_the_fact_widens_the_scope(
 
     with Session(engine) as session:
         tournament = session.scalars(select(Tournament).where(Tournament.slug == "turnaj")).one()
-        fencer = session.scalars(
-            select(Fencer).where(Fencer.email == "helper@example.com")
-        ).one()
-        session.add(
-            TournamentOrganizer(tournament_id=tournament.id, fencer_id=fencer.id)
-        )
+        fencer = session.scalars(select(Fencer).where(Fencer.email == "helper@example.com")).one()
+        session.add(TournamentOrganizer(tournament_id=tournament.id, fencer_id=fencer.id))
         session.commit()
 
     assert client.get(SUGGESTIONS, headers=helper).json()["locations"] == ["Hradec Králové"]
@@ -242,9 +232,7 @@ def test_a_corrected_value_stops_being_offered(client, auth_headers):
     make_tournament(client, headers, "turnaj", location="Sokolvna Praha")
     assert client.get(SUGGESTIONS, headers=headers).json()["locations"] == ["Sokolvna Praha"]
 
-    client.patch(
-        "/api/tournaments/turnaj", json={"location": "Sokolovna Praha"}, headers=headers
-    )
+    client.patch("/api/tournaments/turnaj", json={"location": "Sokolovna Praha"}, headers=headers)
     assert client.get(SUGGESTIONS, headers=headers).json()["locations"] == ["Sokolovna Praha"]
 
 

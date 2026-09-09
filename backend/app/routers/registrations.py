@@ -116,9 +116,7 @@ def next_vs(session, tournament: Tournament) -> int:
     )
     session.commit()
     if seq > 999:
-        raise HTTPException(
-            status_code=409, detail=f"vs_sequence_exhausted: {tournament.slug}"
-        )
+        raise HTTPException(status_code=409, detail=f"vs_sequence_exhausted: {tournament.slug}")
     return tournament.vs_prefix * 1000 + seq
 
 
@@ -202,9 +200,7 @@ def registration_out(session, registration: Registration, tournament: Tournament
             {
                 "slug": entry.discipline.slug,
                 "is_substitute": entry.is_substitute,
-                "queue_position": queue_position(session, entry)
-                if entry.is_substitute
-                else None,
+                "queue_position": queue_position(session, entry) if entry.is_substitute else None,
             }
             for entry in registration.entries
         ],
@@ -287,9 +283,7 @@ def participants(tournament: TournamentDep, session: SessionDep):
 
     result = []
     for registration in rows:
-        active_slugs = [
-            e.discipline.slug for e in registration.entries if not e.is_substitute
-        ]
+        active_slugs = [e.discipline.slug for e in registration.entries if not e.is_substitute]
         if not active_slugs:
             continue  # fully-queued substitutes are not participants
         status = None
@@ -329,9 +323,7 @@ def _roster_as_of(session, tournament: Tournament) -> datetime | None:
     if tournament.registrations_kept_by is not RegistrationsKeptBy.ORGANIZER:
         return None
     return session.scalar(
-        select(func.max(ImportBatch.uploaded_at)).where(
-            ImportBatch.tournament_id == tournament.id
-        )
+        select(func.max(ImportBatch.uploaded_at)).where(ImportBatch.tournament_id == tournament.id)
     )
 
 
@@ -513,9 +505,7 @@ def register(
                 )
             )
             session.execute(
-                delete(RegistrationExtra).where(
-                    RegistrationExtra.registration_id == existing.id
-                )
+                delete(RegistrationExtra).where(RegistrationExtra.registration_id == existing.id)
             )
             # a previous cycle's teams (and their rosters) do not carry
             # forward into a fresh registration cycle, exactly as its
@@ -553,9 +543,7 @@ def register(
         registration.notes = data.notes
         for discipline in selected:
             registration.entries.append(
-                RegistrationDiscipline(
-                    discipline=discipline, is_substitute=discipline.slug in full
-                )
+                RegistrationDiscipline(discipline=discipline, is_substitute=discipline.slug in full)
             )
         for selection in data.extras:
             value = (selection.option_value or "").strip()
@@ -572,9 +560,7 @@ def register(
         # order, never rejecting the submission (spec: "Team entered into a
         # full team discipline")
         team_flags = (
-            [True] * len(team_entries)
-            if settled
-            else team_waitlist_flags(session, team_entries)
+            [True] * len(team_entries) if settled else team_waitlist_flags(session, team_entries)
         )
         for (discipline, team_in), waitlisted in zip(team_entries, team_flags, strict=True):
             registration.teams.append(
@@ -645,9 +631,7 @@ def _promotion_expires_at(tournament: Tournament) -> datetime | None:
     if not tournament.feature_payments:
         return None
     window = _now() + timedelta(days=tournament.reservation_validity_days)
-    end_of_tournament = datetime.combine(
-        tournament.date + timedelta(days=1), time.min, tzinfo=UTC
-    )
+    end_of_tournament = datetime.combine(tournament.date + timedelta(days=1), time.min, tzinfo=UTC)
     return min(window, end_of_tournament)
 
 
@@ -753,9 +737,7 @@ def my_registration_payment(tournament: TournamentDep, session: SessionDep, fenc
         qr_png_base64=base64.b64encode(spayd.qr_png(primary)).decode(),
         eur_amount=registration.total_eur,
         eur_spayd=eur,
-        eur_qr_png_base64=(
-            base64.b64encode(spayd.qr_png(eur)).decode() if eur else None
-        ),
+        eur_qr_png_base64=(base64.b64encode(spayd.qr_png(eur)).decode() if eur else None),
     )
 
 
@@ -856,11 +838,7 @@ def mark_settled(
     # collects, a registration paid by a credited transaction or a recorded
     # payment carries no mark, and clearing one it never had would return it to
     # reserved with its credit stranded — a state no reader could explain
-    if (
-        not settled
-        and tournament.feature_payments
-        and registration.settled_by_hand_at is None
-    ):
+    if not settled and tournament.feature_payments and registration.settled_by_hand_at is None:
         raise HTTPException(status_code=409, detail="not_settled_by_hand")
 
     registration.state = RegistrationState.PAID if settled else RegistrationState.RESERVED
@@ -948,8 +926,7 @@ def admit_substitute(
                 registration_id=registration.id,
                 kind="registration_promoted",
                 detail=(
-                    f"{registration.audit_label}:"
-                    f" {previous_total} -> {registration.total_amount}"
+                    f"{registration.audit_label}: {previous_total} -> {registration.total_amount}"
                 ),
             )
         )
@@ -1039,9 +1016,7 @@ def _team_for_roster_edit(session, tournament: Tournament, fencer, team_id: int)
     return team
 
 
-@router.put(
-    "/my-registration/teams/{team_id}/roster", response_model=TeamEntryOut
-)
+@router.put("/my-registration/teams/{team_id}/roster", response_model=TeamEntryOut)
 def update_roster(
     team_id: int,
     data: RosterUpdateIn,

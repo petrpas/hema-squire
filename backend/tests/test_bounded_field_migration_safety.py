@@ -45,9 +45,7 @@ def test_over_long_tournament_description_still_renders_and_only_blocks_its_own_
     assert unrelated.status_code == 200
 
     # only resubmitting the offending field itself is rejected
-    blocked = client.patch(
-        "/api/tournaments/cup", json={"description": over_long}, headers=headers
-    )
+    blocked = client.patch("/api/tournaments/cup", json={"description": over_long}, headers=headers)
     assert blocked.status_code == 422
 
 
@@ -80,7 +78,9 @@ def test_over_long_discipline_field_still_renders_but_blocks_the_rows_next_save(
     blocked = client.patch(
         f"/api/tournaments/cup/disciplines/{slug}",
         json={
-            "weapon": "LS", "capacity": 12, "fee": 800,
+            "weapon": "LS",
+            "capacity": 12,
+            "fee": 800,
             "schedule_where": over_long_where,
         },
         headers=headers,

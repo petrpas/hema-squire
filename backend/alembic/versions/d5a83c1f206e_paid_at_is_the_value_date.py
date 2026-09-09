@@ -34,6 +34,7 @@ There is no downgrade. The overwritten instants are not recoverable from
 every row this touches — so the downgrade says so rather than pretending to
 restore them.
 """
+
 import datetime
 import zoneinfo
 from collections.abc import Sequence
@@ -42,8 +43,8 @@ import sqlalchemy as sa
 from alembic import op
 
 # revision identifiers, used by Alembic.
-revision: str = 'd5a83c1f206e'
-down_revision: str | Sequence[str] | None = 'c4f2a91b7e30'
+revision: str = "d5a83c1f206e"
+down_revision: str | Sequence[str] | None = "c4f2a91b7e30"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
@@ -55,7 +56,7 @@ def _zone(name: str | None) -> zoneinfo.ZoneInfo:
     longer knows costs an hour, not a row."""
     try:
         return zoneinfo.ZoneInfo(name or DEFAULT_TIMEZONE)
-    except (zoneinfo.ZoneInfoNotFoundError, ValueError):
+    except zoneinfo.ZoneInfoNotFoundError, ValueError:
         return zoneinfo.ZoneInfo(DEFAULT_TIMEZONE)
 
 
@@ -71,9 +72,10 @@ def _as_date(value) -> datetime.date | None:
 
 def upgrade() -> None:
     connection = op.get_bind()
-    rows = connection.execute(
-        sa.text(
-            """
+    rows = (
+        connection.execute(
+            sa.text(
+                """
             SELECT r.id AS registration_id,
                    t.timezone AS timezone,
                    MAX(b.date) AS value_date
@@ -83,8 +85,11 @@ def upgrade() -> None:
             WHERE r.paid_at IS NOT NULL
             GROUP BY r.id, t.timezone
             """
+            )
         )
-    ).mappings().all()
+        .mappings()
+        .all()
+    )
 
     for row in rows:
         value_date = _as_date(row["value_date"])

@@ -20,8 +20,6 @@ DedupDep = Annotated[dedup.DedupLLM | None, Depends(dedup.get_dedup_llm)]
 HRIndexDep = Annotated[HRIndex, Depends(get_hr_index)]
 
 
-
-
 def _refuse_while_busy(session: Session, tournament: Tournament) -> None:
     """One operation at a time for a tournament, whatever its kind. The record
     is what refuses, so this holds for a second tab and a second organizer, not
@@ -232,9 +230,7 @@ def issuable_count(tournament: TournamentDep, session: SessionDep, fencer: Fence
         # organizer expected them on is a question asked away from here — in the
         # link dialog, mostly, where "not on this tournament" and "here, but not
         # billable" look identical and have different remedies
-        "skipped": [
-            {"row_id": s.row_id, "name": s.name, "reason": s.reason} for s in skipped
-        ],
+        "skipped": [{"row_id": s.row_id, "name": s.name, "reason": s.reason} for s in skipped],
     }
 
 
@@ -316,9 +312,7 @@ def import_status(tournament: TournamentDep, session: SessionDep, fencer: Fencer
     }
 
 
-operations_router = APIRouter(
-    prefix="/api/tournaments/{slug}/operations", tags=["operations"]
-)
+operations_router = APIRouter(prefix="/api/tournaments/{slug}/operations", tags=["operations"])
 
 
 def _utc(moment: datetime | None) -> datetime | None:

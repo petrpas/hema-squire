@@ -104,9 +104,7 @@ def placements(vs):
 
 
 class FakeTournament:
-    def __init__(
-        self, feature_payments, kept_by=RegistrationsKeptBy.SQUIRE, published=True
-    ):
+    def __init__(self, feature_payments, kept_by=RegistrationsKeptBy.SQUIRE, published=True):
         self.feature_payments = feature_payments
         self.registrations_kept_by = kept_by
         self.published_at = datetime(2026, 1, 1, tzinfo=UTC) if published else None
@@ -144,10 +142,13 @@ def test_dormancy_cause_over_the_closed_set(payments, kept_by, issued, expected)
     assert app_setup.clocks_run(tournament, registration) == (expected is None)
 
 
-@pytest.mark.parametrize("payments,kept_by,issued", [
-    (True, SQUIRE, False),
-    (False, ORGANIZER, True),
-])
+@pytest.mark.parametrize(
+    "payments,kept_by,issued",
+    [
+        (True, SQUIRE, False),
+        (False, ORGANIZER, True),
+    ],
+)
 def test_a_draft_is_dormant_whatever_else_holds(payments, kept_by, issued):
     """Unpublished is the widest cause and answers first: a draft holds nobody
     for a clock to run against, whatever its payments setting or the origin of
@@ -183,8 +184,7 @@ def test_payments_off_seating_deadline_demotes_nobody(client, auth_headers, mail
     assert placements(two["vs"]) == [False]
     assert mailbox.sent == []
     assert (
-        db_session()
-        .scalar(select(PaymentEvent).where(PaymentEvent.kind == "seating_demoted"))
+        db_session().scalar(select(PaymentEvent).where(PaymentEvent.kind == "seating_demoted"))
         is None
     )
 
@@ -204,9 +204,7 @@ def test_payments_off_settlement_still_closes_seating(client, auth_headers, mail
     assert tournament_row().seating_settled_at is not None
 
 
-def test_registration_after_a_payments_off_deadline_joins_the_queue(
-    client, auth_headers, mailbox
-):
+def test_registration_after_a_payments_off_deadline_joins_the_queue(client, auth_headers, mailbox):
     organizer = auth_headers()
     setup_tournament(client, organizer)
     publish(client, organizer, "cup")
@@ -234,9 +232,7 @@ def test_dormant_by_origin_is_not_demoted_either(client, auth_headers, mailbox):
     _, one = enroll(client, auth_headers, "a@example.com")
 
     session = db_session()
-    registration = session.scalar(
-        select(Registration).where(Registration.vs == one["vs"])
-    )
+    registration = session.scalar(select(Registration).where(Registration.vs == one["vs"]))
     registration.clocks_dormant = True
     registration.expires_at = None
     close_registration_yesterday(session)
@@ -263,9 +259,7 @@ def test_pending_demotions_and_settlement_agree(client, auth_headers, mailbox):
 
     session = db_session()
     for registration in session.scalars(
-        select(Registration).where(
-            Registration.vs.in_([r["vs"] for r in dormant])
-        )
+        select(Registration).where(Registration.vs.in_([r["vs"] for r in dormant]))
     ).all():
         registration.clocks_dormant = True
     session.commit()
@@ -293,9 +287,7 @@ def test_pending_demotions_is_zero_where_nothing_is_owed(client, auth_headers, m
 # ------------------------------------- a collecting tournament is not disturbed
 
 
-def test_a_collecting_tournament_still_reminds_expires_and_demotes(
-    client, auth_headers, mailbox
-):
+def test_a_collecting_tournament_still_reminds_expires_and_demotes(client, auth_headers, mailbox):
     """The load-bearing test (design, Risks): the predicate returning the right
     value proves little. What matters is that a tournament Squire collects for
     produces the same events, mail and placements it produced before."""
@@ -315,12 +307,12 @@ def test_a_collecting_tournament_still_reminds_expires_and_demotes(
 
     session = db_session()
     now = datetime.now(UTC)
-    session.scalar(
-        select(Registration).where(Registration.vs == reminded["vs"])
-    ).expires_at = now + timedelta(days=1)
-    session.scalar(
-        select(Registration).where(Registration.vs == expiring["vs"])
-    ).expires_at = now - timedelta(hours=1)
+    session.scalar(select(Registration).where(Registration.vs == reminded["vs"])).expires_at = (
+        now + timedelta(days=1)
+    )
+    session.scalar(select(Registration).where(Registration.vs == expiring["vs"])).expires_at = (
+        now - timedelta(hours=1)
+    )
     session.commit()
 
     collector = CollectingMailer()
@@ -330,8 +322,6 @@ def test_a_collecting_tournament_still_reminds_expires_and_demotes(
     assert result["reminders"] == 1
     assert len(collector.sent) == 2
     assert (
-        db_session()
-        .scalar(select(Registration).where(Registration.vs == expiring["vs"]))
-        .state
+        db_session().scalar(select(Registration).where(Registration.vs == expiring["vs"])).state
         == RegistrationState.EXPIRED
     )

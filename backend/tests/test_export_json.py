@@ -31,9 +31,7 @@ def setup(client, organizer):
 
 
 def make_statement(vs, amount="1 000,00"):
-    header = (
-        "ID pohybu;Datum;Objem;Měna;VS;KS;SS;Zpráva pro příjemce;Název protiúčtu;Protiúčet"
-    )
+    header = "ID pohybu;Datum;Objem;Měna;VS;KS;SS;Zpráva pro příjemce;Název protiúčtu;Protiúčet"
     row = f"9001;14.07.2026;{amount};CZK;{vs};;;VS {vs};Jan Novak;123/0800"
     return ("meta;data\n\n" + header + "\n" + row + "\n").encode()
 
@@ -102,8 +100,12 @@ def test_round_trip_reconstructs_fencer_table(client, auth_headers):
     )
     client.post(
         "/api/tournaments/cup/rules",
-        json={"phase": "parsing", "kind": "field_edit", "target": "reg:1",
-              "payload": {"field": "club", "value": "Poznaň HEMA"}},
+        json={
+            "phase": "parsing",
+            "kind": "field_edit",
+            "target": "reg:1",
+            "payload": {"field": "club", "value": "Poznaň HEMA"},
+        },
         headers=organizer,
     )
 
@@ -147,15 +149,15 @@ def test_restore_refuses_taken_slug_and_bad_version(client, auth_headers):
     setup(client, organizer)
 
     document = client.get("/api/tournaments/cup/export/json", headers=organizer).json()
-    assert client.post(
-        "/api/tournaments/restore", json=document, headers=organizer
-    ).status_code == 409
+    assert (
+        client.post("/api/tournaments/restore", json=document, headers=organizer).status_code == 409
+    )
 
     document["tournament"]["slug"] = "other"
     document["schema_version"] = 99
-    assert client.post(
-        "/api/tournaments/restore", json=document, headers=organizer
-    ).status_code == 422
+    assert (
+        client.post("/api/tournaments/restore", json=document, headers=organizer).status_code == 422
+    )
 
 
 def test_restore_accepts_v1_organizer_names(client, auth_headers):
@@ -311,9 +313,7 @@ def test_v3_currency_and_option_fields_round_trip(client, auth_headers):
     # restore into an empty deployment: VS is globally unique, so a copy cannot
     # land beside its original
     new_organizer, restore_client = fresh_deployment(client, auth_headers)
-    restore = restore_client.post(
-        "/api/tournaments/restore", json=document, headers=new_organizer
-    )
+    restore = restore_client.post("/api/tournaments/restore", json=document, headers=new_organizer)
     assert restore.status_code == 201, restore.text
 
     body = restore_client.get("/api/tournaments/cup", headers=new_organizer).json()
@@ -331,9 +331,7 @@ def test_v3_currency_and_option_fields_round_trip(client, auth_headers):
     # draft — one holding registrations, which it keeps and may be read, and
     # which must be published before it exports again (spec data-export)
     publish(restore_client, new_organizer, "cup")
-    again = restore_client.get(
-        "/api/tournaments/cup/export/json", headers=new_organizer
-    ).json()
+    again = restore_client.get("/api/tournaments/cup/export/json", headers=new_organizer).json()
     assert again["registrations"][0]["extras"][0]["option_value"] == "M"
 
 
@@ -377,18 +375,14 @@ def test_tiers_round_trip(client, auth_headers):
     assert by_slug["LS-B"]["capacity"] == 12
 
     new_organizer, restore_client = fresh_deployment(client, auth_headers)
-    restore = restore_client.post(
-        "/api/tournaments/restore", json=document, headers=new_organizer
-    )
+    restore = restore_client.post("/api/tournaments/restore", json=document, headers=new_organizer)
     assert restore.status_code == 201, restore.text
     detail = restore_client.get("/api/tournaments/tiers", headers=new_organizer).json()
     slugs = {d["slug"]: d for d in detail["disciplines"]}
     assert slugs.keys() == {"LS-A", "LS-B"}
     assert slugs["LS-A"]["name"] == "Longsword Top"
     publish(restore_client, new_organizer, "tiers")
-    export2 = restore_client.get(
-        "/api/tournaments/tiers/export/json", headers=new_organizer
-    ).json()
+    export2 = restore_client.get("/api/tournaments/tiers/export/json", headers=new_organizer).json()
     entries_by_email = {r["fencer_email"]: r["entries"] for r in export2["registrations"]}
     assert entries_by_email["top@example.com"][0]["slug"] == "LS-A"
     assert entries_by_email["open@example.com"][0]["slug"] == "LS-B"
@@ -414,8 +408,13 @@ def test_individual_and_team_in_one_weapon_round_trip(client, auth_headers):
     client.post(
         "/api/tournaments/mixed/disciplines",
         json={
-            "slug": "LS-Team", "weapon": "LS", "capacity": 5, "fee": 3000,
-            "kind": "team", "team_min": 3, "team_max": 4,
+            "slug": "LS-Team",
+            "weapon": "LS",
+            "capacity": 5,
+            "fee": 3000,
+            "kind": "team",
+            "team_min": 3,
+            "team_max": 4,
         },
         headers=organizer,
     )
@@ -431,14 +430,10 @@ def test_individual_and_team_in_one_weapon_round_trip(client, auth_headers):
 
     document = client.get("/api/tournaments/mixed/export/json", headers=organizer).json()
     new_organizer, restore_client = fresh_deployment(client, auth_headers)
-    restore = restore_client.post(
-        "/api/tournaments/restore", json=document, headers=new_organizer
-    )
+    restore = restore_client.post("/api/tournaments/restore", json=document, headers=new_organizer)
     assert restore.status_code == 201, restore.text
     publish(restore_client, new_organizer, "mixed")
-    export2 = restore_client.get(
-        "/api/tournaments/mixed/export/json", headers=new_organizer
-    ).json()
+    export2 = restore_client.get("/api/tournaments/mixed/export/json", headers=new_organizer).json()
     by_email = {r["fencer_email"]: r for r in export2["registrations"]}
     assert by_email["solo@example.com"]["entries"][0]["slug"] == "LS"
     assert by_email["captain@example.com"]["teams"][0]["discipline_slug"] == "LS-Team"
@@ -452,8 +447,13 @@ def test_dangling_discipline_slug_rejected(client, auth_headers):
     document["tournament"]["slug"] = "dangling"
     document["tournament"]["vs_series"] = 77  # avoid colliding with "cup" in the same DB
     document["fencers"] = [
-        {"email": "ghost@example.com", "display_name": "Ghost", "hr_id": None,
-         "nationality": None, "club": None}
+        {
+            "email": "ghost@example.com",
+            "display_name": "Ghost",
+            "hr_id": None,
+            "nationality": None,
+            "club": None,
+        }
     ]
     document["registrations"] = [
         {
@@ -484,9 +484,7 @@ def test_dangling_discipline_slug_rejected(client, auth_headers):
     assert response.status_code == 422
     assert "NO-SUCH-SLUG" in response.text
     # no partial registration created
-    assert client.get(
-        "/api/tournaments/dangling", headers=organizer
-    ).status_code == 404
+    assert client.get("/api/tournaments/dangling", headers=organizer).status_code == 404
 
 
 def test_pre_version_document_restores_with_code_as_slug(client, auth_headers):
@@ -532,8 +530,15 @@ def test_pre_version_document_restores_with_code_as_slug(client, auth_headers):
             "team_composition_deadline": None,
         },
         "disciplines": [
-            {"code": "Plastic SAW", "name": "Sabre Women (Plastic)", "capacity": 10,
-             "fee": 500, "fee_early": None, "fee_eur": None, "fee_early_eur": None},
+            {
+                "code": "Plastic SAW",
+                "name": "Sabre Women (Plastic)",
+                "capacity": 10,
+                "fee": 500,
+                "fee_early": None,
+                "fee_eur": None,
+                "fee_early_eur": None,
+            },
         ],
         "extra_items": [],
         "fencers": [],
@@ -893,11 +898,14 @@ def test_a_waiver_round_trips(client, auth_headers):
         "/api/tournaments/cup/register", json={"disciplines": ["LS"]}, headers=fencer
     ).json()["vs"]
     registration_id = _registration_id(client, organizer, vs)
-    assert client.post(
-        f"/api/tournaments/cup/registrations/{registration_id}"
-        "/settled?settled=True&reason=volná účast",
-        headers=organizer,
-    ).status_code == 200
+    assert (
+        client.post(
+            f"/api/tournaments/cup/registrations/{registration_id}"
+            "/settled?settled=True&reason=volná účast",
+            headers=organizer,
+        ).status_code
+        == 200
+    )
 
     document = client.get("/api/tournaments/cup/export/json", headers=organizer).json()
     [entry] = document["registrations"]
@@ -931,9 +939,7 @@ def test_a_removed_payment_is_not_exported(client, auth_headers):
         },
         headers=organizer,
     ).json()
-    client.delete(
-        f"/api/tournaments/cup/payments/manual/{payment['id']}", headers=organizer
-    )
+    client.delete(f"/api/tournaments/cup/payments/manual/{payment['id']}", headers=organizer)
 
     document = client.get("/api/tournaments/cup/export/json", headers=organizer).json()
     assert document["manual_payments"] == []

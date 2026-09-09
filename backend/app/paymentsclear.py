@@ -91,9 +91,7 @@ def clear_payments(session: Session, tournament: Tournament) -> dict:
 
     transaction_ids = list(
         session.scalars(
-            select(BankTransaction.id).where(
-                BankTransaction.tournament_id == tournament.id
-            )
+            select(BankTransaction.id).where(BankTransaction.tournament_id == tournament.id)
         )
     )
     external_ids = {
@@ -111,16 +109,12 @@ def clear_payments(session: Session, tournament: Tournament) -> dict:
     doomed = [
         rule.id
         for rule in session.scalars(
-            select(Rule).where(
-                Rule.tournament_id == tournament.id, Rule.kind == "payment_link"
-            )
+            select(Rule).where(Rule.tournament_id == tournament.id, Rule.kind == "payment_link")
         )
         if rule.target in external_ids
     ]
     if doomed:
-        session.execute(
-            delete(RuleJournalEntry).where(RuleJournalEntry.rule_id.in_(doomed))
-        )
+        session.execute(delete(RuleJournalEntry).where(RuleJournalEntry.rule_id.in_(doomed)))
         session.execute(delete(Rule).where(Rule.id.in_(doomed)))
 
     # events first: they name the transactions by foreign key
@@ -128,9 +122,7 @@ def clear_payments(session: Session, tournament: Tournament) -> dict:
         session.execute(
             delete(PaymentEvent).where(PaymentEvent.transaction_id.in_(transaction_ids))
         )
-    session.execute(
-        delete(BankTransaction).where(BankTransaction.tournament_id == tournament.id)
-    )
+    session.execute(delete(BankTransaction).where(BankTransaction.tournament_id == tournament.id))
 
     # the readings behind them. Without this the clear defeats the next import
     # invisibly — the mechanism, not the subject, so it is not counted in the

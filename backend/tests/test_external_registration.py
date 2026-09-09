@@ -34,9 +34,7 @@ def make_tournament(client, organizer, **patch):
         headers=organizer,
     )
     base = {"location": "Brno", "organizers": [{"name": "Org", "link": None}]}
-    response = client.patch(
-        "/api/tournaments/cup", json=base | patch, headers=organizer
-    )
+    response = client.patch("/api/tournaments/cup", json=base | patch, headers=organizer)
     assert response.status_code == 200, response.text
     client.post(
         "/api/tournaments/cup/disciplines",
@@ -63,9 +61,7 @@ def test_the_address_round_trips(client, auth_headers):
     organizer = auth_headers()
     make_tournament(client, organizer, external_registration_url=URL)
     assert (
-        client.get("/api/tournaments/cup", headers=organizer).json()[
-            "external_registration_url"
-        ]
+        client.get("/api/tournaments/cup", headers=organizer).json()["external_registration_url"]
         == URL
     )
 
@@ -88,9 +84,7 @@ def test_an_unreachable_address_is_not_the_systems_business(client, auth_headers
     that it resolves and does not warn (design D1) — a check at save time
     proves nothing about the moment a fencer follows the link."""
     organizer = auth_headers()
-    make_tournament(
-        client, organizer, external_registration_url="https://no-such-host.invalid/x"
-    )
+    make_tournament(client, organizer, external_registration_url="https://no-such-host.invalid/x")
     assert tournament_row().external_registration_url.endswith("/x")
 
 
@@ -164,9 +158,7 @@ def test_the_other_mandatory_items_still_apply_when_organizer_kept(client, auth_
         headers=organizer,
     )
     kept_by_organizer(client, organizer)
-    missing = set(
-        client.get("/api/tournaments/cup", headers=organizer).json()["setup_missing"]
-    )
+    missing = set(client.get("/api/tournaments/cup", headers=organizer).json()["setup_missing"])
     assert app_setup.MISSING_LOCATION in missing
     assert app_setup.MISSING_ORGANIZERS in missing
     assert app_setup.MISSING_DISCIPLINES in missing
@@ -214,9 +206,7 @@ def test_the_other_two_modes_need_no_feed(client, auth_headers, mode):
     organizer = auth_headers()
     make_tournament(client, organizer, bank_account=IBAN)
     enable_payments(client, organizer, "cup")
-    client.patch(
-        "/api/tournaments/cup", json={"payment_mode": mode}, headers=organizer
-    )
+    client.patch("/api/tournaments/cup", json={"payment_mode": mode}, headers=organizer)
     detail = client.get("/api/tournaments/cup", headers=organizer).json()
     assert app_setup.MISSING_PAYMENT_FEED not in detail["setup_missing"]
 

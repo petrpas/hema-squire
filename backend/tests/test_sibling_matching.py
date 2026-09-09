@@ -1,7 +1,6 @@
 """Global VS lookup and cross-tournament set-aside behavior
 (design add-structured-vs, Decision 4/5)."""
 
-
 from tests.conftest import enable_payments, publish
 from tests.conftest import import_statement as conftest_import_statement
 
@@ -52,9 +51,7 @@ def import_statement(client, headers, slug, content):
     return conftest_import_statement(client, headers, content, slug=slug)
 
 
-def test_sibling_tournaments_transaction_is_set_aside_then_matches_its_own(
-    client, auth_headers
-):
+def test_sibling_tournaments_transaction_is_set_aside_then_matches_its_own(client, auth_headers):
     """6.10: a transaction carrying A's VS, ingested by B, is set aside — not
     in B's unmatched queue, no payment, no email — and matches normally when
     A ingests its own copy."""
@@ -73,9 +70,7 @@ def test_sibling_tournaments_transaction_is_set_aside_then_matches_its_own(
     assert result["flagged"] == 0
     assert result["set_aside"] == 1
 
-    b_unmatched = client.get(
-        "/api/tournaments/bb/payments/unmatched", headers=organizer
-    ).json()
+    b_unmatched = client.get("/api/tournaments/bb/payments/unmatched", headers=organizer).json()
     assert b_unmatched == []
 
     # A's registration is untouched by B's ingestion
@@ -87,9 +82,7 @@ def test_sibling_tournaments_transaction_is_set_aside_then_matches_its_own(
     assert own["matched"] == 1
     assert own["set_aside"] == 0
 
-    a_state_after = client.get(
-        "/api/tournaments/aa/my-registration", headers=fencer_a
-    ).json()
+    a_state_after = client.get("/api/tournaments/aa/my-registration", headers=fencer_a).json()
     assert a_state_after["state"] == "paid"
 
 

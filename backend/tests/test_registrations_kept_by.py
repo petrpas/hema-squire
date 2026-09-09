@@ -69,9 +69,7 @@ def make_tournament(client, organizer, slug="cup", **patch):
         headers=organizer,
     )
     base = {"location": "Brno", "organizers": [{"name": "Org", "link": None}]}
-    response = client.patch(
-        f"/api/tournaments/{slug}", json=base | patch, headers=organizer
-    )
+    response = client.patch(f"/api/tournaments/{slug}", json=base | patch, headers=organizer)
     assert response.status_code == 200, response.text
     client.post(
         f"/api/tournaments/{slug}/disciplines",
@@ -241,9 +239,7 @@ def test_a_published_manual_tournament_keeps_its_address(client, auth_headers):
     a tournament complete when it was published cannot be made incomplete by a
     mode changed afterwards."""
     organizer = auth_headers()
-    make_tournament(
-        client, organizer, external_registration_url="https://elsewhere.example/e"
-    )
+    make_tournament(client, organizer, external_registration_url="https://elsewhere.example/e")
     set_kept_by(client, organizer, "organizer")
     publish(client, organizer, "cup")
 
@@ -315,9 +311,7 @@ def test_publication_starts_the_clocks(client, auth_headers):
     )
     session.add(registration)
     session.commit()
-    assert app_setup.dormancy_cause(tournament, registration) == (
-        app_setup.DORMANT_UNPUBLISHED
-    )
+    assert app_setup.dormancy_cause(tournament, registration) == (app_setup.DORMANT_UNPUBLISHED)
 
     publish(client, organizer, "cup")
     session.refresh(tournament)
@@ -491,8 +485,7 @@ def test_amendment_is_refused_alike(client, auth_headers):
     tournament.registrations_kept_by = RegistrationsKeptBy.ORGANIZER
     session.commit()
     assert (
-        app_setup.amendment_availability(tournament, datetime.now(UTC))
-        == app_setup.ORGANIZER_KEPT
+        app_setup.amendment_availability(tournament, datetime.now(UTC)) == app_setup.ORGANIZER_KEPT
     )
 
 

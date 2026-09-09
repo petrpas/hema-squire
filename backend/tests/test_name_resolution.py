@@ -136,10 +136,19 @@ def test_a_proposal_credits_nothing_and_mails_nobody(client, auth_headers, mailb
     state, paid, owed = before.state, before.amount_paid_cents, before.outstanding_cents
     mailbox.sent.clear()
 
-    upload(client, organizer, [
-        {"ref": "1", "date": "2026-08-01", "amount": "1000", "note": "Vejda Josef",
-         "named": "Vejda Josef"},
-    ])
+    upload(
+        client,
+        organizer,
+        [
+            {
+                "ref": "1",
+                "date": "2026-08-01",
+                "amount": "1000",
+                "note": "Vejda Josef",
+                "named": "Vejda Josef",
+            },
+        ],
+    )
 
     after = registration_by_vs(vs)
     # asserted on the money, not on the status string — the status is the one
@@ -163,9 +172,13 @@ def test_a_shared_surname_proposes_nobody(client, auth_headers, mailbox, parser)
     enroll(client, auth_headers, "Jindřich Pekárek")
     enroll(client, auth_headers, "Ondřej Pekárek")
 
-    upload(client, organizer, [
-        {"ref": "1", "date": "2026-08-01", "amount": "1000", "named": "Pekárek"},
-    ])
+    upload(
+        client,
+        organizer,
+        [
+            {"ref": "1", "date": "2026-08-01", "amount": "1000", "named": "Pekárek"},
+        ],
+    )
     (transaction,) = transactions()
     assert transaction.status == "unmatched"
     assert transaction.proposed_fencer_id is None
@@ -176,9 +189,13 @@ def test_a_name_nobody_here_carries_proposes_nobody(client, auth_headers, mailbo
     setup(client, organizer)
     enroll(client, auth_headers, "Josef Vejda")
 
-    upload(client, organizer, [
-        {"ref": "1", "date": "2026-08-01", "amount": "1000", "named": "Zdeněk Kroupa"},
-    ])
+    upload(
+        client,
+        organizer,
+        [
+            {"ref": "1", "date": "2026-08-01", "amount": "1000", "named": "Zdeněk Kroupa"},
+        ],
+    )
     (transaction,) = transactions()
     assert transaction.status == "unmatched"
     assert transaction.status_reason == "no_name_match"
@@ -192,9 +209,13 @@ def test_the_payer_name_alone_is_never_proposed(client, auth_headers, mailbox, p
     setup(client, organizer)
     enroll(client, auth_headers, "Milan Diviš")
 
-    upload(client, organizer, [
-        {"ref": "1", "date": "2026-08-01", "amount": "1000", "payer": "Milan Diviš"},
-    ])
+    upload(
+        client,
+        organizer,
+        [
+            {"ref": "1", "date": "2026-08-01", "amount": "1000", "payer": "Milan Diviš"},
+        ],
+    )
     (transaction,) = transactions()
     assert transaction.status == "unmatched"
     assert transaction.status_reason == "payer_name_only"
@@ -217,33 +238,61 @@ def test_one_payer_paying_for_three_resolves_to_three_fencers(
     enroll(client, auth_headers, "Josef Vochozka")
     enroll(client, auth_headers, "Matěj Mazanec")
 
-    upload(client, organizer, [
-        {"ref": "1", "date": "2026-08-01", "amount": "1000", "payer": "Milan Diviš",
-         "note": "NaDuel26: Jindřich Pekárek- SB", "named": "Jindřich Pekárek"},
-        {"ref": "2", "date": "2026-08-01", "amount": "1000", "payer": "Milan Diviš",
-         "note": "NaDuel26: Josef Vochozka - sabre", "named": "Josef Vochozka"},
-        {"ref": "3", "date": "2026-08-01", "amount": "1000", "payer": "Milan Diviš",
-         "note": "NaDuel26: Matěj Mazanec", "named": "Matěj Mazanec"},
-    ])
+    upload(
+        client,
+        organizer,
+        [
+            {
+                "ref": "1",
+                "date": "2026-08-01",
+                "amount": "1000",
+                "payer": "Milan Diviš",
+                "note": "NaDuel26: Jindřich Pekárek- SB",
+                "named": "Jindřich Pekárek",
+            },
+            {
+                "ref": "2",
+                "date": "2026-08-01",
+                "amount": "1000",
+                "payer": "Milan Diviš",
+                "note": "NaDuel26: Josef Vochozka - sabre",
+                "named": "Josef Vochozka",
+            },
+            {
+                "ref": "3",
+                "date": "2026-08-01",
+                "amount": "1000",
+                "payer": "Milan Diviš",
+                "note": "NaDuel26: Matěj Mazanec",
+                "named": "Matěj Mazanec",
+            },
+        ],
+    )
 
     proposed = [t.proposed_fencer.display_name for t in transactions()]
     assert proposed == ["Jindřich Pekárek", "Josef Vochozka", "Matěj Mazanec"]
     assert "Milan Diviš" not in proposed
 
 
-def test_the_message_resolves_where_the_model_named_nobody(
-    client, auth_headers, mailbox, parser
-):
+def test_the_message_resolves_where_the_model_named_nobody(client, auth_headers, mailbox, parser):
     """With no model configured the message itself is the query, and that is
     what resolved 35 of the pilot's 43."""
     organizer = auth_headers()
     setup(client, organizer)
     enroll(client, auth_headers, "Josef Vejda")
 
-    upload(client, organizer, [
-        {"ref": "1", "date": "2026-08-01", "amount": "1000",
-         "note": "NaDuel26: Josef Vejda - sabre"},
-    ])
+    upload(
+        client,
+        organizer,
+        [
+            {
+                "ref": "1",
+                "date": "2026-08-01",
+                "amount": "1000",
+                "note": "NaDuel26: Josef Vejda - sabre",
+            },
+        ],
+    )
     (transaction,) = transactions()
     assert transaction.status == "likely"
     assert transaction.proposed_fencer.display_name == "Josef Vejda"
@@ -260,10 +309,20 @@ def test_a_quoted_symbol_never_reaches_the_resolver(client, auth_headers, mailbo
     _, vs = enroll(client, auth_headers, "Josef Vejda")
     enroll(client, auth_headers, "Milan Diviš")
 
-    upload(client, organizer, [
-        {"ref": "1", "date": "2026-08-01", "amount": "1000", "vs": str(vs),
-         "note": "Milan Diviš", "named": "Milan Diviš"},
-    ])
+    upload(
+        client,
+        organizer,
+        [
+            {
+                "ref": "1",
+                "date": "2026-08-01",
+                "amount": "1000",
+                "vs": str(vs),
+                "note": "Milan Diviš",
+                "named": "Milan Diviš",
+            },
+        ],
+    )
     (transaction,) = transactions()
     assert transaction.status == "matched"
     assert registration_by_vs(vs).state.value == "paid"
@@ -284,9 +343,7 @@ def reject(client, organizer, transaction_id):
     )
 
 
-def test_confirming_credits_exactly_as_a_quoted_symbol_would(
-    client, auth_headers, mailbox, parser
-):
+def test_confirming_credits_exactly_as_a_quoted_symbol_would(client, auth_headers, mailbox, parser):
     """Confirming is the organizer supplying the symbol the payer omitted, so
     it goes through the manual-link path and the outcome is indistinguishable
     from a payment that quoted one (design Decision 5)."""
@@ -294,9 +351,13 @@ def test_confirming_credits_exactly_as_a_quoted_symbol_would(
     setup(client, organizer)
     fencer, vs = enroll(client, auth_headers, "Josef Vejda")
 
-    upload(client, organizer, [
-        {"ref": "1", "date": "2026-08-01", "amount": "1000", "named": "Josef Vejda"},
-    ])
+    upload(
+        client,
+        organizer,
+        [
+            {"ref": "1", "date": "2026-08-01", "amount": "1000", "named": "Josef Vejda"},
+        ],
+    )
     mailbox.sent.clear()
     (transaction,) = transactions()
     assert confirm(client, organizer, transaction.id).status_code == 201
@@ -309,34 +370,36 @@ def test_confirming_credits_exactly_as_a_quoted_symbol_would(
     assert any("Platba" in message["Subject"] for message in mailbox.sent)
 
 
-def test_a_confirmed_proposal_is_an_ordinary_payment_link(
-    client, auth_headers, mailbox, parser
-):
+def test_a_confirmed_proposal_is_an_ordinary_payment_link(client, auth_headers, mailbox, parser):
     organizer = auth_headers()
     setup(client, organizer)
     _, vs = enroll(client, auth_headers, "Josef Vejda")
-    upload(client, organizer, [
-        {"ref": "1", "date": "2026-08-01", "amount": "1000", "named": "Josef Vejda"},
-    ])
+    upload(
+        client,
+        organizer,
+        [
+            {"ref": "1", "date": "2026-08-01", "amount": "1000", "named": "Josef Vejda"},
+        ],
+    )
     confirm(client, organizer, transactions()[0].id)
 
-    listed = client.get(
-        "/api/tournaments/cup/rules?phase=payments", headers=organizer
-    ).json()
+    listed = client.get("/api/tournaments/cup/rules?phase=payments", headers=organizer).json()
     assert [r["kind"] for r in listed] == ["payment_link"]
     # addressed by registration, because the proposal named a person
     assert listed[0]["payload"]["registration_ids"]
 
 
-def test_rejecting_returns_it_and_does_not_propose_again(
-    client, auth_headers, mailbox, parser
-):
+def test_rejecting_returns_it_and_does_not_propose_again(client, auth_headers, mailbox, parser):
     organizer = auth_headers()
     setup(client, organizer)
     _, vs = enroll(client, auth_headers, "Josef Vejda")
-    upload(client, organizer, [
-        {"ref": "1", "date": "2026-08-01", "amount": "1000", "named": "Josef Vejda"},
-    ])
+    upload(
+        client,
+        organizer,
+        [
+            {"ref": "1", "date": "2026-08-01", "amount": "1000", "named": "Josef Vejda"},
+        ],
+    )
     transaction_id = transactions()[0].id
 
     response = reject(client, organizer, transaction_id)
@@ -358,9 +421,13 @@ def test_a_rejected_transaction_cannot_be_confirmed(client, auth_headers, mailbo
     organizer = auth_headers()
     setup(client, organizer)
     enroll(client, auth_headers, "Josef Vejda")
-    upload(client, organizer, [
-        {"ref": "1", "date": "2026-08-01", "amount": "1000", "named": "Josef Vejda"},
-    ])
+    upload(
+        client,
+        organizer,
+        [
+            {"ref": "1", "date": "2026-08-01", "amount": "1000", "named": "Josef Vejda"},
+        ],
+    )
     transaction_id = transactions()[0].id
     reject(client, organizer, transaction_id)
     assert confirm(client, organizer, transaction_id).status_code == 409
@@ -370,9 +437,13 @@ def test_both_actions_refuse_without_console_access(client, auth_headers, mailbo
     organizer = auth_headers()
     setup(client, organizer)
     enroll(client, auth_headers, "Josef Vejda")
-    upload(client, organizer, [
-        {"ref": "1", "date": "2026-08-01", "amount": "1000", "named": "Josef Vejda"},
-    ])
+    upload(
+        client,
+        organizer,
+        [
+            {"ref": "1", "date": "2026-08-01", "amount": "1000", "named": "Josef Vejda"},
+        ],
+    )
     transaction_id = transactions()[0].id
     outsider = auth_headers(email="nobody@example.com", name="Nobody")
     assert confirm(client, outsider, transaction_id).status_code == 403
@@ -383,10 +454,14 @@ def test_the_queue_lists_only_proposals(client, auth_headers, mailbox, parser):
     organizer = auth_headers()
     setup(client, organizer)
     enroll(client, auth_headers, "Josef Vejda")
-    upload(client, organizer, [
-        {"ref": "1", "date": "2026-08-01", "amount": "1000", "named": "Josef Vejda"},
-        {"ref": "2", "date": "2026-08-01", "amount": "500", "named": "Nobody Here"},
-    ])
+    upload(
+        client,
+        organizer,
+        [
+            {"ref": "1", "date": "2026-08-01", "amount": "1000", "named": "Josef Vejda"},
+            {"ref": "2", "date": "2026-08-01", "amount": "500", "named": "Nobody Here"},
+        ],
+    )
     queue = client.get("/api/tournaments/cup/payments/likely", headers=organizer).json()
     assert [t["external_id"] for t in queue] == ["1"]
     assert queue[0]["proposed_fencer_name"] == "Josef Vejda"
@@ -401,9 +476,13 @@ def test_the_roster_comes_back_whole_and_ordered(client, auth_headers, mailbox, 
     enroll(client, auth_headers, "Josef Vejda")
     enroll(client, auth_headers, "Milan Diviš")
     enroll(client, auth_headers, "Matěj Mazanec")
-    upload(client, organizer, [
-        {"ref": "1", "date": "2026-08-01", "amount": "1000", "named": "Josef Vejda"},
-    ])
+    upload(
+        client,
+        organizer,
+        [
+            {"ref": "1", "date": "2026-08-01", "amount": "1000", "named": "Josef Vejda"},
+        ],
+    )
     transaction_id = transactions()[0].id
 
     body = client.get(
@@ -425,9 +504,13 @@ def test_a_refused_fencer_is_marked_in_the_roster(client, auth_headers, mailbox,
     organizer = auth_headers()
     setup(client, organizer)
     enroll(client, auth_headers, "Josef Vejda")
-    upload(client, organizer, [
-        {"ref": "1", "date": "2026-08-01", "amount": "1000", "named": "Josef Vejda"},
-    ])
+    upload(
+        client,
+        organizer,
+        [
+            {"ref": "1", "date": "2026-08-01", "amount": "1000", "named": "Josef Vejda"},
+        ],
+    )
     transaction_id = transactions()[0].id
     reject(client, organizer, transaction_id)
 

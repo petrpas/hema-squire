@@ -46,9 +46,7 @@ def upgrade() -> None:
     )
 
     connection = op.get_bind()
-    tournaments = [
-        row[0] for row in connection.execute(sa.text("SELECT id FROM tournaments"))
-    ]
+    tournaments = [row[0] for row in connection.execute(sa.text("SELECT id FROM tournaments"))]
     for tournament_id in tournaments:
         row_ids = [
             f"reg:{row[0]}"
@@ -72,8 +70,7 @@ def upgrade() -> None:
                 f"imp:{row[0]}"
                 for row in connection.execute(
                     sa.text(
-                        "SELECT key FROM imported_rows WHERE batch_id = :b "
-                        "ORDER BY row_number"
+                        "SELECT key FROM imported_rows WHERE batch_id = :b ORDER BY row_number"
                     ),
                     {"b": latest_batch},
                 )
@@ -89,15 +86,11 @@ def upgrade() -> None:
 
     connection.execute(sa.text("UPDATE rules SET phase = 'import' WHERE phase = 'load'"))
     connection.execute(
-        sa.text(
-            "UPDATE rules SET phase = 'import' "
-            "WHERE phase = 'parsing' AND target LIKE 'imp:%'"
-        )
+        sa.text("UPDATE rules SET phase = 'import' WHERE phase = 'parsing' AND target LIKE 'imp:%'")
     )
     connection.execute(
         sa.text(
-            "UPDATE rules SET phase = 'fencers' "
-            "WHERE phase = 'parsing' AND target NOT LIKE 'imp:%'"
+            "UPDATE rules SET phase = 'fencers' WHERE phase = 'parsing' AND target NOT LIKE 'imp:%'"
         )
     )
 
@@ -107,10 +100,6 @@ def downgrade() -> None:
     # the split is not reversible row by row — an Import rule may have been a
     # Load rule or a Parsing one — so both names go back to the phase that
     # owned the operation each targets
-    connection.execute(
-        sa.text("UPDATE rules SET phase = 'load' WHERE phase = 'import'")
-    )
-    connection.execute(
-        sa.text("UPDATE rules SET phase = 'parsing' WHERE phase = 'fencers'")
-    )
+    connection.execute(sa.text("UPDATE rules SET phase = 'load' WHERE phase = 'import'"))
+    connection.execute(sa.text("UPDATE rules SET phase = 'parsing' WHERE phase = 'fencers'"))
     op.drop_table("sheet_row_numbers")

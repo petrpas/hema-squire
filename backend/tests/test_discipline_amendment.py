@@ -43,6 +43,7 @@ def mailbox():
     yield mailer
     app.dependency_overrides.pop(get_mailer, None)
 
+
 IBAN = "CZ6508000000192000145399"
 
 
@@ -92,9 +93,7 @@ def amend(client, organizer, row_id, slugs, kind="registration_amendment"):
 
 
 def registration_of(row_id):
-    return db_session().scalar(
-        select(Registration).where(Registration.source_row_id == row_id)
-    )
+    return db_session().scalar(select(Registration).where(Registration.source_row_id == row_id))
 
 
 def selection(registration):
@@ -174,14 +173,19 @@ def test_an_in_app_correction_queues(client, auth_headers, mailbox):
     setup(client, organizer, sb_capacity=1)
     issued_row(client, organizer, [row("Eva", "eva@example.com", disciplines="SB")])
     fencer = auth_headers("jan@example.com")
-    assert client.post(
-        "/api/tournaments/cup/register", json={"disciplines": ["SA"]}, headers=fencer
-    ).status_code == 201
+    assert (
+        client.post(
+            "/api/tournaments/cup/register", json={"disciplines": ["SA"]}, headers=fencer
+        ).status_code
+        == 201
+    )
 
     listed = [r for r in sheet_rows(client, organizer) if r["name"].startswith("jan")]
-    listed = listed[0] if listed else [
-        r for r in sheet_rows(client, organizer) if r["id"].startswith("reg:")
-    ][0]
+    listed = (
+        listed[0]
+        if listed
+        else [r for r in sheet_rows(client, organizer) if r["id"].startswith("reg:")][0]
+    )
     assert amend(client, organizer, listed["id"], ["SA", "SB"]).status_code == 201
 
     registration = db_session().scalar(
@@ -195,9 +199,7 @@ def test_an_in_app_correction_queues(client, auth_headers, mailbox):
 
 
 def rules_for(client, organizer):
-    return client.get(
-        "/api/tournaments/cup/rules?phase=fencers", headers=organizer
-    ).json()
+    return client.get("/api/tournaments/cup/rules?phase=fencers", headers=organizer).json()
 
 
 def test_undoing_a_correction_restores_the_price(client, auth_headers, mailbox):
@@ -207,9 +209,10 @@ def test_undoing_a_correction_restores_the_price(client, auth_headers, mailbox):
     created = amend(client, organizer, listed["id"], ["SA", "SB"]).json()
     assert registration_of(listed["id"]).total_amount == 1300
 
-    assert client.delete(
-        f"/api/tournaments/cup/rules/{created['id']}", headers=organizer
-    ).status_code == 204
+    assert (
+        client.delete(f"/api/tournaments/cup/rules/{created['id']}", headers=organizer).status_code
+        == 204
+    )
 
     registration = registration_of(listed["id"])
     assert selection(registration) == (["SA"], [])
@@ -226,9 +229,10 @@ def test_withdrawing_the_first_of_two_amendments(client, auth_headers, mailbox):
     first = amend(client, organizer, listed["id"], ["SA", "SB"]).json()
     amend(client, organizer, listed["id"], ["SB"])
 
-    assert client.delete(
-        f"/api/tournaments/cup/rules/{first['id']}", headers=organizer
-    ).status_code == 204
+    assert (
+        client.delete(f"/api/tournaments/cup/rules/{first['id']}", headers=organizer).status_code
+        == 204
+    )
 
     registration = registration_of(listed["id"])
     assert selection(registration) == (["SB"], [])  # what the second alone produces
@@ -309,9 +313,7 @@ def test_corrected_after_the_amendment_deadline(client, auth_headers, mailbox):
     organizer = auth_headers()
     setup(client, organizer)
     listed = issued_row(client, organizer)
-    client.patch(
-        "/api/tournaments/cup", json={"amendments_close": "2026-05-01"}, headers=organizer
-    )
+    client.patch("/api/tournaments/cup", json={"amendments_close": "2026-05-01"}, headers=organizer)
 
     assert amend(client, organizer, listed["id"], ["SB"]).status_code == 201
     assert registration_of(listed["id"]).total_amount == 500
@@ -327,9 +329,7 @@ def test_a_dormant_registration_is_still_correctable(client, auth_headers, mailb
     assert registration_of(listed["id"]).total_amount == 1300
 
 
-def test_an_expired_registration_is_not_corrected_in_the_table(
-    client, auth_headers, mailbox
-):
+def test_an_expired_registration_is_not_corrected_in_the_table(client, auth_headers, mailbox):
     organizer = auth_headers()
     setup(client, organizer)
     listed = issued_row(client, organizer)
@@ -362,9 +362,7 @@ def test_a_disciplines_field_edit_is_refused_where_a_registration_stands(
     assert registration_of(listed["id"]).total_amount == 800
 
 
-def test_a_field_edit_still_corrects_a_row_that_has_no_registration(
-    client, auth_headers, mailbox
-):
+def test_a_field_edit_still_corrects_a_row_that_has_no_registration(client, auth_headers, mailbox):
     organizer = auth_headers()
     setup(client, organizer)
     import_roster(client, organizer, [row("Jan", "jan@example.com")])

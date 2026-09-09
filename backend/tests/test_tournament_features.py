@@ -23,9 +23,7 @@ def flags(**enabled: bool) -> dict[str, bool]:
 
 
 def set_flags(client, headers, slug, **enabled: bool):
-    return client.patch(
-        f"/api/tournaments/{slug}/features", json=flags(**enabled), headers=headers
-    )
+    return client.patch(f"/api/tournaments/{slug}/features", json=flags(**enabled), headers=headers)
 
 
 def test_created_tournament_has_no_features(client, auth_headers):
@@ -43,9 +41,7 @@ def test_flags_read_and_written(client, auth_headers):
 
     assert client.get("/api/tournaments/na-duel-2026/features", headers=headers).json() == NONE_ON
 
-    response = set_flags(
-        client, headers, "na-duel-2026", feature_payments=True, feature_teams=True
-    )
+    response = set_flags(client, headers, "na-duel-2026", feature_payments=True, feature_teams=True)
     assert response.status_code == 200, response.text
     assert {flag: response.json()[flag] for flag in FLAGS} == flags(
         feature_payments=True, feature_teams=True
@@ -93,9 +89,7 @@ def test_writing_the_flags_requires_console_access(client, auth_headers):
     outsider = auth_headers(email="other@example.com", name="Other")
 
     assert set_flags(client, outsider, "na-duel-2026", feature_teams=True).status_code == 403
-    assert (
-        client.get("/api/tournaments/na-duel-2026/features", headers=outsider).status_code == 403
-    )
+    assert client.get("/api/tournaments/na-duel-2026/features", headers=outsider).status_code == 403
     anonymous = client.patch("/api/tournaments/na-duel-2026/features", json=flags())
     assert anonymous.status_code == 401
 
@@ -121,9 +115,12 @@ def test_console_team_member_sees_and_sets_the_same_flags(client, auth_headers):
         "/api/tournaments/na-duel-2026/features", headers=member_headers
     ).json()
     assert member_view == flags(feature_extras=True)
-    assert set_flags(
-        client, member_headers, "na-duel-2026", feature_extras=True, feature_schedule=True
-    ).status_code == 200
+    assert (
+        set_flags(
+            client, member_headers, "na-duel-2026", feature_extras=True, feature_schedule=True
+        ).status_code
+        == 200
+    )
 
 
 def test_features_are_not_re_derived_from_contents(client, auth_headers):

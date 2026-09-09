@@ -128,14 +128,14 @@ def _prune_decisions(session: Session, tournament: Tournament) -> None:
 def imported_totals(session: Session, tournament: Tournament) -> dict:
     """What a clear would remove: every row of every file ever uploaded."""
     rows = session.scalar(
-        select(func.count()).select_from(ImportedRow).where(
-            ImportedRow.tournament_id == tournament.id
-        )
+        select(func.count())
+        .select_from(ImportedRow)
+        .where(ImportedRow.tournament_id == tournament.id)
     )
     files = session.scalar(
-        select(func.count()).select_from(ImportBatch).where(
-            ImportBatch.tournament_id == tournament.id
-        )
+        select(func.count())
+        .select_from(ImportBatch)
+        .where(ImportBatch.tournament_id == tournament.id)
     )
     return {"rows": rows or 0, "files": files or 0}
 
@@ -164,9 +164,7 @@ def clear_imports(session: Session, tournament: Tournament) -> dict:
     if credited:
         raise CreditedRegistrationsError(len(credited))
     imported = list(
-        session.scalars(
-            select(ImportedRow).where(ImportedRow.tournament_id == tournament.id)
-        )
+        session.scalars(select(ImportedRow).where(ImportedRow.tournament_id == tournament.id))
     )
     batch_ids = list(
         session.scalars(select(ImportBatch.id).where(ImportBatch.tournament_id == tournament.id))
@@ -179,15 +177,11 @@ def clear_imports(session: Session, tournament: Tournament) -> dict:
     # still a record that the row was there
     doomed = [
         rule.id
-        for rule in session.scalars(
-            select(Rule).where(Rule.tournament_id == tournament.id)
-        )
+        for rule in session.scalars(select(Rule).where(Rule.tournament_id == tournament.id))
         if rule.target in cleared or _names_a_cleared_row(rule.payload, cleared)
     ]
     if doomed:
-        session.execute(
-            delete(RuleJournalEntry).where(RuleJournalEntry.rule_id.in_(doomed))
-        )
+        session.execute(delete(RuleJournalEntry).where(RuleJournalEntry.rule_id.in_(doomed)))
         session.execute(delete(Rule).where(Rule.id.in_(doomed)))
 
     if cleared:
@@ -207,13 +201,9 @@ def clear_imports(session: Session, tournament: Tournament) -> dict:
         session.execute(delete(TeamMember).where(TeamMember.team_id.in_(team_ids)))
         session.execute(delete(Team).where(Team.registration_id.in_(ids)))
         session.execute(
-            delete(RegistrationDiscipline).where(
-                RegistrationDiscipline.registration_id.in_(ids)
-            )
+            delete(RegistrationDiscipline).where(RegistrationDiscipline.registration_id.in_(ids))
         )
-        session.execute(
-            delete(RegistrationExtra).where(RegistrationExtra.registration_id.in_(ids))
-        )
+        session.execute(delete(RegistrationExtra).where(RegistrationExtra.registration_id.in_(ids)))
         session.execute(delete(PaymentEvent).where(PaymentEvent.registration_id.in_(ids)))
         # a transaction that had been linked to one of these keeps its money and
         # loses its addressee: it returns to the unresolved queue rather than
@@ -222,8 +212,11 @@ def clear_imports(session: Session, tournament: Tournament) -> dict:
         session.execute(
             update(BankTransaction)
             .where(BankTransaction.matched_registration_id.in_(ids))
-            .values(matched_registration_id=None, status="unmatched",
-                    status_reason="registration_cleared")
+            .values(
+                matched_registration_id=None,
+                status="unmatched",
+                status_reason="registration_cleared",
+            )
         )
         session.execute(delete(Registration).where(Registration.id.in_(ids)))
     session.flush()

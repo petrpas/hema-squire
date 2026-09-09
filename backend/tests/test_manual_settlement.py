@@ -249,9 +249,9 @@ def test_the_reason_is_carried_into_the_audit(client, auth_headers):
 
     settled(client, organizer, registration_id(entry), reason="volná účast")
 
-    event = db_session().scalars(
-        select(PaymentEvent).where(PaymentEvent.kind == MARK_SETTLED)
-    ).one()
+    event = (
+        db_session().scalars(select(PaymentEvent).where(PaymentEvent.kind == MARK_SETTLED)).one()
+    )
     assert "org@example.com" in event.detail
     assert "volná účast" in event.detail
 
@@ -272,9 +272,10 @@ def test_a_cancelled_registration_is_not_revived(client, auth_headers):
     entry = client.post(
         "/api/tournaments/cup/register", json={"disciplines": ["LS"]}, headers=fencer
     ).json()
-    assert client.post(
-        "/api/tournaments/cup/my-registration/cancel", headers=fencer
-    ).status_code == 200
+    assert (
+        client.post("/api/tournaments/cup/my-registration/cancel", headers=fencer).status_code
+        == 200
+    )
 
     response = settled(client, organizer, registration_id(entry))
     assert response.status_code == 409
@@ -361,9 +362,7 @@ def test_switching_to_squire_handled_payments_leaves_the_marks(client, auth_head
     entry = enroll(client, auth_headers, "a@example.com")
     settled(client, organizer, registration_id(entry))
 
-    client.patch(
-        "/api/tournaments/cup", json={"bank_account": IBAN}, headers=organizer
-    )
+    client.patch("/api/tournaments/cup", json={"bank_account": IBAN}, headers=organizer)
     enable_payments(client, organizer, "cup")
 
     row = registration_row(entry["vs"])
@@ -381,17 +380,20 @@ def test_unmarking_a_registration_the_money_settled_is_refused(client, auth_head
     reg_id = registration_id(entry)
 
     # paid by money, not by anybody's word
-    assert client.post(
-        "/api/tournaments/cup/payments/manual",
-        json={
-            "registration_id": reg_id,
-            "amount": "1200.00",
-            "currency": "CZK",
-            "received_on": "2026-08-01",
-            "method": "cash",
-        },
-        headers=organizer,
-    ).status_code == 201
+    assert (
+        client.post(
+            "/api/tournaments/cup/payments/manual",
+            json={
+                "registration_id": reg_id,
+                "amount": "1200.00",
+                "currency": "CZK",
+                "received_on": "2026-08-01",
+                "method": "cash",
+            },
+            headers=organizer,
+        ).status_code
+        == 201
+    )
     assert registration_row(entry["vs"]).state == RegistrationState.PAID
 
     response = settled(client, organizer, reg_id, value=False)
@@ -416,9 +418,7 @@ def test_a_registration_with_no_variable_symbol_is_marked(client, auth_headers):
     entry = enroll(client, auth_headers, "a@example.com")
 
     session = db_session()
-    registration = session.scalar(
-        select(Registration).where(Registration.vs == entry["vs"])
-    )
+    registration = session.scalar(select(Registration).where(Registration.vs == entry["vs"]))
     reg_id = registration.id
     registration.vs = None
     session.commit()

@@ -111,16 +111,12 @@ class LLMDedup:
 
     def propose_merge(self, records: list[dict], language: str) -> MergeProposal:
         agent = self._agent(MergeProposal, _MERGE_PROMPT.format(language=language))
-        result = agent.run_sync(
-            f"```json\n{json.dumps(records, ensure_ascii=False)}\n```"
-        )
+        result = agent.run_sync(f"```json\n{json.dumps(records, ensure_ascii=False)}\n```")
         return result.output
 
     def classify(self, records: list[dict]) -> ThreeBands:
         agent = self._agent(ThreeBands, _CLASSIFY_PROMPT)
-        result = agent.run_sync(
-            f"```json\n{json.dumps(records, ensure_ascii=False)}\n```"
-        )
+        result = agent.run_sync(f"```json\n{json.dumps(records, ensure_ascii=False)}\n```")
         return result.output
 
 
@@ -131,8 +127,16 @@ def get_dedup_llm() -> DedupLLM | None:
 
 
 MERGE_FIELDS = [
-    "name", "nationality", "email", "club", "hr_id",
-    "disciplines", "weapon_rentals", "afterparty", "notes", "problems",
+    "name",
+    "nationality",
+    "email",
+    "club",
+    "hr_id",
+    "disciplines",
+    "weapon_rentals",
+    "afterparty",
+    "notes",
+    "problems",
 ]
 
 
@@ -196,9 +200,7 @@ def _group_members(rows_by_id: dict[str, Row], ids: list[str]) -> list[Row]:
     left (spec etl-console, Reversible row deletion).
     """
     members = [
-        row
-        for row in (rows_by_id[i] for i in ids if i in rows_by_id)
-        if not row.get("_deleted")
+        row for row in (rows_by_id[i] for i in ids if i in rows_by_id) if not row.get("_deleted")
     ]
     return sorted(members, key=lambda r: r.get("registered_at") or "")
 
@@ -238,9 +240,7 @@ def _work_units(session: Session, tournament: Tournament, rows: list[Row]) -> tu
             groups += 1
 
     no_id = [row for row in active.values() if row.get("hr_id") is None]
-    unseen = [
-        r for r in no_id if get_decision(session, tournament, "dedup_seen", r["id"]) is None
-    ]
+    unseen = [r for r in no_id if get_decision(session, tournament, "dedup_seen", r["id"]) is None]
     classifications = 1 if len(no_id) >= 2 and unseen else 0
     return groups, classifications
 
@@ -283,9 +283,7 @@ def run_dedup(
         key = group_key(ids)
         if get_decision(session, tournament, "merge", key) is not None:
             continue
-        proposal = llm.propose_merge(
-            [_record_view(r) for r in members], tournament.language
-        )
+        proposal = llm.propose_merge([_record_view(r) for r in members], tournament.language)
         store_decision(
             session,
             tournament,
@@ -301,10 +299,7 @@ def run_dedup(
     likely = 0
     # incrementality: the classifier runs only when rows it has never seen
     # exist; new rows may pair with old ones, so it re-reads the whole set
-    unseen = [
-        r for r in no_id
-        if get_decision(session, tournament, "dedup_seen", r["id"]) is None
-    ]
+    unseen = [r for r in no_id if get_decision(session, tournament, "dedup_seen", r["id"]) is None]
     if len(no_id) >= 2 and unseen:
         bands = llm.classify([_record_view(r) for r in no_id])
         store_decision(
@@ -323,10 +318,22 @@ def run_dedup(
             key = group_key([r["id"] for r in members])
             if get_decision(session, tournament, "dedup_resolution", key) is not None:
                 continue
-            _merge(session, tournament, actor, members, default_merge(members),
-                   note="auto-merged (surely duplicate)")
-            store_decision(session, tournament, "dedup_resolution", key,
-                           {"accepted": True, "auto": True}, source="llm")
+            _merge(
+                session,
+                tournament,
+                actor,
+                members,
+                default_merge(members),
+                note="auto-merged (surely duplicate)",
+            )
+            store_decision(
+                session,
+                tournament,
+                "dedup_resolution",
+                key,
+                {"accepted": True, "auto": True},
+                source="llm",
+            )
             auto_merged += 1
         likely = len(bands.likely)
         commit(session, 1)
@@ -470,9 +477,7 @@ def decide(
     a second one — two merges absorbing the same rows would be one decision
     reported twice and undone once.
     """
-    group = next(
-        (g for g in candidate_groups(session, tournament, rows) if g["key"] == key), None
-    )
+    group = next((g for g in candidate_groups(session, tournament, rows) if g["key"] == key), None)
     if group is None:
         return {"status": "unknown_group"}
     rule = merge_rule_for(session, tournament, key)
@@ -522,9 +527,7 @@ def premerge_rows(session, tournament, index=None) -> list[dict]:
     """
     base = sheet.base_rows(session, tournament, index)
     kept = [
-        rule
-        for rule in rules.active_rules(session, tournament)
-        if rule.kind != "dedup_decision"
+        rule for rule in rules.active_rules(session, tournament) if rule.kind != "dedup_decision"
     ]
     rows, _ = rules.replay(base, kept)
     return [row for row in rows.values() if row["id"].startswith(("imp:", "man:"))]

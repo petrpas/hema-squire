@@ -22,9 +22,7 @@ def test_signup_login_roundtrip(client):
         "/api/auth/login", json={"email": "a@example.com", "password": "secret-123"}
     )
     assert login.status_code == 200
-    bad = client.post(
-        "/api/auth/login", json={"email": "a@example.com", "password": "wrong-pass"}
-    )
+    bad = client.post("/api/auth/login", json={"email": "a@example.com", "password": "wrong-pass"})
     assert bad.status_code == 401
 
 
@@ -318,11 +316,14 @@ def test_reminder_day_shortened_validity_rejected(client, auth_headers):
     validity below an existing, previously-valid reminder day."""
     headers = auth_headers()
     make_tournament(client, headers)
-    assert client.patch(
-        "/api/tournaments/na-duel-2026",
-        json={"reservation_validity_days": 7, "reminder_day": 6},
-        headers=headers,
-    ).status_code == 200
+    assert (
+        client.patch(
+            "/api/tournaments/na-duel-2026",
+            json={"reservation_validity_days": 7, "reminder_day": 6},
+            headers=headers,
+        ).status_code
+        == 200
+    )
 
     response = client.patch(
         "/api/tournaments/na-duel-2026",
@@ -460,8 +461,6 @@ def test_discipline_delete_refuses_once_a_registration_references_it(client, aut
     )
     assert entered.status_code == 201, entered.text
 
-    refused = client.delete(
-        "/api/tournaments/na-duel-2026/disciplines/LS", headers=organizer
-    )
+    refused = client.delete("/api/tournaments/na-duel-2026/disciplines/LS", headers=organizer)
     assert refused.status_code == 409
     assert refused.json()["detail"] == "discipline_referenced"

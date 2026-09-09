@@ -101,9 +101,7 @@ def test_owner_flag_not_leaked_to_others(client, auth_headers, owner_email):
 
 
 def edit_location(client, headers):
-    return client.patch(
-        "/api/tournaments/cup", json={"location": "Brno"}, headers=headers
-    )
+    return client.patch("/api/tournaments/cup", json={"location": "Brno"}, headers=headers)
 
 
 def test_console_access_owner_and_team_only(client, auth_headers):

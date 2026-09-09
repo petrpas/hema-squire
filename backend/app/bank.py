@@ -122,9 +122,7 @@ def _fio_value(row: dict, key: str):
 
 
 def parse_fio_json(payload: dict) -> list[IncomingTransaction]:
-    rows = (
-        payload.get("accountStatement", {}).get("transactionList", {}).get("transaction", [])
-    )
+    rows = payload.get("accountStatement", {}).get("transactionList", {}).get("transaction", [])
     result = []
     for row in rows:
         vs_raw = _fio_value(row, "vs")
@@ -183,18 +181,14 @@ def _parse_date(raw: str) -> datetime.date:
 def parse_fio_csv(content: bytes) -> list[IncomingTransaction]:
     text = content.decode("utf-8-sig")
     lines = text.splitlines()
-    header_index = next(
-        (i for i, line in enumerate(lines) if "ID pohybu" in line), None
-    )
+    header_index = next((i for i, line in enumerate(lines) if "ID pohybu" in line), None)
     if header_index is None:
         raise ValueError("no 'ID pohybu' header found — not a Fio statement export")
 
     reader = csv.DictReader(io.StringIO("\n".join(lines[header_index:])), delimiter=";")
     result = []
     for row in reader:
-        record = {
-            field: (row.get(column) or "").strip() for column, field in _CSV_FIELDS.items()
-        }
+        record = {field: (row.get(column) or "").strip() for column, field in _CSV_FIELDS.items()}
         if not record["external_id"]:
             continue
         result.append(
@@ -375,9 +369,9 @@ class FioUnreachable(Exception):
 
 
 class FioClient(Protocol):
-    def fetch(self, token: str, date_from: datetime.date, date_to: datetime.date) -> list[
-        IncomingTransaction
-    ]: ...
+    def fetch(
+        self, token: str, date_from: datetime.date, date_to: datetime.date
+    ) -> list[IncomingTransaction]: ...
 
     def verify(self, token: str) -> None: ...
 

@@ -29,9 +29,7 @@ def mailbox():
 
 
 def make_csv(rows):
-    header = (
-        "ID pohybu;Datum;Objem;Měna;VS;KS;SS;Zpráva pro příjemce;Název protiúčtu;Protiúčet"
-    )
+    header = "ID pohybu;Datum;Objem;Měna;VS;KS;SS;Zpráva pro příjemce;Název protiúčtu;Protiúčet"
     return ("meta;data\n\n" + header + "\n" + "\n".join(rows) + "\n").encode()
 
 
@@ -146,11 +144,18 @@ def test_far_off_amount_credited_as_partial_payment(client, auth_headers, mailbo
 
     result = import_rows(client, organizer, [f"1;01.08.2026;600,00;CZK;{vs};;;;;"])
     assert result == {
-        "new": 1, "duplicate": 0, "matched": 0, "flagged": 0, "unmatched": 0, "partial": 1,
+        "new": 1,
+        "duplicate": 0,
+        "matched": 0,
+        "flagged": 0,
+        "unmatched": 0,
+        "partial": 1,
         "set_aside": 0,
         # intake issues before it matches; this roster is in-app, so it issues
         # nothing (spec payments-intake)
-        "issued": 0, "already_issued": 0, "skipped": [],
+        "issued": 0,
+        "already_issued": 0,
+        "skipped": [],
     }
     state = client.get("/api/tournaments/cup/my-registration", headers=fencer).json()["state"]
     assert state == "reserved"
@@ -323,11 +328,18 @@ def test_reimport_does_not_rematch(client, auth_headers, mailbox):
     emails_after_first = len(mailbox.sent)
     result = import_rows(client, organizer, row)
     assert result == {
-        "new": 0, "duplicate": 1, "matched": 0, "flagged": 0, "unmatched": 0, "partial": 0,
+        "new": 0,
+        "duplicate": 1,
+        "matched": 0,
+        "flagged": 0,
+        "unmatched": 0,
+        "partial": 0,
         "set_aside": 0,
         # intake issues before it matches; this roster is in-app, so it issues
         # nothing (spec payments-intake)
-        "issued": 0, "already_issued": 0, "skipped": [],
+        "issued": 0,
+        "already_issued": 0,
+        "skipped": [],
     }
     assert len(mailbox.sent) == emails_after_first
 
@@ -338,7 +350,8 @@ def test_two_half_payments_same_import_aggregate_to_paid(client, auth_headers, m
     fencer, vs = enroll(client, auth_headers)
 
     result = import_rows(
-        client, organizer,
+        client,
+        organizer,
         [f"1;01.08.2026;900,00;CZK;{vs};;;;;", f"2;01.08.2026;850,00;CZK;{vs};;;;;"],
     )
     assert result["partial"] == 1  # the first, still short
@@ -462,7 +475,8 @@ def test_bare_vs_matches_only_when_amount_covers_outstanding(client, auth_header
     fencer_b, vs_b = enroll(client, auth_headers, "b@example.com", "Boris")
 
     result = import_rows(
-        client, organizer,
+        client,
+        organizer,
         [
             # covering amount: automatic match
             f"1;01.08.2026;1 000,00;CZK;;;;platba {vs_a} dekuji;;",
@@ -473,9 +487,10 @@ def test_bare_vs_matches_only_when_amount_covers_outstanding(client, auth_header
     assert result["matched"] == 1
     assert result["unmatched"] == 1
 
-    assert client.get(
-        "/api/tournaments/cup/my-registration", headers=fencer_a
-    ).json()["state"] == "paid"
+    assert (
+        client.get("/api/tournaments/cup/my-registration", headers=fencer_a).json()["state"]
+        == "paid"
+    )
     state_b = client.get("/api/tournaments/cup/my-registration", headers=fencer_b).json()
     assert state_b["state"] == "reserved"
     assert state_b["outstanding_amount"] == "1000.00"  # not credited at all
@@ -491,9 +506,7 @@ def test_payer_name_digits_not_treated_as_vs(client, auth_headers, mailbox):
     fencer, vs = enroll(client, auth_headers)
 
     # the payer's account number happens to equal the issued VS digits
-    result = import_rows(
-        client, organizer, [f"1;01.08.2026;1 000,00;CZK;;;;;Jan Novak;{vs}"]
-    )
+    result = import_rows(client, organizer, [f"1;01.08.2026;1 000,00;CZK;;;;;Jan Novak;{vs}"])
     assert result["unmatched"] == 1
     state = client.get("/api/tournaments/cup/my-registration", headers=fencer).json()
     assert state["state"] == "reserved"
@@ -517,15 +530,17 @@ def test_multi_vs_transfer_matching_sum_pays_all_and_reverts_together(
     fencer_c, vs_c = enroll(client, auth_headers, "c@example.com", "Cyril")
 
     result = import_rows(
-        client, organizer,
+        client,
+        organizer,
         [f"1;01.08.2026;3 000,00;CZK;;;;platba za {vs_a} {vs_b} a {vs_c};klub;"],
     )
     assert result["matched"] == 1
 
     for fencer in (fencer_a, fencer_b, fencer_c):
-        assert client.get(
-            "/api/tournaments/cup/my-registration", headers=fencer
-        ).json()["state"] == "paid"
+        assert (
+            client.get("/api/tournaments/cup/my-registration", headers=fencer).json()["state"]
+            == "paid"
+        )
 
     rules = client.get(
         "/api/tournaments/cup/rules", params={"phase": "payments"}, headers=organizer
@@ -537,9 +552,10 @@ def test_multi_vs_transfer_matching_sum_pays_all_and_reverts_together(
     delete = client.delete(f"/api/tournaments/cup/rules/{rule['id']}", headers=organizer)
     assert delete.status_code == 204
     for fencer in (fencer_a, fencer_b, fencer_c):
-        assert client.get(
-            "/api/tournaments/cup/my-registration", headers=fencer
-        ).json()["state"] == "reserved"
+        assert (
+            client.get("/api/tournaments/cup/my-registration", headers=fencer).json()["state"]
+            == "reserved"
+        )
 
 
 def test_multi_vs_transfer_mismatched_sum_stays_unmatched_with_candidates(
@@ -552,7 +568,8 @@ def test_multi_vs_transfer_mismatched_sum_stays_unmatched_with_candidates(
     fencer_c, vs_c = enroll(client, auth_headers, "c@example.com", "Cyril")
 
     result = import_rows(
-        client, organizer,
+        client,
+        organizer,
         # 2000, well short of the 3000 the three of them owe together
         [f"1;01.08.2026;2 000,00;CZK;;;;platba za {vs_a} {vs_b} a {vs_c};klub;"],
     )
@@ -560,9 +577,10 @@ def test_multi_vs_transfer_mismatched_sum_stays_unmatched_with_candidates(
     assert result["matched"] == 0
 
     for fencer in (fencer_a, fencer_b, fencer_c):
-        assert client.get(
-            "/api/tournaments/cup/my-registration", headers=fencer
-        ).json()["state"] == "reserved"
+        assert (
+            client.get("/api/tournaments/cup/my-registration", headers=fencer).json()["state"]
+            == "reserved"
+        )
 
     queue = client.get("/api/tournaments/cup/payments/unmatched", headers=organizer).json()
     assert queue[0]["status_reason"] == "multi_vs_amount_mismatch"
@@ -592,9 +610,7 @@ def test_organizer_resolved_transaction_untouched_by_later_pass(client, auth_hea
     import_rows(client, organizer, [f"2;02.08.2026;1,00;CZK;{vs};;;;;"])
     after = [
         t
-        for t in client.get(
-            "/api/tournaments/cup/payments/transactions", headers=organizer
-        ).json()
+        for t in client.get("/api/tournaments/cup/payments/transactions", headers=organizer).json()
         if t["id"] == transaction_id
     ][0]
     assert after == before
@@ -622,7 +638,9 @@ def test_reevaluated_flagged_transaction_not_credited_twice(client, auth_headers
         headers=organizer,
     )
     client.patch(
-        "/api/tournaments/cup", json={"eur_payments_enabled": True}, headers=organizer,
+        "/api/tournaments/cup",
+        json={"eur_payments_enabled": True},
+        headers=organizer,
     )
     # total_eur is fixed at registration time (never recomputed on read); an
     # amendment after enabling EUR pricing would set it exactly like this
@@ -680,7 +698,8 @@ def test_one_import_of_many_days_dates_each_registration_to_its_own(client, auth
     _, second_vs = enroll(client, auth_headers, email="eva@example.com", name="Eva")
 
     import_rows(
-        client, organizer,
+        client,
+        organizer,
         [
             f"1;03.08.2026;1 000,00;CZK;{first_vs};;;;;",
             f"2;17.08.2026;1 000,00;CZK;{second_vs};;;;;",
@@ -691,9 +710,7 @@ def test_one_import_of_many_days_dates_each_registration_to_its_own(client, auth
     assert paid_at_of(second_vs) == local_midnight(date(2026, 8, 17))
 
 
-def test_two_half_payments_take_the_day_of_the_one_that_completed_it(
-    client, auth_headers, mailbox
-):
+def test_two_half_payments_take_the_day_of_the_one_that_completed_it(client, auth_headers, mailbox):
     """The registration was covered when the second arrived, so that is the
     day it carries (design paid-at-is-value-date D3)."""
     organizer = auth_headers()
@@ -733,7 +750,8 @@ def test_a_linked_credit_dates_by_the_transaction_and_clears_when_withdrawn(
     _, vs_c = enroll(client, auth_headers, "c@example.com", "Cyril")
 
     import_rows(
-        client, organizer,
+        client,
+        organizer,
         [f"1;09.08.2026;3 000,00;CZK;;;;platba za {vs_a} {vs_b} a {vs_c};klub;"],
     )
     for vs in (vs_a, vs_b, vs_c):
@@ -743,9 +761,10 @@ def test_a_linked_credit_dates_by_the_transaction_and_clears_when_withdrawn(
         "/api/tournaments/cup/rules", params={"phase": "payments"}, headers=organizer
     ).json()
     (rule,) = [r for r in rules if r["kind"] == "payment_link"]
-    assert client.delete(
-        f"/api/tournaments/cup/rules/{rule['id']}", headers=organizer
-    ).status_code == 204
+    assert (
+        client.delete(f"/api/tournaments/cup/rules/{rule['id']}", headers=organizer).status_code
+        == 204
+    )
 
     for vs in (vs_a, vs_b, vs_c):
         registration = registration_by_vs(vs)

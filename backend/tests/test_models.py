@@ -33,7 +33,6 @@ def make_tournament(**kwargs) -> Tournament:
     return Tournament(**{**defaults, **kwargs})
 
 
-
 def test_hr_id_not_unique_across_accounts(session):
     """Claims are non-exclusive (design D3): multiple accounts may share an hr_id."""
     session.add(Fencer(email="a@example.com", display_name="A", hr_id=7))
@@ -65,22 +64,40 @@ def test_discipline_slug_unique_per_tournament_only(session):
     second = make_tournament(slug="jindra-cup-2026", display_name="Jindra Cup", vs_series=2)
     session.add(
         Discipline(
-            tournament=first, slug="LS", name="Longsword",
-            weapon="LS", gender="", material="", capacity=32, fee=800,
+            tournament=first,
+            slug="LS",
+            name="Longsword",
+            weapon="LS",
+            gender="",
+            material="",
+            capacity=32,
+            fee=800,
         )
     )
     session.add(
         Discipline(
-            tournament=second, slug="LS", name="Longsword",
-            weapon="LS", gender="", material="", capacity=16, fee=500,
+            tournament=second,
+            slug="LS",
+            name="Longsword",
+            weapon="LS",
+            gender="",
+            material="",
+            capacity=16,
+            fee=500,
         )
     )
     session.commit()
 
     session.add(
         Discipline(
-            tournament=first, slug="LS", name="Duplicate",
-            weapon="LS", gender="", material="", capacity=8, fee=100,
+            tournament=first,
+            slug="LS",
+            name="Duplicate",
+            weapon="LS",
+            gender="",
+            material="",
+            capacity=8,
+            fee=100,
         )
     )
     with pytest.raises(IntegrityError):

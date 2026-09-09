@@ -42,13 +42,9 @@ def upgrade() -> None:
     # batch mode because the deployment runs on SQLite, which cannot alter a
     # column's nullability in place and rebuilds the table instead
     with op.batch_alter_table("fencers", schema=None) as batch_op:
-        batch_op.alter_column(
-            "email", existing_type=sa.String(length=320), nullable=True
-        )
+        batch_op.alter_column("email", existing_type=sa.String(length=320), nullable=True)
 
 
 def downgrade() -> None:
     with op.batch_alter_table("fencers", schema=None) as batch_op:
-        batch_op.alter_column(
-            "email", existing_type=sa.String(length=320), nullable=False
-        )
+        batch_op.alter_column("email", existing_type=sa.String(length=320), nullable=False)

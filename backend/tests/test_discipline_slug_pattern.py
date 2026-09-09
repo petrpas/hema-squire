@@ -37,9 +37,7 @@ def test_override_with_punctuation_is_normalized_not_rejected():
     ahead of the pattern (task 8a.1), so an override is folded rather than
     refused. Also exercised end to end in
     test_tournaments.py::test_slug_override_is_normalized (task 8a.2)."""
-    discipline = DisciplineIn(
-        weapon="SB", capacity=10, slug="Sword & Buckler (variant)"
-    )
+    discipline = DisciplineIn(weapon="SB", capacity=10, slug="Sword & Buckler (variant)")
     assert discipline.slug == "Sword-Buckler-variant"
 
 
@@ -61,7 +59,6 @@ def test_slug_pattern_still_rejects_a_bare_pattern_violation():
     # by this field alone (normalization is unconditional, not opt-in)
     discipline = DisciplineIn(weapon="SB", capacity=10, slug="a_b")
     assert discipline.slug == "a-b"
-
 
 
 # --- 8a.4-8a.6: the migration ------------------------------------------------

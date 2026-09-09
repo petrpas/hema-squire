@@ -65,15 +65,18 @@ def setup(client, organizer):
             headers=organizer,
         )
         assert response.status_code == 201, response.text
-    assert client.patch(
-        "/api/tournaments/cup",
-        json={
-            "location": "Brno",
-            "organizers": [{"name": "Cup Org", "link": None}],
-            "bank_account": IBAN,
-        },
-        headers=organizer,
-    ).status_code == 200
+    assert (
+        client.patch(
+            "/api/tournaments/cup",
+            json={
+                "location": "Brno",
+                "organizers": [{"name": "Cup Org", "link": None}],
+                "bank_account": IBAN,
+            },
+            headers=organizer,
+        ).status_code
+        == 200
+    )
     set_fio_token(client, organizer, "cup")
     publish(client, organizer, "cup")
     app.dependency_overrides[get_import_parser] = lambda: RosterParser()
@@ -128,9 +131,7 @@ def test_the_money_follows_the_borrowed_item(client, auth_headers, mailbox):
 def test_removing_a_rental_lowers_the_total(client, auth_headers, mailbox):
     organizer = auth_headers()
     setup(client, organizer)
-    listed = issued_row(
-        client, organizer, [row("Jan", "jan@example.com", borrow="Sabre|Buckler")]
-    )
+    listed = issued_row(client, organizer, [row("Jan", "jan@example.com", borrow="Sabre|Buckler")])
     assert registration_of(listed["id"]).total_amount == 900
 
     amend(client, organizer, listed["id"], [])
@@ -147,9 +148,7 @@ def test_a_rentals_correction_leaves_the_afterparty_alone(client, auth_headers, 
     a change nobody asked for, made by an edit about sabres."""
     organizer = auth_headers()
     setup(client, organizer)
-    listed = issued_row(
-        client, organizer, [row("Jan", "jan@example.com", afterparty="y")]
-    )
+    listed = issued_row(client, organizer, [row("Jan", "jan@example.com", afterparty="y")])
     assert registration_of(listed["id"]).total_amount == 1050
 
     amend(client, organizer, listed["id"], ["Sabre"])
@@ -159,9 +158,7 @@ def test_a_rentals_correction_leaves_the_afterparty_alone(client, auth_headers, 
     assert registration.total_amount == 1100
 
 
-def test_an_item_the_tournament_does_not_lend_is_kept_and_not_billed(
-    client, auth_headers, mailbox
-):
+def test_an_item_the_tournament_does_not_lend_is_kept_and_not_billed(client, auth_headers, mailbox):
     """The organizer is correcting a record of what a fencer asked for, and
     refusing the correction would leave the worse record standing (owner
     decision, 2026-09-06). The row says which item nothing prices."""
@@ -203,14 +200,15 @@ def test_withdrawing_one_field_leaves_the_other(client, auth_headers, mailbox):
     organizer = auth_headers()
     setup(client, organizer)
     listed = issued_row(client, organizer)
-    disciplines = amend(
-        client, organizer, listed["id"], ["SA", "SB"], field="disciplines"
-    ).json()
+    disciplines = amend(client, organizer, listed["id"], ["SA", "SB"], field="disciplines").json()
     amend(client, organizer, listed["id"], ["Sabre"])
 
-    assert client.delete(
-        f"/api/tournaments/cup/rules/{disciplines['id']}", headers=organizer
-    ).status_code == 204
+    assert (
+        client.delete(
+            f"/api/tournaments/cup/rules/{disciplines['id']}", headers=organizer
+        ).status_code
+        == 204
+    )
 
     registration = registration_of(listed["id"])
     assert sorted(e.discipline.slug for e in registration.entries) == ["SA"]
@@ -221,15 +219,14 @@ def test_withdrawing_one_field_leaves_the_other(client, auth_headers, mailbox):
 def test_undoing_a_rentals_correction_restores_the_price(client, auth_headers, mailbox):
     organizer = auth_headers()
     setup(client, organizer)
-    listed = issued_row(
-        client, organizer, [row("Jan", "jan@example.com", borrow="Sabre")]
-    )
+    listed = issued_row(client, organizer, [row("Jan", "jan@example.com", borrow="Sabre")])
     created = amend(client, organizer, listed["id"], ["Sabre", "Buckler"]).json()
     assert registration_of(listed["id"]).total_amount == 900
 
-    assert client.delete(
-        f"/api/tournaments/cup/rules/{created['id']}", headers=organizer
-    ).status_code == 204
+    assert (
+        client.delete(f"/api/tournaments/cup/rules/{created['id']}", headers=organizer).status_code
+        == 204
+    )
 
     registration = registration_of(listed["id"])
     assert rentals_of(registration) == ["Sabre"]
@@ -257,9 +254,7 @@ def test_a_dearer_correction_mails_once_and_a_cheaper_one_mails_nobody(
 # --- the shape of the rule -------------------------------------------------
 
 
-def test_a_rentals_field_edit_is_refused_where_a_registration_stands(
-    client, auth_headers, mailbox
-):
+def test_a_rentals_field_edit_is_refused_where_a_registration_stands(client, auth_headers, mailbox):
     organizer = auth_headers()
     setup(client, organizer)
     listed = issued_row(client, organizer)
@@ -271,17 +266,13 @@ def test_a_rentals_field_edit_is_refused_where_a_registration_stands(
     assert registration_of(listed["id"]).total_amount == 800
 
 
-def test_a_field_edit_still_corrects_a_row_that_has_no_registration(
-    client, auth_headers, mailbox
-):
+def test_a_field_edit_still_corrects_a_row_that_has_no_registration(client, auth_headers, mailbox):
     organizer = auth_headers()
     setup(client, organizer)
     import_roster(client, organizer, [row("Jan", "jan@example.com")])
     listed = sheet_rows(client, organizer)[0]
 
-    assert amend(
-        client, organizer, listed["id"], ["Sabre"], kind="field_edit"
-    ).status_code == 201
+    assert amend(client, organizer, listed["id"], ["Sabre"], kind="field_edit").status_code == 201
     assert sheet_rows(client, organizer)[0]["weapon_rentals"] == ["Sabre"]
 
 
@@ -341,9 +332,7 @@ def test_the_registration_is_priced_at_its_own_moment(client, auth_headers, mail
     organizer = auth_headers()
     setup(client, organizer)
     listed = issued_row(client, organizer)
-    client.patch(
-        "/api/tournaments/cup/disciplines/SA", json={"fee": 2000}, headers=organizer
-    )
+    client.patch("/api/tournaments/cup/disciplines/SA", json={"fee": 2000}, headers=organizer)
 
     amend(client, organizer, listed["id"], ["Sabre"])
 

@@ -24,8 +24,14 @@ def make_tournament(**kwargs) -> Tournament:
     if "disciplines" not in kwargs:
         tournament.disciplines = [
             Discipline(
-                tournament=tournament, slug="LS", name="LS",
-                weapon="LS", gender="", material="", capacity=32, fee=800,
+                tournament=tournament,
+                slug="LS",
+                name="LS",
+                weapon="LS",
+                gender="",
+                material="",
+                capacity=32,
+                fee=800,
             )
         ]
     return tournament
@@ -74,9 +80,7 @@ def test_eur_enabled_extra_item_missing_eur_price_blocks():
     tournament = make_tournament(eur_payments_enabled=True)
     tournament.disciplines[0].fee_eur = 32
     tournament.extra_items = [
-        ExtraItem(
-            tournament=tournament, name="t-shirt", category=ExtraCategory.MERCH, price=300
-        )
+        ExtraItem(tournament=tournament, name="t-shirt", category=ExtraCategory.MERCH, price=300)
     ]
     assert setup_missing(tournament) == ["extra_item_prices"]
 
@@ -139,7 +143,6 @@ def test_legacy_fixed_fees_do_not_block_single_currency():
     assert setup_missing(tournament) == []
 
 
-
 def test_priced_tournament_without_bank_account_blocks():
     tournament = make_tournament(bank_account=None)
     assert setup_missing(tournament) == ["bank_account"]
@@ -176,9 +179,7 @@ def test_extra_item_price_requires_bank_account():
     tournament = make_tournament(bank_account=None)
     tournament.disciplines[0].fee = 0
     tournament.extra_items = [
-        ExtraItem(
-            tournament=tournament, name="t-shirt", category=ExtraCategory.MERCH, price=300
-        )
+        ExtraItem(tournament=tournament, name="t-shirt", category=ExtraCategory.MERCH, price=300)
     ]
     assert setup_missing(tournament) == ["bank_account"]
 

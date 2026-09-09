@@ -57,12 +57,12 @@ def signup(
 
 @router.post("/login", response_model=TokenOut)
 @limiter.limit("5/minute")
-def login(
-    request: Request, data: LoginIn, session: Annotated[Session, Depends(get_session)]
-):
+def login(request: Request, data: LoginIn, session: Annotated[Session, Depends(get_session)]):
     fencer = session.scalar(select(Fencer).where(Fencer.email == data.email))
-    if fencer is None or not fencer.password_hash or not verify_password(
-        data.password, fencer.password_hash
+    if (
+        fencer is None
+        or not fencer.password_hash
+        or not verify_password(data.password, fencer.password_hash)
     ):
         raise HTTPException(status_code=401, detail="invalid_credentials")
     return TokenOut(token=create_token(fencer))

@@ -33,17 +33,13 @@ def _resolve_manual_entry(tournament: Tournament, data: ManualEntryIn) -> None:
         slug for slug in data.disciplines if by_slug[slug].kind != DisciplineKind.INDIVIDUAL
     ]
     if wrong_kind:
-        raise HTTPException(
-            status_code=422, detail={"team_discipline_not_individual": wrong_kind}
-        )
+        raise HTTPException(status_code=422, detail={"team_discipline_not_individual": wrong_kind})
     if not data.disciplines:
         # a row that enters nobody into anything states nothing; the organizer
         # typed it to record a competitor
         raise HTTPException(status_code=422, detail="no_disciplines")
 
-    lent = {
-        item.name for item in tournament.extra_items if item.category == ExtraCategory.RENTAL
-    }
+    lent = {item.name for item in tournament.extra_items if item.category == ExtraCategory.RENTAL}
     unknown_rentals = [name for name in data.weapon_rentals if name not in lent]
     if unknown_rentals:
         raise HTTPException(status_code=422, detail={"unknown_rentals": unknown_rentals})

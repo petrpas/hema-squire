@@ -99,6 +99,7 @@ class FieldValueError(ValueError):
         self.params = params or {}
         super().__init__(code)
 
+
 # pydantic error `type` -> one of the closed validation codes (design D3).
 # "value_error" is deliberately absent: our own validators raise
 # ValueError(code) directly, so the code is read from the error's message.

@@ -1,6 +1,7 @@
 """Tests for the unified `{errors: [{field, code, params}]}` response shape
 (design `add-field-validation` D3) — task 3.4."""
 
+
 def make_tournament(client, headers, slug="cup"):
     response = client.post(
         "/api/tournaments",
@@ -57,9 +58,7 @@ def test_converted_router_code_arrives_in_same_envelope(client, auth_headers):
 def test_unconverted_bare_string_detail_round_trips(client, auth_headers):
     headers = auth_headers()
     make_tournament(client, headers)
-    response = client.delete(
-        "/api/tournaments/cup/disciplines/does-not-exist", headers=headers
-    )
+    response = client.delete("/api/tournaments/cup/disciplines/does-not-exist", headers=headers)
     assert response.status_code == 404
     assert response.json()["detail"] == "discipline_not_found"
 

@@ -43,6 +43,7 @@ def _legacy_code(d: dict) -> str:
     gender = d.get("gender", "") if d.get("gender", "") in ("W", "M") else ""
     return f"{material} {d['weapon']}{gender}".strip()
 
+
 ARCHIVE = Path.home() / "hema/hema-agent/data/Na Duel! 2026"
 
 pytestmark = pytest.mark.skipif(
@@ -104,9 +105,7 @@ class ArchiveMatcher:
     """Replays v1's stored match output, keyed by the parsed identity."""
 
     def __init__(self, parsed: list[dict], matched: list[dict]):
-        self.by_identity = {
-            (p["name"], p["club"]): m for p, m in zip(parsed, matched, strict=True)
-        }
+        self.by_identity = {(p["name"], p["club"]): m for p, m in zip(parsed, matched, strict=True)}
         self.calls = 0
 
     def match(self, fencers, candidates):
@@ -135,9 +134,7 @@ class ArchiveDedup:
         self.classify_calls = 0
 
     def propose_merge(self, records, language):
-        return MergeProposal(
-            fields=default_merge(records), note="duplicate registration merged"
-        )
+        return MergeProposal(fields=default_merge(records), note="duplicate registration merged")
 
     def classify(self, records):
         self.classify_calls += 1
@@ -152,22 +149,36 @@ class ArchiveDedup:
 def fencer_view(hr_id, email, disciplines, afterparty, rentals, notes):
     # sortable: the roster comparison sorts these tuples, and both an absent
     # email and an unmatched hr_id are ordinary here
-    return (email or "", hr_id or 0, tuple(sorted(disciplines)), afterparty,
-            tuple(sorted(rentals)), notes or None)
+    return (
+        email or "",
+        hr_id or 0,
+        tuple(sorted(disciplines)),
+        afterparty,
+        tuple(sorted(rentals)),
+        notes or None,
+    )
 
 
 def archive_view(record):
     codes = [_legacy_code(d) for d in record["disciplines"]]
     return fencer_view(
-        record["hr_id"], record["email"], codes,
-        record["after_party"] == "Yes", record["borrow"], record["notes"],
+        record["hr_id"],
+        record["email"],
+        codes,
+        record["after_party"] == "Yes",
+        record["borrow"],
+        record["notes"],
     )
 
 
 def sheet_view(row):
     return fencer_view(
-        row["hr_id"], row["email"], row["disciplines"], row["afterparty"],
-        row["weapon_rentals"], row["notes"],
+        row["hr_id"],
+        row["email"],
+        row["disciplines"],
+        row["afterparty"],
+        row["weapon_rentals"],
+        row["notes"],
     )
 
 
@@ -175,8 +186,7 @@ def test_pilot_replay_reproduces_v1_final_state(client, auth_headers, archive):
     organizer = auth_headers()
     client.post(
         "/api/tournaments",
-        json={"slug": "na-duel-2026", "display_name": "Na Duel! 2026",
-              "date": "2026-10-17"},
+        json={"slug": "na-duel-2026", "display_name": "Na Duel! 2026", "date": "2026-10-17"},
         headers=organizer,
     )
     for code in ("SA", "SB"):
@@ -219,9 +229,7 @@ def test_pilot_replay_reproduces_v1_final_state(client, auth_headers, archive):
     assert result == {"matched": 51, "unmatched": 3, "reused": 0}
 
     def rows():
-        sheet = client.get(
-            "/api/tournaments/na-duel-2026/sheet", headers=organizer
-        ).json()
+        sheet = client.get("/api/tournaments/na-duel-2026/sheet", headers=organizer).json()
         return [r for r in sheet["rows"] if not r["_deleted"]]
 
     by_name = {r["name"]: r for r in rows()}
@@ -249,7 +257,8 @@ def test_pilot_replay_reproduces_v1_final_state(client, auth_headers, archive):
     assert {r["name"] for r in florian_item["members"]} == {"Florian Imhof"}
     belina_item = next(g for g in groups if g["kind"] == "likely")
     assert {r["name"] for r in belina_item["members"]} == {
-        "Jan Sax Bělina", "Daniel Bělina",
+        "Jan Sax Bělina",
+        "Daniel Bělina",
     }
 
     # 4. the organizer confirms the Florian merge (as they did in v1)
@@ -310,6 +319,4 @@ def test_pilot_replay_reproduces_v1_final_state(client, auth_headers, archive):
 
     # 7. determinism: the replayed sheet is stable across fetches
     first = client.get("/api/tournaments/na-duel-2026/sheet", headers=organizer).json()
-    assert client.get(
-        "/api/tournaments/na-duel-2026/sheet", headers=organizer
-    ).json() == first
+    assert client.get("/api/tournaments/na-duel-2026/sheet", headers=organizer).json() == first

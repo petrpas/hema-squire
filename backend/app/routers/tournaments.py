@@ -95,9 +95,7 @@ def get_tournament(session: SessionDep, slug: str) -> Tournament:
     tournament = session.scalar(
         select(Tournament)
         .where(Tournament.slug == slug)
-        .options(
-            selectinload(Tournament.disciplines), selectinload(Tournament.extra_items)
-        )
+        .options(selectinload(Tournament.disciplines), selectinload(Tournament.extra_items))
     )
     if tournament is None:
         raise HTTPException(status_code=404, detail="tournament_not_found")
@@ -112,9 +110,7 @@ def _lowest_free_series(session: Session, year: int) -> int:
     """The lowest 1..99 not already taken by another tournament in `year`
     (design Decision 2); a year needing a hundredth is refused outright."""
     taken = set(
-        session.scalars(
-            select(Tournament.vs_series).where(Tournament.vs_year == year)
-        ).all()
+        session.scalars(select(Tournament.vs_series).where(Tournament.vs_year == year)).all()
     )
     for series in range(1, 100):
         if series not in taken:
@@ -130,21 +126,22 @@ def _in_app_registrations(session: Session, tournament: Tournament) -> int:
     are not what Squire would stop managing. This is the number the console
     states when the organizer moves the tournament out of Squire's keeping: the
     people whose registration Squire is handling today."""
-    return session.scalar(
-        select(func.count(Registration.id)).where(
-            Registration.tournament_id == tournament.id,
-            Registration.source_row_id.is_(None),
-            Registration.state != RegistrationState.CANCELLED,
+    return (
+        session.scalar(
+            select(func.count(Registration.id)).where(
+                Registration.tournament_id == tournament.id,
+                Registration.source_row_id.is_(None),
+                Registration.state != RegistrationState.CANCELLED,
+            )
         )
-    ) or 0
+        or 0
+    )
 
 
 def _has_registrations(session: Session, tournament: Tournament) -> bool:
     return (
         session.scalar(
-            select(Registration.id)
-            .where(Registration.tournament_id == tournament.id)
-            .limit(1)
+            select(Registration.id).where(Registration.tournament_id == tournament.id).limit(1)
         )
         is not None
     )
@@ -200,9 +197,7 @@ def list_tournaments(session: SessionDep):
     tournaments = session.scalars(
         select(Tournament)
         .where(Tournament.cancelled_at.is_(None))
-        .options(
-            selectinload(Tournament.disciplines), selectinload(Tournament.extra_items)
-        )
+        .options(selectinload(Tournament.disciplines), selectinload(Tournament.extra_items))
         .order_by(Tournament.date)
     ).all()
     outs = [TournamentOut.model_validate(tournament) for tournament in tournaments]
@@ -373,9 +368,7 @@ def my_tournaments(session: SessionDep, fencer: FencerDep):
         organized = tournament.owner_id == fencer.id or tournament.id in organizer_ids
         if not organized and tournament.id not in registered_ids:
             continue
-        result.append(
-            _fencer_tournament_out(session, tournament, fencer, organized=organized)
-        )
+        result.append(_fencer_tournament_out(session, tournament, fencer, organized=organized))
     return result
 
 
@@ -968,9 +961,7 @@ def _discipline_referenced(session: Session, discipline: Discipline) -> bool:
             .limit(1)
         )
         is not None
-        or session.scalar(
-            select(Team.id).where(Team.discipline_id == discipline.id).limit(1)
-        )
+        or session.scalar(select(Team.id).where(Team.discipline_id == discipline.id).limit(1))
         is not None
     )
 
@@ -990,9 +981,7 @@ def _disciplines_frozen(session: Session, tournament: Tournament) -> dict[int, b
             )
         )
     ) | set(
-        session.scalars(
-            select(Team.discipline_id).where(Team.discipline_id.in_(discipline_ids))
-        )
+        session.scalars(select(Team.discipline_id).where(Team.discipline_id.in_(discipline_ids)))
     )
     return {discipline_id: discipline_id in referenced for discipline_id in discipline_ids}
 
@@ -1036,18 +1025,20 @@ def update_discipline(
         raise HTTPException(status_code=409, detail="discipline_kind_frozen")
     if slug_changed and normalized_slug is not None:
         if any(d.slug == normalized_slug for d in tournament.disciplines if d.id != discipline.id):
-            raise HTTPException(
-                status_code=409, detail=f"discipline_slug_taken: {normalized_slug}"
-            )
+            raise HTTPException(status_code=409, detail=f"discipline_slug_taken: {normalized_slug}")
         discipline.slug = normalized_slug
     if not taxonomy.is_taxonomy_weapon(data.weapon) and not data.name:
         raise HTTPException(status_code=422, detail="discipline_name_required")
     discipline.weapon = data.weapon
     discipline.gender = data.gender
     discipline.material = data.material
-    discipline.name = data.name or taxonomy.discipline_name(
-        data.weapon, data.gender, data.material, data.kind == DisciplineKind.TEAM
-    ) or discipline.name
+    discipline.name = (
+        data.name
+        or taxonomy.discipline_name(
+            data.weapon, data.gender, data.material, data.kind == DisciplineKind.TEAM
+        )
+        or discipline.name
+    )
     if data.ordinal is not None:
         discipline.ordinal = data.ordinal
     discipline.kind = data.kind
@@ -1179,9 +1170,7 @@ def console_queue(tournament: TournamentDep, session: SessionDep, fencer: Fencer
             .join(Registration)
             .where(
                 RegistrationDiscipline.discipline_id == discipline.id,
-                Registration.state.in_(
-                    [RegistrationState.RESERVED, RegistrationState.PAID]
-                ),
+                Registration.state.in_([RegistrationState.RESERVED, RegistrationState.PAID]),
             )
             .options(selectinload(RegistrationDiscipline.registration))
             .order_by(Registration.registered_at)

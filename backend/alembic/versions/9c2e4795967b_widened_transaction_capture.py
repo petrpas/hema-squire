@@ -12,33 +12,34 @@ every historical row keeps NULL throughout, which the widened VS scan and the
 re-evaluation pass both treat as absent, so no historical transaction changes
 status as a result of this migration.
 """
+
 from collections.abc import Sequence
 
 import sqlalchemy as sa
 from alembic import op
 
 # revision identifiers, used by Alembic.
-revision: str = '9c2e4795967b'
-down_revision: str | Sequence[str] | None = '15abc1d789f4'
+revision: str = "9c2e4795967b"
+down_revision: str | Sequence[str] | None = "15abc1d789f4"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
-    with op.batch_alter_table('bank_transactions', schema=None) as batch_op:
-        batch_op.add_column(sa.Column('user_identification', sa.Text(), nullable=True))
-        batch_op.add_column(sa.Column('comment', sa.Text(), nullable=True))
-        batch_op.add_column(sa.Column('specification', sa.Text(), nullable=True))
-        batch_op.add_column(sa.Column('specific_symbol', sa.String(50), nullable=True))
+    with op.batch_alter_table("bank_transactions", schema=None) as batch_op:
+        batch_op.add_column(sa.Column("user_identification", sa.Text(), nullable=True))
+        batch_op.add_column(sa.Column("comment", sa.Text(), nullable=True))
+        batch_op.add_column(sa.Column("specification", sa.Text(), nullable=True))
+        batch_op.add_column(sa.Column("specific_symbol", sa.String(50), nullable=True))
         batch_op.add_column(
-            sa.Column('last_evaluated_at', sa.DateTime(timezone=True), nullable=True)
+            sa.Column("last_evaluated_at", sa.DateTime(timezone=True), nullable=True)
         )
 
 
 def downgrade() -> None:
-    with op.batch_alter_table('bank_transactions', schema=None) as batch_op:
-        batch_op.drop_column('last_evaluated_at')
-        batch_op.drop_column('specific_symbol')
-        batch_op.drop_column('specification')
-        batch_op.drop_column('comment')
-        batch_op.drop_column('user_identification')
+    with op.batch_alter_table("bank_transactions", schema=None) as batch_op:
+        batch_op.drop_column("last_evaluated_at")
+        batch_op.drop_column("specific_symbol")
+        batch_op.drop_column("specification")
+        batch_op.drop_column("comment")
+        batch_op.drop_column("user_identification")

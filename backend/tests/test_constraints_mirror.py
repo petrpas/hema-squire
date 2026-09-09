@@ -26,9 +26,7 @@ import pytest
 
 from app.main import app
 
-MIRROR_PATH = (
-    Path(__file__).resolve().parent.parent.parent / "frontend" / "src" / "constraints.ts"
-)
+MIRROR_PATH = Path(__file__).resolve().parent.parent.parent / "frontend" / "src" / "constraints.ts"
 
 # openapi component name, when it differs from the mirror's model name (the
 # input/output split some models get from a field_serializer)

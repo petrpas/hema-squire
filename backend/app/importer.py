@@ -83,9 +83,7 @@ def _table_rows(header: Iterable, rows: Iterable[Iterable]) -> list[dict[str, st
         cells = ["" if cell is None else str(cell) for cell in row]
         if not any(cell.strip() for cell in cells):
             continue
-        out.append({
-            key: cells[i] if i < len(cells) else "" for i, key in named
-        })
+        out.append({key: cells[i] if i < len(cells) else "" for i, key in named})
     return out
 
 
@@ -295,9 +293,7 @@ def store_decision(
 ) -> ImportDecision:
     decision = get_decision(session, tournament, kind, key)
     if decision is None:
-        decision = ImportDecision(
-            tournament_id=tournament.id, kind=kind, key=key, source=source
-        )
+        decision = ImportDecision(tournament_id=tournament.id, kind=kind, key=key, source=source)
         session.add(decision)
     decision.payload = payload
     decision.source = source
@@ -307,9 +303,7 @@ def store_decision(
 def held_keys(session: Session, tournament: Tournament) -> set[str]:
     """Every row key the tournament has already imported, from any upload."""
     return set(
-        session.scalars(
-            select(ImportedRow.key).where(ImportedRow.tournament_id == tournament.id)
-        )
+        session.scalars(select(ImportedRow.key).where(ImportedRow.tournament_id == tournament.id))
     )
 
 
@@ -403,9 +397,7 @@ def undecided_rows(
     """The rows this run will actually parse. A row with a stored decision is
     reused, not work, and is not counted towards an operation's total (spec
     console-operations, Reused rows are not work)."""
-    return [
-        row for row in imported if get_decision(session, tournament, "parse", row.key) is None
-    ]
+    return [row for row in imported if get_decision(session, tournament, "parse", row.key) is None]
 
 
 def batches[Row](rows: list[Row], size: int = PARSE_BATCH_SIZE) -> list[list[Row]]:
@@ -490,11 +482,7 @@ def parse_undecided(
     """
     commit = progress or (lambda session, _units: session.commit())
     offered = [(d.slug, d.name) for d in tournament.disciplines]
-    lent = [
-        item.name
-        for item in tournament.extra_items
-        if item.category == ExtraCategory.RENTAL
-    ]
+    lent = [item.name for item in tournament.extra_items if item.category == ExtraCategory.RENTAL]
     parsed_count = 0
     for group in batches(undecided):
         records = parser.parse_batch([row.raw for row in group], offered, lent)

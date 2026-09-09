@@ -44,18 +44,38 @@ from app.routers.tournaments import _lowest_free_series
 SCHEMA_VERSION = 13
 
 _TOURNAMENT_FIELDS = [
-    "slug", "display_name", "date", "language",
-    "reservation_validity_days", "reminder_day", "amount_tolerance_percent",
-    "refundable_until", "bank_account", "unpaid_list_treatment",
-    "early_bird_until", "weapon_rental_fee", "weapon_rental_fee_early",
-    "afterparty_fee", "afterparty_fee_early",
-    "location", "description", "qualification_open", "qualification_criteria",
+    "slug",
+    "display_name",
+    "date",
+    "language",
+    "reservation_validity_days",
+    "reminder_day",
+    "amount_tolerance_percent",
+    "refundable_until",
+    "bank_account",
+    "unpaid_list_treatment",
+    "early_bird_until",
+    "weapon_rental_fee",
+    "weapon_rental_fee_early",
+    "afterparty_fee",
+    "afterparty_fee_early",
+    "location",
+    "description",
+    "qualification_open",
+    "qualification_criteria",
     "registration_instructions",
-    "local_currency", "eur_payments_enabled", "eur_rate",
-    "organizers", "discounts",
-    "registration_opens", "registration_opens_time", "registration_closes",
+    "local_currency",
+    "eur_payments_enabled",
+    "eur_rate",
+    "organizers",
+    "discounts",
+    "registration_opens",
+    "registration_opens_time",
+    "registration_closes",
     "timezone",
-    "vs_year", "vs_series", "vs_next_seq",
+    "vs_year",
+    "vs_series",
+    "vs_next_seq",
     "team_composition_deadline",
 ]
 
@@ -82,19 +102,34 @@ _V3_TOURNAMENT_DEFAULTS = {
 }
 
 _REGISTRATION_FIELDS = [
-    "registered_at", "state", "vs", "total_amount", "total_eur", "expires_at",
-    "reminded_at", "paid_at", "cancelled_at", "refundable", "refund_state",
+    "registered_at",
+    "state",
+    "vs",
+    "total_amount",
+    "total_eur",
+    "expires_at",
+    "reminded_at",
+    "paid_at",
+    "cancelled_at",
+    "refundable",
+    "refund_state",
     # what has actually been credited, in both lanes. Carried since v11: a
     # restore that reconstructs the totals but not the credit leaves every
     # registration reading as if nothing had been paid against it, while its
     # state still says paid.
-    "amount_paid_cents", "amount_paid_eur_cents",
+    "amount_paid_cents",
+    "amount_paid_eur_cents",
     # settled with nothing passing through Squire, and why. Carried since v13,
     # and load-bearing: the paid state may now stand on nothing but a person's
     # word, and a document restoring that state without its cause would leave
     # a registration that cannot be explained, corrected or reversed.
-    "settled_by_hand_at", "settled_by_hand_reason",
-    "weapon_rentals", "afterparty", "aftersparring", "accommodation", "notes",
+    "settled_by_hand_at",
+    "settled_by_hand_reason",
+    "weapon_rentals",
+    "afterparty",
+    "aftersparring",
+    "accommodation",
+    "notes",
 ]
 
 # A payment the organizer recorded by hand. Removed ones are not exported:
@@ -103,19 +138,42 @@ _REGISTRATION_FIELDS = [
 # registration, so a restore must not replay these as fresh credits on top of
 # them.
 _MANUAL_PAYMENT_FIELDS = [
-    "amount_cents", "currency", "received_on", "method", "note",
-    "recorded_by", "created_at",
+    "amount_cents",
+    "currency",
+    "received_on",
+    "method",
+    "note",
+    "recorded_by",
+    "created_at",
 ]
 
 _TRANSACTION_FIELDS = [
-    "external_id", "source", "date", "amount_cents", "currency", "vs", "message",
-    "payer_name", "payer_account", "status", "status_reason",
+    "external_id",
+    "source",
+    "date",
+    "amount_cents",
+    "currency",
+    "vs",
+    "message",
+    "payer_name",
+    "payer_account",
+    "status",
+    "status_reason",
 ]
 
 
 _MANUAL_ROW_FIELDS = [
-    "name", "nationality", "club", "hr_id", "email", "registered_at",
-    "disciplines", "weapon_rentals", "afterparty", "notes", "created_at",
+    "name",
+    "nationality",
+    "club",
+    "hr_id",
+    "email",
+    "registered_at",
+    "disciplines",
+    "weapon_rentals",
+    "afterparty",
+    "notes",
+    "created_at",
 ]
 
 
@@ -176,9 +234,7 @@ def export_tournament(session: Session, tournament: Tournament) -> dict:
         .order_by(ImportedRow.id)
     ).all()
     manual = session.scalars(
-        select(ManualRow)
-        .where(ManualRow.tournament_id == tournament.id)
-        .order_by(ManualRow.id)
+        select(ManualRow).where(ManualRow.tournament_id == tournament.id).order_by(ManualRow.id)
     ).all()
     decisions = session.scalars(
         select(ImportDecision)
@@ -215,9 +271,19 @@ def export_tournament(session: Session, tournament: Tournament) -> dict:
             _record(
                 d,
                 [
-                    "slug", "name", "weapon", "gender", "material", "kind",
-                    "team_min", "team_max",
-                    "capacity", "fee", "fee_early", "fee_eur", "fee_early_eur",
+                    "slug",
+                    "name",
+                    "weapon",
+                    "gender",
+                    "material",
+                    "kind",
+                    "team_min",
+                    "team_max",
+                    "capacity",
+                    "fee",
+                    "fee_early",
+                    "fee_eur",
+                    "fee_early_eur",
                 ],
             )
             for d in tournament.disciplines
@@ -226,8 +292,13 @@ def export_tournament(session: Session, tournament: Tournament) -> dict:
             _record(
                 i,
                 [
-                    "name", "category", "price", "price_eur", "max_qty",
-                    "option_label", "option_choices",
+                    "name",
+                    "category",
+                    "price",
+                    "price_eur",
+                    "max_qty",
+                    "option_label",
+                    "option_choices",
                 ],
             )
             for i in tournament.extra_items
@@ -248,8 +319,7 @@ def export_tournament(session: Session, tournament: Tournament) -> dict:
                 "fencer_email": r.fencer.email,
                 **_record(r, _REGISTRATION_FIELDS),
                 "entries": [
-                    {"slug": e.discipline.slug, "is_substitute": e.is_substitute}
-                    for e in r.entries
+                    {"slug": e.discipline.slug, "is_substitute": e.is_substitute} for e in r.entries
                 ],
                 "extras": [
                     {
@@ -319,14 +389,10 @@ def export_tournament(session: Session, tournament: Tournament) -> dict:
             }
             for m in manual
         ],
-        "decisions": [
-            _record(d, ["kind", "key", "payload", "source"]) for d in decisions
-        ],
+        "decisions": [_record(d, ["kind", "key", "payload", "source"]) for d in decisions],
         # the fixed numbers, so a restored tournament keeps the numbers its
         # fencers were given rather than renumbering everyone (v9)
-        "row_numbers": [
-            {"row_id": n.row_id, "number": n.number} for n in row_numbers
-        ],
+        "row_numbers": [{"row_id": n.row_id, "number": n.number} for n in row_numbers],
         "rules": [
             {
                 **_record(r, ["phase", "kind", "target", "payload", "created_at"]),
@@ -420,7 +486,11 @@ def restore_tournament(session: Session, data: dict, actor: Fencer) -> Tournamen
             code = fields.pop("code")
             weapon, gender, material = taxonomy.parse_code(code)
             fields = {
-                **fields, "slug": code, "weapon": weapon, "gender": gender, "material": material,
+                **fields,
+                "slug": code,
+                "weapon": weapon,
+                "gender": gender,
+                "material": material,
             }
         discipline = Discipline(tournament_id=tournament.id, **fields)
         session.add(discipline)
@@ -451,11 +521,7 @@ def restore_tournament(session: Session, data: dict, actor: Fencer) -> Tournamen
         # an address that exists still identifies an account, so a restore
         # rejoins one that is already here rather than making a second
         address = entry.get("email")
-        fencer = (
-            session.scalar(select(Fencer).where(Fencer.email == address))
-            if address
-            else None
-        )
+        fencer = session.scalar(select(Fencer).where(Fencer.email == address)) if address else None
         if fencer is None:
             fencer = Fencer(**entry)  # restored accounts carry no password
             session.add(fencer)
@@ -481,8 +547,14 @@ def restore_tournament(session: Session, data: dict, actor: Fencer) -> Tournamen
             **entry,
         }
         payload = {k: entry[k] for k in _REGISTRATION_FIELDS}
-        for field in ("registered_at", "expires_at", "reminded_at", "paid_at",
-                      "cancelled_at", "settled_by_hand_at"):
+        for field in (
+            "registered_at",
+            "expires_at",
+            "reminded_at",
+            "paid_at",
+            "cancelled_at",
+            "settled_by_hand_at",
+        ):
             payload[field] = _parse_dt(payload[field])
         registration = Registration(
             tournament_id=tournament.id,
@@ -497,9 +569,7 @@ def restore_tournament(session: Session, data: dict, actor: Fencer) -> Tournamen
             # "code" is the pre-v7 key; a v7+ document carries "slug"
             slug = item.get("slug", item.get("code"))
             if slug not in disciplines:
-                raise HTTPException(
-                    status_code=422, detail=f"unknown_discipline_slug: {slug}"
-                )
+                raise HTTPException(status_code=422, detail=f"unknown_discipline_slug: {slug}")
             session.add(
                 RegistrationDiscipline(
                     registration_id=registration.id,
@@ -526,9 +596,7 @@ def restore_tournament(session: Session, data: dict, actor: Fencer) -> Tournamen
             # "discipline_slug"
             slug = team_entry.get("discipline_slug", team_entry.get("discipline_code"))
             if slug not in disciplines:
-                raise HTTPException(
-                    status_code=422, detail=f"unknown_discipline_slug: {slug}"
-                )
+                raise HTTPException(status_code=422, detail=f"unknown_discipline_slug: {slug}")
             team = Team(
                 tournament_id=tournament.id,
                 registration_id=registration.id,
@@ -590,9 +658,7 @@ def restore_tournament(session: Session, data: dict, actor: Fencer) -> Tournamen
         session.add(batch)
         session.flush()
         for row in entry["rows"]:
-            session.add(
-                ImportedRow(batch_id=batch.id, tournament_id=tournament.id, **row)
-            )
+            session.add(ImportedRow(batch_id=batch.id, tournament_id=tournament.id, **row))
     man_map: dict[int, ManualRow] = {}
     for entry in data.get("manual_rows", []):
         fields = {field: entry[field] for field in _MANUAL_ROW_FIELDS if field in entry}
@@ -601,9 +667,7 @@ def restore_tournament(session: Session, data: dict, actor: Fencer) -> Tournamen
         author = fencers.get(entry.get("author_email")) or session.scalar(
             select(Fencer).where(Fencer.email == entry.get("author_email"))
         )
-        row = ManualRow(
-            tournament_id=tournament.id, created_by=(author or actor).id, **fields
-        )
+        row = ManualRow(tournament_id=tournament.id, created_by=(author or actor).id, **fields)
         session.add(row)
         session.flush()
         man_map[entry["ref"]] = row

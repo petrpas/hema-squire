@@ -38,15 +38,11 @@ def export_sheet(
     base = sheet.base_rows(session, tournament)
     rows, _ = rules.replay(base, rules.active_rules(session, tournament))
     _, ratings = hr_sync.latest_ratings(session, tournament)
-    return sheets_export.export_to_sheets(
-        tournament, list(rows.values()), client, ratings
-    )
+    return sheets_export.export_to_sheets(tournament, list(rows.values()), client, ratings)
 
 
 @router.post("/restore", status_code=201)
-def restore_tournament(
-    session: SessionDep, fencer: FencerDep, data: Annotated[dict, Body()]
-):
+def restore_tournament(session: SessionDep, fencer: FencerDep, data: Annotated[dict, Body()]):
     """Recreate a tournament from a canonical JSON export; the caller becomes
     its organizer."""
     tournament = export_json.restore_tournament(session, data, fencer)

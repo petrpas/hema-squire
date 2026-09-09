@@ -131,15 +131,19 @@ def detect_candidates(session: Session, transaction: BankTransaction) -> list[in
     return [vs for vs in tokens if vs in issued]
 
 
-def _event(session: Session, transaction: BankTransaction | None, kind: str, detail: str,
-           registration: Registration | None = None) -> None:
+def _event(
+    session: Session,
+    transaction: BankTransaction | None,
+    kind: str,
+    detail: str,
+    registration: Registration | None = None,
+) -> None:
     """An event with no transaction behind it is a credit an organizer
     recorded by hand; the detail names the `ManualPayment` where the VS would
     otherwise stand, and the tournament comes from the registration, since
     there is nothing else to ask (design add-manual-payment-entry D3)."""
     tournament_id = (
-        transaction.tournament_id if transaction is not None
-        else registration.tournament_id  # type: ignore[union-attr]
+        transaction.tournament_id if transaction is not None else registration.tournament_id  # type: ignore[union-attr]
     )
     session.add(
         PaymentEvent(
@@ -241,7 +245,9 @@ def _apply_deposit_threshold(
         return
     registration.expires_at = None
     _event(
-        session, transaction, "deposit_settled",
+        session,
+        transaction,
+        "deposit_settled",
         f"{origin}: deposit of {deposit} reached, payment window closed",
         registration,
     )
@@ -286,9 +292,10 @@ def _settle(
 
     if remaining > tolerance:
         _event(
-            session, transaction, "partial_payment",
-            f"{origin}: {amount_cents} cents {currency_code}, "
-            f"{remaining} cents still outstanding",
+            session,
+            transaction,
+            "partial_payment",
+            f"{origin}: {amount_cents} cents {currency_code}, {remaining} cents still outstanding",
             registration,
         )
         _apply_deposit_threshold(session, tournament, transaction, registration, which, origin)
@@ -304,14 +311,19 @@ def _settle(
     if overpaid:
         registration.refund_state = RefundState.PENDING
         _event(
-            session, transaction, "overpayment",
+            session,
+            transaction,
+            "overpayment",
             f"{origin}: {amount_cents} cents {currency_code}, {-remaining} cents over",
             registration,
         )
     else:
         _event(
-            session, transaction, "payment_matched",
-            f"{origin}: {amount_cents} cents {currency_code}", registration,
+            session,
+            transaction,
+            "payment_matched",
+            f"{origin}: {amount_cents} cents {currency_code}",
+            registration,
         )
     session.flush()
     if reinstated:
@@ -350,9 +362,7 @@ def _system_actor(session: Session, tournament: Tournament) -> Fencer:
     )
 
 
-def match_new_transactions(
-    session: Session, tournament: Tournament, mailer: Mailer
-) -> MatchResult:
+def match_new_transactions(session: Session, tournament: Tournament, mailer: Mailer) -> MatchResult:
     """Process transactions the matcher has not yet resolved: newly ingested
     ones (status NULL) and any still flagged, so a transaction flagged before
     the rest of its payment arrived is reconsidered once it does (design
@@ -453,7 +463,9 @@ def _evaluate_single_vs(
             registration.state = RegistrationState.RESERVED
             reinstated = True
             _event(
-                session, transaction, "reinstated_in_grace",
+                session,
+                transaction,
+                "reinstated_in_grace",
                 f"VS {vs}: reinstated within {tournament.expiry_grace_hours}h grace",
                 registration,
             )
@@ -464,20 +476,24 @@ def _evaluate_single_vs(
             reason = "expired_outside_grace" if not in_grace else "expired_seat_taken"
             _finish(transaction, "flagged", reason)
             _event(
-                session, transaction, "match_conflict",
-                f"VS {vs}: registration expired ({reason})", registration,
+                session,
+                transaction,
+                "match_conflict",
+                f"VS {vs}: registration expired ({reason})",
+                registration,
             )
             result.flagged += 1
             session.flush()
-            emails.send_payment_after_expiry(
-                mailer, tournament, registration.fencer, registration
-            )
+            emails.send_payment_after_expiry(mailer, tournament, registration.fencer, registration)
             return
     elif registration.state != RegistrationState.RESERVED:
         _finish(transaction, "flagged", f"registration_{registration.state.value}")
         _event(
-            session, transaction, "match_conflict",
-            f"VS {vs}: registration is {registration.state.value}", registration,
+            session,
+            transaction,
+            "match_conflict",
+            f"VS {vs}: registration is {registration.state.value}",
+            registration,
         )
         result.flagged += 1
         return
@@ -495,7 +511,9 @@ def _evaluate_single_vs(
         # way there is nothing to compare the transaction against
         _finish(transaction, "flagged", "currency_not_accepted")
         _event(
-            session, transaction, "currency_not_accepted",
+            session,
+            transaction,
+            "currency_not_accepted",
             f"VS {vs}: {transaction.amount_cents} cents in {transaction.currency}, "
             f"tournament accepts {tournament.local_currency}"
             + (" and EUR" if tournament.shows_eur else ""),
@@ -520,7 +538,14 @@ def _evaluate_single_vs(
     _credit(registration, which, paid_cents)
     transaction.matched_registration_id = registration.id
     outcome = _settle(
-        session, tournament, mailer, transaction, registration, which, f"VS {vs}", paid_cents,
+        session,
+        tournament,
+        mailer,
+        transaction,
+        registration,
+        which,
+        f"VS {vs}",
+        paid_cents,
         value_date=transaction.date,
         reinstated=reinstated,
     )
@@ -552,7 +577,9 @@ def _evaluate_multi_vs(
     if which is None:
         _finish(transaction, "flagged", "currency_not_accepted")
         _event(
-            session, transaction, "currency_not_accepted",
+            session,
+            transaction,
+            "currency_not_accepted",
             f"multi-VS {own_tokens}: {transaction.amount_cents} cents in {transaction.currency}, "
             f"tournament accepts {tournament.local_currency}"
             + (" and EUR" if tournament.shows_eur else ""),
@@ -575,9 +602,7 @@ def _evaluate_multi_vs(
         result.unmatched += 1
         return
 
-    due_cents = sum(
-        registration.outstanding_in(which) for registration in registrations
-    )
+    due_cents = sum(registration.outstanding_in(which) for registration in registrations)
     tolerance = due_cents * tournament.amount_tolerance_percent / 100
     if abs(transaction.amount_cents - due_cents) > tolerance:
         _finish(transaction, "unmatched", "multi_vs_amount_mismatch")
@@ -587,12 +612,18 @@ def _evaluate_multi_vs(
     actor = _system_actor(session, tournament)
     vs_list = [registration.vs for registration in registrations]
     rules_engine.create_rule(
-        session, tournament, actor, phase="payments", kind="payment_link",
+        session,
+        tournament,
+        actor,
+        phase="payments",
+        kind="payment_link",
         target=f"txn:{transaction.external_id}",
         payload={"vs": vs_list, "auto_created": True},
     )
     _event(
-        session, transaction, "multi_vs_link_created",
+        session,
+        transaction,
+        "multi_vs_link_created",
         f"VS {vs_list}: auto-linked, {transaction.amount_cents} cents {transaction.currency}",
     )
     result.matched += 1
@@ -783,17 +814,14 @@ def unapply_payment_link(session: Session, tournament: Tournament, rule) -> None
                 transaction_id=transaction.id if transaction else None,
                 kind="manual_link_removed",
                 detail=(
-                    f"rule {rule.id}: {registration.audit_label}"
-                    f" back to reserved ({amount} cents)"
+                    f"rule {rule.id}: {registration.audit_label} back to reserved ({amount} cents)"
                 ),
             )
         )
     session.commit()
 
 
-def manual_payment_currency(
-    payment: ManualPayment, tournament: Tournament
-) -> MatchCurrency | None:
+def manual_payment_currency(payment: ManualPayment, tournament: Tournament) -> MatchCurrency | None:
     """Which lane a recorded payment credits, by currency identity alone — the
     same question `match_currency` answers of a transaction, asked of a record
     a person made."""
@@ -959,7 +987,9 @@ def resettle_within_tolerance(session: Session, tournament: Tournament, mailer: 
         transaction.status = "matched"
         transaction.status_reason = "tolerance_widened"
         _event(
-            session, transaction, "payment_matched",
+            session,
+            transaction,
+            "payment_matched",
             f"tolerance {tournament.amount_tolerance_percent}%: "
             f"{registration.audit_label} settled short",
             registration,

@@ -49,9 +49,7 @@ def test_owner_can_list_add_and_remove_team_members(client, auth_headers):
     listed = client.get(f"/api/tournaments/{slug}/team", headers=owner).json()
     assert [m["email"] for m in listed] == ["helper@example.com"]
 
-    removed = client.delete(
-        f"/api/tournaments/{slug}/team/{body['fencer_id']}", headers=owner
-    )
+    removed = client.delete(f"/api/tournaments/{slug}/team/{body['fencer_id']}", headers=owner)
     assert removed.status_code == 204
     assert client.get(f"/api/tournaments/{slug}/team", headers=owner).json() == []
 
@@ -253,9 +251,12 @@ def test_cancel_hides_from_public_list_but_keeps_console(client, auth_headers):
     # console (detail) remains accessible
     detail = client.get(f"/api/tournaments/{slug}", headers=owner)
     assert detail.status_code == 200
-    assert client.patch(
-        f"/api/tournaments/{slug}", json={"location": "Nove"}, headers=owner
-    ).status_code == 200
+    assert (
+        client.patch(
+            f"/api/tournaments/{slug}", json={"location": "Nove"}, headers=owner
+        ).status_code
+        == 200
+    )
 
 
 def test_cancelled_tournament_rejects_new_registrations_as_closed(client, auth_headers):

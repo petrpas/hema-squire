@@ -26,17 +26,13 @@ def test_hr_search_nationality_filter_narrows_results(client):
     # nationality filters to CZE first; both CZE profiles are scored (D4: no
     # score threshold once nationality narrows the space), but the actual
     # name match ("svoboda") ranks first
-    hits = client.get(
-        "/api/hr/search", params={"q": "svoboda", "nationality": "CZE"}
-    ).json()
+    hits = client.get("/api/hr/search", params={"q": "svoboda", "nationality": "CZE"}).json()
     assert [h["hr_id"] for h in hits][0] == 5567
     assert {h["hr_id"] for h in hits} == {10234, 5567}
 
     # POL has a single profile — it's still returned even though the query
     # doesn't match it well
-    hits = client.get(
-        "/api/hr/search", params={"q": "svoboda", "nationality": "POL"}
-    ).json()
+    hits = client.get("/api/hr/search", params={"q": "svoboda", "nationality": "POL"}).json()
     assert [h["hr_id"] for h in hits] == [3340]
 
 
@@ -124,9 +120,7 @@ def test_profile_update_is_audited(client):
     session_gen = app.dependency_overrides[get_session]()
     session = next(session_gen)
     entries = session.scalars(select(FencerProfileAudit)).all()
-    assert [(e.field, e.old_value, e.new_value) for e in entries] == [
-        ("club", None, "Nový klub")
-    ]
+    assert [(e.field, e.old_value, e.new_value) for e in entries] == [("club", None, "Nový klub")]
 
 
 def test_display_name_required_without_hr(client):
@@ -168,9 +162,7 @@ def test_language_change_via_account_update_is_audited(client):
     session_gen = app.dependency_overrides[get_session]()
     session = next(session_gen)
     entries = session.scalars(select(FencerProfileAudit)).all()
-    assert [(e.field, e.old_value, e.new_value) for e in entries] == [
-        ("language", "cs", "en")
-    ]
+    assert [(e.field, e.old_value, e.new_value) for e in entries] == [("language", "cs", "en")]
 
 
 def test_account_update_rejects_unknown_language(client):

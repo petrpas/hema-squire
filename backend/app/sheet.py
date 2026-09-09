@@ -47,9 +47,7 @@ def _extras_summary(registration: Registration) -> tuple[list[str], bool, list[s
     other: list[str] = []
     for selection in registration.extra_selections:
         label = (
-            f"{selection.item.name} x{selection.qty}"
-            if selection.qty > 1
-            else selection.item.name
+            f"{selection.item.name} x{selection.qty}" if selection.qty > 1 else selection.item.name
         )
         if selection.item.category == ExtraCategory.RENTAL:
             rentals.append(label)
@@ -237,9 +235,7 @@ def base_rows(
             else registration.amount_paid_cents
         )
         waived = (
-            _money(remaining)
-            if registration.settled_by_hand_at is not None and credited
-            else None
+            _money(remaining) if registration.settled_by_hand_at is not None and credited else None
         )
         notes = registration.notes
         if extra_other:
@@ -255,12 +251,8 @@ def base_rows(
             **_evidence(index, row_hr_id, row_hr_payload),
             "match_verdict": row_verdict,
             "email": registration.fencer.email,
-            "disciplines": [
-                e.discipline.slug for e in registration.entries if not e.is_substitute
-            ],
-            "substitute_for": [
-                e.discipline.slug for e in registration.entries if e.is_substitute
-            ],
+            "disciplines": [e.discipline.slug for e in registration.entries if not e.is_substitute],
+            "substitute_for": [e.discipline.slug for e in registration.entries if e.is_substitute],
             "state": registration.state.value,
             # the registration behind this row, where one is behind it. The row
             # id cannot stand in: an issued registration takes its source row's
@@ -292,9 +284,7 @@ def base_rows(
             # conversion of the first.
             "outstanding_amount": _money(balance),
             "outstanding_currency": balance_currency,
-            "expires_at": registration.expires_at.isoformat()
-            if registration.expires_at
-            else None,
+            "expires_at": registration.expires_at.isoformat() if registration.expires_at else None,
             "paid_at": registration.paid_at.isoformat() if registration.paid_at else None,
             "weapon_rentals": registration.weapon_rentals or extra_rentals,
             # of those, the ones this tournament lends nothing by that name and

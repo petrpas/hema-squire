@@ -33,9 +33,7 @@ class HRMatchResult(BaseModel):
 
 
 class HRMatcher(Protocol):
-    def match(
-        self, fencers: list[dict], candidates: list[HRProfile]
-    ) -> list[HRMatchResult]: ...
+    def match(self, fencers: list[dict], candidates: list[HRProfile]) -> list[HRMatchResult]: ...
 
 
 _SYSTEM_PROMPT = """\
@@ -73,9 +71,7 @@ MATCH_BATCH_SIZE = 20
 MATCH_MAX_TOKENS = 8192
 
 
-def _batch_candidates(
-    batch: list[dict], candidates: list[HRProfile]
-) -> list[HRProfile]:
+def _batch_candidates(batch: list[dict], candidates: list[HRProfile]) -> list[HRProfile]:
     """The slice of the pre-filtered union that shares a name token with this
     batch — the other batches' candidates are noise in this prompt."""
     tokens = {
@@ -85,9 +81,7 @@ def _batch_candidates(
         if len(token) >= 3
     }
     return [
-        profile
-        for profile in candidates
-        if any(token in fold(profile.name) for token in tokens)
+        profile for profile in candidates if any(token in fold(profile.name) for token in tokens)
     ]
 
 
@@ -96,9 +90,7 @@ class LLMHRMatcher:
         self._model = model
         self._batch_size = batch_size
 
-    def match(
-        self, fencers: list[dict], candidates: list[HRProfile]
-    ) -> list[HRMatchResult]:
+    def match(self, fencers: list[dict], candidates: list[HRProfile]) -> list[HRMatchResult]:
         from pydantic_ai import Agent
         from pydantic_ai.settings import ModelSettings
 
@@ -249,9 +241,7 @@ def run_matching(
     # twice or to write the same decision key twice.
     by_identity: dict[str, list[dict]] = {}
     for row in pending:
-        by_identity.setdefault(
-            identity_key(row.get("name"), row.get("club")), []
-        ).append(row)
+        by_identity.setdefault(identity_key(row.get("name"), row.get("club")), []).append(row)
 
     fencers = [
         {

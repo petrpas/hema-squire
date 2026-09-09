@@ -52,9 +52,7 @@ BODIES: dict[tuple[str, str], object] = {
         "price": 100,
     },
     ("PUT", "/api/tournaments/{slug}/fio-token"): {"token": "feed"},
-    ("PATCH", "/api/tournaments/{slug}/registrations-kept-by"): {
-        "registrations_kept_by": "squire"
-    },
+    ("PATCH", "/api/tournaments/{slug}/registrations-kept-by"): {"registrations_kept_by": "squire"},
     ("POST", "/api/tournaments/{slug}/import/dedup/decide"): {"key": "k", "accept": True},
     ("POST", "/api/tournaments/{slug}/payments/manual"): {
         "registration_id": 1,

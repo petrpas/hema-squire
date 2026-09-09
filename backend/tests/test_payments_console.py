@@ -154,9 +154,7 @@ def test_a_shortfall_the_tolerance_accepted_is_still_stated(client, auth_headers
 def waive(client, organizer, vs, reason="volny vstup"):
     """The waiver, addressed to the registration behind the symbol."""
     session = next(app.dependency_overrides[get_session]())
-    registration = session.scalar(
-        select(Registration).where(Registration.vs == vs)
-    )
+    registration = session.scalar(select(Registration).where(Registration.vs == vs))
     return client.post(
         f"/api/tournaments/cup/registrations/{registration.id}/settled"
         f"?settled=true&reason={reason}",

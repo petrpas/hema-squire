@@ -99,9 +99,7 @@ def setup(client, organizer):
     )
     assert response.status_code == 202, response.text
     settle(client, organizer)
-    assert client.post(
-        "/api/tournaments/cup/import/match", headers=organizer
-    ).status_code == 202
+    assert client.post("/api/tournaments/cup/import/match", headers=organizer).status_code == 202
     outcome(client, organizer, kind="match")
 
 
@@ -252,9 +250,7 @@ def test_one_decision_reads_as_one_entry(client, auth_headers):
     resolve(client, organizer, lukas, lukas["hr_id"])
 
     log = edits(client, organizer)
-    assert [key for key in log if key[0] == lukas["id"]] == [
-        (lukas["id"], "match_verdict")
-    ]
+    assert [key for key in log if key[0] == lukas["id"]] == [(lukas["id"], "match_verdict")]
     verdict = log[(lukas["id"], "match_verdict")]
     assert (verdict["before"], verdict["after"]) == ("proposed", "confirmed")
     # the promotion still happened, it simply is not a second entry
@@ -336,8 +332,13 @@ def test_a_rule_stored_before_the_codes_still_reads_as_one(client, auth_headers)
             "kind": "match_resolution",
             "target": marie["id"],
             # the shape stored before evidence carried codes
-            "payload": {"field": "hr_id", "value": 8821, "hr_name": "Lukas Mueller",
-                        "hr_nationality": "Germany", "hr_club": "Berlin Schwert"},
+            "payload": {
+                "field": "hr_id",
+                "value": 8821,
+                "hr_name": "Lukas Mueller",
+                "hr_nationality": "Germany",
+                "hr_club": "Berlin Schwert",
+            },
         },
         headers=organizer,
     )

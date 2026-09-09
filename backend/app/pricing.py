@@ -109,9 +109,7 @@ def uses_itemized_pricing(tournament: Tournament) -> bool:
     return bool(tournament.extra_items) or bool(tournament.discounts)
 
 
-def _condition_met(
-    condition: dict, *, discipline_count: int, at: datetime.date
-) -> bool:
+def _condition_met(condition: dict, *, discipline_count: int, at: datetime.date) -> bool:
     kind = condition.get("kind")
     if kind == "discipline_count":
         return discipline_count == condition.get("count")
@@ -229,9 +227,7 @@ def unpriced_rentals(tournament: Tournament, names: list[str]) -> list[str]:
     """
     if not uses_itemized_pricing(tournament):
         return []
-    lent = {
-        item.name for item in tournament.extra_items if item.category == ExtraCategory.RENTAL
-    }
+    lent = {item.name for item in tournament.extra_items if item.category == ExtraCategory.RENTAL}
     return [name for name in names if name not in lent]
 
 
@@ -356,9 +352,7 @@ def selection_discounts(
     for i, outcome in enumerate(local_outcomes):
         is_fixed = outcome.effect.get("kind") == "fixed"
         deducted_eur = (
-            eur_outcomes[i].deducted
-            if outcome.applied and is_fixed and eur_outcomes
-            else None
+            eur_outcomes[i].deducted if outcome.applied and is_fixed and eur_outcomes else None
         )
         breakdown.append(
             DiscountBreakdown(

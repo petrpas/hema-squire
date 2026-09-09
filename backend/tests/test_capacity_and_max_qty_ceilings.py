@@ -45,8 +45,12 @@ def test_team_capacity_over_64_rejected(client, auth_headers):
     response = client.post(
         "/api/tournaments/cup/disciplines",
         json={
-            "weapon": "LS", "capacity": 65, "fee": 800,
-            "kind": "team", "team_min": 3, "team_max": 4,
+            "weapon": "LS",
+            "capacity": 65,
+            "fee": 800,
+            "kind": "team",
+            "team_min": 3,
+            "team_max": 4,
         },
         headers=headers,
     )
@@ -62,8 +66,12 @@ def test_team_capacity_at_64_accepted(client, auth_headers):
     response = client.post(
         "/api/tournaments/cup/disciplines",
         json={
-            "weapon": "LS", "capacity": 64, "fee": 800,
-            "kind": "team", "team_min": 3, "team_max": 4,
+            "weapon": "LS",
+            "capacity": 64,
+            "fee": 800,
+            "kind": "team",
+            "team_min": 3,
+            "team_max": 4,
         },
         headers=headers,
     )

@@ -47,8 +47,7 @@ def valid_cz_part(digits: str) -> bool:
     # strict=False on purpose: an account part is shorter than the weight table
     # whenever it has fewer than ten digits, and the surplus weights go unused
     total = sum(
-        int(digit) * weight
-        for digit, weight in zip(reversed(digits), _CZ_WEIGHTS, strict=False)
+        int(digit) * weight for digit, weight in zip(reversed(digits), _CZ_WEIGHTS, strict=False)
     )
     return total % 11 == 0
 

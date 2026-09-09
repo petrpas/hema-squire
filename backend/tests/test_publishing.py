@@ -193,9 +193,7 @@ def test_emptying_the_location_on_published_tournament_rejected(client, auth_hea
     add_priced_discipline(client, organizer, slug)
     publish(client, organizer, slug)
 
-    response = client.patch(
-        f"/api/tournaments/{slug}", json={"location": ""}, headers=organizer
-    )
+    response = client.patch(f"/api/tournaments/{slug}", json={"location": ""}, headers=organizer)
     assert response.status_code == 422
     assert response.json()["detail"] == {"reason": "setup_incomplete", "missing": ["location"]}
 
@@ -209,9 +207,7 @@ def test_removing_the_last_organizer_on_published_tournament_rejected(client, au
     add_priced_discipline(client, organizer, slug)
     publish(client, organizer, slug)
 
-    response = client.patch(
-        f"/api/tournaments/{slug}", json={"organizers": []}, headers=organizer
-    )
+    response = client.patch(f"/api/tournaments/{slug}", json={"organizers": []}, headers=organizer)
     assert response.status_code == 422
     assert response.json()["detail"] == {"reason": "setup_incomplete", "missing": ["organizers"]}
 

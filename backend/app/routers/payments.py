@@ -57,9 +57,7 @@ FioClientDep = Annotated[bank.FioClient, Depends(bank.get_fio_client)]
 MailerDep = Annotated[Mailer, Depends(get_mailer)]
 # None where no model is configured; an unrecognised statement then has nothing
 # to be read with, and the endpoint says so rather than ingesting nothing
-StatementParserDep = Annotated[
-    bank.StatementParser | None, Depends(bank.get_statement_parser)
-]
+StatementParserDep = Annotated[bank.StatementParser | None, Depends(bank.get_statement_parser)]
 
 
 def _refuse_while_duplicates_pending(session, tournament) -> None:
@@ -151,9 +149,7 @@ async def import_statement(
 
     total = statements.statement_units(filename, content)
     try:
-        operation = operations.start(
-            session, tournament, OperationKind.STATEMENT, total, fencer.id
-        )
+        operation = operations.start(session, tournament, OperationKind.STATEMENT, total, fencer.id)
     except operations.OperationInFlightError as busy:
         raise HTTPException(
             status_code=409,
@@ -418,9 +414,7 @@ def transaction_roster(
         for registration in session.scalars(
             select(Registration).where(
                 Registration.tournament_id == tournament.id,
-                Registration.state.in_(
-                    [RegistrationState.RESERVED, RegistrationState.PAID]
-                ),
+                Registration.state.in_([RegistrationState.RESERVED, RegistrationState.PAID]),
             )
         )
     }
@@ -441,9 +435,7 @@ def transaction_roster(
                 rejected=ranked.key in refused,
             )
         )
-    return TransactionRosterOut(
-        transaction_id=transaction.id, query=query, fencers=fencers
-    )
+    return TransactionRosterOut(transaction_id=transaction.id, query=query, fencers=fencers)
 
 
 def _transaction_out(session, tournament, transaction: BankTransaction) -> TransactionOut:
@@ -469,9 +461,7 @@ def _transaction_out(session, tournament, transaction: BankTransaction) -> Trans
                 .order_by(ManualPayment.id.desc())
             ).first()
             if recorded is not None:
-                out.settled_by_recorded_payment = _manual_payment_out(
-                    session, tournament, recorded
-                )
+                out.settled_by_recorded_payment = _manual_payment_out(session, tournament, recorded)
     if transaction.status == "unmatched":
         out.candidate_vs = matching.detect_candidates(session, transaction)
     if transaction.proposed_fencer is not None:
@@ -764,9 +754,7 @@ def _manual_payment_out(
         registration.amount_paid_cents if which == "local" else registration.amount_paid_eur_cents
     )
     total = (
-        registration.total_amount * 100
-        if which == "local"
-        else (registration.total_eur or 0) * 100
+        registration.total_amount * 100 if which == "local" else (registration.total_eur or 0) * 100
     )
     return ManualPaymentOut(
         id=payment.id,

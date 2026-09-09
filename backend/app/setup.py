@@ -85,10 +85,7 @@ def charges_money(tournament: Tournament) -> bool:
         for d in tournament.disciplines
     ):
         return True
-    if any(
-        (item.price or 0) > 0 or (item.price_eur or 0) > 0
-        for item in tournament.extra_items
-    ):
+    if any((item.price or 0) > 0 or (item.price_eur or 0) > 0 for item in tournament.extra_items):
         return True
     return (
         (tournament.weapon_rental_fee or 0) > 0
@@ -109,9 +106,7 @@ def setup_missing(tournament: Tournament) -> list[str]:
     else:
         incomplete = any(d.fee is None for d in tournament.disciplines)
         if tournament.shows_eur:
-            incomplete = incomplete or any(
-                d.fee_eur is None for d in tournament.disciplines
-            )
+            incomplete = incomplete or any(d.fee_eur is None for d in tournament.disciplines)
         if incomplete:
             missing.append(MISSING_DISCIPLINE_PRICES)
         if any(
@@ -222,7 +217,7 @@ def is_known_timezone(name: str | None) -> bool:
         return False
     try:
         zoneinfo.ZoneInfo(name)
-    except (zoneinfo.ZoneInfoNotFoundError, ValueError):
+    except zoneinfo.ZoneInfoNotFoundError, ValueError:
         return False
     return True
 
@@ -235,7 +230,7 @@ def _zone(name: str | None) -> zoneinfo.ZoneInfo:
     fail every fencer's tournament list with a 500."""
     try:
         return zoneinfo.ZoneInfo(name or DEFAULT_TIMEZONE)
-    except (zoneinfo.ZoneInfoNotFoundError, ValueError):
+    except zoneinfo.ZoneInfoNotFoundError, ValueError:
         return zoneinfo.ZoneInfo(DEFAULT_TIMEZONE)
 
 
@@ -382,10 +377,7 @@ def seating_has_settled(tournament: Tournament, today: datetime.date) -> bool:
     deadline passing at midnight and the next scheduler tick, during which
     registrations would still be seated; the deadline alone ignores an
     organizer who settled early by hand."""
-    return (
-        tournament.seating_settled_at is not None
-        or today > seating_deadline_for(tournament)
-    )
+    return tournament.seating_settled_at is not None or today > seating_deadline_for(tournament)
 
 
 def dormancy_cause(tournament: Tournament, registration: Registration) -> str | None:

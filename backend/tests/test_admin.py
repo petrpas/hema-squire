@@ -129,9 +129,7 @@ def test_plea_submit_grant_lifecycle(client, auth_headers):
     fencer = auth_headers(email="f@example.com", name="F", role=Role.FENCER)
     admin = auth_headers(email="admin@example.com", role=Role.ADMIN)
 
-    submitted = client.post(
-        "/api/account/plea", json={"message": "please"}, headers=fencer
-    )
+    submitted = client.post("/api/account/plea", json={"message": "please"}, headers=fencer)
     assert submitted.status_code == 201
     assert submitted.json()["state"] == "pending"
 
@@ -248,9 +246,7 @@ def test_admin_unbinds_hr_id_and_audits(client, auth_headers):
     from app.models import FencerProfileAudit
 
     fencer = auth_headers(email="jan@example.com", name="Jan", role=Role.FENCER)
-    signup_and_bind = client.post(
-        "/api/account/hr-binding", json={"hr_id": 10234}, headers=fencer
-    )
+    signup_and_bind = client.post("/api/account/hr-binding", json={"hr_id": 10234}, headers=fencer)
     assert signup_and_bind.status_code == 200
     account = client.get("/api/account", headers=fencer).json()
     assert account["hr_id"] == 10234
@@ -267,9 +263,7 @@ def test_admin_unbinds_hr_id_and_audits(client, auth_headers):
     assert any(e.old_value == "10234" and e.new_value is None for e in entries)
 
     # the fencer can now bind the correct profile
-    rebound = client.post(
-        "/api/account/hr-binding", json={"hr_id": 8821}, headers=fencer
-    )
+    rebound = client.post("/api/account/hr-binding", json={"hr_id": 8821}, headers=fencer)
     assert rebound.status_code == 200
     assert rebound.json()["hr_id"] == 8821
 
@@ -295,18 +289,14 @@ def test_admin_listing_flags_shared_hr_claims(client, auth_headers):
     client.post("/api/account/hr-binding", json={"hr_id": 8821}, headers=second)
 
     admin = auth_headers(email="admin@example.com", role=Role.ADMIN)
-    accounts = {
-        a["email"]: a for a in client.get("/api/admin/accounts", headers=admin).json()
-    }
+    accounts = {a["email"]: a for a in client.get("/api/admin/accounts", headers=admin).json()}
     assert accounts["a@example.com"]["hr_shared"] is False
     assert accounts["b@example.com"]["hr_shared"] is False
 
     third = auth_headers(email="c@example.com", name="C", role=Role.FENCER)
     client.post("/api/account/hr-binding", json={"hr_id": 10234}, headers=third)
 
-    accounts = {
-        a["email"]: a for a in client.get("/api/admin/accounts", headers=admin).json()
-    }
+    accounts = {a["email"]: a for a in client.get("/api/admin/accounts", headers=admin).json()}
     assert accounts["a@example.com"]["hr_shared"] is True
     assert accounts["c@example.com"]["hr_shared"] is True
     assert accounts["b@example.com"]["hr_shared"] is False
@@ -315,7 +305,5 @@ def test_admin_listing_flags_shared_hr_claims(client, auth_headers):
     unbound = client.post(f"/api/admin/accounts/{account_id}/hr-unbind", headers=admin)
     assert unbound.json()["hr_shared"] is False
 
-    accounts = {
-        a["email"]: a for a in client.get("/api/admin/accounts", headers=admin).json()
-    }
+    accounts = {a["email"]: a for a in client.get("/api/admin/accounts", headers=admin).json()}
     assert accounts["a@example.com"]["hr_shared"] is False

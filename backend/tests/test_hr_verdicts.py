@@ -46,16 +46,28 @@ def test_db_index_lookup_counts_one_two_and_none(engine):
     with Session(engine) as session:
         session.add_all(
             [
-                HRFighter(hr_id=1, name="Jan Novák", name_folded="jan novak",
-                          nationality="CZE", club=None),
-                HRFighter(hr_id=2, name="Novák Jan", name_folded="novak jan",
-                          nationality="CZE", club=None),
-                HRFighter(hr_id=3, name="Petr Svoboda", name_folded="petr svoboda",
-                          nationality="CZE", club=None),
+                HRFighter(
+                    hr_id=1, name="Jan Novák", name_folded="jan novak", nationality="CZE", club=None
+                ),
+                HRFighter(
+                    hr_id=2, name="Novák Jan", name_folded="novak jan", nationality="CZE", club=None
+                ),
+                HRFighter(
+                    hr_id=3,
+                    name="Petr Svoboda",
+                    name_folded="petr svoboda",
+                    nationality="CZE",
+                    club=None,
+                ),
                 # a longer name carrying both tokens: the substring narrowing
                 # lets it through, the key comparison must not
-                HRFighter(hr_id=4, name="Jan Novákovský", name_folded="jan novakovsky",
-                          nationality="CZE", club=None),
+                HRFighter(
+                    hr_id=4,
+                    name="Jan Novákovský",
+                    name_folded="jan novakovsky",
+                    nationality="CZE",
+                    club=None,
+                ),
             ]
         )
         session.commit()
@@ -121,8 +133,13 @@ def test_country_code_reads_every_vocabulary_the_two_sides_use():
 
 
 def test_country_code_bridges_the_codes_no_prefix_rule_could():
-    for code, name in (("PL", "Poland"), ("DE", "Germany"), ("SK", "Slovakia"),
-                       ("SRB", "Serbia"), ("GB", "United Kingdom")):
+    for code, name in (
+        ("PL", "Poland"),
+        ("DE", "Germany"),
+        ("SK", "Slovakia"),
+        ("SRB", "Serbia"),
+        ("GB", "United Kingdom"),
+    ):
         resolved = country_code(code)
         assert resolved is not None and resolved == country_code(name), (code, name)
 
@@ -138,8 +155,16 @@ def test_every_name_for_the_united_kingdom_is_one_country():
     """ISO knows one country here; the fighters index's own flag code spells it
     "UK", and a fencer writes whichever name they think of. None of them may
     read as a different country from the others."""
-    for spelling in ("GB", "UK", "United Kingdom", "Great Britain", "England",
-                     "Scotland", "Wales", "Northern Ireland"):
+    for spelling in (
+        "GB",
+        "UK",
+        "United Kingdom",
+        "Great Britain",
+        "England",
+        "Scotland",
+        "Wales",
+        "Northern Ireland",
+    ):
         assert country_code(spelling) == "GB", spelling
 
 

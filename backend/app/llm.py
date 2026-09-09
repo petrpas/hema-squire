@@ -25,8 +25,6 @@ def get_model():
     headers = {}
     if settings.anthropic_workspace_id:
         headers["anthropic-workspace-id"] = settings.anthropic_workspace_id
-    client = AsyncAnthropic(
-        api_key=settings.anthropic_api_key, default_headers=headers or None
-    )
+    client = AsyncAnthropic(api_key=settings.anthropic_api_key, default_headers=headers or None)
     name = settings.llm_model.removeprefix("anthropic:")
     return AnthropicModel(name, provider=AnthropicProvider(anthropic_client=client))

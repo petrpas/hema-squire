@@ -54,16 +54,22 @@ class FakeMatcher:
             if fencer["name"] == "Jan Novak":
                 results.append(
                     HRMatchResult(
-                        name=fencer["name"], club=fencer["club"], hr_id=10234,
-                        matched_name="Jan Novák", matched_club="Prague HEMA",
+                        name=fencer["name"],
+                        club=fencer["club"],
+                        hr_id=10234,
+                        matched_name="Jan Novák",
+                        matched_club="Prague HEMA",
                         nationality="CZ",
                     )
                 )
             else:
                 results.append(
                     HRMatchResult(
-                        name=fencer["name"], club=fencer["club"], hr_id=None,
-                        matched_name=None, matched_club=None,
+                        name=fencer["name"],
+                        club=fencer["club"],
+                        hr_id=None,
+                        matched_name=None,
+                        matched_club=None,
                         nationality=fencer.get("nationality"),
                     )
                 )
@@ -133,9 +139,7 @@ def by_name(rows, name):
 
 
 def groups(client, organizer):
-    return client.get(
-        "/api/tournaments/cup/import/dedup/groups", headers=organizer
-    ).json()
+    return client.get("/api/tournaments/cup/import/dedup/groups", headers=organizer).json()
 
 
 def group_of(client, organizer, kind):
@@ -193,8 +197,12 @@ def test_matching_verdicts_and_decision_reuse(client, auth_headers):
     # organizer correction persists as a rule and beats the cached proposal
     client.post(
         "/api/tournaments/cup/rules",
-        json={"phase": "matching", "kind": "match_resolution", "target": jan["id"],
-              "payload": {"field": "hr_id", "value": None}},
+        json={
+            "phase": "matching",
+            "kind": "match_resolution",
+            "target": jan["id"],
+            "payload": {"field": "hr_id", "value": None},
+        },
         headers=organizer,
     )
     jan = by_name(get_rows(client, organizer), "Jan Novak")
@@ -269,8 +277,16 @@ def test_three_band_classification(client, auth_headers):
     # rejection persists: the group reads as kept separate and stays unmerged
     decide(client, organizer, likely[0]["key"], False)
     assert group_of(client, organizer, "likely")["verdict"] == "separate"
-    assert len([r for r in get_rows(client, organizer)
-                if (r["name"] or "").startswith("Marie") and not r["_deleted"]]) == 2
+    assert (
+        len(
+            [
+                r
+                for r in get_rows(client, organizer)
+                if (r["name"] or "").startswith("Marie") and not r["_deleted"]
+            ]
+        )
+        == 2
+    )
 
     # rerun with an unchanged candidate set does not re-classify
     run_dedup(client, organizer)
@@ -287,8 +303,11 @@ def test_removing_merge_rule_reverts_the_merge(client, auth_headers):
     item = group_of(client, organizer, "same_id")
     decide(client, organizer, item["key"], True)
 
-    merge_rule = next(r for r in dedup_rules(client, organizer)
-                      if r["payload"].get("fields", {}).get("hr_id") == 1234)
+    merge_rule = next(
+        r
+        for r in dedup_rules(client, organizer)
+        if r["payload"].get("fields", {}).get("hr_id") == 1234
+    )
     client.delete(f"/api/tournaments/cup/rules/{merge_rule['id']}", headers=organizer)
 
     rows = get_rows(client, organizer)
@@ -321,8 +340,11 @@ def test_auto_merged_group_is_listed_and_withdrawable(client, auth_headers):
 
     # the organizer disagrees: one action, and the records stand apart again
     assert decide(client, organizer, karel["key"], False).json()["status"] == "rejected"
-    karels = [r for r in get_rows(client, organizer)
-              if (r["name"] or "").startswith("Karel") and not r["_deleted"]]
+    karels = [
+        r
+        for r in get_rows(client, organizer)
+        if (r["name"] or "").startswith("Karel") and not r["_deleted"]
+    ]
     assert len(karels) == 2
     karel = group_of(client, organizer, "surely")
     assert karel["verdict"] == "separate"
@@ -330,8 +352,16 @@ def test_auto_merged_group_is_listed_and_withdrawable(client, auth_headers):
 
     # and a rerun does not merge it back: the resolution is what stops the run
     run_dedup(client, organizer)
-    assert len([r for r in get_rows(client, organizer)
-                if (r["name"] or "").startswith("Karel") and not r["_deleted"]]) == 2
+    assert (
+        len(
+            [
+                r
+                for r in get_rows(client, organizer)
+                if (r["name"] or "").startswith("Karel") and not r["_deleted"]
+            ]
+        )
+        == 2
+    )
 
 
 def test_a_settled_group_can_be_decided_again(client, auth_headers):
@@ -348,11 +378,16 @@ def test_a_settled_group_can_be_decided_again(client, auth_headers):
     decide(client, organizer, marie["key"], True)
     marie = group_of(client, organizer, "likely")
     assert marie["verdict"] == "merged"
-    maries = [r for r in get_rows(client, organizer)
-              if (r["name"] or "").startswith("Marie") and not r["_deleted"]]
+    maries = [
+        r
+        for r in get_rows(client, organizer)
+        if (r["name"] or "").startswith("Marie") and not r["_deleted"]
+    ]
     assert len(maries) == 1
-    assert len([r for r in dedup_rules(client, organizer)
-                if r["target"] == marie["members"][0]["id"]]) == 1
+    assert (
+        len([r for r in dedup_rules(client, organizer) if r["target"] == marie["members"][0]["id"]])
+        == 1
+    )
 
 
 def test_confirming_twice_updates_the_standing_rule(client, auth_headers):
@@ -370,10 +405,16 @@ def test_confirming_twice_updates_the_standing_rule(client, auth_headers):
     petra_rules = [r for r in first if r["payload"]["fields"].get("hr_id") == 1234]
     assert len(petra_rules) == 1
 
-    decide(client, organizer, item["key"], True, fields={**item["recommendation"]["fields"],
-                                                         "club": "Ostrava HEMA"})
-    after = [r for r in dedup_rules(client, organizer)
-             if r["payload"]["fields"].get("hr_id") == 1234]
+    decide(
+        client,
+        organizer,
+        item["key"],
+        True,
+        fields={**item["recommendation"]["fields"], "club": "Ostrava HEMA"},
+    )
+    after = [
+        r for r in dedup_rules(client, organizer) if r["payload"]["fields"].get("hr_id") == 1234
+    ]
     assert len(after) == 1
     assert after[0]["id"] == petra_rules[0]["id"]  # same rule, same log entry
     assert after[0]["payload"]["fields"]["club"] == "Ostrava HEMA"
@@ -387,12 +428,16 @@ def test_an_edited_conclusion_is_what_takes_effect(client, auth_headers):
     run_dedup(client, organizer)
 
     item = group_of(client, organizer, "same_id")
-    edited = {**item["recommendation"]["fields"], "name": "Petra Dvořáková-Nová",
-              "club": "Ostrava HEMA"}
+    edited = {
+        **item["recommendation"]["fields"],
+        "name": "Petra Dvořáková-Nová",
+        "club": "Ostrava HEMA",
+    }
     decide(client, organizer, item["key"], True, fields=edited, note="organizer merged by hand")
 
-    survivor = next(r for r in get_rows(client, organizer)
-                    if r["hr_id"] == 1234 and not r["_deleted"])
+    survivor = next(
+        r for r in get_rows(client, organizer) if r["hr_id"] == 1234 and not r["_deleted"]
+    )
     assert survivor["name"] == "Petra Dvořáková-Nová"
     assert survivor["club"] == "Ostrava HEMA"
     assert survivor["merge_note"] == "organizer merged by hand"
@@ -412,8 +457,12 @@ def test_a_deleted_row_is_no_longer_a_duplicate(client, auth_headers):
     marie = group_of(client, organizer, "likely")
     client.post(
         "/api/tournaments/cup/rules",
-        json={"phase": "fencers", "kind": "row_delete",
-              "target": marie["members"][0]["id"], "payload": {}},
+        json={
+            "phase": "fencers",
+            "kind": "row_delete",
+            "target": marie["members"][0]["id"],
+            "payload": {},
+        },
         headers=organizer,
     )
     assert all(g["kind"] != "likely" for g in groups(client, organizer))
@@ -455,16 +504,20 @@ def test_a_merge_reads_as_one_entry(client, auth_headers):
     item = group_of(client, organizer, "same_id")
     survivor_id = item["members"][0]["id"]
     absorbed_id = item["members"][1]["id"]
-    decide(client, organizer, item["key"], True,
-           fields={**item["recommendation"]["fields"], "club": "Ostrava HEMA"},
-           note="sloučeno pořadatelem")
+    decide(
+        client,
+        organizer,
+        item["key"],
+        True,
+        fields={**item["recommendation"]["fields"], "club": "Ostrava HEMA"},
+        note="sloučeno pořadatelem",
+    )
 
     edits = client.get("/api/tournaments/cup/sheet", headers=organizer).json()["edits"]
     # this group's own entries: the surely band merged another pair in the same
     # run, which is a different decision and carries its own entry
     dedup_edits = [
-        e for e in edits
-        if e["phase"] == "dedup" and e["target"] in (survivor_id, absorbed_id)
+        e for e in edits if e["phase"] == "dedup" and e["target"] in (survivor_id, absorbed_id)
     ]
     assert len(dedup_edits) == 1
     entry = dedup_edits[0]

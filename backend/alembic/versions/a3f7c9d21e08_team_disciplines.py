@@ -43,7 +43,9 @@ def upgrade() -> None:
         sa.Column("id", sa.Integer(), primary_key=True),
         sa.Column("tournament_id", sa.Integer(), sa.ForeignKey("tournaments.id"), nullable=False),
         sa.Column("discipline_id", sa.Integer(), sa.ForeignKey("disciplines.id"), nullable=False),
-        sa.Column("registration_id", sa.Integer(), sa.ForeignKey("registrations.id"), nullable=False),
+        sa.Column(
+            "registration_id", sa.Integer(), sa.ForeignKey("registrations.id"), nullable=False
+        ),
         sa.Column("name", sa.String(length=200), nullable=False),
         sa.Column("waitlisted", sa.Boolean(), nullable=False, server_default=sa.false()),
         sa.Column("composition_reminded_at", sa.DateTime(timezone=True), nullable=True),
@@ -55,7 +57,9 @@ def upgrade() -> None:
     op.create_table(
         "team_members",
         sa.Column("id", sa.Integer(), primary_key=True),
-        sa.Column("team_id", sa.Integer(), sa.ForeignKey("teams.id", ondelete="CASCADE"), nullable=False),
+        sa.Column(
+            "team_id", sa.Integer(), sa.ForeignKey("teams.id", ondelete="CASCADE"), nullable=False
+        ),
         sa.Column("ordinal", sa.Integer(), nullable=False),
         sa.Column("name", sa.String(length=200), nullable=False),
         sa.Column("hr_id", sa.Integer(), nullable=True),

@@ -96,9 +96,7 @@ def test_every_existing_tournament_is_squire_kept(pre_migration_db):
 def test_the_column_is_not_null_after_the_migration(pre_migration_db):
     _run_alembic("upgrade", REVISION, db_path=pre_migration_db)
     conn = sqlite3.connect(pre_migration_db)
-    columns = {
-        row[1]: row for row in conn.execute("PRAGMA table_info(tournaments)").fetchall()
-    }
+    columns = {row[1]: row for row in conn.execute("PRAGMA table_info(tournaments)").fetchall()}
     conn.close()
     assert columns["registrations_kept_by"][3] == 1, "NOT NULL"
 

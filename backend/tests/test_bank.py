@@ -87,6 +87,7 @@ def _verify_response(monkeypatch, *, status=None, raises=None):
     """Point the real client's one outbound call at a canned answer. Verifying
     is the only place `HttpFioClient` decides anything, so it is tested against
     responses rather than through a stub of itself."""
+
     def fake_get(url, timeout=None):
         if raises is not None:
             raise raises
@@ -133,9 +134,7 @@ def test_verify_ingests_nothing(monkeypatch, client, auth_headers):
     setup_tournament(client, organizer)
     _verify_response(monkeypatch, status=200)
     HttpFioClient().verify("good-token")
-    outstanding = client.get(
-        "/api/tournaments/cup/payments/transactions", headers=organizer
-    )
+    outstanding = client.get("/api/tournaments/cup/payments/transactions", headers=organizer)
     assert outstanding.status_code == 200
     assert outstanding.json() == []
 
@@ -176,20 +175,34 @@ def test_statement_import_is_idempotent(client, auth_headers):
     first = import_statement(client, organizer)
     assert first.status_code == 202, first.text
     assert settle(client, organizer, kind="statement")["outcome"] == {
-        "new": 2, "duplicate": 0, "matched": 0, "flagged": 0, "unmatched": 2, "partial": 0,
+        "new": 2,
+        "duplicate": 0,
+        "matched": 0,
+        "flagged": 0,
+        "unmatched": 2,
+        "partial": 0,
         "set_aside": 0,
         # intake issues before it matches; this roster is in-app, so it issues
         # nothing (spec payments-intake)
-        "issued": 0, "already_issued": 0, "skipped": [],
+        "issued": 0,
+        "already_issued": 0,
+        "skipped": [],
     }
 
     import_statement(client, organizer)
     assert settle(client, organizer, kind="statement")["outcome"] == {
-        "new": 0, "duplicate": 2, "matched": 0, "flagged": 0, "unmatched": 0, "partial": 0,
+        "new": 0,
+        "duplicate": 2,
+        "matched": 0,
+        "flagged": 0,
+        "unmatched": 0,
+        "partial": 0,
         "set_aside": 0,
         # intake issues before it matches; this roster is in-app, so it issues
         # nothing (spec payments-intake)
-        "issued": 0, "already_issued": 0, "skipped": [],
+        "issued": 0,
+        "already_issued": 0,
+        "skipped": [],
     }
 
     listing = client.get("/api/tournaments/cup/payments/transactions", headers=organizer)
@@ -234,11 +247,18 @@ def test_fio_poll_overlaps_with_csv_idempotently(client, auth_headers, stub_fio)
     assert polled.status_code == 200
     # ...44 already known from CSV; ...45 is new
     assert polled.json() == {
-        "new": 1, "duplicate": 1, "matched": 0, "flagged": 0, "unmatched": 1, "partial": 0,
+        "new": 1,
+        "duplicate": 1,
+        "matched": 0,
+        "flagged": 0,
+        "unmatched": 1,
+        "partial": 0,
         "set_aside": 0,
         # intake issues before it matches; this roster is in-app, so it issues
         # nothing (spec payments-intake)
-        "issued": 0, "already_issued": 0, "skipped": [],
+        "issued": 0,
+        "already_issued": 0,
+        "skipped": [],
     }
     assert stub_fio.calls == ["secret-token"]
 
@@ -249,8 +269,6 @@ def test_fio_poll_without_token(client, auth_headers, stub_fio):
     response = client.post("/api/tournaments/cup/payments/fio-poll", headers=organizer)
     assert response.status_code == 409
     assert response.json()["detail"] == "fio_token_not_configured"
-
-
 
 
 def test_fio_poll_refuses_an_unbounded_window(client, auth_headers, stub_fio):

@@ -45,9 +45,7 @@ class FakeHRFetcher:
 
 
 def snapshot(client, organizer):
-    response = client.post(
-        "/api/tournaments/cup/ratings/snapshot", headers=organizer
-    )
+    response = client.post("/api/tournaments/cup/ratings/snapshot", headers=organizer)
     assert response.status_code == 200, response.text
     return response.json()
 
@@ -76,9 +74,7 @@ def setup(client, auth_headers, organizer):
     publish(client, organizer, "cup")
     # one in-app registration with an HR-bound account
     fencer = auth_headers(email="jan@example.com", name="Jan Novák")
-    binding = client.post(
-        "/api/account/hr-binding", json={"hr_id": 10234}, headers=fencer
-    )
+    binding = client.post("/api/account/hr-binding", json={"hr_id": 10234}, headers=fencer)
     assert binding.status_code == 200, binding.text
     client.post(
         "/api/tournaments/cup/register",
@@ -95,9 +91,7 @@ def setup(client, auth_headers, organizer):
 
 
 def wire(sheets, fetcher=None):
-    app.dependency_overrides[get_sheets_client_factory] = lambda: (
-        lambda tournament: sheets
-    )
+    app.dependency_overrides[get_sheets_client_factory] = lambda: lambda tournament: sheets
     if fetcher is not None:
         app.dependency_overrides[get_hr_fetcher] = lambda: fetcher
 
@@ -125,8 +119,18 @@ def test_export_writes_v1_format(client, auth_headers):
     assert body["worksheets"] == ["Fencers", "LS", "SA"]
 
     fencers = sheets.worksheets["Fencers"]
-    assert fencers[0] == ["Reg.", "Name", "Nat.", "Club", "HR_ID", "Disciplines",
-                          "Paid", "Afterparty", "Borrow weapons", "Notes"]
+    assert fencers[0] == [
+        "Reg.",
+        "Name",
+        "Nat.",
+        "Club",
+        "HR_ID",
+        "Disciplines",
+        "Paid",
+        "Afterparty",
+        "Borrow weapons",
+        "Notes",
+    ]
     jan = grid_row(fencers, "Jan Novák")
     assert jan[0] == ""  # Reg. is downstream's column
     assert jan[4] == "10234"
@@ -186,8 +190,7 @@ def test_deleted_rows_excluded_from_every_worksheet(client, auth_headers):
     target = next(r for r in rows if r["name"] == "Alexander Bryzgalov")
     client.post(
         "/api/tournaments/cup/rules",
-        json={"phase": "export", "kind": "row_delete", "target": target["id"],
-              "payload": {}},
+        json={"phase": "export", "kind": "row_delete", "target": target["id"], "payload": {}},
         headers=organizer,
     )
     export(client, organizer)
@@ -203,7 +206,7 @@ def test_export_requires_configuration(client, auth_headers):
     response = client.post("/api/tournaments/cup/export/sheet", headers=organizer)
     assert response.status_code == 503
 
-    app.dependency_overrides[get_sheets_client_factory] = lambda: (lambda t: None)
+    app.dependency_overrides[get_sheets_client_factory] = lambda: lambda t: None
     response = client.post("/api/tournaments/cup/export/sheet", headers=organizer)
     assert response.status_code == 422
 
@@ -248,16 +251,12 @@ def test_two_tiers_produce_two_worksheets(client, auth_headers):
     publish(client, organizer, "tiers")
 
     top = auth_headers(email="top@example.com", name="Top Fencer")
-    client.post(
-        "/api/tournaments/tiers/register", json={"disciplines": ["LS-A"]}, headers=top
-    )
+    client.post("/api/tournaments/tiers/register", json={"disciplines": ["LS-A"]}, headers=top)
     openb = auth_headers(email="open@example.com", name="Open Fencer")
-    client.post(
-        "/api/tournaments/tiers/register", json={"disciplines": ["LS-B"]}, headers=openb
-    )
+    client.post("/api/tournaments/tiers/register", json={"disciplines": ["LS-B"]}, headers=openb)
 
     sheets = InMemorySheets()
-    app.dependency_overrides[get_sheets_client_factory] = lambda: (lambda t: sheets)
+    app.dependency_overrides[get_sheets_client_factory] = lambda: lambda t: sheets
     response = client.post("/api/tournaments/tiers/export/sheet", headers=organizer)
     assert response.status_code == 200, response.text
     assert set(response.json()["worksheets"]) == {"Fencers", "LS-A", "LS-B"}
@@ -298,7 +297,7 @@ def test_custom_weapon_worksheet_has_empty_rating_columns(client, auth_headers):
     )
 
     sheets = InMemorySheets()
-    app.dependency_overrides[get_sheets_client_factory] = lambda: (lambda t: sheets)
+    app.dependency_overrides[get_sheets_client_factory] = lambda: lambda t: sheets
     response = client.post("/api/tournaments/messer/export/sheet", headers=organizer)
     assert response.status_code == 200, response.text
     row = grid_row(sheets.worksheets["Messer"], "Messer Fencer")

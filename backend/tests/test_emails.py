@@ -23,12 +23,9 @@ def mailbox():
 
 
 def test_spayd_string_format():
-    result = spayd_string(
-        "CZ6508000000192000145399", 1300, 1000001, "VS1000001 Na Duel!", "CZK"
-    )
+    result = spayd_string("CZ6508000000192000145399", 1300, 1000001, "VS1000001 Na Duel!", "CZK")
     assert result == (
-        "SPD*1.0*ACC:CZ6508000000192000145399*AM:1300.00*CC:CZK"
-        "*X-VS:1000001*MSG:VS1000001 Na Duel!"
+        "SPD*1.0*ACC:CZ6508000000192000145399*AM:1300.00*CC:CZK*X-VS:1000001*MSG:VS1000001 Na Duel!"
     )
 
 
@@ -121,9 +118,7 @@ def test_confirmation_email_states_iban_alone_for_foreign_account(client, auth_h
     publish(client, organizer, "cup")
 
     fencer = auth_headers(email="jan@example.com", name="Jan")
-    client.post(
-        "/api/tournaments/cup/register", json={"disciplines": ["LS"]}, headers=fencer
-    )
+    client.post("/api/tournaments/cup/register", json={"disciplines": ["LS"]}, headers=fencer)
 
     body = mailbox.sent[0].get_body(("plain",)).get_content()
     assert "Účet: DE89370400440532013000\n" in body
@@ -221,9 +216,7 @@ def _addressless_registration(client, auth_headers, mailbox):
     organizer = auth_headers()
     _setup(client, organizer)
     fencer = auth_headers(email="jan@example.com", name="Jan Novák")
-    client.post(
-        "/api/tournaments/cup/register", json={"disciplines": ["LS"]}, headers=fencer
-    )
+    client.post("/api/tournaments/cup/register", json={"disciplines": ["LS"]}, headers=fencer)
     session = db_session()
     record = session.scalar(select(Fencer).where(Fencer.email == "jan@example.com"))
     record.email = None
@@ -234,18 +227,14 @@ def _addressless_registration(client, auth_headers, mailbox):
 
 
 @pytest.mark.parametrize("name", SENDERS_TAKING_A_REGISTRATION)
-def test_no_sender_will_mail_a_fencer_holding_no_address(
-    client, auth_headers, mailbox, name
-):
+def test_no_sender_will_mail_a_fencer_holding_no_address(client, auth_headers, mailbox, name):
     from app import emails
     from app.mail import NoRecipientError
 
     session, registration = _addressless_registration(client, auth_headers, mailbox)
 
     with pytest.raises(NoRecipientError):
-        getattr(emails, name)(
-            mailbox, registration.tournament, registration.fencer, registration
-        )
+        getattr(emails, name)(mailbox, registration.tournament, registration.fencer, registration)
 
     assert mailbox.sent == []
 

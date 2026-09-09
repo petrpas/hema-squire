@@ -81,8 +81,7 @@ def downgrade() -> None:
             continue
         conn.execute(
             sa.text(
-                "UPDATE disciplines SET ruleset_name = :name, ruleset_url = :url "
-                "WHERE id = :id"
+                "UPDATE disciplines SET ruleset_name = :name, ruleset_url = :url WHERE id = :id"
             ),
             {"name": label[:100], "url": rest[:-1][:500], "id": discipline_id},
         )

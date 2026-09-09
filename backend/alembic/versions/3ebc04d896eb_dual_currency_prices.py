@@ -29,6 +29,7 @@ total typed by an organizer after this deploys is lost on downgrade, so
 downgrade is safe only immediately after deploying — never once organizers
 have started pricing in EUR.
 """
+
 from collections.abc import Sequence
 from decimal import ROUND_HALF_UP, Decimal
 
@@ -37,73 +38,71 @@ from alembic import op
 from sqlalchemy import column, table
 
 # revision identifiers, used by Alembic.
-revision: str = '3ebc04d896eb'
-down_revision: str | Sequence[str] | None = 'df6a74c06dfa'
+revision: str = "3ebc04d896eb"
+down_revision: str | Sequence[str] | None = "df6a74c06dfa"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
-_CURRENCY_TYPE = sa.Enum('CZK', 'EUR', name='currency', native_enum=False, length=30)
+_CURRENCY_TYPE = sa.Enum("CZK", "EUR", name="currency", native_enum=False, length=30)
 
 
 def _derive(amount: int | None, rate: Decimal) -> int | None:
     if amount is None:
         return None
-    return int((Decimal(amount) / rate).quantize(Decimal('1'), rounding=ROUND_HALF_UP))
+    return int((Decimal(amount) / rate).quantize(Decimal("1"), rounding=ROUND_HALF_UP))
 
 
 def upgrade() -> None:
-    with op.batch_alter_table('tournaments', schema=None) as batch_op:
+    with op.batch_alter_table("tournaments", schema=None) as batch_op:
         batch_op.alter_column(
-            'primary_currency',
-            new_column_name='local_currency',
+            "primary_currency",
+            new_column_name="local_currency",
             existing_type=_CURRENCY_TYPE,
         )
 
-    with op.batch_alter_table('disciplines', schema=None) as batch_op:
-        batch_op.add_column(sa.Column('fee_eur', sa.Integer(), nullable=True))
-        batch_op.add_column(sa.Column('fee_early_eur', sa.Integer(), nullable=True))
+    with op.batch_alter_table("disciplines", schema=None) as batch_op:
+        batch_op.add_column(sa.Column("fee_eur", sa.Integer(), nullable=True))
+        batch_op.add_column(sa.Column("fee_early_eur", sa.Integer(), nullable=True))
 
-    with op.batch_alter_table('extra_items', schema=None) as batch_op:
-        batch_op.add_column(sa.Column('price_eur', sa.Integer(), nullable=True))
+    with op.batch_alter_table("extra_items", schema=None) as batch_op:
+        batch_op.add_column(sa.Column("price_eur", sa.Integer(), nullable=True))
 
-    with op.batch_alter_table('registrations', schema=None) as batch_op:
-        batch_op.add_column(sa.Column('total_eur', sa.Integer(), nullable=True))
+    with op.batch_alter_table("registrations", schema=None) as batch_op:
+        batch_op.add_column(sa.Column("total_eur", sa.Integer(), nullable=True))
         batch_op.add_column(
-            sa.Column(
-                'amount_paid_eur_cents', sa.Integer(), nullable=False, server_default='0'
-            )
+            sa.Column("amount_paid_eur_cents", sa.Integer(), nullable=False, server_default="0")
         )
 
     conn = op.get_bind()
     tournaments = table(
-        'tournaments',
-        column('id', sa.Integer),
-        column('eur_payments_enabled', sa.Boolean),
-        column('eur_rate', sa.Numeric(12, 4)),
-        column('discounts', sa.JSON),
+        "tournaments",
+        column("id", sa.Integer),
+        column("eur_payments_enabled", sa.Boolean),
+        column("eur_rate", sa.Numeric(12, 4)),
+        column("discounts", sa.JSON),
     )
     disciplines = table(
-        'disciplines',
-        column('id', sa.Integer),
-        column('tournament_id', sa.Integer),
-        column('fee', sa.Integer),
-        column('fee_early', sa.Integer),
-        column('fee_eur', sa.Integer),
-        column('fee_early_eur', sa.Integer),
+        "disciplines",
+        column("id", sa.Integer),
+        column("tournament_id", sa.Integer),
+        column("fee", sa.Integer),
+        column("fee_early", sa.Integer),
+        column("fee_eur", sa.Integer),
+        column("fee_early_eur", sa.Integer),
     )
     extra_items = table(
-        'extra_items',
-        column('id', sa.Integer),
-        column('tournament_id', sa.Integer),
-        column('price', sa.Integer),
-        column('price_eur', sa.Integer),
+        "extra_items",
+        column("id", sa.Integer),
+        column("tournament_id", sa.Integer),
+        column("price", sa.Integer),
+        column("price_eur", sa.Integer),
     )
     registrations = table(
-        'registrations',
-        column('id', sa.Integer),
-        column('tournament_id', sa.Integer),
-        column('total_amount', sa.Integer),
-        column('total_eur', sa.Integer),
+        "registrations",
+        column("id", sa.Integer),
+        column("tournament_id", sa.Integer),
+        column("total_amount", sa.Integer),
+        column("total_eur", sa.Integer),
     )
 
     eur_tournaments = conn.execute(
@@ -154,34 +153,34 @@ def upgrade() -> None:
         discounts = row.discounts or []
         changed = False
         for discount in discounts:
-            effect = discount.get('effect') or {}
-            if effect.get('kind') == 'fixed' and 'value_eur' not in effect:
-                effect['value_eur'] = _derive(effect.get('value', 0), rate)
+            effect = discount.get("effect") or {}
+            if effect.get("kind") == "fixed" and "value_eur" not in effect:
+                effect["value_eur"] = _derive(effect.get("value", 0), rate)
                 changed = True
         if changed:
             conn.execute(
                 tournaments.update().where(tournaments.c.id == row.id).values(discounts=discounts)
             )
 
-    with op.batch_alter_table('registrations', schema=None) as batch_op:
-        batch_op.alter_column('amount_paid_eur_cents', server_default=None)
+    with op.batch_alter_table("registrations", schema=None) as batch_op:
+        batch_op.alter_column("amount_paid_eur_cents", server_default=None)
 
 
 def downgrade() -> None:
-    with op.batch_alter_table('registrations', schema=None) as batch_op:
-        batch_op.drop_column('amount_paid_eur_cents')
-        batch_op.drop_column('total_eur')
+    with op.batch_alter_table("registrations", schema=None) as batch_op:
+        batch_op.drop_column("amount_paid_eur_cents")
+        batch_op.drop_column("total_eur")
 
-    with op.batch_alter_table('extra_items', schema=None) as batch_op:
-        batch_op.drop_column('price_eur')
+    with op.batch_alter_table("extra_items", schema=None) as batch_op:
+        batch_op.drop_column("price_eur")
 
-    with op.batch_alter_table('disciplines', schema=None) as batch_op:
-        batch_op.drop_column('fee_early_eur')
-        batch_op.drop_column('fee_eur')
+    with op.batch_alter_table("disciplines", schema=None) as batch_op:
+        batch_op.drop_column("fee_early_eur")
+        batch_op.drop_column("fee_eur")
 
-    with op.batch_alter_table('tournaments', schema=None) as batch_op:
+    with op.batch_alter_table("tournaments", schema=None) as batch_op:
         batch_op.alter_column(
-            'local_currency',
-            new_column_name='primary_currency',
+            "local_currency",
+            new_column_name="primary_currency",
             existing_type=_CURRENCY_TYPE,
         )

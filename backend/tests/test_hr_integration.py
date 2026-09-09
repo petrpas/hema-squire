@@ -81,9 +81,7 @@ def test_parse_fighters_html_handles_entities_and_empty_clubs():
     ]
 
 
-def test_refresh_populates_index_and_search_folds_diacritics(
-    client, auth_headers, use_real_index
-):
+def test_refresh_populates_index_and_search_folds_diacritics(client, auth_headers, use_real_index):
     organizer = make_organizer(client, auth_headers)
     wire_fetcher(IndexFetcher(fighters_html(FIGHTERS)))
 
@@ -116,9 +114,7 @@ def test_hr_binding_uses_db_index(client, auth_headers, use_real_index):
     client.post("/api/hr/refresh", headers=organizer)
 
     fencer = auth_headers(email="jan@example.com", name="Jan N")
-    binding = client.post(
-        "/api/account/hr-binding", json={"hr_id": 582}, headers=fencer
-    )
+    binding = client.post("/api/account/hr-binding", json={"hr_id": 582}, headers=fencer)
     assert binding.status_code == 200
     assert binding.json()["display_name"] == "Jan Novák"  # canonical HR name
 
@@ -160,9 +156,7 @@ SIMILARITY_FIGHTERS = [
 ]
 
 
-def test_search_ranks_by_similarity_and_nationality_narrows(
-    client, auth_headers, use_real_index
-):
+def test_search_ranks_by_similarity_and_nationality_narrows(client, auth_headers, use_real_index):
     organizer = make_organizer(client, auth_headers)
     wire_fetcher(IndexFetcher(fighters_html(SIMILARITY_FIGHTERS)))
     client.post("/api/hr/refresh", headers=organizer)
@@ -175,9 +169,7 @@ def test_search_ranks_by_similarity_and_nationality_narrows(
 
     # nationality narrows the candidate space; every row of that nationality
     # is scored and returned even without a strong match (D4: no threshold)
-    results = client.get(
-        "/api/hr/search?q=pascenko&nationality=Slovakia", headers=organizer
-    ).json()
+    results = client.get("/api/hr/search?q=pascenko&nationality=Slovakia", headers=organizer).json()
     assert [r["hr_id"] for r in results] == [602]
 
     results = client.get(
@@ -227,9 +219,7 @@ def test_snapshot_respects_category_mapping_and_override(client, auth_headers):
     )
     wire_fetcher(fetcher)
 
-    outcome = client.post(
-        "/api/tournaments/cup/ratings/snapshot", headers=organizer
-    ).json()
+    outcome = client.post("/api/tournaments/cup/ratings/snapshot", headers=organizer).json()
     assert outcome["status"] == "ok"
     assert outcome["fencers"] == 1
     assert outcome["ratings"] == 2  # LS and SAW via the default keyword table
@@ -268,9 +258,7 @@ def test_snapshot_drift_rejected_when_no_page_parses(client, auth_headers):
     publish(client, organizer, "cup")
     fencer = auth_headers(email="jan@example.com", name="Jan N")
     client.post("/api/account/hr-binding", json={"hr_id": 10234}, headers=fencer)
-    client.post(
-        "/api/tournaments/cup/register", json={"disciplines": ["LS"]}, headers=fencer
-    )
+    client.post("/api/tournaments/cup/register", json={"disciplines": ["LS"]}, headers=fencer)
 
     fetcher = FakeHRFetcher()
     fetcher.pages[10234] = "<html>redesigned fighter page</html>"
@@ -304,9 +292,7 @@ def test_two_tiers_share_one_fetch_and_one_rating(client, auth_headers):
     publish(client, organizer, "cup")
     fencer = auth_headers(email="jan@example.com", name="Jan N")
     client.post("/api/account/hr-binding", json={"hr_id": 10234}, headers=fencer)
-    client.post(
-        "/api/tournaments/cup/register", json={"disciplines": ["LS-A"]}, headers=fencer
-    )
+    client.post("/api/tournaments/cup/register", json={"disciplines": ["LS-A"]}, headers=fencer)
 
     fetcher = FakeHRFetcher()
     fetcher.pages[10234] = fighter_page([("Mixed & Men's Steel Longsword", 1400.0, 20)])
@@ -339,9 +325,7 @@ def test_custom_weapon_contributes_nothing_without_failing_snapshot(client, auth
     publish(client, organizer, "cup")
     fencer = auth_headers(email="jan@example.com", name="Jan N")
     client.post("/api/account/hr-binding", json={"hr_id": 10234}, headers=fencer)
-    client.post(
-        "/api/tournaments/cup/register", json={"disciplines": ["Messer"]}, headers=fencer
-    )
+    client.post("/api/tournaments/cup/register", json={"disciplines": ["Messer"]}, headers=fencer)
 
     fetcher = FakeHRFetcher()
     # the page parses fine, just carries no category the custom weapon could match

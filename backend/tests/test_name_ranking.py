@@ -47,8 +47,10 @@ def best(query):
         ("Matěj Mazanec", ["matej", "mazanec"]),
         ("MAZANEC MATEJ", ["mazanec", "matej"]),
         ("Kołodziej", ["kolodziej"]),
-        ("NaDuel26: CHEREAU - Sabre and Sidesword",
-         ["naduel26", "chereau", "sabre", "and", "sidesword"]),
+        (
+            "NaDuel26: CHEREAU - Sabre and Sidesword",
+            ["naduel26", "chereau", "sabre", "and", "sidesword"],
+        ),
         ("", []),
     ],
 )
@@ -175,6 +177,7 @@ def test_an_empty_roster_proposes_nobody():
 
 
 # ------------------- the noise the scorer had to be taught to ignore
+
 
 def test_noise_in_the_query_does_not_decide_between_candidates():
     """Two shapes of noise nearly proposed the wrong Pekárek, and both are

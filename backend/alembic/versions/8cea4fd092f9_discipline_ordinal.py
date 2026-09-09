@@ -24,9 +24,7 @@ depends_on: str | Sequence[str] | None = None
 
 def upgrade() -> None:
     with op.batch_alter_table("disciplines", schema=None) as batch_op:
-        batch_op.add_column(
-            sa.Column("ordinal", sa.Integer(), nullable=False, server_default="0")
-        )
+        batch_op.add_column(sa.Column("ordinal", sa.Integer(), nullable=False, server_default="0"))
 
     conn = op.get_bind()
     rows = conn.execute(

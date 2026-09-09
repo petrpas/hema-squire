@@ -40,11 +40,25 @@ MIN_MARGIN = 0.05
 # Letters that carry no combining mark to strip: NFKD leaves them alone because
 # they are their own letters, not a base plus an accent. A Polish surname on a
 # Czech statement is written both ways by the same person, so they have to fold.
-_STANDALONE = str.maketrans({
-    "ł": "l", "Ł": "l", "đ": "d", "Đ": "d", "ø": "o", "Ø": "o",
-    "ß": "ss", "æ": "ae", "Æ": "ae", "œ": "oe", "Œ": "oe", "þ": "th", "Þ": "th",
-    "ð": "d", "Ð": "d",
-})
+_STANDALONE = str.maketrans(
+    {
+        "ł": "l",
+        "Ł": "l",
+        "đ": "d",
+        "Đ": "d",
+        "ø": "o",
+        "Ø": "o",
+        "ß": "ss",
+        "æ": "ae",
+        "Æ": "ae",
+        "œ": "oe",
+        "Œ": "oe",
+        "þ": "th",
+        "Þ": "th",
+        "ð": "d",
+        "Ð": "d",
+    }
+)
 
 
 def normalise(text: str) -> list[str]:

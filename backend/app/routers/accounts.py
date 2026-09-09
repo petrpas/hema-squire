@@ -21,9 +21,7 @@ HRIndexDep = Annotated[HRIndex, Depends(get_hr_index)]
 def hr_search(q: str, session: SessionDep, hr: HRIndexDep, nationality: str | None = None):
     results = hr.search(q, nationality)
     claimed_ids = set(
-        session.scalars(
-            select(Fencer.hr_id).where(Fencer.hr_id.in_([p.hr_id for p in results]))
-        )
+        session.scalars(select(Fencer.hr_id).where(Fencer.hr_id.in_([p.hr_id for p in results])))
     )
     for profile in results:
         profile.claimed = profile.hr_id in claimed_ids

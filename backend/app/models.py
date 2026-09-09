@@ -215,9 +215,7 @@ class Fencer(Base):
     club: Mapped[str | None] = mapped_column(String(200))
     language: Mapped[str] = mapped_column(String(10), default="cs")
     role: Mapped[Role] = mapped_column(str_enum(Role), default=Role.FENCER)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now()
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     registrations: Mapped[list[Registration]] = relationship(back_populates="fencer")
 
@@ -232,9 +230,7 @@ class FencerProfileAudit(Base):
     field: Mapped[str] = mapped_column(String(50))
     old_value: Mapped[str | None] = mapped_column(Text)
     new_value: Mapped[str | None] = mapped_column(Text)
-    changed_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now()
-    )
+    changed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
 class Tournament(Base):
@@ -414,9 +410,7 @@ class Tournament(Base):
     # fills empty price fields from filled ones. It is read by no pricing,
     # matching, email, or QR path — see pricing.selection_total and
     # matching.match_new_transactions, neither of which consults it.
-    local_currency: Mapped[Currency] = mapped_column(
-        str_enum(Currency), default=Currency.CZK
-    )
+    local_currency: Mapped[Currency] = mapped_column(str_enum(Currency), default=Currency.CZK)
     eur_payments_enabled: Mapped[bool] = mapped_column(default=False)
     # 2 decimal places — what an organizer actually types, not a computed
     # figure needing extra precision (schemas.TournamentUpdate quantizes on write)
@@ -597,9 +591,7 @@ class OrganizerRequest(Base):
     state: Mapped[RequestState] = mapped_column(
         str_enum(RequestState), default=RequestState.PENDING
     )
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now()
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     decided_by: Mapped[int | None] = mapped_column(ForeignKey("fencers.id"))
 
@@ -866,12 +858,8 @@ class Registration(Base):
 
     tournament: Mapped[Tournament] = relationship(back_populates="registrations")
     fencer: Mapped[Fencer] = relationship(back_populates="registrations")
-    entries: Mapped[list[RegistrationDiscipline]] = relationship(
-        back_populates="registration"
-    )
-    extra_selections: Mapped[list[RegistrationExtra]] = relationship(
-        back_populates="registration"
-    )
+    entries: Mapped[list[RegistrationDiscipline]] = relationship(back_populates="registration")
+    extra_selections: Mapped[list[RegistrationExtra]] = relationship(back_populates="registration")
     teams: Mapped[list[Team]] = relationship(back_populates="registration")
 
 
@@ -890,9 +878,7 @@ class RegistrationExtra(Base):
     # for selections stored before their item gained an option label
     option_value: Mapped[str | None] = mapped_column(String(100))
 
-    registration: Mapped[Registration] = relationship(
-        back_populates="extra_selections"
-    )
+    registration: Mapped[Registration] = relationship(back_populates="extra_selections")
     item: Mapped[ExtraItem] = relationship()
 
 
@@ -944,9 +930,7 @@ class BankTransaction(Base):
         String(20)
     )  # matched|unmatched|flagged|partial|likely
     status_reason: Mapped[str | None] = mapped_column(String(50))
-    matched_registration_id: Mapped[int | None] = mapped_column(
-        ForeignKey("registrations.id")
-    )
+    matched_registration_id: Mapped[int | None] = mapped_column(ForeignKey("registrations.id"))
     # the fencer a `likely` proposal names. Points at the person, not their
     # registration: what the resolver read was a name, and the registration is
     # looked up when the organizer confirms
@@ -997,9 +981,7 @@ class PaymentEvent(Base):
     transaction_id: Mapped[int | None] = mapped_column(ForeignKey("bank_transactions.id"))
     kind: Mapped[str] = mapped_column(String(30))
     detail: Mapped[str | None] = mapped_column(Text)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now()
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
 class PaymentMethod(enum.StrEnum):
@@ -1054,9 +1036,7 @@ class ManualPayment(Base):
     # foreign key: the record must still read correctly when the account that
     # made it is gone
     recorded_by: Mapped[str] = mapped_column(String(200))
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now()
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     removed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     tournament: Mapped[Tournament] = relationship()
@@ -1079,9 +1059,7 @@ class Rule(Base):
     target: Mapped[str] = mapped_column(String(50))
     payload: Mapped[dict] = mapped_column(JSON)
     created_by: Mapped[int] = mapped_column(ForeignKey("fencers.id"))
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now()
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     deleted_by: Mapped[int | None] = mapped_column(ForeignKey("fencers.id"))
 
@@ -1099,9 +1077,7 @@ class RuleJournalEntry(Base):
     action: Mapped[str] = mapped_column(String(10))  # created | updated | deleted
     actor_id: Mapped[int] = mapped_column(ForeignKey("fencers.id"))
     content: Mapped[dict] = mapped_column(JSON)  # rule snapshot at event time
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now()
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
 class HRFighter(Base):
@@ -1124,9 +1100,7 @@ class HRIndexRefresh(Base):
     __tablename__ = "hr_index_refreshes"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    fetched_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now()
-    )
+    fetched_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     status: Mapped[str] = mapped_column(String(10))  # ok | rejected | failed
     fighter_count: Mapped[int | None]
     detail: Mapped[dict] = mapped_column(JSON, default=dict)
@@ -1140,9 +1114,7 @@ class HRRatingSnapshot(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     tournament_id: Mapped[int] = mapped_column(ForeignKey("tournaments.id"))
-    taken_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now()
-    )
+    taken_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     fencer_count: Mapped[int]
 
     ratings: Mapped[list[HRSnapshotRating]] = relationship(back_populates="snapshot")
@@ -1219,9 +1191,7 @@ class ImportDecision(Base):
     key: Mapped[str] = mapped_column(String(80))
     payload: Mapped[dict] = mapped_column(JSON)
     source: Mapped[str] = mapped_column(String(20), default="llm")  # llm | organizer
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now()
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
 class ManualRow(Base):
@@ -1254,9 +1224,7 @@ class ManualRow(Base):
     afterparty: Mapped[bool] = mapped_column(default=False)
     notes: Mapped[str | None] = mapped_column(Text)
     created_by: Mapped[int] = mapped_column(ForeignKey("fencers.id"))
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now()
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
 class SheetRowNumber(Base):
@@ -1315,9 +1283,7 @@ class Team(Base):
     # set once a composition reminder has been sent, so a later tick does not
     # resend it (design D7); unrelated to registration.reminded_at
     composition_reminded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now()
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     registration: Mapped[Registration] = relationship(back_populates="teams")
     discipline: Mapped[Discipline] = relationship()
@@ -1378,9 +1344,7 @@ class Operation(Base):
     )
     total: Mapped[int] = mapped_column(default=0)
     done: Mapped[int] = mapped_column(default=0)
-    started_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now()
-    )
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     # NULL is the running predicate, indexed with the tournament: every poll
     # asks "what is unconcluded here", and the startup sweep asks it globally
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

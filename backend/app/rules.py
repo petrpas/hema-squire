@@ -391,9 +391,7 @@ def amended_state(
         state[field] = (
             standing[-1].payload["value"]
             if standing
-            else issued_selection(
-                session, tournament, target, registration, field, withdrawn
-            )
+            else issued_selection(session, tournament, target, registration, field, withdrawn)
         )
     return state
 
@@ -431,8 +429,10 @@ def create_rule(
                 for discipline in tournament.disciplines
                 if discipline.kind is DisciplineKind.INDIVIDUAL
             }
-            if not isinstance(value, list) or not value or not all(
-                isinstance(slug, str) for slug in value
+            if (
+                not isinstance(value, list)
+                or not value
+                or not all(isinstance(slug, str) for slug in value)
             ):
                 raise HTTPException(status_code=422, detail="disciplines_must_be_a_list")
             unknown = [slug for slug in value if slug not in offered]
@@ -448,9 +448,7 @@ def create_rule(
             # such on the row (owner decision, 2026-09-06). Empty is a legitimate
             # answer here as it is not for disciplines — borrowing nothing is a
             # thing a fencer does.
-            if not isinstance(value, list) or not all(
-                isinstance(name, str) for name in value
-            ):
+            if not isinstance(value, list) or not all(isinstance(name, str) for name in value):
                 raise HTTPException(status_code=422, detail="rentals_must_be_a_list")
         # Which of the two kinds an edit to an amendable field is is not the
         # console's to choose: it follows from whether a registration stands

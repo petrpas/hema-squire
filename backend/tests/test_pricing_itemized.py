@@ -35,8 +35,14 @@ def make_registration(tournament, fees, extras=(), registered_at=REGISTERED_AT):
     entries = [
         RegistrationDiscipline(
             discipline=Discipline(
-                tournament=tournament, slug=f"D{i}", name=f"D{i}",
-                weapon=f"D{i}", gender="", material="", capacity=10, fee=fee,
+                tournament=tournament,
+                slug=f"D{i}",
+                name=f"D{i}",
+                weapon=f"D{i}",
+                gender="",
+                material="",
+                capacity=10,
+                fee=fee,
             ),
             is_substitute=False,
         )
@@ -90,9 +96,7 @@ def test_count_discount_applies_only_at_matching_count():
 
 def test_spec_scenario_fixed_then_percent_rounds_half_up():
     # (60 − 10) × 0.85 = 42.5 → 43 (the normative scenario from the spec)
-    tournament = make_tournament(
-        discounts=[count_discount(2, 10), early_percent("2026-06-01", 15)]
-    )
+    tournament = make_tournament(discounts=[count_discount(2, 10), early_percent("2026-06-01", 15)])
     registration = make_registration(tournament, [30, 30])
     assert pricing.registration_total(registration, tournament).local == 43
 
@@ -292,9 +296,7 @@ def test_no_eur_total_when_tournament_does_not_price_in_eur():
 
 
 def test_breakdown_lists_applied_and_unapplied_in_configured_order():
-    tournament = make_tournament(
-        discounts=[count_discount(2, 10), count_discount(3, 20)]
-    )
+    tournament = make_tournament(discounts=[count_discount(2, 10), count_discount(3, 20)])
     breakdown = pricing.selection_discounts(
         tournament,
         disciplines=[Discipline(fee=30), Discipline(fee=30)],

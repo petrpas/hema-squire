@@ -22,9 +22,7 @@ def rows_for(session: Session, tournament: Tournament) -> list[ManualRow]:
     which is the order they were numbered in."""
     return list(
         session.scalars(
-            select(ManualRow)
-            .where(ManualRow.tournament_id == tournament.id)
-            .order_by(ManualRow.id)
+            select(ManualRow).where(ManualRow.tournament_id == tournament.id).order_by(ManualRow.id)
         )
     )
 

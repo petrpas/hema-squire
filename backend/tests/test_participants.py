@@ -115,9 +115,7 @@ def test_substitute_entry_not_shown_in_disciplines(client, auth_headers):
 # ------------------------------- where Squire guarantees no payment state
 
 
-def test_a_payments_off_list_shows_entrants_without_a_payment_claim(
-    client, auth_headers
-):
+def test_a_payments_off_list_shows_entrants_without_a_payment_claim(client, auth_headers):
     """The defect this fixes, and it was live: nothing on a payments-off
     tournament ever reaches PAID, so the list was either empty or entirely
     "unconfirmed" — while `registration`'s own lifecycle rule says such a
@@ -158,9 +156,7 @@ def test_a_live_list_does_not_date_itself(client, auth_headers):
     assert client.get("/api/tournaments/cup/participants").json()["as_of"] is None
 
 
-def test_an_organizer_kept_list_states_when_the_roster_reached_squire(
-    client, auth_headers
-):
+def test_an_organizer_kept_list_states_when_the_roster_reached_squire(client, auth_headers):
     from datetime import UTC, datetime
 
     from app.models import ImportBatch, Tournament

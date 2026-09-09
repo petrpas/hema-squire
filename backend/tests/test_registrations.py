@@ -144,9 +144,7 @@ def test_cancel_frees_spot_and_admit_bills_frozen_prices(client, auth_headers):
     register(client, first, disciplines=["SB"])
 
     waiting = auth_headers(email="b@example.com", name="B")
-    waiting_body = register(
-        client, waiting, disciplines=["SB"], afterparty=True
-    ).json()
+    waiting_body = register(client, waiting, disciplines=["SB"], afterparty=True).json()
     assert waiting_body["total_amount"] == 0
 
     cancelled = client.post("/api/tournaments/cup/my-registration/cancel", headers=first)
@@ -187,9 +185,7 @@ def test_price_preview_matches_registration_total_legacy(client, auth_headers):
         "weapon_rentals": ["LS"],
         "afterparty": True,
     }
-    preview = client.post(
-        "/api/tournaments/cup/price-preview", json=selection, headers=fencer
-    )
+    preview = client.post("/api/tournaments/cup/price-preview", json=selection, headers=fencer)
     assert preview.status_code == 200
     registered = register(client, fencer, **selection).json()
     assert preview.json()["total"] == registered["total_amount"]
@@ -223,9 +219,7 @@ def test_price_preview_matches_registration_total_itemized(client, auth_headers)
         "disciplines": ["LS", "SB"],
         "extras": [{"extra_item_id": item["id"], "qty": 2}],
     }
-    preview = client.post(
-        "/api/tournaments/cup/price-preview", json=selection, headers=fencer
-    )
+    preview = client.post("/api/tournaments/cup/price-preview", json=selection, headers=fencer)
     assert preview.status_code == 200
     registered = register(client, fencer, **selection).json()
     assert preview.json()["total"] == registered["total_amount"]
@@ -583,9 +577,7 @@ def test_admit_requires_organizer_and_capacity(client, auth_headers):
     session = next(app.dependency_overrides[get_session]())
     waiting_id = session.scalar(select(Registration.id).where(Registration.vs == 2601002))
 
-    denied = client.post(
-        f"/api/tournaments/cup/registrations/{waiting_id}/admit/SB", headers=first
-    )
+    denied = client.post(f"/api/tournaments/cup/registrations/{waiting_id}/admit/SB", headers=first)
     assert denied.status_code == 403
 
     full = client.post(
@@ -639,8 +631,12 @@ def test_individual_and_team_discipline_in_one_weapon_both_accepted(client, auth
     team = client.post(
         "/api/tournaments/cup/disciplines",
         json={
-            "weapon": "LS", "capacity": 5, "fee": 3000,
-            "kind": "team", "team_min": 3, "team_max": 4,
+            "weapon": "LS",
+            "capacity": 5,
+            "fee": 3000,
+            "kind": "team",
+            "team_min": 3,
+            "team_max": 4,
         },
         headers=organizer,
     )
@@ -660,8 +656,12 @@ def test_second_individual_and_team_discipline_disambiguated(client, auth_header
     )
     payload = {"weapon": "LS", "capacity": 10, "fee": 800}
     team_payload = {
-        "weapon": "LS", "capacity": 5, "fee": 3000,
-        "kind": "team", "team_min": 3, "team_max": 4,
+        "weapon": "LS",
+        "capacity": 5,
+        "fee": 3000,
+        "kind": "team",
+        "team_min": 3,
+        "team_max": 4,
     }
     first = client.post("/api/tournaments/cup/disciplines", json=payload, headers=organizer)
     team_first = client.post(
@@ -704,9 +704,7 @@ def test_organizer_override_accepted_and_collision_refused(client, auth_headers)
     )
     assert collision.status_code == 409
     assert collision.json()["detail"] == {
-        "errors": [
-            {"field": "slug", "code": "discipline_slug_taken", "params": {"value": "LS-A"}}
-        ]
+        "errors": [{"field": "slug", "code": "discipline_slug_taken", "params": {"value": "LS-A"}}]
     }
 
 
@@ -736,7 +734,10 @@ def test_slug_override_is_normalized(client, auth_headers):
     created = client.post(
         "/api/tournaments/cup/disciplines",
         json={
-            "slug": "Sword & Buckler (variant)", "weapon": "SB", "capacity": 10, "fee": 800,
+            "slug": "Sword & Buckler (variant)",
+            "weapon": "SB",
+            "capacity": 10,
+            "fee": 800,
         },
         headers=organizer,
     )
@@ -758,14 +759,28 @@ def test_existing_team_slug_from_before_kind_aware_generation_is_not_rewritten(
     )
     client.post(
         "/api/tournaments/cup/disciplines",
-        json={"slug": "LS-2", "weapon": "LS", "capacity": 5, "fee": 3000, "kind": "team",
-              "team_min": 3, "team_max": 4},
+        json={
+            "slug": "LS-2",
+            "weapon": "LS",
+            "capacity": 5,
+            "fee": 3000,
+            "kind": "team",
+            "team_min": 3,
+            "team_max": 4,
+        },
         headers=organizer,
     )
     renamed = client.patch(
         "/api/tournaments/cup/disciplines/LS-2",
-        json={"weapon": "LS", "name": "Team Longsword (renamed)", "capacity": 5, "fee": 3000,
-              "kind": "team", "team_min": 3, "team_max": 4},
+        json={
+            "weapon": "LS",
+            "name": "Team Longsword (renamed)",
+            "capacity": 5,
+            "fee": 3000,
+            "kind": "team",
+            "team_min": 3,
+            "team_max": 4,
+        },
         headers=organizer,
     )
     assert renamed.status_code == 200, renamed.text
@@ -825,8 +840,13 @@ def test_rename_succeeds_on_a_frozen_discipline(client, auth_headers):
 
     renamed = client.patch(
         "/api/tournaments/cup/disciplines/LS",
-        json={"weapon": "LS", "name": "Longsword Renamed", "capacity": 2, "fee": 800,
-              "fee_early": 600},
+        json={
+            "weapon": "LS",
+            "name": "Longsword Renamed",
+            "capacity": 2,
+            "fee": 800,
+            "fee_early": 600,
+        },
         headers=organizer,
     )
     assert renamed.status_code == 200, renamed.text
@@ -850,7 +870,10 @@ def test_slug_editable_before_registration_frozen_after(client, auth_headers):
     frozen = client.patch(
         "/api/tournaments/cup/disciplines/LS-renamed",
         json={
-            "slug": "LS-renamed-again", "weapon": "LS", "capacity": 2, "fee": 800,
+            "slug": "LS-renamed-again",
+            "weapon": "LS",
+            "capacity": 2,
+            "fee": 800,
             "fee_early": 600,
         },
         headers=organizer,
@@ -876,8 +899,13 @@ def test_slug_frozen_after_team_entry(client, auth_headers):
     client.post(
         "/api/tournaments/cup/disciplines",
         json={
-            "slug": "LS-Team", "weapon": "LS", "capacity": 5, "fee": 3000,
-            "kind": "team", "team_min": 3, "team_max": 4,
+            "slug": "LS-Team",
+            "weapon": "LS",
+            "capacity": 5,
+            "fee": 3000,
+            "kind": "team",
+            "team_min": 3,
+            "team_max": 4,
         },
         headers=organizer,
     )
@@ -891,8 +919,13 @@ def test_slug_frozen_after_team_entry(client, auth_headers):
     frozen = client.patch(
         "/api/tournaments/cup/disciplines/LS-Team",
         json={
-            "slug": "LS-Team-2", "weapon": "LS", "capacity": 5, "fee": 3000,
-            "kind": "team", "team_min": 3, "team_max": 4,
+            "slug": "LS-Team-2",
+            "weapon": "LS",
+            "capacity": 5,
+            "fee": 3000,
+            "kind": "team",
+            "team_min": 3,
+            "team_max": 4,
         },
         headers=organizer,
     )

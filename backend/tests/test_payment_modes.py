@@ -534,9 +534,7 @@ def test_deposit_paid_registration_is_reminded_about_its_balance(client, auth_he
 
 
 def make_csv(rows):
-    header = (
-        "ID pohybu;Datum;Objem;Měna;VS;KS;SS;Zpráva pro příjemce;Název protiúčtu;Protiúčet"
-    )
+    header = "ID pohybu;Datum;Objem;Měna;VS;KS;SS;Zpráva pro příjemce;Název protiúčtu;Protiúčet"
     return ("meta;data\n\n" + header + "\n" + "\n".join(rows) + "\n").encode()
 
 
@@ -548,9 +546,7 @@ def import_rows(client, organizer, rows):
     ).json()
 
 
-def test_credit_reaching_the_deposit_closes_the_payment_window(
-    client, auth_headers, mailbox
-):
+def test_credit_reaching_the_deposit_closes_the_payment_window(client, auth_headers, mailbox):
     """The deposit discharges the window rather than extending it, so
     `harden-payment-matching` Decision 3 stands unmodified (Decision 3)."""
     organizer = auth_headers()
@@ -692,9 +688,7 @@ def test_returned_registration_keeps_its_place_in_the_queue(client, auth_headers
     organizer = auth_headers()
     make_tournament(client, organizer, capacity=1)
     _, early = enroll(client, auth_headers, email="a@example.com", name="A")
-    _, middle = enroll(
-        client, auth_headers, email="b@example.com", name="B"
-    )
+    _, middle = enroll(client, auth_headers, email="b@example.com", name="B")
     _, late = enroll(client, auth_headers, email="c@example.com", name="C")
 
     session = db_session()
@@ -803,9 +797,7 @@ def test_deposit_mode_requires_a_deposit(client, auth_headers):
     assert response.json()["detail"] == "deposit_amount_required"
 
 
-def test_deposit_mode_requires_the_eur_deposit_when_the_tournament_shows_eur(
-    client, auth_headers
-):
+def test_deposit_mode_requires_the_eur_deposit_when_the_tournament_shows_eur(client, auth_headers):
     organizer = auth_headers()
     make_tournament(client, organizer, fee_eur=40, eur_payments_enabled=True)
     response = client.patch(

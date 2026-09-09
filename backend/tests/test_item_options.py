@@ -72,9 +72,7 @@ def test_option_with_choices_round_trip(client, auth_headers):
     headers = auth_headers()
     make_ready_tournament(client, headers)
 
-    item = add_item(
-        client, headers, option_label="size", option_choices=["S", "M", "L", "XL"]
-    )
+    item = add_item(client, headers, option_label="size", option_choices=["S", "M", "L", "XL"])
     assert item["option_label"] == "size"
     assert item["option_choices"] == ["S", "M", "L", "XL"]
 
@@ -195,9 +193,7 @@ def test_value_outside_choices_rejected(client, auth_headers, value):
     item = add_item(client, headers, option_label="size", option_choices=["S", "M"])
     fencer = auth_headers(email="f1@example.com", name="F1")
 
-    response = register(
-        client, fencer, [{"extra_item_id": item["id"], "option_value": value}]
-    )
+    response = register(client, fencer, [{"extra_item_id": item["id"], "option_value": value}])
     assert response.status_code == 422
 
 
@@ -207,9 +203,7 @@ def test_option_for_option_less_item_rejected(client, auth_headers):
     item = add_item(client, headers)
     fencer = auth_headers(email="f1@example.com", name="F1")
 
-    response = register(
-        client, fencer, [{"extra_item_id": item["id"], "option_value": "M"}]
-    )
+    response = register(client, fencer, [{"extra_item_id": item["id"], "option_value": "M"}])
     assert response.status_code == 422
     assert response.json()["detail"] == {"option_not_accepted": [item["id"]]}
 

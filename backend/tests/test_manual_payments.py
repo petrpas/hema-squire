@@ -106,9 +106,7 @@ def record(client, organizer, registration_id, **body):
 
 
 def remove(client, organizer, payment_id):
-    return client.delete(
-        f"/api/tournaments/cup/payments/manual/{payment_id}", headers=organizer
-    )
+    return client.delete(f"/api/tournaments/cup/payments/manual/{payment_id}", headers=organizer)
 
 
 def listed(client, organizer):
@@ -141,9 +139,7 @@ def test_a_recorded_payment_can_be_partial(client, auth_headers, mailbox):
     make_tournament(client, organizer)
     _, vs = enroll(client, auth_headers)
 
-    assert record(
-        client, organizer, registration_by_vs(vs).id, amount="500.00"
-    ).status_code == 201
+    assert record(client, organizer, registration_by_vs(vs).id, amount="500.00").status_code == 201
 
     row = registration_by_vs(vs)
     assert row.state == RegistrationState.RESERVED
@@ -160,9 +156,7 @@ def test_reaching_the_deposit_closes_the_window(client, auth_headers, mailbox):
     _, vs = enroll(client, auth_headers)
     assert registration_by_vs(vs).expires_at is not None
 
-    assert record(
-        client, organizer, registration_by_vs(vs).id, amount="300.00"
-    ).status_code == 201
+    assert record(client, organizer, registration_by_vs(vs).id, amount="300.00").status_code == 201
 
     row = registration_by_vs(vs)
     assert row.state == RegistrationState.RESERVED
@@ -174,9 +168,12 @@ def test_the_eur_lane_is_credited_alone(client, auth_headers, mailbox):
     make_tournament(client, organizer, fee_eur=40, eur_payments_enabled=True, eur_rate="25.0")
     _, vs = enroll(client, auth_headers)
 
-    assert record(
-        client, organizer, registration_by_vs(vs).id, amount="40.00", currency="EUR"
-    ).status_code == 201
+    assert (
+        record(
+            client, organizer, registration_by_vs(vs).id, amount="40.00", currency="EUR"
+        ).status_code
+        == 201
+    )
 
     row = registration_by_vs(vs)
     # each lane is judged against its own total and the two are never summed
@@ -205,9 +202,7 @@ def test_it_is_not_a_bank_transaction(client, auth_headers, mailbox):
     record(client, organizer, registration_by_vs(vs).id)
 
     assert db_session().scalars(select(BankTransaction)).all() == []
-    assert client.get(
-        "/api/tournaments/cup/payments/transactions", headers=organizer
-    ).json() == []
+    assert client.get("/api/tournaments/cup/payments/transactions", headers=organizer).json() == []
 
 
 def test_recording_is_audited_against_the_organizer(client, auth_headers, mailbox):
@@ -216,9 +211,11 @@ def test_recording_is_audited_against_the_organizer(client, auth_headers, mailbo
     _, vs = enroll(client, auth_headers)
     record(client, organizer, registration_by_vs(vs).id)
 
-    events = db_session().scalars(
-        select(PaymentEvent).where(PaymentEvent.kind == "manual_payment_recorded")
-    ).all()
+    events = (
+        db_session()
+        .scalars(select(PaymentEvent).where(PaymentEvent.kind == "manual_payment_recorded"))
+        .all()
+    )
     assert len(events) == 1
     assert "org@example.com" in events[0].detail
     # no transaction behind it, and the event says so by carrying none
@@ -288,10 +285,7 @@ def test_removal_is_audited(client, auth_headers, mailbox):
     payment = record(client, organizer, registration_by_vs(vs).id).json()
     remove(client, organizer, payment["id"])
 
-    kinds = [
-        event.kind
-        for event in db_session().scalars(select(PaymentEvent)).all()
-    ]
+    kinds = [event.kind for event in db_session().scalars(select(PaymentEvent)).all()]
     assert "manual_payment_recorded" in kinds
     assert "manual_payment_removed" in kinds
 
@@ -364,9 +358,10 @@ def test_a_cancelled_registration_takes_no_payment(client, auth_headers, mailbox
     make_tournament(client, organizer)
     fencer, vs = enroll(client, auth_headers)
     registration_id = registration_by_vs(vs).id
-    assert client.post(
-        "/api/tournaments/cup/my-registration/cancel", headers=fencer
-    ).status_code == 200
+    assert (
+        client.post("/api/tournaments/cup/my-registration/cancel", headers=fencer).status_code
+        == 200
+    )
 
     response = record(client, organizer, registration_id)
     assert response.status_code == 409
@@ -383,17 +378,13 @@ def test_a_zero_amount_is_not_a_payment(client, auth_headers, mailbox):
     organizer = auth_headers()
     make_tournament(client, organizer)
     _, vs = enroll(client, auth_headers)
-    assert record(
-        client, organizer, registration_by_vs(vs).id, amount="0.00"
-    ).status_code == 422
+    assert record(client, organizer, registration_by_vs(vs).id, amount="0.00").status_code == 422
 
 
 # ------------------------------------------------- when a statement follows
 
 
-def test_a_statement_landing_on_a_settled_registration_is_flagged(
-    client, auth_headers, mailbox
-):
+def test_a_statement_landing_on_a_settled_registration_is_flagged(client, auth_headers, mailbox):
     """No new machinery: the matcher already refuses to credit a transaction
     whose registration is not reserved, so the collision surfaces in the
     flagged queue rather than doubling the money (design D6)."""
@@ -419,9 +410,7 @@ def test_the_flagged_row_names_the_recorded_payment(client, auth_headers, mailbo
     record(client, organizer, registration_by_vs(vs).id, method="cash")
     import_rows(client, organizer, [f"1;01.08.2026;1000,00;CZK;{vs};;;;;"])
 
-    [flagged] = client.get(
-        "/api/tournaments/cup/payments/transactions", headers=organizer
-    ).json()
+    [flagged] = client.get("/api/tournaments/cup/payments/transactions", headers=organizer).json()
     recorded = flagged["settled_by_recorded_payment"]
     assert recorded is not None
     assert recorded["amount"] == "1000.00"
@@ -440,9 +429,7 @@ def test_the_flagged_row_names_a_waiver(client, auth_headers, mailbox):
     )
     import_rows(client, organizer, [f"1;01.08.2026;1000,00;CZK;{vs};;;;;"])
 
-    [flagged] = client.get(
-        "/api/tournaments/cup/payments/transactions", headers=organizer
-    ).json()
+    [flagged] = client.get("/api/tournaments/cup/payments/transactions", headers=organizer).json()
     assert flagged["settled_by_hand_reason"] == "volná účast"
     assert flagged["settled_by_recorded_payment"] is None
 
@@ -454,9 +441,7 @@ def test_an_ordinary_conflict_makes_no_hand_settled_claim(client, auth_headers, 
     import_rows(client, organizer, [f"1;01.08.2026;1000,00;CZK;{vs};;;;;"])
     import_rows(client, organizer, [f"2;02.08.2026;1000,00;CZK;{vs};;;;;"])
 
-    rows = client.get(
-        "/api/tournaments/cup/payments/transactions", headers=organizer
-    ).json()
+    rows = client.get("/api/tournaments/cup/payments/transactions", headers=organizer).json()
     [flagged] = [row for row in rows if row["status"] == "flagged"]
     assert flagged["settled_by_hand_reason"] is None
     assert flagged["settled_by_recorded_payment"] is None
@@ -478,9 +463,7 @@ def test_a_partly_recorded_registration_overshoots_into_the_overpayment_flag(
     assert row.state == RegistrationState.PAID
     assert row.amount_paid_cents == 150000
     assert row.refund_state == RefundState.PENDING
-    kinds = [
-        event.kind for event in db_session().scalars(select(PaymentEvent)).all()
-    ]
+    kinds = [event.kind for event in db_session().scalars(select(PaymentEvent)).all()]
     assert "overpayment" in kinds
 
 
@@ -497,9 +480,7 @@ def test_a_reservation_expiring_on_recorded_money_is_listed(client, auth_headers
     age_reserved(vs, expires_in_hours=-1)
     client.post("/api/tournaments/cup/payments/process", headers=organizer)
 
-    [row] = client.get(
-        "/api/tournaments/cup/payments/expired-holding", headers=organizer
-    ).json()
+    [row] = client.get("/api/tournaments/cup/payments/expired-holding", headers=organizer).json()
     assert row["vs"] == vs
     assert row["credited_amount"] == "600.00"
 
@@ -517,9 +498,9 @@ def test_a_waived_registration_holds_no_money(client, auth_headers, mailbox):
     row = registration_by_vs(vs)
     assert row.amount_paid_cents == 0
     # nothing was credited, so it can never reach the expired-holding queue
-    assert client.get(
-        "/api/tournaments/cup/payments/expired-holding", headers=organizer
-    ).json() == []
+    assert (
+        client.get("/api/tournaments/cup/payments/expired-holding", headers=organizer).json() == []
+    )
 
 
 # ---- the paid date is the day the money arrived (change paid-at-is-value-date) ----
@@ -545,9 +526,7 @@ def test_recorded_payment_dates_by_received_on_not_by_when_it_was_typed(
     ).astimezone(UTC)
 
 
-def test_a_second_recorded_payment_completing_it_gives_its_own_day(
-    client, auth_headers, mailbox
-):
+def test_a_second_recorded_payment_completing_it_gives_its_own_day(client, auth_headers, mailbox):
     """A registration settled by two recorded payments takes the day of the
     one that completed it (design paid-at-is-value-date D3)."""
     organizer = auth_headers()
@@ -576,8 +555,11 @@ def test_recording_refuses_a_registration_id_past_the_column(client, auth_header
     refused = client.post(
         "/api/tournaments/cup/payments/manual",
         json={
-            "registration_id": 2**63, "amount": 100, "currency": "CZK",
-            "received_on": "2026-11-01", "method": "cash",
+            "registration_id": 2**63,
+            "amount": 100,
+            "currency": "CZK",
+            "received_on": "2026-11-01",
+            "method": "cash",
         },
         headers=organizer,
     )

@@ -40,12 +40,33 @@ class StubRule:
 
 def make_base():
     return {
-        "reg:1": {"id": "reg:1", "name": "Jan Novak", "club": "Praha", "hr_id": None,
-                  "disciplines": ["LS"], "notes": None, "_deleted": False},
-        "imp:aa": {"id": "imp:aa", "name": "Jan Novák", "club": "Praha", "hr_id": None,
-                   "disciplines": ["SA"], "notes": "dup", "_deleted": False},
-        "imp:bb": {"id": "imp:bb", "name": "Marie Nová", "club": None, "hr_id": None,
-                   "disciplines": ["SA"], "notes": None, "_deleted": False},
+        "reg:1": {
+            "id": "reg:1",
+            "name": "Jan Novak",
+            "club": "Praha",
+            "hr_id": None,
+            "disciplines": ["LS"],
+            "notes": None,
+            "_deleted": False,
+        },
+        "imp:aa": {
+            "id": "imp:aa",
+            "name": "Jan Novák",
+            "club": "Praha",
+            "hr_id": None,
+            "disciplines": ["SA"],
+            "notes": "dup",
+            "_deleted": False,
+        },
+        "imp:bb": {
+            "id": "imp:bb",
+            "name": "Marie Nová",
+            "club": None,
+            "hr_id": None,
+            "disciplines": ["SA"],
+            "notes": None,
+            "_deleted": False,
+        },
     }
 
 
@@ -55,9 +76,11 @@ def make_rules():
         StubRule("match_resolution", "imp:bb", {"field": "hr_id", "value": 3340}),
         StubRule("row_delete", "imp:bb", {}),
         StubRule("row_restore", "imp:bb", {}),
-        StubRule("dedup_decision", "reg:1",
-                 {"absorb": ["imp:aa"], "fields": {"disciplines": ["LS", "SA"]},
-                  "note": "merged"}),
+        StubRule(
+            "dedup_decision",
+            "reg:1",
+            {"absorb": ["imp:aa"], "fields": {"disciplines": ["LS", "SA"]}, "note": "merged"},
+        ),
         StubRule("field_edit", "reg:1", {"field": "club", "value": "Praha HEMA z.s."}),
     ]
 
@@ -134,9 +157,7 @@ def build_scenario(client, auth_headers):
     ).json()["vs"]
 
     # payment through the statement path
-    header = (
-        "ID pohybu;Datum;Objem;Měna;VS;KS;SS;Zpráva pro příjemce;Název protiúčtu;Protiúčet"
-    )
+    header = "ID pohybu;Datum;Objem;Měna;VS;KS;SS;Zpráva pro příjemce;Název protiúčtu;Protiúčet"
     statement = (
         f"meta;data\n\n{header}\n9001;14.07.2026;1 000,00;CZK;{vs};;;VS {vs};Jan;123/0800\n"
     ).encode()
@@ -164,8 +185,11 @@ def build_scenario(client, auth_headers):
         ("field_edit", "reg:1", {"field": "club", "value": "Praha HEMA"}),
         ("match_resolution", imported[0], {"field": "hr_id", "value": 10234}),
         ("row_delete", imported[1], {}),
-        ("dedup_decision", "reg:1",
-         {"absorb": [imported[0]], "fields": {"notes": "merged demo"}, "note": "m"}),
+        (
+            "dedup_decision",
+            "reg:1",
+            {"absorb": [imported[0]], "fields": {"notes": "merged demo"}, "note": "m"},
+        ),
     ]:
         response = client.post(
             "/api/tournaments/cup/rules",
@@ -194,9 +218,7 @@ def test_delete_and_identical_recreate_converges(client, auth_headers):
 
     def row_states():
         sheet = client.get("/api/tournaments/cup/sheet", headers=organizer).json()
-        return sorted(
-            tuple(sorted((k, str(v)) for k, v in row.items())) for row in sheet["rows"]
-        )
+        return sorted(tuple(sorted((k, str(v)) for k, v in row.items())) for row in sheet["rows"])
 
     before = row_states()
     rule = next(
@@ -209,8 +231,12 @@ def test_delete_and_identical_recreate_converges(client, auth_headers):
 
     client.post(
         "/api/tournaments/cup/rules",
-        json={"phase": rule["phase"], "kind": rule["kind"], "target": rule["target"],
-              "payload": rule["payload"]},
+        json={
+            "phase": rule["phase"],
+            "kind": rule["kind"],
+            "target": rule["target"],
+            "payload": rule["payload"],
+        },
         headers=organizer,
     )
     assert row_states() == before  # identical inputs → identical state

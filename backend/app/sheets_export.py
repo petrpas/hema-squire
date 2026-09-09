@@ -21,8 +21,16 @@ Ratings = dict[tuple[int, str], HRRating]
 
 FENCERS_SHEET = "Fencers"
 FENCERS_HEADER = [
-    "Reg.", "Name", "Nat.", "Club", "HR_ID", "Disciplines",
-    "Paid", "Afterparty", "Borrow weapons", "Notes",
+    "Reg.",
+    "Name",
+    "Nat.",
+    "Club",
+    "HR_ID",
+    "Disciplines",
+    "Paid",
+    "Afterparty",
+    "Borrow weapons",
+    "Notes",
 ]
 DISCIPLINE_HEADER = ["No.", "Name", "Nat.", "Club", "HR_ID", "HRating", "HRank"]
 
@@ -209,8 +217,6 @@ def get_sheets_client_factory() -> SheetsClientFactory | None:
     def factory(tournament: Tournament) -> GspreadSheetsClient | None:
         if not tournament.output_sheet_url:
             return None
-        return GspreadSheetsClient(
-            settings.google_credentials_path, tournament.output_sheet_url
-        )
+        return GspreadSheetsClient(settings.google_credentials_path, tournament.output_sheet_url)
 
     return factory

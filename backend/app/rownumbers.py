@@ -50,9 +50,7 @@ def allocate(session: Session, tournament: Tournament, row_ids: list[str]) -> di
     for row_id in dict.fromkeys(wanted):
         while candidate in taken:
             candidate += 1
-        session.add(
-            SheetRowNumber(tournament_id=tournament.id, row_id=row_id, number=candidate)
-        )
+        session.add(SheetRowNumber(tournament_id=tournament.id, row_id=row_id, number=candidate))
         existing[row_id] = candidate
         taken.add(candidate)
     session.flush()
@@ -64,9 +62,7 @@ def restore(session: Session, tournament: Tournament, pairs: list[tuple[str, int
     and all. A restored tournament keeps the numbers its fencers were given;
     reallocating them would renumber everyone."""
     for row_id, number in pairs:
-        session.add(
-            SheetRowNumber(tournament_id=tournament.id, row_id=row_id, number=number)
-        )
+        session.add(SheetRowNumber(tournament_id=tournament.id, row_id=row_id, number=number))
     session.flush()
 
 

@@ -33,9 +33,7 @@ def make_tournament(session: Session, slug: str = "cup") -> Tournament:
 
 
 def make_organizer(session: Session, email: str = "organizer@example.com") -> Fencer:
-    fencer = Fencer(
-        email=email, display_name="Organizer", password_hash="x", role=Role.ORGANIZER
-    )
+    fencer = Fencer(email=email, display_name="Organizer", password_hash="x", role=Role.ORGANIZER)
     session.add(fencer)
     session.commit()
     return fencer
@@ -100,9 +98,7 @@ def test_a_concluded_operation_no_longer_blocks(engine):
         operations.conclude(session, first, OperationStatus.DONE, {"rows": 10})
 
         assert operations.running(session, tournament) is None
-        operations.start(
-            session, tournament, OperationKind.MATCH, total=3, started_by=organizer.id
-        )
+        operations.start(session, tournament, OperationKind.MATCH, total=3, started_by=organizer.id)
 
 
 def test_advance_commits_work_and_count_together(engine):

@@ -49,28 +49,62 @@ def _run_alembic(*args: str, db_path: Path) -> None:
 def _registration(conn, registration_id, **values):
     """One fencer per registration: the table admits one registration per
     fencer and tournament."""
-    _insert(conn, "fencers", id=registration_id, email=f"f{registration_id}@example.com",
-            password_hash="x", display_name=f"F{registration_id}", role="fencer",
-            language="cs")
-    _insert(conn, "registrations", id=registration_id, tournament_id=1,
-            fencer_id=registration_id, total_amount=1000, amount_paid_cents=0,
-            **{"state": "paid", **values})
+    _insert(
+        conn,
+        "fencers",
+        id=registration_id,
+        email=f"f{registration_id}@example.com",
+        password_hash="x",
+        display_name=f"F{registration_id}",
+        role="fencer",
+        language="cs",
+    )
+    _insert(
+        conn,
+        "registrations",
+        id=registration_id,
+        tournament_id=1,
+        fencer_id=registration_id,
+        total_amount=1000,
+        amount_paid_cents=0,
+        **{"state": "paid", **values},
+    )
 
 
 def _transaction(conn, external_id, registration_id, date):
-    _insert(conn, "bank_transactions", tournament_id=1, external_id=external_id,
-            source="csv", date=date, amount_cents=100000, currency="CZK",
-            status="matched", matched_registration_id=registration_id,
-            rejected_fencer_ids="[]")
+    _insert(
+        conn,
+        "bank_transactions",
+        tournament_id=1,
+        external_id=external_id,
+        source="csv",
+        date=date,
+        amount_cents=100000,
+        currency="CZK",
+        status="matched",
+        matched_registration_id=registration_id,
+        rejected_fencer_ids="[]",
+    )
 
 
 def _seed(db_path: Path) -> None:
     """Four registrations, one per shape the migration must distinguish:
     settled by one transaction, by two, by a recorded payment, and by hand."""
     conn = sqlite3.connect(db_path)
-    _insert(conn, "tournaments", id=1, slug="cup", display_name="Cup", date="2026-12-05",
-            language="cs", organizers="[]", discounts="[]", hr_category_map="{}",
-            local_currency="CZK", timezone="Europe/Prague")
+    _insert(
+        conn,
+        "tournaments",
+        id=1,
+        slug="cup",
+        display_name="Cup",
+        date="2026-12-05",
+        language="cs",
+        organizers="[]",
+        discounts="[]",
+        hr_category_map="{}",
+        local_currency="CZK",
+        timezone="Europe/Prague",
+    )
 
     _registration(conn, 1, vs=2601001, paid_at=IMPORT_INSTANT)
     _transaction(conn, "t1", 1, "2026-08-03")
@@ -80,12 +114,27 @@ def _seed(db_path: Path) -> None:
     _transaction(conn, "t2b", 2, "2026-08-12")
 
     _registration(conn, 3, vs=2601003, paid_at=IMPORT_INSTANT)
-    _insert(conn, "manual_payments", id=1, tournament_id=1, registration_id=3,
-            amount_cents=100000, currency="CZK", received_on="2026-08-01",
-            method="cash", recorded_by="Org <org@example.com>")
+    _insert(
+        conn,
+        "manual_payments",
+        id=1,
+        tournament_id=1,
+        registration_id=3,
+        amount_cents=100000,
+        currency="CZK",
+        received_on="2026-08-01",
+        method="cash",
+        recorded_by="Org <org@example.com>",
+    )
 
-    _registration(conn, 4, vs=2601004, paid_at=IMPORT_INSTANT,
-                  settled_by_hand_at=IMPORT_INSTANT, settled_by_hand_reason="volný vstup")
+    _registration(
+        conn,
+        4,
+        vs=2601004,
+        paid_at=IMPORT_INSTANT,
+        settled_by_hand_at=IMPORT_INSTANT,
+        settled_by_hand_reason="volný vstup",
+    )
 
     # still reserved, holding a partial credit: nothing to date
     _registration(conn, 5, vs=2601005, state="reserved", paid_at=None)

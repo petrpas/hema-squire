@@ -27,10 +27,7 @@ def spayd_string(
     msg = _MSG_FORBIDDEN.sub(" ", message).strip()[:60]
     # AM takes two decimals even though every stored price is a whole unit
     am = f"{Decimal(amount):.2f}"
-    return (
-        f"SPD*1.0*ACC:{account_iban.replace(' ', '')}"
-        f"*AM:{am}*CC:{currency}*X-VS:{vs}*MSG:{msg}"
-    )
+    return f"SPD*1.0*ACC:{account_iban.replace(' ', '')}*AM:{am}*CC:{currency}*X-VS:{vs}*MSG:{msg}"
 
 
 def qr_png(data: str) -> bytes:

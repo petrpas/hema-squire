@@ -158,9 +158,7 @@ class DbHRIndex:
             tokens = [t for t in needle.split() if t]
             stmt = stmt.where(or_(*[HRFighter.name_folded.contains(t) for t in tokens]))
         fighters = self._session.scalars(stmt).all()
-        ranked = sorted(
-            fighters, key=lambda f: _similarity(needle, f.name_folded), reverse=True
-        )
+        ranked = sorted(fighters, key=lambda f: _similarity(needle, f.name_folded), reverse=True)
         return [_profile(f) for f in ranked[:20]]
 
     def get(self, hr_id: int) -> HRProfile | None:
@@ -177,9 +175,7 @@ class DbHRIndex:
         stmt = select(HRFighter)
         for token in key:
             stmt = stmt.where(HRFighter.name_folded.contains(token))
-        return [
-            _profile(f) for f in self._session.scalars(stmt) if name_key(f.name) == key
-        ]
+        return [_profile(f) for f in self._session.scalars(stmt) if name_key(f.name) == key]
 
     def nationalities(self) -> list[str]:
         rows = self._session.scalars(
@@ -211,9 +207,7 @@ class StubHRIndex:
         else:
             tokens = [t for t in needle.split() if t]
             candidates = [p for p in candidates if any(t in fold(p.name) for t in tokens)]
-        ranked = sorted(
-            candidates, key=lambda p: _similarity(needle, fold(p.name)), reverse=True
-        )
+        ranked = sorted(candidates, key=lambda p: _similarity(needle, fold(p.name)), reverse=True)
         return ranked[:20]
 
     def get(self, hr_id: int) -> HRProfile | None:

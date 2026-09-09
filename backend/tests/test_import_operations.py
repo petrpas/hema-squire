@@ -300,9 +300,7 @@ def test_a_fresh_console_reports_work_it_did_not_start(client, auth_headers, eng
     with Session(engine) as session:
         tournament = session.query(Tournament).one()
         colleague = session.query(Fencer).filter_by(email="second@example.com").one()
-        session.add(
-            TournamentOrganizer(tournament_id=tournament.id, fencer_id=colleague.id)
-        )
+        session.add(TournamentOrganizer(tournament_id=tournament.id, fencer_id=colleague.id))
         session.commit()
 
     theirs = client.get("/api/tournaments/cup/operations", headers=second)

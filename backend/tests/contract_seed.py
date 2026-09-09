@@ -83,8 +83,13 @@ def build(client, auth_headers, engine) -> Seed:
     client.post(
         f"/api/tournaments/{SLUG}/disciplines",
         json={
-            "slug": TEAM_DISCIPLINE, "weapon": "LS", "capacity": 4, "fee": 3000,
-            "kind": "team", "team_min": 2, "team_max": 4,
+            "slug": TEAM_DISCIPLINE,
+            "weapon": "LS",
+            "capacity": 4,
+            "fee": 3000,
+            "kind": "team",
+            "team_min": 2,
+            "team_max": 4,
         },
         headers=organizer,
     )
@@ -95,8 +100,13 @@ def build(client, auth_headers, engine) -> Seed:
     ).json()
     # every flag on: a feature that is off takes its endpoints out of reach
     set_features(
-        client, organizer, SLUG,
-        feature_payments=True, feature_extras=True, feature_teams=True, feature_schedule=True,
+        client,
+        organizer,
+        SLUG,
+        feature_payments=True,
+        feature_extras=True,
+        feature_teams=True,
+        feature_schedule=True,
     )
     publish(client, organizer, SLUG)
     set_fio_token(client, organizer, SLUG)
@@ -105,8 +115,8 @@ def build(client, auth_headers, engine) -> Seed:
         json={"output_sheet_url": "https://docs.google.com/spreadsheets/d/seed"},
         headers=organizer,
     )
-    app.dependency_overrides[sheets_export.get_sheets_client_factory] = (
-        lambda: lambda tournament: StubSheet()
+    app.dependency_overrides[sheets_export.get_sheets_client_factory] = lambda: (
+        lambda tournament: StubSheet()
     )
 
     fencer = auth_headers(email="f1@example.com", name="F1", role=Role.FENCER)
@@ -130,15 +140,20 @@ def build(client, auth_headers, engine) -> Seed:
     payment = client.post(
         f"/api/tournaments/{SLUG}/payments/manual",
         json={
-            "registration_id": registration_id, "amount": 800, "currency": "CZK",
-            "received_on": "2026-11-01", "method": "cash",
+            "registration_id": registration_id,
+            "amount": 800,
+            "currency": "CZK",
+            "received_on": "2026-11-01",
+            "method": "cash",
         },
         headers=organizer,
     ).json()
     rule = client.post(
         f"/api/tournaments/{SLUG}/rules",
         json={
-            "phase": "manual", "kind": "field_edit", "target": "1",
+            "phase": "manual",
+            "kind": "field_edit",
+            "target": "1",
             "payload": {"field": "club", "value": "X"},
         },
         headers=organizer,

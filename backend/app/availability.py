@@ -37,10 +37,7 @@ def live_registration():
     waiting in and hand their position to somebody else."""
     return (Registration.state == RegistrationState.PAID) | (
         (Registration.state == RegistrationState.RESERVED)
-        & (
-            (Registration.expires_at.is_(None))
-            | (Registration.expires_at > datetime.now(UTC))
-        )
+        & ((Registration.expires_at.is_(None)) | (Registration.expires_at > datetime.now(UTC)))
     )
 
 
@@ -70,9 +67,7 @@ def _require_kind(discipline: Discipline, kind: DisciplineKind) -> None:
     interchangeable. A caller reaching the wrong one is a programming error, so
     it raises rather than returning a number that would be quietly wrong."""
     if discipline.kind != kind:
-        raise AssertionError(
-            f"{discipline.slug} is a {discipline.kind} discipline, not {kind}"
-        )
+        raise AssertionError(f"{discipline.slug} is a {discipline.kind} discipline, not {kind}")
 
 
 def taken_seats(session: Session, discipline: Discipline) -> int:

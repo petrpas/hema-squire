@@ -26,10 +26,10 @@ LIKELY = "likely"
 # Why a payment the resolver could not propose was left for a person. Each is a
 # different question for the organizer, so they are told apart rather than all
 # reported as "no variable symbol".
-NO_ROSTER = "no_roster"          # nobody registered to rank against
+NO_ROSTER = "no_roster"  # nobody registered to rank against
 NO_NAME_MATCH = "no_name_match"  # ranked, and nobody scored well enough
-AMBIGUOUS = "name_ambiguous"     # two scored alike; the choice is a person's
-PAYER_ONLY = "payer_name_only"   # the text named nobody but the payer
+AMBIGUOUS = "name_ambiguous"  # two scored alike; the choice is a person's
+PAYER_ONLY = "payer_name_only"  # the text named nobody but the payer
 
 
 @dataclass(frozen=True)
@@ -92,9 +92,7 @@ def query_for(transaction: BankTransaction) -> tuple[str, bool]:
     return (transaction.payer_name or "").strip(), False
 
 
-def resolve(
-    session: Session, tournament: Tournament, transaction: BankTransaction
-) -> Resolution:
+def resolve(session: Session, tournament: Tournament, transaction: BankTransaction) -> Resolution:
     """Rank the roster for one payment and decide whether to propose.
 
     Withheld on any of four grounds, and each is a state the organizer resolves

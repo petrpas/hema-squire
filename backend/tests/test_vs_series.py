@@ -92,9 +92,7 @@ def test_series_editable_before_registration_frozen_after(client, auth_headers):
     create_tournament(client, organizer, "bb")  # takes series 2
 
     # collision before any registration
-    collide = client.patch(
-        "/api/tournaments/aa", json={"vs_series": 2}, headers=organizer
-    )
+    collide = client.patch("/api/tournaments/aa", json={"vs_series": 2}, headers=organizer)
     assert collide.status_code == 409
 
     # a free series is accepted before the first registration
@@ -112,9 +110,7 @@ def test_series_editable_before_registration_frozen_after(client, auth_headers):
     frozen = client.patch("/api/tournaments/aa", json={"vs_series": 6}, headers=organizer)
     assert frozen.status_code == 409
 
-    frozen_collision = client.patch(
-        "/api/tournaments/aa", json={"vs_series": 2}, headers=organizer
-    )
+    frozen_collision = client.patch("/api/tournaments/aa", json={"vs_series": 2}, headers=organizer)
     assert frozen_collision.status_code == 409
 
 
@@ -126,9 +122,7 @@ def test_date_change_after_registration_does_not_renumber(client, auth_headers):
     first = register(client, "aa", auth_headers(email="f1@example.com", name="F1"))
     assert first["vs"] == 2601001
 
-    moved = client.patch(
-        "/api/tournaments/aa", json={"date": "2027-01-10"}, headers=organizer
-    )
+    moved = client.patch("/api/tournaments/aa", json={"date": "2027-01-10"}, headers=organizer)
     assert moved.status_code == 200
     assert moved.json()["vs_year"] == 2026
     assert moved.json()["vs_series"] == 1
@@ -224,12 +218,9 @@ def test_legacy_vs_still_resolves_and_matches(client, auth_headers):
 
     session: Session = next(app.dependency_overrides[get_session]())
     # overwrite the freshly issued structured VS with a pre-existing legacy one
-    registration = session.scalars(
-        select(Registration).where(Registration.vs == body["vs"])
-    ).one()
+    registration = session.scalars(select(Registration).where(Registration.vs == body["vs"])).one()
     registration.vs = 1000001
     session.commit()
-
 
     csv_content = (
         "meta;data\n\n"

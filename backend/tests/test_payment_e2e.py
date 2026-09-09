@@ -87,10 +87,14 @@ def setup(client, organizer, capacity=10):
     enable_payments(client, organizer, "cup")
     client.patch(
         "/api/tournaments/cup",
-        json={"bank_account": IBAN,
-              "reservation_validity_days": 7, "reminder_day": 5,
-              "amount_tolerance_percent": 5,
-              "location": "Brno", "organizers": [{"name": "Cup Org", "link": None}]},
+        json={
+            "bank_account": IBAN,
+            "reservation_validity_days": 7,
+            "reminder_day": 5,
+            "amount_tolerance_percent": 5,
+            "location": "Brno",
+            "organizers": [{"name": "Cup Org", "link": None}],
+        },
         headers=organizer,
     )
     set_fio_token(client, organizer, "cup")
@@ -142,20 +146,23 @@ def test_happy_path_reserve_qr_match_paid(client, auth_headers, mailbox, fio):
 
     # the fencer pays within tolerance (980 vs 1000 at 5%); Fio poll picks it up
     fio.transactions = [transfer(vs, 980)]
-    poll = client.post(
-        "/api/tournaments/cup/payments/fio-poll", headers=organizer
-    ).json()
+    poll = client.post("/api/tournaments/cup/payments/fio-poll", headers=organizer).json()
     assert poll == {
-        "new": 1, "duplicate": 0, "matched": 1, "flagged": 0, "unmatched": 0, "partial": 0,
+        "new": 1,
+        "duplicate": 0,
+        "matched": 1,
+        "flagged": 0,
+        "unmatched": 0,
+        "partial": 0,
         "set_aside": 0,
         # intake issues before it matches; this roster is in-app, so it issues
         # nothing (spec payments-intake)
-        "issued": 0, "already_issued": 0, "skipped": [],
+        "issued": 0,
+        "already_issued": 0,
+        "skipped": [],
     }
 
-    registration = client.get(
-        "/api/tournaments/cup/my-registration", headers=fencer
-    ).json()
+    registration = client.get("/api/tournaments/cup/my-registration", headers=fencer).json()
     assert registration["state"] == "paid"
     assert registration["paid_at"] is not None
 
@@ -181,9 +188,7 @@ def test_expiry_path_reminder_expire_free_capacity_flag_late_payment(
     ).json()["vs"]
 
     def process():
-        return client.post(
-            "/api/tournaments/cup/payments/process", headers=organizer
-        ).json()
+        return client.post("/api/tournaments/cup/payments/process", headers=organizer).json()
 
     # day 5: one reminder, not repeated
     age_registration(vs, days=5)
@@ -194,9 +199,7 @@ def test_expiry_path_reminder_expire_free_capacity_flag_late_payment(
     # day 8: reservation expires, fencer notified
     age_registration(vs, days=8)
     assert process() == {"reminders": 0, "expired": 1, "seating_demoted": 0}
-    registration = client.get(
-        "/api/tournaments/cup/my-registration", headers=fencer
-    ).json()
+    registration = client.get("/api/tournaments/cup/my-registration", headers=fencer).json()
     assert registration["state"] == "expired"
     assert len(mailbox.to("jan@example.com")) == 3
     assert client.get("/api/tournaments/cup/participants").json()["participants"] == []
@@ -215,11 +218,10 @@ def test_expiry_path_reminder_expire_free_capacity_flag_late_payment(
     fio.transactions = [transfer(vs, 1000, external_id="9002")]
     poll = client.post("/api/tournaments/cup/payments/fio-poll", headers=organizer).json()
     assert poll["flagged"] == 1 and poll["matched"] == 0
-    assert client.get(
-        "/api/tournaments/cup/my-registration", headers=fencer
-    ).json()["state"] == "expired"
-    (queued,) = client.get(
-        "/api/tournaments/cup/payments/unmatched", headers=organizer
-    ).json()
+    assert (
+        client.get("/api/tournaments/cup/my-registration", headers=fencer).json()["state"]
+        == "expired"
+    )
+    (queued,) = client.get("/api/tournaments/cup/payments/unmatched", headers=organizer).json()
     assert queued["status"] == "flagged"
     assert queued["vs"] == vs

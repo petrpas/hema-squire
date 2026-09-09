@@ -71,9 +71,7 @@ class RosterParser:
 HEADER = "when,name,email,club,disciplines,borrow,afterparty\n"
 
 
-def row(
-    name, email, *, when="2026-04-01T10:00:00", disciplines="SA", borrow="", afterparty=""
-):
+def row(name, email, *, when="2026-04-01T10:00:00", disciplines="SA", borrow="", afterparty=""):
     return f"{when},{name},{email},Klub,{disciplines},{borrow},{afterparty}\n"
 
 
@@ -87,9 +85,11 @@ def setup(client, organizer, *, fee=800, early_fee=None, early_until=None):
     if early_fee is not None:
         body["fee_early"] = early_fee
     client.post("/api/tournaments/cup/disciplines", json=body, headers=organizer)
-    client.post("/api/tournaments/cup/disciplines",
-                json={"slug": "SB", "weapon": "SB", "capacity": 20, "fee": 500},
-                headers=organizer)
+    client.post(
+        "/api/tournaments/cup/disciplines",
+        json={"slug": "SB", "weapon": "SB", "capacity": 20, "fee": 500},
+        headers=organizer,
+    )
     client.patch(
         "/api/tournaments/cup",
         json={
@@ -179,8 +179,7 @@ def registrations():
 def test_a_roster_becomes_billable(client, auth_headers, mailbox):
     organizer = auth_headers()
     setup(client, organizer)
-    import_roster(client, organizer, [row("Jan", "jan@example.com"),
-                                      row("Eva", "eva@example.com")])
+    import_roster(client, organizer, [row("Jan", "jan@example.com"), row("Eva", "eva@example.com")])
 
     report = issue(client, organizer)
 
@@ -221,9 +220,7 @@ def test_a_fencer_record_is_created_without_an_account(client, auth_headers, mai
 
     issue(client, organizer)
 
-    fencer = db_session().scalar(
-        select(Fencer).where(Fencer.email == "jan@example.com")
-    )
+    fencer = db_session().scalar(select(Fencer).where(Fencer.email == "jan@example.com"))
     assert fencer is not None
     assert fencer.password_hash is None  # a record, not a login
     assert mailbox.sent == []  # and no invitation
@@ -242,9 +239,7 @@ def test_an_existing_fencer_is_reused_not_overwritten(client, auth_headers, mail
     import_roster(client, organizer, [row("EVA MALA TYPO", "eva@example.com")])
     issue(client, organizer)
 
-    fencers = db_session().scalars(
-        select(Fencer).where(Fencer.email == "eva@example.com")
-    ).all()
+    fencers = db_session().scalars(select(Fencer).where(Fencer.email == "eva@example.com")).all()
     assert len(fencers) == 1
     assert fencers[0].id == before_id
     assert fencers[0].display_name == before_name
@@ -318,9 +313,7 @@ def sheet_row(client, organizer, name):
     return next(row for row in rows if row["name"] == name)
 
 
-def test_rentals_are_priced_where_the_tournament_prices_by_items(
-    client, auth_headers, mailbox
-):
+def test_rentals_are_priced_where_the_tournament_prices_by_items(client, auth_headers, mailbox):
     """The bug this covers: a row's rentals were written into the older
     per-registration fields alone, which a tournament that prices by items does
     not bill from. Every borrowed weapon on the pilot was issued free — 32 of
@@ -348,9 +341,7 @@ def test_rentals_are_priced_where_the_tournament_prices_by_items(
     assert registration.weapon_rentals == ["Sabre", "Buckler"]
 
 
-def test_an_afterparty_is_taken_up_where_one_item_offers_it(
-    client, auth_headers, mailbox
-):
+def test_an_afterparty_is_taken_up_where_one_item_offers_it(client, auth_headers, mailbox):
     organizer = auth_headers()
     setup(client, organizer)
     offer(client, organizer, "Afterparty", "afterparty", 250)
@@ -377,9 +368,7 @@ def test_an_afterparty_nobody_can_name_is_not_guessed(client, auth_headers, mail
     assert registrations()[0].afterparty is True
 
 
-def test_a_rental_the_tournament_does_not_lend_is_named_on_the_row(
-    client, auth_headers, mailbox
-):
+def test_a_rental_the_tournament_does_not_lend_is_named_on_the_row(client, auth_headers, mailbox):
     """It cannot be priced — nothing on the tournament is called that — so the
     row says which item nothing was billed for rather than leaving the total
     quietly short (owner decision, 2026-09-06)."""
@@ -413,9 +402,7 @@ def test_a_flat_fee_tournament_names_no_unpriced_rental(client, auth_headers, ma
         json={"weapon_rental_fee": 100},
         headers=organizer,
     )
-    import_roster(
-        client, organizer, [row("Jan", "jan@example.com", borrow="whatever")]
-    )
+    import_roster(client, organizer, [row("Jan", "jan@example.com", borrow="whatever")])
 
     assert sheet_row(client, organizer, "Jan")["unpriced_rentals"] == []
     issue(client, organizer)
@@ -429,9 +416,7 @@ def test_a_later_fee_change_does_not_move_an_issued_total(client, auth_headers, 
     issue(client, organizer)
     assert registrations()[0].total_amount == 800
 
-    client.patch(
-        "/api/tournaments/cup/disciplines/SA", json={"fee": 2000}, headers=organizer
-    )
+    client.patch("/api/tournaments/cup/disciplines/SA", json={"fee": 2000}, headers=organizer)
 
     assert registrations()[0].total_amount == 800
 
@@ -477,8 +462,7 @@ def test_two_rows_sharing_an_address_are_both_issued(client, auth_headers, mailb
     import_roster(
         client,
         organizer,
-        [row("Václav Pekárek", "divis@example.com"),
-         row("Jindřich Pekárek", "divis@example.com")],
+        [row("Václav Pekárek", "divis@example.com"), row("Jindřich Pekárek", "divis@example.com")],
     )
 
     report = issue(client, organizer)
@@ -497,8 +481,10 @@ def test_the_address_goes_to_the_row_that_comes_first(client, auth_headers, mail
     import_roster(
         client,
         organizer,
-        [row("Jindřich Pekárek", "divis@example.com", when="2026-04-01T09:00:00"),
-         row("Václav Pekárek", "divis@example.com", when="2026-04-01T10:00:00")],
+        [
+            row("Jindřich Pekárek", "divis@example.com", when="2026-04-01T09:00:00"),
+            row("Václav Pekárek", "divis@example.com", when="2026-04-01T10:00:00"),
+        ],
     )
 
     issue(client, organizer)
@@ -591,9 +577,11 @@ def test_capacity_does_not_apply_to_an_issued_roster(client, auth_headers, mailb
     import_roster(
         client,
         organizer,
-        [row("First", "first@example.com", when="2026-04-01T10:00:00"),
-         row("Second", "second@example.com", when="2026-04-02T10:00:00"),
-         row("Third", "third@example.com", when="2026-04-03T10:00:00")],
+        [
+            row("First", "first@example.com", when="2026-04-01T10:00:00"),
+            row("Second", "second@example.com", when="2026-04-02T10:00:00"),
+            row("Third", "third@example.com", when="2026-04-03T10:00:00"),
+        ],
     )
 
     issue(client, organizer)
@@ -622,8 +610,9 @@ def test_an_issued_roster_fills_the_discipline_for_later_registrations(
     )
     assert patched.status_code == 200, patched.text
     enable_payments(client, organizer, "cup")
-    import_roster(client, organizer, [row("First", "first@example.com"),
-                                      row("Second", "second@example.com")])
+    import_roster(
+        client, organizer, [row("First", "first@example.com"), row("Second", "second@example.com")]
+    )
     issue(client, organizer)
 
     latecomer = auth_headers(email="late@example.com", name="Late")
@@ -653,9 +642,7 @@ def test_an_issued_registration_carries_no_due_date(client, auth_headers, mailbo
     assert registration.expires_at is None
 
 
-def test_the_lifecycle_passes_leave_issued_registrations_alone(
-    client, auth_headers, mailbox
-):
+def test_the_lifecycle_passes_leave_issued_registrations_alone(client, auth_headers, mailbox):
     """The test this change exists to pass. Run the lifecycle long after any
     window would have closed and assert against the mailer — a broken
     implementation sets the flag correctly and mails anyway."""
@@ -664,8 +651,7 @@ def test_the_lifecycle_passes_leave_issued_registrations_alone(
     from conftest import enable_payments
 
     enable_payments(client, organizer, "cup")
-    import_roster(client, organizer, [row("Jan", "jan@example.com"),
-                                      row("Eva", "eva@example.com")])
+    import_roster(client, organizer, [row("Jan", "jan@example.com"), row("Eva", "eva@example.com")])
     issue(client, organizer)
 
     # push every clock far into the past
@@ -736,8 +722,7 @@ def test_dormant_clocks_do_not_stop_money(client, auth_headers, mailbox):
 def test_a_rerun_changes_nothing_it_already_did(client, auth_headers, mailbox):
     organizer = auth_headers()
     setup(client, organizer)
-    import_roster(client, organizer, [row("Jan", "jan@example.com"),
-                                      row("Eva", "eva@example.com")])
+    import_roster(client, organizer, [row("Jan", "jan@example.com"), row("Eva", "eva@example.com")])
     issue(client, organizer)
     before = {r.id: (r.vs, r.total_amount, r.state) for r in registrations()}
 
@@ -826,8 +811,7 @@ def test_refused_while_deduplication_is_pending(client, auth_headers, mailbox):
 def test_the_count_agrees_with_what_the_pass_issues(client, auth_headers, mailbox):
     organizer = auth_headers()
     setup(client, organizer)
-    import_roster(client, organizer, [row("Jan", "jan@example.com"),
-                                      row("Eva", "eva@example.com")])
+    import_roster(client, organizer, [row("Jan", "jan@example.com"), row("Eva", "eva@example.com")])
 
     stated = client.get("/api/tournaments/cup/import/issue", headers=organizer).json()
     report = issue(client, organizer)
@@ -846,15 +830,15 @@ def test_console_access_is_required(client, auth_headers, mailbox):
     import_roster(client, organizer, [row("Jan", "jan@example.com")])
     stranger = auth_headers(email="nobody@example.com", name="Nobody")
 
-    assert client.post(
-        "/api/tournaments/cup/import/issue", headers=stranger
-    ).status_code in (401, 403, 404)
+    assert client.post("/api/tournaments/cup/import/issue", headers=stranger).status_code in (
+        401,
+        403,
+        404,
+    )
     assert registrations() == []
 
 
-def test_clearing_the_import_leaves_no_issued_registration_behind(
-    client, auth_headers, mailbox
-):
+def test_clearing_the_import_leaves_no_issued_registration_behind(client, auth_headers, mailbox):
     """`clear_imports` asserts no file was ever uploaded — "no batch, no source
     row, no decision taken about one … survives it". A registration issued for
     such a row is a thing the import produced, so it cannot outlive it: left
@@ -944,9 +928,7 @@ def test_a_manual_registration_is_still_priced_and_dormant(client, auth_headers,
     assert [e.is_substitute for e in registration.entries] == [False]
 
 
-def test_a_squire_kept_tournament_still_issues_one_symbol_per_row(
-    client, auth_headers, mailbox
-):
+def test_a_squire_kept_tournament_still_issues_one_symbol_per_row(client, auth_headers, mailbox):
     organizer = auth_headers()
     setup(client, organizer)
     import_roster(
@@ -1039,8 +1021,11 @@ def test_a_statement_import_issues_before_it_matches(client, auth_headers, mailb
     to match against comes into existence in the same operation."""
     organizer = auth_headers()
     collecting_setup(client, organizer)
-    import_roster(client, organizer, [row("Jan Novak", "jan@example.com"),
-                                      row("Eva Dvorak", "eva@example.com")])
+    import_roster(
+        client,
+        organizer,
+        [row("Jan Novak", "jan@example.com"), row("Eva Dvorak", "eva@example.com")],
+    )
     assert registrations() == []
 
     assert import_bank_statement(client, organizer).status_code == 202
@@ -1291,9 +1276,7 @@ def test_issuing_keeps_an_unratified_hr_proposal_on_the_row(client, auth_headers
     assert fencer.hr_id is None
 
 
-def test_a_row_with_no_proposal_still_reads_unmatched_after_issuing(
-    client, auth_headers, mailbox
-):
+def test_a_row_with_no_proposal_still_reads_unmatched_after_issuing(client, auth_headers, mailbox):
     organizer = auth_headers()
     setup(client, organizer)
     app.dependency_overrides[get_hr_matcher] = lambda: MatchesJan()
@@ -1485,8 +1468,9 @@ def test_issuing_keeps_what_the_parser_doubted(client, auth_headers, mailbox):
     where they work, not only in the minutes before an intake runs."""
     organizer = auth_headers()
     setup(client, organizer)
-    import_roster(client, organizer, [row("Jan?", "jan@example.com"),
-                                      row("Eva", "eva@example.com")])
+    import_roster(
+        client, organizer, [row("Jan?", "jan@example.com"), row("Eva", "eva@example.com")]
+    )
     before = {r["name"]: r["problems"] for r in sheet_rows(client, organizer)}
     assert before["Jan?"] == "doubtful"
 

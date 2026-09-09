@@ -79,11 +79,17 @@ def test_team_fee_counted_once_regardless_of_roster_size():
     big.members = [TeamMember(team=big, ordinal=i, name=f"M{i}") for i in range(4)]
 
     registration_small = Registration(
-        tournament=tournament, registered_at=REGISTERED_AT, entries=[], teams=[small],
+        tournament=tournament,
+        registered_at=REGISTERED_AT,
+        entries=[],
+        teams=[small],
         weapon_rentals=[],
     )
     registration_big = Registration(
-        tournament=tournament, registered_at=REGISTERED_AT, entries=[], teams=[big],
+        tournament=tournament,
+        registered_at=REGISTERED_AT,
+        entries=[],
+        teams=[big],
         weapon_rentals=[],
     )
     assert pricing.registration_total(registration_small, tournament).local == 3000
@@ -98,7 +104,10 @@ def test_two_teams_counted_twice():
         Team(discipline=discipline, name="Bears", waitlisted=False),
     ]
     registration = Registration(
-        tournament=tournament, registered_at=REGISTERED_AT, entries=[], teams=teams,
+        tournament=tournament,
+        registered_at=REGISTERED_AT,
+        entries=[],
+        teams=teams,
         weapon_rentals=[],
     )
     assert pricing.registration_total(registration, tournament).local == 6000
@@ -199,7 +208,10 @@ def test_legacy_tournament_still_prices_team_fee_from_discipline_row():
     discipline = team_discipline(tournament, fee=2500)
     team = Team(discipline=discipline, name="Wolves", waitlisted=False)
     registration = Registration(
-        tournament=tournament, registered_at=REGISTERED_AT, entries=[], teams=[team],
+        tournament=tournament,
+        registered_at=REGISTERED_AT,
+        entries=[],
+        teams=[team],
         weapon_rentals=[],
     )
     assert not pricing.uses_itemized_pricing(tournament)
@@ -336,8 +348,13 @@ def test_full_individual_discipline_unaffected_by_teams(client, auth_headers):
     client.post(
         "/api/tournaments/cup/disciplines",
         json={
-            "slug": "LS", "weapon": "LS", "capacity": 5, "fee": 3000,
-            "kind": "team", "team_min": 3, "team_max": 4,
+            "slug": "LS",
+            "weapon": "LS",
+            "capacity": 5,
+            "fee": 3000,
+            "kind": "team",
+            "team_min": 3,
+            "team_max": 4,
         },
         headers=organizer,
     )
@@ -354,8 +371,7 @@ def test_full_individual_discipline_unaffected_by_teams(client, auth_headers):
         headers=b,
     )
     availability = {
-        row["slug"]: row
-        for row in client.get("/api/tournaments/cup/availability").json()
+        row["slug"]: row for row in client.get("/api/tournaments/cup/availability").json()
     }
     assert availability["SB"]["free"] == 0
     assert availability["LS"]["taken"] == 1
@@ -819,8 +835,15 @@ def test_v5_fixture_restores_with_no_teams(client, auth_headers):
             "vs_next_seq": 1,
         },
         "disciplines": [
-            {"code": "LS", "name": "Longsword", "capacity": 10, "fee": 500, "fee_early": None,
-             "fee_eur": None, "fee_early_eur": None},
+            {
+                "code": "LS",
+                "name": "Longsword",
+                "capacity": 10,
+                "fee": 500,
+                "fee_early": None,
+                "fee_eur": None,
+                "fee_early_eur": None,
+            },
         ],
         "extra_items": [],
         "fencers": [],
@@ -856,8 +879,13 @@ def test_teams_absent_from_sheets_export(client, auth_headers):
     client.post(
         "/api/tournaments/cup/disciplines",
         json={
-            "slug": "SA", "weapon": "SA", "capacity": 5, "fee": 3000,
-            "kind": "team", "team_min": 3, "team_max": 4,
+            "slug": "SA",
+            "weapon": "SA",
+            "capacity": 5,
+            "fee": 3000,
+            "kind": "team",
+            "team_min": 3,
+            "team_max": 4,
         },
         headers=organizer,
     )
@@ -878,9 +906,9 @@ def test_teams_absent_from_sheets_export(client, auth_headers):
         json={"disciplines": ["LS"], "teams": [{"slug": "SA", "name": "Wolves"}]},
         headers=fencer,
     )
-    team_id = client.get("/api/tournaments/cup/my-registration", headers=fencer).json()[
-        "teams"
-    ][0]["id"]
+    team_id = client.get("/api/tournaments/cup/my-registration", headers=fencer).json()["teams"][0][
+        "id"
+    ]
     client.put(
         f"/api/tournaments/cup/my-registration/teams/{team_id}/roster",
         json={"members": [{"name": "Roster Member Not A Fencer"}]},
@@ -888,7 +916,7 @@ def test_teams_absent_from_sheets_export(client, auth_headers):
     )
 
     sheets = InMemorySheets()
-    app.dependency_overrides[get_sheets_client_factory] = lambda: (lambda tournament: sheets)
+    app.dependency_overrides[get_sheets_client_factory] = lambda: lambda tournament: sheets
     try:
         response = client.post("/api/tournaments/cup/export/sheet", headers=organizer)
         assert response.status_code == 200, response.text
@@ -925,8 +953,12 @@ def test_discipline_kind_frozen_once_referenced(client, auth_headers):
     response = client.patch(
         "/api/tournaments/cup/disciplines/LS",
         json={
-            "weapon": "LS", "kind": "team", "team_min": 3, "team_max": 4,
-            "capacity": 5, "fee": 3500,
+            "weapon": "LS",
+            "kind": "team",
+            "team_min": 3,
+            "team_max": 4,
+            "capacity": 5,
+            "fee": 3500,
         },
         headers=organizer,
     )

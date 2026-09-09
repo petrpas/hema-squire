@@ -17,26 +17,25 @@ The rule journal is left exactly as it was written. It records what happened at
 the time it happened, and an entry saying a `discipline_amendment` was created
 is a true statement about a day when that is what the kind was called.
 """
+
 from collections.abc import Sequence
 
 from alembic import op
 
 # revision identifiers, used by Alembic.
-revision: str = 'c4f2a91b7e30'
-down_revision: str | Sequence[str] | None = 'b3d90a1f5c47'
+revision: str = "c4f2a91b7e30"
+down_revision: str | Sequence[str] | None = "b3d90a1f5c47"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
     op.execute(
-        "UPDATE rules SET kind = 'registration_amendment' "
-        "WHERE kind = 'discipline_amendment'"
+        "UPDATE rules SET kind = 'registration_amendment' WHERE kind = 'discipline_amendment'"
     )
 
 
 def downgrade() -> None:
     op.execute(
-        "UPDATE rules SET kind = 'discipline_amendment' "
-        "WHERE kind = 'registration_amendment'"
+        "UPDATE rules SET kind = 'discipline_amendment' WHERE kind = 'registration_amendment'"
     )

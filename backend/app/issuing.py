@@ -79,8 +79,7 @@ class IssueReport:
             "issued": self.issued,
             "already": self.already,
             "skipped": [
-                {"row_id": s.row_id, "name": s.name, "reason": s.reason}
-                for s in self.skipped
+                {"row_id": s.row_id, "name": s.name, "reason": s.reason} for s in self.skipped
             ],
         }
 
@@ -121,9 +120,7 @@ def _hr_id_to_carry(row: dict) -> int | None:
 
 
 def _individual_disciplines(tournament: Tournament, row: dict) -> list[Discipline]:
-    by_slug = {
-        d.slug: d for d in tournament.disciplines if d.kind == DisciplineKind.INDIVIDUAL
-    }
+    by_slug = {d.slug: d for d in tournament.disciplines if d.kind == DisciplineKind.INDIVIDUAL}
     return [by_slug[slug] for slug in row.get("disciplines") or [] if slug in by_slug]
 
 
@@ -136,11 +133,7 @@ def pending(session: Session, tournament: Tournament) -> list[dict]:
     makes the count the organizer confirms and the work the pass does the same
     number (`sheet.base_rows`).
     """
-    return [
-        row
-        for row in sheet.source_rows(session, tournament)
-        if not row.get("_deleted")
-    ]
+    return [row for row in sheet.source_rows(session, tournament) if not row.get("_deleted")]
 
 
 def _address(row: dict) -> str:
@@ -331,9 +324,7 @@ def _select_extras(tournament: Tournament, registration: Registration, row: dict
     if not pricing.uses_itemized_pricing(tournament):
         return
     by_name: dict[str, ExtraItem] = {
-        item.name: item
-        for item in tournament.extra_items
-        if item.category == ExtraCategory.RENTAL
+        item.name: item for item in tournament.extra_items if item.category == ExtraCategory.RENTAL
     }
     # one of each, however often a row names it: a fencer borrows a sabre, not
     # two, and the importer is asked to state each item once for that reason
@@ -343,14 +334,10 @@ def _select_extras(tournament: Tournament, registration: Registration, row: dict
             registration.extra_selections.append(RegistrationExtra(item=item, qty=1))
     if row.get("afterparty"):
         offered = [
-            item
-            for item in tournament.extra_items
-            if item.category == ExtraCategory.AFTERPARTY
+            item for item in tournament.extra_items if item.category == ExtraCategory.AFTERPARTY
         ]
         if len(offered) == 1:
-            registration.extra_selections.append(
-                RegistrationExtra(item=offered[0], qty=1)
-            )
+            registration.extra_selections.append(RegistrationExtra(item=offered[0], qty=1))
 
 
 def would_skip(session: Session, tournament: Tournament) -> list[Skipped]:

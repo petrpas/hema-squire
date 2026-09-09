@@ -130,9 +130,7 @@ def refresh_fighters(session: Session, fetcher: HRFetcher) -> dict:
     """Fetch and replace the fighters index; on an implausible parse keep the
     previous index and log the rejection with diagnostics."""
     previous = session.scalar(select(HRFighter).limit(1))
-    previous_count = (
-        session.query(HRFighter).count() if previous is not None else 0
-    )
+    previous_count = session.query(HRFighter).count() if previous is not None else 0
 
     try:
         page = fetcher.fighters_page()
@@ -177,9 +175,7 @@ def refresh_fighters(session: Session, fetcher: HRFetcher) -> dict:
         )
         for hr_id, name, nationality, club in unique
     )
-    session.add(
-        HRIndexRefresh(status="ok", fighter_count=len(unique), detail=diagnostics)
-    )
+    session.add(HRIndexRefresh(status="ok", fighter_count=len(unique), detail=diagnostics))
     session.commit()
     return {"status": "ok", "fighters": len(unique)}
 
@@ -224,8 +220,7 @@ def parse_fighter_ratings(html: str) -> list[tuple[str, float | None, int | None
     rows = []
     for row in re.split(r"<tr[^>]*>", table.group(1)):
         cells = [
-            html_mod.unescape(re.sub(r"<[^>]+>", "", cell)).strip()
-            for cell in _CELL.findall(row)
+            html_mod.unescape(re.sub(r"<[^>]+>", "", cell)).strip() for cell in _CELL.findall(row)
         ]
         if len(cells) < 4 or not cells[0]:
             continue
@@ -276,9 +271,7 @@ def take_snapshot(
             keyword = category_keyword(tournament, code)
             if keyword is None:
                 continue
-            match = next(
-                (c for c in categories if keyword.lower() in c[0].lower()), None
-            )
+            match = next((c for c in categories if keyword.lower() in c[0].lower()), None)
             if match is not None:
                 collected.append(
                     HRSnapshotRating(

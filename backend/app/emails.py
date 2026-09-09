@@ -28,14 +28,11 @@ def _summary_lines(registration: Registration, tournament: Tournament, lang: str
             tournament.local_currency,
             lang,
         )
-        marker = (
-            f" ({t('email.confirmation.teamWaitlisted', lang)})" if team.waitlisted else ""
-        )
+        marker = f" ({t('email.confirmation.teamWaitlisted', lang)})" if team.waitlisted else ""
         lines.append(f"  {team.name} — {team.discipline.name}: {fee}{marker}")
     if registration.weapon_rentals:
         lines.append(
-            f"  {t('email.confirmation.rentals', lang)}: "
-            + ", ".join(registration.weapon_rentals)
+            f"  {t('email.confirmation.rentals', lang)}: " + ", ".join(registration.weapon_rentals)
         )
     if registration.afterparty:
         lines.append(f"  {t('email.confirmation.afterparty', lang)}")
@@ -204,9 +201,7 @@ def send_registration_confirmation(
     )
     qr, qr_eur = payment_qrs(tournament, registration)
     mailer.send(
-        build_message(
-            fencer.email, settings.email_sender, subject, body, qr=qr, qr_eur=qr_eur
-        )
+        build_message(fencer.email, settings.email_sender, subject, body, qr=qr, qr_eur=qr_eur)
     )
 
 
@@ -295,9 +290,7 @@ def send_payment_reminder(
     )
     qr, qr_eur = payment_qrs(tournament, registration)
     mailer.send(
-        build_message(
-            fencer.email, settings.email_sender, subject, body, qr=qr, qr_eur=qr_eur
-        )
+        build_message(fencer.email, settings.email_sender, subject, body, qr=qr, qr_eur=qr_eur)
     )
 
 
@@ -317,9 +310,7 @@ def send_reservation_expired(
         return
     lang = tournament.language
     if holding_payment:
-        subject = t(
-            "email.expiredHoldingPayment.subject", lang, tournament=tournament.display_name
-        )
+        subject = t("email.expiredHoldingPayment.subject", lang, tournament=tournament.display_name)
         body = t(
             "email.expiredHoldingPayment.body",
             lang,
@@ -431,9 +422,7 @@ def send_amendment_confirmation(
     )
     qr, qr_eur = payment_qrs(tournament, registration)
     mailer.send(
-        build_message(
-            fencer.email, settings.email_sender, subject, body, qr=qr, qr_eur=qr_eur
-        )
+        build_message(fencer.email, settings.email_sender, subject, body, qr=qr, qr_eur=qr_eur)
     )
 
 
@@ -479,9 +468,7 @@ def send_surcharge_due(
         tournament, registration, local_amount=outstanding_local, eur_amount=outstanding_eur
     )
     mailer.send(
-        build_message(
-            fencer.email, settings.email_sender, subject, body, qr=qr, qr_eur=qr_eur
-        )
+        build_message(fencer.email, settings.email_sender, subject, body, qr=qr, qr_eur=qr_eur)
     )
 
 

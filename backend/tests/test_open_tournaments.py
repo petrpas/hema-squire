@@ -65,9 +65,7 @@ def test_open_carries_discipline_counts_and_own_state(client, auth_headers):
     fencer = auth_headers(email="f1@example.com", name="F1")
     other = auth_headers(email="f2@example.com", name="F2")
 
-    client.post(
-        "/api/tournaments/cup/register", json={"disciplines": ["LS"]}, headers=fencer
-    )
+    client.post("/api/tournaments/cup/register", json={"disciplines": ["LS"]}, headers=fencer)
 
     listed = client.get("/api/tournaments/open", headers=fencer).json()
     cup = next(t for t in listed if t["slug"] == "cup")
@@ -125,8 +123,7 @@ def test_open_reports_substitute_paid_and_cancelled_states(client, auth_headers)
 
     listed_third = client.get("/api/tournaments/open", headers=third).json()
     assert (
-        next(t for t in listed_third if t["slug"] == "cup")["my_registration_state"]
-        == "cancelled"
+        next(t for t in listed_third if t["slug"] == "cup")["my_registration_state"] == "cancelled"
     )
 
 
@@ -136,9 +133,7 @@ def test_open_registration_status_opens_on_and_closed(client, auth_headers):
     organizer = auth_headers()
     fencer = auth_headers(email="f1@example.com", name="F1")
 
-    make_open_tournament(
-        client, organizer, "future-open", registration_opens=str(OPENS_TOMORROW)
-    )
+    make_open_tournament(client, organizer, "future-open", registration_opens=str(OPENS_TOMORROW))
     make_open_tournament(
         client, organizer, "past-close", registration_closes=str(today_local() - timedelta(days=1))
     )
@@ -222,8 +217,13 @@ def test_open_counts_team_disciplines_in_teams(client, auth_headers):
     client.post(
         "/api/tournaments/cup/disciplines",
         json={
-            "slug": "Team-LS", "weapon": "LS", "capacity": 5, "fee": 3000,
-            "kind": "team", "team_min": 3, "team_max": 4,
+            "slug": "Team-LS",
+            "weapon": "LS",
+            "capacity": 5,
+            "fee": 3000,
+            "kind": "team",
+            "team_min": 3,
+            "team_max": 4,
         },
         headers=organizer,
     )
@@ -253,8 +253,13 @@ def test_past_scope_counts_team_disciplines_in_teams(client, auth_headers, scope
     client.post(
         "/api/tournaments/cup/disciplines",
         json={
-            "slug": "Team-LS", "weapon": "LS", "capacity": 5, "fee": 3000,
-            "kind": "team", "team_min": 3, "team_max": 4,
+            "slug": "Team-LS",
+            "weapon": "LS",
+            "capacity": 5,
+            "fee": 3000,
+            "kind": "team",
+            "team_min": 3,
+            "team_max": 4,
         },
         headers=organizer,
     )

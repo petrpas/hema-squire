@@ -171,8 +171,11 @@ def test_manual_row_never_appears_among_the_imported_rows(client, auth_headers):
 
     imported = [row for row in sheet_rows(client, organizer) if row["id"].startswith("imp:")]
     assert [row["name"] for row in imported] == ["Anna Import"]
-    assert all(row.get("_source") is None for row in sheet_rows(client, organizer)
-               if row["id"].startswith("man:"))
+    assert all(
+        row.get("_source") is None
+        for row in sheet_rows(client, organizer)
+        if row["id"].startswith("man:")
+    )
 
 
 class FakeDedupLLM:

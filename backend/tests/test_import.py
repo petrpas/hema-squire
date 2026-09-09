@@ -12,7 +12,7 @@ CSV = (
     "Národnost / Nationality,Disciplíny / Disciplines,hemaratings.com ID,"
     "Afterparty,Poznámka / Note\n"
     "1.4.2026 14:15:27,alex@example.com,Alexander Bryzgalov ,Twerchhau,"
-    'Russian ,šavle / sabre,,Asi jo / Likely so,\n'
+    "Russian ,šavle / sabre,,Asi jo / Likely so,\n"
     "1.4.2026 14:16:13,ala@example.com,Aleksandra Grzegorczyk,Mordschlag,"
     'PL,"šavle / sabre, meč a štítek / sword and buckler",1234,Ano / Yes,dorazím později\n'
 )
@@ -187,19 +187,43 @@ def test_xlsx_intake(client, auth_headers):
     ws = workbook.active
     assert ws is not None
     ws.append(
-        ["Časová značka", "E-mailová adresa", "Jméno / Full Name", "Klub / Club",
-         "Národnost / Nationality", "Disciplíny / Disciplines", "hemaratings.com ID",
-         "Afterparty", "Poznámka / Note"]
+        [
+            "Časová značka",
+            "E-mailová adresa",
+            "Jméno / Full Name",
+            "Klub / Club",
+            "Národnost / Nationality",
+            "Disciplíny / Disciplines",
+            "hemaratings.com ID",
+            "Afterparty",
+            "Poznámka / Note",
+        ]
     )
-    ws.append(["1.4.2026 14:15:27", "alex@example.com", "Alexander Bryzgalov", "Twerchhau",
-               "Russian", "šavle / sabre", "", "Ano", ""])
+    ws.append(
+        [
+            "1.4.2026 14:15:27",
+            "alex@example.com",
+            "Alexander Bryzgalov",
+            "Twerchhau",
+            "Russian",
+            "šavle / sabre",
+            "",
+            "Ano",
+            "",
+        ]
+    )
     buffer = io.BytesIO()
     workbook.save(buffer)
 
     response = client.post(
         "/api/tournaments/cup/import",
-        files={"file": ("regs.xlsx", io.BytesIO(buffer.getvalue()),
-                        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")},
+        files={
+            "file": (
+                "regs.xlsx",
+                io.BytesIO(buffer.getvalue()),
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            )
+        },
         headers=organizer,
     )
     assert response.status_code == 202, response.text
@@ -333,16 +357,22 @@ def setup_split_tournament(client, organizer):
     client.post(
         "/api/tournaments/split/disciplines",
         json={
-            "slug": "LS-A", "weapon": "LS", "name": "Longsword Top",
-            "capacity": 20, "fee": 800,
+            "slug": "LS-A",
+            "weapon": "LS",
+            "name": "Longsword Top",
+            "capacity": 20,
+            "fee": 800,
         },
         headers=organizer,
     )
     client.post(
         "/api/tournaments/split/disciplines",
         json={
-            "slug": "LS-B", "weapon": "LS", "name": "Longsword Open",
-            "capacity": 20, "fee": 800,
+            "slug": "LS-B",
+            "weapon": "LS",
+            "name": "Longsword Open",
+            "capacity": 20,
+            "fee": 800,
         },
         headers=organizer,
     )
@@ -622,9 +652,5 @@ def test_a_row_the_new_file_omits_stays(client, auth_headers):
     shortened = "".join(CSV.splitlines(keepends=True)[:2])
 
     upload(client, organizer, content=shortened)
-    names = {
-        r["name"]
-        for r in get_sheet(client, organizer)["rows"]
-        if r["id"].startswith("imp:")
-    }
+    names = {r["name"] for r in get_sheet(client, organizer)["rows"] if r["id"].startswith("imp:")}
     assert names == {"Alexander Bryzgalov", "Aleksandra Grzegorczyk"}

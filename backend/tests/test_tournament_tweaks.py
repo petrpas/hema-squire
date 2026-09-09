@@ -49,9 +49,7 @@ def test_discipline_schedule_and_ruleset_round_trip(client, auth_headers):
         "ruleset": "[Barbasetti Right of Way](https://example.org/cz.pdf) (CZ)"
         " · [EN](https://example.org/en.pdf)",
     }
-    response = client.post(
-        "/api/tournaments/na-duel-2026/disciplines", json=body, headers=headers
-    )
+    response = client.post("/api/tournaments/na-duel-2026/disciplines", json=body, headers=headers)
     assert response.status_code == 201, response.text
     out = response.json()
     assert out["schedule_when"] == "Saturday"

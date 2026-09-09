@@ -47,9 +47,7 @@ def mailbox():
 
 
 def _import_rows(client, headers, rows):
-    header = (
-        "ID pohybu;Datum;Objem;Měna;VS;KS;SS;Zpráva pro příjemce;Název protiúčtu;Protiúčet"
-    )
+    header = "ID pohybu;Datum;Objem;Měna;VS;KS;SS;Zpráva pro příjemce;Název protiúčtu;Protiúčet"
     csv = ("meta;data\n\n" + header + "\n" + "\n".join(rows) + "\n").encode()
     return import_statement(client, headers, csv, slug="na-duel-2026")
 
@@ -524,9 +522,10 @@ def publish_with_eur(client, headers, *, eur=True, fee=1750, fee_eur=70):
     }
     if eur:
         patch |= {"eur_payments_enabled": True}
-    assert client.patch(
-        "/api/tournaments/na-duel-2026", json=patch, headers=headers
-    ).status_code == 200
+    assert (
+        client.patch("/api/tournaments/na-duel-2026", json=patch, headers=headers).status_code
+        == 200
+    )
     discipline = {"slug": "LS", "weapon": "LS", "capacity": 10, "fee": fee}
     if eur:
         discipline["fee_eur"] = fee_eur
@@ -639,9 +638,9 @@ def test_eur_transaction_matches_the_stored_eur_total(client, auth_headers, mail
 
     result = _import_rows(client, headers, [f"1;01.08.2026;70,00;EUR;{vs};;;;MUELLER;DE99"])
     assert result["matched"] == 1
-    state = client.get(
-        "/api/tournaments/na-duel-2026/my-registration", headers=fencer
-    ).json()["state"]
+    state = client.get("/api/tournaments/na-duel-2026/my-registration", headers=fencer).json()[
+        "state"
+    ]
     assert state == "paid"
 
 
@@ -654,13 +653,11 @@ def test_eur_transaction_on_czk_only_tournament_is_flagged_not_accepted(
 
     result = _import_rows(client, headers, [f"1;01.08.2026;70,00;EUR;{vs};;;;MUELLER;DE99"])
     assert result["flagged"] == 1
-    queue = client.get(
-        "/api/tournaments/na-duel-2026/payments/unmatched", headers=headers
-    ).json()
+    queue = client.get("/api/tournaments/na-duel-2026/payments/unmatched", headers=headers).json()
     assert queue[0]["status_reason"] == "currency_not_accepted"
-    state = client.get(
-        "/api/tournaments/na-duel-2026/my-registration", headers=fencer
-    ).json()["state"]
+    state = client.get("/api/tournaments/na-duel-2026/my-registration", headers=fencer).json()[
+        "state"
+    ]
     assert state == "reserved"
 
 
@@ -673,9 +670,7 @@ def test_eur_payment_far_off_credited_as_partial(client, auth_headers, mailbox):
 
     result = _import_rows(client, headers, [f"1;01.08.2026;40,00;EUR;{vs};;;;MUELLER;DE99"])
     assert result["partial"] == 1
-    queue = client.get(
-        "/api/tournaments/na-duel-2026/payments/unmatched", headers=headers
-    ).json()
+    queue = client.get("/api/tournaments/na-duel-2026/payments/unmatched", headers=headers).json()
     assert queue == []
 
 
@@ -723,9 +718,10 @@ def test_incomplete_eur_prices_block_registration(client, auth_headers):
         "organizers": [{"name": "Org", "link": None}],
         "eur_payments_enabled": True,
     }
-    assert client.patch(
-        "/api/tournaments/na-duel-2026", json=patch, headers=headers
-    ).status_code == 200
+    assert (
+        client.patch("/api/tournaments/na-duel-2026", json=patch, headers=headers).status_code
+        == 200
+    )
     # fee_eur left empty — completeness follows from the form (design Decision 2)
     client.post(
         "/api/tournaments/na-duel-2026/disciplines",
@@ -750,21 +746,20 @@ def test_price_change_leaves_existing_registration_untouched(client, auth_header
     headers = auth_headers()
     publish_with_eur(client, headers, fee=1750, fee_eur=70)
     fencer, _ = enroll(client, auth_headers)
-    initial = client.get(
-        "/api/tournaments/na-duel-2026/my-registration", headers=fencer
-    ).json()
+    initial = client.get("/api/tournaments/na-duel-2026/my-registration", headers=fencer).json()
     assert initial["total_amount"] == 1750
     assert initial["total_eur"] == 70
 
-    assert client.patch(
-        "/api/tournaments/na-duel-2026/disciplines/LS",
-        json={"slug": "LS", "weapon": "LS", "capacity": 10, "fee": 2000, "fee_eur": 80},
-        headers=headers,
-    ).status_code == 200
+    assert (
+        client.patch(
+            "/api/tournaments/na-duel-2026/disciplines/LS",
+            json={"slug": "LS", "weapon": "LS", "capacity": 10, "fee": 2000, "fee_eur": 80},
+            headers=headers,
+        ).status_code
+        == 200
+    )
 
-    unchanged = client.get(
-        "/api/tournaments/na-duel-2026/my-registration", headers=fencer
-    ).json()
+    unchanged = client.get("/api/tournaments/na-duel-2026/my-registration", headers=fencer).json()
     assert unchanged["total_amount"] == 1750
     assert unchanged["total_eur"] == 70
 

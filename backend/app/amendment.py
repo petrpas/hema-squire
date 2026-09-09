@@ -346,9 +346,7 @@ def rental_selections(
         if selection.item.category is not ExtraCategory.RENTAL
     ]
     lent = {
-        item.name: item
-        for item in tournament.extra_items
-        if item.category is ExtraCategory.RENTAL
+        item.name: item for item in tournament.extra_items if item.category is ExtraCategory.RENTAL
     }
     return kept + [
         ExtraSelectionSpec(extra_item_id=lent[name].id)

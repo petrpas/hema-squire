@@ -153,9 +153,7 @@ def test_no_close_date_stays_open_through_tournament_date(client, auth_headers):
     assert register(client, fencer, slug=slug).status_code == 201
 
 
-def test_gate_does_not_block_cancellation_or_admission_on_incomplete_setup(
-    client, auth_headers
-):
+def test_gate_does_not_block_cancellation_or_admission_on_incomplete_setup(client, auth_headers):
     """Cancellation and substitute admission never consult the registration
     gate at all (gate applies only to new submissions) — so they are
     unaffected even by an attempt to clear the titular organizers that the
@@ -180,9 +178,7 @@ def test_gate_does_not_block_cancellation_or_admission_on_incomplete_setup(
     assert waiting_body["entries"][0]["is_substitute"] is True
 
     # rejected outright: the published tournament would lose its only organizer
-    rejected = client.patch(
-        f"/api/tournaments/{slug}", json={"organizers": []}, headers=organizer
-    )
+    rejected = client.patch(f"/api/tournaments/{slug}", json={"organizers": []}, headers=organizer)
     assert rejected.status_code == 422
 
     cancelled = client.post(f"/api/tournaments/{slug}/my-registration/cancel", headers=fencer)
@@ -230,9 +226,7 @@ def test_extra_quantity_over_limit_rejected(client, auth_headers):
         headers=organizer,
     ).json()
     fencer = auth_headers(email="f1@example.com", name="F1")
-    response = register(
-        client, fencer, slug=slug, extras=[{"extra_item_id": item["id"], "qty": 3}]
-    )
+    response = register(client, fencer, slug=slug, extras=[{"extra_item_id": item["id"], "qty": 3}])
     assert response.status_code == 422
     assert response.json()["detail"] == {"extras_over_limit": [item["id"]]}
 
@@ -250,9 +244,7 @@ def test_extras_selection_billed_and_itemized_in_output(client, auth_headers):
         headers=organizer,
     ).json()
     fencer = auth_headers(email="f1@example.com", name="F1")
-    response = register(
-        client, fencer, slug=slug, extras=[{"extra_item_id": item["id"], "qty": 2}]
-    )
+    response = register(client, fencer, slug=slug, extras=[{"extra_item_id": item["id"], "qty": 2}])
     assert response.status_code == 201
     body = response.json()
     assert body["total_amount"] == 800 + 2 * 200

@@ -181,7 +181,10 @@ def process_expiries(session: Session, tournament: Tournament, mailer: Mailer) -
             )
         )
         emails.send_reservation_expired(
-            mailer, tournament, registration.fencer, registration,
+            mailer,
+            tournament,
+            registration.fencer,
+            registration,
             holding_payment=holding_payment,
         )
     session.commit()
@@ -229,7 +232,8 @@ def _demotable(session: Session, tournament: Tournament) -> list[Registration]:
     test `settle_seating` makes afterwards: a registration already wholly in the
     queue is neither counted nor audited, because there is nothing to move."""
     reserved = session.scalars(
-        select(Registration).where(
+        select(Registration)
+        .where(
             Registration.tournament_id == tournament.id,
             Registration.state == RegistrationState.RESERVED,
         )
@@ -364,9 +368,7 @@ def run_tournament_tick(
     result: dict[str, int] = {}
     if fio_client is not None and tournament.fio_token and tournament.feature_payments:
         today = date.today()
-        transactions = fio_client.fetch(
-            tournament.fio_token, today - timedelta(days=14), today
-        )
+        transactions = fio_client.fetch(tournament.fio_token, today - timedelta(days=14), today)
         ingested = bank.ingest(session, tournament, "fio_api", transactions)
         matched = matching.match_new_transactions(session, tournament, mailer)
         matching.apply_payment_links(session, tournament, mailer)

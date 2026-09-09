@@ -124,9 +124,7 @@ def test_registration_is_seated_with_no_due_date(client, auth_headers, mailbox):
     assert registration["total_amount"] == 1200
 
 
-def test_confirmation_carries_the_total_and_nothing_about_paying_it(
-    client, auth_headers, mailbox
-):
+def test_confirmation_carries_the_total_and_nothing_about_paying_it(client, auth_headers, mailbox):
     organizer = auth_headers()
     setup(client, organizer)
     publish(client, organizer, "cup")
@@ -147,9 +145,7 @@ def test_no_in_app_payment_instructions(client, auth_headers, mailbox):
     publish(client, organizer, "cup")
     fencer, _ = enroll(client, auth_headers)
 
-    response = client.get(
-        "/api/tournaments/cup/my-registration/payment", headers=fencer
-    )
+    response = client.get("/api/tournaments/cup/my-registration/payment", headers=fencer)
     assert response.status_code == 409
     assert response.json()["detail"] == "payments_disabled"
 
@@ -174,9 +170,7 @@ def test_nothing_expires_or_is_reminded_across_a_long_tick(client, auth_headers,
     assert result["reminders"] == 0
     assert mailbox.sent == []
 
-    row = db_session().scalar(
-        select(Registration).where(Registration.vs == registration["vs"])
-    )
+    row = db_session().scalar(select(Registration).where(Registration.vs == registration["vs"]))
     assert row.state == RegistrationState.RESERVED
     # The state assertion above is not sufficient on its own and used to be all
     # this test made: a registration demoted to the substitute queue is still
@@ -208,9 +202,7 @@ def test_statement_ingestion_is_refused(client, auth_headers):
 
     response = client.post(
         "/api/tournaments/cup/payments/import-statement",
-        files={
-            "file": ("v.csv", io.BytesIO(statement_csv(registration["vs"])), "text/csv")
-        },
+        files={"file": ("v.csv", io.BytesIO(statement_csv(registration["vs"])), "text/csv")},
         headers=organizer,
     )
     assert response.status_code == 409
@@ -247,9 +239,7 @@ def test_promotion_opens_no_payment_window(client, auth_headers, mailbox):
     assert queued["entries"][0]["is_substitute"] is True
 
     session = db_session()
-    registration_id = session.scalar(
-        select(Registration.id).where(Registration.vs == queued["vs"])
-    )
+    registration_id = session.scalar(select(Registration.id).where(Registration.vs == queued["vs"]))
     # free the seat so the promotion is allowed
     seated = session.scalar(select(Registration).where(Registration.vs != queued["vs"]))
     seated.state = RegistrationState.CANCELLED
@@ -304,9 +294,11 @@ def test_stored_payment_settings_survive_the_feature_being_turned_off(
     transactions_before = client.get(
         "/api/tournaments/cup/payments/transactions", headers=organizer
     ).json()
-    paid_before = db_session().scalar(
-        select(Registration).where(Registration.vs == paid["vs"])
-    ).amount_paid_cents
+    paid_before = (
+        db_session()
+        .scalar(select(Registration).where(Registration.vs == paid["vs"]))
+        .amount_paid_cents
+    )
     assert transactions_before and paid_before == 30000
 
     set_features(client, organizer, "cup")
@@ -335,9 +327,7 @@ def test_stored_payment_settings_survive_the_feature_being_turned_off(
     assert on["deposit_amount"] == 300
 
 
-def test_registrations_taken_while_payments_were_off_never_expire(
-    client, auth_headers, mailbox
-):
+def test_registrations_taken_while_payments_were_off_never_expire(client, auth_headers, mailbox):
     organizer = auth_headers()
     setup(client, organizer, reservation_validity_days=2, reminder_day=1)
     publish(client, organizer, "cup")
@@ -348,9 +338,7 @@ def test_registrations_taken_while_payments_were_off_never_expire(
     row.registered_at = datetime.now(UTC) - timedelta(days=60)
     session.commit()
 
-    client.patch(
-        "/api/tournaments/cup", json={"bank_account": IBAN}, headers=organizer
-    )
+    client.patch("/api/tournaments/cup", json={"bank_account": IBAN}, headers=organizer)
     enable_payments(client, organizer, "cup")
     mailbox.sent.clear()
 

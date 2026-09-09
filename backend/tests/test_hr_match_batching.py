@@ -57,9 +57,7 @@ class RecordingModel:
             }
             for f in fencers
         ]
-        return ModelResponse(
-            parts=[ToolCallPart("final_result", {"matches": matches})]
-        )
+        return ModelResponse(parts=[ToolCallPart("final_result", {"matches": matches})])
 
 
 def test_roster_is_asked_in_batches_with_its_own_candidates():
@@ -119,17 +117,18 @@ class CountingMatcher:
         self.asked.extend(f["name"] for f in fencers)
         return [
             HRMatchResult(
-                name=f["name"], club=f["club"], hr_id=10234,
-                matched_name="Jan Novák", matched_club="Prague HEMA",
+                name=f["name"],
+                club=f["club"],
+                hr_id=10234,
+                matched_name="Jan Novák",
+                matched_club="Prague HEMA",
                 nationality="CZ",
             )
             for f in fencers
         ]
 
 
-def test_identical_rows_are_one_question_and_both_count_as_matched(
-    client, auth_headers
-):
+def test_identical_rows_are_one_question_and_both_count_as_matched(client, auth_headers):
     organizer = auth_headers()
     client.post(
         "/api/tournaments",
@@ -144,11 +143,14 @@ def test_identical_rows_are_one_question_and_both_count_as_matched(
     # data work waits for publication (spec tournament-publication)
     publish(client, organizer, "cup")
     app.dependency_overrides[get_import_parser] = lambda: TwoRowParser()
-    assert client.post(
-        "/api/tournaments/cup/import",
-        files={"file": ("regs.csv", io.BytesIO(DUPLICATE_CSV.encode()), "text/csv")},
-        headers=organizer,
-    ).status_code == 202
+    assert (
+        client.post(
+            "/api/tournaments/cup/import",
+            files={"file": ("regs.csv", io.BytesIO(DUPLICATE_CSV.encode()), "text/csv")},
+            headers=organizer,
+        ).status_code
+        == 202
+    )
 
     matcher = CountingMatcher()
     app.dependency_overrides[get_hr_matcher] = lambda: matcher
