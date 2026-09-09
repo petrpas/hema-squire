@@ -93,9 +93,10 @@ include = ["app"]
 exclude = ["**/__pycache__", "**/node_modules"]
 
 # Phase 5 of `openspec/changes/static-analysis-spec.md`. deptry answers one
-# question: does what the code imports match what the project declares. It is a
-# manual run, not a CI gate — the spec marks phase 5 non-blocking, and the
-# answer only changes when a dependency does.
+# question: does what the code imports match what the project declares. It runs
+# in CI's `audit` job, which reports and never blocks — the spec marks phase 5
+# non-blocking, and every finding here needs a human to say which of the two
+# sides is wrong.
 [tool.deptry.package_module_name_map]
 # Distributions whose import name is not their package name. deptry guesses the
 # package name when it cannot import the module, and guesses wrong for these.

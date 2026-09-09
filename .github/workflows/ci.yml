@@ -55,6 +55,8 @@ jobs:
 
   # Reports, never blocks. A CVE published against a transitive dependency is
   # not a reason a deploy cannot go out; it is a reason somebody should look.
+  # deptry rides along for the same reason: its answer is only ever wrong in a
+  # way a human has to judge, so it reports rather than gates.
   audit:
     runs-on: ubuntu-latest
     continue-on-error: true
@@ -62,6 +64,11 @@ jobs:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5
       - run: uv sync --dev
+        working-directory: backend
+        # ahead of pip-audit deliberately: a failing step stops the ones after
+        # it even in a `continue-on-error` job, and a CVE in a transitive
+        # dependency must not be what hides an undeclared import.
+      - run: uv run deptry .
         working-directory: backend
       - run: uv run pip-audit
         working-directory: backend

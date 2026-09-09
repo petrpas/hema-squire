@@ -109,13 +109,15 @@ Rules:
   never left to arrive as another package's extra. `uv run deptry .` answers
   whether that still holds.
 
-Two checks are neither gates nor part of finishing a task, because neither can
-be trusted to be right without a human reading the answer:
+Two more checks report without gating, because neither can be trusted to be
+right without a human reading the answer:
 
     uv run deptry .    # declared-but-unimported, imported-but-undeclared
     uv run vulture     # dead code; see the [tool.vulture] comment first
 
-Run them when dependencies change or after deleting a feature, not per edit.
+`deptry` runs in CI's non-blocking `audit` job, so a dependency change that
+does not match the imports is visible without breaking a deploy. `vulture` runs
+nowhere but by hand — after deleting a feature is when it has something to say.
 
 # Openspec
 
