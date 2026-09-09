@@ -538,7 +538,9 @@ def test_recorded_payment_dates_by_received_on_not_by_when_it_was_typed(
 
     record(client, organizer, registration_by_vs(vs).id, received_on="2026-08-01")
 
-    assert registration_by_vs(vs).paid_at.replace(tzinfo=UTC) == datetime.combine(
+    paid_at = registration_by_vs(vs).paid_at
+    assert paid_at is not None
+    assert paid_at.replace(tzinfo=UTC) == datetime.combine(
         date(2026, 8, 1), time(0, 0), tzinfo=ZoneInfo("Europe/Prague")
     ).astimezone(UTC)
 
@@ -557,7 +559,9 @@ def test_a_second_recorded_payment_completing_it_gives_its_own_day(
 
     record(client, organizer, registration_by_vs(vs).id, amount="400.00", received_on="2026-08-09")
 
-    assert registration_by_vs(vs).paid_at.replace(tzinfo=UTC) == datetime.combine(
+    paid_at = registration_by_vs(vs).paid_at
+    assert paid_at is not None
+    assert paid_at.replace(tzinfo=UTC) == datetime.combine(
         date(2026, 8, 9), time(0, 0), tzinfo=ZoneInfo("Europe/Prague")
     ).astimezone(UTC)
 

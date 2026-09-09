@@ -128,7 +128,7 @@ def test_account_stored_before_this_change_is_readable_unvalidated(client, auth_
     from app.models import Tournament
 
     with Session(engine) as session:
-        tournament = session.scalar(select(Tournament).where(Tournament.slug == slug))
+        tournament = session.scalars(select(Tournament).where(Tournament.slug == slug)).one()
         tournament.bank_account = "CZ0008000000192000145399"  # bad checksum, written directly
         session.commit()
 

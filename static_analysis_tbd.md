@@ -41,26 +41,34 @@ follow-up commit. `server_time`, both `registration_opens_at` and
 deliberately — an imported stamp has no zone to restore, which
 `frontend/src/consoleCells.test.tsx` holds to by name.
 
-## 3. Tests and scripts are outside the basedpyright gate
+## 3. Tests and scripts are outside the basedpyright gate — cheap half done
 
-`pyproject.toml` gates `app/` only. Widening it today would add **78 findings**
-— 72 in `tests/`, 6 in `scripts/`:
+`pyproject.toml` still gates `app/` only. Widening it would have added 81
+findings; the cheap half is now cleared and **33 remain**, all one rule:
 
 ```
-  43  reportArgumentType
-  31  reportOptionalMemberAccess
-   3  reportAttributeAccessIssue
-   1  reportIncompatibleMethodOverride
+  33  reportArgumentType
 ```
 
-The `reportArgumentType` majority is one shape: fakes (`StubRule`,
-`FakeTournament`, `ExceptionInfo`) handed to functions typed against the real
-models. Fixing it means introducing protocols at those seams — the same move
-`_TeamEntry` made in `routers/registrations.py`, and real design work on the
-test suite rather than annotation. The `reportOptionalMemberAccess` half is
-mostly `session.scalar(...)` results used without narrowing, which is cheap.
+The 48 that went were the mechanical shapes — 34 `reportOptionalMemberAccess`
+from `session.scalar(...)` and `Session.get(...)` results used without
+narrowing (`.scalars(...).one()` and `get_one()` are the same lookups typed
+non-optional, and they raise where the old code hit `AttributeError` on `None`
+a line later), plus a nullable `paid_at`, openpyxl's optional `Workbook.active`,
+and four one-line annotation errors.
 
-Doing the cheap half first would leave a much smaller decision.
+Two of those four were real, in `scripts/seed_demo.py`: it imported
+`ParsedDiscipline` from `app.importer`, which stopped existing when the parser
+began returning discipline slugs, so the script failed at that import; and it
+wrote a plain `str` into `Fencer.role`, which only ever worked because `Role`
+is a `StrEnum`.
+
+What is left is the single shape the note predicted: fakes (`StubRule`,
+`FakeTournament`) handed to functions typed against the real models. Fixing it
+means introducing protocols at those seams — the same move `_TeamEntry` made in
+`routers/registrations.py` — which is design work on the test suite, not
+annotation. That is now the whole decision, and it is one decision rather than
+a pile.
 
 ## 4. Two things phase 4 found and did not act on
 

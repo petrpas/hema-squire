@@ -294,7 +294,7 @@ def auth_headers(client, engine):
         assert response.status_code == 201, response.text
         if role != Role.FENCER:
             with Session(engine) as session:
-                fencer = session.scalar(select(Fencer).where(Fencer.email == email))
+                fencer = session.scalars(select(Fencer).where(Fencer.email == email)).one()
                 fencer.role = role
                 session.commit()
         return {"Authorization": f"Bearer {response.json()['token']}"}

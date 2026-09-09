@@ -185,6 +185,7 @@ def test_xlsx_intake(client, auth_headers):
 
     workbook = openpyxl.Workbook()
     ws = workbook.active
+    assert ws is not None
     ws.append(
         ["Časová značka", "E-mailová adresa", "Jméno / Full Name", "Klub / Club",
          "Národnost / Nationality", "Disciplíny / Disciplines", "hemaratings.com ID",
@@ -288,8 +289,10 @@ def test_ragged_xlsx_rows_align_to_the_header(client, auth_headers):
     from app.importer import read_table, row_fingerprint
 
     workbook = openpyxl.Workbook()
+    sheet = workbook.active
+    assert sheet is not None
     for row in (["a", "b", "c"], ["long", "row", "with", "extra"], ["short"]):
-        workbook.active.append(row)
+        sheet.append(row)
     buffer = io.BytesIO()
     workbook.save(buffer)
 

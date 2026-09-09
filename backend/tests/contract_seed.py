@@ -64,7 +64,9 @@ def build(client, auth_headers, engine) -> Seed:
     # spend its examples on. Fuzzing as the most privileged caller is what
     # reaches the most handler code.
     with Session(engine) as session:
-        account = session.scalar(select(Fencer).where(Fencer.email == "organizer@example.com"))
+        account = session.scalars(
+            select(Fencer).where(Fencer.email == "organizer@example.com")
+        ).one()
         account.role = Role.ADMIN
         session.commit()
 
@@ -119,7 +121,7 @@ def build(client, auth_headers, engine) -> Seed:
     # the registration id is not in its own response — the fencer-facing body
     # states the symbol, not the row — so it is read back from the database
     with Session(engine) as session:
-        row = session.scalar(select(Registration))
+        row = session.scalars(select(Registration)).one()
         registration_id, fencer_id = row.id, row.fencer_id
 
     client.post("/api/account/plea", json={"message": "please"}, headers=fencer)

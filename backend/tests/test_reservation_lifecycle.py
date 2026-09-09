@@ -479,7 +479,9 @@ def test_organizer_reinstate_dates_the_registration_to_the_transaction(
         headers=organizer,
     )
 
-    paid_at = registration_by_vs(initial["vs"]).paid_at.replace(tzinfo=UTC)
+    settled_at = registration_by_vs(initial["vs"]).paid_at
+    assert settled_at is not None
+    paid_at = settled_at.replace(tzinfo=UTC)
     # `transfer` dates every transaction 15 July; the tournament is in Prague
     assert paid_at == datetime(
         2026, 7, 15, tzinfo=ZoneInfo("Europe/Prague")

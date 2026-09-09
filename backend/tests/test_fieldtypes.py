@@ -30,10 +30,14 @@ class _Url(BaseModel):
     value: Annotated[str, SingleLine, HttpUrl, Field(max_length=200)]
 
 
-def _error_code(exc: ValidationError) -> str:
+def _error_code(exc: pytest.ExceptionInfo[ValidationError]) -> str:
     error = exc.value.errors()[0]
     if error["type"] == "value_error":
-        return str(error["ctx"]["error"])
+        # pydantic only fills `ctx` for the errors a validator raised itself,
+        # which is exactly the branch this is
+        ctx = error.get("ctx")
+        assert ctx is not None
+        return str(ctx["error"])
     return error["type"]
 
 

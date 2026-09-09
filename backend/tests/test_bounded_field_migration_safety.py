@@ -32,7 +32,7 @@ def test_over_long_tournament_description_still_renders_and_only_blocks_its_own_
     _make_tournament(client, headers)
     over_long = "x" * 6000
     with Session(engine) as session:
-        tournament = session.scalar(select(Tournament).where(Tournament.slug == "cup"))
+        tournament = session.scalars(select(Tournament).where(Tournament.slug == "cup")).one()
         tournament.description = over_long
         session.commit()
 
@@ -65,7 +65,7 @@ def test_over_long_discipline_field_still_renders_but_blocks_the_rows_next_save(
     slug = created.json()["slug"]
     over_long_where = "Main Hall, " + "x" * 400
     with Session(engine) as session:
-        discipline = session.scalar(select(Discipline).where(Discipline.slug == slug))
+        discipline = session.scalars(select(Discipline).where(Discipline.slug == slug)).one()
         discipline.schedule_where = over_long_where
         session.commit()
 

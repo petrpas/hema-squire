@@ -37,10 +37,10 @@ class FakeHRFetcher:
     def __init__(self):
         self.pages: dict[int, str] = {}
 
-    def fighters_page(self):
+    def fighters_page(self) -> str:
         raise AssertionError("index refresh not expected here")
 
-    def fighter_page(self, hr_id):
+    def fighter_page(self, hr_id: int) -> str | None:
         return self.pages.get(hr_id)
 
 

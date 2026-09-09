@@ -156,7 +156,9 @@ def test_legacy_bare_string_organizers_do_not_break_the_endpoint(
     headers = auth_headers()
     make_tournament(client, headers, "obnoveny", location="Olomouc")
     with Session(engine) as session:
-        tournament = session.scalar(select(Tournament).where(Tournament.slug == "obnoveny"))
+        tournament = session.scalars(
+            select(Tournament).where(Tournament.slug == "obnoveny")
+        ).one()
         tournament.organizers = ["Starý spolek"]
         session.commit()
 
@@ -214,8 +216,10 @@ def test_console_access_granted_after_the_fact_widens_the_scope(
     assert client.get(SUGGESTIONS, headers=helper).json()["locations"] == []
 
     with Session(engine) as session:
-        tournament = session.scalar(select(Tournament).where(Tournament.slug == "turnaj"))
-        fencer = session.scalar(select(Fencer).where(Fencer.email == "helper@example.com"))
+        tournament = session.scalars(select(Tournament).where(Tournament.slug == "turnaj")).one()
+        fencer = session.scalars(
+            select(Fencer).where(Fencer.email == "helper@example.com")
+        ).one()
         session.add(
             TournamentOrganizer(tournament_id=tournament.id, fencer_id=fencer.id)
         )

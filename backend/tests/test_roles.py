@@ -37,10 +37,10 @@ def test_organizer_creates_and_becomes_tournament_owner(client, auth_headers, en
     from app.models import Fencer, Tournament, TournamentOrganizer
 
     with Session(engine) as session:
-        tournament = session.scalar(select(Tournament).where(Tournament.slug == "cup"))
-        creator = session.scalar(
+        tournament = session.scalars(select(Tournament).where(Tournament.slug == "cup")).one()
+        creator = session.scalars(
             select(Fencer).where(Fencer.email == "organizer@example.com")
-        )
+        ).one()
         assert tournament.owner_id == creator.id
         # ownership implies access; no duplicate team row is created
         assert session.scalar(select(TournamentOrganizer.id)) is None

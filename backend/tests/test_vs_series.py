@@ -224,7 +224,9 @@ def test_legacy_vs_still_resolves_and_matches(client, auth_headers):
 
     session: Session = next(app.dependency_overrides[get_session]())
     # overwrite the freshly issued structured VS with a pre-existing legacy one
-    registration = session.scalar(select(Registration).where(Registration.vs == body["vs"]))
+    registration = session.scalars(
+        select(Registration).where(Registration.vs == body["vs"])
+    ).one()
     registration.vs = 1000001
     session.commit()
 

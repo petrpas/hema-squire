@@ -124,7 +124,7 @@ def test_advance_commits_work_and_count_together(engine):
         operation_id = operation.id
 
     with Session(engine) as fresh:
-        assert fresh.get(Operation, operation_id).done == 20
+        assert fresh.get_one(Operation, operation_id).done == 20
         assert fresh.query(ImportDecision).count() == 1
 
 
@@ -148,7 +148,7 @@ def test_rollback_leaves_neither_the_decision_nor_the_count(engine):
         session.rollback()
 
     with Session(engine) as fresh:
-        assert fresh.get(Operation, operation_id).done == 0
+        assert fresh.get_one(Operation, operation_id).done == 0
         assert fresh.query(ImportDecision).count() == 0
 
 
@@ -256,7 +256,7 @@ def test_startup_sweep_runs_against_the_configured_engine(engine, monkeypatch):
     _sweep_interrupted_operations()
 
     with Session(engine) as fresh:
-        assert fresh.get(Operation, stranded_id).status == OperationStatus.INTERRUPTED
+        assert fresh.get_one(Operation, stranded_id).status == OperationStatus.INTERRUPTED
 
 
 def bind_session_factory(monkeypatch, engine) -> None:
@@ -288,12 +288,12 @@ def test_a_body_that_raises_concludes_the_operation_failed(engine, monkeypatch):
     operations.run_now(operation_id, body)
 
     with Session(engine) as fresh:
-        concluded = fresh.get(Operation, operation_id)
+        concluded = fresh.get_one(Operation, operation_id)
         assert concluded.status == OperationStatus.FAILED
         assert concluded.finished_at is not None
         assert "unreachable" in concluded.outcome["error"]
         # and the tournament is free to try again
-        assert operations.running(fresh, fresh.get(Tournament, tournament_id)) is None
+        assert operations.running(fresh, fresh.get_one(Tournament, tournament_id)) is None
 
 
 def test_a_failure_keeps_what_the_body_committed(engine, monkeypatch):
@@ -320,7 +320,7 @@ def test_a_failure_keeps_what_the_body_committed(engine, monkeypatch):
     operations.run_now(operation_id, body)
 
     with Session(engine) as fresh:
-        concluded = fresh.get(Operation, operation_id)
+        concluded = fresh.get_one(Operation, operation_id)
         assert concluded.status == OperationStatus.FAILED
         assert concluded.done == 20
         assert fresh.query(ImportDecision).count() == 1
@@ -339,6 +339,6 @@ def test_a_completed_body_records_its_outcome(engine, monkeypatch):
     operations.run_now(operation_id, lambda session, operation: {"merged": 1})
 
     with Session(engine) as fresh:
-        concluded = fresh.get(Operation, operation_id)
+        concluded = fresh.get_one(Operation, operation_id)
         assert concluded.status == OperationStatus.DONE
         assert concluded.outcome == {"merged": 1}

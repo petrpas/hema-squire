@@ -26,8 +26,12 @@ import sys
 import urllib.error
 import urllib.request
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 sys.path.insert(0, str(Path.cwd()))  # run from backend/ so `app` imports
+
+if TYPE_CHECKING:
+    from app.models import Role
 
 BASE = "http://localhost:8000"
 ORGANIZER = ("petr@example.com", "demo-heslo-123", "Petr Organizátor")
@@ -35,7 +39,7 @@ ADMIN_DEMO = ("admin@example.com", "demo-heslo-123", "Anna Admin")
 SLUG = "na-duel-2026"
 
 
-def _grant_role(email: str, role: str) -> None:
+def _grant_role(email: str, role: "Role") -> None:
     """Direct DB write, bypassing the admin API (no Admin account exists yet
     to call it with) — see module docstring."""
     from sqlalchemy import select
@@ -45,7 +49,7 @@ def _grant_role(email: str, role: str) -> None:
     from app.models import Fencer
 
     with Session(engine) as session:
-        fencer = session.scalar(select(Fencer).where(Fencer.email == email))
+        fencer = session.scalars(select(Fencer).where(Fencer.email == email)).one()
         fencer.role = role
         session.commit()
 
@@ -77,6 +81,8 @@ def call(method, path, token=None, body=None, files=None):
 
 
 def main() -> None:
+    from app.models import Role
+
     slugs = [t["slug"] for t in call("GET", "/api/tournaments")]
     if SLUG in slugs:
         print(f"'{SLUG}' already exists — nothing to seed.")
@@ -92,7 +98,7 @@ def main() -> None:
         token = call("POST", "/api/auth/login", body={
             "email": email, "password": password,
         })["token"]
-    _grant_role(email, "organizer")  # creation requires the global Organizer role
+    _grant_role(email, Role.ORGANIZER)  # creation requires the global Organizer role
 
     admin_email, admin_password, admin_name = ADMIN_DEMO
     try:
@@ -101,7 +107,7 @@ def main() -> None:
         })
     except urllib.error.HTTPError:
         pass  # already seeded
-    _grant_role(admin_email, "admin")
+    _grant_role(admin_email, Role.ADMIN)
 
     call("POST", "/api/tournaments", token, {
         "slug": SLUG, "display_name": "Na Duel! 2026", "date": "2026-10-17",
@@ -241,27 +247,27 @@ def _backfill_parse_decisions() -> None:
     from sqlalchemy.orm import Session
 
     from app.db import engine
-    from app.importer import ParsedDiscipline, ParsedFencer, store_decision
+    from app.importer import ParsedFencer, store_decision
     from app.models import ImportedRow, Tournament
 
     records = {
         1: ParsedFencer(
             registration_time="2026-06-01T14:15:27", name="Alexander Bryzgalov",
             nationality="RU", email="alex.b@example.com", club="Twerchhau",
-            disciplines=[ParsedDiscipline(weapon="SA")],
+            disciplines=["SA"],
             problems="afterparty answer ambiguous (Asi jo)"),
         2: ParsedFencer(
             registration_time="2026-06-01T15:02:00", name="Lukas Mueller",
             nationality="DE", email="lukas.m@example.com", club="Berlin Schwert",
-            hr_id=8821, disciplines=[ParsedDiscipline(weapon="LS")],
+            hr_id=8821, disciplines=["LS"],
             after_party="Yes", notes="vegetarián"),
         3: ParsedFencer(
             registration_time="2026-06-02T09:30:12", name="Marie Nová",
             nationality="CZ", email="marie.n@example.com", club="Praha HEMA",
-            disciplines=[ParsedDiscipline(weapon="SA")], after_party="No"),
+            disciplines=["SA"], after_party="No"),
     }
     with Session(engine) as session:
-        tournament = session.scalar(select(Tournament).where(Tournament.slug == SLUG))
+        tournament = session.scalars(select(Tournament).where(Tournament.slug == SLUG)).one()
         rows = session.scalars(
             select(ImportedRow).where(ImportedRow.tournament_id == tournament.id)
         ).all()

@@ -142,8 +142,10 @@ def test_non_owner_team_member_may_publish_and_is_recorded(client, auth_headers,
     from app.models import Fencer, Tournament
 
     with Session(engine) as session:
-        tournament = session.scalar(select(Tournament).where(Tournament.slug == slug))
-        helper_fencer = session.scalar(select(Fencer).where(Fencer.email == "helper@example.com"))
+        tournament = session.scalars(select(Tournament).where(Tournament.slug == slug)).one()
+        helper_fencer = session.scalars(
+            select(Fencer).where(Fencer.email == "helper@example.com")
+        ).one()
         assert tournament.published_by_id == helper_fencer.id
 
 
