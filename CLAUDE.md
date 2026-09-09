@@ -81,6 +81,14 @@ none until `backend/.venv/bin/pre-commit install` and the same with
 `--hook-type pre-push` have been run once. See the header of
 `.pre-commit-config.yaml`.
 
+`.claude/settings.json` runs two of them earlier still, so an agent meets its
+own errors rather than handing them to the next gate. Editing a `backend/*.py`
+file reformats it and applies ruff's safe fixes; anything left unfixable comes
+back as a message. Stopping runs basedpyright over the backend and refuses the
+stop while it reports errors. Both are visible and editable through `/hooks`.
+The frontend has no hook of its own: `tsc` would double the wait on every stop,
+and `npm run typecheck` is already a step of finishing frontend work.
+
 Backend work is finished only when both of these pass, from `backend/`:
 
     uv run ruff check .

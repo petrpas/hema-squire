@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "statusMessage": "ruff",
+            "timeout": 60,
+            "command": "jq -r \".tool_input.file_path // empty\" | { read -r f; case \"$f\" in *\"/backend/\"*.py) b=\"${f%%/backend/*}/backend\"; cd \"$b\" || exit 0; env -u VIRTUAL_ENV uv run ruff format -q \"$f\" >/dev/null 2>&1; out=$(env -u VIRTUAL_ENV uv run ruff check --fix \"$f\" 2>&1) || { printf \"%s\\n\" \"$out\" >&2; exit 2; };; esac; }"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "statusMessage": "basedpyright",
+            "timeout": 180,
+            "command": "cd \"${CLAUDE_PROJECT_DIR:-.}/backend\" || exit 0; out=$(env -u VIRTUAL_ENV uv run basedpyright 2>&1) || { printf \"%s\\n\" \"$out\" | tail -30 >&2; exit 2; }"
+          }
+        ]
+      }
+    ]
+  }
+}
