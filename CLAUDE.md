@@ -92,9 +92,9 @@ Rules:
 - Do not work around a checker error by casting to `Any` or widening a
   parameter to `object`. Narrow the value, make the function generic, or state
   the precondition the callers already hold.
-- `app/` is the gated scope. `tests/`, `scripts/` and `alembic/` are excluded
-  in `pyproject.toml`, which says why; do not widen `include` without clearing
-  the findings that come with it.
+- `app/` and `../scripts/` are the gated scope. `tests/` and `alembic/` are
+  excluded in `pyproject.toml`, which says why; do not widen `include` without
+  clearing the findings that come with it.
 - A column typed `Mapped[X | None]` is `X | None` at every read. Where a guard
   earlier in the request already settled it, bind the narrowed value to a local
   and use that, rather than re-reading the attribute.

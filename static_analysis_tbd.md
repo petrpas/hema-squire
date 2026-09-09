@@ -41,10 +41,11 @@ follow-up commit. `server_time`, both `registration_opens_at` and
 deliberately — an imported stamp has no zone to restore, which
 `frontend/src/consoleCells.test.tsx` holds to by name.
 
-## 3. Tests and scripts are outside the basedpyright gate — cheap half done
+## 3. Tests are outside the basedpyright gate — scripts are in
 
-`pyproject.toml` still gates `app/` only. Widening it would have added 81
-findings; the cheap half is now cleared and **33 remain**, all one rule:
+`pyproject.toml` gates `app/` and `../scripts/`. Widening it would have added
+81 findings; the cheap half is cleared, `scripts/` reached zero and went into
+`include`, and **33 remain in `tests/`**, all one rule:
 
 ```
   33  reportArgumentType

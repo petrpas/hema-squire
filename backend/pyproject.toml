@@ -82,14 +82,17 @@ venvPath = "."
 venv = ".venv"
 typeCheckingMode = "standard"
 
-# Scope, phase 2 of `openspec/changes/static-analysis-spec.md`. Only `app/` is
-# gated. Still outside the gate, to be widened in a later phase:
+# Scope, phase 2 of `openspec/changes/static-analysis-spec.md`. `app/` is the
+# shipped code; `../scripts/` joined it once its findings were cleared, because
+# nothing else type-checks the dev scripts and the two bugs found there —
+# an import of a symbol the parser had stopped exporting, and a `str` written
+# into a `Mapped[Role]` column — are exactly what this catches for free.
+# Still outside the gate:
 #   tests/    — the fakes (StubRule, FakeTournament) are passed to functions
 #               typed against the real models, so making them check means
 #               introducing protocols at those seams, not annotating.
-#   scripts/  — seeding and one-off maintenance, not shipped code.
 #   alembic/  — generated migrations.
-include = ["app"]
+include = ["app", "../scripts"]
 exclude = ["**/__pycache__", "**/node_modules"]
 
 # Phase 5 of `openspec/changes/static-analysis-spec.md`. deptry answers one
