@@ -16,6 +16,7 @@ jobs:
       - uses: astral-sh/setup-uv@v5
       - run: uv sync --dev
       - run: uv run ruff check .
+      - run: uv run ruff format --check .
       - run: uv run basedpyright
         # HYPOTHESIS_PROFILE picks the fuller example budget for the contract
         # fuzzer (tests/conftest.py); an edit loop runs the smaller `dev` one.

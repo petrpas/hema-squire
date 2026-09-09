@@ -10,10 +10,8 @@ repos:
       - id: ruff-check
         args: [--fix]
         files: ^backend/
-      # ruff-format is deliberately not here. The backend has never been
-      # formatted by it — 38 files would change on the next commit that touched
-      # any of them — and CI does not check formatting either. Adopting it is a
-      # decision of its own, not a side effect of the security phase.
+      - id: ruff-format
+        files: ^backend/
 
   - repo: https://github.com/gitleaks/gitleaks
     rev: v8.30.1

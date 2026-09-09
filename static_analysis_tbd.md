@@ -87,10 +87,13 @@ Both were reported by schemathesis checks that are switched off in
 
 ## 5. Smaller, and genuinely optional
 
-- **`ruff-format` is not adopted.** 38 backend files would change on the next
-  commit that touched any of them, and CI does not check formatting. Deliberately
-  left out of `.pre-commit-config.yaml`, with a comment there saying so. It is a
-  decision of its own; the diff is large and entirely mechanical.
+- ~~**`ruff-format` is not adopted.**~~ — adopted. The note said 38 files; by
+  the time it was done it was 140 of 193 (`app/` 39, `tests/` 73, `alembic/`
+  28), which is what deferring a formatter costs — the number only ever grows,
+  because nothing checks it. One formatting-only commit, its hash in
+  `.git-blame-ignore-revs` beside Biome's, then `ruff format --check` in CI and
+  `ruff-format` in `.pre-commit-config.yaml`. This closes the last item of the
+  spec's `Integration: CI` section.
 - **`ValidationErrorResponse.detail` is a three-way union.** The envelope, a
   bare string, and an arbitrary diagnostic dict — the incomplete migration
   `app/errors.py` describes in its module docstring. A union that says "one of
