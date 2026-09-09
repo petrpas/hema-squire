@@ -3,11 +3,12 @@ archive of tournaments already run, and Mine is every tournament the caller is
 bound to — by a registration in any state, or by organizing it — in either
 direction of today."""
 
-from datetime import date, timedelta
+from datetime import timedelta
 
-from tests.conftest import publish
+from tests.conftest import publish, today_utc
 
-TODAY = date.today()
+# the upcoming/past split is one global UTC boundary (spec `fencer-home`)
+TODAY = today_utc()
 
 
 def publish_future(client, organizer, slug, **overrides):

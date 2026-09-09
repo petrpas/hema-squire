@@ -1093,7 +1093,10 @@ def console_teams(tournament: TournamentDep, session: SessionDep, fencer: Fencer
     Offers no action (spec: "Organizer's read-only teams view") — there is no
     admit/edit/cancel endpoint here or anywhere else for a team."""
     require_console_access(session, tournament, fencer)
-    today = datetime.now(UTC).date()
+    # a date the organizer entered, so the whole of that day where the
+    # tournament is held — the same rule the registration close follows, and
+    # not the UTC day this used to read (design unify-day-boundary-clocks D1)
+    today = setup.local_date(tournament, datetime.now(UTC))
     deadline = tournament.team_composition_deadline
     deadline_passed = deadline is not None and today > deadline
 

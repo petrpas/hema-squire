@@ -8,11 +8,12 @@ submissions — never to cancellation, payment matching, or admission of
 substitutes.
 """
 
-from datetime import date, timedelta
+from datetime import timedelta
 
 from tests.conftest import publish, today_local
 
-TODAY = date.today()
+# registration closes at the end of its day where the tournament is held
+TODAY = today_local()
 
 
 def make_tournament(client, organizer, slug="cup", **patch):

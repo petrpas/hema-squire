@@ -418,7 +418,10 @@ def price_preview(data: PricePreviewIn, tournament: TournamentDep):
     selected, extras = _resolve_selection(tournament, data)
     team_entries = _resolve_teams(tournament, data.teams)
     team_disciplines = [d for d, _ in team_entries]
-    at = _now().date()
+    # the early-bird date and the date discount condition are dates the
+    # organizer entered, so the preview asks which day it is where the
+    # tournament is held (design unify-day-boundary-clocks D5)
+    at = setup.local_date(tournament, _now())
     totals = pricing.selection_totals(
         tournament,
         disciplines=selected,
@@ -485,7 +488,7 @@ def register(
     # Once seating has settled capacity stops deciding anything and every
     # placement joins the queue, free seats or not (spec: "Registration after
     # seating has settled").
-    settled = setup.seating_has_settled(tournament, _now().date())
+    settled = setup.seating_has_settled(tournament, _now())
     full = {d.slug for d in selected} if settled else full_disciplines(session, selected)
 
     # `next_vs` durably commits its own counter bump, so a rollback below

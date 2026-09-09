@@ -1,7 +1,7 @@
 """Unit tests for the itemized pricing engine (items + ordered scoped
 discounts) and its dispatch against the legacy per-discipline path."""
 
-from datetime import date, datetime
+from datetime import UTC, date, datetime
 
 from app import pricing
 from app.models import (
@@ -234,6 +234,65 @@ def test_legacy_path_unchanged_without_items_or_discounts():
     assert pricing.registration_total(registration, tournament).local == 1110
     tournament.early_bird_until = None
     assert pricing.registration_total(registration, tournament).local == 1250
+
+
+def test_date_thresholds_are_read_where_the_tournament_is_held():
+    """The early-bird date and the `early` discount condition are dates the
+    organizer entered, so they run to the end of that day where the tournament
+    is held (spec `day-boundaries`, design unify-day-boundary-clocks D5).
+
+    22:30 UTC on the cutoff day is already the following day in Prague and still
+    the cutoff day in New York, so the two tournaments below must price the same
+    registration differently — which a UTC reading of `registered_at` cannot do.
+    """
+    cutoff = date(2026, 5, 15)
+    made = datetime(2026, 5, 15, 22, 30, tzinfo=UTC)
+
+    def legacy_total(timezone: str) -> int:
+        tournament = make_tournament(
+            early_bird_until=cutoff, timezone=timezone, weapon_rental_fee=0, afterparty_fee=0
+        )
+        registration = make_registration(tournament, [800], registered_at=made)
+        registration.entries[0].discipline.fee_early = 700
+        registration.afterparty = False
+        return pricing.registration_total(registration, tournament).local
+
+    assert legacy_total("America/New_York") == 700
+    assert legacy_total("Europe/Prague") == 800
+
+    def itemized_total(timezone: str) -> int:
+        tournament = make_tournament(
+            discounts=[early_percent(cutoff.isoformat(), 10)], timezone=timezone
+        )
+        registration = make_registration(tournament, [800], registered_at=made)
+        return pricing.registration_total(registration, tournament).local
+
+    assert itemized_total("America/New_York") == 720
+    assert itemized_total("Europe/Prague") == 800
+
+
+def test_a_naive_registered_at_is_read_as_utc():
+    """SQLite drops tzinfo on round-trip; every stored instant is UTC. The zone
+    conversion must not read a naive instant as local time, which would move the
+    price by the process's own offset."""
+    tournament = make_tournament(
+        early_bird_until=date(2026, 5, 15),
+        timezone="Europe/Prague",
+        weapon_rental_fee=0,
+        afterparty_fee=0,
+    )
+    naive = make_registration(tournament, [800], registered_at=datetime(2026, 5, 15, 22, 30))
+    naive.entries[0].discipline.fee_early = 700
+    naive.afterparty = False
+    aware = make_registration(
+        tournament, [800], registered_at=datetime(2026, 5, 15, 22, 30, tzinfo=UTC)
+    )
+    aware.entries[0].discipline.fee_early = 700
+    aware.afterparty = False
+    assert (
+        pricing.registration_total(naive, tournament).local
+        == pricing.registration_total(aware, tournament).local
+    )
 
 
 # --- 8.3 each currency totals independently, including fixed discounts -----

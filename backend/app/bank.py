@@ -174,7 +174,10 @@ def _parse_amount_cents(raw: str) -> int:
 def _parse_date(raw: str) -> datetime.date:
     raw = raw.strip()
     if re.match(r"^\d{2}\.\d{2}\.\d{4}$", raw):
-        return datetime.datetime.strptime(raw, "%d.%m.%Y").date()
+        # A bank statement gives a value date and never an hour, let alone an
+        # offset. The day is what is parsed; the zone it belongs to is the
+        # tournament's, applied by the caller (design paid-at-is-value-date D1).
+        return datetime.datetime.strptime(raw, "%d.%m.%Y").date()  # noqa: DTZ007
     return datetime.date.fromisoformat(raw[:10])
 
 
@@ -402,7 +405,10 @@ class HttpFioClient:
         path: telling an organizer their correct token was refused is the worse
         of the two errors, and a verify closely followed by a poll records the
         token rather than losing it."""
-        today = datetime.date.today()
+        # a liveness probe, not a date anyone entered: the UTC day, so the
+        # check does not move with the process's zone (design
+        # unify-day-boundary-clocks D1)
+        today = datetime.datetime.now(datetime.UTC).date()
         url = f"{FIO_API_BASE}/periods/{token}/{today}/{today}/transactions.json"
         try:
             response = httpx.get(url, timeout=30)

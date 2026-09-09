@@ -26,6 +26,7 @@ from decimal import ROUND_HALF_UP, Decimal
 from typing import Literal, NamedTuple
 
 from app.models import Discipline, ExtraCategory, ExtraItem, Registration, Tournament
+from app.setup import local_date
 
 # which currency column a computation reads: the tournament's local currency,
 # or its optional second, EUR-denominated one
@@ -379,6 +380,25 @@ def _registration_selection(
     )
 
 
+def _priced_on(registration: Registration, tournament: Tournament) -> datetime.date:
+    """The day a persisted registration is priced by: the moment it was made,
+    read where the tournament is held.
+
+    Every date-valued price threshold — the legacy early-bird date and the
+    `registered on or before` discount condition — is a date the organizer
+    entered, so the early price runs to the end of that day there and no
+    further. Reading the UTC day of `registered_at` instead gave the early
+    price to a registration made in the first hours of the following local
+    morning (design unify-day-boundary-clocks D5).
+
+    SQLite drops tzinfo on round-trip even for a DateTime(timezone=True)
+    column; every stored instant is UTC (matching.within_expiry_grace)."""
+    made = registration.registered_at
+    if made.tzinfo is None:
+        made = made.replace(tzinfo=datetime.UTC)
+    return local_date(tournament, made)
+
+
 def registration_discounts(
     registration: Registration, tournament: Tournament
 ) -> list[DiscountBreakdown]:
@@ -390,7 +410,7 @@ def registration_discounts(
         tournament,
         disciplines=active,
         extras=extras,
-        at=registration.registered_at.date(),
+        at=_priced_on(registration, tournament),
         team_disciplines=team_disciplines,
     )
 
@@ -405,6 +425,6 @@ def registration_total(registration: Registration, tournament: Tournament) -> To
         extras=extras,
         weapon_rentals=registration.weapon_rentals,
         afterparty=registration.afterparty,
-        at=registration.registered_at.date(),
+        at=_priced_on(registration, tournament),
         team_disciplines=team_disciplines,
     )

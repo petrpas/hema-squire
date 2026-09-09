@@ -1,4 +1,4 @@
-from datetime import UTC, date, datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from decimal import ROUND_HALF_UP, Decimal
 from typing import Annotated
 
@@ -199,7 +199,10 @@ def fio_poll(
     _refuse_while_duplicates_pending(session, tournament)
     if not tournament.fio_token:
         raise HTTPException(status_code=409, detail="fio_token_not_configured")
-    today = date.today()
+    # the poll window is operational, not an organizer's date: bounded by the
+    # UTC day, not by whatever zone this process runs in (design
+    # unify-day-boundary-clocks D1)
+    today = datetime.now(UTC).date()
     transactions = fio.fetch(tournament.fio_token, today - timedelta(days=days_back), today)
     return _ingest_and_match(session, tournament, mailer, "fio_api", transactions)
 
@@ -219,7 +222,7 @@ def process_lifecycle(
     require_console_access(session, tournament, fencer)
     require_published(tournament)
     bank.require_payments_enabled(tournament)
-    demoted = scheduler.settle_seating_if_due(session, tournament)
+    demoted = scheduler.settle_seating_if_due(session, tournament, datetime.now(UTC))
     expired = scheduler.process_expiries(session, tournament, mailer)
     return {
         "reminders": scheduler.process_reminders(session, tournament, mailer),

@@ -1,8 +1,9 @@
-from datetime import date, timedelta
+from datetime import timedelta
 
-from tests.conftest import enable_payments, publish
+from tests.conftest import enable_payments, publish, today_local
 
-TODAY = date.today()
+# the early-bird date is read where the tournament is held (`day-boundaries`)
+TODAY = today_local()
 
 
 def setup_tournament(client, organizer, early_bird=False):

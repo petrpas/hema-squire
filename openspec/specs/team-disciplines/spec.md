@@ -314,6 +314,11 @@ Its sole effect SHALL be to mark, from the day after it passes, every team whose
 below its discipline's minimum, for the organizer to act on through the controls that
 already exist.
 
+It SHALL be read as a whole day in the tournament's timezone, as `day-boundaries` fixes
+for every date the organizer entered — the same rule the registration close beside it
+already follows. Whether a team is marked below minimum SHALL NOT depend on the hour the
+organizer opens the view, nor on the deployment's timezone.
+
 #### Scenario: Deadline passes with a short roster
 - **WHEN** the composition deadline passes and a team holds two members against a minimum of three
 - **THEN** the team is marked as below minimum for the organizer, remains entered, keeps its capacity slot, and its registration's total and payment state are unchanged
@@ -330,6 +335,9 @@ already exist.
 - **WHEN** a tournament offering a team discipline has no composition deadline set
 - **THEN** no team is ever marked as below minimum and nothing is reminded
 
+#### Scenario: The deadline's last hours are local
+- **WHEN** a tournament held in a zone ahead of UTC has a composition deadline of the 20th, and the organizer opens the teams view after midnight UTC on the 21st but before midnight where the tournament is held
+- **THEN** no team is marked as below minimum, because the deadline has not passed
 ### Requirement: Composition reminder to the entering fencer
 When a tournament has a composition deadline, the system SHALL remind the entering fencer,
 once, ahead of that deadline, of every team of theirs whose roster is still below its

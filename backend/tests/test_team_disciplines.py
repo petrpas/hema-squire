@@ -9,6 +9,7 @@ TeamMember roster model instead.
 
 from datetime import date, datetime, timedelta
 
+import pytest
 from sqlalchemy import select
 
 from app import pricing
@@ -26,7 +27,7 @@ from app.models import (
     TeamMember,
     Tournament,
 )
-from tests.conftest import publish, today_utc
+from tests.conftest import FAR_EAST, FAR_WEST, publish, today_in, today_local
 
 REGISTERED_AT = datetime(2026, 5, 1, 12, 0)
 
@@ -595,8 +596,9 @@ def test_roster_edit_moves_no_money_vs_or_email(client, auth_headers):
 
 def test_below_minimum_flag_only_after_deadline(client, auth_headers):
     organizer = auth_headers()
-    # the composition deadline is compared in UTC (routers/tournaments.py)
-    yesterday = (today_utc() - timedelta(days=1)).isoformat()
+    # the composition deadline is a date the organizer entered, so it is read
+    # where the tournament is held (spec `day-boundaries`)
+    yesterday = (today_local() - timedelta(days=1)).isoformat()
     setup_team_tournament(client, organizer, deadline=yesterday)
     fencer = auth_headers(email="f1@example.com", name="F1")
     created = register_team(client, fencer, name="Wolves").json()
@@ -619,7 +621,7 @@ def test_below_minimum_flag_only_after_deadline(client, auth_headers):
 
 def test_no_flag_before_deadline_or_without_one(client, auth_headers):
     organizer = auth_headers()
-    tomorrow = (today_utc() + timedelta(days=1)).isoformat()
+    tomorrow = (today_local() + timedelta(days=1)).isoformat()
     setup_team_tournament(client, organizer, deadline=tomorrow)
     fencer = auth_headers(email="f1@example.com", name="F1")
     created = register_team(client, fencer, name="Wolves").json()
@@ -628,6 +630,39 @@ def test_no_flag_before_deadline_or_without_one(client, auth_headers):
         f"/api/tournaments/cup/my-registration/teams/{team_id}/roster",
         json={"members": [{"name": "A"}]},
         headers=fencer,
+    )
+    console = client.get("/api/tournaments/cup/teams", headers=organizer).json()
+    assert console[0]["teams"][0]["below_minimum"] is False
+
+
+@pytest.mark.parametrize("timezone", [FAR_EAST, FAR_WEST])
+def test_below_minimum_follows_the_tournaments_own_day(client, auth_headers, timezone):
+    """The composition deadline is a whole day where the tournament is held, not
+    a UTC day (spec `day-boundaries`). One tournament cannot show which clock
+    was used — the two agree most of the day — but this pair of zones disagrees
+    with UTC at every hour between them, so a UTC reading fails one of them
+    whenever the suite runs.
+    """
+    organizer = auth_headers()
+    local_today = today_in(timezone)
+    setup_team_tournament(client, organizer, deadline=(local_today - timedelta(days=1)).isoformat())
+    client.patch("/api/tournaments/cup", json={"timezone": timezone}, headers=organizer)
+    fencer = auth_headers(email="f1@example.com", name="F1")
+    team_id = register_team(client, fencer, name="Wolves").json()["teams"][0]["id"]
+    client.put(
+        f"/api/tournaments/cup/my-registration/teams/{team_id}/roster",
+        json={"members": [{"name": "A"}]},  # below team_min of 3
+        headers=fencer,
+    )
+
+    console = client.get("/api/tournaments/cup/teams", headers=organizer).json()
+    assert console[0]["teams"][0]["below_minimum"] is True
+
+    # the deadline day itself is not past until it ends, locally
+    client.patch(
+        "/api/tournaments/cup",
+        json={"team_composition_deadline": local_today.isoformat()},
+        headers=organizer,
     )
     console = client.get("/api/tournaments/cup/teams", headers=organizer).json()
     assert console[0]["teams"][0]["below_minimum"] is False
@@ -648,7 +683,7 @@ def test_roster_editable_day_before_tournament(client, auth_headers):
 
 def test_composition_reminder_sent_once_and_skips_complete_rosters(client, auth_headers):
     organizer = auth_headers()
-    soon = (today_utc() + timedelta(days=3)).isoformat()
+    soon = (today_local() + timedelta(days=3)).isoformat()
     setup_team_tournament(client, organizer, capacity=5, deadline=soon)
     # reminder_day defaults to 5, so a deadline 3 days out is within the window
     short = auth_headers(email="short@example.com", name="Short")

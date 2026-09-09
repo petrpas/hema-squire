@@ -369,15 +369,23 @@ def seating_deadline_for(tournament: Tournament) -> datetime.date:
     return tournament.registration_closes or tournament.date
 
 
-def seating_has_settled(tournament: Tournament, today: datetime.date) -> bool:
+def seating_has_settled(tournament: Tournament, now: datetime.datetime) -> bool:
     """Whether seating is closed — asked by post-deadline registration, the
     reminder anchor, and the expiry branch alike (Decision 6a).
 
     Both disjuncts are needed. The stamp alone leaves the gap between the
     deadline passing at midnight and the next scheduler tick, during which
     registrations would still be seated; the deadline alone ignores an
-    organizer who settled early by hand."""
-    return tournament.seating_settled_at is not None or today > seating_deadline_for(tournament)
+    organizer who settled early by hand.
+
+    Takes an instant rather than a date, and resolves it here, so that no
+    caller can pass a UTC day — or the day of whatever zone its process runs
+    in — and get a boundary hours from the one the organizer typed (design
+    unify-day-boundary-clocks D2). The deadline is a date an organizer entered,
+    so it is the whole of that day where the tournament is held."""
+    if tournament.seating_settled_at is not None:
+        return True
+    return local_date(tournament, now) > seating_deadline_for(tournament)
 
 
 def dormancy_cause(tournament: Tournament, registration: Registration) -> str | None:

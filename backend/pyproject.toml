@@ -49,7 +49,14 @@ dev = [
 line-length = 100
 
 [tool.ruff.lint]
-select = ["E", "F", "I", "UP", "B", "S", "ASYNC", "T20", "TID"]
+# DTZ joined the list with `unify-day-boundary-clocks`. Its DTZ011 is exactly
+# `date.today()`, the read that answers in whatever timezone the process was
+# started with — the one clock that is wrong in every deployment, since the
+# same code then draws a different day boundary from a different `TZ`. Nothing
+# in `app/` reads it any more, and the rule is what keeps it that way. DTZ
+# cannot tell a correct `datetime.now(UTC).date()` from a wrong one; that is
+# what the signatures in `setup.seating_has_settled` and its kin are for.
+select = ["E", "F", "I", "UP", "B", "S", "ASYNC", "T20", "TID", "DTZ"]
 
 [tool.ruff.lint.isort]
 # `alembic/` is the migrations directory, but `alembic` the import is the
@@ -71,6 +78,11 @@ known-third-party = ["alembic"]
     # migration suites build SQL against table names they wrote themselves,
     # because the ORM models have moved on from the schema under test
     "S608",
+    # a naive datetime is a *fixture shape*, not a mistake: SQLite drops tzinfo
+    # on round-trip even for a DateTime(timezone=True) column, so a stored
+    # instant comes back naive and the code reads it as UTC
+    # (matching.within_expiry_grace). Tests build one to stand for that.
+    "DTZ001",
 ]
 
 [tool.pytest.ini_options]

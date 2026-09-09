@@ -251,7 +251,9 @@ def main() -> int:
         return 3
 
     if not args.from_dump:
-        stamp = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+        # A filename stamp for a human reading `ls`, who wants the hour they
+        # are standing in and not UTC.
+        stamp = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")  # noqa: DTZ005
         backup = database.with_name(f"{database.name}.bak-{stamp}")
         shutil.move(database, backup)
         # WAL and shared-memory files belong to the database that was moved;

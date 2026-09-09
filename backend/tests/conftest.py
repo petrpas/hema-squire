@@ -47,88 +47,76 @@ hypothesis.settings.load_profile(os.environ.get("HYPOTHESIS_PROFILE", "dev"))
 
 
 def today_local() -> datetime.date:
-    """Today where the tournament is, for the dates that are read there.
+    """Today where the tournament is: the clock every date an organizer entered
+    is read on.
 
-    The opening gate is resolved in the tournament's own timezone
-    (`setup.start_of_local_day`), while `date.today()` answers in whatever
-    timezone the process happens to run in. Those disagree for the last two
-    hours of every UTC day, and CI runs in UTC: a test that sets "opens
-    tomorrow" from the runner's clock is naming a Europe/Prague day that began
-    an hour ago, and the tournament is open when it meant to be shut.
+    Registration opens and closes, the seating deadline, the team composition
+    deadline and the early-bird cutoff are all whole days in the tournament's
+    own timezone (spec `day-boundaries`). `date.today()` answers in whatever
+    timezone the process happens to run in and is read nowhere in `app/` — a
+    test that builds one of these dates that way names whichever day the runner
+    is on and is a day out for the hours the runner runs ahead of UTC.
 
-    Only for dates handed to that gate — the opening and closing of
-    registration. The other deadlines are read in UTC; `today_utc` below is
-    theirs. Nothing in the app reads a date from the server's own
-    `date.today()` except `scheduler.settle_seating_if_due` and the Fio
-    window, so a test that builds a date that way is naming whichever day the
-    runner's timezone happens to be on and will be a day out for the hours the
-    runner runs ahead of UTC.
+    Test tournaments leave `timezone` unset, so they resolve to
+    `DEFAULT_TIMEZONE`, which is what this reads.
     """
     return datetime.datetime.now(zoneinfo.ZoneInfo(DEFAULT_TIMEZONE)).date()
 
 
 def today_utc() -> datetime.date:
-    """Today in UTC, for the deadlines the app compares in UTC.
+    """Today in UTC: the clock the boundaries with nobody's calendar behind them
+    are read on.
 
-    Those are the seating deadline (`setup.seating_has_settled` and
-    `scheduler._reminder_due`, both asked with `_now().date()`), the team
-    composition deadline (`routers/tournaments.py`), and the boundary the open
-    tournaments listing splits upcoming from past on.
+    Those are the split the public tournament listing draws between upcoming
+    and held — one global boundary over tournaments from many zones, decided so
+    in `fencer-home` — and the operational windows (the Fio fetch range, the set
+    of tournaments the lifecycle passes walk, the feed token check).
 
-    A test that builds these from `date.today()` agrees with the app only while
-    the runner's timezone is on the same day as UTC. On a runner ahead of UTC —
-    anywhere in CET/CEST after midnight local — it names tomorrow's date and the
-    deadline lands a day late.
-
-    That the app reads day boundaries from three different clocks is a real
-    inconsistency, not a test concern; it is written up in
-    `openspec/changes/date-boundaries-read-three-clocks.md` and needs decisions
-    that are not the tests' to make. This helper only keeps the tests honest
-    about which clock they are asserting against today.
+    Not for a deadline: a date the organizer entered belongs to `today_local`
+    above.
     """
     return datetime.datetime.now(datetime.UTC).date()
 
 
-def deadline_passed(days_ago: int = 1) -> datetime.date:
-    """A date every clock the app reads agrees is in the past.
+def today_in(timezone: str) -> datetime.date:
+    """Today in a named zone, for a test that wants two tournaments whose own
+    days provably differ from UTC's.
 
-    A deadline set here can be read by three different clocks. The server's
-    `date.today()` decides whether seating settles
-    (`scheduler.settle_seating_if_due`); `datetime.now(UTC).date()` decides
-    whether seating *has* settled (`setup.seating_has_settled`) and whether a
-    reminder is due (`scheduler._reminder_due`); the tournament's own timezone
-    decides whether registration has closed (`setup.local_date`). And an unset
-    seating deadline resolves to `registration_closes`
-    (`setup.seating_deadline_for`), so one date can be read by all three at
-    once.
-
-    They sit on different days for the hours the server runs ahead of or behind
-    UTC, and in that window no single date is "yesterday" for all of them — a
-    test that picks any one clock passes on one path and fails on another.
-    Taking the earliest makes the date unambiguously past for every reader.
-
-    That one deadline is read from three clocks is the inconsistency written up
-    in `openspec/changes/date-boundaries-read-three-clocks.md`. Until that is
-    decided, a test that wants a passed deadline has to clear all of them, and
-    this is where that knowledge lives rather than in each test.
+    A boundary read in the tournament's zone and one read in UTC agree for most
+    of the day, so a single tournament cannot prove which clock the app used.
+    A pair in `FAR_EAST` and `FAR_WEST` can: at every hour of the UTC day at
+    least one of them is on a different date from UTC, and between them they
+    cover all 24, so a pair of assertions written against each tournament's own
+    day fails at any hour if the app reads UTC instead.
     """
-    earliest = min(today_utc(), today_local(), datetime.date.today())
-    return earliest - datetime.timedelta(days=days_ago)
+    return datetime.datetime.now(zoneinfo.ZoneInfo(timezone)).date()
+
+
+# UTC+14 and UTC-11: the extremes of the inhabited offsets, chosen so their
+# disagreements with UTC overlap and together span every hour (`today_in`)
+FAR_EAST = "Pacific/Kiritimati"
+FAR_WEST = "Pacific/Niue"
+
+
+def deadline_passed(days_ago: int = 1) -> datetime.date:
+    """A deadline already past — on the one clock every deadline is read on.
+
+    Settlement, settled-ness, the reminder anchor and the registration close all
+    resolve the moment through the tournament's own timezone (`setup.local_date`),
+    so one date is past for all of them. This used to take the earliest of three
+    clocks, because the app read three; `unify-day-boundary-clocks` left one.
+    """
+    return today_local() - datetime.timedelta(days=days_ago)
 
 
 def deadline_ahead(days: int = 5) -> datetime.date:
-    """A seating deadline `days` out on the clock the reminder is anchored to.
+    """A seating deadline `days` out, on the same clock `deadline_passed` uses.
 
-    Not the mirror of `deadline_passed`. A deadline still to come is only read
-    by `scheduler._reminder_due`, which asks in UTC, so the distance that
-    decides whether the reminder is due has to be measured from the UTC day —
-    taking the later of the two clocks would push a `reminder_day` horizon one
-    day out of the window and send nothing.
-
-    The settlement path cannot fire on this date either way: the server clock is
-    within a day of UTC, so a horizon of several days is ahead of both.
+    The reminder horizon is measured from the tournament's own day
+    (`scheduler._reminder_due`), so the distance a test intends is the distance
+    the app will measure.
     """
-    return today_utc() + datetime.timedelta(days=days)
+    return today_local() + datetime.timedelta(days=days)
 
 
 @pytest.fixture

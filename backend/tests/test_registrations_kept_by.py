@@ -9,7 +9,7 @@ The exclusion is made over tournaments rather than registration by
 registration, so a registration created by any path is safe by construction and
 not by remembering to mark it."""
 
-from datetime import UTC, date, datetime, timedelta
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from sqlalchemy import select
@@ -32,7 +32,7 @@ from app.scheduler import (
     settle_seating,
     tournaments_to_tick,
 )
-from tests.conftest import enable_payments, publish
+from tests.conftest import enable_payments, publish, today_local, today_utc
 
 IBAN = "CZ6508000000192000145399"
 
@@ -327,7 +327,7 @@ def test_a_held_tournament_is_not_ticked_either(client, auth_headers):
     publish(client, organizer, "cup")
     session = db_session()
     tournament = tournament_row(session=session)
-    tournament.date = date.today() - timedelta(days=1)
+    tournament.date = today_utc() - timedelta(days=1)
     session.commit()
     assert tournaments_to_tick(session) == []
 
@@ -359,7 +359,7 @@ def test_the_lifecycle_touches_nothing_on_an_organizer_kept_tournament(
     registration.expires_at = datetime.now(UTC) - timedelta(days=395)
     tournament = tournament_row(session=session)
     tournament.registrations_kept_by = RegistrationsKeptBy.ORGANIZER
-    tournament.registration_closes = date.today() - timedelta(days=1)
+    tournament.registration_closes = today_local() - timedelta(days=1)
     session.commit()
 
     assert tournaments_to_tick(session) == []
@@ -465,7 +465,7 @@ def test_it_is_refused_before_every_other_reason(client, auth_headers):
     session = db_session()
     tournament = tournament_row(session=session)
     tournament.registrations_kept_by = RegistrationsKeptBy.ORGANIZER
-    tournament.registration_closes = date.today() - timedelta(days=30)
+    tournament.registration_closes = today_local() - timedelta(days=30)
     session.commit()
 
     # unpublished, and long past its close: both would otherwise answer

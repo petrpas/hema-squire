@@ -2,11 +2,11 @@
 public, and the guard that keeps a published tournament complete forever
 after (design add-explicit-publishing)."""
 
-from datetime import date, timedelta
+from datetime import timedelta
 
-from tests.conftest import enable_payments, publish
+from tests.conftest import enable_payments, publish, today_utc
 
-TODAY = date.today()
+TODAY = today_utc()
 
 
 def make_tournament(client, organizer, slug="cup", **patch):

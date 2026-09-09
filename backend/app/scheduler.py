@@ -6,7 +6,7 @@ loop (started from the app lifespan) and the organizer endpoint both call them.
 
 import asyncio
 import logging
-from datetime import UTC, date, datetime, timedelta
+from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -23,7 +23,7 @@ from app.models import (
     Team,
     Tournament,
 )
-from app.setup import clocks_run, seating_deadline_for, seating_has_settled
+from app.setup import clocks_run, local_date, seating_deadline_for, seating_has_settled
 
 logger = logging.getLogger(__name__)
 
@@ -48,8 +48,11 @@ def _reminder_due(tournament: Tournament, registration: Registration, now: datet
         if expires_at.tzinfo is None:
             expires_at = expires_at.replace(tzinfo=UTC)
         return now >= expires_at - timedelta(days=tournament.reminder_day)
+    # the deadline is a date the organizer entered, so the distance to it is
+    # measured from the day where the tournament is held, never from the UTC
+    # day of `now` (design unify-day-boundary-clocks D1)
     deadline = seating_deadline_for(tournament)
-    return now.date() >= deadline - timedelta(days=tournament.reminder_day)
+    return local_date(tournament, now) >= deadline - timedelta(days=tournament.reminder_day)
 
 
 def process_reminders(session: Session, tournament: Tournament, mailer: Mailer) -> int:
@@ -127,7 +130,7 @@ def process_expiries(session: Session, tournament: Tournament, mailer: Mailer) -
     # registration never expires for non-payment whatever else is written on it
     # (design unify-lifecycle-dormancy D1)
     overdue = [r for r in overdue if clocks_run(tournament, r)]
-    if seating_has_settled(tournament, _now().date()):
+    if seating_has_settled(tournament, _now()):
         returned = 0
         for registration in overdue:
             registration.expires_at = None
@@ -299,15 +302,21 @@ def settle_seating(session: Session, tournament: Tournament) -> int:
     return demoted
 
 
-def settle_seating_if_due(session: Session, tournament: Tournament) -> int:
+def settle_seating_if_due(session: Session, tournament: Tournament, now: datetime) -> int:
     """Run the settlement pass if the deadline has passed and it has not run
     yet. The one place that decides *when* seating settles by itself — the
     organizer's settle-early action deliberately does not go through it, and
     every lifecycle pass does, so a manual `process` run and a scheduler tick
-    can never disagree about whether seating has closed."""
+    can never disagree about whether seating has closed.
+
+    Asks `seating_has_settled` rather than comparing a day of its own: the two
+    used to read different clocks, which opened a window where seating counted
+    as settled while this pass had not run (design unify-day-boundary-clocks
+    D1). The stamp is checked first all the same, because settling twice is
+    what this guards and `seating_has_settled` answers yes to both reasons."""
     if tournament.seating_settled_at is not None:
         return 0
-    if date.today() <= seating_deadline_for(tournament):
+    if not seating_has_settled(tournament, now):
         return 0
     return settle_seating(session, tournament)
 
@@ -324,7 +333,10 @@ def process_composition_reminders(session: Session, tournament: Tournament, mail
     deadline = tournament.team_composition_deadline
     if deadline is None:
         return 0
-    today = _now().date()
+    # the notice window is measured from the deadline's own day, which is a
+    # date the organizer entered and so belongs to the tournament's zone
+    # (design unify-day-boundary-clocks D1)
+    today = local_date(tournament, _now())
     window_start = deadline - timedelta(days=tournament.reminder_day)
     if not (window_start <= today <= deadline):
         return 0
@@ -367,7 +379,10 @@ def run_tournament_tick(
 ) -> dict[str, int]:
     result: dict[str, int] = {}
     if fio_client is not None and tournament.fio_token and tournament.feature_payments:
-        today = date.today()
+        # an operational window with nobody's calendar behind it: fourteen days
+        # back from the UTC day, so the same deployment answers the same
+        # wherever its process runs (design unify-day-boundary-clocks D1)
+        today = datetime.now(UTC).date()
         transactions = fio_client.fetch(tournament.fio_token, today - timedelta(days=14), today)
         ingested = bank.ingest(session, tournament, "fio_api", transactions)
         matched = matching.match_new_transactions(session, tournament, mailer)
@@ -378,7 +393,7 @@ def run_tournament_tick(
     # without a fixed order whether an unpaid deposit expiring on the deadline
     # date is queued or expired would come down to tick timing. Settling first
     # makes it uniform — everything still reserved at the deadline is queued.
-    result["seating_demoted"] = settle_seating_if_due(session, tournament)
+    result["seating_demoted"] = settle_seating_if_due(session, tournament, _now())
     # Every pass runs on every tournament, and each asks `setup.dormancy_cause`
     # what it may touch. The payments feature used to be tested here as well,
     # skipping these two wholesale — a second decision point that reached two of
@@ -416,7 +431,7 @@ def tournaments_to_tick(session: Session) -> list[Tournament]:
     return list(
         session.scalars(
             select(Tournament).where(
-                Tournament.date >= date.today(),
+                Tournament.date >= datetime.now(UTC).date(),
                 Tournament.published_at.is_not(None),
                 Tournament.registrations_kept_by != RegistrationsKeptBy.ORGANIZER,
             )

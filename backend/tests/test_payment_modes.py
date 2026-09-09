@@ -24,6 +24,7 @@ from app.models import (
     RegistrationState,
     Tournament,
 )
+from app.setup import seating_has_settled
 from tests.conftest import (
     deadline_ahead,
     deadline_passed,
@@ -31,6 +32,7 @@ from tests.conftest import (
     publish,
     set_fio_token,
     today_local,
+    today_utc,
 )
 
 IBAN = "CZ6508000000192000145399"
@@ -188,18 +190,43 @@ def test_seating_has_settled_by_stamp_or_by_deadline():
     """Both disjuncts matter (Decision 6a): the stamp alone leaves the gap
     between the deadline and the next tick, the deadline alone ignores an
     organizer who settled early."""
-    from app.setup import seating_has_settled
-
     tournament = Tournament(
         date=datetime.date(2026, 12, 5), seating_deadline=datetime.date(2026, 10, 1)
     )
-    assert not seating_has_settled(tournament, datetime.date(2026, 9, 1))
+    noon = datetime.time(12, 0)
+
+    def at(day: datetime.date) -> datetime.datetime:
+        return datetime.datetime.combine(day, noon, tzinfo=UTC)
+
+    assert not seating_has_settled(tournament, at(datetime.date(2026, 9, 1)))
     # the deadline day itself is still open; it settles once it has passed
-    assert not seating_has_settled(tournament, datetime.date(2026, 10, 1))
-    assert seating_has_settled(tournament, datetime.date(2026, 10, 2))
+    assert not seating_has_settled(tournament, at(datetime.date(2026, 10, 1)))
+    assert seating_has_settled(tournament, at(datetime.date(2026, 10, 2)))
 
     tournament.seating_settled_at = datetime.datetime(2026, 9, 1, tzinfo=UTC)
-    assert seating_has_settled(tournament, datetime.date(2026, 9, 1))
+    assert seating_has_settled(tournament, at(datetime.date(2026, 9, 1)))
+
+
+def test_seating_deadline_runs_to_the_end_of_the_local_day():
+    """The deadline is a date the organizer entered, so it is the whole of that
+    day where the tournament is held — never the UTC day, and never the day of
+    whatever zone the process runs in (design unify-day-boundary-clocks D1).
+
+    The instant below is 22:30 UTC on the deadline day, which is already the
+    following day in Prague and still the deadline day in New York. Both
+    assertions therefore hold in every runner timezone."""
+    deadline = datetime.date(2026, 10, 1)
+    instant = datetime.datetime(2026, 10, 1, 22, 30, tzinfo=UTC)
+
+    prague = Tournament(
+        date=datetime.date(2026, 12, 5), seating_deadline=deadline, timezone="Europe/Prague"
+    )
+    new_york = Tournament(
+        date=datetime.date(2026, 12, 5), seating_deadline=deadline, timezone="America/New_York"
+    )
+
+    assert seating_has_settled(prague, instant)
+    assert not seating_has_settled(new_york, instant)
 
 
 # --------------------------------------------- 3. registration, per mode
@@ -314,6 +341,43 @@ def test_settlement_demotes_the_unpaid_and_leaves_the_paid_alone(client, auth_he
     (availability,) = client.get("/api/tournaments/cup/availability").json()
     assert availability["taken"] == 1  # only the paid one still holds a seat
     assert availability["queue_length"] == 1
+
+
+def test_settlement_waits_for_the_deadline_day_to_end_where_the_tournament_is(client):
+    """The pass that settles seating by itself asks the same question
+    `seating_has_settled` answers, on the same clock (design
+    unify-day-boundary-clocks D1). Before this change one read the server's day
+    and the other UTC, which left a window where seating counted as settled
+    while the pass had not run.
+
+    Nothing is enrolled here: what is under test is which day the pass reads,
+    and 22:30 UTC on the deadline day is already tomorrow in Prague and still
+    today in New York. `client` is taken only for the session it stands up.
+    """
+    from app.scheduler import settle_seating_if_due
+
+    deadline = datetime.date(2026, 10, 1)
+    instant = datetime.datetime(2026, 10, 1, 22, 30, tzinfo=UTC)
+    session = db_session()
+
+    for series, (timezone, settles) in enumerate(
+        (("America/New_York", False), ("Europe/Prague", True))
+    ):
+        tournament = Tournament(
+            slug=f"tz-{series}",
+            display_name="TZ",
+            date=datetime.date(2026, 12, 5),
+            seating_deadline=deadline,
+            timezone=timezone,
+            vs_year=2026,
+            vs_series=100 + series,
+        )
+        session.add(tournament)
+        session.commit()
+        settle_seating_if_due(session, tournament, instant)
+        assert (tournament.seating_settled_at is not None) is settles
+        # the two answers agree at the same instant, whichever way they fall
+        assert seating_has_settled(tournament, instant) is settles
 
 
 def test_settlement_preserves_registration_order_in_the_queue(client, auth_headers):
@@ -630,7 +694,7 @@ def test_promotion_clamps_the_window_to_the_tournament(client, auth_headers, mai
     _, registration = enroll(client, auth_headers)
     session = db_session()
     tournament = session.scalar(select(Tournament).where(Tournament.slug == "cup"))
-    tournament.date = datetime.date.today() + timedelta(days=3)
+    tournament.date = today_utc() + timedelta(days=3)
     session.commit()
 
     set_seating_deadline(days_ago=1)
@@ -643,7 +707,7 @@ def test_promotion_clamps_the_window_to_the_tournament(client, auth_headers, mai
     assert response.status_code == 200
     expires = datetime.datetime.fromisoformat(response.json()["expires_at"])
     # the 7-day window would outlive the event; the tournament date wins
-    assert expires.date() <= datetime.date.today() + timedelta(days=4)
+    assert expires.date() <= today_utc() + timedelta(days=4)
 
 
 def test_return_to_queue_frees_the_seat_and_closes_the_window(client, auth_headers):
