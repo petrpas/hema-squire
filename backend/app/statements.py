@@ -78,12 +78,6 @@ def check_readable(rows: list[dict[str, str]]) -> None:
             raise UnreadableStatementError(missing)
 
 
-class NoStatementParserError(RuntimeError):
-    """An unrecognised statement arrived on a deployment with no model
-    configured. Nothing can be read from it, and saying so is better than
-    ingesting an empty statement as if it held no payments."""
-
-
 def read_rows(filename: str, data: bytes) -> list[dict[str, str]]:
     """The statement as header-keyed rows. Raises
     `importer.UnsupportedFormatError` for a file that is neither CSV nor

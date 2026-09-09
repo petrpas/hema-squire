@@ -89,7 +89,17 @@ Both were reported by schemathesis checks that are switched off in
   these" is weak, but it is true, and the single array FastAPI used to promise
   was not. As router codes move into `_ROUTER_CODE_FIELDS` the last two shapes
   go with them and the published schema gets simpler.
-- **Phase 5** — `deptry` (undeclared and unused dependencies) and `vulture`
-  (dead code). The spec marks both optional and non-blocking, and `vulture`
-  false-positives heavily on FastAPI's dependency injection, so it is an
-  occasional manual run rather than a gate.
+- ~~**Phase 5** — `deptry` and `vulture`~~ — done, and neither became a gate.
+
+  `deptry` found two real ones: `app/llm.py` imports `anthropic` and
+  `app/routers/tournaments.py` imports `PIL`, while both arrived only as
+  extras of other packages (`pydantic-ai-slim[anthropic]`, `qrcode[pil]`).
+  Both are now declared directly. The other fourteen findings were import-name
+  mismatches and four dependencies nothing imports on purpose — pydantic's
+  `EmailStr` validator, FastAPI's multipart parser, the zone database and the
+  server — and are configured in `pyproject.toml` rather than fixed.
+
+  `vulture` found one: `statements.NoStatementParserError`, raised by nothing
+  since the router answered the case with a 409 instead. Deleted. Getting to
+  that one finding took the decorator list now in `[tool.vulture]`; without it
+  the run is 211 lines, ~100 of them handler parameters named `request`.

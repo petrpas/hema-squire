@@ -105,6 +105,17 @@ Rules:
 - Never commit a database dump or a `.env`. `.gitignore` covers both and
   gitleaks gates the history, including a rule for the password-hash shape
   `auth.hash_password` emits.
+- A module the backend imports is declared in `pyproject.toml` by its own name,
+  never left to arrive as another package's extra. `uv run deptry .` answers
+  whether that still holds.
+
+Two checks are neither gates nor part of finishing a task, because neither can
+be trusted to be right without a human reading the answer:
+
+    uv run deptry .    # declared-but-unimported, imported-but-undeclared
+    uv run vulture     # dead code; see the [tool.vulture] comment first
+
+Run them when dependencies change or after deleting a feature, not per edit.
 
 # Openspec
 

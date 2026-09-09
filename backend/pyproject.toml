@@ -4,11 +4,19 @@ version = "0.1.0"
 requires-python = ">=3.14"
 dependencies = [
     "alembic>=1.18.5",
+    # `app/llm.py` imports it directly, so it is named directly. It also
+    # arrives as the `[anthropic]` extra of pydantic-ai-slim, but an extra of
+    # another package is that package's promise, not a declaration of ours.
+    "anthropic>=0.117.0",
     "email-validator>=2.3.0",
     "fastapi>=0.139.2",
     "gspread>=6.2.1",
     "httpx>=0.28.1",
     "openpyxl>=3.1.5",
+    # same shape as anthropic: `app/routers/tournaments.py` imports PIL to
+    # read an uploaded logo, while the `qrcode[pil]` extra below only
+    # promises what qrcode itself needs.
+    "pillow>=12.3.0",
     "pycountry>=26.2.16",
     "pydantic>=2.13.4",
     "pydantic-ai-slim[anthropic]>=2.13.0",
@@ -27,11 +35,13 @@ dependencies = [
 [dependency-groups]
 dev = [
     "basedpyright>=1.40.0",
+    "deptry>=0.25.1",
     "httpx>=0.28.1",
     "pip-audit>=2.10.1",
     "pytest>=9.1.1",
     "ruff>=0.15.22",
     "schemathesis>=4.26.0",
+    "vulture>=2.14",
 ]
 
 [tool.ruff]
@@ -81,3 +91,45 @@ typeCheckingMode = "standard"
 #   alembic/  — generated migrations.
 include = ["app"]
 exclude = ["**/__pycache__", "**/node_modules"]
+
+# Phase 5 of `openspec/changes/static-analysis-spec.md`. deptry answers one
+# question: does what the code imports match what the project declares. It is a
+# manual run, not a CI gate — the spec marks phase 5 non-blocking, and the
+# answer only changes when a dependency does.
+[tool.deptry.package_module_name_map]
+# Distributions whose import name is not their package name. deptry guesses the
+# package name when it cannot import the module, and guesses wrong for these.
+pillow = ["PIL"]
+pyjwt = ["jwt"]
+pydantic-ai-slim = ["pydantic_ai"]
+
+[tool.deptry.per_rule_ignores]
+# Declared and never imported, all four on purpose:
+#   email-validator  pydantic's EmailStr requires it at validation time
+#   python-multipart FastAPI parses UploadFile and Form bodies through it
+#   tzdata           zoneinfo reads it as data; there is no module to import
+#   uvicorn          the ASGI server, run as a command
+DEP002 = ["email-validator", "python-multipart", "tzdata", "uvicorn"]
+
+# vulture, the other half of phase 5, and a manual run by design: the spec keeps
+# it out of CI because it cannot see a name that only a decorator, a template or
+# pydantic's `from_attributes` reads. `uv run vulture` uses everything below.
+#
+# What is worth reading is the "unused function/method/class/property" lines;
+# the "unused variable/attribute" ones are ~100 handler parameters and columns
+# read by name, and filtering them is not worth a whitelist file that nobody
+# prunes. One known false positive survives: `Tournament.fio_token_configured`,
+# a property that only `TournamentDetail` reads, by name.
+[tool.vulture]
+# tests, migrations and scripts are scanned as *callers*, so a name only they
+# use does not read as dead. Findings in them are not the point.
+paths = ["app", "tests", "alembic", "../scripts"]
+min_confidence = 60
+# Registration by decorator, which vulture reads as a definition nobody calls.
+ignore_decorators = [
+    "@app.*", "@router.*",
+    "@field_validator", "@model_validator", "@field_serializer", "@computed_field",
+    "@event.listens_for",
+    "@*.get", "@*.post", "@*.patch", "@*.put", "@*.delete",
+    "@*.exception_handler", "@*.on_event",
+]
