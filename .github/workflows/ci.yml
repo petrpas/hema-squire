@@ -41,6 +41,51 @@ jobs:
       - run: npm test
       - run: npm run build
 
+  # Blocking. The dev seed scripts call the API the way it looked when each
+  # line was written, and nothing else executes them, so an endpoint that moves
+  # takes them with it in silence — five such drifts had accumulated by the
+  # time anyone ran the thing. This is the only job that exercises the app
+  # through HTTP as a client, which is why it is worth its minute.
+  #
+  # It runs what `./dev.sh --seed` runs, in that order, with the auth throttle
+  # left on as dev leaves it: the seed signs up six accounts against a limit of
+  # three a minute and waits the window out, which is the behaviour under test.
+  # Most of the runtime is that wait, and it is concurrent with the backend job
+  # rather than added to it.
+  seed:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      # the repository's published dev signing key, which the app otherwise
+      # refuses to start on (app.main._refuse_dev_secret_key)
+      HEMA_SQUIRE_DEBUG: 1
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - run: uv sync --dev
+      - run: uv run alembic upgrade head
+      - run: uv run python ../scripts/seed_owner.py
+        # redirected to a file, not inherited: a background process holding the
+        # step's stdout open keeps the step from ever finishing
+      - name: start the server
+        run: |
+          nohup uv run uvicorn app.main:app --port 8000 > server.log 2>&1 &
+          for _ in $(seq 1 60); do
+            curl -fs localhost:8000/api/health >/dev/null 2>&1 && exit 0
+            sleep 1
+          done
+          echo "backend did not come up"; exit 1
+      - run: uv run python ../scripts/seed_demo.py
+      - name: the seed is idempotent
+        run: |
+          uv run python ../scripts/seed_demo.py | tee rerun.log
+          grep -q "nothing to seed" rerun.log
+      - name: server log
+        if: failure()
+        run: cat server.log
+
   # Blocking. Reads the whole history, not just the diff: a secret is exposed
   # by being reachable, not by being current.
   secrets:
