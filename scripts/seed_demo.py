@@ -20,7 +20,6 @@ printed summary at the end for how to make the organizer account the
 deployment Owner via HEMA_SQUIRE_OWNER_EMAIL.
 """
 
-import io
 import json
 import sys
 import urllib.error
@@ -39,7 +38,7 @@ ADMIN_DEMO = ("admin@example.com", "demo-heslo-123", "Anna Admin")
 SLUG = "na-duel-2026"
 
 
-def _grant_role(email: str, role: "Role") -> None:
+def _grant_role(email: str, role: Role) -> None:
     """Direct DB write, bypassing the admin API (no Admin account exists yet
     to call it with) — see module docstring."""
     from sqlalchemy import select
@@ -76,8 +75,16 @@ def call(method, path, token=None, body=None, files=None):
         )
     else:
         request = urllib.request.Request(BASE + path, headers=headers, method=method)
-    with urllib.request.urlopen(request) as response:
-        return json.loads(response.read() or b"null")
+    try:
+        with urllib.request.urlopen(request) as response:
+            return json.loads(response.read() or b"null")
+    except urllib.error.HTTPError as error:
+        # the body is where the API names the field it refused; the status
+        # alone gives nothing to act on. It goes into `msg`, which `reason`
+        # reads and the traceback prints, while this stays an HTTPError for the
+        # callers that catch one to stay idempotent.
+        error.msg = f"{error.msg} — {method} {path}: {error.read().decode()}"
+        raise
 
 
 def main() -> None:
@@ -119,7 +126,8 @@ def main() -> None:
     call("PATCH", f"/api/tournaments/{SLUG}", token, {
         "bank_account": "CZ6508000000192000145399",
         "location": "Praha, Sportovní hala Podolí",
-        "organizer_names": ["Duelanti od sv. Rocha", "Pražský Šermířský Klub"],
+        "organizers": [{"name": "Duelanti od sv. Rocha"},
+                       {"name": "Pražský Šermířský Klub"}],
         "registration_opens": "2026-01-01",
         "discounts": [
             {
@@ -136,10 +144,13 @@ def main() -> None:
             },
         ],
     })
-    for code, capacity, fee in [("LS", 32, 900), ("SA", 24, 800),
-                                ("SB", 16, 800), ("RD", 16, 850)]:
+    # the taxonomy weapon, not a code the caller invents: the slug is generated
+    # from the weapon x gender x material classification and comes back equal to
+    # the weapon here, which is what the registrations below name
+    for weapon, capacity, fee in [("LS", 32, 900), ("SA", 24, 800),
+                                  ("SB", 16, 800), ("RD", 16, 850)]:
         call("POST", f"/api/tournaments/{SLUG}/disciplines", token,
-             {"code": code, "capacity": capacity, "fee": fee})
+             {"weapon": weapon, "capacity": capacity, "fee": fee})
 
     extra_items = {}
     for name, category, price, max_qty in [
@@ -151,6 +162,24 @@ def main() -> None:
         item = call("POST", f"/api/tournaments/{SLUG}/extra-items", token,
                     {"name": name, "category": category, "price": price, "max_qty": max_qty})
         extra_items[name] = item["id"]
+
+    # the four flags default off and are given together (spec
+    # tournament-features). The demo uses extra services and reconciles a bank
+    # statement, so those two are on; it schedules nothing and has no team
+    # discipline.
+    call("PATCH", f"/api/tournaments/{SLUG}/features", token, {
+        "feature_schedule": False, "feature_payments": True,
+        "feature_teams": False, "feature_extras": True,
+    })
+
+    # registration is refused until the tournament is published (design D4), so
+    # this comes after the setup above completes and before anybody registers.
+    # Irreversible and one-time, hence the 409 on a partial rerun.
+    try:
+        call("POST", f"/api/tournaments/{SLUG}/publish", token)
+    except urllib.error.HTTPError as error:
+        if error.code != 409:
+            raise
 
     def extra(name, qty=1):
         return {"extra_item_id": extra_items[name], "qty": qty}
