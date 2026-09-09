@@ -22,6 +22,7 @@ from app import (
     statements,
 )
 from app.auth import require_console_access, require_published
+from app.fieldtypes import RowId
 from app.mail import Mailer, get_mailer
 from app.models import (
     BankTransaction,
@@ -313,7 +314,7 @@ def _proposal(session, tournament, transaction_id: int) -> BankTransaction:
 
 @router.post("/likely/{transaction_id}/confirm", status_code=201)
 def confirm_proposal(
-    transaction_id: int,
+    transaction_id: RowId,
     tournament: TournamentDep,
     session: SessionDep,
     fencer: FencerDep,
@@ -358,7 +359,7 @@ def confirm_proposal(
 
 @router.post("/likely/{transaction_id}/reject", response_model=TransactionOut)
 def reject_proposal(
-    transaction_id: int,
+    transaction_id: RowId,
     tournament: TournamentDep,
     session: SessionDep,
     fencer: FencerDep,
@@ -386,7 +387,7 @@ def reject_proposal(
 
 @router.get("/transactions/{transaction_id}/roster", response_model=TransactionRosterOut)
 def transaction_roster(
-    transaction_id: int,
+    transaction_id: RowId,
     tournament: TournamentDep,
     session: SessionDep,
     fencer: FencerDep,
@@ -664,7 +665,7 @@ def _flagged_registration(session, tournament, transaction: BankTransaction) -> 
 
 @router.post("/transactions/{transaction_id}/reinstate", response_model=TransactionOut)
 def reinstate_transaction(
-    transaction_id: int,
+    transaction_id: RowId,
     tournament: TournamentDep,
     session: SessionDep,
     fencer: FencerDep,
@@ -713,7 +714,7 @@ def reinstate_transaction(
 
 @router.post("/transactions/{transaction_id}/mark-for-refund", response_model=TransactionOut)
 def mark_transaction_for_refund(
-    transaction_id: int,
+    transaction_id: RowId,
     tournament: TournamentDep,
     session: SessionDep,
     fencer: FencerDep,
@@ -880,7 +881,7 @@ def record_manual_payment(
 
 @router.delete("/manual/{payment_id}", response_model=ManualPaymentOut)
 def remove_manual_payment(
-    payment_id: int,
+    payment_id: RowId,
     tournament: TournamentDep,
     session: SessionDep,
     fencer: FencerDep,

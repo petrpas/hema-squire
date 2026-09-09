@@ -19,6 +19,7 @@ from app.availability import (
     team_queue_length,
     team_waitlist_flags,
 )
+from app.fieldtypes import RowId
 from app.mail import Mailer, get_mailer
 from app.models import (
     Discipline,
@@ -767,7 +768,7 @@ UNMARK_SETTLED = "unsettled_by_hand"
 
 @router.post("/registrations/{registration_id}/settled", response_model=RegistrationOut)
 def mark_settled(
-    registration_id: int,
+    registration_id: RowId,
     tournament: TournamentDep,
     session: SessionDep,
     fencer: FencerDep,
@@ -869,7 +870,7 @@ def mark_settled(
     "/registrations/{registration_id}/admit/{discipline_slug}", response_model=RegistrationOut
 )
 def admit_substitute(
-    registration_id: int,
+    registration_id: RowId,
     discipline_slug: str,
     tournament: TournamentDep,
     session: SessionDep,
@@ -947,7 +948,7 @@ def admit_substitute(
     response_model=RegistrationOut,
 )
 def return_to_queue(
-    registration_id: int,
+    registration_id: RowId,
     discipline_slug: str,
     tournament: TournamentDep,
     session: SessionDep,
@@ -1018,7 +1019,7 @@ def _team_for_roster_edit(session, tournament: Tournament, fencer, team_id: int)
 
 @router.put("/my-registration/teams/{team_id}/roster", response_model=TeamEntryOut)
 def update_roster(
-    team_id: int,
+    team_id: RowId,
     data: RosterUpdateIn,
     tournament: TournamentDep,
     session: SessionDep,

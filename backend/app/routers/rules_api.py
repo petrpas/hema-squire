@@ -5,6 +5,7 @@ from sqlalchemy import select
 
 from app import amendment, matching, rules, sheet
 from app.auth import require_console_access, require_published
+from app.fieldtypes import RowId
 from app.hr_index import HRIndex, get_hr_index
 from app.mail import Mailer, get_mailer
 from app.models import Rule, RuleJournalEntry
@@ -102,7 +103,7 @@ def _get_rule(session, tournament, rule_id: int) -> Rule:
 
 @router.patch("/rules/{rule_id}", response_model=RuleOut)
 def update_rule(
-    rule_id: int,
+    rule_id: RowId,
     data: RulePayloadIn,
     tournament: TournamentDep,
     session: SessionDep,
@@ -116,7 +117,7 @@ def update_rule(
 
 @router.delete("/rules/{rule_id}", status_code=204)
 def delete_rule(
-    rule_id: int,
+    rule_id: RowId,
     tournament: TournamentDep,
     session: SessionDep,
     fencer: FencerDep,

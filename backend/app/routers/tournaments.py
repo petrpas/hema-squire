@@ -26,6 +26,7 @@ from app.availability import (
 )
 from app.db import get_session
 from app.errors import FieldValidationError
+from app.fieldtypes import RowId
 from app.models import (
     ACTION_CATEGORIES,
     BankTransaction,
@@ -1262,7 +1263,7 @@ def add_extra_item(
 
 @router.patch("/{slug}/extra-items/{item_id}", response_model=ExtraItemOut)
 def update_extra_item(
-    item_id: int,
+    item_id: RowId,
     data: ExtraItemIn,
     tournament: TournamentDep,
     session: SessionDep,
@@ -1294,7 +1295,7 @@ def update_extra_item(
 
 @router.delete("/{slug}/extra-items/{item_id}", status_code=204)
 def delete_extra_item(
-    item_id: int, tournament: TournamentDep, session: SessionDep, fencer: FencerDep
+    item_id: RowId, tournament: TournamentDep, session: SessionDep, fencer: FencerDep
 ):
     require_console_access(session, tournament, fencer)
     item = next((i for i in tournament.extra_items if i.id == item_id), None)
@@ -1347,7 +1348,7 @@ def add_team_member(
 
 @router.delete("/{slug}/team/{fencer_id}", status_code=204)
 def remove_team_member(
-    fencer_id: int, tournament: TournamentDep, session: SessionDep, fencer: FencerDep
+    fencer_id: RowId, tournament: TournamentDep, session: SessionDep, fencer: FencerDep
 ):
     require_tournament_owner(tournament, fencer)
     row = session.scalar(

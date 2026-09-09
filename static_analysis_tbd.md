@@ -26,11 +26,20 @@ still short of a 2xx mostly need state a seed cannot reasonably hold — a
 settled seating, an expired reservation, a dedup group mid-decision — and are
 worth revisiting only if something looks wrong in one of them.
 
-One trade came with it, recorded in the test file: a path id is no longer
-fuzzed, so an id the route cannot handle is not reached through a path
-parameter. `RowId` bounds the body-side ones, and the path-side equivalent —
-`Annotated[int, Path(ge=1, le=ROW_ID_MAX)]` on the ten routes that take an id —
-has not been done and would close it.
+~~One trade came with it: a path id is no longer fuzzed, so an id the route
+cannot handle is not reached through a path parameter.~~ — closed, and by
+construction rather than by fuzzing. `RowId` now annotates every integer path
+parameter, of which there were **nineteen**, not the ten this note guessed. No
+`Path(...)` and no new symbol were needed: the plain pydantic `RowId` validates
+a path parameter as it does a body field.
+
+It was a live defect, not a theoretical gap. `DELETE /rules/{rule_id}` with
+2**63 raised `OverflowError: Python int too large to convert to SQLite INTEGER`
+out of the driver — a 500 — and four more routes did the same; they answer 422
+`out_of_range` now. `tests/test_path_id_bounds.py` holds it, and holds it for
+routes nobody has written yet: it walks the published schema rather than a
+list, so a new route carrying a bare `int` id fails there without anyone
+remembering the file exists.
 
 ## 2. ~~About twenty `date-time` response fields are unaudited~~ — done
 

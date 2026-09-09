@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 
 from app.auth import current_fencer, is_deployment_owner, require_role
 from app.db import get_session
+from app.fieldtypes import RowId
 from app.models import Fencer, OrganizerRequest, RequestState, Role
 from app.routers.accounts import audit_change
 from app.schemas import (
@@ -76,7 +77,7 @@ def _authorize_role_change(actor: Fencer, target: Fencer, new_role: Role) -> Non
 
 
 @router.patch("/accounts/{fencer_id}/role", response_model=AdminAccountOut)
-def set_role(fencer_id: int, data: RoleUpdateIn, session: SessionDep, fencer: FencerDep):
+def set_role(fencer_id: RowId, data: RoleUpdateIn, session: SessionDep, fencer: FencerDep):
     require_role(fencer, Role.ADMIN)
     target = session.get(Fencer, fencer_id)
     if target is None:
@@ -89,7 +90,7 @@ def set_role(fencer_id: int, data: RoleUpdateIn, session: SessionDep, fencer: Fe
 
 
 @router.post("/accounts/{fencer_id}/hr-unbind", response_model=AdminAccountOut)
-def hr_unbind(fencer_id: int, session: SessionDep, fencer: FencerDep):
+def hr_unbind(fencer_id: RowId, session: SessionDep, fencer: FencerDep):
     """Clear a wrongly linked hr_id; profile fields keep their values and the
     change is audited (design D6). Fencer-side rebinding stays write-once —
     unaffected by this endpoint, since bind_hr_later only checks hr_id."""
@@ -134,7 +135,7 @@ def _get_pending_plea(session: Session, plea_id: int) -> OrganizerRequest:
 
 
 @router.post("/pleas/{plea_id}/grant", response_model=PleaDecisionOut)
-def grant_plea(plea_id: int, session: SessionDep, fencer: FencerDep):
+def grant_plea(plea_id: RowId, session: SessionDep, fencer: FencerDep):
     require_role(fencer, Role.ADMIN)
     plea = _get_pending_plea(session, plea_id)
     plea.state = RequestState.GRANTED
@@ -146,7 +147,7 @@ def grant_plea(plea_id: int, session: SessionDep, fencer: FencerDep):
 
 
 @router.post("/pleas/{plea_id}/deny", response_model=PleaDecisionOut)
-def deny_plea(plea_id: int, session: SessionDep, fencer: FencerDep):
+def deny_plea(plea_id: RowId, session: SessionDep, fencer: FencerDep):
     require_role(fencer, Role.ADMIN)
     plea = _get_pending_plea(session, plea_id)
     plea.state = RequestState.DENIED
