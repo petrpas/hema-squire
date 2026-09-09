@@ -76,10 +76,15 @@ Rules:
 - `!` is off in application code and allowed in `*.test.ts(x)`.
 - A dialog is `Modal` (`src/Modal.tsx`), never a div wearing a click handler.
 
+The same checks run as git hooks, which are per-checkout: a fresh clone has
+none until `backend/.venv/bin/pre-commit install` and the same with
+`--hook-type pre-push` have been run once. See the header of
+`.pre-commit-config.yaml`.
+
 Backend work is finished only when both of these pass, from `backend/`:
 
     uv run ruff check .
-    uv run basedpyright   # standard mode over `app/`
+    uv run basedpyright   # standard mode over `app/` and `../scripts/`
 
 Both run in CI alongside `uv run pytest`.
 

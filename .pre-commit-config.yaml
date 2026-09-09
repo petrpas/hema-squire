@@ -1,6 +1,16 @@
 # Local gates, so the checks are seen while working rather than in CI.
-# `pre-commit install` once per checkout; CI runs the same tools itself and
-# does not depend on this file.
+#
+# Git hooks are per-checkout and a clone has none, so this file does nothing
+# until somebody runs the two lines below — which is exactly what had happened:
+# the config was written and never installed. `pre-commit` is a backend dev
+# dependency so the path is stable and no global install is needed.
+#
+#     cd backend && uv sync --dev
+#     backend/.venv/bin/pre-commit install
+#     backend/.venv/bin/pre-commit install --hook-type pre-push
+#
+# CI runs the same tools itself and does not depend on this file; it is the
+# faster loop, not the authority.
 #
 # Revisions are managed by `pre-commit autoupdate`, never edited by hand.
 repos:
@@ -27,7 +37,9 @@ repos:
         entry: bash -c 'cd backend && uv run basedpyright'
         language: system
         types: [python]
-        files: ^backend/
+        # `include` in pyproject.toml is app/ plus ../scripts, so a change to
+        # either has to wake it
+        files: ^(backend|scripts)/
         pass_filenames: false
 
       - id: tsc
@@ -42,4 +54,16 @@ repos:
         entry: npm run --prefix frontend check
         language: system
         files: ^frontend/.*\.(ts|tsx|js|jsx|json|jsonc|css)$
+        pass_filenames: false
+
+      # On push, not on commit: three minutes is not a per-commit cost, and CI
+      # runs it again anyway. This is the hook CLAUDE.md means when it says the
+      # full suite belongs to CI and the pre-push hook. It runs on the default
+      # Hypothesis profile — `ci` is the fuller budget and belongs to CI.
+      - id: pytest
+        name: pytest (full suite, on push)
+        entry: bash -c 'cd backend && uv run pytest -q'
+        language: system
+        stages: [pre-push]
+        files: ^(backend|scripts)/
         pass_filenames: false
