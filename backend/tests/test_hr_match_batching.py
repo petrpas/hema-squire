@@ -11,6 +11,7 @@ import json
 from conftest import publish, settle
 from pydantic_ai.messages import ModelResponse, ToolCallPart
 from pydantic_ai.models.function import AgentInfo, FunctionModel
+from pydantic_ai.settings import ModelSettings
 
 from app.hr_index import HRProfile
 from app.hr_match import (
@@ -36,7 +37,7 @@ class RecordingModel:
     def __init__(self):
         self.batches: list[int] = []
         self.candidates: list[list[str]] = []
-        self.settings: list[dict | None] = []
+        self.settings: list[ModelSettings | None] = []
         self.model = FunctionModel(self._respond)
 
     def _respond(self, messages, info: AgentInfo) -> ModelResponse:

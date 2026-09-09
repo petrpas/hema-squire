@@ -88,12 +88,11 @@ typeCheckingMode = "standard"
 # nothing else type-checks the dev scripts and the two bugs found there —
 # an import of a symbol the parser had stopped exporting, and a `str` written
 # into a `Mapped[Role]` column — are exactly what this catches for free.
-# Still outside the gate:
-#   tests/    — the fakes (StubRule, FakeTournament) are passed to functions
-#               typed against the real models, so making them check means
-#               introducing protocols at those seams, not annotating.
+# `tests/` joined them once its fakes were gone: a declarative model builds
+# perfectly well without a session, so every stand-in that existed to avoid one
+# was replaced by the real thing. Still outside the gate:
 #   alembic/  — generated migrations.
-include = ["app", "../scripts"]
+include = ["app", "../scripts", "tests"]
 exclude = ["**/__pycache__", "**/node_modules"]
 
 # Phase 5 of `openspec/changes/static-analysis-spec.md`. deptry answers one

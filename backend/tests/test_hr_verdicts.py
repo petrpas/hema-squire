@@ -171,7 +171,9 @@ def test_every_name_for_the_united_kingdom_is_one_country():
 def test_country_code_is_always_two_characters():
     """Two is the number the evidence register is written in."""
     for spelling in ("Poland", "PL", "POL", "Germany", "United Kingdom", "Russia"):
-        assert len(country_code(spelling)) == 2, spelling
+        code = country_code(spelling)
+        assert code is not None, spelling
+        assert len(code) == 2, spelling
 
 
 def test_country_code_of_nothing_identifiable_is_none():

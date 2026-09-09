@@ -103,16 +103,24 @@ def placements(vs):
 # ------------------------------------------------------------- the predicate
 
 
-class FakeTournament:
-    def __init__(self, feature_payments, kept_by=RegistrationsKeptBy.SQUIRE, published=True):
-        self.feature_payments = feature_payments
-        self.registrations_kept_by = kept_by
-        self.published_at = datetime(2026, 1, 1, tzinfo=UTC) if published else None
+# Real models built without a session: `dormancy_cause` is a pure function over
+# a handful of fields, so it needs no row — but it does need the fields to be
+# the ones the model actually has, which a hand-written stand-in stops
+# guaranteeing the moment one is renamed.
+def unsaved_tournament(
+    feature_payments, kept_by=RegistrationsKeptBy.SQUIRE, published=True
+) -> Tournament:
+    tournament = Tournament()
+    tournament.feature_payments = feature_payments
+    tournament.registrations_kept_by = kept_by
+    tournament.published_at = datetime(2026, 1, 1, tzinfo=UTC) if published else None
+    return tournament
 
 
-class FakeRegistration:
-    def __init__(self, clocks_dormant):
-        self.clocks_dormant = clocks_dormant
+def unsaved_registration(clocks_dormant) -> Registration:
+    registration = Registration()
+    registration.clocks_dormant = clocks_dormant
+    return registration
 
 
 SQUIRE = RegistrationsKeptBy.SQUIRE
@@ -136,8 +144,8 @@ ORGANIZER = RegistrationsKeptBy.ORGANIZER
 def test_dormancy_cause_over_the_closed_set(payments, kept_by, issued, expected):
     """No session, no scheduler, no tournament row — the predicate is a pure
     function over two values, which is what lets every pass ask it."""
-    tournament = FakeTournament(payments, kept_by)
-    registration = FakeRegistration(issued)
+    tournament = unsaved_tournament(payments, kept_by)
+    registration = unsaved_registration(issued)
     assert app_setup.dormancy_cause(tournament, registration) == expected
     assert app_setup.clocks_run(tournament, registration) == (expected is None)
 
@@ -154,8 +162,8 @@ def test_a_draft_is_dormant_whatever_else_holds(payments, kept_by, issued):
     for a clock to run against, whatever its payments setting or the origin of
     the registration (spec registration, One dormancy predicate governs the
     lifecycle passes)."""
-    tournament = FakeTournament(payments, kept_by, published=False)
-    registration = FakeRegistration(issued)
+    tournament = unsaved_tournament(payments, kept_by, published=False)
+    registration = unsaved_registration(issued)
     assert app_setup.dormancy_cause(tournament, registration) == app_setup.DORMANT_UNPUBLISHED
     assert app_setup.clocks_run(tournament, registration) is False
 

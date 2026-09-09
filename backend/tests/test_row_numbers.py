@@ -67,7 +67,7 @@ def test_numbers_are_per_tournament(client, auth_headers, engine):
     )
     with Session(engine) as session:
         cup = tournament_of(session)
-        other = session.scalar(select(Tournament).where(Tournament.slug == "other"))
+        other = session.scalars(select(Tournament).where(Tournament.slug == "other")).one()
         rownumbers.allocate(session, cup, ["reg:1", "reg:2"])
         session.commit()
         assert rownumbers.allocate(session, other, ["reg:7"]) == {"reg:7": 1}

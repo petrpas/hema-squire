@@ -83,7 +83,7 @@ def test_parse_fio_csv_rejects_garbage():
         parse_fio_csv(b"some;random;csv\n1;2;3\n")
 
 
-def _verify_response(monkeypatch, *, status=None, raises=None):
+def _verify_response(monkeypatch, *, status: int = 200, raises: Exception | None = None):
     """Point the real client's one outbound call at a canned answer. Verifying
     is the only place `HttpFioClient` decides anything, so it is tested against
     responses rather than through a stub of itself."""

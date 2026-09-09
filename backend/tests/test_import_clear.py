@@ -202,7 +202,7 @@ def test_every_decision_kind_is_removed(client, auth_headers, engine):
     with Session(engine) as session:
         from app.models import Tournament
 
-        tournament = session.scalar(select(Tournament).where(Tournament.slug == "cup"))
+        tournament = session.scalars(select(Tournament).where(Tournament.slug == "cup")).one()
         from app.importer import store_decision
 
         store_decision(

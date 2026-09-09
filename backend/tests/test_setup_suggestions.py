@@ -50,9 +50,13 @@ def test_distinct_recent_caps_a_long_history():
     assert capped == values[:SUGGESTION_CAP]
 
 
-class FakeTournament:
-    def __init__(self, organizers):
-        self.organizers = organizers
+def unsaved_tournament(organizers) -> Tournament:
+    """`_distinct_organizers` reads one field, but reads it off a Tournament —
+    and a model constructs without a session, so the real one costs nothing and
+    keeps the test honest about the field's name."""
+    tournament = Tournament()
+    tournament.organizers = organizers
+    return tournament
 
 
 def test_distinct_organizers_keys_on_the_pair():
@@ -60,7 +64,7 @@ def test_distinct_organizers_keys_on_the_pair():
     them apart (spec: One name, two links)."""
     pairs = _distinct_organizers(
         [
-            FakeTournament(
+            unsaved_tournament(
                 [
                     {"name": "SHBU", "link": "https://a.example"},
                     {"name": "SHBU", "link": "https://b.example"},
@@ -77,7 +81,7 @@ def test_distinct_organizers_keys_on_the_pair():
 def test_distinct_organizers_treats_empty_link_as_absent():
     """A club never appears twice over `""` vs `None` alone."""
     pairs = _distinct_organizers(
-        [FakeTournament([{"name": "SHBU", "link": ""}, {"name": "SHBU", "link": None}])]
+        [unsaved_tournament([{"name": "SHBU", "link": ""}, {"name": "SHBU", "link": None}])]
     )
     assert [(p.name, p.link) for p in pairs] == [("SHBU", None)]
 
@@ -85,7 +89,9 @@ def test_distinct_organizers_treats_empty_link_as_absent():
 def test_distinct_organizers_tolerates_bare_strings():
     """`Tournament.organizers` may still hold bare strings on a
     restored-from-old-export deployment (models.py:210)."""
-    pairs = _distinct_organizers([FakeTournament(["SHBU", {"name": "Jiný spolek", "link": None}])])
+    pairs = _distinct_organizers(
+        [unsaved_tournament(["SHBU", {"name": "Jiný spolek", "link": None}])]
+    )
     assert [(p.name, p.link) for p in pairs] == [
         ("SHBU", None),
         ("Jiný spolek", None),

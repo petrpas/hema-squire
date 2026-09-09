@@ -92,7 +92,7 @@ and `npm run typecheck` is already a step of finishing frontend work.
 Backend work is finished only when both of these pass, from `backend/`:
 
     uv run ruff check .
-    uv run basedpyright   # standard mode over `app/` and `../scripts/`
+    uv run basedpyright   # standard mode; only alembic/ is outside it
 
 Both run in CI alongside `uv run pytest`.
 
@@ -105,9 +105,12 @@ Rules:
 - Do not work around a checker error by casting to `Any` or widening a
   parameter to `object`. Narrow the value, make the function generic, or state
   the precondition the callers already hold.
-- `app/` and `../scripts/` are the gated scope. `tests/` and `alembic/` are
-  excluded in `pyproject.toml`, which says why; do not widen `include` without
-  clearing the findings that come with it.
+- `app/`, `../scripts/` and `tests/` are the gated scope; only `alembic/` is
+  excluded, in `pyproject.toml`, which says why.
+- A test that needs a model builds the real one — `Tournament()`, `Rule()` —
+  and sets the fields it cares about. A declarative model constructs fine
+  without a session, so a hand-written stand-in buys nothing and costs the
+  suite its type: it keeps passing after the field it imitates is renamed.
 - A column typed `Mapped[X | None]` is `X | None` at every read. Where a guard
   earlier in the request already settled it, bind the narrowed value to a local
   and use that, rather than re-reading the attribute.

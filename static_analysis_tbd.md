@@ -41,35 +41,32 @@ follow-up commit. `server_time`, both `registration_opens_at` and
 deliberately — an imported stamp has no zone to restore, which
 `frontend/src/consoleCells.test.tsx` holds to by name.
 
-## 3. Tests are outside the basedpyright gate — scripts are in
+## 3. ~~Tests and scripts are outside the basedpyright gate~~ — both are in
 
-`pyproject.toml` gates `app/` and `../scripts/`. Widening it would have added
-81 findings; the cheap half is cleared, `scripts/` reached zero and went into
-`include`, and **33 remain in `tests/`**, all one rule:
+The 81 findings widening would once have added are gone and `include` is now
+`["app", "../scripts", "tests"]`; only `alembic/` stays outside. It went in
+three parts, and the middle one changed what the last one had to be.
 
-```
-  33  reportArgumentType
-```
+**48 mechanical** — unnarrowed `session.scalar` / `Session.get` results, a
+nullable `paid_at`, openpyxl's optional `Workbook.active`, four annotations.
+Two were real bugs in `scripts/seed_demo.py`.
 
-The 48 that went were the mechanical shapes — 34 `reportOptionalMemberAccess`
-from `session.scalar(...)` and `Session.get(...)` results used without
-narrowing (`.scalars(...).one()` and `get_one()` are the same lookups typed
-non-optional, and they raise where the old code hit `AttributeError` on `None`
-a line later), plus a nullable `paid_at`, openpyxl's optional `Workbook.active`,
-and four one-line annotation errors.
+**7 deliberate wrong types** — `_Int(value="4")` passes a string to a
+`TolerantInt`, which is the point of the test. Not suppressed: they go through
+`model_validate({"value": "4"})`, which takes the raw mapping and is the path a
+JSON body actually travels. No ignore, and a truer test.
 
-Two of those four were real, in `scripts/seed_demo.py`: it imported
-`ParsedDiscipline` from `app.importer`, which stopped existing when the parser
-began returning discipline slugs, so the script failed at that import; and it
-wrote a plain `str` into `Fencer.role`, which only ever worked because `Role`
-is a `StrEnum`.
-
-What is left is the single shape the note predicted: fakes (`StubRule`,
-`FakeTournament`) handed to functions typed against the real models. Fixing it
-means introducing protocols at those seams — the same move `_TeamEntry` made in
-`routers/registrations.py` — which is design work on the test suite, not
-annotation. That is now the whole decision, and it is one decision rather than
-a pile.
+**26 fakes handed to functions typed against the real models.** The note
+predicted protocols at those seams. That turned out to be wrong, and the reason
+is worth keeping: a `Protocol` matches a Pydantic model (which is why
+`_TeamEntry` works) but not a declarative one — basedpyright compares the
+declared `Mapped[int]`, not the `int` an instance yields, so every ORM-backed
+seam fails the protocol. The answer was smaller and better: a declarative model
+constructs perfectly well with no session, so `StubRule`, `FakeTournament`,
+`FakeRegistration` and two `SimpleNamespace` literals became `Rule()`,
+`Tournament()` and `Registration()` with the fields each test cares about.
+`app/` did not change at all, and the tests now break when a field they name is
+renamed — which is what the stand-ins had quietly stopped doing.
 
 ## 4. Two things phase 4 found and did not act on
 

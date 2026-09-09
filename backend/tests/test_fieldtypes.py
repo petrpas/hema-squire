@@ -66,22 +66,27 @@ def test_tolerant_decimal_rejects_malformed(raw):
     assert _error_code(exc) == "not_a_number"
 
 
+# `TolerantInt` is `Annotated[int, BeforeValidator(...)]`: the string is what
+# the validator exists to accept, but `int` is what the field declares, so the
+# keyword constructor cannot be handed one. `model_validate` takes the raw
+# mapping — and it is the path a real request travels anyway, since a JSON body
+# is validated, never constructed.
 def test_tolerant_int_accepts_whole_values_either_separator():
-    assert _Int(value="4").value == 4
-    assert _Int(value="4,0").value == 4
-    assert _Int(value="4.0").value == 4
-    assert _Int(value="1 250").value == 1250
+    assert _Int.model_validate({"value": "4"}).value == 4
+    assert _Int.model_validate({"value": "4,0"}).value == 4
+    assert _Int.model_validate({"value": "4.0"}).value == 4
+    assert _Int.model_validate({"value": "1 250"}).value == 1250
 
 
 def test_tolerant_int_rejects_fraction_as_must_be_whole():
     with pytest.raises(ValidationError) as exc:
-        _Int(value="3,5")
+        _Int.model_validate({"value": "3,5"})
     assert _error_code(exc) == "must_be_whole"
 
 
 def test_tolerant_int_rejects_malformed_as_not_a_number():
     with pytest.raises(ValidationError) as exc:
-        _Int(value="2,5,5")
+        _Int.model_validate({"value": "2,5,5"})
     assert _error_code(exc) == "not_a_number"
 
 

@@ -442,14 +442,11 @@ def test_old_shape_decision_resolves_when_unambiguous():
     """A decision stored before disciplines carried slugs describes a
     discipline as weapon/gender/material; it resolves without a new LLM call
     when exactly one offered discipline matches that classification."""
-    from types import SimpleNamespace
-
-    from app.models import Discipline
+    from app.models import Discipline, Tournament
     from app.sheet import _resolve_discipline_slugs
 
-    tournament = SimpleNamespace(
-        disciplines=[Discipline(slug="LS", weapon="LS", gender="", material="")]
-    )
+    tournament = Tournament()
+    tournament.disciplines = [Discipline(slug="LS", weapon="LS", gender="", material="")]
     slugs, problems = _resolve_discipline_slugs(
         tournament, [{"weapon": "LS", "gender": "", "material": ""}]
     )
@@ -461,17 +458,14 @@ def test_old_shape_decision_ambiguous_after_split():
     """The same old-shape decision, read after the organizer has since split
     that weapon into two disciplines, is reported unresolved rather than
     silently attached to either (design D8, Risks)."""
-    from types import SimpleNamespace
-
-    from app.models import Discipline
+    from app.models import Discipline, Tournament
     from app.sheet import _resolve_discipline_slugs
 
-    tournament = SimpleNamespace(
-        disciplines=[
-            Discipline(slug="LS-A", weapon="LS", gender="", material=""),
-            Discipline(slug="LS-B", weapon="LS", gender="", material=""),
-        ]
-    )
+    tournament = Tournament()
+    tournament.disciplines = [
+        Discipline(slug="LS-A", weapon="LS", gender="", material=""),
+        Discipline(slug="LS-B", weapon="LS", gender="", material=""),
+    ]
     slugs, problems = _resolve_discipline_slugs(
         tournament, [{"weapon": "LS", "gender": "", "material": ""}]
     )

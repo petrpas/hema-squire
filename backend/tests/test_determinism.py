@@ -17,25 +17,29 @@ from datetime import UTC, datetime
 
 from app.importer import get_import_parser
 from app.main import app
+from app.models import Fencer, Rule
 from app.rules import replay
 from tests.conftest import enable_payments, publish
 from tests.test_import import CSV, FakeParser
 
+_seq = 0
 
-class StubRule:
-    """Minimal stand-in for the Rule ORM object (replay only reads attrs)."""
 
-    _seq = 0
+def StubRule(kind, target, payload, phase="parsing") -> Rule:
+    """A `Rule` built without a session, which is all `replay` needs.
 
-    def __init__(self, kind, target, payload, phase="parsing"):
-        StubRule._seq += 1
-        self.id = StubRule._seq
-        self.phase = phase
-        self.kind = kind
-        self.target = target
-        self.payload = payload
-        self.created_at = datetime(2026, 7, 1, 12, 0, tzinfo=UTC)
-        self.author = type("A", (), {"display_name": "Org"})()
+    It used to be a hand-written stand-in, on the grounds that replay only
+    reads attributes. That was true and still cost the suite its type: the
+    stand-in kept passing after a field of the real model was renamed. A
+    declarative model constructs perfectly well unpersisted, so the real one is
+    cheaper than the imitation."""
+    global _seq
+    _seq += 1
+    rule = Rule(kind=kind, target=target, payload=payload, phase=phase)
+    rule.id = _seq
+    rule.created_at = datetime(2026, 7, 1, 12, 0, tzinfo=UTC)
+    rule.author = Fencer(display_name="Org", email="organizer@example.com")
+    return rule
 
 
 def make_base():
