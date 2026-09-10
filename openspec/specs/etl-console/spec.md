@@ -4,7 +4,7 @@
 Provide the organizer console: a phase-tabbed fencer table with per-row status, HR matching review, deterministic reruns, operation parameters, and reversible row deletion.
 ## Requirements
 ### Requirement: Phase-tabbed fencer table
-The organizer console SHALL present phase tabs in the fixed order Setup, Import, Fencers, Matching on HR, Deduplication, Payments, Export, Teams, Queue. Every tab, including Setup, SHALL be clickable from every other tab. Selecting a phase tab SHALL change the console's URL to that phase and push a browser history entry, so that Back returns to the previously open phase and a reload reopens the phase on display. The Setup tab (step 0) SHALL present the tournament configuration — identity fields, titular organizers, disciplines, registration window, pricing, and the completeness checklist — instead of a fencer table. Deduplication, Teams and Queue SHALL likewise replace the fencer table with their own views, as fixed by **Deduplication candidate review**, `team-disciplines` and `seating-queue`.
+The organizer console SHALL present phase tabs in the fixed order Setup, Import, Fencers, Matching on HR, Deduplication, Payments, Export, Teams, Queue. Every tab, including Setup, SHALL be clickable from every other tab. Selecting a phase tab SHALL change the console's URL to that phase and push a browser history entry, so that Back returns to the previously open phase and a reload reopens the phase on display. The Setup tab (step 0) SHALL present the tournament configuration — identity fields, titular organizers, disciplines, registration window, pricing, and the completeness checklist — instead of a fencer table. Deduplication, Teams, Queue and Export SHALL likewise replace the fencer table with their own views, as fixed by **Deduplication candidate review**, `team-disciplines`, `seating-queue` and `export-tables`. The Export tab SHALL present a band of tables derived from the tournament — the fencer list, one per individual discipline, one per extra-item category it offers — rather than one table of its own, and SHALL therefore declare no phase columns. Its fencer table is one tab of that band and remains the fencer table in every respect this requirement fixes.
 
 **The Import tab SHALL show imported rows alone.** In-app registrations SHALL NOT appear there, whatever their state.
 
@@ -70,6 +70,9 @@ A phase the mode does not offer SHALL NOT be reachable by its URL either. Addres
 - **WHEN** the organizer of a tournament that handled its own payments switches it to Squire handling them
 - **THEN** the Payments phase, which was present all along, gains the queues, the intake and the transactions in its fixed place between Deduplication and Export — what returns with the setting is the phase's contents, not the phase
 
+#### Scenario: Export is a band of tables
+- **WHEN** the organizer opens Export
+- **THEN** a band of tables derived from the tournament is shown in place of the single fencer table, and the fencer list is one of its tabs
 ### Requirement: Console addressed by tournament and phase
 The console SHALL be addressed by the URL `/organizer/:slug/console/:phase`, where `:slug`
 identifies the tournament and `:phase` names the open phase tab; `/organizer/:slug/console`
