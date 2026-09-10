@@ -23,7 +23,7 @@ from collections import defaultdict
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
-from app import hr_match, importer, manualrows, pricing, rownumbers, setup, taxonomy
+from app import hr_match, importer, ledger, manualrows, pricing, rownumbers, setup, taxonomy
 from app.hr_index import DbHRIndex, HRIndex, evidence_fields
 from app.models import (
     Currency,
@@ -229,14 +229,12 @@ def base_rows(
         # decision, 2026-09-06). Null where nothing was credited — the whole
         # price was forgiven, and the cell says so in words.
         remaining, _lane = registration.remaining_cents(tournament)
-        credited = (
-            registration.amount_paid_eur_cents
-            if balance_currency == Currency.EUR
-            else registration.amount_paid_cents
-        )
-        waived = (
-            _money(remaining) if registration.settled_by_hand_at is not None and credited else None
-        )
+        credited = registration.credited_in("eur" if balance_currency == Currency.EUR else "local")
+        # the day the money that settled this registration arrived, derived
+        # from the credit that completed the balance rather than stamped on the
+        # registration when it did
+        settled_on = ledger.paid_at(registration, tournament)
+        waived = _money(remaining) if registration.waived and credited else None
         notes = registration.notes
         if extra_other:
             summary = "; ".join(extra_other)
@@ -253,21 +251,25 @@ def base_rows(
             "email": registration.fencer.email,
             "disciplines": [e.discipline.slug for e in registration.entries if not e.is_substitute],
             "substitute_for": [e.discipline.slug for e in registration.entries if e.is_substitute],
-            "state": registration.state.value,
+            # composed from the lifecycle and the settled derivation rather
+            # than read off a column: `paid` left the stored enum, and this is
+            # where the four values a reader knows are put back together
+            # (`Registration.wire_state`)
+            "state": registration.wire_state,
             # the registration behind this row, where one is behind it. The row
             # id cannot stand in: an issued registration takes its source row's
             # id, so `reg:<id>` is only sometimes the shape (see above). Read by
             # the settled mark, which addresses the registration itself
             "registration_id": registration.id,
             "vs": registration.vs,
-            "paid": registration.state == RegistrationState.PAID,
+            "paid": registration.settled,
             # settled with nothing passing through Squire, and why. Carried as
             # a row value rather than deduced from a paid state with empty
-            # counters, which a waiver holding a recorded payment defeats
+            # credits, which a waiver holding a recorded payment defeats
             # (design add-manual-payment-entry D4). The outstanding column
             # reads it and states the balance as waived rather than owed
-            "settled_by_hand": registration.settled_by_hand_at is not None,
-            "settled_by_hand_reason": registration.settled_by_hand_reason,
+            "settled_by_hand": registration.waived,
+            "settled_by_hand_reason": registration.waiver_reason,
             # what the waiver forgave, where it forgave only part; null where
             # it forgave the whole price
             "waived_amount": waived,
@@ -285,7 +287,7 @@ def base_rows(
             "outstanding_amount": _money(balance),
             "outstanding_currency": balance_currency,
             "expires_at": registration.expires_at.isoformat() if registration.expires_at else None,
-            "paid_at": registration.paid_at.isoformat() if registration.paid_at else None,
+            "paid_at": settled_on.isoformat() if settled_on else None,
             "weapon_rentals": registration.weapon_rentals or extra_rentals,
             # of those, the ones this tournament lends nothing by that name and
             # therefore billed nothing for. Stated on the row, because a total

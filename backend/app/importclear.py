@@ -160,7 +160,7 @@ def clear_imports(session: Session, tournament: Tournament) -> dict:
     those rows has been credited.
     """
     issued = _issued_registrations(session, tournament)
-    credited = [r for r in issued if r.amount_paid_cents or r.amount_paid_eur_cents]
+    credited = [r for r in issued if r.credited_in("local") or r.credited_in("eur")]
     if credited:
         raise CreditedRegistrationsError(len(credited))
     imported = list(

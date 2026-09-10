@@ -20,6 +20,7 @@ from sqlalchemy import select
 from app.mail import get_mailer
 from app.main import app
 from app.models import BankTransaction, Registration, RegistrationState
+from tests.conftest import credit_registration
 from tests.test_matching import (
     CollectingMailer,
     db_session,
@@ -81,7 +82,7 @@ def test_a_widened_tolerance_settles_a_short_payment(client, auth_headers, mailb
     assert countable(client, organizer).json() == {"resettleable": 1}
 
     assert resettle(client, organizer).json() == {"settled": 1}
-    assert registration_by_vs(vs).state == RegistrationState.PAID
+    assert registration_by_vs(vs).state == RegistrationState.RESERVED
 
 
 def test_it_moves_no_money(client, auth_headers, mailbox):
@@ -91,13 +92,13 @@ def test_it_moves_no_money(client, auth_headers, mailbox):
     organizer = auth_headers()
     setup(client, organizer)
     _, vs = short_payment(client, auth_headers, organizer)
-    before = registration_by_vs(vs).amount_paid_cents
+    before = registration_by_vs(vs).credited_in("local")
 
     set_tolerance(client, organizer, 5)
     resettle(client, organizer)
 
     after = registration_by_vs(vs)
-    assert after.amount_paid_cents == before == 99500
+    assert after.credited_in("local") == before == 99500
     # and the transaction stops claiming to be a shortfall, saying why
     assert transactions()[0].status == "matched"
     assert transactions()[0].status_reason == "tolerance_widened"
@@ -112,13 +113,13 @@ def test_narrowing_the_tolerance_takes_nothing_back(client, auth_headers, mailbo
     _, vs = short_payment(client, auth_headers, organizer)
     set_tolerance(client, organizer, 5)
     resettle(client, organizer)
-    assert registration_by_vs(vs).state == RegistrationState.PAID
+    assert registration_by_vs(vs).state == RegistrationState.RESERVED
 
     set_tolerance(client, organizer, 0)
 
     assert countable(client, organizer).json() == {"resettleable": 0}
     assert resettle(client, organizer).json() == {"settled": 0}
-    assert registration_by_vs(vs).state == RegistrationState.PAID
+    assert registration_by_vs(vs).state == RegistrationState.RESERVED
 
 
 def test_it_reaches_nothing_the_tolerance_did_not_decide(client, auth_headers, mailbox):
@@ -152,13 +153,13 @@ def test_an_uncredited_shortfall_is_not_swept_in(client, auth_headers, mailbox):
     import_rows(client, organizer, [f"1;01.08.2026;995,00;CZK;;;;{vs};;"])
     assert transactions()[0].status == "unmatched"
     assert transactions()[0].status_reason == "bare_vs_amount_mismatch"
-    assert registration_by_vs(vs).amount_paid_cents == 0
+    assert registration_by_vs(vs).credited_in("local") == 0
 
     set_tolerance(client, organizer, 5)
 
     assert countable(client, organizer).json() == {"resettleable": 0}
     assert resettle(client, organizer).json() == {"settled": 0}
-    assert registration_by_vs(vs).amount_paid_cents == 0
+    assert registration_by_vs(vs).credited_in("local") == 0
     assert registration_by_vs(vs).state == RegistrationState.RESERVED
 
 
@@ -186,8 +187,7 @@ def test_a_registration_settled_otherwise_is_left_alone(client, auth_headers, ma
     registration = registration_by_vs(vs)
     session = db_session()
     row = session.get(Registration, registration.id)
-    row.state = RegistrationState.PAID
-    session.commit()
+    credit_registration(session, row, row.total_amount * 100)
 
     set_tolerance(client, organizer, 5)
 

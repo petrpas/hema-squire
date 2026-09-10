@@ -1,6 +1,6 @@
 from datetime import timedelta
 
-from tests.conftest import enable_payments, publish, today_local
+from tests.conftest import credit_registration, enable_payments, publish, today_local
 
 # the early-bird date is read where the tournament is held (`day-boundaries`)
 TODAY = today_local()
@@ -536,12 +536,11 @@ def test_payment_instructions_rejected_when_already_paid(client, auth_headers):
 
     from app.db import get_session
     from app.main import app
-    from app.models import Registration, RegistrationState
+    from app.models import Registration
 
     session = next(app.dependency_overrides[get_session]())
     registration = session.scalar(select(Registration))
-    registration.state = RegistrationState.PAID
-    session.commit()
+    credit_registration(session, registration, registration.total_amount * 100)
 
     response = client.get("/api/tournaments/cup/my-registration/payment", headers=fencer)
     assert response.status_code == 409

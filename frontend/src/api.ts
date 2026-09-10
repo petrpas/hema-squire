@@ -844,6 +844,32 @@ export interface Transaction {
   settled_by_recorded_payment: ManualPayment | null;
 }
 
+/** One registration a credited transaction paid for, and what reversing that
+ *  credit would leave it reading. */
+export interface CreditReversalRow {
+  registration_id: number;
+  fencer_name: string;
+  vs: number | null;
+  /** A decimal string, as every money figure the API states is. */
+  amount: string;
+  currency: Currency;
+  /** Whether this registration stops reading as paid once the credit is gone. */
+  unsettles: boolean;
+}
+
+/** What reversing one credited transaction would do, asked before it is done. */
+export interface CreditReversal {
+  transaction_id: number;
+  registrations: CreditReversalRow[];
+}
+
+/** A transaction holding a live credit. It sits in no queue — the matcher
+ *  resolved it — and an automatic VS match leaves no payment link to list it
+ *  under, so the credited view is the only place it can be seen or taken back. */
+export interface CreditedTransaction extends Transaction {
+  credits: CreditReversalRow[];
+}
+
 /** How money an organizer recorded by hand arrived. */
 export type PaymentMethod = "cash" | "transfer" | "card" | "other";
 
@@ -1334,6 +1360,17 @@ export const api = {
   reinstateTransaction: (slug: string, transactionId: number) =>
     request<Transaction>(
       `/api/tournaments/${slug}/payments/transactions/${transactionId}/reinstate`,
+      { method: "POST" },
+    ),
+  creditedTransactions: (slug: string) =>
+    request<CreditedTransaction[]>(`/api/tournaments/${slug}/payments/credited`),
+  reversalPreflight: (slug: string, transactionId: number) =>
+    request<CreditReversal>(
+      `/api/tournaments/${slug}/payments/transactions/${transactionId}/reversal`,
+    ),
+  reverseTransactionCredit: (slug: string, transactionId: number) =>
+    request<Transaction>(
+      `/api/tournaments/${slug}/payments/transactions/${transactionId}/reverse`,
       { method: "POST" },
     ),
   markTransactionForRefund: (slug: string, transactionId: number) =>

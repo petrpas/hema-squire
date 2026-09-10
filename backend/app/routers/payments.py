@@ -12,13 +12,13 @@ from app import (
     emails,
     importer,
     issuing,
+    ledger,
     matching,
     nameresolve,
     operations,
     paymentsclear,
     rules,
     scheduler,
-    setup,
     statements,
 )
 from app.auth import require_console_access, require_published
@@ -26,9 +26,12 @@ from app.fieldtypes import RowId
 from app.mail import Mailer, get_mailer
 from app.models import (
     BankTransaction,
+    CreditOrigin,
+    CreditSource,
     ManualPayment,
     Operation,
     OperationKind,
+    PaymentCredit,
     PaymentEvent,
     RefundState,
     Registration,
@@ -40,6 +43,9 @@ from app.models import (
 from app.routers.registrations import _cents_to_amount, next_vs
 from app.routers.tournaments import FencerDep, SessionDep, TournamentDep
 from app.schemas import (
+    CreditedTransactionOut,
+    CreditReversalOut,
+    CreditReversalRow,
     ExpiredHoldingOut,
     IngestAndMatchOut,
     IssueSkipOut,
@@ -339,7 +345,7 @@ def confirm_proposal(
         select(Registration).where(
             Registration.tournament_id == tournament.id,
             Registration.fencer_id == transaction.proposed_fencer_id,
-            Registration.state.in_([RegistrationState.RESERVED, RegistrationState.PAID]),
+            Registration.state == RegistrationState.RESERVED,
         )
     )
     if registration is None:
@@ -418,7 +424,7 @@ def transaction_roster(
         for registration in session.scalars(
             select(Registration).where(
                 Registration.tournament_id == tournament.id,
-                Registration.state.in_([RegistrationState.RESERVED, RegistrationState.PAID]),
+                Registration.state == RegistrationState.RESERVED,
             )
         )
     }
@@ -455,7 +461,7 @@ def _transaction_out(session, tournament, transaction: BankTransaction) -> Trans
         # deciding whether this is further money or the same money twice, and
         # needs the earlier act in front of them (design D6)
         if registration is not None:
-            out.settled_by_hand_reason = registration.settled_by_hand_reason
+            out.settled_by_hand_reason = registration.waiver_reason
             recorded = session.scalars(
                 select(ManualPayment)
                 .where(
@@ -620,16 +626,16 @@ def expired_holding(tournament: TournamentDep, session: SessionDep, fencer: Fenc
             registration_id=registration.id,
             fencer_name=registration.fencer.display_name,
             vs=registration.vs,
-            credited_amount=_cents_to_amount(registration.amount_paid_cents),
+            credited_amount=_cents_to_amount(registration.credited_in("local")),
             credited_eur_amount=(
-                _cents_to_amount(registration.amount_paid_eur_cents)
-                if registration.amount_paid_eur_cents
+                _cents_to_amount(registration.credited_in("eur"))
+                if registration.credited_in("eur")
                 else None
             ),
             expired_at=expired_at[registration.id],
         )
         for registration in registrations
-        if registration.amount_paid_cents or registration.amount_paid_eur_cents
+        if registration.credited_in("local") or registration.credited_in("eur")
     ]
     out.sort(key=lambda row: row.expired_at, reverse=True)
     return out
@@ -688,16 +694,24 @@ def reinstate_transaction(
     if not matching.seats_free(session, registration):
         raise HTTPException(status_code=409, detail="capacity_unavailable")
 
-    registration.state = RegistrationState.PAID
-    # the transaction's own day, like any other credit — this path settles
-    # inline rather than through `matching._settle`, so it converts the day
-    # itself (design paid-at-is-value-date D5)
-    registration.paid_at = setup.start_of_local_day(transaction.date, tournament.timezone)
-    which = matching.match_currency(transaction, tournament)
-    if which == "local":
-        registration.amount_paid_cents += transaction.amount_cents
-    elif which == "eur":
-        registration.amount_paid_eur_cents += transaction.amount_cents
+    # the reservation comes back to life; whether it then reads as paid is the
+    # credit below and the derivation over it, not a state assigned here
+    registration.state = RegistrationState.RESERVED
+    currency = matching.transaction_currency(transaction, tournament)
+    if matching.match_currency(transaction, tournament) is not None and currency is not None:
+        ledger.credit(
+            session,
+            tournament,
+            registration,
+            amount_cents=transaction.amount_cents,
+            currency=currency,
+            # the transaction's own day, like any other credit; the day the
+            # registration became paid is derived from it
+            value_date=transaction.date,
+            source_kind=CreditSource.BANK_TRANSACTION,
+            source_id=transaction.id,
+            origin=CreditOrigin.REINSTATE,
+        )
     transaction.matched_registration_id = registration.id
     transaction.status = "matched"
     transaction.status_reason = "reinstated_by_organizer"
@@ -715,6 +729,148 @@ def reinstate_transaction(
     return transaction
 
 
+def _reversal_preview(
+    session, tournament: Tournament, transaction: BankTransaction
+) -> CreditReversalOut:
+    """What reversing this transaction's credits would leave behind, asked of
+    the journal rather than guessed from the transaction's amount: one
+    transaction may have covered several registrations with different amounts,
+    and each of them is its own entry."""
+    rows = []
+    for entry in ledger.credits_of_source(
+        session, tournament, CreditSource.BANK_TRANSACTION, transaction.id
+    ):
+        registration = entry.registration
+        # the settled state this registration would be left with, asked by
+        # taking the entry out of the sum rather than by writing anything
+        remaining = registration.credited_in(registration.paid_lane) - entry.amount_cents
+        rows.append(
+            CreditReversalRow(
+                registration_id=registration.id,
+                fencer_name=registration.fencer.display_name,
+                vs=registration.vs,
+                amount=_cents_to_amount(entry.amount_cents),
+                currency=entry.currency,
+                unsettles=registration.settled and not registration.waived and remaining <= 0,
+            )
+        )
+    return CreditReversalOut(transaction_id=transaction.id, registrations=rows)
+
+
+@router.get("/credited", response_model=list[CreditedTransactionOut])
+def credited_transactions(tournament: TournamentDep, session: SessionDep, fencer: FencerDep):
+    """Every transaction holding a live credit, newest first.
+
+    A view of its own because such a transaction is in none of the queues: the
+    matcher resolved it, so it is neither unmatched nor flagged, and a credit an
+    automatic VS match decided leaves no payment link to list it under. Until
+    now the console could see a credited transaction only where an organizer had
+    linked it by hand, which is the one case that already had a way back.
+
+    Asked of the journal rather than of `matched_registration_id`: what a
+    transaction credited is what its live entries say, and one transaction may
+    have credited several registrations (design D3).
+    """
+    require_console_access(session, tournament, fencer)
+    credited_ids = session.scalars(
+        select(PaymentCredit.source_id)
+        .where(
+            PaymentCredit.tournament_id == tournament.id,
+            PaymentCredit.source_kind == CreditSource.BANK_TRANSACTION,
+            PaymentCredit.reversed_at.is_(None),
+        )
+        .distinct()
+    ).all()
+    if not credited_ids:
+        return []
+    transactions = session.scalars(
+        select(BankTransaction)
+        .where(
+            BankTransaction.tournament_id == tournament.id,
+            BankTransaction.id.in_(credited_ids),
+        )
+        .order_by(BankTransaction.date.desc(), BankTransaction.id.desc())
+    ).all()
+    rows = []
+    for transaction in transactions:
+        base = _transaction_out(session, tournament, transaction)
+        preview = _reversal_preview(session, tournament, transaction)
+        rows.append(CreditedTransactionOut(**base.model_dump(), credits=preview.registrations))
+    return rows
+
+
+@router.get("/transactions/{transaction_id}/reversal", response_model=CreditReversalOut)
+def reversal_preflight(
+    transaction_id: RowId,
+    tournament: TournamentDep,
+    session: SessionDep,
+    fencer: FencerDep,
+):
+    """What reversing this transaction's credits would do, before it is done."""
+    require_console_access(session, tournament, fencer)
+    transaction = session.get(BankTransaction, transaction_id)
+    if transaction is None or transaction.tournament_id != tournament.id:
+        raise HTTPException(status_code=404, detail="transaction_not_found")
+    return _reversal_preview(session, tournament, transaction)
+
+
+@router.post("/transactions/{transaction_id}/reverse", response_model=TransactionOut)
+def reverse_transaction_credit(
+    transaction_id: RowId,
+    tournament: TournamentDep,
+    session: SessionDep,
+    fencer: FencerDep,
+):
+    """Release the credit a transaction made and return it to the unmatched
+    queue.
+
+    The operation that was missing. A payment link and a payment recorded by
+    hand can each already be taken back; a transaction an automatic match
+    credited could not, which is why the only route out was a blanket clear —
+    and the clear refuses precisely while such a credit stands (spec
+    payments-clearing). Every credited transaction now has a way out.
+
+    What each registration reads afterwards is a derivation and is not restored
+    here; there is no second state to get wrong.
+    """
+    require_console_access(session, tournament, fencer)
+    require_published(tournament)
+    bank.require_payments_enabled(tournament)
+    transaction = session.get(BankTransaction, transaction_id)
+    if transaction is None or transaction.tournament_id != tournament.id:
+        raise HTTPException(status_code=404, detail="transaction_not_found")
+    reversed_entries = ledger.reverse_for_source(
+        session,
+        tournament,
+        CreditSource.BANK_TRANSACTION,
+        transaction.id,
+        by=ledger.actor_label(fencer),
+        reason="credit reversed by organizer",
+    )
+    if not reversed_entries:
+        raise HTTPException(status_code=409, detail="no_live_credit")
+
+    transaction.status = "unmatched"
+    transaction.status_reason = "credit_reversed"
+    transaction.matched_registration_id = None
+    for entry in reversed_entries:
+        session.add(
+            PaymentEvent(
+                tournament_id=tournament.id,
+                registration_id=entry.registration_id,
+                transaction_id=transaction.id,
+                kind="credit_reversed",
+                detail=(
+                    f"transaction {transaction.id}: {entry.registration.audit_label},"
+                    f" {entry.amount_cents} cents {entry.currency} reversed"
+                    f" by {ledger.actor_label(fencer)}"
+                ),
+            )
+        )
+    session.commit()
+    return transaction
+
+
 @router.post("/transactions/{transaction_id}/mark-for-refund", response_model=TransactionOut)
 def mark_transaction_for_refund(
     transaction_id: RowId,
@@ -728,11 +884,19 @@ def mark_transaction_for_refund(
     transaction = _flagged_transaction(session, tournament, transaction_id)
     registration = _flagged_registration(session, tournament, transaction)
     which = matching.match_currency(transaction, tournament)
-    if registration is not None and which is not None:
-        if which == "local":
-            registration.amount_paid_cents += transaction.amount_cents
-        else:
-            registration.amount_paid_eur_cents += transaction.amount_cents
+    currency = matching.transaction_currency(transaction, tournament)
+    if registration is not None and which is not None and currency is not None:
+        ledger.credit(
+            session,
+            tournament,
+            registration,
+            amount_cents=transaction.amount_cents,
+            currency=currency,
+            value_date=transaction.date,
+            source_kind=CreditSource.BANK_TRANSACTION,
+            source_id=transaction.id,
+            origin=CreditOrigin.REFUND_HOLD,
+        )
         registration.refund_state = RefundState.PENDING
     transaction.status = "resolved"
     transaction.status_reason = "marked_for_refund"
@@ -754,9 +918,7 @@ def _manual_payment_out(
 ) -> ManualPaymentOut:
     registration = payment.registration
     which = matching.manual_payment_currency(payment, tournament)
-    credited = (
-        registration.amount_paid_cents if which == "local" else registration.amount_paid_eur_cents
-    )
+    credited = registration.credited_in(which) if which is not None else 0
     total = (
         registration.total_amount * 100 if which == "local" else (registration.total_eur or 0) * 100
     )
@@ -775,9 +937,7 @@ def _manual_payment_out(
         # amount back leaves the lane short, so the registration would return
         # to reserved and the roster would stop saying paid
         removal_unsettles=(
-            registration.state == RegistrationState.PAID
-            and which is not None
-            and credited - payment.amount_cents < total
+            registration.settled and which is not None and credited - payment.amount_cents < total
         ),
     )
 
@@ -841,7 +1001,7 @@ def record_manual_payment(
     # money is credited to a live reservation or one already settled; a
     # cancelled or expired registration is not revived by a payment being
     # typed in, exactly as it is not revived by one being ingested
-    if registration.state not in (RegistrationState.RESERVED, RegistrationState.PAID):
+    if registration.state is not RegistrationState.RESERVED:
         raise HTTPException(status_code=409, detail="registration_not_live")
     amount_cents = int((data.amount * 100).quantize(Decimal("1"), rounding=ROUND_HALF_UP))
     if amount_cents <= 0:

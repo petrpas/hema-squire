@@ -33,6 +33,7 @@ import { parseInteger } from "./numeric";
 import OperationsIndicator from "./OperationsIndicator";
 import PaidStamp from "./PaidStamp";
 import ProblemsCell from "./ProblemsCell";
+import CreditedPanel from "./payments/CreditedPanel";
 import ExpiredHoldingPanel from "./payments/ExpiredHoldingPanel";
 import FlaggedPanel from "./payments/FlaggedPanel";
 import IntakePanel from "./payments/IntakePanel";
@@ -810,11 +811,14 @@ export default function Console({ tournament, phase }: { tournament: Tournament;
                         <IssueOnArrival slug={tournament.slug} onIssued={refresh} />
                       </>
                     ) : phase === "payments" ? (
-                      /* one table at a time: the fencer list and five queues stacked
-                   could not be read as six different things. Proposals lead
+                      /* one table at a time: the fencer list and six queues stacked
+                   could not be read as seven different things. Proposals lead
                    the queues — the one with the most work in it and the one an
-                   organizer empties fastest; the recorded payments come last,
-                   being the one view holding no decision */
+                   organizer empties fastest; the two ledger views come last,
+                   being the ones holding no decision. Credited transactions sit
+                   beside the recorded payments because that is what they are:
+                   the other half of what has been credited, and the only place
+                   a transaction the matcher resolved can be seen or taken back */
                       <>
                         <QueueTabStrip />
                         <LikelyPanel
@@ -838,6 +842,11 @@ export default function Console({ tournament, phase }: { tournament: Tournament;
                           currency={detail?.local_currency ?? "CZK"}
                         />
                         <PaymentLinksPanel
+                          slug={tournament.slug}
+                          reload={queueReload}
+                          onChanged={refresh}
+                        />
+                        <CreditedPanel
                           slug={tournament.slug}
                           reload={queueReload}
                           onChanged={refresh}

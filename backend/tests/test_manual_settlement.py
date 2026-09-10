@@ -21,7 +21,7 @@ from app.db import get_session
 from app.main import app
 from app.models import PaymentEvent, Registration, RegistrationState
 from app.routers.registrations import MARK_SETTLED, UNMARK_SETTLED
-from tests.conftest import enable_payments, publish
+from tests.conftest import credit_registration, enable_payments, paid_at_of, publish
 
 IBAN = "CZ6508000000192000145399"
 
@@ -99,8 +99,8 @@ def test_the_organizer_marks_a_registration_settled(client, auth_headers):
     assert response.status_code == 200, response.text
 
     row = registration_row(entry["vs"])
-    assert row.state == RegistrationState.PAID
-    assert row.paid_at is not None
+    assert row.settled
+    assert paid_at_of(row) is not None
 
 
 def test_the_mark_stamps_the_moment_of_the_mark(client, auth_headers):
@@ -116,7 +116,9 @@ def test_the_mark_stamps_the_moment_of_the_mark(client, auth_headers):
     settled(client, organizer, registration_id(entry))
     after = datetime.now(UTC)
 
-    paid_at = registration_row(entry["vs"]).paid_at.replace(tzinfo=UTC)
+    settled_on = paid_at_of(registration_row(entry["vs"]))
+    assert settled_on is not None
+    paid_at = settled_on.replace(tzinfo=UTC)
     # a moment inside the request, not a midnight the way a statement day is
     assert before <= paid_at <= after
 
@@ -136,8 +138,8 @@ def test_the_mark_records_no_amount(client, auth_headers):
     settled(client, organizer, registration_id(entry))
 
     row = registration_row(entry["vs"])
-    assert row.amount_paid_cents == 0
-    assert (row.amount_paid_eur_cents or 0) == 0
+    assert row.credited_in("local") == 0
+    assert (row.credited_in("eur") or 0) == 0
     # what it is owed is untouched: paid, and owing its whole total
     assert row.outstanding_cents == owed
     assert row.outstanding_eur_cents == owed_eur
@@ -153,7 +155,7 @@ def test_unmarking_returns_it(client, auth_headers):
 
     row = registration_row(entry["vs"])
     assert row.state == RegistrationState.RESERVED
-    assert row.paid_at is None
+    assert paid_at_of(row) is None
 
 
 def test_both_directions_are_recorded_against_the_organizer(client, auth_headers):
@@ -205,13 +207,13 @@ def test_a_waiver_on_a_collecting_tournament(client, auth_headers):
     assert response.status_code == 200, response.text
 
     row = registration_row(entry["vs"])
-    assert row.state == RegistrationState.PAID
-    assert row.settled_by_hand_at is not None
-    assert row.settled_by_hand_reason == "volná účast"
+    assert row.settled
+    assert row.waived
+    assert row.waiver_reason == "volná účast"
     # nothing arrived, so no total of received money moves — the whole of the
     # second ask (design D5)
-    assert row.amount_paid_cents == 0
-    assert (row.amount_paid_eur_cents or 0) == 0
+    assert row.credited_in("local") == 0
+    assert (row.credited_in("eur") or 0) == 0
 
 
 def test_the_reason_is_optional_where_squire_collects_nothing(client, auth_headers):
@@ -221,8 +223,8 @@ def test_the_reason_is_optional_where_squire_collects_nothing(client, auth_heade
 
     assert settled(client, organizer, registration_id(entry)).status_code == 200
     row = registration_row(entry["vs"])
-    assert row.settled_by_hand_at is not None
-    assert row.settled_by_hand_reason is None
+    assert row.waived
+    assert row.waiver_reason is None
 
 
 def test_the_mark_is_stored_and_cleared(client, auth_headers):
@@ -238,8 +240,8 @@ def test_the_mark_is_stored_and_cleared(client, auth_headers):
 
     row = registration_row(entry["vs"])
     assert row.state == RegistrationState.RESERVED
-    assert row.settled_by_hand_at is None
-    assert row.settled_by_hand_reason is None
+    assert not row.waived
+    assert row.waiver_reason is None
 
 
 def test_the_reason_is_carried_into_the_audit(client, auth_headers):
@@ -343,8 +345,7 @@ def test_a_collecting_tournaments_list_is_unchanged(client, auth_headers):
 
     session = db_session()
     row = session.scalar(select(Registration).where(Registration.vs == entry["vs"]))
-    row.state = RegistrationState.PAID
-    session.commit()
+    credit_registration(session, row, row.total_amount * 100)
 
     body = client.get("/api/tournaments/cup/participants").json()
     assert body["payment_state_known"] is True
@@ -366,8 +367,8 @@ def test_switching_to_squire_handled_payments_leaves_the_marks(client, auth_head
     enable_payments(client, organizer, "cup")
 
     row = registration_row(entry["vs"])
-    assert row.state == RegistrationState.PAID
-    assert row.amount_paid_cents == 0
+    assert row.settled
+    assert row.credited_in("local") == 0
 
 
 def test_unmarking_a_registration_the_money_settled_is_refused(client, auth_headers):
@@ -394,14 +395,14 @@ def test_unmarking_a_registration_the_money_settled_is_refused(client, auth_head
         ).status_code
         == 201
     )
-    assert registration_row(entry["vs"]).state == RegistrationState.PAID
+    assert registration_row(entry["vs"]).state == RegistrationState.RESERVED
 
     response = settled(client, organizer, reg_id, value=False)
     assert response.status_code == 409
     assert response.json()["detail"] == "not_settled_by_hand"
     row = registration_row(entry["vs"])
-    assert row.state == RegistrationState.PAID
-    assert row.amount_paid_cents == 120000
+    assert row.settled
+    assert row.credited_in("local") == 120000
 
 
 def test_a_registration_with_no_variable_symbol_is_marked(client, auth_headers):
@@ -426,7 +427,7 @@ def test_a_registration_with_no_variable_symbol_is_marked(client, auth_headers):
     response = settled(client, organizer, reg_id, reason="kupon")
     assert response.status_code == 200, response.text
     assert response.json()["vs"] is None
-    assert registration_row_by_id(reg_id).settled_by_hand_reason == "kupon"
+    assert registration_row_by_id(reg_id).waiver_reason == "kupon"
 
 
 def registration_row_by_id(registration_id: int) -> Registration:

@@ -26,7 +26,12 @@ from app.models import (
 
 def live_registration():
     """The registration still exists: reserved within its validity window, or
-    paid. Cancelled and expired registrations are neither.
+    paid for. Cancelled and expired registrations are neither.
+
+    Both halves are now inside the reserved state, because `PAID` left the
+    enum: a paid registration is a reserved one whose money is in, and the
+    settled derivation is what says so. A settled registration counts whatever
+    its window says, exactly as the paid state used to.
 
     One definition, asked by everything that counts a placement — a seat
     against capacity and a place in the queue alike. Counting a queue from
@@ -35,9 +40,10 @@ def live_registration():
     submission could seat one discipline and queue another (design D3): a
     fencer who paid for their seat would drop out of the queue they were
     waiting in and hand their position to somebody else."""
-    return (Registration.state == RegistrationState.PAID) | (
-        (Registration.state == RegistrationState.RESERVED)
-        & ((Registration.expires_at.is_(None)) | (Registration.expires_at > datetime.now(UTC)))
+    return (Registration.state == RegistrationState.RESERVED) & (
+        Registration.settled
+        | (Registration.expires_at.is_(None))
+        | (Registration.expires_at > datetime.now(UTC))
     )
 
 

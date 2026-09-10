@@ -456,3 +456,33 @@ def amendment_availability(tournament: Tournament, now: datetime.datetime) -> st
     ):
         return CLOSED
     return None
+
+
+def payment_window(tournament: Tournament, now: datetime.datetime) -> datetime.datetime | None:
+    """The payment window opened when money is newly requested of a
+    registration that was not owing anything before, clamped to the tournament
+    itself (design seating-queue Decision 8).
+
+    Both rules apply at once: money requested always gets a payment window, and
+    no reservation outlives the event it is for — a fencer promoted three days
+    out on a seven-day window would otherwise be holding a seat past the
+    tournament.
+
+    None with the payments feature off: the placement is seated and that is
+    all, since no money is requested.
+
+    Two callers open it, for the same reason. A promotion out of the queue
+    bills the admitted discipline; an amendment that raises a settled
+    registration's total beyond tolerance leaves it owing a surcharge, and
+    since `derive-balances-from-credits` such a registration reads reserved
+    again — with the deadline it was registered under, which has usually long
+    passed. Without a fresh window the next expiry pass would take a seat from
+    a fencer who had paid, over an amendment they may not have asked for.
+    """
+    if not tournament.feature_payments:
+        return None
+    window = now + datetime.timedelta(days=tournament.reservation_validity_days)
+    end_of_tournament = datetime.datetime.combine(
+        tournament.date + datetime.timedelta(days=1), datetime.time.min, tzinfo=datetime.UTC
+    )
+    return min(window, end_of_tournament)

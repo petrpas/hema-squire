@@ -22,6 +22,7 @@ from app.importer import ParsedFencer, get_import_parser
 from app.mail import get_mailer
 from app.main import app
 from app.models import Fencer, Registration, RegistrationState
+from tests.conftest import credit_registration
 from tests.test_matching import db_session
 
 
@@ -713,7 +714,7 @@ def test_dormant_clocks_do_not_stop_money(client, auth_headers, mailbox):
     result = import_statement(client, organizer, statement, "cup")
 
     assert result["matched"] == 1
-    assert registrations()[0].state == RegistrationState.PAID
+    assert registrations()[0].settled
 
 
 # --- running it again ------------------------------------------------------
@@ -759,15 +760,13 @@ def test_a_paid_issued_registration_is_not_disturbed(client, auth_headers, mailb
     issue(client, organizer)
     session = db_session()
     registration = session.scalars(select(Registration)).one()
-    registration.amount_paid_cents = 80000
-    registration.state = RegistrationState.PAID
-    session.commit()
+    credit_registration(session, registration, 80000)
 
     issue(client, organizer)
 
     after = db_session().scalars(select(Registration)).one()
-    assert after.state == RegistrationState.PAID
-    assert after.amount_paid_cents == 80000
+    assert after.settled
+    assert after.credited_in("local") == 80000
 
 
 # --- when it may run -------------------------------------------------------
@@ -868,8 +867,7 @@ def test_clearing_is_refused_while_an_issued_registration_holds_credit(
     import_roster(client, organizer, [row("Jan", "jan@example.com")])
     issue(client, organizer)
     session = db_session()
-    session.scalars(select(Registration)).one().amount_paid_cents = 80000
-    session.commit()
+    credit_registration(session, session.scalars(select(Registration)).one(), 80000)
 
     response = client.delete("/api/tournaments/cup/import", headers=organizer)
 

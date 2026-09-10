@@ -12,6 +12,12 @@ import pytest
 
 BACKEND_DIR = Path(__file__).resolve().parent.parent
 PREVIOUS_REVISION = "c4f2a91b7e30"
+# The revision under test, and deliberately not `head`. A later revision drops
+# `paid_at` entirely — the day a registration became paid is derived from the
+# credit that completed its balance now (change derive-balances-from-credits) —
+# so upgrading past this one leaves nothing here to assert against. What this
+# file holds is that *this* revision did what it said at the time.
+REVISION = "d5a83c1f206e"
 
 # every registration below was stamped with the same import instant, which is
 # the fault this migration exists to correct
@@ -149,7 +155,7 @@ def _migrated_template(tmp_path_factory) -> Path:
     db_path = tmp_path_factory.mktemp("paid_at_value_date") / "paid_at_value_date.sqlite"
     _run_alembic("upgrade", PREVIOUS_REVISION, db_path=db_path)
     _seed(db_path)
-    _run_alembic("upgrade", "head", db_path=db_path)
+    _run_alembic("upgrade", REVISION, db_path=db_path)
     return db_path
 
 

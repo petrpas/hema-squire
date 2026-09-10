@@ -5,6 +5,7 @@ from zoneinfo import ZoneInfo
 import pytest
 from sqlalchemy import select
 
+from app import ledger
 from app.db import get_session
 from app.mail import get_mailer
 from app.main import app
@@ -665,10 +666,12 @@ def test_reevaluated_flagged_transaction_not_credited_twice(client, auth_headers
 
 
 def paid_at_of(vs) -> datetime | None:
-    """A registration's paid date as an instant. SQLite drops the tzinfo a
-    `DateTime(timezone=True)` column carries; every stored instant is UTC, as
-    `matching._within_grace` already assumes."""
-    stored = registration_by_vs(vs).paid_at
+    """A registration's paid date as an instant, derived from the credit that
+    completed its balance. SQLite drops the tzinfo a `DateTime(timezone=True)`
+    column carries; every stored instant is UTC, as `matching._within_grace`
+    already assumes."""
+    registration = registration_by_vs(vs)
+    stored = ledger.paid_at(registration, registration.tournament)
     return None if stored is None else stored.replace(tzinfo=UTC)
 
 
@@ -769,4 +772,4 @@ def test_a_linked_credit_dates_by_the_transaction_and_clears_when_withdrawn(
     for vs in (vs_a, vs_b, vs_c):
         registration = registration_by_vs(vs)
         assert registration.state == RegistrationState.RESERVED
-        assert registration.paid_at is None
+        assert ledger.paid_at(registration, registration.tournament) is None

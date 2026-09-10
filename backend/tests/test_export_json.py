@@ -114,7 +114,10 @@ def test_round_trip_reconstructs_fencer_table(client, auth_headers):
     document = export.json()
     assert document["schema_version"] == SCHEMA_VERSION
     assert len(document["registrations"]) == 1
-    assert document["registrations"][0]["state"] == "paid"
+    # the document carries the lifecycle; that the registration has been paid
+    # for is its credits, exported beside it
+    assert document["registrations"][0]["state"] == "reserved"
+    assert sum(c["amount_cents"] for c in document["payment_credits"]) > 0
     assert len(document["import_batches"][0]["rows"]) == 2
 
     original = normalized_sheet(client, organizer, "cup")
@@ -875,7 +878,10 @@ def test_a_recorded_cash_payment_round_trips(client, auth_headers):
     assert payment["amount_cents"] == 100000
     assert payment["method"] == "cash"
     assert payment["note"] == "u prezence"
-    assert document["registrations"][0]["amount_paid_cents"] == 100000
+    [credit] = document["payment_credits"]
+    assert credit["amount_cents"] == 100000
+    assert credit["source_kind"] == "manual_payment"
+    assert credit["source_ref"] == payment["ref"]
 
     restored = _restore_into_empty(client, auth_headers, document)
     rows = client.get("/api/tournaments/cup/sheet", headers=restored).json()["rows"]
@@ -909,9 +915,11 @@ def test_a_waiver_round_trips(client, auth_headers):
 
     document = client.get("/api/tournaments/cup/export/json", headers=organizer).json()
     [entry] = document["registrations"]
-    assert entry["settled_by_hand_reason"] == "volná účast"
-    assert entry["settled_by_hand_at"] is not None
-    assert entry["amount_paid_cents"] == 0
+    [waiver] = document["payment_waivers"]
+    assert waiver["reason"] == "volná účast"
+    assert waiver["revoked_at"] is None
+    assert waiver["registration_ref"] == entry["ref"]
+    assert document["payment_credits"] == []
 
     restored = _restore_into_empty(client, auth_headers, document)
     rows = client.get("/api/tournaments/cup/sheet", headers=restored).json()["rows"]
@@ -945,6 +953,46 @@ def test_a_removed_payment_is_not_exported(client, auth_headers):
     assert document["manual_payments"] == []
 
 
+def test_a_pre_v14_document_carrying_credit_is_refused(client, auth_headers):
+    """A document written before the journals carries `amount_paid_cents` — a
+    sum whose composition was never recorded — and there is no honest way to
+    turn it into the credits it was the sum of. Refused, rather than restored
+    with the payments silently gone (spec data-export)."""
+    organizer = auth_headers()
+    setup(client, organizer)
+    fencer = auth_headers(email="jan@example.com", name="Jan Novak")
+    client.post("/api/tournaments/cup/register", json={"disciplines": ["LS"]}, headers=fencer)
+
+    document = client.get("/api/tournaments/cup/export/json", headers=organizer).json()
+    document["schema_version"] = 13
+    document.pop("payment_credits")
+    document.pop("payment_waivers")
+    document["registrations"][0]["amount_paid_cents"] = 100000
+    document["tournament"]["slug"] = "cup2"  # the deployment already holds "cup"
+
+    restore = client.post("/api/tournaments/restore", json=document, headers=organizer)
+    assert restore.status_code == 422
+    assert restore.json()["detail"] == "payment_state_not_restorable"
+
+
+def test_a_pre_v14_document_carrying_a_mark_is_refused(client, auth_headers):
+    organizer = auth_headers()
+    setup(client, organizer)
+    fencer = auth_headers(email="jan@example.com", name="Jan Novak")
+    client.post("/api/tournaments/cup/register", json={"disciplines": ["LS"]}, headers=fencer)
+
+    document = client.get("/api/tournaments/cup/export/json", headers=organizer).json()
+    document["schema_version"] = 13
+    document.pop("payment_credits")
+    document.pop("payment_waivers")
+    document["registrations"][0]["settled_by_hand_at"] = "2026-08-01T10:00:00+00:00"
+    document["tournament"]["slug"] = "cup2"
+
+    restore = client.post("/api/tournaments/restore", json=document, headers=organizer)
+    assert restore.status_code == 422
+    assert restore.json()["detail"] == "payment_state_not_restorable"
+
+
 def test_a_pre_v13_document_restores_unmarked(client, auth_headers):
     organizer = auth_headers()
     setup(client, organizer)
@@ -956,9 +1004,8 @@ def test_a_pre_v13_document_restores_unmarked(client, auth_headers):
     document = client.get("/api/tournaments/cup/export/json", headers=organizer).json()
     document["schema_version"] = 12
     document.pop("manual_payments")
-    for entry in document["registrations"]:
-        entry.pop("settled_by_hand_at")
-        entry.pop("settled_by_hand_reason")
+    document.pop("payment_credits")
+    document.pop("payment_waivers")
 
     restored = _restore_into_empty(client, auth_headers, document)
     rows = client.get("/api/tournaments/cup/sheet", headers=restored).json()["rows"]

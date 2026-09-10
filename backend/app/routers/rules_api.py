@@ -3,7 +3,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
 
-from app import amendment, matching, rules, sheet
+from app import amendment, ledger, matching, rules, sheet
 from app.auth import require_console_access, require_published
 from app.fieldtypes import RowId
 from app.hr_index import HRIndex, get_hr_index
@@ -128,7 +128,7 @@ def delete_rule(
     rule = _get_rule(session, tournament, rule_id)
     rules.delete_rule(session, rule, fencer)
     if rule.kind == "payment_link":
-        matching.unapply_payment_link(session, tournament, rule)
+        matching.unapply_payment_link(session, tournament, rule, ledger.actor_label(fencer))
     if rule.kind == rules.AMENDMENT:
         # withdrawal is a replay of what remains, not an inverse of what went:
         # where nothing remains for this field, the registration returns to the

@@ -221,9 +221,9 @@ def _my_registration_state(
     )
     if registration is None:
         return "none"
-    if registration.state == RegistrationState.PAID:
-        return "paid"
-    if registration.state == RegistrationState.RESERVED:
+    if registration.state is RegistrationState.RESERVED:
+        if registration.settled:
+            return "paid"
         active = any(not e.is_substitute for e in registration.entries)
         return "reserved" if active else "substitute"
     return "cancelled"
@@ -1174,7 +1174,7 @@ def console_queue(tournament: TournamentDep, session: SessionDep, fencer: Fencer
             .join(Registration)
             .where(
                 RegistrationDiscipline.discipline_id == discipline.id,
-                Registration.state.in_([RegistrationState.RESERVED, RegistrationState.PAID]),
+                Registration.state == RegistrationState.RESERVED,
             )
             .options(selectinload(RegistrationDiscipline.registration))
             .order_by(Registration.registered_at)

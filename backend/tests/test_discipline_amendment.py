@@ -294,7 +294,7 @@ def test_an_overpaid_registration_is_marked_for_refund(client, auth_headers, mai
         headers=organizer,
     )
     assert response.status_code in (200, 201), response.text
-    assert registration_of(listed["id"]).state is RegistrationState.PAID
+    assert registration_of(listed["id"]).state is RegistrationState.RESERVED
 
     amend(client, organizer, listed["id"], ["SB"])
 

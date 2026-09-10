@@ -2,8 +2,8 @@ from sqlalchemy import select
 
 from app.db import get_session
 from app.main import app
-from app.models import Registration, RegistrationState
-from tests.conftest import enable_payments, publish
+from app.models import Registration
+from tests.conftest import credit_registration, enable_payments, publish
 
 
 def setup_tournament(client, organizer, *, payments=True):
@@ -52,8 +52,7 @@ def register(client, headers, disciplines=("LS",), **overrides):
 def mark_paid(vs):
     session = next(app.dependency_overrides[get_session]())
     registration = session.scalar(select(Registration).where(Registration.vs == vs))
-    registration.state = RegistrationState.PAID
-    session.commit()
+    credit_registration(session, registration, registration.total_amount * 100)
 
 
 def test_greyed_default_shows_unpaid_as_unconfirmed(client, auth_headers):

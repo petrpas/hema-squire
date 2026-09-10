@@ -1,10 +1,13 @@
 import io
 
 import pytest
+from sqlalchemy import select
 
 from app.mail import get_mailer
 from app.main import app
+from app.models import PaymentCredit
 from tests.conftest import enable_payments, import_statement, publish
+from tests.test_matching import db_session
 
 
 class CollectingMailer:
@@ -112,8 +115,15 @@ def test_one_transfer_covers_two_fencers(client, auth_headers, mailbox):
     # rewriting.
     payload = listed[0]["payload"]
     assert payload["vs"] == [vs_a, vs_b]
-    assert sorted(payload["credited"].values()) == [100000, 100000]
-    assert all(key.startswith("reg:") for key in payload["credited"])
+    # what the link credited is journal rows naming the rule, not a map inside
+    # its payload: a credit belongs where every other credit is, subject to the
+    # same reversal rule and the same idempotence guarantee (design D8)
+    session = db_session()
+    credits = session.scalars(
+        select(PaymentCredit).where(PaymentCredit.rule_id == listed[0]["id"])
+    ).all()
+    assert sorted(credit.amount_cents for credit in credits) == [100000, 100000]
+    assert all(credit.reversed_at is None for credit in credits)
 
 
 def test_link_survives_reingestion(client, auth_headers, mailbox):

@@ -16,11 +16,18 @@ would leave those standing, and an organizer clearing after a misreading would
 re-import and be handed the same wrong answer with nothing on screen to explain
 why. Removing them is most of the point of this module.
 
-**Credited money refuses the clear.** A transaction credited to a registration is
-a payment the tournament acted on — a balance moved, a state changed, mail may
-have gone out — and deleting it would leave that claim standing with nothing
-behind it. The refusal is total: not the uncredited transactions, not the stored
-readings, nothing. A partial clear is the one outcome nobody can reason about.
+**Credited money refuses the clear.** A transaction holding a live credit is a
+payment the tournament acted on — a fencer was told they are paid, a seat was
+confirmed, mail may have gone out — and deleting it would leave that claim
+standing with nothing behind it. The refusal is total: not the uncredited
+transactions, not the stored readings, nothing. A partial clear is the one
+outcome nobody can reason about.
+
+The refusal stands on what the credit *means* and not on what unwinding it would
+cost. Reversing credits and letting the balances follow became an ordinary
+operation when they became a journal, so a credited transaction is no longer a
+dead end — it can be reversed on its own and the clear then proceeds. What
+cannot be said afterwards is that the import never happened.
 """
 
 from sqlalchemy import delete, func, select
@@ -28,7 +35,9 @@ from sqlalchemy.orm import Session
 
 from app.models import (
     BankTransaction,
+    CreditSource,
     ImportDecision,
+    PaymentCredit,
     PaymentEvent,
     Rule,
     RuleJournalEntry,
@@ -43,7 +52,9 @@ class CreditedTransactionsError(RuntimeError):
     Raised rather than deleting: the import can be asserted never to have
     happened, but a payment credited against a fencer was a real event, and
     destroying it silently would leave a tournament whose books do not add up
-    and nothing to say why (spec payments-clearing)."""
+    and nothing to say why (spec payments-clearing). The organizer reverses it
+    first — a link, a recorded payment, or the transaction itself — and clears
+    afterwards."""
 
     def __init__(self, count: int):
         self.count = count
@@ -51,13 +62,17 @@ class CreditedTransactionsError(RuntimeError):
 
 
 def _credited(session: Session, tournament: Tournament) -> int:
+    """How many transactions hold a live credit.
+
+    Asked of the credit journal and not of `matched_registration_id`, which
+    records which registration the matcher resolved a transaction to and goes
+    on saying it after the credit has been reversed."""
     return (
         session.scalar(
-            select(func.count())
-            .select_from(BankTransaction)
-            .where(
-                BankTransaction.tournament_id == tournament.id,
-                BankTransaction.matched_registration_id.is_not(None),
+            select(func.count(func.distinct(PaymentCredit.source_id))).where(
+                PaymentCredit.tournament_id == tournament.id,
+                PaymentCredit.source_kind == CreditSource.BANK_TRANSACTION,
+                PaymentCredit.reversed_at.is_(None),
             )
         )
         or 0
@@ -103,6 +118,21 @@ def clear_payments(session: Session, tournament: Tournament) -> dict:
         )
     }
 
+    # The reversed credits those transactions left behind. Nothing live can be
+    # here — a live one refuses the clear above — and a reversed credit naming
+    # a transaction that no longer exists is a row nobody can read.
+    #
+    # Before the rules, not after: a credit a payment link decided names
+    # that rule, and deleting the rule first leaves the foreign key with
+    # nothing to point at
+    if transaction_ids:
+        session.execute(
+            delete(PaymentCredit).where(
+                PaymentCredit.source_kind == CreditSource.BANK_TRANSACTION,
+                PaymentCredit.source_id.in_(transaction_ids),
+            )
+        )
+
     # A payment link speaks about a transaction by its external id. Soft-deleted
     # rules included, as `importclear` does: an undone link is still a record
     # that the money was there.
@@ -117,7 +147,7 @@ def clear_payments(session: Session, tournament: Tournament) -> dict:
         session.execute(delete(RuleJournalEntry).where(RuleJournalEntry.rule_id.in_(doomed)))
         session.execute(delete(Rule).where(Rule.id.in_(doomed)))
 
-    # events first: they name the transactions by foreign key
+    # events next: they name the transactions by foreign key
     if transaction_ids:
         session.execute(
             delete(PaymentEvent).where(PaymentEvent.transaction_id.in_(transaction_ids))

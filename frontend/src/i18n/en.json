@@ -1150,6 +1150,21 @@
       "removeBody": "{{amount}} recorded for {{name}} will be taken back.",
       "removeUnsettles": "This registration will stop reading as paid.",
       "removeConfirm": "Remove"
+    },
+    "credited": {
+      "title": "Credited transactions",
+      "date": "Date",
+      "payer": "Payer",
+      "amount": "Amount",
+      "registrations": "Credited to",
+      "reverse": "Reverse the credit",
+      "reverseTitle": "Reverse this transaction's credit",
+      "reverseBody": "{{amount}} will stop counting. The transaction returns to the unmatched queue.",
+      "reverseUnsettles": "These registrations will stop reading as paid: {{names}}.",
+      "reverseNoneUnsettle": "No registration stops reading as paid because of this.",
+      "reverseConfirm": "Reverse",
+      "checking": "Working out what this will do.",
+      "actionFailed": "The credit could not be reversed."
     }
   },
   "validation": {

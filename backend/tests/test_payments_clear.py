@@ -15,6 +15,7 @@ import pytest
 from conftest import import_statement, set_fio_token, settle
 from sqlalchemy import select
 
+from app import ledger
 from app.bank import ParsedStatementRow, get_statement_parser
 from app.mail import get_mailer
 from app.main import app
@@ -228,7 +229,7 @@ def test_a_refusal_removes_nothing_at_all(client, auth_headers, mailbox, parser)
     )
     before = len(transactions())
     registration = db_session().scalar(select(Registration).where(Registration.vs == vs))
-    credited_before = registration.amount_paid_cents
+    credited_before = registration.credited_in("local")
     readings_before = len(stored_readings())
 
     assert clear(client, organizer).status_code == 409
@@ -236,7 +237,7 @@ def test_a_refusal_removes_nothing_at_all(client, auth_headers, mailbox, parser)
     assert len(transactions()) == before
     assert len(stored_readings()) == readings_before
     after = db_session().scalar(select(Registration).where(Registration.vs == vs))
-    assert after.amount_paid_cents == credited_before
+    assert after.credited_in("local") == credited_before
     assert after.state == registration.state
 
 
@@ -253,7 +254,8 @@ def test_clearing_after_the_payments_are_unlinked(client, auth_headers, mailbox,
     transaction.matched_registration_id = None
     transaction.status = "unmatched"
     registration = session.scalar(select(Registration).where(Registration.vs == vs))
-    registration.amount_paid_cents = 0
+    for entry in list(registration.live_credits):
+        ledger.reverse(session, entry, by="test <t@e>", reason="test")
     session.commit()
 
     assert clear(client, organizer).status_code == 200

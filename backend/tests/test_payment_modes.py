@@ -26,6 +26,7 @@ from app.models import (
 )
 from app.setup import seating_has_settled
 from tests.conftest import (
+    credit_registration,
     deadline_ahead,
     deadline_passed,
     enable_payments,
@@ -321,8 +322,7 @@ def test_settlement_demotes_the_unpaid_and_leaves_the_paid_alone(client, auth_he
 
     session = db_session()
     registration = session.scalar(select(Registration).where(Registration.vs == paid["vs"]))
-    registration.state = RegistrationState.PAID
-    session.commit()
+    credit_registration(session, registration, registration.total_amount * 100)
 
     set_seating_deadline(days_ago=1)
     assert process(client, organizer)["seating_demoted"] == 1
@@ -464,7 +464,7 @@ def test_settlement_keeps_a_credited_deposit_recorded(client, auth_headers):
 
     session = db_session()
     row = session.scalar(select(Registration).where(Registration.vs == registration["vs"]))
-    row.amount_paid_cents = 30000
+    credit_registration(session, row, 30000)
     row.expires_at = None  # the deposit closed the window
     session.commit()
 
@@ -472,7 +472,7 @@ def test_settlement_keeps_a_credited_deposit_recorded(client, auth_headers):
     assert process(client, organizer)["seating_demoted"] == 1
 
     demoted = registration_by_vs(registration["vs"])
-    assert demoted.amount_paid_cents == 30000  # not refunded, still recorded
+    assert demoted.credited_in("local") == 30000  # not refunded, still recorded
     assert [e.is_substitute for e in demoted.entries] == [True]
 
 
@@ -482,8 +482,7 @@ def test_immediate_mode_settles_without_demoting_anyone(client, auth_headers):
     _, registration = enroll(client, auth_headers)
     session = db_session()
     row = session.scalar(select(Registration).where(Registration.vs == registration["vs"]))
-    row.state = RegistrationState.PAID
-    session.commit()
+    credit_registration(session, row, row.total_amount * 100)
 
     response = client.post("/api/tournaments/cup/settle-seating", headers=organizer)
     assert response.status_code == 200
@@ -584,7 +583,7 @@ def test_deposit_paid_registration_is_reminded_about_its_balance(client, auth_he
     _, registration = enroll(client, auth_headers)
     session = db_session()
     row = session.scalar(select(Registration).where(Registration.vs == registration["vs"]))
-    row.amount_paid_cents = 30000
+    credit_registration(session, row, 30000)
     row.expires_at = None  # deposit closed the window; the deadline remains
     tournament = session.scalar(select(Tournament).where(Tournament.slug == "cup"))
     tournament.seating_deadline = deadline_ahead(5)
@@ -655,7 +654,7 @@ def test_credit_reaching_the_full_total_still_marks_paid(client, auth_headers, m
 
     import_rows(client, organizer, [f"1;01.08.2026;1000,00;CZK;{vs};;;;;"])
     settled = registration_by_vs(vs)
-    assert settled.state == RegistrationState.PAID
+    assert settled.settled
     assert "deposit_settled" not in event_kinds(vs)
 
 
@@ -680,7 +679,7 @@ def test_the_eur_lane_is_judged_against_the_eur_deposit(client, auth_headers, ma
 
     import_rows(client, organizer, [f"2;02.08.2026;4,00;EUR;{vs};;;;;"])
     reached = registration_by_vs(vs)
-    assert reached.amount_paid_eur_cents == 1200
+    assert reached.credited_in("eur") == 1200
     assert reached.expires_at is None
     assert "deposit_settled" in event_kinds(vs)
 
@@ -735,8 +734,7 @@ def test_returning_a_paid_registration_is_refused(client, auth_headers):
     _, registration = enroll(client, auth_headers)
     session = db_session()
     row = session.scalar(select(Registration).where(Registration.vs == registration["vs"]))
-    row.state = RegistrationState.PAID
-    session.commit()
+    credit_registration(session, row, row.total_amount * 100)
 
     response = client.post(
         f"/api/tournaments/cup/registrations/{row.id}/return-to-queue/LS", headers=organizer

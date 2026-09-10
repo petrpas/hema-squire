@@ -46,9 +46,7 @@ def main() -> None:
                 .select_from(Registration)
                 .where(Registration.tournament_id == tournament.id)
                 .where(
-                    Registration.state.in_(
-                        [RegistrationState.RESERVED, RegistrationState.PAID]
-                    )
+                    Registration.state == RegistrationState.RESERVED
                 )
             )
             print(

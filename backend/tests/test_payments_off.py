@@ -297,7 +297,7 @@ def test_stored_payment_settings_survive_the_feature_being_turned_off(
     paid_before = (
         db_session()
         .scalar(select(Registration).where(Registration.vs == paid["vs"]))
-        .amount_paid_cents
+        .credited_in("local")
     )
     assert transactions_before and paid_before == 30000
 
@@ -316,7 +316,7 @@ def test_stored_payment_settings_survive_the_feature_being_turned_off(
     assert (
         db_session()
         .scalar(select(Registration).where(Registration.vs == paid["vs"]))
-        .amount_paid_cents
+        .credited_in("local")
         == paid_before
     )
 

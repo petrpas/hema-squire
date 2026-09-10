@@ -6,7 +6,7 @@ from zoneinfo import ZoneInfo
 
 import pytest
 
-from tests.conftest import publish, today_local, today_utc
+from tests.conftest import credit_registration, publish, today_local, today_utc
 
 
 def make_open_tournament(client, organizer, slug, **overrides):
@@ -104,13 +104,12 @@ def test_open_reports_substitute_paid_and_cancelled_states(client, auth_headers)
 
     from app.db import get_session
     from app.main import app
-    from app.models import Fencer, Registration, RegistrationState
+    from app.models import Fencer, Registration
 
     session = next(app.dependency_overrides[get_session]())
     a_id = session.scalar(select(Fencer.id).where(Fencer.email == "a@example.com"))
     reg = session.scalar(select(Registration).where(Registration.fencer_id == a_id))
-    reg.state = RegistrationState.PAID
-    session.commit()
+    credit_registration(session, reg, reg.total_amount * 100)
 
     listed_first = client.get("/api/tournaments/open", headers=first).json()
     assert next(t for t in listed_first if t["slug"] == "cup")["my_registration_state"] == "paid"

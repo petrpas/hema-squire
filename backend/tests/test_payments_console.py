@@ -232,7 +232,10 @@ def test_credited_money_survives_a_json_round_trip(client, auth_headers, mailbox
     """A restore reconstructed totals but not credit until v11, so every
     registration came back reading as if nothing had been paid against it while
     its state still said paid. The outstanding column is the first thing that
-    looks at the credited counters, and so the first to catch it."""
+    looks at what has been credited, and so the first to catch it.
+
+    Since v14 the credit travels as the journal rows it actually is, each
+    naming the transaction that carried it."""
     organizer = auth_headers()
     setup(client, organizer)
     _, vs = enroll(client, auth_headers)
@@ -240,9 +243,11 @@ def test_credited_money_survives_a_json_round_trip(client, auth_headers, mailbox
     assert sheet_row(client, organizer, vs)["outstanding_amount"] == "400.00"
 
     document = client.get("/api/tournaments/cup/export/json", headers=organizer).json()
-    registration = document["registrations"][0]
-    assert registration["amount_paid_cents"] == 60000
-    assert registration["amount_paid_eur_cents"] == 0
+    [credit] = document["payment_credits"]
+    assert credit["amount_cents"] == 60000
+    assert credit["currency"] == "CZK"
+    assert credit["source_kind"] == "bank_transaction"
+    assert credit["origin"] == "auto_vs"
 
 
 @contextlib.contextmanager
@@ -266,10 +271,15 @@ def fresh_deployment():
         app.dependency_overrides[get_session] = previous
 
 
-def test_restoring_a_pre_v11_document_reads_as_uncredited(client, auth_headers, mailbox):
-    """A document written before the counters were carried recorded no credit;
-    it restores as zero, which is the reading those deployments already had —
-    not a KeyError."""
+def test_restoring_a_pre_ledger_document_reads_as_uncredited(client, auth_headers, mailbox):
+    """A document written before the journal existed carries no credits, so the
+    registrations it restores have been credited nothing — not a KeyError.
+
+    This one records no payment at all, which is the case that still loads. One
+    that *did* carry an `amount_paid_cents` is refused instead: that figure is
+    a sum whose composition was never recorded, and there is no honest way to
+    turn it into the credits it was the sum of (spec data-export,
+    `test_export_json`)."""
     organizer = auth_headers()
     setup(client, organizer)
     _, vs = enroll(client, auth_headers)
@@ -277,9 +287,8 @@ def test_restoring_a_pre_v11_document_reads_as_uncredited(client, auth_headers, 
 
     document = client.get("/api/tournaments/cup/export/json", headers=organizer).json()
     document["schema_version"] = 10
-    for registration in document["registrations"]:
-        registration.pop("amount_paid_cents")
-        registration.pop("amount_paid_eur_cents")
+    document.pop("payment_credits")
+    document.pop("payment_waivers")
 
     # a registration's VS is unique across the deployment, so the restore goes
     # into an empty one, as the export round-trip test does
@@ -288,3 +297,66 @@ def test_restoring_a_pre_v11_document_reads_as_uncredited(client, auth_headers, 
         restore = client.post("/api/tournaments/restore", json=document, headers=new_organizer)
         assert restore.status_code == 201, restore.text
         assert sheet_row(client, new_organizer, vs)["outstanding_amount"] == "1000.00"
+
+
+# ------------------------------------------- the credited-transactions view
+
+
+def credited(client, headers, slug="cup"):
+    return client.get(f"/api/tournaments/{slug}/payments/credited", headers=headers)
+
+
+def test_a_credited_transaction_is_listed_with_who_it_credited(client, auth_headers, mailbox):
+    """A transaction an automatic match credited sits in no queue and carries
+    no payment link, so until this view the console could not see it — and
+    reversing is offered precisely for the transactions it could not see."""
+    organizer = auth_headers()
+    setup(client, organizer)
+    _, vs = enroll(client, auth_headers)
+    import_rows(client, organizer, [f"1;01.08.2026;1000,00;CZK;{vs};;;;;"])
+
+    response = credited(client, organizer)
+    assert response.status_code == 200
+    [row] = response.json()
+    assert row["amount_cents"] == 100000
+    [credit] = row["credits"]
+    assert credit["vs"] == vs
+    assert credit["fencer_name"] == "Jan"
+    assert credit["unsettles"] is True  # it is the whole of what settled them
+
+
+def test_an_uncredited_transaction_is_not_in_the_view(client, auth_headers, mailbox):
+    organizer = auth_headers()
+    setup(client, organizer)
+    enroll(client, auth_headers)
+    import_rows(client, organizer, ["1;01.08.2026;1000,00;CZK;;;;;;"])  # no VS to resolve
+
+    assert credited(client, organizer).json() == []
+
+
+def test_reversing_from_the_view_empties_it_and_unsettles_the_registration(
+    client, auth_headers, mailbox
+):
+    organizer = auth_headers()
+    setup(client, organizer)
+    _, vs = enroll(client, auth_headers)
+    import_rows(client, organizer, [f"1;01.08.2026;1000,00;CZK;{vs};;;;;"])
+    [row] = credited(client, organizer).json()
+
+    # the preflight the console states before it confirms
+    preflight = client.get(
+        f"/api/tournaments/cup/payments/transactions/{row['id']}/reversal", headers=organizer
+    ).json()
+    assert [entry["vs"] for entry in preflight["registrations"]] == [vs]
+    assert preflight["registrations"][0]["unsettles"] is True
+
+    reverse = client.post(
+        f"/api/tournaments/cup/payments/transactions/{row['id']}/reverse", headers=organizer
+    )
+    assert reverse.status_code == 200, reverse.text
+    assert reverse.json()["status"] == "unmatched"
+    assert credited(client, organizer).json() == []
+
+    session = next(app.dependency_overrides[get_session]())
+    registration = session.scalar(select(Registration).where(Registration.vs == vs))
+    assert not registration.settled

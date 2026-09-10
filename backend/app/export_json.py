@@ -21,6 +21,7 @@ from app import rownumbers, taxonomy
 from app.constraints import DEFAULT_TIMEZONE
 from app.models import (
     BankTransaction,
+    CreditSource,
     Discipline,
     ExtraItem,
     Fencer,
@@ -29,6 +30,8 @@ from app.models import (
     ImportedRow,
     ManualPayment,
     ManualRow,
+    PaymentCredit,
+    PaymentWaiver,
     Registration,
     RegistrationDiscipline,
     RegistrationExtra,
@@ -41,7 +44,7 @@ from app.models import (
 )
 from app.routers.tournaments import _lowest_free_series
 
-SCHEMA_VERSION = 13
+SCHEMA_VERSION = 14
 
 _TOURNAMENT_FIELDS = [
     "slug",
@@ -109,22 +112,9 @@ _REGISTRATION_FIELDS = [
     "total_eur",
     "expires_at",
     "reminded_at",
-    "paid_at",
     "cancelled_at",
     "refundable",
     "refund_state",
-    # what has actually been credited, in both lanes. Carried since v11: a
-    # restore that reconstructs the totals but not the credit leaves every
-    # registration reading as if nothing had been paid against it, while its
-    # state still says paid.
-    "amount_paid_cents",
-    "amount_paid_eur_cents",
-    # settled with nothing passing through Squire, and why. Carried since v13,
-    # and load-bearing: the paid state may now stand on nothing but a person's
-    # word, and a document restoring that state without its cause would leave
-    # a registration that cannot be explained, corrected or reversed.
-    "settled_by_hand_at",
-    "settled_by_hand_reason",
     "weapon_rentals",
     "afterparty",
     "aftersparring",
@@ -145,6 +135,35 @@ _MANUAL_PAYMENT_FIELDS = [
     "note",
     "recorded_by",
     "created_at",
+]
+
+# One credit, as the journal holds it. Carried since v14, when the credited
+# counters stopped existing: what a registration has been credited is the sum
+# of these, so a document without them restores a tournament in which nobody
+# has paid. `source_ref` is resolved on restore the way every other reference
+# is; a credit whose source did not travel is not restored, because a credit
+# that cannot say where it came from is the one thing the journal forbids.
+_CREDIT_FIELDS = [
+    "amount_cents",
+    "currency",
+    "value_date",
+    "origin",
+    "created_at",
+    "reversed_at",
+    "reversed_by",
+    "reversed_reason",
+]
+
+# One waiver. Carried since v14 in place of the two fields on the registration:
+# the paid state may stand on nothing but a person's word, and a document
+# restoring that state without its cause would leave a registration nobody can
+# explain, correct or reverse.
+_WAIVER_FIELDS = [
+    "reason",
+    "granted_by",
+    "created_at",
+    "revoked_at",
+    "revoked_by",
 ]
 
 _TRANSACTION_FIELDS = [
@@ -214,6 +233,16 @@ def export_tournament(session: Session, tournament: Tournament) -> dict:
         select(BankTransaction)
         .where(BankTransaction.tournament_id == tournament.id)
         .order_by(BankTransaction.id)
+    ).all()
+    credits = session.scalars(
+        select(PaymentCredit)
+        .where(PaymentCredit.tournament_id == tournament.id)
+        .order_by(PaymentCredit.id)
+    ).all()
+    waivers = session.scalars(
+        select(PaymentWaiver)
+        .where(PaymentWaiver.tournament_id == tournament.id)
+        .order_by(PaymentWaiver.id)
     ).all()
     manual_payments = session.scalars(
         select(ManualPayment)
@@ -352,6 +381,7 @@ def export_tournament(session: Session, tournament: Tournament) -> dict:
         ],
         "bank_transactions": [
             {
+                "ref": t.id,
                 **_record(t, _TRANSACTION_FIELDS),
                 "matched_registration_ref": t.matched_registration_id
                 if t.matched_registration_id in reg_by_id
@@ -361,11 +391,31 @@ def export_tournament(session: Session, tournament: Tournament) -> dict:
         ],
         "manual_payments": [
             {
+                "ref": p.id,
                 "registration_ref": p.registration_id,
                 **_record(p, _MANUAL_PAYMENT_FIELDS),
             }
             for p in manual_payments
             if p.registration_id in reg_by_id
+        ],
+        "payment_credits": [
+            {
+                "registration_ref": c.registration_id,
+                "source_kind": c.source_kind.value,
+                "source_ref": c.source_id,
+                "rule_ref": c.rule_id,
+                **_record(c, _CREDIT_FIELDS),
+            }
+            for c in credits
+            if c.registration_id in reg_by_id
+        ],
+        "payment_waivers": [
+            {
+                "registration_ref": w.registration_id,
+                **_record(w, _WAIVER_FIELDS),
+            }
+            for w in waivers
+            if w.registration_id in reg_by_id
         ],
         "import_batches": [
             {
@@ -415,10 +465,38 @@ def _parse_time(value: str | None) -> datetime.time | None:
     return datetime.time.fromisoformat(value) if value else None
 
 
+def _guard_uncomposable_payment_state(data: dict) -> None:
+    """Refuse a pre-v14 document that carries a payment state nothing in it can
+    account for.
+
+    Up to v13 a registration carried `amount_paid_cents` — a running sum whose
+    composition was never recorded — and a settled-by-hand mark as two fields.
+    Since `derive-balances-from-credits` what a registration has been credited
+    is the sum of its credit journal, and there is no honest way to turn a bare
+    total into the rows it was the sum of: which payment, from where, arriving
+    when. Inventing one would restore money whose provenance the journal exists
+    to guarantee.
+
+    So such a document is refused rather than restored with the payments
+    silently dropped. Every other older document still loads, exactly as this
+    spec has promised at each version: one that records no credit and no mark
+    held none, and restores holding none.
+    """
+    for entry in data.get("registrations", []):
+        if (
+            (entry.get("amount_paid_cents") or 0) > 0
+            or (entry.get("amount_paid_eur_cents") or 0) > 0
+            or entry.get("settled_by_hand_at") is not None
+        ):
+            raise HTTPException(status_code=422, detail="payment_state_not_restorable")
+
+
 def restore_tournament(session: Session, data: dict, actor: Fencer) -> Tournament:
     version = data.get("schema_version")
-    if version not in (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, SCHEMA_VERSION):
+    if version not in (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, SCHEMA_VERSION):
         raise HTTPException(status_code=422, detail="unsupported_schema_version")
+    if version != SCHEMA_VERSION:
+        _guard_uncomposable_payment_state(data)
     doc = dict(data["tournament"])
     if version == 1:
         # v1 carried organizer_names: list[str]; normalize to the v2 shape
@@ -531,29 +609,28 @@ def restore_tournament(session: Session, data: dict, actor: Fencer) -> Tournamen
     reg_map: dict[int, Registration] = {}
     for entry in data.get("registrations", []):
         # total_eur arrived in v5; an older file's registrations priced in
-        # local currency only. The credited counters arrived in v11; a document
-        # written before that recorded no credit, which restores as zero — the
-        # same reading those deployments already had.
+        # local currency only.
         #
-        # The mark arrived in v13; before it, no registration had been settled
-        # by hand under a stored mark, so its absence restores as unmarked —
-        # which is what those deployments held.
-        entry = {
-            "total_eur": None,
-            "amount_paid_cents": 0,
-            "amount_paid_eur_cents": 0,
-            "settled_by_hand_at": None,
-            "settled_by_hand_reason": None,
-            **entry,
-        }
+        # The credited counters and the settled-by-hand mark were carried on
+        # the registration up to v13 and are dropped here: what a registration
+        # has been credited is the sum of `payment_credits` below, and whether
+        # it was waived is `payment_waivers`.
+        entry = {"total_eur": None, **entry}
+        entry.pop("amount_paid_cents", None)
+        entry.pop("amount_paid_eur_cents", None)
+        entry.pop("settled_by_hand_at", None)
+        entry.pop("settled_by_hand_reason", None)
+        entry.pop("paid_at", None)
+        # a registration that read `paid` in an older document restores as
+        # reserved; whether it reads paid afterwards is the credits below
+        if entry.get("state") == "paid":
+            entry["state"] = "reserved"
         payload = {k: entry[k] for k in _REGISTRATION_FIELDS}
         for field in (
             "registered_at",
             "expires_at",
             "reminded_at",
-            "paid_at",
             "cancelled_at",
-            "settled_by_hand_at",
         ):
             payload[field] = _parse_dt(payload[field])
         registration = Registration(
@@ -619,30 +696,89 @@ def restore_tournament(session: Session, data: dict, actor: Fencer) -> Tournamen
                 )
         reg_map[entry["ref"]] = registration
 
-    for entry in data.get("bank_transactions", []):
+    # a transaction's own id in the document, so the credits below can name the
+    # row that carried them after it has been given a new id here
+    transaction_map: dict[object, int] = {}
+    for index, entry in enumerate(data.get("bank_transactions", [])):
+        entry = dict(entry)
         ref = entry.pop("matched_registration_ref", None)
+        own_ref = entry.pop("ref", index)
         entry["date"] = _parse_date(entry["date"])
-        session.add(
-            BankTransaction(
-                tournament_id=tournament.id,
-                matched_registration_id=reg_map[ref].id if ref in reg_map else None,
-                **entry,
-            )
+        transaction = BankTransaction(
+            tournament_id=tournament.id,
+            matched_registration_id=reg_map[ref].id if ref in reg_map else None,
+            **entry,
         )
+        session.add(transaction)
+        session.flush()
+        transaction_map[own_ref] = transaction.id
 
-    for entry in data.get("manual_payments", []):
+    # a recorded payment's own id in the document, so the credits below can
+    # name the row that carried them after it has been given a new id here
+    manual_map: dict[object, int] = {}
+    for index, entry in enumerate(data.get("manual_payments", [])):
+        entry = dict(entry)
         ref = entry.pop("registration_ref", None)
+        ref_id = entry.pop("ref", index)
         if ref not in reg_map:
             continue
         entry["received_on"] = _parse_date(entry["received_on"])
         entry["created_at"] = _parse_dt(entry["created_at"])
-        # the credit itself travels on the registration's own counters, which
-        # were restored above; replaying it here would double every recorded
+        # the credit this payment made travels as its own journal row below and
+        # is not replayed from here; restoring both would double every recorded
         # payment in the document (spec data-export)
+        payment = ManualPayment(
+            tournament_id=tournament.id,
+            registration_id=reg_map[ref].id,
+            **entry,
+        )
+        session.add(payment)
+        session.flush()
+        manual_map[ref_id] = payment.id
+
+    # The journals. A credit names the row that carried it, so it is restored
+    # only where that row travelled too: a credit whose source did not is a
+    # payment that cannot say where it came from, which is the one thing the
+    # journal exists to prevent.
+    for entry in data.get("payment_credits", []):
+        entry = dict(entry)
+        registration_ref = entry.pop("registration_ref", None)
+        source_kind = entry.pop("source_kind", None)
+        source_ref = entry.pop("source_ref", None)
+        entry.pop("rule_ref", None)
+        if registration_ref not in reg_map:
+            continue
+        source_id = (
+            transaction_map.get(source_ref)
+            if source_kind == CreditSource.BANK_TRANSACTION.value
+            else manual_map.get(source_ref)
+        )
+        if source_id is None:
+            continue
+        entry["value_date"] = _parse_date(entry["value_date"])
+        entry["created_at"] = _parse_dt(entry["created_at"])
+        entry["reversed_at"] = _parse_dt(entry["reversed_at"])
         session.add(
-            ManualPayment(
+            PaymentCredit(
                 tournament_id=tournament.id,
-                registration_id=reg_map[ref].id,
+                registration_id=reg_map[registration_ref].id,
+                source_kind=CreditSource(source_kind),
+                source_id=source_id,
+                **entry,
+            )
+        )
+
+    for entry in data.get("payment_waivers", []):
+        entry = dict(entry)
+        registration_ref = entry.pop("registration_ref", None)
+        if registration_ref not in reg_map:
+            continue
+        entry["created_at"] = _parse_dt(entry["created_at"])
+        entry["revoked_at"] = _parse_dt(entry["revoked_at"])
+        session.add(
+            PaymentWaiver(
+                tournament_id=tournament.id,
+                registration_id=reg_map[registration_ref].id,
                 **entry,
             )
         )

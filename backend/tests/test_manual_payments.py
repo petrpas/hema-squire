@@ -28,7 +28,7 @@ from app.models import (
     Registration,
     RegistrationState,
 )
-from tests.conftest import enable_payments, publish, set_features, set_fio_token
+from tests.conftest import enable_payments, paid_at_of, publish, set_features, set_fio_token
 from tests.test_matching import age_reserved, import_rows
 
 IBAN = "CZ6508000000192000145399"
@@ -126,8 +126,8 @@ def test_cash_at_the_desk_settles_a_reservation(client, auth_headers, mailbox):
     assert response.status_code == 201, response.text
 
     row = registration_by_vs(vs)
-    assert row.state == RegistrationState.PAID
-    assert row.amount_paid_cents == 100000
+    assert row.settled
+    assert row.credited_in("local") == 100000
     assert row.outstanding_cents == 0
     # the same mail a bank credit sends: the fencer's inbox does not learn
     # which route their money took (design D3)
@@ -143,7 +143,7 @@ def test_a_recorded_payment_can_be_partial(client, auth_headers, mailbox):
 
     row = registration_by_vs(vs)
     assert row.state == RegistrationState.RESERVED
-    assert row.amount_paid_cents == 50000
+    assert row.credited_in("local") == 50000
     assert row.outstanding_cents == 50000
     assert "Přijali jsme částečnou platbu" in mailbox.sent[-1]["Subject"]
 
@@ -177,9 +177,9 @@ def test_the_eur_lane_is_credited_alone(client, auth_headers, mailbox):
 
     row = registration_by_vs(vs)
     # each lane is judged against its own total and the two are never summed
-    assert row.amount_paid_eur_cents == 4000
-    assert row.amount_paid_cents == 0
-    assert row.state == RegistrationState.PAID
+    assert row.credited_in("eur") == 4000
+    assert row.credited_in("local") == 0
+    assert row.settled
 
 
 def test_a_currency_the_tournament_does_not_price_in_is_refused(client, auth_headers, mailbox):
@@ -190,7 +190,7 @@ def test_a_currency_the_tournament_does_not_price_in_is_refused(client, auth_hea
     response = record(client, organizer, registration_by_vs(vs).id, currency="EUR")
     assert response.status_code == 409
     assert response.json()["detail"] == "currency_not_accepted"
-    assert registration_by_vs(vs).amount_paid_eur_cents == 0
+    assert registration_by_vs(vs).credited_in("eur") == 0
 
 
 def test_it_is_not_a_bank_transaction(client, auth_headers, mailbox):
@@ -234,7 +234,7 @@ def test_removal_subtracts_exactly_what_was_credited(client, auth_headers, mailb
     make_tournament(client, organizer)
     _, vs = enroll(client, auth_headers)
     payment = record(client, organizer, registration_by_vs(vs).id).json()
-    assert registration_by_vs(vs).state == RegistrationState.PAID
+    assert registration_by_vs(vs).state == RegistrationState.RESERVED
 
     session = db_session()
     registration = session.scalar(select(Registration).where(Registration.vs == vs))
@@ -244,9 +244,9 @@ def test_removal_subtracts_exactly_what_was_credited(client, auth_headers, mailb
     assert remove(client, organizer, payment["id"]).status_code == 200
 
     row = registration_by_vs(vs)
-    assert row.amount_paid_cents == 0
+    assert row.credited_in("local") == 0
     assert row.state == RegistrationState.RESERVED
-    assert row.paid_at is None
+    assert paid_at_of(row) is None
 
 
 def test_removal_is_a_soft_delete(client, auth_headers, mailbox):
@@ -274,8 +274,8 @@ def test_a_registration_still_covered_stays_paid(client, auth_headers, mailbox):
     remove(client, organizer, first["id"])
 
     row = registration_by_vs(vs)
-    assert row.amount_paid_cents == 100000
-    assert row.state == RegistrationState.PAID
+    assert row.credited_in("local") == 100000
+    assert row.settled
 
 
 def test_removal_is_audited(client, auth_headers, mailbox):
@@ -339,7 +339,7 @@ def test_refused_where_squire_handles_no_payments(client, auth_headers, mailbox)
 
     response = record(client, organizer, registration_by_vs(vs).id)
     assert response.status_code == 409
-    assert registration_by_vs(vs).amount_paid_cents == 0
+    assert registration_by_vs(vs).credited_in("local") == 0
     assert listed(client, organizer).status_code == 409
 
 
@@ -397,7 +397,7 @@ def test_a_statement_landing_on_a_settled_registration_is_flagged(client, auth_h
 
     row = registration_by_vs(vs)
     # the money was not credited twice
-    assert row.amount_paid_cents == 100000
+    assert row.credited_in("local") == 100000
     [transaction] = db_session().scalars(select(BankTransaction)).all()
     assert transaction.status == "flagged"
     assert transaction.status_reason == "registration_paid"
@@ -460,8 +460,8 @@ def test_a_partly_recorded_registration_overshoots_into_the_overpayment_flag(
     import_rows(client, organizer, [f"1;01.08.2026;1000,00;CZK;{vs};;;;;"])
 
     row = registration_by_vs(vs)
-    assert row.state == RegistrationState.PAID
-    assert row.amount_paid_cents == 150000
+    assert row.settled
+    assert row.credited_in("local") == 150000
     assert row.refund_state == RefundState.PENDING
     kinds = [event.kind for event in db_session().scalars(select(PaymentEvent)).all()]
     assert "overpayment" in kinds
@@ -496,7 +496,7 @@ def test_a_waived_registration_holds_no_money(client, auth_headers, mailbox):
     )
 
     row = registration_by_vs(vs)
-    assert row.amount_paid_cents == 0
+    assert row.credited_in("local") == 0
     # nothing was credited, so it can never reach the expired-holding queue
     assert (
         client.get("/api/tournaments/cup/payments/expired-holding", headers=organizer).json() == []
@@ -519,7 +519,7 @@ def test_recorded_payment_dates_by_received_on_not_by_when_it_was_typed(
 
     record(client, organizer, registration_by_vs(vs).id, received_on="2026-08-01")
 
-    paid_at = registration_by_vs(vs).paid_at
+    paid_at = paid_at_of(registration_by_vs(vs))
     assert paid_at is not None
     assert paid_at.replace(tzinfo=UTC) == datetime.combine(
         date(2026, 8, 1), time(0, 0), tzinfo=ZoneInfo("Europe/Prague")
@@ -534,11 +534,11 @@ def test_a_second_recorded_payment_completing_it_gives_its_own_day(client, auth_
     _, vs = enroll(client, auth_headers)
 
     record(client, organizer, registration_by_vs(vs).id, amount="600.00", received_on="2026-08-01")
-    assert registration_by_vs(vs).paid_at is None
+    assert paid_at_of(registration_by_vs(vs)) is None
 
     record(client, organizer, registration_by_vs(vs).id, amount="400.00", received_on="2026-08-09")
 
-    paid_at = registration_by_vs(vs).paid_at
+    paid_at = paid_at_of(registration_by_vs(vs))
     assert paid_at is not None
     assert paid_at.replace(tzinfo=UTC) == datetime.combine(
         date(2026, 8, 9), time(0, 0), tzinfo=ZoneInfo("Europe/Prague")

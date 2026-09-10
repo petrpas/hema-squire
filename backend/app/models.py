@@ -9,6 +9,7 @@ Fencer accounts are global; everything else is tournament-scoped.
 import enum
 from datetime import date, datetime, time
 from decimal import Decimal
+from typing import Any
 
 from sqlalchemy import (
     JSON,
@@ -21,9 +22,18 @@ from sqlalchemy import (
     String,
     Text,
     UniqueConstraint,
+    and_,
+    case,
+    exists,
     func,
+    literal,
+    or_,
+    select,
+    text,
 )
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.ext.hybrid import hybrid_property
+from sqlalchemy.orm import InstrumentedAttribute, Mapped, mapped_column, relationship
+from sqlalchemy.sql.elements import ColumnElement
 
 from app import constraints, taxonomy
 from app.db import Base
@@ -87,8 +97,22 @@ class Currency(enum.StrEnum):
 
 
 class RegistrationState(enum.StrEnum):
+    """The registration's **lifecycle** — what a person or a clock decided.
+
+    There is deliberately no `PAID` here. Whether a registration is settled is
+    not a decision anybody makes; it is a reading of the money against the
+    total, and while it was stored as a fourth state three separate code paths
+    could each produce a paid registration that owed something. It is derived
+    now (`Registration.settled`), and the state a reader is shown is composed
+    from this enum and that derivation (`Registration.wire_state`).
+
+    Removing the value rather than merely ceasing to assign it is deliberate:
+    every one of the twenty-five sites that compared against it becomes an
+    error the type checker reports, instead of a comparison that keeps checking
+    out and quietly matches nothing (design `derive-balances-from-credits` D5).
+    """
+
     RESERVED = "reserved"
-    PAID = "paid"
     EXPIRED = "expired"
     CANCELLED = "cancelled"
 
@@ -665,64 +689,34 @@ class Registration(Base):
     # and once as a registration.
     source_row_id: Mapped[str | None] = mapped_column(String(80), unique=True)
     reminded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
-    # the day the money arrived, not the moment Squire learned of it: a
-    # transaction's statement date, or the `received_on` of a payment the
-    # organizer recorded. A bare day carries no clock, so it is stored as the
-    # instant that day begins in the tournament's own zone
-    # (`setup.start_of_local_day`).
-    #
-    # The one exception is a registration settled by hand, which records no
-    # payment: with no statement day behind it, the mark stamps its own moment
-    # (spec `payments`; routers.registrations).
-    paid_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     cancelled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     refundable: Mapped[bool | None]
     refund_state: Mapped[RefundState] = mapped_column(
         str_enum(RefundState), default=RefundState.NOT_APPLICABLE
     )
-    # Sum of payments credited to this registration in the tournament's local
-    # currency, in cents — the one stored local-currency money figure; the
-    # balance is always derived (see outstanding_cents), never stored.
+    # What this registration has been credited is **not stored**. It is the sum
+    # of its live `PaymentCredit` rows in one currency lane, and every figure
+    # built on it — what is owed, whether it is settled, when it became paid —
+    # is derived below.
     #
-    # This counter used to mean *money Squire saw in a statement*. It now means
-    # **money credited, by a statement or by a person who said so**: an
-    # organizer may record a payment that arrived outside the bank feed, and it
-    # is credited here exactly as an ingested transaction's amount is (spec
-    # payments, "An organizer may record a payment Squire never saw"). Where
-    # the money came from is a property of the payment, not of this figure —
-    # ask `ManualPayment` and `BankTransaction`, which is how the two are told
-    # apart after the fact.
+    # Two counters stood here and were moved by `+=` and `-=` at six call
+    # sites. Nothing recorded what they were the sum of, so the figure could
+    # not be recomputed, could not be checked, and could not say what it was
+    # made of: a clear was refused outright rather than unwind one, a withdrawn
+    # link could orphan money inside one, and a fresh registration cycle zeroed
+    # the local one while leaving the EUR one standing. See the `PaymentCredit`
+    # docstring and design `derive-balances-from-credits`.
     #
-    # A second counter was rejected deliberately: five readers would each have
-    # to remember to sum two fields, and the one that forgot would be a
-    # reservation expiring on money the organizer was told had arrived (design
-    # add-manual-payment-entry D1).
-    #
-    # A registration settled by hand credits **nothing** here. That mark is a
-    # waiver, not a payment; see `settled_by_hand_at`.
-    amount_paid_cents: Mapped[int] = mapped_column(default=0)
-    # the EUR sibling of amount_paid_cents: sum of EUR payments credited, in
-    # EUR cents. The two counters are never summed — a registration is settled
-    # when either currency's credit covers that currency's own total (design
-    # Decision 5); see matching.match_new_transactions.
-    amount_paid_eur_cents: Mapped[int] = mapped_column(default=0)
-    # When an organizer said this registration is settled with nothing passing
-    # through Squire, and why. One mark meaning one thing on every kind of
-    # tournament: where Squire collects nothing it is the organizer's word that
-    # they took the money themselves, and where Squire collects it is a waiver
-    # — a free place, a comped entrant (spec payments, "An organizer may mark a
-    # registration settled by hand").
-    #
-    # Stored rather than deduced from a paid state with empty counters. That
-    # deduction was sound only while such a registration could have no other
-    # cause; it now can, since a waived registration may also hold a payment
-    # recorded by hand (design add-manual-payment-entry D4).
-    #
-    # The reason is required where the tournament's payments are Squire's and
-    # optional where they are not — enforced at the endpoint, since it is a
-    # fact about the tournament rather than about this row.
-    settled_by_hand_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
-    settled_by_hand_reason: Mapped[str | None] = mapped_column(String(200))
+    # A registration settled by hand credits **nothing**. That mark is a
+    # waiver, not a payment, and is a row in `PaymentWaiver`.
+    credits: Mapped[list[PaymentCredit]] = relationship(
+        back_populates="registration",
+        order_by=lambda: [PaymentCredit.created_at, PaymentCredit.id],
+    )
+    waivers: Mapped[list[PaymentWaiver]] = relationship(
+        back_populates="registration",
+        order_by=lambda: [PaymentWaiver.created_at, PaymentWaiver.id],
+    )
 
     @property
     def fully_queued(self) -> bool:
@@ -767,22 +761,86 @@ class Registration(Base):
             return f"VS {self.vs}"
         return f"registrace {self.id} ({self.fencer.display_name})"
 
+    # ---- money: every figure below is derived, none is stored ---------------
+    #
+    # Each is recomputed from the live rows in `credits` and `waivers`, so a
+    # reversal is reflected by the next reading with nothing anywhere to
+    # adjust. `settled` and the two credited sums carry SQL expressions beside
+    # their Python bodies, so that counting seats and selecting the
+    # registrations a lifecycle pass acts on stay single queries.
+
+    @property
+    def live_credits(self) -> list[PaymentCredit]:
+        """This registration's credits that still count, oldest first — the
+        order they were appended, which is the order Squire learned of them."""
+        return [credit for credit in self.credits if credit.reversed_at is None]
+
+    @property
+    def active_waiver(self) -> PaymentWaiver | None:
+        """The waiver standing over this registration, if one is. The latest
+        live entry: granting, revoking and granting again leaves three rows,
+        and it is the last that says what is true now."""
+        live = [waiver for waiver in self.waivers if waiver.revoked_at is None]
+        return live[-1] if live else None
+
+    def lane_of(self, currency: Currency) -> str | None:
+        """Which currency lane a credit in this currency counts toward, or None
+        where the tournament does not price in it. The same judgement
+        `matching.match_currency` makes of a transaction, asked here of a
+        credit that has already been written."""
+        if currency == self.tournament.local_currency:
+            return "local"
+        if currency == Currency.EUR and self.tournament.shows_eur:
+            return "eur"
+        return None
+
+    def credited_in(self, which: str) -> int:
+        """What has been credited in one lane, in cents: the sum of the live
+        credits that count toward it. The two lanes are never summed."""
+        return sum(
+            credit.amount_cents
+            for credit in self.live_credits
+            if self.lane_of(credit.currency) == which
+        )
+
+    @hybrid_property
+    def credited_local_cents(self) -> int:
+        return self.credited_in("local")
+
+    @credited_local_cents.inplace.expression
+    @classmethod
+    def _credited_local_expression(cls) -> ColumnElement[int]:
+        return _credited_sql(cls, _tournament_value(cls, Tournament.local_currency))
+
+    @hybrid_property
+    def credited_eur_cents(self) -> int:
+        return self.credited_in("eur")
+
+    @credited_eur_cents.inplace.expression
+    @classmethod
+    def _credited_eur_expression(cls) -> ColumnElement[int]:
+        # zero where EUR is not a second currency, so that an EUR-priced
+        # tournament — whose local lane already is the EUR one — never counts
+        # the same money in both
+        return case(
+            (_shows_eur_sql(cls), _credited_sql(cls, literal(Currency.EUR))),
+            else_=literal(0),
+        )
+
     @property
     def outstanding_cents(self) -> int:
-        # Correct under the widened counter without change: what is owed is the
-        # total less what has been credited, whether a statement or a person
-        # put the credit there. A registration settled by hand is the one case
-        # this figure does not answer on its own — nothing was credited and
-        # nothing is due — and the surfaces read `settled_by_hand_at` beside it
-        # and say *waived* (design add-manual-payment-entry D5).
-        return self.total_amount * 100 - self.amount_paid_cents
+        """What is owed in the local lane: the total less what the live credits
+        sum to. A registration settled by hand is the one case this figure does
+        not answer on its own — nothing was credited and nothing is due — and
+        the surfaces read `waived` beside it and say *waived*."""
+        return self.total_amount * 100 - self.credited_in("local")
 
     @property
     def outstanding_eur_cents(self) -> int | None:
         """None when this registration has no EUR total to owe against."""
         if self.total_eur is None:
             return None
-        return self.total_eur * 100 - self.amount_paid_eur_cents
+        return self.total_eur * 100 - self.credited_in("eur")
 
     def outstanding_in(self, which: str) -> int:
         """The lane's outstanding as a number. A registration carrying no EUR
@@ -798,6 +856,117 @@ class Registration(Base):
         every partial payment already credited."""
         total = self.total_amount if which == "local" else (self.total_eur or 0)
         return total * 100 * tournament.amount_tolerance_percent / 100
+
+    @property
+    def paid_lane(self) -> str:
+        """The lane the money came in, which decides what the balance is stated
+        in and which total settles the registration. EUR only where the EUR
+        lane holds credit, the local one holds none, and there is an EUR total
+        to owe against; the local lane otherwise, that being the price the
+        tournament quotes first."""
+        if self.credited_in("eur") and not self.credited_in("local") and self.total_eur is not None:
+            return "eur"
+        return "local"
+
+    def settles_in(self, which: str) -> bool:
+        """Whether this lane's credits cover this lane's own total within
+        tolerance. The lanes are asked separately and never summed."""
+        return self.credited_in(which) > 0 and self.outstanding_in(which) <= self.tolerance_cents(
+            self.tournament, which
+        )
+
+    @property
+    def settling_lane(self) -> str | None:
+        """The lane that settled this registration, or None if none did.
+
+        **Either lane settles it** — a registration owing 1100 Kč or 45 € part
+        paid in both is not settled, and a further credit reaching one lane's
+        own total is (spec payments, Amount tolerance). This is not
+        `paid_lane`, which decides what the *balance* is stated in and is a
+        different question with a different answer whenever money came in both.
+        """
+        for which in ("local", "eur"):
+            if self.settles_in(which):
+                return which
+        return None
+
+    @hybrid_property
+    def waived(self) -> bool:
+        """Settled by a person saying so, with no money passing."""
+        return self.active_waiver is not None
+
+    @waived.inplace.expression
+    @classmethod
+    def _waived_expression(cls) -> ColumnElement[bool]:
+        return exists(
+            select(PaymentWaiver.id).where(
+                PaymentWaiver.registration_id == cls.id,
+                PaymentWaiver.revoked_at.is_(None),
+            )
+        )
+
+    @property
+    def waiver_reason(self) -> str | None:
+        waiver = self.active_waiver
+        return waiver.reason if waiver is not None else None
+
+    @hybrid_property
+    def settled(self) -> bool:
+        """Whether this registration has been paid for, derived and never
+        assigned: a live waiver, or a lane that **holds credit** whose
+        outstanding balance is within tolerance.
+
+        **The credit test is load-bearing and is not a rounding guard.** A
+        registration that was never asked for anything has an outstanding of
+        zero and a tolerance of zero, so without it every such row would read
+        as paid — and there are two kinds in quantity: one sitting entirely in
+        the substitute queue, whose queued placements `pricing` does not price,
+        and any registration on a tournament that charges nothing. A fencer
+        waiting in a queue would appear on the roster as having paid. Owing
+        nothing and having paid are different statements.
+
+        It tests the credit and not the total so that an amendment removing
+        everything a paid fencer bought leaves them paid, their balance stating
+        the overpayment, which is what happens today (design D5).
+
+        This does **not** say what state a reader is shown; `wire_state` does,
+        and the lifecycle wins over this wherever the two meet."""
+        return self.waived or self.settling_lane is not None
+
+    @settled.inplace.expression
+    @classmethod
+    def _settled_expression(cls) -> ColumnElement[bool]:
+        percent = _tournament_value(cls, Tournament.amount_tolerance_percent)
+        local_credited = cls.credited_local_cents
+        eur_credited = cls.credited_eur_cents
+        eur_total = func.coalesce(cls.total_eur, 0) * 100
+        local_total = cls.total_amount * 100
+        return or_(
+            cls.waived,
+            and_(
+                local_credited > 0,
+                local_total - local_credited <= local_total * percent / 100,
+            ),
+            and_(
+                cls.total_eur.is_not(None),
+                eur_credited > 0,
+                eur_total - eur_credited <= eur_total * percent / 100,
+            ),
+        )
+
+    @property
+    def wire_state(self) -> str:
+        """The state a reader is shown, composed rather than stored.
+
+        The lifecycle wins over the money. A registration credited after it
+        expired reads expired — which is what happens today, and why the
+        expired-holding queue exists — and a cancelled one reads cancelled
+        however much stands against it."""
+        if self.state is RegistrationState.CANCELLED:
+            return "cancelled"
+        if self.state is RegistrationState.EXPIRED:
+            return "expired"
+        return "paid" if self.settled else "reserved"
 
     def balance_cents(self, tournament: Tournament) -> tuple[int, Currency]:
         """What is still owed — or, negative, what is over — and the currency
@@ -826,17 +995,16 @@ class Registration(Base):
         overpayment reads as the negative figure it is, for the same reason.
 
         A waiver is the one exception and owes nothing at all, whatever its
-        counters hold, because no money was ever supposed to pass.
+        credits hold, because no money was ever supposed to pass.
         """
         remaining, currency = self.remaining_cents(tournament)
-        if self.settled_by_hand_at is not None:
+        if self.waived:
             return 0, currency
         return remaining, currency
 
     def remaining_cents(self, tournament: Tournament) -> tuple[int, Currency]:
         """The same figure `balance_cents` states, before the waiver is applied
-        to it: what the counters leave uncovered, in the lane the money came
-        in.
+        to it: what the credits leave uncovered, in the lane the money came in.
 
         A waiver forgives whatever stood at the moment it was given, and that
         is not always the whole price — a fencer who paid part and had the rest
@@ -845,7 +1013,7 @@ class Registration(Base):
         nothing and its figure is therefore zero; this is where the amount the
         waiver forgave is still readable.
         """
-        if self.amount_paid_eur_cents and not self.amount_paid_cents and self.total_eur is not None:
+        if self.paid_lane == "eur":
             return self.outstanding_eur_cents or 0, Currency.EUR
         return self.outstanding_cents, tournament.local_currency
 
@@ -1024,7 +1192,7 @@ class ManualPayment(Base):
     amount_cents: Mapped[int]
     # one of the tournament's currencies; credited to that currency's lane and
     # never converted, since the two lanes are never summed (see
-    # Registration.amount_paid_cents)
+    # Registration.credited_in)
     currency: Mapped[Currency] = mapped_column(str_enum(Currency))
     # the date the organizer says the money arrived, which is not the date they
     # typed it in. Provenance rather than a clock: reminders and expiry read
@@ -1041,6 +1209,182 @@ class ManualPayment(Base):
 
     tournament: Mapped[Tournament] = relationship()
     registration: Mapped[Registration] = relationship()
+
+
+class CreditSource(enum.StrEnum):
+    """What carried the money a credit records: a transaction Squire ingested
+    from a statement, or a payment an organizer entered by hand."""
+
+    BANK_TRANSACTION = "bank_transaction"
+    MANUAL_PAYMENT = "manual_payment"
+
+
+class CreditOrigin(enum.StrEnum):
+    """What decided to credit it, which is not the same question as what
+    carried it. One transaction credited by the matcher and the same
+    transaction credited because an organizer linked it are one source with two
+    different decisions behind them, and a reader asking why a registration was
+    credited must not have to infer the answer from the state of the source."""
+
+    AUTO_VS = "auto_vs"
+    PAYMENT_LINK = "payment_link"
+    REINSTATE = "reinstate"
+    REFUND_HOLD = "refund_hold"
+    RECORDED = "recorded"
+
+
+class PaymentCredit(Base):
+    """One amount credited to one registration, and where it came from.
+
+    **The only place a credit is recorded.** What a registration has been
+    credited in a currency lane is the sum of its live rows here; no counter
+    holds it and nothing adjusts a figure. A balance that cannot be recomputed
+    cannot be checked, and the two counters this replaces had six call sites
+    moving them with `+=` and `-=` and nothing to check them against.
+
+    A row is appended and then only ever reversed. It is never edited and never
+    deleted: a correction is a reversal and a new row, exactly as
+    `ManualPayment` already means it.
+
+    **Reversal is `reversed_at`, not a compensating negative row.** A negative
+    row would appear in every list of a registration's payments as a payment,
+    and would make every reader responsible for a sign. The project makes this
+    choice twice already, in `Rule.deleted_at` and `ManualPayment.removed_at`.
+
+    `source_kind` and `source_id` address the row that carried the money; the
+    partial unique index over them is the whole of the idempotence guarantee.
+    Scoped per registration because one transaction legitimately credits
+    several — that is what a payment link is — and each of those is one credit.
+
+    The currency is the one the money arrived in. Which lane it counts toward
+    follows by comparing it to the tournament's own, as `matching.match_currency`
+    decides it; a lane is a fact about the tournament and not about a payment,
+    so it is not stored here (design D6).
+    """
+
+    __tablename__ = "payment_credits"
+    __table_args__ = (
+        # the idempotence guarantee: a source row credits a registration at most
+        # once while that credit is live. Partial, so that reversing a credit
+        # leaves the pair free to be credited again as a new row (design D2)
+        Index(
+            "uq_payment_credits_live_source",
+            "registration_id",
+            "source_kind",
+            "source_id",
+            unique=True,
+            sqlite_where=text("reversed_at IS NULL"),
+            postgresql_where=text("reversed_at IS NULL"),
+        ),
+        Index("ix_payment_credits_registration_live", "registration_id", "reversed_at"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    tournament_id: Mapped[int] = mapped_column(ForeignKey("tournaments.id"))
+    registration_id: Mapped[int] = mapped_column(ForeignKey("registrations.id"))
+    amount_cents: Mapped[int]
+    currency: Mapped[Currency] = mapped_column(str_enum(Currency))
+    # the day the money arrived, as its own source states it: the transaction's
+    # statement date, or the `received_on` an organizer typed. Never a clock
+    # reading — this is what the derived paid date is built from
+    value_date: Mapped[date]
+    source_kind: Mapped[CreditSource] = mapped_column(str_enum(CreditSource))
+    source_id: Mapped[int]
+    origin: Mapped[CreditOrigin] = mapped_column(str_enum(CreditOrigin))
+    # the payment_link rule that decided this credit, where one did. Withdrawing
+    # the rule reverses exactly the live rows naming it, which is the guarantee
+    # the rule payload's `credited` map used to carry on its own
+    rule_id: Mapped[int | None] = mapped_column(ForeignKey("rules.id"))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    reversed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # the label the audit trail uses rather than a foreign key, as
+    # `ManualPayment.recorded_by` is: the record must still read correctly when
+    # the account that made it is gone
+    reversed_by: Mapped[str | None] = mapped_column(String(200))
+    reversed_reason: Mapped[str | None] = mapped_column(String(200))
+
+    tournament: Mapped[Tournament] = relationship()
+    registration: Mapped[Registration] = relationship(back_populates="credits")
+
+
+class PaymentWaiver(Base):
+    """An organizer's statement that a registration is settled with no money
+    passing — a free place, a comped entrant, or, where Squire collects
+    nothing, their word that they took the money themselves.
+
+    **Deliberately not a row in `PaymentCredit`.** It carries no amount, no
+    currency and no arrival day, and crediting one would put money into every
+    sum of what a tournament received that nobody ever paid. The two are read
+    together in exactly one place, the settled derivation.
+
+    Whether a registration is waived is the latest live row here, and is not
+    stored on the registration. Granting, revoking and granting again therefore
+    leaves three rows and every reason each was given, where the two fields this
+    replaces kept only the last.
+    """
+
+    __tablename__ = "payment_waivers"
+    __table_args__ = (
+        Index("ix_payment_waivers_registration_live", "registration_id", "revoked_at"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    tournament_id: Mapped[int] = mapped_column(ForeignKey("tournaments.id"))
+    registration_id: Mapped[int] = mapped_column(ForeignKey("registrations.id"))
+    # required where the tournament's payments are Squire's and optional where
+    # they are not — enforced at the endpoint, since it is a fact about the
+    # tournament rather than about this row
+    reason: Mapped[str | None] = mapped_column(String(200))
+    granted_by: Mapped[str] = mapped_column(String(200))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    revoked_by: Mapped[str | None] = mapped_column(String(200))
+
+    tournament: Mapped[Tournament] = relationship()
+    registration: Mapped[Registration] = relationship(back_populates="waivers")
+
+
+# --- the SQL halves of Registration's derived money ---------------------------
+#
+# Written here rather than beside the properties because they name the journal
+# tables, which are declared below `Registration`. Each is a correlated scalar
+# subquery, so a caller filtering or counting on a derived figure still issues
+# one query (design D9).
+
+
+def _tournament_value(cls: type[Registration], column: InstrumentedAttribute[Any]) -> ColumnElement:
+    """One column of the registration's tournament, as a scalar subquery. The
+    lane a credit counts toward and the tolerance a balance is judged by are
+    both facts about the tournament, and neither is copied onto the rows."""
+    # correlated explicitly: nested inside `_credited_sql` this subquery is two
+    # levels down from the registration it speaks about, and without saying so
+    # it would add `registrations` to its own FROM and cross-join
+    return select(column).where(Tournament.id == cls.tournament_id).correlate(cls).scalar_subquery()
+
+
+def _shows_eur_sql(cls: type[Registration]) -> ColumnElement[bool]:
+    """`Tournament.shows_eur` as a condition — EUR accepted as a second
+    currency, which an EUR-priced tournament never is."""
+    return (
+        select(Tournament.eur_payments_enabled)
+        .where(Tournament.id == cls.tournament_id, Tournament.local_currency != Currency.EUR)
+        .correlate(cls)
+        .scalar_subquery()
+    )
+
+
+def _credited_sql(cls: type[Registration], currency: ColumnElement[Any]) -> ColumnElement[int]:
+    """The sum of the registration's live credits in one currency."""
+    return (
+        select(func.coalesce(func.sum(PaymentCredit.amount_cents), 0))
+        .where(
+            PaymentCredit.registration_id == cls.id,
+            PaymentCredit.reversed_at.is_(None),
+            PaymentCredit.currency == currency,
+        )
+        .correlate(cls)
+        .scalar_subquery()
+    )
 
 
 class Rule(Base):

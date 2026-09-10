@@ -68,6 +68,11 @@ def process_reminders(session: Session, tournament: Tournament, mailer: Mailer) 
         select(Registration).where(
             Registration.tournament_id == tournament.id,
             Registration.state == RegistrationState.RESERVED,
+            # a settled registration owes nothing and is chased for nothing.
+            # Stated because the reserved state no longer says it: whether a
+            # registration has been paid for left the enum and is the
+            # derivation beside it (design derive-balances-from-credits D5)
+            ~Registration.settled,
             Registration.reminded_at.is_(None),
         )
     ).all()
@@ -122,6 +127,9 @@ def process_expiries(session: Session, tournament: Tournament, mailer: Mailer) -
         select(Registration).where(
             Registration.tournament_id == tournament.id,
             Registration.state == RegistrationState.RESERVED,
+            # a settled registration does not expire for non-payment, which the
+            # reserved state used to say on its own
+            ~Registration.settled,
             Registration.expires_at.is_not(None),
             Registration.expires_at <= _now(),
         )
@@ -173,7 +181,7 @@ def process_expiries(session: Session, tournament: Tournament, mailer: Mailer) -
         # A waiver credits nothing and so never lands here, which is right —
         # there is nothing to give back
         holding_payment = (
-            registration.amount_paid_cents > 0 or (registration.amount_paid_eur_cents or 0) > 0
+            registration.credited_in("local") > 0 or registration.credited_in("eur") > 0
         )
         session.add(
             PaymentEvent(
@@ -239,6 +247,9 @@ def _demotable(session: Session, tournament: Tournament) -> list[Registration]:
         .where(
             Registration.tournament_id == tournament.id,
             Registration.state == RegistrationState.RESERVED,
+            # "still reserved — that is, still owing money" is two conditions
+            # now that the paid state has left the enum
+            ~Registration.settled,
         )
         .order_by(Registration.registered_at)
     ).all()
@@ -348,7 +359,7 @@ def process_composition_reminders(session: Session, tournament: Tournament, mail
             Team.tournament_id == tournament.id,
             Team.waitlisted.is_(False),
             Team.composition_reminded_at.is_(None),
-            Registration.state.in_([RegistrationState.RESERVED, RegistrationState.PAID]),
+            Registration.state == RegistrationState.RESERVED,
         )
     ).all()
 

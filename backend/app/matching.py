@@ -16,19 +16,21 @@ looks like afterward. The two currency lanes are never summed.
 """
 
 import re
-from datetime import UTC, date, datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from typing import Literal
 
 from pydantic import BaseModel
 from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
-from app import bank, emails, nameresolve, setup
+from app import bank, emails, ledger, nameresolve
 from app import rules as rules_engine
 from app.availability import taken_seats
 from app.mail import Mailer
 from app.models import (
     BankTransaction,
+    CreditOrigin,
+    CreditSource,
     Currency,
     Fencer,
     ManualPayment,
@@ -208,11 +210,46 @@ def _tolerance_cents(
     return registration.tolerance_cents(tournament, which)
 
 
-def _credit(registration: Registration, which: MatchCurrency, amount_cents: int) -> None:
-    if which == "local":
-        registration.amount_paid_cents += amount_cents
-    else:
-        registration.amount_paid_eur_cents += amount_cents
+def transaction_currency(transaction: BankTransaction, tournament: Tournament) -> Currency | None:
+    """The currency a transaction actually arrived in, as the enum. An unset
+    transaction currency is trusted as the tournament's local one, matching
+    what pre-multi-currency ingestion recorded, exactly as `match_currency`
+    reads it. None where it is not a currency the deployment knows."""
+    raw = (transaction.currency or str(tournament.local_currency)).upper()
+    try:
+        return Currency(raw)
+    except ValueError:
+        return None
+
+
+def _credit(
+    session: Session,
+    tournament: Tournament,
+    registration: Registration,
+    transaction: BankTransaction,
+    amount_cents: int,
+    origin: CreditOrigin,
+    *,
+    rule_id: int | None = None,
+) -> None:
+    """Credit a transaction's money to a registration by appending to the
+    journal. Idempotent on the transaction: a second pass over money already
+    credited writes nothing, whatever state the transaction is in."""
+    currency = transaction_currency(transaction, tournament)
+    if currency is None:
+        return
+    ledger.credit(
+        session,
+        tournament,
+        registration,
+        amount_cents=amount_cents,
+        currency=currency,
+        value_date=transaction.date,
+        source_kind=CreditSource.BANK_TRANSACTION,
+        source_id=transaction.id,
+        origin=origin,
+        rule_id=rule_id,
+    )
 
 
 def _apply_deposit_threshold(
@@ -238,9 +275,9 @@ def _apply_deposit_threshold(
     if registration.state != RegistrationState.RESERVED or registration.expires_at is None:
         return
     if which == "local":
-        deposit, credited = tournament.deposit_amount, registration.amount_paid_cents
+        deposit, credited = tournament.deposit_amount, registration.credited_in("local")
     else:
-        deposit, credited = tournament.deposit_amount_eur, registration.amount_paid_eur_cents
+        deposit, credited = tournament.deposit_amount_eur, registration.credited_in("eur")
     if deposit is None or credited < deposit * 100:
         return
     registration.expires_at = None
@@ -263,7 +300,6 @@ def _settle(
     origin: str,
     amount_cents: int,
     *,
-    value_date: date,
     reinstated: bool = False,
 ) -> MatchOutcome:
     """Decide the registration's resulting state from `which`'s outstanding
@@ -281,11 +317,11 @@ def _settle(
     `origin` labels the event details: `VS 2501001` where a statement carried
     the money, `recorded payment 7` where a person did.
 
-    `value_date` is the day that money arrived, as its own source states it:
-    the transaction's statement date, or the `received_on` an organizer typed.
-    Required rather than derived from `transaction`, because the None branch is
-    the recorded payment — the caller that knows a *better* day than the clock
-    — and a fallback would quietly lose it (design paid-at-is-value-date D2)."""
+    It no longer takes the day the money arrived. That day is carried by the
+    credit itself, and the day the registration became paid is derived from the
+    credit that completed the balance (`ledger.paid_at`) rather than stamped
+    here — so the two routes cannot date a registration differently, which is
+    what passing the day in was guarding against."""
     remaining = registration.outstanding_in(which)
     tolerance = _tolerance_cents(registration, tournament, which)
     currency_code = tournament.local_currency if which == "local" else Currency.EUR
@@ -305,8 +341,11 @@ def _settle(
         )
         return "partial"
 
-    registration.state = RegistrationState.PAID
-    registration.paid_at = setup.start_of_local_day(value_date, tournament.timezone)
+    # Nothing is assigned here. The registration reads as paid because the
+    # credit that brought it within tolerance was appended before this was
+    # called, and the day it became paid is derived from that credit
+    # (`ledger.paid_at`). What remains is what a credit's consequences actually
+    # are: the refund state, the event, and the letter.
     overpaid = remaining < -tolerance
     if overpaid:
         registration.refund_state = RefundState.PENDING
@@ -486,8 +525,14 @@ def _evaluate_single_vs(
             session.flush()
             emails.send_payment_after_expiry(mailer, tournament, registration.fencer, registration)
             return
-    elif registration.state != RegistrationState.RESERVED:
-        _finish(transaction, "flagged", f"registration_{registration.state.value}")
+    elif not _is_payable(registration):
+        # a registration already settled — by money, or by a person's word —
+        # is flagged rather than credited a second time, so somebody decides
+        # whether this is further money or the same money arriving twice
+        # (spec payments). Two conditions since the paid state left the enum:
+        # such a registration is `reserved` like any other
+        reason = "paid" if registration.settled else registration.state.value
+        _finish(transaction, "flagged", f"registration_{reason}")
         _event(
             session,
             transaction,
@@ -535,7 +580,7 @@ def _evaluate_single_vs(
             return
 
     paid_cents = transaction.amount_cents
-    _credit(registration, which, paid_cents)
+    _credit(session, tournament, registration, transaction, paid_cents, CreditOrigin.AUTO_VS)
     transaction.matched_registration_id = registration.id
     outcome = _settle(
         session,
@@ -546,7 +591,6 @@ def _evaluate_single_vs(
         which,
         f"VS {vs}",
         paid_cents,
-        value_date=transaction.date,
         reinstated=reinstated,
     )
     if outcome == "partial":
@@ -592,6 +636,8 @@ def _evaluate_multi_vs(
             Registration.tournament_id == tournament.id,
             Registration.vs.in_(own_tokens),
             Registration.state == RegistrationState.RESERVED,
+            # and still owing: a settled registration is `reserved` too now
+            ~Registration.settled,
         )
     ).all()
     if len(registrations) < 2:
@@ -689,25 +735,15 @@ def linked_registrations(
     return found
 
 
-def credit_key(registration: Registration) -> str:
-    """How a rule records what it credited to one registration, so that removing
-    it reverts exactly what happened.
+def _is_payable(registration: Registration) -> bool:
+    """Whether a link may credit this registration: still in the reserved
+    lifecycle, and not already settled.
 
-    The registration's id, because a registration need not have a variable
-    symbol. Rules written before this keyed by symbol, and `_credited_amount`
-    reads both.
-    """
-    return f"reg:{registration.id}"
-
-
-def _credited_amount(credited: dict, registration: Registration) -> int:
-    """What a rule recorded against one registration, under either key."""
-    amount = credited.get(credit_key(registration))
-    if amount:
-        return amount
-    if registration.vs is not None:
-        return credited.get(str(registration.vs)) or 0
-    return 0
+    Two conditions where there used to be one. The state alone said both while
+    `PAID` lived in the enum; it now says only that the registration has
+    neither expired nor been cancelled, and whether it has been paid for is the
+    derivation beside it."""
+    return registration.state is RegistrationState.RESERVED and not registration.settled
 
 
 def apply_payment_links(session: Session, tournament: Tournament, mailer: Mailer) -> int:
@@ -718,9 +754,9 @@ def apply_payment_links(session: Session, tournament: Tournament, mailer: Mailer
     A link distributes the transaction across the registrations it covers —
     each its own outstanding balance in the transaction's own currency lane,
     in VS order, capped by what remains of the transaction (design Decision
-    7) — rather than crediting the full amount to every one of them. The
-    amount actually credited to each VS is recorded on the rule, so removing
-    it later reverts exactly what happened."""
+    7) — rather than crediting the full amount to every one of them. Each
+    amount it credits is a journal entry naming this rule, so withdrawing the
+    rule reverses exactly the entries it wrote."""
     bank.require_payments_enabled(tournament)
     applied = 0
     for rule in rules_engine.active_rules(session, tournament, kind="payment_link"):
@@ -730,17 +766,23 @@ def apply_payment_links(session: Session, tournament: Tournament, mailer: Mailer
         registrations = linked_registrations(session, tournament, rule.payload)
         which = match_currency(transaction, tournament)
         remaining = transaction.amount_cents
-        credited: dict[str, int] = {}
         for registration in registrations:
-            if which is None or remaining <= 0 or registration.state != RegistrationState.RESERVED:
+            if which is None or remaining <= 0 or not _is_payable(registration):
                 continue
             due = registration.outstanding_in(which)
             amount = max(0, min(due, remaining))
             if amount <= 0:
                 continue
             remaining -= amount
-            credited[credit_key(registration)] = amount
-            _credit(registration, which, amount)
+            _credit(
+                session,
+                tournament,
+                registration,
+                transaction,
+                amount,
+                CreditOrigin.PAYMENT_LINK,
+                rule_id=rule.id,
+            )
             _settle(
                 session,
                 tournament,
@@ -750,9 +792,7 @@ def apply_payment_links(session: Session, tournament: Tournament, mailer: Mailer
                 which,
                 f"VS {registration.vs}",
                 amount,
-                value_date=transaction.date,
             )
-        rule.payload = {**rule.payload, "credited": credited}
         transaction.status = "matched"
         transaction.status_reason = "manual_link"
         transaction.matched_registration_id = (
@@ -763,50 +803,31 @@ def apply_payment_links(session: Session, tournament: Tournament, mailer: Mailer
     return applied
 
 
-def unapply_payment_link(session: Session, tournament: Tournament, rule) -> None:
-    """Revert a deleted payment_link rule: registrations paid solely by it go
-    back to reserved, each losing exactly the amount this rule recorded
-    having credited it (design Decision 7) — not the full transaction amount,
-    and not a recomputed guess against today's balances. The transaction
-    returns to the unmatched queue."""
+def unapply_payment_link(session: Session, tournament: Tournament, rule, actor: str) -> None:
+    """Revert a withdrawn payment_link rule: every live credit it wrote is
+    reversed, each losing exactly the amount that entry recorded — not the full
+    transaction amount, and not a recomputed guess against today's balances.
+    The transaction returns to the unmatched queue.
+
+    **Unconditional.** The version this replaces skipped a registration that
+    was no longer paid, or that a transaction had also matched automatically,
+    which left the credit standing in a counter while deleting the rule that
+    was its only record. There is nothing to decide here now: the entries name
+    this rule, and what each registration reads afterwards is a derivation that
+    re-answers itself. A registration another live rule also covers keeps that
+    rule's own entries, which this reversal never touches.
+    """
     transaction = transaction_for_link(session, tournament, rule.target)
     if transaction is not None and transaction.status_reason == "manual_link":
         transaction.status = "unmatched"
         transaction.status_reason = "manual_unlink"
         transaction.matched_registration_id = None
-    which = match_currency(transaction, tournament) if transaction is not None else None
-    credited = rule.payload.get("credited", {})
 
-    # a registration another live rule still covers keeps its credit; identity
-    # is the registration itself, not the symbol, since it may not have one
-    still_linked = {
-        other_registration.id
-        for other in rules_engine.active_rules(session, tournament, kind="payment_link")
-        if other.id != rule.id
-        for other_registration in linked_registrations(session, tournament, other.payload)
-    }
-    for registration in linked_registrations(session, tournament, rule.payload):
-        if registration.id in still_linked:
-            continue
-        amount = _credited_amount(credited, registration)
-        if not amount:
-            continue  # this rule never actually credited this registration
-        if registration.state != RegistrationState.PAID:
-            continue
-        auto_matched = session.scalar(
-            select(BankTransaction.id).where(
-                BankTransaction.matched_registration_id == registration.id,
-                BankTransaction.status_reason == "auto_vs",
-            )
-        )
-        if auto_matched:
-            continue
-        registration.state = RegistrationState.RESERVED
-        registration.paid_at = None
-        if which == "local":
-            registration.amount_paid_cents -= amount
-        elif which == "eur":
-            registration.amount_paid_eur_cents -= amount
+    reversed_entries = ledger.reverse_for_rule(
+        session, rule.id, by=actor, reason=f"payment link {rule.id} withdrawn"
+    )
+    for entry in reversed_entries:
+        registration = entry.registration
         session.add(
             PaymentEvent(
                 tournament_id=tournament.id,
@@ -814,7 +835,8 @@ def unapply_payment_link(session: Session, tournament: Tournament, rule) -> None
                 transaction_id=transaction.id if transaction else None,
                 kind="manual_link_removed",
                 detail=(
-                    f"rule {rule.id}: {registration.audit_label} back to reserved ({amount} cents)"
+                    f"rule {rule.id}: {registration.audit_label} "
+                    f"({entry.amount_cents} cents {entry.currency})"
                 ),
             )
         )
@@ -849,7 +871,17 @@ def credit_manual_payment(
     bank rounding, but tolerance here is what decides settled versus partial,
     and a registration must not be settled by one route and left partial by the
     other at the same number (design add-manual-payment-entry D3)."""
-    _credit(registration, which, payment.amount_cents)
+    ledger.credit(
+        session,
+        tournament,
+        registration,
+        amount_cents=payment.amount_cents,
+        currency=payment.currency,
+        value_date=payment.received_on,
+        source_kind=CreditSource.MANUAL_PAYMENT,
+        source_id=payment.id,
+        origin=CreditOrigin.RECORDED,
+    )
     return _settle(
         session,
         tournament,
@@ -859,7 +891,6 @@ def credit_manual_payment(
         which,
         f"recorded payment {payment.id}",
         payment.amount_cents,
-        value_date=payment.received_on,
     )
 
 
@@ -876,19 +907,19 @@ def uncredit_manual_payment(
     upward since the payment was recorded would otherwise take back more than
     ever went in.
 
-    The registration returns to reserved only where that amount was what
-    settled it. Where it is still covered — by a transaction, or by a second
-    recorded payment — it stays paid, and where it was never paid there is
-    nothing to return."""
-    if which == "local":
-        registration.amount_paid_cents -= payment.amount_cents
-    else:
-        registration.amount_paid_eur_cents -= payment.amount_cents
-    remaining = registration.outstanding_in(which)
-    tolerance = _tolerance_cents(registration, tournament, which)
-    if registration.state == RegistrationState.PAID and remaining > tolerance:
-        registration.state = RegistrationState.RESERVED
-        registration.paid_at = None
+    Whether the registration still reads as paid afterwards is not decided
+    here and never was a second thing to get right: it is derived from what its
+    remaining credits cover. Where it is still covered — by a transaction, or
+    by a second recorded payment — it stays paid, and where it was never paid
+    there is nothing to return."""
+    ledger.reverse_for_source(
+        session,
+        tournament,
+        CreditSource.MANUAL_PAYMENT,
+        payment.id,
+        by=payment.recorded_by,
+        reason="recorded payment removed",
+    )
     _event(
         session,
         None,
@@ -921,12 +952,26 @@ def _settles_now(transaction: BankTransaction, tournament: Tournament) -> Regist
     if transaction.matched_registration_id is None:
         return None
     registration = transaction.matched_registration
-    if registration is None or registration.state != RegistrationState.RESERVED:
+    if registration is None or registration.state is not RegistrationState.RESERVED:
+        return None
+    if registration.waived:
         return None
     which = match_currency(transaction, tournament)
     if which is None:
         return None
     remaining = registration.outstanding_in(which)
+    # **The tolerance must be what makes the difference.** A registration whose
+    # credits cover the price outright was settled by money and not by a
+    # percentage, and re-deciding it here would resolve a transaction and post
+    # a second letter for something nothing was waiting on.
+    #
+    # This test used to be spelled `state != PAID`, which said the same thing
+    # while the paid state was stored: money covering the price wrote it, and
+    # such a registration never reached here. Since the state became a
+    # derivation it turns true the instant the tolerance is widened — so asking
+    # it here would exclude precisely the rows this pass exists for.
+    if remaining <= 0:
+        return None
     if remaining > _tolerance_cents(registration, tournament, which):
         return None
     return registration
@@ -959,12 +1004,15 @@ def resettleable(session: Session, tournament: Tournament) -> int:
 def resettle_within_tolerance(session: Session, tournament: Tournament, mailer: Mailer) -> int:
     """Re-decide the short payments a widened tolerance now covers.
 
-    **No money moves.** These transactions were credited when they arrived —
-    `_evaluate_transaction` credits before `_settle` decides — and what was
-    left open was only the verdict on whether the amount was close enough. So
-    this re-asks that one question and nothing else: it credits nothing, it
-    touches no transaction the tolerance did not decide, and it never reaches a
-    payment nobody has looked at.
+    **No money moves, and nothing is assigned.** These transactions were
+    credited when they arrived — `_evaluate_transaction` credits before
+    `_settle` decides — and what was left open was only the verdict on whether
+    the amount was close enough. That verdict is now a derivation, so this pass
+    writes no state at all: it resolves the transaction, records the event and
+    sends the letter, and the registrations it names read as paid because the
+    tolerance they are judged against moved. It credits nothing, it touches no
+    transaction the tolerance did not decide, and it never reaches a payment
+    nobody has looked at.
 
     **It only ever loosens.** A tightened tolerance leaves what is already
     settled alone. Symmetry would say a registration outside the new tolerance
@@ -979,11 +1027,12 @@ def resettle_within_tolerance(session: Session, tournament: Tournament, mailer: 
         registration = _settles_now(transaction, tournament)
         if registration is None:
             continue
-        registration.state = RegistrationState.PAID
-        # the day the money arrived, not the day the organizer widened the
-        # tolerance: their act is recorded as this transaction's reason and as
-        # the event below (design paid-at-is-value-date D4)
-        registration.paid_at = setup.start_of_local_day(transaction.date, tournament.timezone)
+        # nothing is assigned. The registration was credited when the money
+        # arrived, and the widened tolerance changes only the answer the
+        # derivation gives about it — including the day it became paid, which
+        # is the day of that credit rather than the day the organizer widened
+        # anything (design paid-at-is-value-date D4, now falling out of
+        # `ledger.paid_at` instead of needing a rule of its own)
         transaction.status = "matched"
         transaction.status_reason = "tolerance_widened"
         _event(

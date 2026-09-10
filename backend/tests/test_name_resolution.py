@@ -133,7 +133,7 @@ def test_a_proposal_credits_nothing_and_mails_nobody(client, auth_headers, mailb
     setup(client, organizer)
     _, vs = enroll(client, auth_headers, "Josef Vejda")
     before = registration_by_vs(vs)
-    state, paid, owed = before.state, before.amount_paid_cents, before.outstanding_cents
+    state, paid, owed = before.state, before.credited_in("local"), before.outstanding_cents
     mailbox.sent.clear()
 
     upload(
@@ -154,7 +154,7 @@ def test_a_proposal_credits_nothing_and_mails_nobody(client, auth_headers, mailb
     # asserted on the money, not on the status string — the status is the one
     # thing a broken implementation would get right
     assert after.state == state
-    assert after.amount_paid_cents == paid
+    assert after.credited_in("local") == paid
     assert after.outstanding_cents == owed
     assert mailbox.sent == []
 
@@ -325,7 +325,7 @@ def test_a_quoted_symbol_never_reaches_the_resolver(client, auth_headers, mailbo
     )
     (transaction,) = transactions()
     assert transaction.status == "matched"
-    assert registration_by_vs(vs).state.value == "paid"
+    assert registration_by_vs(vs).settled
 
 
 # ------------------------------------------------------ confirm and reject
@@ -363,8 +363,8 @@ def test_confirming_credits_exactly_as_a_quoted_symbol_would(client, auth_header
     assert confirm(client, organizer, transaction.id).status_code == 201
 
     after = registration_by_vs(vs)
-    assert after.state.value == "paid"
-    assert after.amount_paid_cents == 100000
+    assert after.settled
+    assert after.credited_in("local") == 100000
     assert after.outstanding_cents == 0
     # and it sends what a credit sends
     assert any("Platba" in message["Subject"] for message in mailbox.sent)
@@ -410,7 +410,7 @@ def test_rejecting_returns_it_and_does_not_propose_again(client, auth_headers, m
     assert after.proposed_fencer_id is None
     assert after.status_reason == "proposal_rejected"
     # nothing was credited on the way through
-    assert registration_by_vs(vs).amount_paid_cents == 0
+    assert registration_by_vs(vs).credited_in("local") == 0
 
     # and the same reading is not offered a second time
     client.post("/api/tournaments/cup/payments/process", headers=organizer)

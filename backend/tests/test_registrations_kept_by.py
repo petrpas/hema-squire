@@ -158,7 +158,7 @@ def test_the_change_writes_no_registration(client, auth_headers, mailbox):
     vs = response.json()["vs"]
 
     before = db_session().scalar(select(Registration).where(Registration.vs == vs))
-    snapshot = (before.state, before.total_amount, before.amount_paid_cents, before.vs)
+    snapshot = (before.state, before.total_amount, before.credited_in("local"), before.vs)
 
     refused = client.patch(
         "/api/tournaments/cup/registrations-kept-by",
@@ -170,7 +170,7 @@ def test_the_change_writes_no_registration(client, auth_headers, mailbox):
     assert tournament_row().registrations_kept_by is RegistrationsKeptBy.SQUIRE
 
     after = db_session().scalar(select(Registration).where(Registration.vs == vs))
-    assert (after.state, after.total_amount, after.amount_paid_cents, after.vs) == snapshot
+    assert (after.state, after.total_amount, after.credited_in("local"), after.vs) == snapshot
     assert [entry.is_substitute for entry in after.entries] == [False]
 
 

@@ -68,7 +68,6 @@ from app.models import (
     PaymentMode,
     RefundState,
     RegistrationsKeptBy,
-    RegistrationState,
     RequestState,
     Role,
     Tournament,
@@ -604,6 +603,12 @@ class TournamentFeaturesOut(TournamentFeaturesIn):
 # "local" — a single local currency; "local_eur" — local plus EUR as an
 # accepted second currency; "eur" — the local currency is EUR itself, so
 # there is no second currency, regardless of eur_payments_enabled
+# What a registration is presented as. The stored `RegistrationState` holds the
+# lifecycle — reserved, expired, cancelled — and whether the money is in is
+# derived beside it; this is the two put back together, and it is what every
+# client has always read (design derive-balances-from-credits D5).
+RegistrationWireState = Literal["reserved", "paid", "expired", "cancelled"]
+
 CurrencyMode = Literal["local", "local_eur", "eur"]
 
 
@@ -943,7 +948,10 @@ class DiscountBreakdownOut(BaseModel):
 
 
 class RegistrationOut(BaseModel):
-    state: RegistrationState
+    # the four states a reader knows, composed from the stored lifecycle and
+    # the settled derivation. Not `RegistrationState`, which is the lifecycle
+    # alone and no longer carries `paid` (`Registration.wire_state`)
+    state: RegistrationWireState
     # Absent on a registration that was never given one: a tournament whose
     # organizer keeps the roster mints no symbols, because Squire never told
     # any payer a number to quote (`issuing.py`, `tournament-mode`). Declared
@@ -1179,6 +1187,46 @@ class TransactionOut(BaseModel):
     # transaction makes no hand-settled claim
     settled_by_hand_reason: str | None = None
     settled_by_recorded_payment: ManualPaymentOut | None = None
+
+
+class CreditReversalRow(BaseModel):
+    registration_id: int
+    fencer_name: str
+    vs: int | None
+    amount: decimal.Decimal
+    currency: Currency
+    # whether this registration stops reading as paid once the credit is gone
+    unsettles: bool
+
+
+class CreditReversalOut(BaseModel):
+    """What reversing one credited transaction would do, or has just done.
+
+    Stated before it is confirmed because the reversal may unsettle a
+    registration a fencer has already been told is paid — the same courtesy
+    removing a recorded payment already extends (spec payment-ledger, One
+    credit entry may be reversed on its own)."""
+
+    transaction_id: int
+    # one entry per registration the transaction credited
+    registrations: list[CreditReversalRow]
+
+
+class CreditedTransactionOut(TransactionOut):
+    """A transaction holding a live credit, as the console's own view lists it.
+
+    Such a transaction sits in no queue: the matcher resolved it and the money
+    was credited, so it is neither unmatched nor flagged, and an automatic VS
+    match leaves no payment link to list it under either. Without a view of its
+    own the only credited transactions the console could see were the ones an
+    organizer had linked by hand — and reversing is offered precisely for the
+    ones it could not."""
+
+    # who this transaction credited, and which of them would stop reading as
+    # paid. Carried with the row so the view can state what it holds without a
+    # request per line; the reversal itself is confirmed against a fresh
+    # preflight, which is what says so at the moment it is done
+    credits: list[CreditReversalRow]
 
 
 class ExpiredHoldingOut(BaseModel):

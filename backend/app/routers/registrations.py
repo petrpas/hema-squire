@@ -1,6 +1,6 @@
 import base64
 from collections.abc import Sequence
-from datetime import UTC, datetime, time, timedelta
+from datetime import UTC, datetime, timedelta
 from decimal import ROUND_HALF_UP, Decimal
 from typing import Annotated, Protocol
 
@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import delete, func, select, update
 from sqlalchemy.exc import IntegrityError
 
-from app import accounts, amendment, emails, pricing, rownumbers, setup, spayd
+from app import accounts, amendment, emails, ledger, pricing, rownumbers, setup, spayd
 from app.auth import require_console_access, require_published
 from app.availability import (
     full_disciplines,
@@ -167,7 +167,9 @@ def registration_out(session, registration: Registration, tournament: Tournament
     balance, balance_currency = registration.balance_cents(tournament)
     at = registration.registered_at.date()
     return {
-        "state": registration.state,
+        # composed from the lifecycle and the settled derivation, not read off
+        # a column — `paid` left the stored enum (`Registration.wire_state`)
+        "state": registration.wire_state,
         "vs": registration.vs,
         "total_amount": registration.total_amount,
         # one balance and the currency it is in, not a figure per lane: the
@@ -178,7 +180,7 @@ def registration_out(session, registration: Registration, tournament: Tournament
         "total_eur": registration.total_eur,
         "expires_at": registration.expires_at,
         "registered_at": registration.registered_at,
-        "paid_at": registration.paid_at,
+        "paid_at": ledger.paid_at(registration, tournament),
         "weapon_rentals": registration.weapon_rentals,
         "afterparty": registration.afterparty,
         "aftersparring": registration.aftersparring,
@@ -289,11 +291,11 @@ def participants(tournament: TournamentDep, session: SessionDep):
             continue  # fully-queued substitutes are not participants
         status = None
         if known:
-            confirmed = registration.state == RegistrationState.PAID
+            confirmed = registration.settled
             if not confirmed and not show_unpaid:
                 continue
             status = "confirmed" if confirmed else "unconfirmed"
-        elif registration.state == RegistrationState.PAID:
+        elif registration.settled:
             # Squire guarantees no payment state here, so the only way this is
             # paid is that the organizer said so by hand — an assertion by a
             # person who collected the money, and worth showing. The others
@@ -525,11 +527,23 @@ def register(
             registration.cancelled_at = None
             registration.refundable = None
             registration.refund_state = RefundState.NOT_APPLICABLE
-            registration.paid_at = None
-            # a new cycle starts from a clean balance; any payment credited to
-            # the previous cycle was already flagged for refund by the
-            # matcher rather than carried forward
-            registration.amount_paid_cents = 0
+            # A new cycle starts from a clean balance, and it says so in the
+            # journal rather than by zeroing a figure: every credit the
+            # previous cycle held is reversed, naming the cycle as the reason,
+            # so what was there and where it went both stay readable.
+            #
+            # Both lanes alike. The counter this replaces zeroed the local one
+            # and left the EUR one standing, so a euro payment carried into a
+            # new cycle against a new price — a defect that could only exist
+            # while the balance was a figure somebody had to remember to reset
+            # once per currency.
+            for entry in list(registration.live_credits):
+                ledger.reverse(
+                    session,
+                    entry,
+                    by=ledger.actor_label(fencer),
+                    reason="registration cycle restarted",
+                )
         else:
             registration = Registration(tournament=tournament, fencer=fencer)
             session.add(registration)
@@ -624,19 +638,10 @@ def _initial_expires_at(tournament: Tournament, registration: Registration) -> d
 
 
 def _promotion_expires_at(tournament: Tournament) -> datetime | None:
-    """The payment window a promotion opens, clamped to the tournament itself
-    (Decision 8). Both rules apply at once: money requested always gets a
-    payment window, and no reservation outlives the event it is for — a fencer
-    promoted three days out on a seven-day window would otherwise be holding a
-    seat past the tournament.
-
-    None with the payments feature off: promotion seats the placement and
-    stops there, since no money is requested (seating-queue)."""
-    if not tournament.feature_payments:
-        return None
-    window = _now() + timedelta(days=tournament.reservation_validity_days)
-    end_of_tournament = datetime.combine(tournament.date + timedelta(days=1), time.min, tzinfo=UTC)
-    return min(window, end_of_tournament)
+    """The payment window a promotion opens. `setup.payment_window` decides it,
+    since an amendment that leaves a settled registration owing a surcharge
+    opens the same window for the same reason and the two must not drift."""
+    return setup.payment_window(tournament, _now())
 
 
 def get_my_registration(session, tournament: Tournament, fencer) -> Registration:
@@ -671,9 +676,11 @@ def amend_registration(
         raise _unavailable(tournament, reason, now)
 
     registration = get_my_registration(session, tournament, fencer)
-    if registration.state not in (RegistrationState.RESERVED, RegistrationState.PAID):
+    if registration.state is not RegistrationState.RESERVED:
         # expired or cancelled registrations return through re-registration
-        # instead, a different operation with a different VS (Decision 3)
+        # instead, a different operation with a different VS (Decision 3).
+        # Asked of the lifecycle alone: a paid registration is a reserved one
+        # whose money is in, and amending it is exactly what Decision 3 allows
         raise HTTPException(status_code=409, detail="amend_not_allowed")
 
     selected, extras = _resolve_selection(tournament, data)
@@ -713,7 +720,10 @@ def my_registration_payment(tournament: TournamentDep, session: SessionDep, fenc
         # expiry to state, and a partial set would tell the fencer to do
         # something the tournament is not asking of them (fencer-home)
         raise HTTPException(status_code=409, detail="payments_disabled")
-    if registration.state != RegistrationState.RESERVED:
+    if registration.state is not RegistrationState.RESERVED or registration.settled:
+        # two conditions where the state used to say both: a registration that
+        # has been paid for is `reserved` like any other, and instructions for
+        # money already in would be a demand aimed at nobody
         raise HTTPException(status_code=409, detail="not_unpaid")
     if registration.fully_queued:
         raise HTTPException(status_code=409, detail="no_payment_due")
@@ -748,7 +758,7 @@ def my_registration_payment(tournament: TournamentDep, session: SessionDep, fenc
 @router.post("/my-registration/cancel", response_model=RegistrationOut)
 def cancel_registration(tournament: TournamentDep, session: SessionDep, fencer: FencerDep):
     registration = get_my_registration(session, tournament, fencer)
-    was_paid = registration.state == RegistrationState.PAID
+    was_paid = registration.settled
     cancelled_at = _now()
     registration.cancelled_at = cancelled_at
     registration.state = RegistrationState.CANCELLED
@@ -788,11 +798,13 @@ def mark_settled(
     comped entrant — standing beside the money that reaches such a tournament
     by transaction and by recorded payment.
 
-    **Writes the verdict, not an amount.** `amount_paid_cents` and its EUR twin
-    are left exactly as they are. A mark that wrote the outstanding amount into
-    them would put money into every sum of what the tournament received that
+    **Writes the verdict, not an amount.** A waiver carries no amount and
+    appends nothing to the credit journal, which is why it is its own journal
+    and not a credit of the outstanding balance. A mark that credited what was
+    owed would put money into every sum of what the tournament received that
     nobody ever paid, and it would afterwards be indistinguishable from money
-    Squire observed (design add-manual-payment-entry D5).
+    Squire observed (design add-manual-payment-entry D5, derive-balances-from-
+    credits D1).
 
     So a hand-settled registration reads as paid while what it is owed remains
     what it always was, and every surface showing both states the balance as
@@ -813,13 +825,17 @@ def mark_settled(
     and one short phrase answers it. Where no ledger exists, every row is that
     row (design D4).
 
-    `paid_at` is stamped with the moment of the mark, and this is the one path
-    where it is a clock. Everywhere else the field carries the day the money
-    arrived — a transaction's statement date, a recorded payment's
-    `received_on` (spec `payments`). Here no money arrived: there is no
-    statement day to read and no date anybody typed, and the day this became
-    settled is the day somebody said so. Clearing it on the reverse mirrors
-    what unlinking a payment already does (`matching.py:662`)."""
+    The mark is a row in the waiver journal, not a pair of fields on the
+    registration. Marking, unmarking and marking again for a different reason
+    therefore leaves every reason it was ever given readable, where the two
+    fields this replaces kept only the last.
+
+    The day such a registration became paid is the day the waiver was granted,
+    and this is the one path where that day is a clock reading. Everywhere else
+    it is the day money arrived — a transaction's statement date, a recorded
+    payment's `received_on` (spec `payments`). Here no money arrived: there is
+    no statement day to read and no date anybody typed, and the day this became
+    settled is the day somebody said so (`ledger.paid_at`)."""
     require_console_access(session, tournament, fencer)
     require_published(tournament)
     reason = (reason or "").strip() or None
@@ -835,23 +851,34 @@ def mark_settled(
         raise HTTPException(status_code=404, detail="registration_not_found")
     # this marks money received; it is not the way back from a state the
     # lifecycle or the fencer chose
-    if registration.state not in (RegistrationState.RESERVED, RegistrationState.PAID):
+    if registration.state is not RegistrationState.RESERVED:
+        raise HTTPException(status_code=409, detail="registration_not_live")
+    # nor is it the way to touch a registration the money settled: unsetting a
+    # mark nobody made would strand its credit (spec payments). Asked of the
+    # derivation, since such a registration is `reserved` too
+    if settled and registration.settled:
         raise HTTPException(status_code=409, detail="registration_not_live")
 
     # unmarking is this mark's to reverse and nothing else's. Where Squire
     # collects, a registration paid by a credited transaction or a recorded
     # payment carries no mark, and clearing one it never had would return it to
     # reserved with its credit stranded — a state no reader could explain
-    if not settled and tournament.feature_payments and registration.settled_by_hand_at is None:
+    if not settled and tournament.feature_payments and not registration.waived:
         raise HTTPException(status_code=409, detail="not_settled_by_hand")
 
-    registration.state = RegistrationState.PAID if settled else RegistrationState.RESERVED
-    registration.paid_at = _now() if settled else None
-    # stored rather than deduced from a paid state with empty counters: that
-    # deduction stopped being sound once a waived registration could also hold
-    # a payment recorded by hand (design add-manual-payment-entry D4)
-    registration.settled_by_hand_at = _now() if settled else None
-    registration.settled_by_hand_reason = reason if settled else None
+    # No state is assigned. Whether the registration reads as paid follows from
+    # the waiver standing over it, exactly as it follows from money everywhere
+    # else (design derive-balances-from-credits D5).
+    if settled:
+        ledger.grant_waiver(
+            session,
+            tournament,
+            registration,
+            reason=reason,
+            granted_by=ledger.actor_label(fencer),
+        )
+    else:
+        ledger.revoke_waiver(session, registration, revoked_by=ledger.actor_label(fencer))
     session.add(
         PaymentEvent(
             tournament_id=tournament.id,
@@ -904,15 +931,15 @@ def admit_substitute(
     if taken_seats(session, entry.discipline) >= entry.discipline.capacity:
         raise HTTPException(status_code=409, detail="discipline_full")
 
-    was_paid = registration.state == RegistrationState.PAID
+    was_paid = registration.settled
     previous_total = registration.total_amount
 
     entry.is_substitute = False
     # Fees are frozen to the original registration date; admission bills the
     # admitted discipline (plus extras on first admission) and opens a fresh
-    # window. The state is left alone: a paid registration that now owes more
-    # stays paid and owes the difference through `outstanding_cents`, exactly
-    # as an amendment leaves it, rather than reverting to unpaid.
+    # window. Nothing about payment is assigned: a registration that now owes
+    # more reads that off its credits against the new total, exactly as an
+    # amendment leaves it, and the window is what it has to pay in.
     totals = pricing.registration_total(registration, tournament)
     registration.total_amount = totals.local
     registration.total_eur = totals.eur
@@ -982,10 +1009,10 @@ def return_to_queue(
     )
     if entry is None:
         raise HTTPException(status_code=404, detail="no_seated_entry")
-    if registration.state == RegistrationState.PAID:
-        raise HTTPException(status_code=409, detail="registration_paid_cancel_instead")
-    if registration.state != RegistrationState.RESERVED:
+    if registration.state is not RegistrationState.RESERVED:
         raise HTTPException(status_code=409, detail="registration_not_active")
+    if registration.settled:
+        raise HTTPException(status_code=409, detail="registration_paid_cancel_instead")
 
     entry.is_substitute = True
     totals = pricing.registration_total(registration, tournament)

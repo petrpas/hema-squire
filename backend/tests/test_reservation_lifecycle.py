@@ -1,6 +1,6 @@
 """fix-reservation-lifecycle: re-registration after expiry, the amendment
 endpoint, grace reinstatement in matching, the organizer's flagged-transaction
-actions, and the amount_paid_cents / outstanding_cents accounting they share.
+actions, and the credit journal / outstanding_cents accounting they share.
 
 Task 9.1: neither test_registration_gating.py nor test_registrations.py
 asserted a blanket 409 for an expired registration specifically (only for a
@@ -19,7 +19,14 @@ from app.db import get_session
 from app.mail import get_mailer
 from app.main import app
 from app.models import PaymentEvent, RefundState, Registration, RegistrationState
-from tests.conftest import AcceptingFio, enable_payments, publish, set_fio_token
+from tests.conftest import (
+    AcceptingFio,
+    credit_registration,
+    enable_payments,
+    paid_at_of,
+    publish,
+    set_fio_token,
+)
 
 IBAN = "CZ6508000000192000145399"
 
@@ -117,10 +124,7 @@ def expire(vs, hours_ago=1):
 def mark_paid(vs):
     session = db_session()
     registration = session.scalar(select(Registration).where(Registration.vs == vs))
-    registration.state = RegistrationState.PAID
-    registration.paid_at = datetime.now(UTC)
-    registration.amount_paid_cents = registration.total_amount * 100
-    session.commit()
+    credit_registration(session, registration, registration.total_amount * 100)
 
 
 def event_kinds(vs):
@@ -231,9 +235,14 @@ def test_reserved_amendment_keeps_vs_and_window_and_recomputes_total(client, aut
 # --- 9.4 Paid amendment ------------------------------------------------------
 
 
-def test_paid_amendment_upward_stays_paid_with_outstanding_and_surcharge_email(
+def test_paid_amendment_upward_owes_the_surcharge_and_opens_a_window_for_it(
     client, auth_headers, mailbox
 ):
+    """A raise beyond tolerance unsettles: whether a registration is paid for
+    is read from its credits against its total, and 1000 against 1300 is not
+    paid. The surcharge is what it now owes, and money newly asked for gets a
+    window to be paid in — without one it would carry the deadline it
+    registered under, which the expiry pass would act on next tick."""
     organizer = auth_headers()
     setup_tournament(client, organizer)
     item = client.post(
@@ -247,11 +256,32 @@ def test_paid_amendment_upward_stays_paid_with_outstanding_and_surcharge_email(
     mailbox.sent.clear()
 
     amended = amend(client, fencer, extras=[{"extra_item_id": item["id"], "qty": 1}]).json()
-    assert amended["state"] == "paid"
+    assert amended["state"] == "reserved"
     assert amended["total_amount"] == 1300
     assert amended["outstanding_amount"] == "300.00"
     assert amended["refund_state"] == "not_applicable"
     assert len(mailbox.sent) == 1  # surcharge instructions, not a plain confirmation
+    # a fresh window, not the one it registered under
+    assert amended["expires_at"] > initial["expires_at"]
+
+
+def test_paid_amendment_within_tolerance_stays_paid_on_its_own_window(client, auth_headers):
+    """The window opens only where the raise actually left money owing. A
+    correction the tolerance absorbs settles nothing new and renews no hold."""
+    organizer = auth_headers()
+    setup_tournament(client, organizer, amount_tolerance_percent=50)
+    item = client.post(
+        "/api/tournaments/cup/extra-items",
+        json={"name": "Coffee", "category": "afterparty", "price": 100},
+        headers=organizer,
+    ).json()
+    fencer = auth_headers(email="f1@example.com", name="F1")
+    initial = register(client, fencer).json()
+    mark_paid(initial["vs"])
+
+    amended = amend(client, fencer, extras=[{"extra_item_id": item["id"], "qty": 1}]).json()
+    assert amended["state"] == "paid"
+    assert amended["expires_at"] == initial["expires_at"]
 
 
 def test_paid_amendment_downward_records_overpayment_pending_refund(client, auth_headers):
@@ -472,7 +502,7 @@ def test_organizer_reinstate_dates_the_registration_to_the_transaction(client, a
         headers=organizer,
     )
 
-    settled_at = registration_by_vs(initial["vs"]).paid_at
+    settled_at = paid_at_of(registration_by_vs(initial["vs"]))
     assert settled_at is not None
     paid_at = settled_at.replace(tzinfo=UTC)
     # `transfer` dates every transaction 15 July; the tournament is in Prague
@@ -526,10 +556,10 @@ def test_reinstate_offered_only_where_capacity_allows(client, auth_headers, fio)
     assert refused.status_code == 409
 
 
-# --- 9.10 amount_paid_cents symmetry ------------------------------------------
+# --- 9.10 crediting symmetry -------------------------------------------------
 
 
-def test_amount_paid_cents_credited_on_match_and_reverted_by_unapply(client, auth_headers):
+def test_credit_written_on_match_and_reversed_by_unapply(client, auth_headers):
     organizer = auth_headers()
     setup_tournament(client, organizer, capacity=10)
     fencer = auth_headers(email="f1@example.com", name="F1")
@@ -552,10 +582,10 @@ def test_amount_paid_cents_credited_on_match_and_reverted_by_unapply(client, aut
         json={"transaction_id": transaction_id, "vs": [initial["vs"]]},
         headers=organizer,
     ).json()
-    assert registration_by_vs(initial["vs"]).amount_paid_cents == 100000
+    assert registration_by_vs(initial["vs"]).credited_in("local") == 100000
 
     client.delete(f"/api/tournaments/cup/rules/{rule['rule_id']}", headers=organizer)
-    assert registration_by_vs(initial["vs"]).amount_paid_cents == 0
+    assert registration_by_vs(initial["vs"]).credited_in("local") == 0
 
 
 def test_foreign_currency_credit_unchanged_by_later_rate_edit(client, auth_headers, fio):
@@ -587,12 +617,12 @@ def test_foreign_currency_credit_unchanged_by_later_rate_edit(client, auth_heade
     assert poll["matched"] == 1
 
     registration = registration_by_vs(initial["vs"])
-    assert registration.amount_paid_cents == 0
-    assert registration.amount_paid_eur_cents == 4000
-    credited_before = registration.amount_paid_eur_cents
+    assert registration.credited_in("local") == 0
+    assert registration.credited_in("eur") == 4000
+    credited_before = registration.credited_in("eur")
 
     client.patch("/api/tournaments/cup", json={"eur_rate": "30"}, headers=organizer)
-    assert registration_by_vs(initial["vs"]).amount_paid_eur_cents == credited_before
+    assert registration_by_vs(initial["vs"]).credited_in("eur") == credited_before
 
 
 # --- 9.11 Tournament parameter validation -------------------------------------

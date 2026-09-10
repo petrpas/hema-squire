@@ -338,3 +338,88 @@ def outcome(client, headers, slug="cup", kind="parse"):
     """The outcome of the most recent operation of a kind — the body these
     endpoints used to return synchronously."""
     return settle(client, headers, slug, kind)["outcome"]
+
+
+# a source row nothing else uses, handed out one per synthetic credit so that
+# two credits in one test are two payments rather than one offered twice
+_fake_source_id = 900_000
+
+
+def credit_registration(
+    session,
+    registration,
+    amount_cents: int,
+    *,
+    currency=None,
+    value_date=None,
+    source_id: int | None = None,
+    origin=None,
+):
+    """Credit a registration in a test the way the application does: by
+    appending to the journal.
+
+    A test that wants a paid registration builds one out of money, because
+    that is the only thing that makes one — there is no paid state to assign
+    since `derive-balances-from-credits`. Setting a counter used to do it in a
+    line, and a test that did could go on passing after the counter stopped
+    being what anything read.
+
+    `source_id` defaults to a value unique per call, so two credits against one
+    registration are two payments rather than one payment offered twice — which
+    the journal refuses.
+    """
+    from app import ledger
+    from app.models import CreditOrigin, CreditSource, Currency
+
+    global _fake_source_id
+    _fake_source_id += 1
+    tournament = registration.tournament
+    entry = ledger.credit(
+        session,
+        tournament,
+        registration,
+        amount_cents=amount_cents,
+        currency=currency or Currency(tournament.local_currency),
+        value_date=value_date or registration.registered_at.date(),
+        source_kind=CreditSource.BANK_TRANSACTION,
+        source_id=source_id if source_id is not None else _fake_source_id,
+        origin=origin or CreditOrigin.AUTO_VS,
+    )
+    session.commit()
+    return entry
+
+
+def waive_registration(session, registration, reason: str = "test waiver", by: str = "test <t@e>"):
+    """Waive a registration in a test — the other way one comes to read paid."""
+    from app import ledger
+
+    entry = ledger.grant_waiver(
+        session,
+        registration.tournament,
+        registration,
+        reason=reason,
+        granted_by=by,
+    )
+    session.commit()
+    return entry
+
+
+def pay_registration(session, registration, *, currency=None):
+    """Credit exactly what a registration owes, so it reads as paid.
+
+    The replacement for `registration.state = RegistrationState.PAID`, which
+    was never true of anything but the enum."""
+    which = "eur" if currency is not None and str(currency) == "EUR" else "local"
+    due = registration.outstanding_in(which)
+    return credit_registration(session, registration, due, currency=currency)
+
+
+def paid_at_of(registration):
+    """The day a registration became paid, derived from the credit that
+    completed its balance — the replacement for the field tests used to read.
+
+    Takes the tournament off the registration's own relationship, which a test
+    holding a live session always has."""
+    from app import ledger
+
+    return ledger.paid_at(registration, registration.tournament)

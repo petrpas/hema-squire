@@ -14,11 +14,12 @@ whether a full discipline seats or queues, and which notice goes out.
 """
 
 from dataclasses import dataclass
+from datetime import UTC, datetime
 
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
-from app import emails, pricing
+from app import emails, pricing, setup
 from app.availability import full_disciplines, team_waitlist_flags
 from app.mail import Mailer
 from app.models import (
@@ -34,6 +35,11 @@ from app.models import (
     TeamMember,
     Tournament,
 )
+
+
+def _now() -> datetime:
+    return datetime.now(UTC)
+
 
 # Which notice the amendment sends.
 #
@@ -91,7 +97,7 @@ def apply_amendment(
     because a substitute placement is not billed and queueing a correction to an
     imported roster would make that fencer free.
     """
-    was_paid = registration.state == RegistrationState.PAID
+    was_paid = registration.settled
     previous_total = registration.total_amount
 
     # drop the current selection before checking capacity, so the registration's
@@ -203,6 +209,21 @@ def apply_amendment(
     if was_paid and overpaid:
         registration.refund_state = RefundState.PENDING
 
+    # A raise that leaves a settled registration owing more than the tolerance
+    # allows unsettles it, because whether it is paid for is read from the
+    # money against the total and there is no state to hold it where it was.
+    # It then carries the deadline it was registered under, which has usually
+    # long passed, and the next expiry pass would take a seat from a fencer who
+    # had paid — over a correction they may not even have asked for. Money
+    # newly requested gets a window to be paid in, exactly as a promotion out
+    # of the queue opens one, and the same function decides both.
+    #
+    # Only where the registration was settled and no longer is. `expires_at`
+    # otherwise stays read-only through this path: amending must not renew the
+    # hold of a registration that was already owing (Decision 3).
+    if was_paid and not registration.settled and setup.clocks_run(tournament, registration):
+        registration.expires_at = setup.payment_window(tournament, _now())
+
     session.add(
         PaymentEvent(
             tournament_id=tournament.id,
@@ -260,8 +281,13 @@ def dormant_by_origin(registration: Registration) -> bool:
 def is_live(registration: Registration) -> bool:
     """Whether the registration still describes a competitor. One that has
     expired or been cancelled returns through re-registration with a new
-    symbol, not through a cell."""
-    return registration.state in (RegistrationState.RESERVED, RegistrationState.PAID)
+    symbol, not through a cell.
+
+    Asked of the lifecycle alone: whether the registration has been paid for
+    says nothing about whether it still describes a competitor, and once
+    `PAID` left the enum the reserved state is what both a paid and an unpaid
+    live registration carry."""
+    return registration.state is RegistrationState.RESERVED
 
 
 def registration_for_row(

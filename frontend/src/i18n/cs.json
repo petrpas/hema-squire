@@ -1174,6 +1174,21 @@
       "removeBody": "{{amount}} zadaných pro {{name}} se odečte.",
       "removeUnsettles": "Tato registrace přestane být vedena jako zaplacená.",
       "removeConfirm": "Odebrat"
+    },
+    "credited": {
+      "title": "Připsané transakce",
+      "date": "Datum",
+      "payer": "Plátce",
+      "amount": "Částka",
+      "registrations": "Připsáno komu",
+      "reverse": "Zrušit připsání",
+      "reverseTitle": "Zrušit připsání této transakce",
+      "reverseBody": "{{amount}} se přestane počítat. Transakce se vrátí mezi nepřiřazené.",
+      "reverseUnsettles": "Tyto registrace přestanou být vedeny jako zaplacené: {{names}}.",
+      "reverseNoneUnsettle": "Žádná registrace kvůli tomu nepřestane být vedena jako zaplacená.",
+      "reverseConfirm": "Zrušit připsání",
+      "checking": "Zjišťuji, co se stane.",
+      "actionFailed": "Připsání se nepodařilo zrušit."
     }
   },
   "validation": {

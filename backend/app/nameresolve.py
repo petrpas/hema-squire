@@ -57,7 +57,7 @@ def roster(session: Session, tournament: Tournament) -> list[tuple[int, str]]:
         .join(Registration, Registration.fencer_id == Fencer.id)
         .where(
             Registration.tournament_id == tournament.id,
-            Registration.state.in_([RegistrationState.RESERVED, RegistrationState.PAID]),
+            Registration.state == RegistrationState.RESERVED,
         )
         .distinct()
     ).all()

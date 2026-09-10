@@ -18,7 +18,7 @@ from app.db import get_session
 from app.mail import get_mailer
 from app.main import app
 from app.models import Registration, RegistrationState
-from tests.conftest import enable_payments, publish
+from tests.conftest import credit_registration, enable_payments, publish
 
 TOURNAMENT_DATE = "2026-12-05"
 IBAN = "CZ6508000000192000145399"
@@ -108,10 +108,7 @@ def fill_tight(client, auth_headers):
 def mark_paid(vs):
     session = db_session()
     row = session.scalar(select(Registration).where(Registration.vs == vs))
-    row.state = RegistrationState.PAID
-    row.amount_paid_cents = row.total_amount * 100
-    row.paid_at = datetime.datetime.now(UTC)
-    session.commit()
+    credit_registration(session, row, row.total_amount * 100)
     return row
 
 
@@ -178,9 +175,7 @@ def free_tight_seat(client, first_fencer):
     assert response.status_code == 200, response.text
 
 
-def test_paid_registration_can_be_promoted_and_owes_only_the_difference(
-    client, auth_headers, mailbox
-):
+def test_credited_registration_promoted_owes_only_the_difference(client, auth_headers, mailbox):
     organizer = auth_headers()
     make_tournament(client, organizer)
     first, _ = fill_tight(client, auth_headers)
@@ -194,7 +189,12 @@ def test_paid_registration_can_be_promoted_and_owes_only_the_difference(
     assert response.status_code == 200, response.text
 
     promoted = registration_by_vs(mixed["vs"])
-    assert promoted.state == RegistrationState.PAID  # not reverted to unpaid
+    # the promotion bills SB, so the registration owes again and reads as
+    # such: what it has been credited is read against what it now costs, and
+    # 1000 against 1400 is not paid. The credit is untouched, which is what
+    # `outstanding_cents` states below
+    assert not promoted.settled
+    assert promoted.credited_in("local") == 100000
     assert promoted.total_amount == 1400  # LS + the promoted SB
     assert promoted.outstanding_cents == 40000  # only SB's fee is now due
     assert promoted.expires_at is not None  # a fresh window opened

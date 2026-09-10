@@ -6,8 +6,8 @@ from sqlalchemy import select
 from app.db import get_session
 from app.mail import get_mailer
 from app.main import app
-from app.models import PaymentEvent, Registration, Tournament
-from tests.conftest import enable_payments, publish
+from app.models import ExtraCategory, ExtraItem, PaymentEvent, Registration, Tournament
+from tests.conftest import credit_registration, enable_payments, publish
 
 
 class CollectingMailer:
@@ -135,15 +135,62 @@ def test_paid_registrations_never_reminded_or_expired(client, auth_headers, mail
 
     session = db_session()
     registration = session.scalar(select(Registration).where(Registration.vs == 2601001))
-    from app.models import RegistrationState
 
     registration.registered_at = datetime.now(UTC) - timedelta(days=20)
     registration.expires_at = registration.registered_at + timedelta(days=7)
-    registration.state = RegistrationState.PAID
     session.commit()
+    credit_registration(session, registration, registration.total_amount * 100)
 
     assert process(client, organizer) == {"reminders": 0, "expired": 0, "seating_demoted": 0}
     assert mailbox.sent == []
+
+
+def test_a_surcharge_does_not_expire_a_registration_on_its_old_deadline(
+    client, auth_headers, mailbox
+):
+    """A raise beyond tolerance unsettles the registration, and the deadline it
+    registered under is long past — so without the fresh window the amendment
+    opens, the very next pass would expire a fencer who had paid, over a
+    correction the organizer made."""
+    organizer = auth_headers()
+    setup(client, organizer)
+    fencer = enroll(client, auth_headers)
+    # written directly: `setup` above clears the bank account to model a
+    # tournament published before it was mandatory, and the extra-items
+    # endpoint refuses an incomplete setup
+    session = db_session()
+    tournament = session.scalar(select(Tournament).where(Tournament.slug == "cup"))
+    item = ExtraItem(
+        tournament_id=tournament.id,
+        name="Afterparty ticket",
+        category=ExtraCategory.AFTERPARTY,
+        price=300,
+    )
+    session.add(item)
+    session.commit()
+
+    registration = session.scalar(select(Registration).where(Registration.vs == 2601001))
+    registration.registered_at = datetime.now(UTC) - timedelta(days=20)
+    registration.expires_at = registration.registered_at + timedelta(days=7)
+    session.commit()
+    credit_registration(session, registration, registration.total_amount * 100)
+
+    amended = client.post(
+        "/api/tournaments/cup/my-registration/amend",
+        json={
+            "disciplines": ["LS"],
+            "extras": [{"extra_item_id": item.id, "qty": 1}],
+        },
+        headers=fencer,
+    ).json()
+    assert amended["state"] == "reserved"  # 1000 credited against 1300 owed
+    mailbox.sent.clear()
+
+    assert process(client, organizer) == {"reminders": 0, "expired": 0, "seating_demoted": 0}
+    assert mailbox.sent == []
+    assert client.get("/api/tournaments/cup/my-registration", headers=fencer).json()["state"] == (
+        "reserved"
+    )
 
 
 def test_queued_substitutes_untouched_by_lifecycle(client, auth_headers, mailbox):
