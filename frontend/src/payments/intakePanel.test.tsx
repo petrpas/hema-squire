@@ -308,6 +308,23 @@ it("reports a refused poll on the duplicates rather than as a failure", async ()
   expect(host?.textContent).not.toContain(t("payments.intake.pollFailed"));
 });
 
+it("says how to lift the bank's history lock instead of reporting a failure", async () => {
+  vi.spyOn(api, "fioPoll").mockRejectedValue(
+    new ApiError(409, { code: "fio_authorization_required", since: "2026-06-12" }),
+  );
+  render({ detail: detail(true) });
+
+  act(() => void buttonNamed(t("payments.intake.poll"))?.click());
+  await settle();
+
+  expect(host?.textContent).toContain(
+    t("payments.intake.pollAuthorization", {
+      since: new Date("2026-06-12").toLocaleDateString("cs"),
+    }),
+  );
+  expect(host?.textContent).not.toContain(t("payments.intake.pollFailed"));
+});
+
 it("names the rows an import could not issue, and why", async () => {
   const concluded = {
     statement: {

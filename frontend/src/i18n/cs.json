@@ -1130,6 +1130,8 @@
       "unsupportedFormat": "Tento soubor není CSV ani tabulka.",
       "importFailed": "Výpis se nepodařilo načíst.",
       "pollFailed": "Z banky se nepodařilo stáhnout.",
+      "pollAuthorization": "Dny před {{since}} banka nevydá bez silné autorizace. Odemkněte historii v internetovém bankovnictví Fio (Nastavení → API, zámek u tokenu, potvrzení SMS nebo aplikací) a do deseti minut stáhněte znovu.",
+      "pollUnreachable": "Banka neodpověděla. Zkuste to za chvíli znovu, nebo načtěte výpis ze souboru.",
       "lifecycleFailed": "Spuštění se nezdařilo.",
       "unreadable": "Soubor nevypadá jako výpis — žádný sloupec v něm nenese data a částky. Ověřte, že jde o správný export a že se otevře jako tabulka v tabulkovém procesoru.",
       "willIssue": "Načtením výpisu se {{count}} řádkům seznamu vystaví registrace. Bez nich nemá platba k čemu sednout.",

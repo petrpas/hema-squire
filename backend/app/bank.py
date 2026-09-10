@@ -371,6 +371,45 @@ class FioUnreachable(Exception):
     unrecordable (design fio-token-in-setup Decision 3)."""
 
 
+class FioAuthorizationRequired(Exception):
+    """Fio will not serve days this old until the organizer unlocks the token's
+    full history in their internet banking.
+
+    Fio serves the last 90 days to any valid token and refuses everything
+    earlier with a 422. The unlock is a strong authorization — internet
+    banking, Nastavení → API, the lock beside the token, confirmed by SMS or
+    the app — and it opens the whole history for ten minutes. Nothing in the
+    API can ask for it, so the only thing Squire can do is name the boundary
+    and say what to press. Not `FioUnreachable`: the bank answered, the token
+    is good, and the poll succeeds unchanged once the organizer has unlocked.
+
+    `since` is the first day Fio will serve without that unlock."""
+
+    def __init__(self, since: datetime.date) -> None:
+        super().__init__(f"authorization required for days before {since}")
+        self.since = since
+
+
+# Fio names the boundary in its refusal, in Czech and as dd.mm.yyyy. Read from
+# the answer rather than recomputed here, so the console states the bank's own
+# date and does not go stale if the bank moves the window.
+_FIO_SINCE = re.compile(r"(\d{2})\.(\d{2})\.(\d{4})")
+_FIO_HISTORY_DAYS = 90
+
+
+def _authorization_boundary(body: str, today: datetime.date) -> datetime.date:
+    """The first day Fio says it will serve, from its own refusal. Falls back
+    to the documented 90 days where the message does not carry a date."""
+    found = _FIO_SINCE.search(body)
+    if found is None:
+        return today - datetime.timedelta(days=_FIO_HISTORY_DAYS)
+    day, month, year = (int(part) for part in found.groups())
+    try:
+        return datetime.date(year, month, day)
+    except ValueError:
+        return today - datetime.timedelta(days=_FIO_HISTORY_DAYS)
+
+
 class FioClient(Protocol):
     def fetch(
         self, token: str, date_from: datetime.date, date_to: datetime.date
@@ -383,9 +422,29 @@ class HttpFioClient:
     def fetch(
         self, token: str, date_from: datetime.date, date_to: datetime.date
     ) -> list[IncomingTransaction]:
+        """The movements Fio reports for a window, or an exception naming why
+        it reported none.
+
+        Every failure is translated here rather than left to
+        `raise_for_status`, for two reasons. The token sits in the path, so
+        httpx's own error message — which quotes the URL — would carry it into
+        the log of anything that catches an unhandled error. And a 422 is not a
+        failure of Squire's: it is Fio refusing days older than 90 without a
+        strong authorization, which the organizer can grant, so it has to
+        arrive at the console as an instruction rather than as a stack
+        trace."""
         url = f"{FIO_API_BASE}/periods/{token}/{date_from}/{date_to}/transactions.json"
-        response = httpx.get(url, timeout=30)
-        response.raise_for_status()
+        try:
+            response = httpx.get(url, timeout=30)
+        except httpx.HTTPError as error:
+            raise FioUnreachable(type(error).__name__) from error
+        if response.status_code == 422:
+            today = datetime.datetime.now(datetime.UTC).date()
+            raise FioAuthorizationRequired(_authorization_boundary(response.text, today))
+        if response.is_error:
+            # the status alone: the body may quote the request, and the request
+            # is the token
+            raise FioUnreachable(str(response.status_code))
         return parse_fio_json(response.json())
 
     def verify(self, token: str) -> None:

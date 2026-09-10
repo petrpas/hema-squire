@@ -1110,6 +1110,8 @@
       "unsupportedFormat": "That file is neither a CSV nor a spreadsheet.",
       "importFailed": "The statement could not be imported.",
       "pollFailed": "The bank could not be polled.",
+      "pollAuthorization": "The bank will not release days before {{since}} without a strong authorization. Unlock the history in Fio internet banking (Nastavení → API, the lock beside the token, confirmed by SMS or the app) and poll again within ten minutes.",
+      "pollUnreachable": "The bank did not answer. Try again shortly, or import a statement file instead.",
       "lifecycleFailed": "The lifecycle run failed.",
       "unreadable": "That file does not read as a statement — no column in it holds dates and amounts. Check it is the right export, and that it opens as a table in a spreadsheet.",
       "willIssue": "Importing a statement will issue registrations for {{count}} rows of the fencer list. Without them a payment has nothing to settle against.",

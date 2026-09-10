@@ -214,7 +214,18 @@ def fio_poll(
     # today as the UTC day, not the process's: an operational boundary with
     # nobody's calendar behind it (design unify-day-boundary-clocks D1)
     date_from, date_to = setup.bank_poll_window(tournament, datetime.now(UTC).date())
-    transactions = fio.fetch(tournament.fio_token, date_from, date_to)
+    try:
+        transactions = fio.fetch(tournament.fio_token, date_from, date_to)
+    except bank.FioAuthorizationRequired as refusal:
+        # not an error to report as one: the window is right, the token is
+        # good, and the organizer can open the history themselves. The date is
+        # the bank's, so the console can say which days are behind the lock
+        raise HTTPException(
+            status_code=409,
+            detail={"code": "fio_authorization_required", "since": refusal.since.isoformat()},
+        ) from refusal
+    except bank.FioUnreachable as failure:
+        raise HTTPException(status_code=502, detail={"code": "fio_unreachable"}) from failure
     return _ingest_and_match(session, tournament, mailer, "fio_api", transactions)
 
 

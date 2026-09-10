@@ -95,14 +95,21 @@ export default function IntakePanel({
       const refusal = failure instanceof ApiError ? failure.detail : null;
       const pending =
         refusal !== null && typeof refusal === "object" && "code" in refusal
-          ? (refusal as { code: string; groups?: number })
+          ? (refusal as { code: string; groups?: number; since?: string })
           : null;
       // refused on the same ground as the import, and the bank is not asked
-      setError(
-        pending?.code === "dedup_pending"
-          ? t("payments.intake.dedupPending", { count: pending.groups ?? 0 })
-          : t("payments.intake.pollFailed"),
-      );
+      if (pending?.code === "dedup_pending")
+        setError(t("payments.intake.dedupPending", { count: pending.groups ?? 0 }));
+      // the bank's own refusal, and one the organizer can lift themselves: the
+      // message says where, not that something went wrong
+      else if (pending?.code === "fio_authorization_required" && pending.since !== undefined)
+        setError(
+          t("payments.intake.pollAuthorization", {
+            since: new Date(pending.since).toLocaleDateString("cs"),
+          }),
+        );
+      else if (pending?.code === "fio_unreachable") setError(t("payments.intake.pollUnreachable"));
+      else setError(t("payments.intake.pollFailed"));
     } finally {
       setWorking(false);
     }

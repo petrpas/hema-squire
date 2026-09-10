@@ -5,6 +5,7 @@ import httpx
 import pytest
 
 from app.bank import (
+    FioAuthorizationRequired,
     FioTokenRejected,
     FioUnreachable,
     HttpFioClient,
@@ -83,17 +84,66 @@ def test_parse_fio_csv_rejects_garbage():
         parse_fio_csv(b"some;random;csv\n1;2;3\n")
 
 
-def _verify_response(monkeypatch, *, status: int = 200, raises: Exception | None = None):
-    """Point the real client's one outbound call at a canned answer. Verifying
-    is the only place `HttpFioClient` decides anything, so it is tested against
-    responses rather than through a stub of itself."""
+def _verify_response(
+    monkeypatch,
+    *,
+    status: int = 200,
+    raises: Exception | None = None,
+    body: str = "",
+):
+    """Point the real client's one outbound call at a canned answer. Reading
+    the answer is where `HttpFioClient` decides anything, so both its methods
+    are tested against responses rather than through a stub of themselves."""
 
     def fake_get(url, timeout=None):
         if raises is not None:
             raise raises
-        return httpx.Response(status, request=httpx.Request("GET", url))
+        return httpx.Response(status, text=body, request=httpx.Request("GET", url))
 
     monkeypatch.setattr(httpx, "get", fake_get)
+
+
+# what Fio answers for a window reaching further back than 90 days
+OLDER_THAN_NINETY = (
+    "Data není možné poskytnout bez silné autorizace. Pokyn k zobrazení dat si "
+    "autorizujte ve Vašem Internetovém bankovnictví a data si vyžádejte znovu. "
+    "Platnost ověření je 10 minut od autorizace. Nebo požádejte o data, která "
+    "nejsou starší jak 90 dní (od 12.06.2026), v takovém případě není "
+    "autorizace třeba."
+)
+
+
+def test_fetch_reads_a_422_as_the_history_lock(monkeypatch):
+    # the token is good and the window is right: what is missing is the
+    # organizer's strong authorization, so this is its own answer
+    _verify_response(monkeypatch, status=422, body=OLDER_THAN_NINETY)
+    with pytest.raises(FioAuthorizationRequired) as refusal:
+        HttpFioClient().fetch("good-token", datetime.date(2026, 4, 1), datetime.date(2026, 5, 23))
+    # Fio's own boundary, read from its answer rather than recomputed
+    assert refusal.value.since == datetime.date(2026, 6, 12)
+
+
+def test_fetch_falls_back_to_ninety_days_when_fio_names_no_date(monkeypatch):
+    _verify_response(monkeypatch, status=422, body="silná autorizace")
+    with pytest.raises(FioAuthorizationRequired) as refusal:
+        HttpFioClient().fetch("good-token", datetime.date(2026, 4, 1), datetime.date(2026, 5, 23))
+    today = datetime.datetime.now(datetime.UTC).date()
+    assert refusal.value.since == today - datetime.timedelta(days=90)
+
+
+def test_fetch_never_carries_the_token_into_a_failure(monkeypatch):
+    # the token sits in the path, so an error quoting the URL would print it
+    # into the log of whatever catches it
+    _verify_response(monkeypatch, status=500, body="https://fioapi.fio.cz/v1/rest/periods/secret")
+    with pytest.raises(FioUnreachable) as failure:
+        HttpFioClient().fetch("secret", datetime.date(2026, 9, 1), datetime.date(2026, 9, 2))
+    assert "secret" not in str(failure.value)
+
+
+def test_fetch_reads_a_dead_connection_as_unreachable(monkeypatch):
+    _verify_response(monkeypatch, raises=httpx.ConnectError("refused"))
+    with pytest.raises(FioUnreachable):
+        HttpFioClient().fetch("good-token", datetime.date(2026, 9, 1), datetime.date(2026, 9, 2))
 
 
 def test_verify_accepts_a_working_token(monkeypatch):
@@ -263,6 +313,43 @@ def test_fio_poll_overlaps_with_csv_idempotently(client, auth_headers, stub_fio)
         "skipped": [],
     }
     assert stub_fio.calls == ["secret-token"]
+
+
+class RefusingFio(AcceptingFio):
+    def __init__(self, refusal):
+        self.refusal = refusal
+
+    def fetch(self, token, date_from, date_to):
+        raise self.refusal
+
+
+def _poll_against(client, auth_headers, refusal):
+    organizer = auth_headers()
+    setup_tournament(client, organizer, fio_token="secret-token")
+    app.dependency_overrides[get_fio_client] = lambda: RefusingFio(refusal)
+    try:
+        return client.post("/api/tournaments/cup/payments/fio-poll", headers=organizer)
+    finally:
+        app.dependency_overrides.pop(get_fio_client, None)
+
+
+def test_poll_states_the_history_lock_rather_than_failing(client, auth_headers):
+    # the console has to be able to say which days are behind the lock, so the
+    # date the bank named survives the trip
+    response = _poll_against(
+        client, auth_headers, FioAuthorizationRequired(datetime.date(2026, 6, 12))
+    )
+    assert response.status_code == 409
+    assert response.json()["detail"] == {
+        "code": "fio_authorization_required",
+        "since": "2026-06-12",
+    }
+
+
+def test_poll_reports_an_unreachable_bank_as_the_bank(client, auth_headers):
+    response = _poll_against(client, auth_headers, FioUnreachable("500"))
+    assert response.status_code == 502
+    assert response.json()["detail"] == {"code": "fio_unreachable"}
 
 
 def test_fio_poll_without_token(client, auth_headers, stub_fio):

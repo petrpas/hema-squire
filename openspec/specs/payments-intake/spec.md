@@ -83,6 +83,31 @@ Where an intake would issue nothing, no such statement SHALL be made. A panel th
 - **WHEN** the organizer opens the intake panel on a tournament whose every row already has a registration
 - **THEN** the panel states nothing about issuing
 
+### Requirement: A bank's refusal is stated as itself
+Where the bank refuses a poll, the console SHALL state what the bank said and
+what would lift it, rather than reporting that the poll failed. A refusal the
+organizer can undo is an instruction, not an error.
+
+Fio serves the last ninety days to any valid token and refuses everything
+earlier until the token's full history is unlocked by a strong authorization in
+the organizer's internet banking, which opens it for ten minutes. A poll SHALL
+keep asking for the tournament's own window — the money arrived inside it and
+nowhere else — and, when refused, SHALL name the first day the bank will serve
+and where to unlock the rest. Nothing in the API can ask for that
+authorization, so naming it is all Squire can do.
+
+A poll the bank did not answer at all SHALL be reported as the bank's silence,
+with the statement import named as the way through. Neither refusal SHALL carry
+the token, which sits in the request's own path.
+
+#### Scenario: A window older than the bank will serve unasked
+- **WHEN** the organizer polls a tournament whose window ran four months ago, and the bank refuses the days before 12 June
+- **THEN** the console states that days before 12 June need the history unlocked in Fio internet banking, and that the poll will work for ten minutes after that
+
+#### Scenario: The bank does not answer
+- **WHEN** the bank's API cannot be reached, or answers with a failure of its own
+- **THEN** the console says the bank did not answer and offers importing a statement instead, and nothing is ingested
+
 ### Requirement: Intake issues registrations before it matches
 Payment intake SHALL issue registrations for the fencer list as its first step,
 before any transaction is matched. Importing a bank statement and polling the
