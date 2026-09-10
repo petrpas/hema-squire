@@ -220,10 +220,12 @@ class StubFio(AcceptingFio):
     def __init__(self, transactions):
         self.transactions = transactions
         self.calls = []
+        self.windows = []
         self.verified = []
 
     def fetch(self, token, date_from, date_to):
         self.calls.append(token)
+        self.windows.append((date_from, date_to))
         return self.transactions
 
     def verify(self, token):
@@ -271,15 +273,28 @@ def test_fio_poll_without_token(client, auth_headers, stub_fio):
     assert response.json()["detail"] == "fio_token_not_configured"
 
 
-def test_fio_poll_refuses_an_unbounded_window(client, auth_headers, stub_fio):
-    """`days_back` becomes `today - timedelta(days=days_back)`. Unbounded, a
-    large enough int overflows the date and the request answered 500 rather
-    than refusing the number (found by the contract fuzzer, static-analysis
-    change phase 4)."""
+def test_the_poll_window_is_not_a_caller_s_to_choose(client, auth_headers, stub_fio):
+    """The window is the tournament's own and no parameter steers it.
+
+    It used to be `days_back`, a rolling fortnight a caller could widen, and
+    `today - timedelta(days=days_back)` is what it became: unbounded, a large
+    enough int overflowed the date and the request answered 500 rather than
+    refusing the number (found by the contract fuzzer). Bounding the parameter
+    fixed the overflow; removing it removes the arithmetic, and with it the
+    rolling fortnight that was asking the wrong question to begin with.
+    """
     organizer = auth_headers()
-    setup_tournament(client, organizer)
-    refused = client.post(
+    setup_tournament(client, organizer, fio_token="secret-token")
+    client.patch(
+        "/api/tournaments/cup",
+        json={"registration_opens": "2026-04-01", "date": "2026-05-23"},
+        headers=organizer,
+    )
+
+    polled = client.post(
         "/api/tournaments/cup/payments/fio-poll?days_back=999999999", headers=organizer
     )
-    assert refused.status_code == 422
-    assert stub_fio.calls == []
+
+    assert polled.status_code == 200
+    # the number is ignored: the bank was asked about the tournament's window
+    assert [(str(a), str(b)) for a, b in stub_fio.windows] == [("2026-04-01", "2026-05-23")]

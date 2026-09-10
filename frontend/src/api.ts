@@ -525,6 +525,24 @@ export interface Sheet {
   edits: NetChange[];
 }
 
+/** One table of the Export phase's band, derived from the tournament: the
+ *  fencer list, one per individual discipline, one per extra-item category it
+ *  offers something in. `key` names what the table is of and is empty for the
+ *  fencer table, which is of the whole tournament. */
+export interface ExportTab {
+  kind: "fencers" | "discipline" | "category";
+  key: string;
+  label: string;
+  capacity: number | null;
+  /** What a discipline tab's line means here: a queue boundary, or a bare
+   *  capacity mark on a tournament whose mode queues nobody. */
+  line: "queue" | "capacity" | null;
+}
+
+export interface ExportTable extends ExportTab {
+  rows: SheetRow[];
+}
+
 /** `elsewhere` says the organizer keeps the registrations, so this tournament
  *  has no window here at all — distinct from `closed`, which means a window has
  *  passed (design add-registrations-kept-by D4). */
@@ -1204,10 +1222,16 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ key, accept, fields, note }),
     }),
-  exportSheet: (slug: string) =>
-    request<{ worksheets: string[]; fencers: number }>(`/api/tournaments/${slug}/export/sheet`, {
-      method: "POST",
-    }),
+  exportSheet: (slug: string, english = false) =>
+    request<{ worksheets: string[]; fencers: number }>(
+      `/api/tournaments/${slug}/export/sheet?english=${english}`,
+      { method: "POST" },
+    ),
+  exportTabs: (slug: string) => request<ExportTab[]>(`/api/tournaments/${slug}/export/tables`),
+  exportTable: (slug: string, kind: string, key: string) =>
+    request<ExportTable>(
+      `/api/tournaments/${slug}/export/table?kind=${encodeURIComponent(kind)}&key=${encodeURIComponent(key)}`,
+    ),
   hrStatus: () => request<HRStatus>("/api/hr/status"),
   hrRefresh: () =>
     request<{ status: string; fighters: number }>("/api/hr/refresh", {

@@ -23,6 +23,32 @@ export function startedText(t: TFunction, operation: Operation): string {
   });
 }
 
+/** When a concluded operation finished, read in the reader's own zone as
+ *  `startedText` is and for the same reason: it is a moment in this session,
+ *  not a moment in the tournament's calendar.
+ *
+ *  Load-bearing rather than decorative. The panels show the most recent
+ *  concluded run of each kind with no bound on its age, so that an organizer
+ *  who was not watching still learns what landed — and a report with no moment
+ *  on it reads the same after four days as after four minutes. One was being
+ *  read as the result of an intake that had just been run.
+ *
+ *  The day is dropped for a run that concluded today, which is the common case
+ *  and the one where a date says nothing.
+ */
+export function concludedMoment(operation: Operation): string {
+  if (operation.finished_at === null) return "";
+  const at = new Date(operation.finished_at);
+  if (Number.isNaN(at.getTime())) return "";
+  const clock = at.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+  const today = new Date();
+  const sameDay =
+    at.getFullYear() === today.getFullYear() &&
+    at.getMonth() === today.getMonth() &&
+    at.getDate() === today.getDate();
+  return sameDay ? clock : `${at.toLocaleDateString("cs")} ${clock}`;
+}
+
 export function kindName(t: TFunction, kind: OperationKind): string {
   return t(`operation.kind.${kind}`);
 }

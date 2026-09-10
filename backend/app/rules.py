@@ -155,6 +155,27 @@ def _apply_dedup_decision(rows: dict[str, Row], target: str, payload: dict):
     return changes
 
 
+def _apply_rating_override(rows: dict[str, Row], target: str, payload: dict):
+    """An organizer's correction to a fetched HEMA Ratings figure.
+
+    The rating is a map on the row, keyed by discipline slug, so the rule
+    writes one key of it and leaves the rest of the fetch standing. Replaying
+    over a freshly seeded map is what makes the correction survive a ratings
+    refresh with no special case in the refresh (design export-tables D2).
+
+    The audit field is `rating:<slug>`, so a fencer entered in two disciplines
+    carries two independently attributable cells — and the manual-edits log
+    names the discipline the correction was made in.
+    """
+    row = rows[target]
+    slug, rating = payload["discipline"], payload["rating"]
+    ratings = dict(row.get("ratings") or {})
+    before = ratings.get(slug)
+    ratings[slug] = rating
+    row["ratings"] = ratings
+    return [(target, f"rating:{slug}", before, rating)]
+
+
 def _apply_opaque(rows: dict[str, Row], target: str, payload: dict):
     """Kinds consumed by domain engines (e.g. payment links), not by the sheet."""
     return []
@@ -166,6 +187,7 @@ HANDLERS: dict[str, Handler] = {
     "row_restore": _apply_row_restore,
     "match_resolution": _apply_match_resolution,
     "registration_amendment": _apply_registration_amendment,
+    "rating_override": _apply_rating_override,
     "payment_link": _apply_opaque,
     "dedup_decision": _apply_dedup_decision,
 }
@@ -317,6 +339,8 @@ def _journal(session: Session, rule: Rule, action: str, actor: Fencer) -> None:
 
 AMENDMENT = "registration_amendment"
 
+RATING_OVERRIDE = "rating_override"
+
 # The fields of a registration an organizer may correct from the table. Each of
 # them is priced, which is why the correction is an amendment rather than a
 # field edit: what the row says and what the registration bills have to move
@@ -396,6 +420,37 @@ def amended_state(
     return state
 
 
+def _check_rating_override(tournament: Tournament, payload: dict) -> None:
+    """A typed rating names a discipline of this tournament and states a
+    number, or states that there is none.
+
+    Checked here rather than only in the console for the reason a discipline
+    slug is: a slug the tournament does not know would replay onto a key no
+    reader looks at, and the organizer would meet it as a correction that
+    silently does nothing. Null is a legitimate rating — it is how an organizer
+    says the register has nobody by that name — and is not the same as removing
+    the rule, which exposes the fetched value again.
+    """
+    if not isinstance(payload, dict) or "discipline" not in payload or "rating" not in payload:
+        raise HTTPException(status_code=422, detail="payload_requires_discipline_and_rating")
+    offered = {
+        discipline.slug
+        for discipline in tournament.disciplines
+        if discipline.kind is DisciplineKind.INDIVIDUAL
+    }
+    slug = payload["discipline"]
+    if not isinstance(slug, str) or slug not in offered:
+        raise HTTPException(
+            status_code=422,
+            detail={"code": "unknown_discipline_slug", "slugs": [slug]},
+        )
+    rating = payload["rating"]
+    # bool is an int in Python, and a ticked checkbox reaching this field is a
+    # bug in the caller rather than a rating of one
+    if rating is not None and (isinstance(rating, bool) or not isinstance(rating, int | float)):
+        raise HTTPException(status_code=422, detail="rating_must_be_a_number_or_null")
+
+
 def create_rule(
     session: Session,
     tournament: Tournament,
@@ -414,6 +469,8 @@ def create_rule(
         raise HTTPException(status_code=422, detail="payload_requires_field_and_value")
     if kind == AMENDMENT and payload.get("field") not in AMENDABLE_FIELDS:
         raise HTTPException(status_code=422, detail="field_is_not_amendable")
+    if kind == RATING_OVERRIDE:
+        _check_rating_override(tournament, payload)
     if payload.get("field") in AMENDABLE_FIELDS and kind in ("field_edit", AMENDMENT):
         value = payload.get("value")
         if payload.get("field") == "disciplines":

@@ -251,16 +251,18 @@ describe("what a row offers to have done to it", () => {
 });
 
 describe("the phases that draw no fencer table", () => {
-  it("counts Deduplication among them", () => {
-    // its work is a handful of rows out of fifty, and the table states it where
-    // it is hardest to see (spec etl-console, Deduplication candidate review)
-    for (const phase of ["setup", "dedup", "teams", "queue"] as Phase[]) {
+  it("counts Deduplication and Export among them", () => {
+    // Deduplication's work is a handful of rows out of fifty, and the table
+    // states it where it is hardest to see (spec etl-console, Deduplication
+    // candidate review); Export shows a band of tables derived from the
+    // tournament, of which the fencer list is one tab (spec export-tables)
+    for (const phase of ["setup", "dedup", "teams", "queue", "export"] as Phase[]) {
       expect(PHASE_COLUMNS[phase]).toEqual([]);
     }
   });
 
   it("leaves every other processing phase its columns", () => {
-    for (const phase of ["import", "fencers", "matching", "payments", "export"] as Phase[]) {
+    for (const phase of ["import", "fencers", "matching", "payments"] as Phase[]) {
       expect(PHASE_COLUMNS[phase].length).toBeGreaterThan(0);
     }
   });

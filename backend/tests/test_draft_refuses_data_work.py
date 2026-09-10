@@ -129,6 +129,8 @@ GATED = [
     ("seating settlement", "post", "/settle-seating", {}),
     ("worksheet export", "post", "/export/sheet", {}),
     ("canonical document", "get", "/export/json", {}),
+    ("export tab band", "get", "/export/tables", {}),
+    ("one export table", "get", "/export/table", {"params": {"kind": "fencers", "key": ""}}),
 ]
 
 

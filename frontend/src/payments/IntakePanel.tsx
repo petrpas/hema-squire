@@ -2,7 +2,7 @@ import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { ApiError, api, type IngestAndMatch, type TournamentDetail } from "../api";
-import { conclusionText, kindName } from "../operationText";
+import { concludedMoment, conclusionText, kindName } from "../operationText";
 import type { OperationsView } from "../useOperations";
 import ClearPaymentsControl from "./ClearPaymentsControl";
 import IssuedReport from "./IssuedReport";
@@ -168,6 +168,7 @@ export default function IntakePanel({
         <>
           <p className="rail-hint">
             {t("payments.intake.imported", {
+              when: concludedMoment(statement),
               new: (statement.outcome as unknown as IngestAndMatch).new,
               matched: (statement.outcome as unknown as IngestAndMatch).matched,
             })}

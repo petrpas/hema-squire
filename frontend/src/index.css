@@ -3929,3 +3929,46 @@ button.secondary.tolerance-save:disabled {
   opacity: 0.5;
   cursor: default;
 }
+
+/* ===== export tables =====
+
+   The Export phase is a band of tables derived from the tournament (spec
+   export-tables). The band itself is `.stage-control-band`, which every other
+   tab band in the console already is; what is new here is the strip of
+   controls under it and the one line a discipline table draws. */
+
+.export-controls {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.8rem;
+  font-size: 13px;
+}
+
+.export-controls label {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+/* The capacity line: one row of the table with a rule above it, not a break
+   splitting it in two — what leaves the tab is every fencer in one block. The
+   label says which of the two lines it is, so a reader is never left inferring
+   it from a setting they may not know about. */
+tr.export-line td {
+  border-top: 2px solid var(--rule-strong);
+  border-bottom: none;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  color: var(--ink-faded);
+  font-size: 12px;
+  letter-spacing: 0.04em;
+}
+
+/* A rating the organizer typed, marked the way every other manual edit is:
+   same ink, same weight. The correction is theirs, and the register's own
+   figure stands unchanged in the rank beside it. */
+.cell-edited {
+  font-style: italic;
+}

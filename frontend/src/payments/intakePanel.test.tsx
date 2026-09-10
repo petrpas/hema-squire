@@ -5,6 +5,7 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
 import { ApiError, api, type Operation, type TournamentDetail } from "../api";
 import i18n from "../i18n";
+import { concludedMoment } from "../operationText";
 import type { OperationsView } from "../useOperations";
 import IntakePanel from "./IntakePanel";
 
@@ -159,19 +160,65 @@ it("says a file that is not a table at all was not imported", async () => {
   );
 });
 
-it("reports what a concluded import brought in", async () => {
+/** What `concludedMoment` makes of the fixtures' `finished_at` — asked of the
+ *  helper rather than spelled out, since the reader's own zone decides it. */
+const WHEN = concludedMoment({ finished_at: "2026-09-06T07:33:04Z" } as unknown as Operation);
+
+it("reports what a concluded import brought in, and when it landed", async () => {
   const concluded = {
     statement: {
       id: 3,
       kind: "statement",
       status: "done",
+      finished_at: "2026-09-06T07:33:04Z",
       outcome: { new: 2, matched: 1 },
     } as unknown as Operation,
   };
   render({ operations: operations({ concluded }) });
   await settle();
 
-  expect(host?.textContent).toContain(t("payments.intake.imported", { new: 2, matched: 1 }));
+  expect(host?.textContent).toContain(
+    t("payments.intake.imported", { when: WHEN, new: 2, matched: 1 }),
+  );
+});
+
+it("does not let a days-old import read as the poll just run", async () => {
+  // the defect this guards: the panel shows the most recent concluded run of
+  // each kind with no bound on its age, so a four-day-old statement report sat
+  // under a fresh poll result and was read as its outcome
+  vi.spyOn(api, "fioPoll").mockResolvedValue({
+    new: 0,
+    duplicate: 0,
+    matched: 0,
+    flagged: 0,
+    unmatched: 0,
+    partial: 0,
+    set_aside: 0,
+    issued: 0,
+    already_issued: 0,
+    skipped: [],
+  });
+  const concluded = {
+    statement: {
+      id: 5,
+      kind: "statement",
+      status: "done",
+      finished_at: "2026-09-06T07:33:04Z",
+      outcome: { new: 43, matched: 0 },
+    } as unknown as Operation,
+  };
+  render({ detail: detail(true), operations: operations({ concluded }) });
+  await settle();
+
+  act(() => void buttonNamed(t("payments.intake.poll"))?.click());
+  await settle();
+
+  const text = host?.textContent ?? "";
+  // both are shown — the old report is not withdrawn — but the old one carries
+  // the day it landed and the poll says it is the one that just ran
+  expect(text).toContain(t("payments.intake.polled", { new: 0, matched: 0 }));
+  expect(text).toContain(t("payments.intake.imported", { when: WHEN, new: 43, matched: 0 }));
+  expect(text).toContain("6. 9. 2026");
 });
 
 it("polls the bank and reports what it brought in", async () => {
@@ -291,13 +338,16 @@ it("says nothing about issuing where an import issued nothing", async () => {
       id: 8,
       kind: "statement",
       status: "done",
+      finished_at: "2026-09-06T07:33:04Z",
       outcome: { new: 2, matched: 1, issued: 0, already_issued: 51, skipped: [] },
     } as unknown as Operation,
   };
   render({ operations: operations({ concluded }) });
   await settle();
 
-  expect(host?.textContent).toContain(t("payments.intake.imported", { new: 2, matched: 1 }));
+  expect(host?.textContent).toContain(
+    t("payments.intake.imported", { when: WHEN, new: 2, matched: 1 }),
+  );
   expect(host?.textContent).not.toContain(t("payments.intake.issued", { count: 0 }));
 });
 

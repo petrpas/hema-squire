@@ -82,5 +82,22 @@
       "subject": "Uvolnilo se místo — {tournament}",
       "body": "Ahoj {name},\n\nv disciplíně {discipline} na {tournament} se pro tebe uvolnilo místo — už nejsi náhradník.\n\nTvá registrace vychází na {total}. Částka je pro informaci — platbu řeší organizátor mimo tento systém.\n\nTým {tournament}"
     }
+  },
+  "export": {
+    "yes": "Ano",
+    "no": "Ne",
+    "column": {
+      "reg": "Reg.",
+      "no": "Č.",
+      "name": "Jméno",
+      "nat": "Nár.",
+      "club": "Klub",
+      "hr_id": "HR_ID",
+      "disciplines": "Disciplíny",
+      "rating": "HRating",
+      "rank": "HRank",
+      "items": "Položky",
+      "paid": "Zaplaceno"
+    }
   }
 }

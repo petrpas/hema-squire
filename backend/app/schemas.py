@@ -1368,6 +1368,24 @@ class SheetOut(BaseModel):
     edits: list[NetChangeOut]
 
 
+class ExportTabOut(BaseModel):
+    """One table of the Export phase's band (spec export-tables). `key` names
+    what the table is of — a discipline's slug, an extra-item category — and is
+    empty for the fencer table, which is of the whole tournament."""
+
+    kind: str
+    key: str
+    label: str
+    capacity: int | None = None
+    # what a discipline tab's capacity line means here: a queue boundary, or a
+    # bare capacity mark on a tournament whose mode queues nobody
+    line: str | None = None
+
+
+class ExportTableOut(ExportTabOut):
+    rows: list[dict]
+
+
 class ConsoleTeamOut(BaseModel):
     """One team as the organizer's read-only teams view presents it (spec:
     "Organizer's read-only teams view"). Offers no action — no admission, no

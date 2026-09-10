@@ -1,8 +1,8 @@
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 from decimal import ROUND_HALF_UP, Decimal
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile
+from fastapi import APIRouter, Depends, HTTPException, UploadFile
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
@@ -19,6 +19,7 @@ from app import (
     paymentsclear,
     rules,
     scheduler,
+    setup,
     statements,
 )
 from app.auth import require_console_access, require_published
@@ -193,23 +194,27 @@ def fio_poll(
     fencer: FencerDep,
     fio: FioClientDep,
     mailer: MailerDep,
-    # Bounded, because `today - timedelta(days=days_back)` is what this becomes
-    # and an unbounded int overflows the date rather than answering: the
-    # contract fuzzer reached this with a 500. A year is past any outage a
-    # console poll is catching up on, and the scheduler's own window is 14 days.
-    days_back: int = Query(default=14, ge=1, le=365),
 ):
+    """Ask the bank about this tournament's own window and credit what it says.
+
+    The window is `setup.bank_poll_window` — from the day registration opened
+    to the day the tournament is held. It used to be a rolling fortnight, and a
+    fortnight is the wrong question for a poll an organizer presses: pointed at
+    a tournament whose window has passed it asked about days in which nothing
+    could have been paid, found nothing, and said so. There is no parameter
+    because there is nothing for a caller to choose: the tournament states its
+    own window.
+    """
     require_console_access(session, tournament, fencer)
     require_published(tournament)
     bank.require_payments_enabled(tournament)
     _refuse_while_duplicates_pending(session, tournament)
     if not tournament.fio_token:
         raise HTTPException(status_code=409, detail="fio_token_not_configured")
-    # the poll window is operational, not an organizer's date: bounded by the
-    # UTC day, not by whatever zone this process runs in (design
-    # unify-day-boundary-clocks D1)
-    today = datetime.now(UTC).date()
-    transactions = fio.fetch(tournament.fio_token, today - timedelta(days=days_back), today)
+    # today as the UTC day, not the process's: an operational boundary with
+    # nobody's calendar behind it (design unify-day-boundary-clocks D1)
+    date_from, date_to = setup.bank_poll_window(tournament, datetime.now(UTC).date())
+    transactions = fio.fetch(tournament.fio_token, date_from, date_to)
     return _ingest_and_match(session, tournament, mailer, "fio_api", transactions)
 
 

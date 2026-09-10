@@ -19,6 +19,7 @@ import {
 import DedupPanel from "./dedup/DedupPanel";
 import DedupView from "./dedup/DedupView";
 import ExportPanel from "./ExportPanel";
+import ExportTables from "./export/ExportTables";
 import ImportPanel from "./ImportPanel";
 import { IDENTITY_COLUMNS, identityValue, usesHRIdentity } from "./identity";
 import ManualEditsRail from "./ManualEditsRail";
@@ -124,7 +125,9 @@ export const PHASE_COLUMNS: Record<Phase, string[]> = {
   // Deduplication shows candidate groups, not the fencer list (design D1)
   dedup: [],
   payments: ["vs", "total_amount", "outstanding", "expires_at", "paid_at", "state"],
-  export: ["hr_id", "disciplines", "state"],
+  // Export shows a band of tables derived from the tournament rather than one
+  // table of its own, and so declares no columns (spec export-tables)
+  export: [],
   teams: [],
   queue: [],
 };
@@ -682,6 +685,10 @@ export default function Console({ tournament, phase }: { tournament: Tournament;
   const published = Boolean((detail ?? tournament).published_at);
   const boned = phase === "payments" && paymentsBonedOut(detail ?? tournament);
   const [settling, setSettling] = useState(false);
+  // What leaves the Export phase in English: the copied table and the sheet
+  // write, which sit in two different columns of this screen and are one
+  // decision (design export-tables D5). The table on screen never follows it.
+  const [english, setEnglish] = useState(false);
   const [recording, setRecording] = useState<SheetRow | null>(null);
   const collects = (detail ?? tournament).feature_payments;
 
@@ -711,6 +718,67 @@ export default function Console({ tournament, phase }: { tournament: Tournament;
   }
   const columns = [...BASE_COLUMNS, ...(boned ? BONED_PAYMENTS_COLUMNS : PHASE_COLUMNS[phase])];
   const phaseEdits = editsForPhase(sheet?.edits ?? [], phase);
+
+  /* The parameter rail: the phase's own operation panel and its
+     manual-edits log. Held as an element rather than written into the
+     workspace, because two branches draw it — the phases that show the
+     fencer table, and Export, which shows a band of tables instead and
+     keeps the rail all the same. */
+  const rail = (
+    <aside className="rail">
+      <div className="rail-title">
+        {t("rail.operations")} · {t(`phase.${phase}`)}
+      </div>
+
+      {/* a phase carries only its own operation's parameters; tournament
+          configuration is Setup's, and a phase with none shows no panel
+          (spec etl-console: "Operation parameters") */}
+      {phase === "import" && (
+        <ImportPanel slug={tournament.slug} operations={operations} onImported={refresh} />
+      )}
+      {/* the fencer list is entered and corrected here; making it billable
+          is not an action of this phase and is not offered as one — payment
+          intake issues registrations for it (design Decision 10) */}
+      {phase === "fencers" && (
+        <ManualEntryPanel detail={detail} slug={tournament.slug} onEntered={refresh} />
+      )}
+      {phase === "matching" && (
+        <MatchPanel
+          slug={tournament.slug}
+          operations={operations}
+          pending={pendingVerdicts}
+          onChanged={refresh}
+        />
+      )}
+      {phase === "dedup" && (
+        <DedupPanel slug={tournament.slug} operations={operations} onChanged={refresh} />
+      )}
+      {/* the four payment queues are the phase's main column, above the
+          fencer table; the rail keeps what it keeps for every phase — the
+          operation's parameters and the edits log (design
+          add-payments-console-ui D1) */}
+      {phase === "payments" && !boned && (
+        <>
+          <IntakePanel
+            slug={tournament.slug}
+            detail={detail}
+            operations={operations}
+            reload={queueReload}
+            onChanged={refresh}
+          />
+          <TolerancePanel detail={detail} slug={tournament.slug} onSaved={refresh} />
+        </>
+      )}
+      {phase === "export" && <ExportPanel slug={tournament.slug} english={english} />}
+
+      <ManualEditsRail
+        entries={phaseEdits}
+        rows={rows}
+        timezone={detail?.timezone ?? null}
+        onUndo={(ruleIds) => void undoEdit(ruleIds)}
+      />
+    </aside>
+  );
 
   return (
     <div className="app">
@@ -776,6 +844,23 @@ export default function Console({ tournament, phase }: { tournament: Tournament;
           <TeamsPanel slug={tournament.slug} />
         ) : phase === "queue" ? (
           <QueuePanel slug={tournament.slug} timezone={detail?.timezone ?? null} />
+        ) : phase === "export" ? (
+          /* the Export phase is a band of tables — the fencer list, one per
+             individual discipline, one per extra-item category the tournament
+             offers — and the fencer list is one tab of it rather than the
+             phase's own table (spec export-tables). The rail is the phase's as
+             it is every other phase's */
+          <>
+            <ExportTables
+              slug={tournament.slug}
+              edits={phaseEdits}
+              english={english}
+              onEnglishChange={setEnglish}
+              onChanged={refresh}
+              revision={sheet?.edits.length ?? 0}
+            />
+            {rail}
+          </>
         ) : (
           <>
             {phase === "dedup" ? (
@@ -898,59 +983,7 @@ export default function Console({ tournament, phase }: { tournament: Tournament;
               />
             )}
 
-            <aside className="rail">
-              <div className="rail-title">
-                {t("rail.operations")} · {t(`phase.${phase}`)}
-              </div>
-
-              {/* a phase carries only its own operation's parameters; tournament
-              configuration is Setup's, and a phase with none shows no panel
-              (spec etl-console: "Operation parameters") */}
-              {phase === "import" && (
-                <ImportPanel slug={tournament.slug} operations={operations} onImported={refresh} />
-              )}
-              {/* the fencer list is entered and corrected here; making it billable
-              is not an action of this phase and is not offered as one — payment
-              intake issues registrations for it (design Decision 10) */}
-              {phase === "fencers" && (
-                <ManualEntryPanel detail={detail} slug={tournament.slug} onEntered={refresh} />
-              )}
-              {phase === "matching" && (
-                <MatchPanel
-                  slug={tournament.slug}
-                  operations={operations}
-                  pending={pendingVerdicts}
-                  onChanged={refresh}
-                />
-              )}
-              {phase === "dedup" && (
-                <DedupPanel slug={tournament.slug} operations={operations} onChanged={refresh} />
-              )}
-              {/* the four payment queues are the phase's main column, above the
-              fencer table; the rail keeps what it keeps for every phase — the
-              operation's parameters and the edits log (design
-              add-payments-console-ui D1) */}
-              {phase === "payments" && !boned && (
-                <>
-                  <IntakePanel
-                    slug={tournament.slug}
-                    detail={detail}
-                    operations={operations}
-                    reload={queueReload}
-                    onChanged={refresh}
-                  />
-                  <TolerancePanel detail={detail} slug={tournament.slug} onSaved={refresh} />
-                </>
-              )}
-              {phase === "export" && <ExportPanel slug={tournament.slug} />}
-
-              <ManualEditsRail
-                entries={phaseEdits}
-                rows={rows}
-                timezone={detail?.timezone ?? null}
-                onUndo={(ruleIds) => void undoEdit(ruleIds)}
-              />
-            </aside>
+            {rail}
           </>
         )}
       </div>

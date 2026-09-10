@@ -66,7 +66,7 @@
   },
   "export": {
     "title": "Export",
-    "hint": "Google Sheet in the v1 format (Fencers + discipline tabs), or a full JSON backup export.",
+    "hint": "Google Sheet — a Fencers worksheet, one per discipline and one per item category, or the full JSON backup export.",
     "fetchRatings": "Fetch HR ratings",
     "ratingsDone": "Ratings fetched · {{ratings}} values for {{fencers}} fencers.",
     "ratingsFailed": "Ratings fetch failed (index/page format?).",
@@ -75,7 +75,41 @@
     "done": "Done · {{fencers}} fencers exported.",
     "noUrl": "Set the output sheet URL first (parameter on the left).",
     "notConfigured": "Google access is not configured on the server.",
-    "failed": "Export failed."
+    "failed": "Export failed.",
+    "tablesTitle": "Export tables",
+    "tab": {
+      "fencers": "Fencers"
+    },
+    "category": {
+      "rental": "Rentals",
+      "merch": "Merch",
+      "other_item": "Other items",
+      "seminar": "Seminars",
+      "afterparty": "Afterparty",
+      "other_action": "Other programme"
+    },
+    "column": {
+      "name": "Name",
+      "nat": "Nat.",
+      "club": "Club",
+      "hr_id": "HR_ID",
+      "disciplines": "Disciplines",
+      "rating": "Rating",
+      "rank": "Rank",
+      "items": "Items",
+      "paid": "Paid"
+    },
+    "line": {
+      "queue": "capacity line — substitutes below",
+      "capacity": "capacity line"
+    },
+    "yes": "Yes",
+    "no": "No",
+    "activeOnly": "Active only",
+    "copy": "Copy table",
+    "copied": "Copied · {{count}} rows.",
+    "english": "Export in English",
+    "refreshesTournament": "Refreshes the whole tournament's ratings, not this discipline alone."
   },
   "dedup": {
     "title": "Deduplication",
@@ -1070,8 +1104,8 @@
       "poll": "Poll the bank now",
       "noToken": "Bank API: no token configured",
       "lifecycle": "Run expiries and reminders now",
-      "imported": "Imported: {{new}} new, {{matched}} matched.",
-      "polled": "Polled: {{new}} new, {{matched}} matched.",
+      "imported": "Imported {{when}}: {{new}} new, {{matched}} matched.",
+      "polled": "Polled just now: {{new}} new, {{matched}} matched.",
       "noParser": "An unrecognised statement cannot be read — this deployment has no parser configured.",
       "unsupportedFormat": "That file is neither a CSV nor a spreadsheet.",
       "importFailed": "The statement could not be imported.",

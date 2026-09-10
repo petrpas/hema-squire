@@ -23,10 +23,21 @@ from collections import defaultdict
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
-from app import hr_match, importer, ledger, manualrows, pricing, rownumbers, setup, taxonomy
-from app.hr_index import DbHRIndex, HRIndex, evidence_fields
+from app import (
+    hr_match,
+    hr_sync,
+    importer,
+    ledger,
+    manualrows,
+    pricing,
+    rownumbers,
+    setup,
+    taxonomy,
+)
+from app.hr_index import DbHRIndex, HRIndex, HRRating, evidence_fields
 from app.models import (
     Currency,
+    DisciplineKind,
     ExtraCategory,
     ImportedRow,
     ManualRow,
@@ -38,13 +49,17 @@ from app.models import (
 from app.rules import Row
 
 
-def _extras_summary(registration: Registration) -> tuple[list[str], bool, list[str]]:
-    """Split a registration's extra-item selections into the v1 sheet's
-    fixed slots: rental names, an afterparty flag, and everything else
-    (seminar/merch) as freetext labels for the notes summary column."""
+def _extras_summary(registration: Registration) -> tuple[list[str], bool]:
+    """A registration's extra-item selections in the two slots the fencer table
+    still has cells for: the rental names an organizer amends, and the
+    afterparty tick the console and deduplication both read.
+
+    The third slot this produced — seminar and merch labels appended to the
+    notes column as freetext — is gone with the v1 worksheet that was its only
+    reader. What a fencer bought is `_extras_by_category`, stated per category
+    on its own tab, and the notes column is the organizer's own text again."""
     rentals: list[str] = []
     afterparty = False
-    other: list[str] = []
     for selection in registration.extra_selections:
         label = (
             f"{selection.item.name} x{selection.qty}" if selection.qty > 1 else selection.item.name
@@ -53,9 +68,59 @@ def _extras_summary(registration: Registration) -> tuple[list[str], bool, list[s
             rentals.append(label)
         elif selection.item.category == ExtraCategory.AFTERPARTY:
             afterparty = True
-        else:
-            other.append(label)
-    return rentals, afterparty, other
+    return rentals, afterparty
+
+
+def _extras_by_category(registration: Registration) -> dict[str, list[dict]]:
+    """A registration's extra-item selections, per category, as the item tabs
+    read them: the item, how many, and the answer to its option where it
+    declares one.
+
+    Beside the v1 slots `_extras_summary` produces rather than instead of them:
+    a rental is both a name in `weapon_rentals`, which an organizer amends, and
+    a row on the Rentals tab. The categories a registration selected nothing in
+    are absent, so a tab's population is the rows holding its key.
+    """
+    by_category: dict[str, list[dict]] = defaultdict(list)
+    for selection in registration.extra_selections:
+        by_category[selection.item.category.value].append(
+            {
+                "name": selection.item.name,
+                "qty": selection.qty,
+                "option": selection.option_value,
+            }
+        )
+    return dict(by_category)
+
+
+def _rating_maps(
+    tournament: Tournament,
+    ratings: dict[tuple[int, str], HRRating],
+    hr_id: int | None,
+) -> tuple[dict[str, float | None], dict[str, int | None]]:
+    """What HEMA Ratings currently says about one fencer, per discipline slug.
+
+    Keyed by slug rather than by taxonomy code because that is what every
+    reader of the row holds: tiers of one weapon share a fetched rating
+    (spec hr-integration, Ratings snapshots) and each carries it under its own
+    slug, so an organizer correcting one tier does not move the other. A
+    discipline the snapshot has nothing for is absent from the maps rather than
+    present as null — the export states the absence itself, from the missing
+    key.
+    """
+    if hr_id is None:
+        return {}, {}
+    rating_by_slug: dict[str, float | None] = {}
+    rank_by_slug: dict[str, int | None] = {}
+    for discipline in tournament.disciplines:
+        if discipline.kind is not DisciplineKind.INDIVIDUAL:
+            continue
+        found = ratings.get((hr_id, discipline.taxonomy_code))
+        if found is None:
+            continue
+        rating_by_slug[discipline.slug] = found.rating
+        rank_by_slug[discipline.slug] = found.rank
+    return rating_by_slug, rank_by_slug
 
 
 def _wall_clock(value: object, zone: datetime.tzinfo) -> str | None:
@@ -183,6 +248,11 @@ def base_rows(
     # get the deployment's (spec etl-console, The ledger idiom).
     if index is None:
         index = DbHRIndex(session)
+    # One read of the latest snapshot for the whole projection. Ratings are
+    # seeded on every phase, not only Export: a rating some phases have and
+    # others do not is worse to reason about than one extra indexed read
+    # (design export-tables, Risks).
+    _taken_at, snapshot_ratings = hr_sync.latest_ratings(session, tournament)
     registrations = session.scalars(
         select(Registration)
         .where(
@@ -220,7 +290,9 @@ def base_rows(
             registration.fencer.nationality,
             registration.fencer.hr_id,
         )
-        extra_rentals, extra_afterparty, extra_other = _extras_summary(registration)
+        extra_rentals, extra_afterparty = _extras_summary(registration)
+        row_ratings, row_ranks = _rating_maps(tournament, snapshot_ratings, row_hr_id)
+        row_extras = _extras_by_category(registration)
         balance, balance_currency = registration.balance_cents(tournament)
         # What a waiver forgave, where money had already arrived against the
         # price. A waiver owes nothing, so `balance` is zero on such a row and
@@ -235,10 +307,6 @@ def base_rows(
         # registration when it did
         settled_on = ledger.paid_at(registration, tournament)
         waived = _money(remaining) if registration.waived and credited else None
-        notes = registration.notes
-        if extra_other:
-            summary = "; ".join(extra_other)
-            notes = f"{notes} | {summary}" if notes else summary
         rows[row_id] = {
             "id": row_id,
             "name": registration.fencer.display_name,
@@ -251,6 +319,16 @@ def base_rows(
             "email": registration.fencer.email,
             "disciplines": [e.discipline.slug for e in registration.entries if not e.is_substitute],
             "substitute_for": [e.discipline.slug for e in registration.entries if e.is_substitute],
+            # what HEMA Ratings says, per discipline slug, before a correction.
+            # An organizer's typed rating is a rule replayed over this map, so
+            # a refresh reseeds it and the correction is written again on top
+            # (design export-tables D2)
+            "ratings": row_ratings,
+            "ranks": row_ranks,
+            # what the fencer bought, per extra-item category, for the tabs
+            # that list one category each (spec export-tables, Each tab states
+            # its own columns and order)
+            "extras": row_extras,
             # composed from the lifecycle and the settled derivation rather
             # than read off a column: `paid` left the stored enum, and this is
             # where the four values a reader knows are put back together
@@ -297,7 +375,7 @@ def base_rows(
             ),
             "afterparty": registration.afterparty or extra_afterparty,
             "aftersparring": registration.aftersparring,
-            "notes": notes,
+            "notes": registration.notes,
             "problems": None,
             "_deleted": False,
         }
@@ -410,6 +488,12 @@ def _imported_rows(
             "email": record.get("email"),
             "disciplines": disciplines,
             "substitute_for": [],
+            # a source row carries no ratings: a snapshot is taken over the
+            # fencers the tournament has registered, and a row that has not
+            # been issued one is in no snapshot to read
+            "ratings": {},
+            "ranks": {},
+            "extras": {},
             "state": "imported",
             "vs": None,
             "paid": False,
@@ -451,6 +535,9 @@ def _unparsed_row(row_id: str, row: ImportedRow) -> Row:
         "email": None,
         "disciplines": [],
         "substitute_for": [],
+        "ratings": {},
+        "ranks": {},
+        "extras": {},
         "state": "imported",
         "vs": None,
         "paid": False,
@@ -503,6 +590,9 @@ def _manual_row(row: ManualRow, index: HRIndex | None = None) -> Row:
         "email": row.email,
         "disciplines": list(row.disciplines),
         "substitute_for": [],
+        "ratings": {},
+        "ranks": {},
+        "extras": {},
         "state": "manual",
         "vs": None,
         "paid": False,

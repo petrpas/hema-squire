@@ -486,3 +486,43 @@ def payment_window(tournament: Tournament, now: datetime.datetime) -> datetime.d
         tournament.date + datetime.timedelta(days=1), datetime.time.min, tzinfo=datetime.UTC
     )
     return min(window, end_of_tournament)
+
+
+def bank_poll_window(
+    tournament: Tournament, today: datetime.date
+) -> tuple[datetime.date, datetime.date]:
+    """The days a poll of the bank asks about: from the day registration opened
+    to the day the tournament is held.
+
+    The money a tournament is owed arrives inside its own window and nowhere
+    else, so that window is what the poll asks for. A rolling fortnight — which
+    this replaces on the console's own poll — is right only for a tournament
+    whose registration is open now: pointed at a tournament whose window has
+    passed it asks the bank about a fortnight in which, by definition, nothing
+    was paid, and reports nothing found. That is what it did.
+
+    The start is the day registration opened, or the day the tournament was
+    published where no opening date is set, that being when it could first be
+    registered for. Neither known leaves the tournament's own date, which asks
+    for one day rather than for nothing.
+
+    The end is the tournament's date, never later than today: a poll asks about
+    days that have happened. Money arriving after the event is therefore
+    outside the window and reaches the console by a statement import, which is
+    the same route every payment Squire's bank feed cannot see already takes.
+
+    A window running backwards — an opening date after the tournament — is
+    read as the single day the tournament is held, rather than as an empty
+    range the bank would refuse.
+    """
+    end = min(tournament.date, today)
+    opens = tournament.registration_opens
+    if opens is None and tournament.published_at is not None:
+        published = tournament.published_at
+        # SQLite hands back what it stored, which may carry no zone; a bare
+        # stamp on this column is UTC, as everywhere else it is read
+        if published.tzinfo is None:
+            published = published.replace(tzinfo=datetime.UTC)
+        opens = local_date(tournament, published)
+    start = opens if opens is not None else end
+    return (min(start, end), end)

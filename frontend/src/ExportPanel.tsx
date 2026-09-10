@@ -3,7 +3,10 @@ import { useTranslation } from "react-i18next";
 
 import { ApiError, api, getToken } from "./api";
 
-export default function ExportPanel({ slug }: { slug: string }) {
+/** The Export phase's rail: the canonical JSON document and the write to the
+ *  organizer's spreadsheet. The ratings refresh left it for the discipline
+ *  tabs, where the ratings a reader is looking at are. */
+export default function ExportPanel({ slug, english }: { slug: string; english: boolean }) {
   const { t } = useTranslation();
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -14,7 +17,7 @@ export default function ExportPanel({ slug }: { slug: string }) {
     setError(null);
     setMessage(null);
     try {
-      const result = await api.exportSheet(slug);
+      const result = await api.exportSheet(slug, english);
       setMessage(t("export.done", { fencers: result.fencers }));
     } catch (failure) {
       if (failure instanceof ApiError && failure.status === 422) {
@@ -24,20 +27,6 @@ export default function ExportPanel({ slug }: { slug: string }) {
       } else {
         setError(t("export.failed"));
       }
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function fetchRatings() {
-    setBusy(true);
-    setError(null);
-    setMessage(null);
-    try {
-      const result = await api.ratingsSnapshot(slug);
-      setMessage(t("export.ratingsDone", { ratings: result.ratings, fencers: result.fencers }));
-    } catch {
-      setError(t("export.ratingsFailed"));
     } finally {
       setBusy(false);
     }
@@ -59,14 +48,6 @@ export default function ExportPanel({ slug }: { slug: string }) {
     <section className="rail-card">
       <h2>{t("export.title")}</h2>
       <p className="rail-hint">{t("export.hint")}</p>
-      <button
-        type="button"
-        className="secondary param-save"
-        disabled={busy}
-        onClick={() => void fetchRatings()}
-      >
-        {busy ? t("common.loading") : t("export.fetchRatings")}
-      </button>
       <button
         type="button"
         className="secondary param-save"

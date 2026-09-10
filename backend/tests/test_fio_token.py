@@ -160,3 +160,81 @@ def test_recording_requires_console_access(client, auth_headers):
 
     assert put_token(client, outsider).status_code == 403
     assert client.delete("/api/tournaments/cup/fio-token", headers=outsider).status_code == 403
+
+
+# --------------------------------------------------- the window a poll asks for
+
+
+class RecordingFio(AcceptingFio):
+    """A bank that answers nothing but remembers what it was asked."""
+
+    def __init__(self):
+        self.asked: list[tuple] = []
+
+    def fetch(self, token, date_from, date_to):
+        self.asked.append((date_from, date_to))
+        return []
+
+
+def test_the_poll_asks_for_the_tournament_s_own_window(client, auth_headers):
+    """The defect this replaces: a rolling fortnight. Pointed at a tournament
+    whose registration window has passed it asked the bank about a fortnight in
+    which, by definition, nothing could have been paid, found nothing, and
+    reported nothing found (spec payments)."""
+    bank = RecordingFio()
+    _override(bank)
+    try:
+        organizer = auth_headers()
+        setup_tournament(client, organizer)
+        client.patch(
+            "/api/tournaments/cup",
+            json={
+                "date": "2026-05-23",
+                "registration_opens": "2026-04-01",
+                "location": "Brno",
+                "organizers": [{"name": "Cup Org", "link": None}],
+            },
+            headers=organizer,
+        )
+        publish(client, organizer, "cup")
+        put_token(client, organizer)
+
+        assert (
+            client.post("/api/tournaments/cup/payments/fio-poll", headers=organizer).status_code
+            == 200
+        )
+        [(date_from, date_to)] = bank.asked
+        assert str(date_from) == "2026-04-01"  # the day registration opened
+        assert str(date_to) == "2026-05-23"  # the day the tournament is held
+    finally:
+        _override(AcceptingFio())
+
+
+def test_the_window_never_asks_about_days_that_have_not_happened(client, auth_headers):
+    """A tournament still ahead of its date: the window ends today, because a
+    poll asks about days that have happened."""
+    import datetime
+
+    bank = RecordingFio()
+    _override(bank)
+    try:
+        organizer = auth_headers()
+        setup_tournament(client, organizer)  # dated 2026-12-05, well ahead
+        client.patch(
+            "/api/tournaments/cup",
+            json={
+                "registration_opens": "2026-09-01",
+                "location": "Brno",
+                "organizers": [{"name": "Cup Org", "link": None}],
+            },
+            headers=organizer,
+        )
+        publish(client, organizer, "cup")
+        put_token(client, organizer)
+
+        client.post("/api/tournaments/cup/payments/fio-poll", headers=organizer)
+        [(date_from, date_to)] = bank.asked
+        assert str(date_from) == "2026-09-01"
+        assert date_to == datetime.datetime.now(datetime.UTC).date()
+    finally:
+        _override(AcceptingFio())

@@ -70,7 +70,7 @@
   },
   "export": {
     "title": "Export",
-    "hint": "Google Sheet ve formátu v1 (list Fencers + listy disciplín), nebo úplný JSON zálohový export.",
+    "hint": "Google Sheet — list Fencers, list pro každou disciplínu a pro každou kategorii položek, nebo úplný JSON zálohový export.",
     "fetchRatings": "Stáhnout HR ratingy",
     "ratingsDone": "Ratingy staženy · {{ratings}} hodnot pro {{fencers}} šermířů.",
     "ratingsFailed": "Stažení ratingů se nezdařilo (index/formát stránky?).",
@@ -79,7 +79,41 @@
     "done": "Hotovo · {{fencers}} šermířů exportováno.",
     "noUrl": "Nejdřív nastav URL výstupní tabulky (parametr vlevo).",
     "notConfigured": "Google přístup není na serveru nakonfigurován.",
-    "failed": "Export se nezdařil."
+    "failed": "Export se nezdařil.",
+    "tablesTitle": "Exportní tabulky",
+    "tab": {
+      "fencers": "Šermíři"
+    },
+    "category": {
+      "rental": "Půjčovna",
+      "merch": "Merch",
+      "other_item": "Ostatní zboží",
+      "seminar": "Semináře",
+      "afterparty": "Afterparty",
+      "other_action": "Ostatní program"
+    },
+    "column": {
+      "name": "Jméno",
+      "nat": "Nár.",
+      "club": "Klub",
+      "hr_id": "HR_ID",
+      "disciplines": "Disciplíny",
+      "rating": "Rating",
+      "rank": "Pořadí",
+      "items": "Položky",
+      "paid": "Zaplaceno"
+    },
+    "line": {
+      "queue": "hranice kapacity — níže náhradníci",
+      "capacity": "hranice kapacity"
+    },
+    "yes": "Ano",
+    "no": "Ne",
+    "activeOnly": "Jen aktivní",
+    "copy": "Kopírovat tabulku",
+    "copied": "Zkopírováno · {{count}} řádků.",
+    "english": "Export v angličtině",
+    "refreshesTournament": "Obnoví ratingy celého turnaje, ne jen této disciplíny."
   },
   "dedup": {
     "title": "Deduplikace",
@@ -1090,8 +1124,8 @@
       "poll": "Stáhnout z banky",
       "noToken": "Bankovní API: není nastaven token",
       "lifecycle": "Spustit expirace a upomínky",
-      "imported": "Načteno: {{new}} nových, {{matched}} spárováno.",
-      "polled": "Staženo: {{new}} nových, {{matched}} spárováno.",
+      "imported": "Načteno {{when}}: {{new}} nových, {{matched}} spárováno.",
+      "polled": "Staženo právě teď: {{new}} nových, {{matched}} spárováno.",
       "noParser": "Neznámý výpis nelze přečíst — tato instalace nemá nastavený parser.",
       "unsupportedFormat": "Tento soubor není CSV ani tabulka.",
       "importFailed": "Výpis se nepodařilo načíst.",

@@ -53,6 +53,16 @@ export function valueText(
   return String(value);
 }
 
+/** The column an entry names. A rating carries its discipline with it — a
+ *  fencer entered in two disciplines has two independently correctable
+ *  ratings, and an entry naming neither would say nothing about which one
+ *  moved (spec export-tables, The rating is the organizer's to correct). */
+function fieldText(field: string, t: Translate): string {
+  const rating = field.match(/^rating:(.+)$/);
+  if (rating !== null) return `${t("export.column.rating")} · ${rating[1]}`;
+  return t(`column.${field}`, { defaultValue: field });
+}
+
 /** What an entry says happened. Changes with no column of their own are
  *  sentences, not assignments: a deletion reads as a deletion, a merge as a
  *  merge into the surviving row. */
@@ -67,7 +77,7 @@ export function changeText(
   if (entry.field === "_merged_into")
     return t("rail.edit.mergedInto", { row: rowText(entry.after, rows, t) });
   return t("rail.edit.assignment", {
-    field: t(`column.${entry.field}`, { defaultValue: entry.field }),
+    field: fieldText(entry.field, t),
     before: valueText(entry.field, entry.before, timezone, t),
     after: valueText(entry.field, entry.after, timezone, t),
   });

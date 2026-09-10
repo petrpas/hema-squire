@@ -51,5 +51,22 @@
       "subject": "A place has opened — {tournament}",
       "body": "Hi {name},\n\na place has opened for you in {discipline} at {tournament} — you are no longer a substitute.\n\nYour registration comes to {total}. The amount is for your information — payment is settled by the organizer outside this system.\n\n{tournament} team"
     }
+  },
+  "export": {
+    "yes": "Yes",
+    "no": "No",
+    "column": {
+      "reg": "Reg.",
+      "no": "No.",
+      "name": "Name",
+      "nat": "Nat.",
+      "club": "Club",
+      "hr_id": "HR_ID",
+      "disciplines": "Disciplines",
+      "rating": "HRating",
+      "rank": "HRank",
+      "items": "Items",
+      "paid": "Paid"
+    }
   }
 }

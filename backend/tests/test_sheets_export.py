@@ -106,7 +106,10 @@ def grid_row(grid, name):
     return next(r for r in grid[1:] if r[1] == name)
 
 
-def test_export_writes_v1_format(client, auth_headers):
+def test_export_writes_the_export_tables(client, auth_headers):
+    """One worksheet per export table, each carrying its table's columns —
+    Czech, because the organizer's own language is what the sheet is written
+    in unless they ask for English."""
     organizer = auth_headers()
     setup(client, auth_headers, organizer)
     sheets = InMemorySheets()
@@ -121,29 +124,121 @@ def test_export_writes_v1_format(client, auth_headers):
     fencers = sheets.worksheets["Fencers"]
     assert fencers[0] == [
         "Reg.",
-        "Name",
-        "Nat.",
-        "Club",
+        "Jméno",
+        "Nár.",
+        "Klub",
         "HR_ID",
-        "Disciplines",
-        "Paid",
-        "Afterparty",
-        "Borrow weapons",
-        "Notes",
+        "Disciplíny",
+        "Zaplaceno",
     ]
     jan = grid_row(fencers, "Jan Novák")
     assert jan[0] == ""  # Reg. is downstream's column
     assert jan[4] == "10234"
     assert jan[5] == "LS"
-    assert jan[6] == "No"  # payment state in the Paid column
-    assert jan[7] == "Yes"
+    assert jan[6] == "Ne"  # payment state in the Paid column
 
     ls = sheets.worksheets["LS"]
-    assert ls[0] == ["No.", "Name", "Nat.", "Club", "HR_ID", "HRating", "HRank"]
+    assert ls[0] == ["Č.", "Jméno", "Nár.", "Klub", "HR_ID", "HRating", "HRank", "Zaplaceno"]
     assert grid_row(ls, "Jan Novák")[5:7] == ["1250.5", "17"]
     # imported SA fencers land on the SA tab only
     assert len(sheets.worksheets["SA"]) == 3
     assert all(row[1] != "Jan Novák" for row in sheets.worksheets["SA"][1:])
+
+
+def test_an_english_export_carries_english_headers(client, auth_headers):
+    organizer = auth_headers()
+    setup(client, auth_headers, organizer)
+    sheets = InMemorySheets()
+    wire(sheets)
+
+    response = client.post(
+        "/api/tournaments/cup/export/sheet", params={"english": True}, headers=organizer
+    )
+    assert response.status_code == 200, response.text
+
+    fencers = sheets.worksheets["Fencers"]
+    assert fencers[0] == ["Reg.", "Name", "Nat.", "Club", "HR_ID", "Disciplines", "Paid"]
+    assert grid_row(fencers, "Jan Novák")[6] == "No"
+
+
+def test_an_item_category_gets_a_worksheet_and_an_empty_one_does_not(client, auth_headers):
+    organizer = auth_headers()
+    setup(client, auth_headers, organizer)
+    shirt = client.post(
+        "/api/tournaments/cup/extra-items",
+        json={"name": "t-shirt", "category": "merch", "price": 300, "max_qty": 5},
+        headers=organizer,
+    ).json()
+    buyer = auth_headers(email="buyer@example.com", name="Buyer One")
+    client.post(
+        "/api/tournaments/cup/register",
+        json={"disciplines": ["LS"], "extras": [{"extra_item_id": shirt["id"], "qty": 2}]},
+        headers=buyer,
+    )
+    sheets = InMemorySheets()
+    wire(sheets)
+
+    body = export(client, organizer)
+    assert "Merch" in body["worksheets"]
+    assert "Rentals" not in body["worksheets"]  # the tournament sells none
+
+    merch = sheets.worksheets["Merch"]
+    assert merch[0] == ["Jméno", "Nár.", "Klub", "Položky", "Zaplaceno"]
+    # the item worksheet carries no hand-numbering column, so the name leads it
+    assert [row[0] for row in merch[1:]] == ["Buyer One"]
+    assert merch[1][3] == "t-shirt x2"
+
+
+def test_a_corrected_rating_is_what_the_sheet_carries(client, auth_headers):
+    organizer = auth_headers()
+    setup(client, auth_headers, organizer)
+    sheets = InMemorySheets()
+    fetcher = FakeHRFetcher()
+    fetcher.pages[10234] = fighter_page([("Mixed & Men's Steel Longsword", 1250.5, 17)])
+    wire(sheets, fetcher)
+    snapshot(client, organizer)
+    rows = client.get("/api/tournaments/cup/sheet", headers=organizer).json()["rows"]
+    target = next(r for r in rows if r["name"] == "Jan Novák")["id"]
+    client.post(
+        "/api/tournaments/cup/rules",
+        json={
+            "phase": "export",
+            "kind": "rating_override",
+            "target": target,
+            "payload": {"discipline": "LS", "rating": 1555.0},
+        },
+        headers=organizer,
+    )
+
+    export(client, organizer)
+    assert grid_row(sheets.worksheets["LS"], "Jan Novák")[5] == "1555.0"
+
+    # written afresh every time rather than preserved as a stale cell
+    export(client, organizer)
+    assert grid_row(sheets.worksheets["LS"], "Jan Novák")[5] == "1555.0"
+
+
+def test_manual_numbering_survives_the_format_change(client, auth_headers):
+    """A spreadsheet written in the v1 format, re-exported: the columns that
+    remain keep their contents whatever language the header was in, the ones
+    the new format drops are gone, and the ones it adds are filled."""
+    organizer = auth_headers()
+    setup(client, auth_headers, organizer)
+    sheets = InMemorySheets()
+    wire(sheets)
+    sheets.worksheets["Fencers"] = [
+        ["Reg.", "Name", "Nat.", "Club", "HR_ID", "Disciplines", "Paid", "Afterparty", "Notes"],
+        ["R-01", "Jan Novák", "CZ", "Praha Sword Society", "10234", "LS", "No", "Yes", "old note"],
+    ]
+
+    export(client, organizer)
+
+    fencers = sheets.worksheets["Fencers"]
+    assert fencers[0] == ["Reg.", "Jméno", "Nár.", "Klub", "HR_ID", "Disciplíny", "Zaplaceno"]
+    jan = grid_row(fencers, "Jan Novák")
+    assert jan[0] == "R-01"  # the numbering downstream staff filled by hand
+    assert jan[3] == "Praha Sword Society"  # a non-blank cell is not clobbered
+    assert len(jan) == 7  # Afterparty and Notes are gone with their columns
 
 
 def test_reexport_preserves_manual_work_and_refreshes_ratings(client, auth_headers):
