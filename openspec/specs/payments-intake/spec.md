@@ -92,17 +92,39 @@ Fio serves the last ninety days to any valid token and refuses everything
 earlier until the token's full history is unlocked by a strong authorization in
 the organizer's internet banking, which opens it for ten minutes. A poll SHALL
 keep asking for the tournament's own window — the money arrived inside it and
-nowhere else — and, when refused, SHALL name the first day the bank will serve
-and where to unlock the rest. Nothing in the API can ask for that
-authorization, so naming it is all Squire can do.
+nowhere else — and, when refused, SHALL put the choice to the organizer in a
+dialog rather than as a line of error text. Nothing in the API can ask for that
+authorization, so what Squire can do is explain and then act on the answer.
+
+The dialog SHALL state the window that was asked for, the first day the bank
+will serve without the unlock, and the steps that grant it — internet banking,
+Nastavení → API, the lock beside the token, confirmed by SMS or in the app. It
+SHALL offer exactly three ways out: leaving it, polling only the days the bank
+will serve unasked, and polling the whole window again once the organizer has
+authorized it.
+
+The shortened poll SHALL start the window at the bank's own boundary and SHALL
+NOT widen it: days before registration opened are not this tournament's under
+any authorization. Where that boundary falls after the window's end, no day of
+the tournament is inside the ninety days; the dialog SHALL say so and SHALL NOT
+offer the shortened poll, and the endpoint SHALL refuse such a window rather
+than report a poll of nothing as having found nothing.
 
 A poll the bank did not answer at all SHALL be reported as the bank's silence,
-with the statement import named as the way through. Neither refusal SHALL carry
-the token, which sits in the request's own path.
+with the statement import named as the way through. No refusal SHALL carry the
+token, which sits in the request's own path.
 
 #### Scenario: A window older than the bank will serve unasked
-- **WHEN** the organizer polls a tournament whose window ran four months ago, and the bank refuses the days before 12 June
-- **THEN** the console states that days before 12 June need the history unlocked in Fio internet banking, and that the poll will work for ten minutes after that
+- **WHEN** the organizer polls a tournament whose window ran from 1 April to 20 August, and the bank refuses the days before 12 June
+- **THEN** a dialog states the window, the boundary and how to unlock the history, and offers cancelling, polling from 12 June only, or polling the whole window again
+
+#### Scenario: The organizer settles for what the bank will serve
+- **WHEN** the organizer chooses the shortened poll
+- **THEN** the bank is asked about 12 June to 20 August, the days before it are left to a statement import, and the dialog closes
+
+#### Scenario: A window that ended before the ninety days begin
+- **WHEN** the tournament's window ended on 23 May and the bank will serve nothing before 12 June
+- **THEN** the dialog states that no day of the window is within reach and offers only cancelling or authorizing
 
 #### Scenario: The bank does not answer
 - **WHEN** the bank's API cannot be reached, or answers with a failure of its own

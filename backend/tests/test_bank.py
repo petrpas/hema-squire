@@ -340,10 +340,67 @@ def test_poll_states_the_history_lock_rather_than_failing(client, auth_headers):
         client, auth_headers, FioAuthorizationRequired(datetime.date(2026, 6, 12))
     )
     assert response.status_code == 409
-    assert response.json()["detail"] == {
-        "code": "fio_authorization_required",
-        "since": "2026-06-12",
-    }
+    assert response.json()["detail"]["code"] == "fio_authorization_required"
+    assert response.json()["detail"]["since"] == "2026-06-12"
+
+
+def test_poll_carries_the_window_beside_the_lock(client, auth_headers):
+    # what the console can offer depends on whether the window and the bank's
+    # ninety days overlap, so both travel with the refusal
+    response = _poll_against(
+        client, auth_headers, FioAuthorizationRequired(datetime.date(2026, 6, 12))
+    )
+    detail = response.json()["detail"]
+    assert detail["window_from"] and detail["window_to"]
+
+
+def _with_open_window(client, organizer):
+    """A tournament whose poll window spans months rather than the one day a
+    freshly published tournament's does — the only shape a shortened window
+    says anything about."""
+    setup_tournament(client, organizer, fio_token="secret-token")
+    client.patch(
+        "/api/tournaments/cup",
+        json={"registration_opens": "2026-04-01"},
+        headers=organizer,
+    )
+
+
+def test_poll_from_a_later_day_asks_the_bank_for_that_day(client, auth_headers, stub_fio):
+    organizer = auth_headers()
+    _with_open_window(client, organizer)
+
+    response = client.post(
+        "/api/tournaments/cup/payments/fio-poll?since=2026-06-12", headers=organizer
+    )
+
+    assert response.status_code == 200
+    assert stub_fio.windows[-1][0] == datetime.date(2026, 6, 12)
+
+
+def test_poll_from_a_later_day_never_widens_the_window(client, auth_headers, stub_fio):
+    # a start before the window's own is not this tournament's to ask about
+    organizer = auth_headers()
+    _with_open_window(client, organizer)
+
+    client.post("/api/tournaments/cup/payments/fio-poll?since=2020-01-01", headers=organizer)
+
+    assert stub_fio.windows[-1][0] == datetime.date(2026, 4, 1)
+
+
+def test_poll_refuses_a_start_past_the_window(client, auth_headers, stub_fio):
+    # answering "nothing found" would say the bank had been asked
+    organizer = auth_headers()
+    setup_tournament(client, organizer, fio_token="secret-token")
+    tomorrow = datetime.datetime.now(datetime.UTC).date() + datetime.timedelta(days=1)
+
+    response = client.post(
+        f"/api/tournaments/cup/payments/fio-poll?since={tomorrow.isoformat()}", headers=organizer
+    )
+
+    assert response.status_code == 409
+    assert response.json()["detail"]["code"] == "poll_window_empty"
+    assert stub_fio.windows == []
 
 
 def test_poll_reports_an_unreachable_bank_as_the_bank(client, auth_headers):

@@ -1,4 +1,4 @@
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from decimal import ROUND_HALF_UP, Decimal
 from typing import Annotated
 
@@ -194,6 +194,7 @@ def fio_poll(
     fencer: FencerDep,
     fio: FioClientDep,
     mailer: MailerDep,
+    since: date | None = None,
 ):
     """Ask the bank about this tournament's own window and credit what it says.
 
@@ -201,9 +202,16 @@ def fio_poll(
     to the day the tournament is held. It used to be a rolling fortnight, and a
     fortnight is the wrong question for a poll an organizer presses: pointed at
     a tournament whose window has passed it asked about days in which nothing
-    could have been paid, found nothing, and said so. There is no parameter
-    because there is nothing for a caller to choose: the tournament states its
-    own window.
+    could have been paid, found nothing, and said so.
+
+    `since` moves the window's start later, and exists for exactly one caller:
+    the console, answering the bank's history lock. Fio serves the last ninety
+    days unasked and refuses the rest, so an organizer who will not authorize
+    the whole history can still ask for the part of the window that lies inside
+    it. It never widens the window — the days before registration opened are
+    not this tournament's under any authorization — and it never silently
+    empties it: a start past the window's end is refused rather than answered
+    with a poll of nothing.
     """
     require_console_access(session, tournament, fencer)
     require_published(tournament)
@@ -214,15 +222,31 @@ def fio_poll(
     # today as the UTC day, not the process's: an operational boundary with
     # nobody's calendar behind it (design unify-day-boundary-clocks D1)
     date_from, date_to = setup.bank_poll_window(tournament, datetime.now(UTC).date())
+    if since is not None:
+        date_from = max(date_from, since)
+    if date_from > date_to:
+        # the shortened window and the tournament's do not overlap: no day of
+        # it could hold a payment, and answering "nothing found" would say the
+        # bank was asked
+        raise HTTPException(
+            status_code=409,
+            detail={"code": "poll_window_empty", "window_to": date_to.isoformat()},
+        )
     try:
         transactions = fio.fetch(tournament.fio_token, date_from, date_to)
     except bank.FioAuthorizationRequired as refusal:
         # not an error to report as one: the window is right, the token is
-        # good, and the organizer can open the history themselves. The date is
-        # the bank's, so the console can say which days are behind the lock
+        # good, and the organizer can open the history themselves. The bank's
+        # own date and the window travel together, because what the console has
+        # to offer depends on whether they overlap at all
         raise HTTPException(
             status_code=409,
-            detail={"code": "fio_authorization_required", "since": refusal.since.isoformat()},
+            detail={
+                "code": "fio_authorization_required",
+                "since": refusal.since.isoformat(),
+                "window_from": date_from.isoformat(),
+                "window_to": date_to.isoformat(),
+            },
         ) from refusal
     except bank.FioUnreachable as failure:
         raise HTTPException(status_code=502, detail={"code": "fio_unreachable"}) from failure

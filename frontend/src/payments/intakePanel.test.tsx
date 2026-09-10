@@ -240,7 +240,8 @@ it("polls the bank and reports what it brought in", async () => {
   act(() => void buttonNamed(t("payments.intake.poll"))?.click());
   await settle();
 
-  expect(poll).toHaveBeenCalledWith("cup");
+  // the whole window: no shortened start, the bank's history lock unmet
+  expect(poll).toHaveBeenCalledWith("cup", undefined);
   expect(onChanged).toHaveBeenCalled();
   expect(host?.textContent).toContain(t("payments.intake.polled", { new: 3, matched: 2 }));
 });
@@ -308,9 +309,61 @@ it("reports a refused poll on the duplicates rather than as a failure", async ()
   expect(host?.textContent).not.toContain(t("payments.intake.pollFailed"));
 });
 
-it("says how to lift the bank's history lock instead of reporting a failure", async () => {
+const LOCKED = {
+  code: "fio_authorization_required",
+  since: "2026-06-12",
+  window_from: "2026-04-01",
+  window_to: "2026-08-20",
+};
+const day = (value: string) => new Date(value).toLocaleDateString("cs");
+
+it("asks how to answer the bank's history lock instead of reporting a failure", async () => {
+  vi.spyOn(api, "fioPoll").mockRejectedValue(new ApiError(409, LOCKED));
+  render({ detail: detail(true) });
+
+  act(() => void buttonNamed(t("payments.intake.poll"))?.click());
+  await settle();
+
+  expect(host?.textContent).toContain(t("payments.intake.lock.title"));
+  expect(host?.textContent).toContain(t("payments.intake.lock.how"));
+  expect(host?.textContent).not.toContain(t("payments.intake.pollFailed"));
+});
+
+it("polls from the bank's own boundary when the shortened window is chosen", async () => {
+  const poll = vi
+    .spyOn(api, "fioPoll")
+    .mockRejectedValueOnce(new ApiError(409, LOCKED))
+    .mockResolvedValue({
+      new: 0,
+      duplicate: 0,
+      matched: 0,
+      flagged: 0,
+      unmatched: 0,
+      partial: 0,
+      set_aside: 0,
+      issued: 0,
+      already_issued: 0,
+      skipped: [],
+    });
+  render({ detail: detail(true) });
+
+  act(() => void buttonNamed(t("payments.intake.poll"))?.click());
+  await settle();
+  act(
+    () =>
+      void buttonNamed(t("payments.intake.lock.partial", { since: day("2026-06-12") }))?.click(),
+  );
+  await settle();
+
+  expect(poll.mock.calls[1]).toEqual(["cup", "2026-06-12"]);
+  expect(host?.textContent).not.toContain(t("payments.intake.lock.title"));
+});
+
+it("offers no shortened poll where it would cover no day of the window", async () => {
+  // the window ended before the ninety days begin, so there is nothing to
+  // shorten to and the dialog says so rather than offering the button
   vi.spyOn(api, "fioPoll").mockRejectedValue(
-    new ApiError(409, { code: "fio_authorization_required", since: "2026-06-12" }),
+    new ApiError(409, { ...LOCKED, window_to: "2026-05-23" }),
   );
   render({ detail: detail(true) });
 
@@ -318,11 +371,11 @@ it("says how to lift the bank's history lock instead of reporting a failure", as
   await settle();
 
   expect(host?.textContent).toContain(
-    t("payments.intake.pollAuthorization", {
-      since: new Date("2026-06-12").toLocaleDateString("cs"),
-    }),
+    t("payments.intake.lock.noOverlap", { to: day("2026-05-23") }),
   );
-  expect(host?.textContent).not.toContain(t("payments.intake.pollFailed"));
+  expect(buttonNamed(t("payments.intake.lock.partial", { since: day("2026-06-12") }))).toBe(
+    undefined,
+  );
 });
 
 it("names the rows an import could not issue, and why", async () => {

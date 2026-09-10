@@ -1130,8 +1130,17 @@
       "unsupportedFormat": "Tento soubor není CSV ani tabulka.",
       "importFailed": "Výpis se nepodařilo načíst.",
       "pollFailed": "Z banky se nepodařilo stáhnout.",
-      "pollAuthorization": "Dny před {{since}} banka nevydá bez silné autorizace. Odemkněte historii v internetovém bankovnictví Fio (Nastavení → API, zámek u tokenu, potvrzení SMS nebo aplikací) a do deseti minut stáhněte znovu.",
       "pollUnreachable": "Banka neodpověděla. Zkuste to za chvíli znovu, nebo načtěte výpis ze souboru.",
+      "lock": {
+        "title": "Banka požaduje silnou autorizaci",
+        "window": "Turnaj se platil od {{from}} do {{to}}. Fio vydá bez další autorizace jen posledních devadesát dní, tedy od {{since}}; starší dny drží zamčené.",
+        "how": "Odemknete je v internetovém bankovnictví Fio: Nastavení → API, vyberte účet a klikněte na zámek u tokenu. Banka pošle požadavek na potvrzení SMS nebo v aplikaci. Po potvrzení je historie otevřená deset minut.",
+        "partialCovers": "Bez autorizace lze stáhnout dny od {{since}} do konce okna. Starší platby zůstanou nenačtené a dostanete je do konzole jedině načtením výpisu.",
+        "noOverlap": "Celé okno turnaje skončilo {{to}}, tedy dřív, než sahá devadesátidenní hranice. Zkrácené stažení by se neptalo na jediný den, ve kterém mohla platba přijít.",
+        "partial": "Stáhnout jen od {{since}}",
+        "authorized": "Autorizaci mám, stáhnout znovu"
+      },
+      "pollWindowEmpty": "Zkrácené okno nesahá do turnaje, který skončil {{to}}. Banka nebyla dotázána.",
       "lifecycleFailed": "Spuštění se nezdařilo.",
       "unreadable": "Soubor nevypadá jako výpis — žádný sloupec v něm nenese data a částky. Ověřte, že jde o správný export a že se otevře jako tabulka v tabulkovém procesoru.",
       "willIssue": "Načtením výpisu se {{count}} řádkům seznamu vystaví registrace. Bez nich nemá platba k čemu sednout.",

@@ -5,6 +5,7 @@ import { ApiError, api, type IngestAndMatch, type TournamentDetail } from "../ap
 import { concludedMoment, conclusionText, kindName } from "../operationText";
 import type { OperationsView } from "../useOperations";
 import ClearPaymentsControl from "./ClearPaymentsControl";
+import FioAuthorizationDialog from "./FioAuthorizationDialog";
 import IssuedReport from "./IssuedReport";
 import IssuePreflight from "./IssuePreflight";
 
@@ -23,6 +24,10 @@ import IssuePreflight from "./IssuePreflight";
  *  They come back as actions over the debtors table, where they can name who
  *  they act on.
  */
+/** What the bank's history lock tells the console: the first day Fio will
+ *  serve unasked, and the window the poll had asked for. */
+type HistoryLock = { since: string; window_from: string; window_to: string };
+
 export default function IntakePanel({
   slug,
   detail,
@@ -43,6 +48,8 @@ export default function IntakePanel({
   const [error, setError] = useState<string | null>(null);
   const [polled, setPolled] = useState<IngestAndMatch | null>(null);
   const [working, setWorking] = useState(false);
+  // the bank's history lock, held open until the organizer answers it
+  const [locked, setLocked] = useState<HistoryLock | null>(null);
 
   const running = operations.running;
   const busy = running !== null || working;
@@ -85,30 +92,46 @@ export default function IntakePanel({
     }
   }
 
-  async function poll() {
+  /** Poll the bank, optionally from a later day than the window's own start —
+   *  which is what answering the history lock with the shortened window does. */
+  async function poll(since?: string) {
     setWorking(true);
     setError(null);
+    setLocked(null);
     try {
-      setPolled(await api.fioPoll(slug));
+      setPolled(await api.fioPoll(slug, since));
       onChanged();
     } catch (failure) {
       const refusal = failure instanceof ApiError ? failure.detail : null;
       const pending =
         refusal !== null && typeof refusal === "object" && "code" in refusal
-          ? (refusal as { code: string; groups?: number; since?: string })
+          ? (refusal as { code: string; groups?: number } & Partial<HistoryLock>)
           : null;
       // refused on the same ground as the import, and the bank is not asked
       if (pending?.code === "dedup_pending")
         setError(t("payments.intake.dedupPending", { count: pending.groups ?? 0 }));
-      // the bank's own refusal, and one the organizer can lift themselves: the
-      // message says where, not that something went wrong
-      else if (pending?.code === "fio_authorization_required" && pending.since !== undefined)
+      // the bank's own refusal, and one the organizer can lift themselves. It
+      // is a question rather than a message, because only they can answer it
+      else if (
+        pending?.code === "fio_authorization_required" &&
+        pending.since !== undefined &&
+        pending.window_from !== undefined &&
+        pending.window_to !== undefined
+      )
+        setLocked({
+          since: pending.since,
+          window_from: pending.window_from,
+          window_to: pending.window_to,
+        });
+      else if (pending?.code === "fio_unreachable") setError(t("payments.intake.pollUnreachable"));
+      // the shortened poll, pressed on a window that ended before the bank's
+      // ninety days begin: nothing was asked, and saying so beats a row of zeros
+      else if (pending?.code === "poll_window_empty" && pending.window_to !== undefined)
         setError(
-          t("payments.intake.pollAuthorization", {
-            since: new Date(pending.since).toLocaleDateString("cs"),
+          t("payments.intake.pollWindowEmpty", {
+            to: new Date(pending.window_to).toLocaleDateString("cs"),
           }),
         );
-      else if (pending?.code === "fio_unreachable") setError(t("payments.intake.pollUnreachable"));
       else setError(t("payments.intake.pollFailed"));
     } finally {
       setWorking(false);
@@ -158,6 +181,17 @@ export default function IntakePanel({
         </button>
       ) : (
         <p className="rail-hint instead-of-control">{t("payments.intake.noToken")}</p>
+      )}
+
+      {locked && (
+        <FioAuthorizationDialog
+          since={locked.since}
+          windowFrom={locked.window_from}
+          windowTo={locked.window_to}
+          onPartial={() => void poll(locked.since)}
+          onRetry={() => void poll()}
+          onClose={() => setLocked(null)}
+        />
       )}
 
       {busy && running !== null && (

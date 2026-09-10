@@ -1147,10 +1147,18 @@ export const api = {
    *  `unsupported_statement_format` for a file that is neither CSV nor XLSX. */
   importStatement: (slug: string, file: File): Promise<OperationStarted & { rows: number }> =>
     upload(`/api/tournaments/${slug}/payments/import-statement`, file),
-  /** Pull recent movements from the bank's API. Offered only where the
-   *  tournament has a token; without one the endpoint answers 409. */
-  fioPoll: (slug: string) =>
-    request<IngestAndMatch>(`/api/tournaments/${slug}/payments/fio-poll`, { method: "POST" }),
+  /** Pull the tournament's own window from the bank's API. Offered only where
+   *  the tournament has a token; without one the endpoint answers 409.
+   *
+   *  `since` moves the window's start later, and answers one refusal only: 409
+   *  `fio_authorization_required`, where Fio will not serve days older than
+   *  ninety without the organizer unlocking its history. It cannot widen the
+   *  window, and a start past the window's end is refused rather than polled. */
+  fioPoll: (slug: string, since?: string) =>
+    request<IngestAndMatch>(
+      `/api/tournaments/${slug}/payments/fio-poll${since ? `?since=${since}` : ""}`,
+      { method: "POST" },
+    ),
   /** Run the payment lifecycle passes now — expiries, reminders and
    *  holding-payment events — rather than waiting for the scheduler. */
   processLifecycle: (slug: string) =>
