@@ -62,22 +62,26 @@ exist.
 - **THEN** the rows are read from the corrected file rather than from what was stored for the first one
 
 ### Requirement: Clearing is refused where money has been credited
-Clearing SHALL be refused where any transaction has been credited to a
-registration, and SHALL state how many have. A refused clear SHALL remove
-nothing at all — not the uncredited transactions, not the stored
-interpretations.
+Clearing SHALL be refused where any transaction holds a live credit against a
+registration, and SHALL state how many do. A refused clear SHALL remove nothing
+at all — not the uncredited transactions, not the stored interpretations.
 
-A transaction that has been credited is a payment the tournament acted on: a
-fencer was marked paid, a balance moved, and mail may have been sent on the
-strength of it. Deleting it would leave that claim standing with nothing behind
-it. The same rule already governs deleting a tournament, which is refused once
-registrations exist because financial history is not the console's to erase.
+The refusal SHALL stand on what the credit means and not on what unwinding it
+would cost. Reversing credits and letting the balances follow is now an ordinary
+operation, so the refusal is no longer a limit of the mechanism; it is a
+statement that a credited payment was acted on. A fencer was told they are paid,
+a seat was confirmed, mail may have gone out, and "that import never happened"
+is not something anyone can say about it afterwards. The same rule already
+governs deleting a tournament, which is refused once registrations exist because
+financial history is not the console's to erase.
 
-The organizer resolves those payments first — unlinking what was matched by hand
-— after which the clear proceeds normally.
+The organizer resolves those payments first — withdrawing a link, removing a
+recorded payment, or reversing a credited transaction on its own — after which
+the clear proceeds normally. Every credited transaction SHALL have such a route
+out, so that the refusal is never a dead end.
 
 #### Scenario: Credited money stops the clear
-- **WHEN** the organizer clears a tournament in which four transactions have been credited
+- **WHEN** the organizer clears a tournament in which four transactions hold live credits
 - **THEN** the clear is refused, states that four transactions hold credit, and removes nothing
 
 #### Scenario: A refusal is total, not partial
@@ -85,12 +89,20 @@ The organizer resolves those payments first — unlinking what was matched by ha
 - **THEN** all forty-one remain, and no stored interpretation is removed
 
 #### Scenario: Unresolved money clears freely
-- **WHEN** no transaction has been credited
+- **WHEN** no transaction holds a live credit
 - **THEN** the clear proceeds
 
-#### Scenario: Clearing after the payments are unlinked
-- **WHEN** the organizer unlinks the credited payments and clears again
+#### Scenario: Clearing after the payments are reversed
+- **WHEN** the organizer reverses the credited transactions and clears again
 - **THEN** the clear proceeds
+
+#### Scenario: An automatically matched transaction is not a dead end
+- **WHEN** the clear is refused on a tournament whose only credited transaction was matched automatically
+- **THEN** that transaction can be reversed on its own, after which the clear proceeds
+
+#### Scenario: A reversed credit does not hold the clear
+- **WHEN** a transaction's credit has been reversed and the organizer clears
+- **THEN** it does not count among the transactions holding credit
 
 ### Requirement: What a clear leaves alone
 Clearing the imported payments SHALL leave the tournament's fencers and their
