@@ -1143,7 +1143,6 @@
       "pollWindowEmpty": "Zkrácené okno nesahá do turnaje, který skončil {{to}}. Banka nebyla dotázána.",
       "lifecycleFailed": "Spuštění se nezdařilo.",
       "unreadable": "Soubor nevypadá jako výpis — žádný sloupec v něm nenese data a částky. Ověřte, že jde o správný export a že se otevře jako tabulka v tabulkovém procesoru.",
-      "willIssue": "Načtením výpisu se {{count}} řádkům seznamu vystaví registrace. Bez nich nemá platba k čemu sednout.",
       "willIssueWithSymbols": "Načtením výpisu se {{count}} řádkům seznamu vystaví registrace a přidělí variabilní symboly. Symboly se nevracejí ani nepoužívají znovu.",
       "dedupPending": "Načítat výpis zatím nelze: {{count}} duplicit čeká na posouzení. Vyřešte je ve fázi Deduplikace.",
       "issued": "Vystaveno {{count}} registrací."

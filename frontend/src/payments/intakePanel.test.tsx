@@ -270,13 +270,15 @@ it("states what an import will issue, and that the symbols are not reclaimed", a
   expect(host?.textContent).toContain(t("payments.intake.willIssueWithSymbols", { count: 54 }));
 });
 
-it("says nothing about symbols where the organizer keeps the registrations", async () => {
+it("announces nothing where the organizer keeps the registrations", async () => {
+  // no symbol is spent, so the issuing costs nothing to weigh and the count
+  // would be a sentence with no decision behind it
   issuable(54);
   render({ detail: detail(false, "organizer") });
   await settle();
 
-  expect(host?.textContent).toContain(t("payments.intake.willIssue", { count: 54 }));
   expect(host?.textContent).not.toContain(t("payments.intake.willIssueWithSymbols", { count: 54 }));
+  expect(host?.textContent).not.toContain("54");
 });
 
 it("announces nothing where there is nothing to issue", async () => {
@@ -284,7 +286,7 @@ it("announces nothing where there is nothing to issue", async () => {
   render({ detail: detail(false) });
   await settle();
 
-  expect(host?.textContent).not.toContain(t("payments.intake.willIssue", { count: 0 }));
+  expect(host?.textContent).not.toContain(t("payments.intake.willIssueWithSymbols", { count: 0 }));
 });
 
 it("states the pending duplicates instead, before anything is uploaded", async () => {

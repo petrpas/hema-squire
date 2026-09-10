@@ -1123,7 +1123,6 @@
       "pollWindowEmpty": "The shortened window does not reach the tournament, which ended on {{to}}. The bank was not asked.",
       "lifecycleFailed": "The lifecycle run failed.",
       "unreadable": "That file does not read as a statement — no column in it holds dates and amounts. Check it is the right export, and that it opens as a table in a spreadsheet.",
-      "willIssue": "Importing a statement will issue registrations for {{count}} rows of the fencer list. Without them a payment has nothing to settle against.",
       "willIssueWithSymbols": "Importing a statement will issue registrations for {{count}} rows of the fencer list and allocate variable symbols. Symbols are never reclaimed or reused.",
       "dedupPending": "A statement cannot be imported yet: {{count}} duplicates are awaiting review. Settle them on the Deduplication phase.",
       "issued": "Issued {{count}} registrations."

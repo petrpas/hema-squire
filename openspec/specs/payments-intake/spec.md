@@ -55,9 +55,9 @@ Interpreting a statement SHALL be recorded as an operation of the tournament, st
 ### Requirement: Every intake action is reachable from the console
 The Payments phase SHALL offer the organizer the statement import, a way to poll the bank's API where one is configured, and a way to run the payment lifecycle passes now. Each action SHALL state plainly when it is unavailable rather than offering a control that fails when used.
 
-Each action SHALL also state, before it runs, what it will do that the organizer cannot undo. Where an intake would issue registrations for the fencer list, the console SHALL state how many rows it will issue registrations for, and — where Squire keeps the tournament's registrations — that variable symbols will be allocated and never reclaimed. This SHALL be stated in place, ahead of the action, rather than as a confirmation the organizer dismisses: the organizer reads it while deciding to act, not after having decided.
+Each action SHALL also state, before it runs, what it will do that the organizer cannot undo. The one such thing an intake does is spend variable symbols: where Squire keeps the tournament's registrations, the console SHALL state how many rows the intake will issue registrations for and that their symbols are allocated and never reclaimed. This SHALL be stated in place, ahead of the action, rather than as a confirmation the organizer dismisses: the organizer reads it while deciding to act, not after having decided.
 
-Where an intake would issue nothing, no such statement SHALL be made. A panel that announces a consequence on every visit teaches the organizer to stop reading it.
+Where an intake would issue nothing, no such statement SHALL be made. Nor SHALL one be made where the organizer keeps the tournament's own registrations: no symbol is spent, the issuing costs nothing an organizer would decide differently about, and a count of rows about to be issued is then a sentence with no decision behind it. A panel that announces a consequence on every visit teaches the organizer to stop reading it.
 
 #### Scenario: No bank API token configured
 - **WHEN** the tournament has no Fio token
@@ -75,9 +75,9 @@ Where an intake would issue nothing, no such statement SHALL be made. A panel th
 - **WHEN** the organizer opens the intake panel on a tournament whose registrations Squire keeps, holding 54 rows without registrations
 - **THEN** the panel states, before any upload, that importing will issue 54 registrations and allocate 54 variable symbols that are never reclaimed
 
-#### Scenario: A manual tournament is told the count without the symbols
+#### Scenario: A tournament keeping its own registrations is told nothing
 - **WHEN** the organizer of a tournament that keeps its own registrations opens the intake panel with rows awaiting issue
-- **THEN** the panel states how many registrations the import will issue, and says nothing about variable symbols, since none is allocated
+- **THEN** the panel states nothing about issuing, no symbol being spent and nothing about the intake being the organizer's to weigh
 
 #### Scenario: Nothing to announce on a settled roster
 - **WHEN** the organizer opens the intake panel on a tournament whose every row already has a registration
