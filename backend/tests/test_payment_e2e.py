@@ -150,6 +150,7 @@ def test_happy_path_reserve_qr_match_paid(client, auth_headers, mailbox, fio):
     assert poll == {
         "new": 1,
         "duplicate": 0,
+        "dropped": 0,
         "matched": 1,
         "flagged": 0,
         "unmatched": 0,
@@ -222,6 +223,6 @@ def test_expiry_path_reminder_expire_free_capacity_flag_late_payment(
         client.get("/api/tournaments/cup/my-registration", headers=fencer).json()["state"]
         == "expired"
     )
-    (queued,) = client.get("/api/tournaments/cup/payments/unmatched", headers=organizer).json()
+    (queued,) = client.get("/api/tournaments/cup/payments/uncredited", headers=organizer).json()
     assert queued["status"] == "flagged"
     assert queued["vs"] == vs

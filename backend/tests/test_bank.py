@@ -224,12 +224,15 @@ def test_statement_import_is_idempotent(client, auth_headers):
     # the import is a started operation now, so the counts live in its record
     first = import_statement(client, organizer)
     assert first.status_code == 202, first.text
+    # the statement's second row is a refund out of the account, dropped at
+    # ingestion as nobody's entry fee, and counted as neither new nor duplicate
     assert settle(client, organizer, kind="statement")["outcome"] == {
-        "new": 2,
+        "new": 1,
         "duplicate": 0,
+        "dropped": 1,
         "matched": 0,
         "flagged": 0,
-        "unmatched": 2,
+        "unmatched": 1,
         "partial": 0,
         "set_aside": 0,
         # intake issues before it matches; this roster is in-app, so it issues
@@ -242,7 +245,8 @@ def test_statement_import_is_idempotent(client, auth_headers):
     import_statement(client, organizer)
     assert settle(client, organizer, kind="statement")["outcome"] == {
         "new": 0,
-        "duplicate": 2,
+        "duplicate": 1,
+        "dropped": 1,
         "matched": 0,
         "flagged": 0,
         "unmatched": 0,
@@ -256,7 +260,7 @@ def test_statement_import_is_idempotent(client, auth_headers):
     }
 
     listing = client.get("/api/tournaments/cup/payments/transactions", headers=organizer)
-    assert len(listing.json()) == 2
+    assert len(listing.json()) == 1
 
 
 def test_import_requires_organizer(client, auth_headers):
@@ -294,13 +298,15 @@ def test_fio_poll_overlaps_with_csv_idempotently(client, auth_headers, stub_fio)
     organizer = auth_headers()
     setup_tournament(client, organizer, fio_token="secret-token")
 
-    import_statement(client, organizer)  # brings 26662142344 and ...46
+    # brings 26662142344; ...46 is a refund out of the account and is dropped
+    import_statement(client, organizer)
     polled = client.post("/api/tournaments/cup/payments/fio-poll", headers=organizer)
     assert polled.status_code == 200
     # ...44 already known from CSV; ...45 is new
     assert polled.json() == {
         "new": 1,
         "duplicate": 1,
+        "dropped": 0,
         "matched": 0,
         "flagged": 0,
         "unmatched": 1,

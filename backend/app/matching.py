@@ -434,6 +434,26 @@ def _evaluate_transaction(
     transaction: BankTransaction,
     result: MatchResult,
 ) -> None:
+    # Money leaving the account never reaches here: `bank.ingest` drops it, on
+    # every intake path, and that is the guarantee. This is the second lock on
+    # the same door, and it is worth its one comparison — everything below
+    # credits `transaction.amount_cents` as it stands, the tolerance test that
+    # would notice a negative runs only for a bare token, and a refund made by
+    # copying the original payment carries the very symbol that would find its
+    # registration. The failure this excludes is money silently deducted from a
+    # real person's balance; the gate keeps the row out of the database, this
+    # keeps the amount out of the journal if one ever arrives another way.
+    if transaction.amount_cents <= 0:
+        _finish(transaction, "flagged", "not_an_incoming_payment")
+        _event(
+            session,
+            transaction,
+            "not_an_incoming_payment",
+            f"{transaction.amount_cents} cents {transaction.currency}: not money arriving",
+        )
+        result.flagged += 1
+        return
+
     tokens = detected_vs_tokens(transaction)
     if not tokens:
         # No symbol quoted — about one payment in ten, and every payment on a

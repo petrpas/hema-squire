@@ -63,6 +63,10 @@ class IncomingTransaction(BaseModel):
 class IngestResult(BaseModel):
     new: int
     duplicate: int
+    # money leaving the account, dropped rather than stored. Its own number
+    # because it is neither of the other two: calling a debit a duplicate would
+    # tell the organizer this statement had been imported before
+    dropped: int = 0
 
 
 def ingest(
@@ -71,18 +75,36 @@ def ingest(
     source: str,
     transactions: list[IncomingTransaction],
 ) -> IngestResult:
-    """Store transactions at most once per (tournament, external_id)."""
+    """Store transactions at most once per (tournament, external_id).
+
+    **Money leaving the account is not a payment and is dropped here**, on the
+    one path every reader passes through: the exact Fio parsers, the bank's own
+    feed, and a statement a model interpreted alike. Each reader reports a debit
+    as the signed amount it is — the interpreting prompt says so in as many
+    words — because deciding what a debit means is not a reader's job.
+
+    Stated once, here, rather than in each of the three: an outgoing transfer is
+    a refund the organizer sent, a fee, or money moved elsewhere. None is
+    somebody's entry fee, none can be credited to a registration, and one that
+    reached the console could never be resolved and so would sit in it for the
+    life of the tournament. A refund made by copying the original payment even
+    carries that registration's own symbol, which is enough for the matcher to
+    deduct it from the fencer who was refunded (spec payments-intake, Only money
+    arriving is ingested as a payment).
+    """
     require_payments_enabled(tournament)
+    incoming = [t for t in transactions if t.amount_cents > 0]
+    dropped = len(transactions) - len(incoming)
     seen = set(
         session.scalars(
             select(BankTransaction.external_id).where(
                 BankTransaction.tournament_id == tournament.id,
-                BankTransaction.external_id.in_([t.external_id for t in transactions]),
+                BankTransaction.external_id.in_([t.external_id for t in incoming]),
             )
         )
     )
     new = 0
-    for transaction in transactions:
+    for transaction in incoming:
         if transaction.external_id in seen:
             continue
         seen.add(transaction.external_id)
@@ -95,7 +117,7 @@ def ingest(
         )
         new += 1
     session.commit()
-    return IngestResult(new=new, duplicate=len(transactions) - new)
+    return IngestResult(new=new, duplicate=len(incoming) - new, dropped=dropped)
 
 
 # --- Fio JSON (REST API) ---

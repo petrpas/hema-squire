@@ -16,6 +16,7 @@ import {
   type TournamentDetail,
   type TournamentFlags,
 } from "./api";
+import BalanceCell from "./BalanceCell";
 import DedupPanel from "./dedup/DedupPanel";
 import DedupView from "./dedup/DedupView";
 import ExportPanel from "./ExportPanel";
@@ -34,17 +35,13 @@ import { parseInteger } from "./numeric";
 import OperationsIndicator from "./OperationsIndicator";
 import PaidStamp from "./PaidStamp";
 import ProblemsCell from "./ProblemsCell";
-import CreditedPanel from "./payments/CreditedPanel";
-import ExpiredHoldingPanel from "./payments/ExpiredHoldingPanel";
-import FlaggedPanel from "./payments/FlaggedPanel";
+import CreditedTable from "./payments/CreditedTable";
 import IntakePanel from "./payments/IntakePanel";
 import IssueOnArrival from "./payments/IssueOnArrival";
-import LikelyPanel from "./payments/LikelyPanel";
-import PaymentLinksPanel from "./payments/PaymentLinksPanel";
-import QueueTabs, { QueueTabStrip } from "./payments/QueueTabs";
-import RecordedPaymentsPanel from "./payments/RecordedPaymentsPanel";
+import PaymentTabs, { type PaymentTab, PaymentTabsProvider } from "./payments/PaymentTabs";
 import RecordPaymentDialog from "./payments/RecordPaymentDialog";
-import UnmatchedPanel from "./payments/UnmatchedPanel";
+import UncreditedTable from "./payments/UncreditedTable";
+import { usePaymentTables } from "./payments/usePaymentTables";
 import QueuePanel from "./QueuePanel";
 import RentalsCell from "./RentalsCell";
 import { useAuth } from "./RequireAuth";
@@ -454,17 +451,31 @@ export function CellDisplay({
       }
       // an imported row has no registration behind it and so owes nothing —
       // a dash, not a zero it never agreed to
-      const value = column === "outstanding" ? row.outstanding_amount : row.total_amount;
-      if (value === null || value === undefined) return <>—</>;
+      //
+      // The balance is three facts in one column and only one of them is a
+      // debt: a shortfall, an overpayment, and nothing outstanding at all.
+      // Read before the price below, so the two do not share a figure of two
+      // different types (a price is a whole number, a balance a decimal string)
+      if (column === "outstanding") {
+        if (row.outstanding_amount === undefined) return <>—</>;
+        return (
+          <BalanceCell
+            amount={row.outstanding_amount}
+            currency={
+              currency === null ? null : (row.outstanding_currency ?? currency.local_currency)
+            }
+          />
+        );
+      }
+      const value = row.total_amount;
+      if (value === null) return <>—</>;
       if (currency === null) return <>{value}</>;
       // The price reads in both currencies, because both are what the place
-      // costs. The balance reads in one, because a balance has only the lane
-      // the money came in: the backend decided which (Registration.
-      // balance_cents), and printing the other lane beside it made a pair that
-      // read as a conversion — a fencer who had paid 1 100 Kč in full was
-      // shown "0 Kč (45 €)".
-      if (column === "total_amount") return <>{formatMoneyWithEur(value, null, currency)}</>;
-      return <>{formatMoney(value, row.outstanding_currency ?? currency.local_currency)}</>;
+      // costs — unlike the balance above, which has only the lane the money
+      // came in (`Registration.balance_cents`). Printing both lanes beside a
+      // balance made a pair that read as a conversion: a fencer who had paid
+      // 1 100 Kč in full was shown "0 Kč (45 €)".
+      return <>{formatMoneyWithEur(value, null, currency)}</>;
     }
     case "state":
       return <StateBadge id={row.id} state={row.state} />;
@@ -692,6 +703,80 @@ export default function Console({ tournament, phase }: { tournament: Tournament;
   const [recording, setRecording] = useState<SheetRow | null>(null);
   const collects = (detail ?? tournament).feature_payments;
 
+  // Which of the phase's three tabs is open, and which of the two money tables
+  // was last read — so choosing the payments in the first band returns the
+  // reader where they left off rather than always to the credited half.
+  const [openTab, setOpenTabState] = useState<PaymentTab>("fencers");
+  // remembered rather than derived: derived from `openTab` it would be lost the
+  // moment the reader went back to the fencers, which is exactly when it is
+  // needed
+  const [lastMoneyTab, setLastMoneyTab] = useState<Exclude<PaymentTab, "fencers">>("credited");
+  const setOpenTab = useCallback((tab: PaymentTab) => {
+    setOpenTabState(tab);
+    if (tab !== "fencers") setLastMoneyTab(tab);
+  }, []);
+  // both loads live here rather than in the tables, which is what lets the line
+  // beside the bands be computed in one place (design D3, D4)
+  const tables = usePaymentTables(tournament.slug, queueReload, phase === "payments" && !boned);
+
+  /** The one line beside the tab bands: what the open table has to say that its
+   *  own count cannot.
+   *
+   *  Absent where there is nothing to say. A line stating a zero is noise about
+   *  a thing that did not happen, and the tab already carries the count.
+   *
+   *  The fencer tab says nothing here: `console.footerStats` already states the
+   *  roster's totals, and saying it twice is the redundancy this phase is
+   *  shedding. */
+  const tableNote = (() => {
+    if (openTab === "uncredited") {
+      const proposals = (tables.uncredited.rows ?? []).filter(
+        (payment) => payment.disposition === "proposal",
+      ).length;
+      // "z toho" and not a bare number: a subset has to read as a subset, or it
+      // reads as a second count that could disagree with the tab's
+      return proposals > 0 ? t("payments.tabs.noteProposals", { count: proposals }) : null;
+    }
+    if (openTab === "credited") {
+      const rows = tables.credited.rows ?? [];
+      if (rows.length === 0) return null;
+      // summed per currency, never across: a lane is what a tournament prices
+      // in, and adding CZK to EUR would state a figure nothing is owed in
+      const totals = new Map<string, number>();
+      for (const payment of rows) {
+        totals.set(payment.currency, (totals.get(payment.currency) ?? 0) + Number(payment.amount));
+      }
+      const stated = [...totals]
+        .map(([currency, total]) => formatMoney(total, currency as "CZK" | "EUR"))
+        .join(" · ");
+      return t("payments.tabs.noteCredited", { total: stated });
+    }
+    return null;
+  })();
+
+  /** Whichever money table is open, or its own one-line answer where it holds
+   *  nothing or could not be read. Both shapes are the card's, so one table
+   *  failing leaves the other and the fencer table as they were. */
+  const paymentTable = (() => {
+    const load = openTab === "credited" ? tables.credited : tables.uncredited;
+    if (load.failed) return <p className="login-error">{t("payments.queue.failed")}</p>;
+    if (load.rows === null) return <p className="rail-hint">{t("common.loading")}</p>;
+    if (load.rows.length === 0) return <p className="rail-hint">{t("payments.queue.empty")}</p>;
+    return openTab === "credited" ? (
+      <CreditedTable
+        slug={tournament.slug}
+        payments={tables.credited.rows ?? []}
+        onChanged={refresh}
+      />
+    ) : (
+      <UncreditedTable
+        slug={tournament.slug}
+        payments={tables.uncredited.rows ?? []}
+        onChanged={refresh}
+      />
+    );
+  })();
+
   /** Settled with nothing passing through Squire. A write to the registration,
    *  not a rule: every other manual edit in this console persists as a rule
    *  replayed over the projection, which would reach the table and the export
@@ -874,18 +959,18 @@ export default function Console({ tournament, phase }: { tournament: Tournament;
                 timezone={detail?.timezone ?? null}
               />
             ) : (
-              /* the tabs' state lives above the table, because the fencer list is
-             the first of them and gives way to whichever queue is read. Keyed
-             by phase: the tabs belong to Payments, and a selection carried into
-             a phase that draws no queues would leave the table hidden behind a
-             tab that is not there */
-              <QueueTabs key={phase} primary={t("payments.tabs.fencers")}>
+              /* the tabs' state lives above the table, because the fencer list
+             is one of them and gives way to whichever money table is read.
+             Keyed by phase: the tabs belong to Payments, and a selection
+             carried into a phase that draws none would leave the table hidden
+             behind a tab that is not there */
+              <PaymentTabsProvider key={phase} open={boned ? "fencers" : openTab}>
                 <SheetArea
                   phase={phase}
                   queues={
                     boned ? (
                       /* the phase's whole content is the mark, so what the mark
-                   means goes above the table where the queues would be: a row
+                   means goes above the table where the tables would be: a row
                    reading paid while still showing its total is the honest
                    reading of both, and a reader who takes it for a fault is
                    misreading the one true thing about it */
@@ -896,51 +981,37 @@ export default function Console({ tournament, phase }: { tournament: Tournament;
                         <IssueOnArrival slug={tournament.slug} onIssued={refresh} />
                       </>
                     ) : phase === "payments" ? (
-                      /* one table at a time: the fencer list and six queues stacked
-                   could not be read as seven different things. Proposals lead
-                   the queues — the one with the most work in it and the one an
-                   organizer empties fastest; the two ledger views come last,
-                   being the ones holding no decision. Credited transactions sit
-                   beside the recorded payments because that is what they are:
-                   the other half of what has been credited, and the only place
-                   a transaction the matcher resolved can be seen or taken back */
+                      /* two tables where there were seven queues: what arrived
+                   and was credited, and what arrived and lies on nobody. Every
+                   one of the seven was one of those two questions with a filter
+                   on it, and the same fact showed on up to three of them at
+                   once (spec payments-console) */
                       <>
-                        <QueueTabStrip />
-                        <LikelyPanel
-                          slug={tournament.slug}
-                          reload={queueReload}
-                          onChanged={refresh}
+                        <PaymentTabs
+                          open={openTab}
+                          onOpen={setOpenTab}
+                          onOpenPayments={() => {
+                            /* the reader asked for the money, not for a
+                               particular table of it: whichever they last read
+                               is where they left off */
+                            if (openTab === "fencers") setOpenTab(lastMoneyTab);
+                          }}
+                          creditedCount={tables.credited.rows?.length ?? null}
+                          uncreditedCount={tables.uncredited.rows?.length ?? null}
+                          creditedFailed={tables.credited.failed}
+                          uncreditedFailed={tables.uncredited.failed}
+                          note={tableNote}
                         />
-                        <UnmatchedPanel
-                          slug={tournament.slug}
-                          reload={queueReload}
-                          onChanged={refresh}
-                        />
-                        <FlaggedPanel
-                          slug={tournament.slug}
-                          reload={queueReload}
-                          onChanged={refresh}
-                        />
-                        <ExpiredHoldingPanel
-                          slug={tournament.slug}
-                          reload={queueReload}
-                          currency={detail?.local_currency ?? "CZK"}
-                        />
-                        <PaymentLinksPanel
-                          slug={tournament.slug}
-                          reload={queueReload}
-                          onChanged={refresh}
-                        />
-                        <CreditedPanel
-                          slug={tournament.slug}
-                          reload={queueReload}
-                          onChanged={refresh}
-                        />
-                        <RecordedPaymentsPanel
-                          slug={tournament.slug}
-                          reload={queueReload}
-                          onChanged={refresh}
-                        />
+                        {openTab !== "fencers" && (
+                          <section
+                            className="rail-card queue-card"
+                            role="tabpanel"
+                            id={`payment-tabpanel-${openTab}`}
+                            aria-labelledby={`payment-tab-${openTab}`}
+                          >
+                            {paymentTable}
+                          </section>
+                        )}
                       </>
                     ) : null
                   }
@@ -968,7 +1039,7 @@ export default function Console({ tournament, phase }: { tournament: Tournament;
                   onRatify={ratifyMatch}
                   onSearch={setMatchRow}
                 />
-              </QueueTabs>
+              </PaymentTabsProvider>
             )}
             {recording && detail && (
               <RecordPaymentDialog

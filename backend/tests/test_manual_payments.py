@@ -110,7 +110,18 @@ def remove(client, organizer, payment_id):
 
 
 def listed(client, organizer):
-    return client.get("/api/tournaments/cup/payments/manual", headers=organizer)
+    """The hand-recorded payments, read from the credited table they now share
+    with the bank's. A payment a person entered is a payment holding a live
+    credit, and listing it apart from the bank's meant the console answered
+    "what has been credited" in two places that could not be read together
+    (spec payments-console)."""
+    response = credited_table(client, organizer)
+    assert response.status_code == 200, response.text
+    return [row for row in response.json() if row["source_kind"] == "manual_payment"]
+
+
+def credited_table(client, headers):
+    return client.get("/api/tournaments/cup/payments/credited", headers=headers)
 
 
 # ------------------------------------------------------------------ crediting
@@ -257,7 +268,7 @@ def test_removal_is_a_soft_delete(client, auth_headers, mailbox):
     remove(client, organizer, payment["id"])
 
     # gone from what is credited now, still on the record
-    assert listed(client, organizer).json() == []
+    assert listed(client, organizer) == []
     stored = db_session().get(ManualPayment, payment["id"])
     assert stored is not None and stored.removed_at is not None
     assert remove(client, organizer, payment["id"]).status_code == 409
@@ -306,15 +317,18 @@ def test_the_listing_reads_as_the_console_needs_it(client, auth_headers, mailbox
         note="na účet klubu",
     )
 
-    [row] = listed(client, organizer).json()
-    assert row["fencer_name"] == "Jan"
+    [row] = listed(client, organizer)
+    (credit,) = row["credits"]
+    assert credit["fencer_name"] == "Jan"
     assert row["amount"] == "1000.00"
     assert row["method"] == "transfer"
     assert row["note"] == "na účet klubu"
     assert "org@example.com" in row["recorded_by"]
+    # why it was credited: a person recorded it
+    assert row["origin"] == "recorded"
     # removing it would stop the roster saying paid, and the console says so
     # before it is confirmed
-    assert row["removal_unsettles"] is True
+    assert credit["unsettles"] is True
 
 
 def test_a_partial_payments_removal_unsettles_nothing(client, auth_headers, mailbox):
@@ -323,8 +337,9 @@ def test_a_partial_payments_removal_unsettles_nothing(client, auth_headers, mail
     _, vs = enroll(client, auth_headers)
     record(client, organizer, registration_by_vs(vs).id, amount="500.00")
 
-    [row] = listed(client, organizer).json()
-    assert row["removal_unsettles"] is False
+    [row] = listed(client, organizer)
+    (credit,) = row["credits"]
+    assert credit["unsettles"] is False
 
 
 # ------------------------------------------------------------- the refusals
@@ -340,7 +355,10 @@ def test_refused_where_squire_handles_no_payments(client, auth_headers, mailbox)
     response = record(client, organizer, registration_by_vs(vs).id)
     assert response.status_code == 409
     assert registration_by_vs(vs).credited_in("local") == 0
-    assert listed(client, organizer).status_code == 409
+    # the credited table is not refused where Squire collects nothing, it is
+    # simply empty: nothing was ever credited, and the phase draws no such
+    # table on that tournament anyway
+    assert listed(client, organizer) == []
 
 
 def test_refused_without_console_access(client, auth_headers, mailbox):
@@ -350,7 +368,7 @@ def test_refused_without_console_access(client, auth_headers, mailbox):
 
     outsider = auth_headers(email="nobody@example.com", name="Nobody")
     assert record(client, outsider, registration_by_vs(vs).id).status_code == 403
-    assert listed(client, outsider).status_code == 403
+    assert credited_table(client, outsider).status_code == 403
 
 
 def test_a_cancelled_registration_takes_no_payment(client, auth_headers, mailbox):

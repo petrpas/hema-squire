@@ -147,6 +147,7 @@ def test_far_off_amount_credited_as_partial_payment(client, auth_headers, mailbo
     assert result == {
         "new": 1,
         "duplicate": 0,
+        "dropped": 0,
         "matched": 0,
         "flagged": 0,
         "unmatched": 0,
@@ -163,7 +164,7 @@ def test_far_off_amount_credited_as_partial_payment(client, auth_headers, mailbo
 
     # a partial transaction has nothing for the organizer to do — it is not
     # in the unmatched/flagged queue
-    queue = client.get("/api/tournaments/cup/payments/unmatched", headers=organizer).json()
+    queue = client.get("/api/tournaments/cup/payments/uncredited", headers=organizer).json()
     assert queue == []
 
     all_transactions = client.get(
@@ -216,7 +217,7 @@ def test_unknown_and_missing_vs_land_in_unmatched_queue(client, auth_headers, ma
     assert result["matched"] == 0
     assert result["unmatched"] == 2
 
-    queue = client.get("/api/tournaments/cup/payments/unmatched", headers=organizer).json()
+    queue = client.get("/api/tournaments/cup/payments/uncredited", headers=organizer).json()
     reasons = {t["external_id"]: t["status_reason"] for t in queue}
     # `no_vs` became more specific once the resolver started reading the payer's
     # own words (spec name-assisted-matching): a payment with no symbol is now
@@ -234,7 +235,7 @@ def test_second_payment_for_paid_registration_flagged(client, auth_headers, mail
     result = import_rows(client, organizer, [f"2;02.08.2026;1 000,00;CZK;{vs};;;;;"])
     assert result["flagged"] == 1
 
-    queue = client.get("/api/tournaments/cup/payments/unmatched", headers=organizer).json()
+    queue = client.get("/api/tournaments/cup/payments/uncredited", headers=organizer).json()
     assert queue[0]["status_reason"] == "registration_paid"
 
 
@@ -291,7 +292,7 @@ def test_credits_not_summed_across_currencies(client, auth_headers, mailbox):
     assert registration["outstanding_currency"] == "CZK"
     assert "outstanding_eur_amount" not in registration
     # neither is a flag — there is nothing for the organizer to resolve
-    queue = client.get("/api/tournaments/cup/payments/unmatched", headers=organizer).json()
+    queue = client.get("/api/tournaments/cup/payments/uncredited", headers=organizer).json()
     assert queue == []
 
 
@@ -307,7 +308,7 @@ def test_manual_link_credits_the_transactions_own_currency(client, auth_headers,
         headers=organizer,
     )
     transaction_id = client.get(
-        "/api/tournaments/cup/payments/unmatched", headers=organizer
+        "/api/tournaments/cup/payments/uncredited", headers=organizer
     ).json()[0]["id"]
     client.post(
         "/api/tournaments/cup/payments/link",
@@ -331,6 +332,7 @@ def test_reimport_does_not_rematch(client, auth_headers, mailbox):
     assert result == {
         "new": 0,
         "duplicate": 1,
+        "dropped": 0,
         "matched": 0,
         "flagged": 0,
         "unmatched": 0,
@@ -496,7 +498,7 @@ def test_bare_vs_matches_only_when_amount_covers_outstanding(client, auth_header
     assert state_b["state"] == "reserved"
     assert state_b["outstanding_amount"] == "1000.00"  # not credited at all
 
-    queue = client.get("/api/tournaments/cup/payments/unmatched", headers=organizer).json()
+    queue = client.get("/api/tournaments/cup/payments/uncredited", headers=organizer).json()
     assert queue[0]["status_reason"] == "bare_vs_amount_mismatch"
     assert queue[0]["candidate_vs"] == [vs_b]
 
@@ -513,7 +515,7 @@ def test_payer_name_digits_not_treated_as_vs(client, auth_headers, mailbox):
     assert state["state"] == "reserved"
     assert state["outstanding_amount"] == "1000.00"
 
-    queue = client.get("/api/tournaments/cup/payments/unmatched", headers=organizer).json()
+    queue = client.get("/api/tournaments/cup/payments/uncredited", headers=organizer).json()
     # the row carries no message at all, so the only text naming anybody is the
     # payer's own name — which is who paid and not who the payment is for, and
     # is never proposed (spec name-assisted-matching, design Decision 2)
@@ -583,7 +585,7 @@ def test_multi_vs_transfer_mismatched_sum_stays_unmatched_with_candidates(
             == "reserved"
         )
 
-    queue = client.get("/api/tournaments/cup/payments/unmatched", headers=organizer).json()
+    queue = client.get("/api/tournaments/cup/payments/uncredited", headers=organizer).json()
     assert queue[0]["status_reason"] == "multi_vs_amount_mismatch"
     assert sorted(queue[0]["candidate_vs"]) == sorted([vs_a, vs_b, vs_c])
 
@@ -597,7 +599,7 @@ def test_organizer_resolved_transaction_untouched_by_later_pass(client, auth_hea
     # flagged: registration_paid
     import_rows(client, organizer, [f"2;02.08.2026;1 000,00;CZK;{vs};;;;;"])
     transaction_id = client.get(
-        "/api/tournaments/cup/payments/unmatched", headers=organizer
+        "/api/tournaments/cup/payments/uncredited", headers=organizer
     ).json()[0]["id"]
     client.post(
         f"/api/tournaments/cup/payments/transactions/{transaction_id}/mark-for-refund",
@@ -628,7 +630,7 @@ def test_reevaluated_flagged_transaction_not_credited_twice(client, auth_headers
 
     result = import_rows(client, organizer, [f"1;01.08.2026;40,00;EUR;{vs};;;;MUELLER;DE99"])
     assert result["flagged"] == 1
-    queue = client.get("/api/tournaments/cup/payments/unmatched", headers=organizer).json()
+    queue = client.get("/api/tournaments/cup/payments/uncredited", headers=organizer).json()
     assert queue[0]["status_reason"] == "currency_not_accepted"
 
     # the tournament is already published: give the discipline its EUR price
@@ -773,3 +775,57 @@ def test_a_linked_credit_dates_by_the_transaction_and_clears_when_withdrawn(
         registration = registration_by_vs(vs)
         assert registration.state == RegistrationState.RESERVED
         assert ledger.paid_at(registration, registration.tournament) is None
+
+
+def test_a_refund_carrying_the_original_symbol_credits_nothing(client, auth_headers, mailbox):
+    """The case the ingest gate exists for.
+
+    An organizer refunding an entry fee in internet banking copies the original
+    payment, so the outgoing transfer carries that registration's own variable
+    symbol. Before the gate this was ingested as a negative transaction, and
+    matched by symbol like any other: `paid_cents = transaction.amount_cents`
+    with no sign test — only a *bare* token is checked against tolerance — so
+    the refunded fencer had the refund deducted from what they had paid.
+    """
+    organizer = auth_headers()
+    setup(client, organizer)
+    fencer, vs = enroll(client, auth_headers)
+
+    paid = import_rows(client, organizer, [f"1;01.08.2026;1 000,00;CZK;{vs};;;;Jan N;123"])
+    assert paid["matched"] == 1
+    credited = registration_by_vs(vs).credited_in("local")
+
+    refund = import_rows(client, organizer, [f"2;05.08.2026;-1 000,00;CZK;{vs};;;vratka;;"])
+    assert refund["dropped"] == 1
+    # neither new nor duplicate: saying "duplicate" would tell the organizer
+    # this statement had been imported before
+    assert refund["new"] == 0
+    assert refund["duplicate"] == 0
+
+    # nothing was stored, so nothing could be matched against the registration
+    listing = client.get("/api/tournaments/cup/payments/transactions", headers=organizer).json()
+    assert [transaction["external_id"] for transaction in listing] == ["1"]
+    assert registration_by_vs(vs).credited_in("local") == credited
+    state = client.get("/api/tournaments/cup/my-registration", headers=fencer).json()["state"]
+    assert state == "paid"
+
+
+def test_only_the_credits_of_a_mixed_statement_are_ingested(client, auth_headers, mailbox):
+    organizer = auth_headers()
+    setup(client, organizer)
+    _, vs = enroll(client, auth_headers)
+
+    result = import_rows(
+        client,
+        organizer,
+        [
+            f"1;01.08.2026;1 000,00;CZK;{vs};;;;Jan N;123",
+            "2;02.08.2026;-250,00;CZK;;;;vratka;;",
+            "3;03.08.2026;-40,00;CZK;;;;poplatek;;",
+        ],
+    )
+    assert result["new"] == 1
+    assert result["dropped"] == 2
+
+    listing = client.get("/api/tournaments/cup/payments/transactions", headers=organizer).json()
+    assert [transaction["external_id"] for transaction in listing] == ["1"]

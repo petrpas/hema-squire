@@ -29,6 +29,7 @@ from app.models import (
     BankTransaction,
     CreditOrigin,
     CreditSource,
+    Currency,
     ManualPayment,
     Operation,
     OperationKind,
@@ -44,7 +45,7 @@ from app.models import (
 from app.routers.registrations import _cents_to_amount, next_vs
 from app.routers.tournaments import FencerDep, SessionDep, TournamentDep
 from app.schemas import (
-    CreditedTransactionOut,
+    CreditedPaymentOut,
     CreditReversalOut,
     CreditReversalRow,
     ExpiredHoldingOut,
@@ -53,10 +54,11 @@ from app.schemas import (
     LinkIn,
     ManualPaymentIn,
     ManualPaymentOut,
-    PaymentLinkOut,
+    PairedRegistrationOut,
     RankedFencerOut,
     TransactionOut,
     TransactionRosterOut,
+    UncreditedPaymentOut,
 )
 
 router = APIRouter(prefix="/api/tournaments/{slug}/payments", tags=["payments"])
@@ -99,6 +101,7 @@ def _ingest_and_match(session, tournament, mailer, source, transactions) -> Inge
     return IngestAndMatchOut(
         new=ingested.new,
         duplicate=ingested.duplicate,
+        dropped=ingested.dropped,
         matched=matched.matched,
         flagged=matched.flagged,
         unmatched=matched.unmatched,
@@ -333,25 +336,6 @@ def link_transaction(
     return {"rule_id": rule.id, "applied": applied}
 
 
-@router.get("/likely", response_model=list[TransactionOut])
-def likely_transactions(tournament: TournamentDep, session: SessionDep, fencer: FencerDep):
-    """Payments the resolver read a fencer's name in, waiting for a person.
-
-    A queue of proposals, not of outcomes: nothing here has been credited and
-    nobody has been mailed. Confirming is the organizer supplying the variable
-    symbol the payer omitted (spec name-assisted-matching)."""
-    require_console_access(session, tournament, fencer)
-    rows = session.scalars(
-        select(BankTransaction)
-        .where(
-            BankTransaction.tournament_id == tournament.id,
-            BankTransaction.status == nameresolve.LIKELY,
-        )
-        .order_by(BankTransaction.date, BankTransaction.id)
-    ).all()
-    return [_transaction_out(session, tournament, row) for row in rows]
-
-
 def _proposal(session, tournament, transaction_id: int) -> BankTransaction:
     transaction = session.get(BankTransaction, transaction_id)
     if transaction is None or transaction.tournament_id != tournament.id:
@@ -519,45 +503,6 @@ def _transaction_out(session, tournament, transaction: BankTransaction) -> Trans
     return out
 
 
-@router.get("/links", response_model=list[PaymentLinkOut])
-def payment_links(tournament: TournamentDep, session: SessionDep, fencer: FencerDep):
-    """The tournament's active payment links, resolved into what they join.
-
-    A link rule names its transaction by external id and its registrations by
-    symbol or id. None of that is readable: on a statement from a bank that
-    numbers nothing, the external id is a fingerprint of the row's own content,
-    and a link made by choosing a fencer carries no symbol to show at all. The
-    queue exists so the organizer can undo the wrong link, which they cannot do
-    without seeing which payment and which fencer it is — so the resolving
-    happens here, once, rather than in three requests the console would have to
-    join for itself (spec `payments-console`).
-    """
-    require_console_access(session, tournament, fencer)
-    out = []
-    for rule in rules.active_rules(session, tournament, kind="payment_link"):
-        payload = rule.payload or {}
-        registrations = matching.linked_registrations(session, tournament, payload)
-        transaction = matching.transaction_for_link(session, tournament, rule.target)
-        out.append(
-            PaymentLinkOut(
-                rule_id=rule.id,
-                auto_created=payload.get("auto_created") is True,
-                fencers=[
-                    registration.fencer.display_name
-                    for registration in registrations
-                    if registration.fencer is not None
-                ],
-                vs=[r.vs for r in registrations if r.vs is not None],
-                transaction=(
-                    _transaction_out(session, tournament, transaction)
-                    if transaction is not None
-                    else None
-                ),
-            )
-        )
-    return out
-
-
 @router.get("/resettle")
 def resettleable_payments(
     tournament: TournamentDep, session: SessionDep, fencer: FencerDep
@@ -610,20 +555,6 @@ def clear_payments(tournament: TournamentDep, session: SessionDep, fencer: Fence
             status_code=409,
             detail={"code": "credited_transactions", "count": credited.count},
         ) from None
-
-
-@router.get("/unmatched", response_model=list[TransactionOut])
-def unmatched_queue(tournament: TournamentDep, session: SessionDep, fencer: FencerDep):
-    require_console_access(session, tournament, fencer)
-    transactions = session.scalars(
-        select(BankTransaction)
-        .where(
-            BankTransaction.tournament_id == tournament.id,
-            BankTransaction.status.in_(["unmatched", "flagged"]),
-        )
-        .order_by(BankTransaction.date, BankTransaction.id)
-    ).all()
-    return [_transaction_out(session, tournament, transaction) for transaction in transactions]
 
 
 @router.get("/expired-holding", response_model=list[ExpiredHoldingOut])
@@ -797,45 +728,227 @@ def _reversal_preview(
     return CreditReversalOut(transaction_id=transaction.id, registrations=rows)
 
 
-@router.get("/credited", response_model=list[CreditedTransactionOut])
-def credited_transactions(tournament: TournamentDep, session: SessionDep, fencer: FencerDep):
-    """Every transaction holding a live credit, newest first.
+def _credit_rows(session, tournament: Tournament, credits: list[PaymentCredit]) -> list:
+    """Who a payment credited and how much each of them got, with whether that
+    registration stops reading as paid once the credit is gone.
 
-    A view of its own because such a transaction is in none of the queues: the
-    matcher resolved it, so it is neither unmatched nor flagged, and a credit an
-    automatic VS match decided leaves no payment link to list it under. Until
-    now the console could see a credited transaction only where an organizer had
-    linked it by hand, which is the one case that already had a way back.
+    The same rows the reversal preflight builds, from entries already in hand:
+    the table states what it holds without a request per line, and reversing is
+    still confirmed against a preflight asked at the moment it is done, because
+    whether a registration reads as paid is a derivation and a listing can be
+    older than the answer."""
+    rows = []
+    for entry in credits:
+        registration = entry.registration
+        remaining = registration.credited_in(registration.paid_lane) - entry.amount_cents
+        rows.append(
+            CreditReversalRow(
+                registration_id=registration.id,
+                fencer_name=registration.fencer.display_name,
+                vs=registration.vs,
+                amount=_cents_to_amount(entry.amount_cents),
+                currency=entry.currency,
+                unsettles=registration.settled and not registration.waived and remaining <= 0,
+            )
+        )
+    return rows
 
-    Asked of the journal rather than of `matched_registration_id`: what a
-    transaction credited is what its live entries say, and one transaction may
-    have credited several registrations (design D3).
+
+@router.get("/credited", response_model=list[CreditedPaymentOut])
+def credited_payments(tournament: TournamentDep, session: SessionDep, fencer: FencerDep):
+    """Every payment holding a live credit, newest first — the bank's and the
+    hand-recorded together.
+
+    One table where the console had three. A transaction the matcher resolved
+    sits in no resolution queue, a pairing an organizer drew was listed under
+    the rule that decided it, and a cash payment somebody entered had a view of
+    its own; all three are the same fact, and answering it in three places meant
+    the pairing view and the credited view listing overlapping rows under
+    different keys while a pairing that credited nothing appeared as a result.
+
+    Asked of the journal and not of `matched_registration_id` or of status: what
+    a payment credited is what its live entries say, and one payment may have
+    credited several registrations (design D1).
     """
     require_console_access(session, tournament, fencer)
-    credited_ids = session.scalars(
-        select(PaymentCredit.source_id)
+    entries = session.scalars(
+        select(PaymentCredit)
+        .where(
+            PaymentCredit.tournament_id == tournament.id,
+            PaymentCredit.reversed_at.is_(None),
+        )
+        .order_by(PaymentCredit.id)
+    ).all()
+    if not entries:
+        return []
+
+    # grouped by what carried the money, which is how the journal names it
+    grouped: dict[tuple[CreditSource, int], list[PaymentCredit]] = {}
+    for entry in entries:
+        grouped.setdefault((entry.source_kind, entry.source_id), []).append(entry)
+
+    transactions = {
+        transaction.id: transaction
+        for transaction in session.scalars(
+            select(BankTransaction).where(
+                BankTransaction.tournament_id == tournament.id,
+                BankTransaction.id.in_(
+                    [
+                        source_id
+                        for kind, source_id in grouped
+                        if kind == CreditSource.BANK_TRANSACTION
+                    ]
+                ),
+            )
+        )
+    }
+    recorded = {
+        payment.id: payment
+        for payment in session.scalars(
+            select(ManualPayment).where(
+                ManualPayment.tournament_id == tournament.id,
+                ManualPayment.id.in_(
+                    [
+                        source_id
+                        for kind, source_id in grouped
+                        if kind == CreditSource.MANUAL_PAYMENT
+                    ]
+                ),
+            )
+        )
+    }
+
+    rows = []
+    for (kind, source_id), credits in grouped.items():
+        newest = credits[-1]
+        common = CreditedPaymentOut(
+            source_kind=kind,
+            source_id=source_id,
+            value_date=newest.value_date,
+            # what the payment itself was, which a share of it credited
+            amount=_cents_to_amount(sum(entry.amount_cents for entry in credits)),
+            currency=newest.currency,
+            origin=newest.origin,
+            credits=_credit_rows(session, tournament, credits),
+        )
+        if kind == CreditSource.BANK_TRANSACTION:
+            transaction = transactions.get(source_id)
+            if transaction is None:
+                # the statement was cleared from under a credit nobody reversed.
+                # The row still states the money, which is the thing that is
+                # true; `payments-clearing` refuses this, so it is not reachable
+                # by any console action
+                rows.append(common)
+                continue
+            common.amount = _cents_to_amount(transaction.amount_cents)
+            common.currency = Currency(transaction.currency)
+            common.payer_name = transaction.payer_name
+            common.message = transaction.message
+        else:
+            payment = recorded.get(source_id)
+            if payment is not None:
+                common.amount = _cents_to_amount(payment.amount_cents)
+                common.currency = payment.currency
+                common.recorded_by = payment.recorded_by
+                common.method = payment.method
+                common.note = payment.note
+        rows.append(common)
+
+    rows.sort(key=lambda row: (row.value_date, row.source_id), reverse=True)
+    return rows
+
+
+@router.get("/uncredited", response_model=list[UncreditedPaymentOut])
+def uncredited_payments(tournament: TournamentDep, session: SessionDep, fencer: FencerDep):
+    """Every payment that arrived and lies on nobody, oldest first.
+
+    One table where the console had three — proposals, unresolved money, and the
+    money a check refused — because all three are one question with the answer
+    to a second question written beside it. Which table a payment belongs to is
+    the journal's answer; what is to be done with it is what status is genuinely
+    good for, and that is the `disposition` each row carries.
+
+    The queues this replaces filtered on status, which is why a pairing that
+    credited nothing fell out of all of them: `apply_payment_links` marks such a
+    transaction `matched` though no money moved. Asked of the journal it is
+    uncredited money, and it leaves this table by itself once a credit exists
+    (design D1).
+    """
+    require_console_access(session, tournament, fencer)
+    live_credit = (
+        select(PaymentCredit.id)
         .where(
             PaymentCredit.tournament_id == tournament.id,
             PaymentCredit.source_kind == CreditSource.BANK_TRANSACTION,
+            PaymentCredit.source_id == BankTransaction.id,
             PaymentCredit.reversed_at.is_(None),
         )
-        .distinct()
-    ).all()
-    if not credited_ids:
-        return []
+        .exists()
+    )
     transactions = session.scalars(
         select(BankTransaction)
         .where(
             BankTransaction.tournament_id == tournament.id,
-            BankTransaction.id.in_(credited_ids),
+            ~live_credit,
+            # money belonging to a sibling tournament on the same bank account.
+            # Uncredited here and never to be credited here: its own console
+            # will match it, which is what the phase already tells the
+            # organizer in as many words (design Decision 5). The one place the
+            # journal's answer is not the whole test — "lies on nobody" is not
+            # the same as "is this tournament's to resolve"
+            BankTransaction.status != "other_tournament",
         )
-        .order_by(BankTransaction.date.desc(), BankTransaction.id.desc())
+        .order_by(BankTransaction.date, BankTransaction.id)
     ).all()
+    if not transactions:
+        return []
+
+    # the pairings that named a registration and reached nothing. Read once for
+    # the whole table rather than per row: a rule names its transaction by
+    # external id, so the lookup is by that
+    paired: dict[str, list[PairedRegistrationOut]] = {}
+    for rule in rules.active_rules(session, tournament, kind="payment_link"):
+        registrations = matching.linked_registrations(session, tournament, rule.payload or {})
+        named = [
+            PairedRegistrationOut(
+                registration_id=registration.id,
+                fencer_name=registration.fencer.display_name,
+                vs=registration.vs,
+            )
+            for registration in registrations
+            if registration.fencer is not None
+        ]
+        if named:
+            paired.setdefault(rule.target, []).extend(named)
+
     rows = []
     for transaction in transactions:
         base = _transaction_out(session, tournament, transaction)
-        preview = _reversal_preview(session, tournament, transaction)
-        rows.append(CreditedTransactionOut(**base.model_dump(), credits=preview.registrations))
+        pairing = paired.get(f"txn:{transaction.external_id}", [])
+        if transaction.status == nameresolve.LIKELY and transaction.proposed_fencer is not None:
+            disposition = "proposal"
+        elif pairing:
+            disposition = "paired_uncredited"
+        elif transaction.status == "flagged":
+            disposition = "refused"
+        else:
+            disposition = "none"
+        out = UncreditedPaymentOut(
+            **base.model_dump(),
+            disposition=disposition,
+            paired_registrations=pairing,
+        )
+        if disposition == "proposal":
+            proposed = session.scalar(
+                select(Registration).where(
+                    Registration.tournament_id == tournament.id,
+                    Registration.fencer_id == transaction.proposed_fencer_id,
+                    Registration.state == RegistrationState.RESERVED,
+                )
+            )
+            if proposed is not None:
+                out.proposed_outstanding = _cents_to_amount(proposed.balance_cents(tournament)[0])
+        rows.append(out)
     return rows
 
 
@@ -980,30 +1093,6 @@ def _manual_payment_out(
             registration.settled and which is not None and credited - payment.amount_cents < total
         ),
     )
-
-
-def _live_manual_payments(session, tournament: Tournament):
-    return session.scalars(
-        select(ManualPayment)
-        .where(
-            ManualPayment.tournament_id == tournament.id,
-            ManualPayment.removed_at.is_(None),
-        )
-        .order_by(ManualPayment.received_on.desc(), ManualPayment.id.desc())
-    ).all()
-
-
-@router.get("/manual", response_model=list[ManualPaymentOut])
-def list_manual_payments(tournament: TournamentDep, session: SessionDep, fencer: FencerDep):
-    """The payments an organizer recorded by hand. Removed ones are absent:
-    what the view answers is what is credited now, and a reversed payment
-    credits nothing. Its record survives in the audit trail."""
-    require_console_access(session, tournament, fencer)
-    bank.require_payments_enabled(tournament)
-    return [
-        _manual_payment_out(session, tournament, payment)
-        for payment in _live_manual_payments(session, tournament)
-    ]
 
 
 @router.post("/manual", response_model=ManualPaymentOut, status_code=201)

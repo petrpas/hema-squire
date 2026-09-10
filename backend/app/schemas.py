@@ -61,6 +61,8 @@ from app.fieldtypes import (
 )
 from app.i18n import catalog
 from app.models import (
+    CreditOrigin,
+    CreditSource,
     Currency,
     DisciplineKind,
     ExtraCategory,
@@ -1212,21 +1214,80 @@ class CreditReversalOut(BaseModel):
     registrations: list[CreditReversalRow]
 
 
-class CreditedTransactionOut(TransactionOut):
-    """A transaction holding a live credit, as the console's own view lists it.
+class CreditedPaymentOut(BaseModel):
+    """One payment holding a live credit, whichever half of the journal carried
+    it: a transaction from a statement or a payment a person recorded.
 
-    Such a transaction sits in no queue: the matcher resolved it and the money
-    was credited, so it is neither unmatched nor flagged, and an automatic VS
-    match leaves no payment link to list it under either. Without a view of its
-    own the only credited transactions the console could see were the ones an
-    organizer had linked by hand — and reversing is offered precisely for the
-    ones it could not."""
+    One table rather than three. A transaction the matcher resolved, a pairing
+    an organizer drew and a cash payment somebody entered are the same fact —
+    money credited to a fencer — and the console used to answer it in three
+    places that could not be read together, with the pairing view and the
+    credited view listing overlapping rows under different keys.
 
-    # who this transaction credited, and which of them would stop reading as
-    # paid. Carried with the row so the view can state what it holds without a
-    # request per line; the reversal itself is confirmed against a fresh
-    # preflight, which is what says so at the moment it is done
+    Addressed by `(source_kind, source_id)`, which is how the journal itself
+    names what carried the money.
+    """
+
+    source_kind: CreditSource
+    source_id: int
+    # the day the money arrived as its own source states it: the statement's
+    # date, or the `received_on` an organizer typed. Never a clock reading
+    value_date: datetime.date
+    # what the payment itself was, which is not always what it credited: a
+    # transfer covering three entries credits each of them a share
+    amount: decimal.Decimal
+    currency: Currency
+    # the bank's counterparty, where a statement carried the money
+    payer_name: str | None = None
+    # the organizer who said so, where a person did
+    recorded_by: str | None = None
+    method: PaymentMethod | None = None
+    note: str | None = None
+    # the payer's own words. Kept here as well as on the uncredited table: the
+    # message is how an organizer finds this payment again in their own bank
+    message: str | None = None
+    # why the money was credited — a symbol the matcher read, a pairing
+    # somebody made, a payment a person recorded. Taken from the newest live
+    # credit: every path that exists writes a payment's credits in one pass, so
+    # they agree, and the newest is the right answer if that ever stops holding
+    origin: CreditOrigin
+    # who it credited and how much each of them got, with whether that
+    # registration stops reading as paid once the credit is gone. Carried with
+    # the row so the table states what it holds without a request per line;
+    # reversing is still confirmed against a fresh preflight
     credits: list[CreditReversalRow]
+
+
+class PairedRegistrationOut(BaseModel):
+    """A registration a pairing names, for a payment that credited nothing."""
+
+    registration_id: int
+    fencer_name: str
+    vs: int | None
+
+
+class UncreditedPaymentOut(TransactionOut):
+    """A payment that arrived and lies on nobody.
+
+    Membership is the credit journal's answer and not the transaction's status:
+    `apply_payment_links` marks a transaction resolved even where it credited
+    nothing — a registration cancelled or amended between the pairing and the
+    pass — and such a payment used to read as done while its money sat on the
+    account. Asked of the journal it is uncredited money, which is what it is,
+    and it leaves this table by itself once a credit exists.
+
+    `disposition` is what status is genuinely good for: not which table the row
+    belongs to, but what is to be done with it.
+    """
+
+    disposition: Literal["proposal", "refused", "paired_uncredited", "none"]
+    # what the proposed fencer still owes, so the organizer confirms against a
+    # balance rather than against a name alone (spec name-assisted-matching)
+    proposed_outstanding: decimal.Decimal | None = None
+    # `paired_uncredited` only: who the pairing names. The organizer is looking
+    # at money assigned to somebody it could not reach, so the somebody is the
+    # first thing the row has to say
+    paired_registrations: list[PairedRegistrationOut] = []
 
 
 class ExpiredHoldingOut(BaseModel):
@@ -1267,26 +1328,6 @@ class LinkIn(BaseModel):
         return self
 
 
-class PaymentLinkOut(BaseModel):
-    """An active payment link, resolved into the two things it joins.
-
-    The rule itself names a transaction by its external id and a registration by
-    a symbol or an id — none of which a reader recognises, and on a statement
-    from a bank that numbers nothing the external id is a fingerprint of the
-    row's own content. So the console is handed the payment as the bank wrote it
-    and the fencer by name (spec `payments-console`).
-    """
-
-    rule_id: int
-    auto_created: bool
-    fencers: list[str]
-    vs: list[int]
-    # absent where the transaction behind the link is gone — a cleared statement
-    # leaves the rule standing, and a row that states nothing is worse than one
-    # that states what little is left
-    transaction: TransactionOut | None = None
-
-
 class IssueSkipOut(BaseModel):
     row_id: str
     name: str | None = None
@@ -1296,6 +1337,12 @@ class IssueSkipOut(BaseModel):
 class IngestAndMatchOut(BaseModel):
     new: int
     duplicate: int
+    # outgoing transfers the intake dropped, being nobody's entry fee. Reported
+    # rather than swallowed: an organizer looking at a fifteen-row statement and
+    # a report of twelve is owed the third number, and it is the one number that
+    # explains the gap without their having to open the file (spec
+    # payments-intake, Only money arriving is ingested as a payment)
+    dropped: int = 0
     matched: int
     flagged: int
     unmatched: int

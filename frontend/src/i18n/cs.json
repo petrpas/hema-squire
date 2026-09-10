@@ -249,6 +249,7 @@
     "waived": "odpuštěno",
     "waived_all": "odpuštěno vše",
     "waived_amount": "odpuštěno {{amount}}",
+    "overpaid": "přeplatek {{amount}}",
     "waiver": {
       "title": "Označit zaplaceno bez platby",
       "meaning": "Zaznamená, že tato registrace nic nedluží a že na ni nedorazily žádné peníze. Nic se nepřipisuje, takže se nezmění žádný součet přijatých částek.",
@@ -298,7 +299,8 @@
     "cell": {
       "edit": "Upravit {{column}}: {{value}}",
       "editEmpty": "Upravit {{column}} – zatím prázdné"
-    }
+    },
+    "titlePayments": "Správa plateb"
   },
   "row": {
     "absorbed": "Sloučeno do tohoto řádku"
@@ -1030,10 +1032,6 @@
   },
   "payments": {
     "flagged": {
-      "title": "Nevyřešené platby",
-      "vs": "VS",
-      "amount": "Částka",
-      "reason": "Důvod",
       "reinstate": "Obnovit rezervaci",
       "markForRefund": "Označit k vrácení",
       "actionFailed": "Akci se nepodařilo provést.",
@@ -1043,7 +1041,8 @@
         "amount_out_of_tolerance": "částka mimo toleranci",
         "currency_unconvertible": "měnu nelze převést",
         "registration_paid": "registrace už je zaplacená",
-        "registration_cancelled": "registrace zrušena"
+        "registration_cancelled": "registrace zrušena",
+        "not_an_incoming_payment": "není příchozí platba"
       },
       "settledByHand": "Zaplaceno ručně: {{reason}}",
       "settledByPayment": "Zaplaceno ručně zadanou platbou: {{amount}}, {{date}}"
@@ -1064,16 +1063,7 @@
     },
     "queue": {
       "failed": "Seznam se nepodařilo načíst.",
-      "empty": "Nic tu není.",
-      "tabs": "Fronty plateb"
-    },
-    "unmatched": {
-      "title": "Nepřiřazené platby",
-      "date": "Datum",
-      "payer": "Plátce",
-      "amount": "Částka",
-      "message": "Zpráva",
-      "link": "Přiřadit k registraci"
+      "empty": "Nic tu není."
     },
     "link": {
       "title": "Přiřadit platbu",
@@ -1093,30 +1083,6 @@
       "refused": "(řekls, že to není on)",
       "unbillable": "{{count}} šermířů ze seznamu tady není, protože nemají registraci — platbu jim nelze přiřadit, dokud se řádek ve fázi Šermíři neopraví:"
     },
-    "expiredHolding": {
-      "title": "Vypršelé s platbou",
-      "fencer": "Šermíř",
-      "vs": "VS",
-      "credited": "Připsáno",
-      "expiredAt": "Vypršela",
-      "empty": "Na vypršelých rezervacích neleží žádné peníze."
-    },
-    "links": {
-      "title": "Přiřazení plateb",
-      "transaction": "Platba",
-      "vs": "VS",
-      "auto": "automaticky",
-      "manual": "ručně",
-      "remove": "Zrušit přiřazení",
-      "failed": "Přiřazení se nepodařilo zrušit.",
-      "date": "Datum",
-      "payer": "Plátce",
-      "amount": "Částka",
-      "message": "Zpráva",
-      "fencer": "Šermíř",
-      "origin": "Vzniklo",
-      "orphaned": "Platba za některým přiřazením už neexistuje — výpis byl smazán. Připsané peníze u šermíře zůstávají, dokud přiřazení nezrušíte."
-    },
     "intake": {
       "title": "Příjem plateb",
       "hint": "Výpis účtu (.csv, .xlsx)",
@@ -1126,6 +1092,10 @@
       "lifecycle": "Spustit expirace a upomínky",
       "imported": "Načteno {{when}}: {{new}} nových, {{matched}} spárováno.",
       "polled": "Staženo právě teď: {{new}} nových, {{matched}} spárováno.",
+      "dropped_one": "Jeden výdaj z účtu se nenačetl.",
+      "dropped_few": "{{count}} výdaje z účtu se nenačetly.",
+      "dropped_many": "{{count}} výdaje z účtu se nenačetly.",
+      "dropped_other": "{{count}} výdajů z účtu se nenačetlo.",
       "noParser": "Neznámý výpis nelze přečíst — tato instalace nemá nastavený parser.",
       "unsupportedFormat": "Tento soubor není CSV ani tabulka.",
       "importFailed": "Výpis se nepodařilo načíst.",
@@ -1166,19 +1136,17 @@
         "confirm": "trvale odstranit"
       }
     },
-    "likely": {
-      "title": "Navržené shody",
-      "explain": "Vyčteno z toho, co plátce napsal. Nic není připsané a nikomu nic nepřišlo — zaplacené to bude až potvrzením.",
-      "date": "Datum",
-      "payer": "Zaplatil",
-      "amount": "Částka",
-      "message": "Zpráva plátce",
-      "fencer": "Za koho",
-      "confirm": "Potvrdit",
-      "reject": "Zrušit"
-    },
     "tabs": {
-      "fencers": "Šermíři"
+      "label": "Platby turnaje",
+      "fencers": "Šermíři",
+      "payments": "Platby",
+      "credited": "Připsané",
+      "uncredited": "Nepřipsané",
+      "noteProposals_one": "z toho 1 návrh párování",
+      "noteProposals_few": "z toho {{count}} návrhy párování",
+      "noteProposals_many": "z toho {{count}} návrhu párování",
+      "noteProposals_other": "z toho {{count}} návrhů párování",
+      "noteCredited": "připsáno {{total}}"
     },
     "record": {
       "action": "Zadat platbu",
@@ -1205,34 +1173,43 @@
         "payments_disabled": "Platby tohoto turnaje Squire neřeší."
       }
     },
-    "recorded": {
-      "title": "Ručně zadané platby",
-      "date": "Přijato",
-      "fencer": "Šermíř",
-      "amount": "Částka",
-      "method": "Jak",
-      "note": "Poznámka",
-      "recordedBy": "Zadal",
-      "remove": "Odebrat",
-      "removeTitle": "Odebrat tuto platbu",
-      "removeBody": "{{amount}} zadaných pro {{name}} se odečte.",
-      "removeUnsettles": "Tato registrace přestane být vedena jako zaplacená.",
-      "removeConfirm": "Odebrat"
-    },
     "credited": {
-      "title": "Připsané transakce",
       "date": "Datum",
-      "payer": "Plátce",
+      "payer": "Od koho",
       "amount": "Částka",
+      "message": "Zpráva",
       "registrations": "Připsáno komu",
+      "origin": "Proč",
+      "origins": {
+        "auto_vs": "symbol",
+        "payment_link": "přiřazeno ručně",
+        "recorded": "zadáno ručně",
+        "reinstate": "obnovená rezervace",
+        "refund_hold": "drženo k vrácení"
+      },
       "reverse": "Zrušit připsání",
-      "reverseTitle": "Zrušit připsání této transakce",
-      "reverseBody": "{{amount}} se přestane počítat. Transakce se vrátí mezi nepřiřazené.",
+      "reverseTitle": "Zrušit připsání této platby",
+      "reverseBody": "{{amount}} se přestane počítat. Platba se vrátí mezi nepřipsané.",
       "reverseUnsettles": "Tyto registrace přestanou být vedeny jako zaplacené: {{names}}.",
       "reverseNoneUnsettle": "Žádná registrace kvůli tomu nepřestane být vedena jako zaplacená.",
       "reverseConfirm": "Zrušit připsání",
       "checking": "Zjišťuji, co se stane.",
       "actionFailed": "Připsání se nepodařilo zrušit."
+    },
+    "uncredited": {
+      "explain": "Přišlo a neleží to na nikom. Nic není připsané a nikomu nic nepřišlo.",
+      "date": "Datum",
+      "payer": "Plátce",
+      "amount": "Částka",
+      "message": "Zpráva plátce",
+      "disposition": "Co s tím",
+      "owes": "dluží {{amount}}",
+      "pairedUncredited": "přiřazeno {{names}}, ale nepřipsáno",
+      "confirm": "Potvrdit",
+      "reject": "Zrušit návrh"
+    },
+    "unmatched": {
+      "link": "Přiřadit k registraci"
     }
   },
   "validation": {

@@ -881,11 +881,63 @@ export interface CreditReversal {
   registrations: CreditReversalRow[];
 }
 
-/** A transaction holding a live credit. It sits in no queue — the matcher
- *  resolved it — and an automatic VS match leaves no payment link to list it
- *  under, so the credited view is the only place it can be seen or taken back. */
-export interface CreditedTransaction extends Transaction {
+/** What carried the money a credit records. */
+export type CreditSource = "bank_transaction" | "manual_payment";
+
+/** Why the money was credited, which is not the same question as what carried
+ *  it: one transaction the matcher resolved and the same transaction credited
+ *  because an organizer paired it are one source with two different decisions
+ *  behind them. */
+export type CreditOrigin = "auto_vs" | "payment_link" | "reinstate" | "refund_hold" | "recorded";
+
+/** One payment holding a live credit, whichever half of the journal carried it.
+ *
+ *  One table where the console had three. A transaction the matcher resolved, a
+ *  pairing an organizer drew and a cash payment somebody entered are the same
+ *  fact — money credited to a fencer — and answering it in three places meant
+ *  the pairing view and the credited view listing overlapping rows under
+ *  different keys. */
+export interface CreditedPayment {
+  source_kind: CreditSource;
+  source_id: number;
+  value_date: string;
+  /** A decimal string, as every money figure the API states is. */
+  amount: string;
+  currency: Currency;
+  /** The bank's counterparty, where a statement carried the money. */
+  payer_name: string | null;
+  /** The organizer who said so, where a person did. */
+  recorded_by: string | null;
+  method: PaymentMethod | null;
+  note: string | null;
+  message: string | null;
+  origin: CreditOrigin;
   credits: CreditReversalRow[];
+}
+
+/** What is to be done with a payment that lies on nobody. Not which table it
+ *  belongs to — the credit journal answers that — but what the organizer is
+ *  being asked to decide. */
+export type Disposition = "proposal" | "refused" | "paired_uncredited" | "none";
+
+/** A registration a pairing names, for a payment that credited nothing. */
+export interface PairedRegistration {
+  registration_id: number;
+  fencer_name: string;
+  vs: number | null;
+}
+
+/** A payment that arrived and lies on nobody.
+ *
+ *  Membership is the journal's answer and not the transaction's status: a
+ *  pairing marks a transaction resolved even where it credited nothing, and
+ *  such a payment used to read as done while its money sat on the account. */
+export interface UncreditedPayment extends Transaction {
+  disposition: Disposition;
+  /** What the proposed fencer still owes, so the organizer confirms against a
+   *  balance rather than against a name alone. */
+  proposed_outstanding: string | null;
+  paired_registrations: PairedRegistration[];
 }
 
 /** How money an organizer recorded by hand arrived. */
@@ -1114,8 +1166,6 @@ export const api = {
     }),
   expiredHolding: (slug: string) =>
     request<ExpiredHolding[]>(`/api/tournaments/${slug}/payments/expired-holding`),
-  manualPayments: (slug: string) =>
-    request<ManualPayment[]>(`/api/tournaments/${slug}/payments/manual`),
   recordManualPayment: (slug: string, data: ManualPaymentInput) =>
     request<ManualPayment>(`/api/tournaments/${slug}/payments/manual`, {
       method: "POST",
@@ -1199,7 +1249,6 @@ export const api = {
    *  upload, in place of the confirmation there no longer is. */
   /** The active payment links, resolved into the payment and the fencers each
    *  joins — the rule states neither in a form anyone can read. */
-  paymentLinks: (slug: string) => request<PaymentLink[]>(`/api/tournaments/${slug}/payments/links`),
   issuableCount: (slug: string) => request<IssuableCount>(`/api/tournaments/${slug}/import/issue`),
   /** Issue registrations where no intake will do it: a tournament whose
    *  payments Squire does not collect has none, so the Payments phase calls
@@ -1368,12 +1417,12 @@ export const api = {
       `/api/tournaments/${slug}/settle-seating`,
       { method: "POST" },
     ),
-  unmatchedTransactions: (slug: string) =>
-    request<Transaction[]>(`/api/tournaments/${slug}/payments/unmatched`),
-  /** Payments the resolver read a fencer's name in, waiting for a person.
-   *  Proposals, not outcomes: nothing here has been credited. */
-  likelyTransactions: (slug: string) =>
-    request<Transaction[]>(`/api/tournaments/${slug}/payments/likely`),
+  /** Every payment that arrived and lies on nobody, each stating what is to be
+   *  done with it. One table where there were three: proposals, unresolved
+   *  money and the money a check refused are one question with the answer to a
+   *  second written beside it. */
+  uncreditedPayments: (slug: string) =>
+    request<UncreditedPayment[]>(`/api/tournaments/${slug}/payments/uncredited`),
   confirmProposal: (slug: string, transactionId: number) =>
     request<{ rule_id: number; applied: number }>(
       `/api/tournaments/${slug}/payments/likely/${transactionId}/confirm`,
@@ -1394,8 +1443,10 @@ export const api = {
       `/api/tournaments/${slug}/payments/transactions/${transactionId}/reinstate`,
       { method: "POST" },
     ),
-  creditedTransactions: (slug: string) =>
-    request<CreditedTransaction[]>(`/api/tournaments/${slug}/payments/credited`),
+  /** Every payment holding a live credit, the bank's and the hand-recorded
+   *  together, each naming who it credited and why. */
+  creditedPayments: (slug: string) =>
+    request<CreditedPayment[]>(`/api/tournaments/${slug}/payments/credited`),
   reversalPreflight: (slug: string, transactionId: number) =>
     request<CreditReversal>(
       `/api/tournaments/${slug}/payments/transactions/${transactionId}/reversal`,
@@ -1507,19 +1558,6 @@ export interface IssuableCount {
   skipped: IssuedSkip[];
 }
 
-export interface PaymentLink {
-  rule_id: number;
-  /** Made by the matcher rather than by a person. */
-  auto_created: boolean;
-  /** Who the payment was credited to, by name — a link made by choosing a
-   *  fencer carries no symbol to show instead. */
-  fencers: string[];
-  vs: number[];
-  /** The bank's own row. Absent where the transaction behind the link is
-   *  gone, which a cleared statement leaves behind. */
-  transaction: Transaction | null;
-}
-
 export interface IssuedSkip {
   row_id: string;
   name: string | null;
@@ -1568,6 +1606,10 @@ export interface OperationsReport {
 export interface IngestAndMatch {
   new: number;
   duplicate: number;
+  /** Outgoing transfers the intake dropped: nobody's entry fee, and neither new
+   *  nor duplicate. Stated only when there were any — it is what explains a
+   *  fifteen-row statement reporting twelve. */
+  dropped: number;
   matched: number;
   flagged: number;
   unmatched: number;

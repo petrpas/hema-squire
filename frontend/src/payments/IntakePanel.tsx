@@ -5,6 +5,7 @@ import { ApiError, api, type IngestAndMatch, type TournamentDetail } from "../ap
 import { concludedMoment, conclusionText, kindName } from "../operationText";
 import type { OperationsView } from "../useOperations";
 import ClearPaymentsControl from "./ClearPaymentsControl";
+import DroppedNote from "./DroppedNote";
 import FioAuthorizationDialog from "./FioAuthorizationDialog";
 import IssuedReport from "./IssuedReport";
 import IssuePreflight from "./IssuePreflight";
@@ -202,6 +203,7 @@ export default function IntakePanel({
           <p className="rail-hint">
             {t("payments.intake.polled", { new: polled.new, matched: polled.matched })}
           </p>
+          <DroppedNote outcome={polled} />
           <IssuedReport outcome={polled} />
         </>
       )}
@@ -214,6 +216,7 @@ export default function IntakePanel({
               matched: (statement.outcome as unknown as IngestAndMatch).matched,
             })}
           </p>
+          <DroppedNote outcome={statement.outcome as unknown as IngestAndMatch} />
           <IssuedReport outcome={statement.outcome as unknown as IngestAndMatch} />
         </>
       )}

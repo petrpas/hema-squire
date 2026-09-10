@@ -991,8 +991,11 @@ class Registration(Base):
         anywhere that could add it up (owner decision, 2026-09-06).
 
         So what is quoted is what is quoted, and whether to chase it is the
-        organizer's to decide rather than this method's to pre-empt. A trivial
-        overpayment reads as the negative figure it is, for the same reason.
+        organizer's to decide rather than this method's to pre-empt. An
+        overpayment is the same figure gone negative, for the same reason —
+        this is the arithmetic, and how a console names it is the console's
+        (spec payments, the balance is presented as an overpayment rather than
+        as a sign).
 
         A waiver is the one exception and owes nothing at all, whatever its
         credits hold, because no money was ever supposed to pass.

@@ -320,7 +320,19 @@ describe("money cells", () => {
     expect(moneyCell("outstanding", { outstanding_amount: "400.00" }, null)).toBe("400.00");
   });
 
-  it("settles to zero rather than to a dash once fully paid", () => {
-    expect(moneyCell("outstanding", { outstanding_amount: "0.00" })).toBe("0 Kč");
+  it("says nothing at all once nothing is outstanding", () => {
+    // a column of "0 Kč" is a column of noise: every finished row looks like a
+    // row with a figure to read, and the handful wanting attention stop
+    // standing out (owner decision, 2026-09-10). Distinct from the dash above,
+    // which means the row has no balance at all rather than a balance of zero
+    expect(moneyCell("outstanding", { outstanding_amount: "0.00" })).toBe("");
+  });
+
+  it("names an overpayment instead of printing a negative balance", () => {
+    // the minus sign carried the whole meaning, in a column read for debts
+    const shown = moneyCell("outstanding", { outstanding_amount: "-200.00" });
+    expect(shown).toContain("přeplatek");
+    expect(shown).toContain("200");
+    expect(shown).not.toContain("-200");
   });
 });

@@ -547,8 +547,15 @@ state how short. A euro transfer the payer's bank converted lands twenty or
 forty crowns under the local price; the tolerance accepts it as payment and the
 registration reads as paid, and what reached the account is still less than what
 was quoted. Reading that back as zero tells the organizer their books balance
-when they do not, and leaves the difference recorded nowhere. A trivial
-overpayment SHALL likewise read as the negative figure it is.
+when they do not, and leaves the difference recorded nowhere.
+
+**The figure is negative where money is over, and SHALL be presented as an
+overpayment rather than as that sign.** A minus sign in a column read for what
+is missing carries the whole meaning and names none of it: a reader scanning
+for shortfalls stops at every one and works out that this one means the
+opposite. What is stored is unchanged — the balance is the total less what was
+credited, and over-credit makes it negative — and only how it reads changes
+(owner decision, 2026-09-10).
 
 Whether a shortfall is worth chasing is the organizer's to decide, and the
 table SHALL put them in a position to decide it.

@@ -149,29 +149,6 @@ the same fencer for it again.
 - **WHEN** the console reports what a tournament has been paid
 - **THEN** proposed payments are not counted among it
 
-### Requirement: Proposals are a queue of their own
-Proposals SHALL be offered as their own work queue in the Payments phase, beside
-the queues for unresolved and flagged money, and SHALL be confirmable or
-rejectable from it without leaving it.
-
-Each entry SHALL state the payment as the bank wrote it — its date, its amount
-and its text — beside the fencer proposed and what that fencer owes, so the
-organizer confirms on evidence rather than on the system's say-so.
-
-An empty proposals queue SHALL collapse to a heading as the other queues do.
-
-#### Scenario: Proposals are worked from their queue
-- **WHEN** the organizer opens the Payments phase with proposals waiting
-- **THEN** they are listed together, each stating the payment and the fencer proposed, and each can be confirmed or rejected in place
-
-#### Scenario: The evidence is shown, not just the conclusion
-- **WHEN** a proposal is displayed
-- **THEN** the payment's own message and payer are shown beside the proposed fencer and their outstanding amount
-
-#### Scenario: No proposals, no queue
-- **WHEN** no payment is proposed
-- **THEN** the proposals queue shows as a heading with nothing under it
-
 ### Requirement: The link dialog offers the ranked roster
 Resolving a payment by hand SHALL offer the tournament's fencers ranked by how
 well they match the payment, with the strongest marked, rather than requiring the
@@ -237,4 +214,43 @@ No surface SHALL treat the absence of a symbol as the absence of a registration.
 #### Scenario: The decision rule is unchanged
 - **WHEN** two fencers score alike on such a tournament
 - **THEN** neither is proposed, exactly as on a tournament whose registrations carry symbols
+
+### Requirement: Proposals are worked from the uncredited payments
+A proposal SHALL be worked from **the table of payments that arrived and lie on
+nobody**, and SHALL be confirmable or rejectable from it without leaving it.
+
+A proposal is not a queue of its own. It is what is to be done about an
+uncredited payment — the resolver has read a fencer in the payer's text, and
+nothing has been credited — which is exactly the question that table asks of
+every row it holds. Given a tab of their own, proposals made a reader visit
+three tables to learn whether there was any work at all.
+
+Each such row SHALL state the payment as the bank wrote it — its date, its
+amount and its text — beside the fencer proposed and what that fencer owes, so
+the organizer confirms on evidence rather than on the system's say-so.
+
+How many of the uncredited payments carry a proposal SHALL be stated where that
+table is read, so proposals remain visible as a body of work despite sharing a
+table with the money nothing could be read from. Where none does, nothing SHALL
+be stated.
+
+#### Scenario: Proposals are worked from the uncredited table
+- **WHEN** the organizer opens the Payments phase with proposals waiting
+- **THEN** they are listed among the uncredited payments, each stating the payment and the fencer proposed, and each can be confirmed or rejected in place
+
+#### Scenario: The evidence is shown, not just the conclusion
+- **WHEN** a proposal is displayed
+- **THEN** the payment's own message and payer are shown beside the proposed fencer and their outstanding amount
+
+#### Scenario: How many are proposals is stated
+- **WHEN** three of the uncredited payments carry a proposal
+- **THEN** the console states that three of them are proposals, without contradicting the table's own count
+
+#### Scenario: No proposals, nothing said
+- **WHEN** no payment is proposed
+- **THEN** the uncredited table lists whatever else it holds and nothing is stated about proposals
+
+#### Scenario: A confirmed proposal moves to the credited table
+- **WHEN** the organizer confirms a proposal
+- **THEN** the payment is credited and appears among the credited payments, stating that a pairing is why
 

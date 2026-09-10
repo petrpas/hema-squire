@@ -18,7 +18,7 @@ import EditableCell from "./EditableCell";
 import { usesHRIdentity } from "./identity";
 import MatchCell from "./MatchCell";
 import PhaseSummary from "./PhaseSummary";
-import { useSheetVisible } from "./payments/QueueTabs";
+import { useSheetVisible } from "./payments/PaymentTabs";
 import SettledCell from "./SettledCell";
 import StateCell from "./StateCell";
 import type { FieldError } from "./validation";
@@ -32,6 +32,19 @@ import type { FieldError } from "./validation";
  *  JSX is how a file gets to 700 lines (design D8). Behaviour is unchanged —
  *  every decision this makes is still `Console`'s, arriving as a prop.
  */
+/** What the phase's own heading calls its main area.
+ *
+ *  Most phases show the tournament's list of fencers and say so. Two do not:
+ *  Import is a record of one uploaded file, and Payments is the management of
+ *  money, whose fencer table is one tab of three. A phase-keyed lookup rather
+ *  than a chain of conditions, so a third exception is a line rather than
+ *  another branch. */
+function headingKey(phase: Phase): string {
+  if (phase === "import") return "console.titleImport";
+  if (phase === "payments") return "console.titlePayments";
+  return "console.title";
+}
+
 export default function SheetArea({
   phase,
   queues,
@@ -117,9 +130,10 @@ export default function SheetArea({
   return (
     <main className="sheet-area">
       <div className="sheet-header">
-        {/* the Import view is a record of one uploaded file, not the
-            tournament's list of fencers, and says so */}
-        <h1>{t(phase === "import" ? "console.titleImport" : "console.title")}</h1>
+        {/* the Import view is a record of one uploaded file and Payments is
+            the management of money — neither is the tournament's list of
+            fencers, and each says so */}
+        <h1>{t(headingKey(phase))}</h1>
         <PhaseSummary
           text={summary === null ? null : t(summary.key, { count: summary.count })}
           onRefresh={refresh}

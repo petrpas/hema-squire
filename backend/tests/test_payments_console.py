@@ -299,7 +299,7 @@ def test_restoring_a_pre_ledger_document_reads_as_uncredited(client, auth_header
         assert sheet_row(client, new_organizer, vs)["outstanding_amount"] == "1000.00"
 
 
-# ------------------------------------------- the credited-transactions view
+# ------------------------------------------------- the credited-payments table
 
 
 def credited(client, headers, slug="cup"):
@@ -307,9 +307,9 @@ def credited(client, headers, slug="cup"):
 
 
 def test_a_credited_transaction_is_listed_with_who_it_credited(client, auth_headers, mailbox):
-    """A transaction an automatic match credited sits in no queue and carries
-    no payment link, so until this view the console could not see it — and
-    reversing is offered precisely for the transactions it could not see."""
+    """A transaction an automatic match credited sits in no resolution queue
+    and carries no payment link, so before the two tables the console could
+    not see it — and reversing is offered precisely for those."""
     organizer = auth_headers()
     setup(client, organizer)
     _, vs = enroll(client, auth_headers)
@@ -318,7 +318,10 @@ def test_a_credited_transaction_is_listed_with_who_it_credited(client, auth_head
     response = credited(client, organizer)
     assert response.status_code == 200
     [row] = response.json()
-    assert row["amount_cents"] == 100000
+    assert row["source_kind"] == "bank_transaction"
+    assert row["amount"] == "1000.00"
+    # why: a symbol the matcher read, not a pairing and not a person
+    assert row["origin"] == "auto_vs"
     [credit] = row["credits"]
     assert credit["vs"] == vs
     assert credit["fencer_name"] == "Jan"
@@ -332,6 +335,9 @@ def test_an_uncredited_transaction_is_not_in_the_view(client, auth_headers, mail
     import_rows(client, organizer, ["1;01.08.2026;1000,00;CZK;;;;;;"])  # no VS to resolve
 
     assert credited(client, organizer).json() == []
+    # and is in the other table, with nothing stated about what to do with it
+    (row,) = client.get("/api/tournaments/cup/payments/uncredited", headers=organizer).json()
+    assert row["disposition"] == "none"
 
 
 def test_reversing_from_the_view_empties_it_and_unsettles_the_registration(
@@ -345,13 +351,15 @@ def test_reversing_from_the_view_empties_it_and_unsettles_the_registration(
 
     # the preflight the console states before it confirms
     preflight = client.get(
-        f"/api/tournaments/cup/payments/transactions/{row['id']}/reversal", headers=organizer
+        f"/api/tournaments/cup/payments/transactions/{row['source_id']}/reversal",
+        headers=organizer,
     ).json()
     assert [entry["vs"] for entry in preflight["registrations"]] == [vs]
     assert preflight["registrations"][0]["unsettles"] is True
 
     reverse = client.post(
-        f"/api/tournaments/cup/payments/transactions/{row['id']}/reverse", headers=organizer
+        f"/api/tournaments/cup/payments/transactions/{row['source_id']}/reverse",
+        headers=organizer,
     )
     assert reverse.status_code == 200, reverse.text
     assert reverse.json()["status"] == "unmatched"
@@ -360,3 +368,96 @@ def test_reversing_from_the_view_empties_it_and_unsettles_the_registration(
     session = next(app.dependency_overrides[get_session]())
     registration = session.scalar(select(Registration).where(Registration.vs == vs))
     assert not registration.settled
+
+
+# ------------------------------- what the two tables say that the queues could not
+
+
+def uncredited(client, headers, slug="cup"):
+    return client.get(f"/api/tournaments/{slug}/payments/uncredited", headers=headers)
+
+
+def test_a_pairing_that_credited_nothing_is_work_and_not_a_result(client, auth_headers, mailbox):
+    """The hole the two tables close.
+
+    `apply_payment_links` marks a transaction `matched` even where it credited
+    nothing — here because the registration is cancelled between the pairing
+    and the pass. Filtering by status, as the queues did, put such a payment in
+    none of them while the pairing view showed it as done: money on the account
+    and a console reading finished. Asked of the journal it is uncredited money,
+    which is what it is.
+    """
+    organizer = auth_headers()
+    setup(client, organizer)
+    fencer, vs = enroll(client, auth_headers)
+    import_rows(client, organizer, ["1;01.08.2026;1000,00;CZK;;;;klub platí;Klub;9"])
+    (transaction,) = uncredited(client, organizer).json()
+
+    # the fencer withdraws before the organizer's pairing can credit anything
+    cancelled = client.post("/api/tournaments/cup/my-registration/cancel", headers=fencer)
+    assert cancelled.status_code == 200, cancelled.text
+    linked = client.post(
+        "/api/tournaments/cup/payments/link",
+        json={"transaction_id": transaction["id"], "vs": [vs]},
+        headers=organizer,
+    )
+    assert linked.status_code == 201, linked.text
+
+    # nothing was credited, so the payment is still work — and it says whose
+    # pairing left it there
+    assert credited(client, organizer).json() == []
+    (row,) = uncredited(client, organizer).json()
+    assert row["disposition"] == "paired_uncredited"
+    assert [named["vs"] for named in row["paired_registrations"]] == [vs]
+    assert [named["fencer_name"] for named in row["paired_registrations"]] == ["Jan"]
+
+
+def test_a_partial_payment_is_credited_money_not_work(client, auth_headers, mailbox):
+    """Part of the money landed, so the payment belongs with what was credited.
+    The old queues excluded a `partial` transaction by status; the journal
+    includes it because it holds a live credit, which is the honest reading."""
+    organizer = auth_headers()
+    setup(client, organizer)
+    _, vs = enroll(client, auth_headers)
+    import_rows(client, organizer, [f"1;01.08.2026;600,00;CZK;{vs};;;;;"])
+
+    (row,) = credited(client, organizer).json()
+    assert row["amount"] == "600.00"
+    (credit,) = row["credits"]
+    assert credit["amount"] == "600.00"
+    # it did not settle them, so losing it unsettles nothing
+    assert credit["unsettles"] is False
+    assert uncredited(client, organizer).json() == []
+
+
+def test_one_payment_covering_three_registrations_names_all_three(client, auth_headers, mailbox):
+    organizer = auth_headers()
+    setup(client, organizer)
+    _, vs_a = enroll(client, auth_headers, "a@example.com", "Adéla")
+    _, vs_b = enroll(client, auth_headers, "b@example.com", "Boris")
+    _, vs_c = enroll(client, auth_headers, "c@example.com", "Cyril")
+    import_rows(
+        client,
+        organizer,
+        [f"1;01.08.2026;3 000,00;CZK;;;;platba za {vs_a} {vs_b} a {vs_c};klub;9"],
+    )
+
+    (row,) = credited(client, organizer).json()
+    assert row["amount"] == "3000.00"
+    assert [credit["fencer_name"] for credit in row["credits"]] == ["Adéla", "Boris", "Cyril"]
+    # each of them got their own share, not the whole transaction
+    assert [credit["amount"] for credit in row["credits"]] == ["1000.00"] * 3
+
+
+def test_a_refused_payment_states_its_reason_in_the_same_table(client, auth_headers, mailbox):
+    organizer = auth_headers()
+    setup(client, organizer)
+    _, vs = enroll(client, auth_headers)
+    # paid once, then the same amount arrives again against a settled row
+    import_rows(client, organizer, [f"1;01.08.2026;1000,00;CZK;{vs};;;;;"])
+    import_rows(client, organizer, [f"2;02.08.2026;1000,00;CZK;{vs};;;;;"])
+
+    rows = uncredited(client, organizer).json()
+    (refused,) = [row for row in rows if row["disposition"] == "refused"]
+    assert refused["external_id"] == "2"
+    assert refused["status_reason"] == "registration_paid"

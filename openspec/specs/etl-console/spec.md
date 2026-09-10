@@ -934,6 +934,8 @@ The column SHALL show the one balance the registration has, in the one currency 
 
 A row whose registration is settled but credited short of its total SHALL state the shortfall rather than zero (`payments`). The tolerance decides whether the registration counts as paid; it does not decide what the column says, and a column reading zero on money that never arrived tells the organizer their books balance when they do not.
 
+**A balance of exactly zero SHALL read as nothing at all, and an overpayment SHALL be named rather than signed.** Three facts share this column and only one of them is a debt. A column of zeroes is a column of noise — every finished row looks like a row with a figure to read, and the handful wanting attention stop standing out — so a row owing nothing states nothing. An overpayment printed as a negative figure made the sign carry the whole meaning in a column read for what is missing, so the column names it instead. A row with no registration behind it keeps its dash: it has no balance at all, which is not the same fact as a balance that came to zero (owner decision, 2026-09-10).
+
 Money an organizer recorded by hand SHALL be counted in what has been credited, exactly as an ingested transaction's amount is, so that a registration settled in cash shows no balance outstanding.
 
 WHERE a registration has been settled by hand, the column SHALL state that the balance is **waived** rather than showing the figure it would otherwise owe. Nothing was credited and nothing is due, and presenting the full total there would read as a fault in every roster it appears in.
@@ -948,11 +950,19 @@ The word SHALL carry no mark of its own — no glyph, no underline, no altered c
 
 #### Scenario: Settled reservation
 - **WHEN** a registration has been paid in full
-- **THEN** its outstanding balance reads as zero
+- **THEN** its outstanding-balance cell is empty, so that the rows still owing something are what the column shows
+
+#### Scenario: A registration credited more than it owed
+- **WHEN** a registration owing 1000 Kč has been credited 1200 Kč
+- **THEN** the column names the 200 Kč as an overpayment rather than printing a negative balance
+
+#### Scenario: A row with no registration behind it
+- **WHEN** an imported row nobody has issued a registration for is shown in the Payments phase
+- **THEN** its balance cell reads a dash, which is not the same as the empty cell of a registration owing nothing
 
 #### Scenario: One currency in the column
 - **WHEN** the tournament prices in both crowns and euro and a registration has been paid in crowns
-- **THEN** the column reads zero, with no euro figure beside it
+- **THEN** the cell is empty, with no euro figure in it
 
 #### Scenario: A shortfall the tolerance accepted
 - **WHEN** a paid registration was credited a converted transfer that fell a few crowns short, within tolerance

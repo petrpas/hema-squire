@@ -915,10 +915,36 @@ button.secondary:disabled {
    Two boxes rather than one with a gap: the strip's rule is drawn around the
    whole of it, and a margin inside would run the top and bottom lines straight
    through the air meant to separate them. */
+/* the two tab bands and the one line of prose beside them. The bands keep to
+   their own width; the line takes the space to their right, which the single
+   strip this replaces left empty (spec payments-console, A line beside the tab
+   band states one thing about the open table) */
 .queue-tabs {
   display: flex;
-  align-self: flex-start;
+  align-items: baseline;
+  gap: 1.5em;
+  flex-wrap: wrap;
+}
+
+.queue-tab-bands {
+  display: flex;
   gap: 2em;
+}
+
+/* a note on a form, not a notification: the faded ink and the label size the
+   console states every aside in, and no badge, no colour, no weight */
+.queue-tab-note {
+  color: var(--ink-faded);
+  font-size: var(--label-size);
+  margin: 0;
+}
+
+/* one fencer's share of a payment that covered several. Each on its own line
+   rather than comma-joined: the name and its amount belong together, and read
+   as a list of pairs rather than a sentence of alternating words */
+.credit-share {
+  display: block;
+  white-space: nowrap;
 }
 
 /* one table at a time, and the fencer table gives way to it, so the stack's
@@ -1556,6 +1582,14 @@ fieldset.form-field > legend {
    nothing is due, so the figure the column would otherwise show is true of
    neither, and the word replaces it rather than sitting beside it. */
 .waived-balance {
+  color: var(--ink-faded);
+}
+
+/* An overpayment is not a debt, and the column it sits in is read for debts.
+   Faded like the waiver's word, for the same reason: what the eye is scanning
+   for is the figures that want chasing, and this is not one of them. No colour
+   — `--stamp` is the only saturated one and it means something else. */
+.balance-over {
   color: var(--ink-faded);
 }
 

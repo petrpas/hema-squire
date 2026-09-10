@@ -149,11 +149,11 @@ def parse(
         if decision is None:
             continue
         row = bank.ParsedStatementRow.model_validate(decision.payload)
-        # money leaving the account is not somebody's entry fee; the parser is
-        # told to report it rather than hide it, and it is dropped here where
-        # the reason can be stated once (design D2)
-        if row.amount_cents <= 0:
-            continue
+        # a debit is carried through as the parser reported it. This path used
+        # to drop it here, which read as "stated once" while holding for one of
+        # the three intake paths; the drop is `bank.ingest`'s, where all three
+        # meet (spec payments-intake, Only money arriving is ingested as a
+        # payment)
         transactions.append(bank.to_transaction(row, raw))
     return transactions
 

@@ -653,7 +653,7 @@ def test_eur_transaction_on_czk_only_tournament_is_flagged_not_accepted(
 
     result = _import_rows(client, headers, [f"1;01.08.2026;70,00;EUR;{vs};;;;MUELLER;DE99"])
     assert result["flagged"] == 1
-    queue = client.get("/api/tournaments/na-duel-2026/payments/unmatched", headers=headers).json()
+    queue = client.get("/api/tournaments/na-duel-2026/payments/uncredited", headers=headers).json()
     assert queue[0]["status_reason"] == "currency_not_accepted"
     state = client.get("/api/tournaments/na-duel-2026/my-registration", headers=fencer).json()[
         "state"
@@ -670,7 +670,7 @@ def test_eur_payment_far_off_credited_as_partial(client, auth_headers, mailbox):
 
     result = _import_rows(client, headers, [f"1;01.08.2026;40,00;EUR;{vs};;;;MUELLER;DE99"])
     assert result["partial"] == 1
-    queue = client.get("/api/tournaments/na-duel-2026/payments/unmatched", headers=headers).json()
+    queue = client.get("/api/tournaments/na-duel-2026/payments/uncredited", headers=headers).json()
     assert queue == []
 
 

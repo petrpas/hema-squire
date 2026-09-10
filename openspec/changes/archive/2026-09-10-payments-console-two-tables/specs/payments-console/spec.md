@@ -1,103 +1,4 @@
-# payments-console Specification
-
-## Purpose
-Define the Payments phase's two tables — what each holds, what an organizer does
-from it, and what the fencer table states about money beside them: the payments
-that arrived and were credited to somebody, and the payments that arrived and
-lie on nobody.
-
-Two rather than the seven queues this replaces, because every one of those was
-one of these two questions with a filter on it, and the same fact showed on up
-to three of them at once. Which table a payment belongs to is the credit
-journal's answer; what is to be done about it is a column.
-
-Each row is stated on the evidence its decision needs, so that resolving one
-costs a reading and an action rather than a hunt through the transaction list.
-## Requirements
-### Requirement: Manual link dialog
-The organizer SHALL be able to open a link dialog from any unmatched transaction. The dialog SHALL offer the transaction's detected candidate VS values as one-click choices, SHALL accept a VS entered by hand, and SHALL allow several registrations to be selected together so that one transfer covering several fencers is linked in a single action. Confirming SHALL call the manual-link endpoint, and on success the transaction SHALL leave the uncredited table.
-
-#### Scenario: Candidate accepted
-- **WHEN** the organizer opens the dialog on a transaction whose message contains a VS that resolves to a registration
-- **THEN** that VS is offered as a candidate and one click selects it
-
-#### Scenario: One transfer covers two fencers
-- **WHEN** the organizer selects two VS values in the dialog and confirms
-- **THEN** both registrations are linked to the transaction in one request and both are marked paid
-
-#### Scenario: Unknown VS rejected
-- **WHEN** the organizer types a VS that belongs to no registration and confirms
-- **THEN** the dialog reports which VS was not recognised and stays open with the entry preserved
-
-#### Scenario: Dialog dismissed
-- **WHEN** the organizer closes the dialog without confirming
-- **THEN** no link is created and the transaction stays in the queue
-
-### Requirement: Recording a payment from the console
-The Payments phase SHALL offer an action that records a payment Squire never saw, reachable from a registration's own row in the fencer table rather than from a queue: the queues hold money looking for a registration, and this is a registration whose money never arrived in a statement.
-
-It SHALL sit at the end of the row, among the row's actions, and SHALL NOT take a column of the table. It is an action and not a value, and the phase's table is already wide.
-
-The action SHALL ask for the amount, the currency where the tournament prices in two, the date the money arrived, how it arrived, and an optional note, and SHALL state what the registration is owed as it asks, so the organizer records against a balance rather than from memory. Confirming SHALL credit the registration and refresh the table so the outstanding column answers immediately.
-
-The action SHALL be refused with a stated reason where the registration cannot take a credit, and the dialog SHALL stay open with what was typed preserved.
-
-#### Scenario: Cash recorded from the row
-- **WHEN** the organizer opens the record-payment action on a reserved registration owing 1750 and confirms 1750 in cash
-- **THEN** the registration is credited, the row reads paid, and the outstanding column reads zero without a reload
-
-#### Scenario: The balance is stated as it asks
-- **WHEN** the organizer opens the action on a registration owing 1250
-- **THEN** the dialog states that 1250 is outstanding before any amount is typed
-
-#### Scenario: Dialog dismissed
-- **WHEN** the organizer closes the dialog without confirming
-- **THEN** nothing is credited and the registration is unchanged
-
-### Requirement: The settled mark is offered wherever it applies
-The Payments phase SHALL offer the settled-by-hand mark on every tournament, not only where Squire collects nothing. Where Squire handles the payments the mark is the waiver, and setting it SHALL require a stated reason before it is accepted; the reason SHALL be shown wherever the mark is shown, so that a paid row holding no money explains itself in place.
-
-Where Squire collects, the mark SHALL be offered **on the registration's state cell** and SHALL NOT take a column of its own. It changes exactly that cell — from reserved to paid with no money behind it — and a column that would be empty on almost every row does not earn its width in a table already carrying the symbol, the total, the balance, the dates and the state. Only where the phase is boned out, and the mark is its whole content, SHALL the mark have a column.
-
-The mark SHALL be offered on a **reserved** registration and, to unset, on one a person waived. It SHALL NOT be offered on a registration the money settled — unsetting a mark nobody made would return it to reserved and strand its credit — nor on a state the lifecycle or the fencer chose.
-
-A waived registration's outstanding figure SHALL be presented as waived rather than as a balance owed, in the fencer table and everywhere else the two are shown together.
-
-#### Scenario: Waiving from the state cell
-- **WHEN** the organizer opens the mark on a reserved registration in the Payments phase of a tournament whose payments Squire handles
-- **THEN** a reason is asked for, the mark is not written until one is given, and the row's state afterwards reads paid with the reason on it
-
-#### Scenario: No column for the mark where the ledger is live
-- **WHEN** the organizer opens the Payments phase of a tournament whose payments Squire handles
-- **THEN** the table carries no settled column, and the mark is reached on the state cell instead
-
-#### Scenario: A refused mark says so where it was asked for
-- **WHEN** the organizer confirms a waiver and the request is refused
-- **THEN** the dialog stays open stating the reason it was refused, with what was typed intact, and the row is unchanged
-
-#### Scenario: A registration the money settled is not the cell's to unset
-- **WHEN** the organizer reads the state cell of a registration paid by a transaction or a recorded payment
-- **THEN** it states the state and offers no mark to unset
-
-#### Scenario: The waived balance does not read as a debt
-- **WHEN** a waived registration with a total of 1750 is shown in the fencer table
-- **THEN** its outstanding column states that the balance is waived rather than showing 1750 owed
-
-### Requirement: A refused payment names a hand-settled cause
-WHERE a payment is uncredited because its registration is no longer reserved,
-the uncredited table SHALL state whether that registration was settled by hand
-and, where it was, show the mark or the recorded payment that settled it. An
-organizer resolving the row is deciding whether the payment is further money or
-the same money arriving twice, and that decision needs the earlier act in front
-of it.
-
-#### Scenario: The earlier act is shown
-- **WHEN** an uncredited payment names a registration a recorded cash payment had settled
-- **THEN** the row states that the registration was settled by a payment recorded by hand, with its amount and date
-
-#### Scenario: An ordinary conflict is unchanged
-- **WHEN** an uncredited payment names a registration paid by an earlier bank transaction
-- **THEN** the row states that as it does today, with no hand-settled claim made
+## ADDED Requirements
 
 ### Requirement: The phase is two tables behind two bands
 The Payments phase SHALL present the organizer's payment work as **two tables**
@@ -274,3 +175,84 @@ states its totals.
 - **WHEN** the fencer table is the open tab
 - **THEN** the space beside the band is empty, the phase's footer stating the roster's totals as before
 
+## MODIFIED Requirements
+
+### Requirement: The flagged queue names a hand-settled cause
+WHERE a payment is uncredited because its registration is no longer reserved,
+the uncredited table SHALL state whether that registration was settled by hand
+and, where it was, show the mark or the recorded payment that settled it. An
+organizer resolving the row is deciding whether the payment is further money or
+the same money arriving twice, and that decision needs the earlier act in front
+of it.
+
+#### Scenario: The earlier act is shown
+- **WHEN** an uncredited payment names a registration a recorded cash payment had settled
+- **THEN** the row states that the registration was settled by a payment recorded by hand, with its amount and date
+
+#### Scenario: An ordinary conflict is unchanged
+- **WHEN** an uncredited payment names a registration paid by an earlier bank transaction
+- **THEN** the row states that as it does today, with no hand-settled claim made
+
+## REMOVED Requirements
+
+### Requirement: Payment resolution views
+**Reason**: Replaced by **The phase is two tables behind two bands**. The
+requirement described six views stacked above the fencer table — which the tab
+strip had already superseded without the spec being brought level — and its
+subject was the *number* of views, which is exactly what this change halves
+twice over. Both the count and the stacking are gone, so editing it in place
+would have left a requirement whose name and whose scenarios were about a shape
+that no longer exists.
+
+**Migration**: None. No stored data changes; the same rows are presented by two
+tables instead of six views.
+
+### Requirement: Unmatched transaction queue
+**Reason**: Absorbed into **Uncredited payments are one table**. The queue's
+subject — a payment carrying no reference that resolves — is one of the three
+things the uncredited table's own column states, and separating it from the
+flagged money put one fact on two tabs while a payment that was neither showed
+on none.
+
+**Migration**: None. No stored data changes; the same transactions are listed by
+one table instead of two, and the `unmatched` endpoint's own filtering by status
+is replaced by the journal-derived question.
+
+### Requirement: Money stranded on expired reservations
+**Reason**: Absorbed into the fencer table, where an expired registration
+holding credit is a state the table already carries rather than a queue of its
+own. The list was a work queue built from a payment event because the money was
+credited and so appeared in neither transaction queue; with the credited
+payments now listed in full, and the registration's own state and credited
+figure on its row, the queue restated what two other views already said.
+
+**Migration**: None. The `expired_holding` endpoint may remain for the figure it
+computes; nothing depends on it being presented as a queue.
+
+### Requirement: Payment links are visible and removable
+**Reason**: Absorbed into **Credited payments are one table**. A pairing that
+credited money is visible there as the reason that money was credited, and
+undoing it is the same act as reversing the credit. A pairing that credited
+nothing is not a result at all and now appears with the work, in the uncredited
+table.
+
+**Migration**: None. The `payment_link` rules are unchanged in storage and in
+behaviour; only where they are read from changes. Withdrawing a pairing
+continues to reverse exactly the credits naming it.
+
+### Requirement: Payments recorded by hand are listed and removable
+**Reason**: Absorbed into **Credited payments are one table**. A payment a
+person recorded is a payment holding a live credit, and listing it apart from
+the bank's meant the console answered "what has been credited" in two places
+that could not be read together.
+
+**Migration**: None. Recording a payment is unchanged, as is what removing one
+reverses; both are reached from the credited table instead of from a view of
+their own.
+
+### Requirement: Credited transactions are listed and reversible
+**Reason**: Superseded by **Credited payments are one table**, which is the same
+requirement widened to the hand-recorded half of the journal and given the
+reason each credit exists.
+
+**Migration**: None.

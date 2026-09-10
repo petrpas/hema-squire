@@ -189,6 +189,7 @@ it("does not let a days-old import read as the poll just run", async () => {
   vi.spyOn(api, "fioPoll").mockResolvedValue({
     new: 0,
     duplicate: 0,
+    dropped: 0,
     matched: 0,
     flagged: 0,
     unmatched: 0,
@@ -225,6 +226,7 @@ it("polls the bank and reports what it brought in", async () => {
   const poll = vi.spyOn(api, "fioPoll").mockResolvedValue({
     new: 3,
     duplicate: 0,
+    dropped: 0,
     matched: 2,
     flagged: 0,
     unmatched: 1,
@@ -338,6 +340,7 @@ it("polls from the bank's own boundary when the shortened window is chosen", asy
     .mockResolvedValue({
       new: 0,
       duplicate: 0,
+      dropped: 0,
       matched: 0,
       flagged: 0,
       unmatched: 0,

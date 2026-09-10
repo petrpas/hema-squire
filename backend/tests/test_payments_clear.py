@@ -109,7 +109,7 @@ def test_a_misread_statement_is_removed_altogether(client, auth_headers, mailbox
 
     assert body == {"payments": 1}
     assert transactions() == []
-    assert client.get("/api/tournaments/cup/payments/unmatched", headers=organizer).json() == []
+    assert client.get("/api/tournaments/cup/payments/uncredited", headers=organizer).json() == []
 
 
 def test_the_stored_readings_go_with_them(client, auth_headers, mailbox, parser):

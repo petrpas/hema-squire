@@ -462,9 +462,18 @@ def test_the_queue_lists_only_proposals(client, auth_headers, mailbox, parser):
             {"ref": "2", "date": "2026-08-01", "amount": "500", "named": "Nobody Here"},
         ],
     )
-    queue = client.get("/api/tournaments/cup/payments/likely", headers=organizer).json()
-    assert [t["external_id"] for t in queue] == ["1"]
-    assert queue[0]["proposed_fencer_name"] == "Josef Vejda"
+    # proposals are worked from the uncredited table rather than from a queue
+    # of their own: a proposal is what is to be done about a payment that
+    # arrived and lies on nobody (spec name-assisted-matching)
+    queue = client.get("/api/tournaments/cup/payments/uncredited", headers=organizer).json()
+    proposals = [t for t in queue if t["disposition"] == "proposal"]
+    assert [t["external_id"] for t in proposals] == ["1"]
+    assert proposals[0]["proposed_fencer_name"] == "Josef Vejda"
+    # and what that fencer owes, so the organizer confirms against a balance
+    assert proposals[0]["proposed_outstanding"] == "1000.00"
+    # the payment nobody could be read from is in the same table, with nothing
+    # to be done stated about it
+    assert [t["external_id"] for t in queue if t["disposition"] == "none"] == ["2"]
 
 
 # ------------------------------------------------------- the ranked roster

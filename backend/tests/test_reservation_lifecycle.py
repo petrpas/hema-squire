@@ -156,7 +156,7 @@ def transfer(vs, amount_czk, external_id="9001", currency="CZK"):
 
 
 def unmatched_transaction(client, organizer):
-    queue = client.get("/api/tournaments/cup/payments/unmatched", headers=organizer).json()
+    queue = client.get("/api/tournaments/cup/payments/uncredited", headers=organizer).json()
     (flagged,) = [t for t in queue if t["status"] == "flagged"]
     return flagged
 
@@ -375,6 +375,7 @@ def test_payment_inside_grace_with_free_seat_reinstates_and_pays(client, auth_he
     assert poll == {
         "new": 1,
         "duplicate": 0,
+        "dropped": 0,
         "matched": 1,
         "flagged": 0,
         "unmatched": 0,
@@ -479,7 +480,7 @@ def test_organizer_reinstate_resolves_transaction_and_audits(client, auth_header
     assert "reinstated_by_organizer" in event_kinds(initial["vs"])
 
     # no longer in the flagged queue
-    queue = client.get("/api/tournaments/cup/payments/unmatched", headers=organizer).json()
+    queue = client.get("/api/tournaments/cup/payments/uncredited", headers=organizer).json()
     assert flagged["id"] not in [t["id"] for t in queue]
 
 
@@ -531,7 +532,7 @@ def test_organizer_mark_for_refund_resolves_transaction_and_audits(client, auth_
     assert registration.refund_state == RefundState.PENDING
     assert "marked_for_refund" in event_kinds(initial["vs"])
 
-    queue = client.get("/api/tournaments/cup/payments/unmatched", headers=organizer).json()
+    queue = client.get("/api/tournaments/cup/payments/uncredited", headers=organizer).json()
     assert flagged["id"] not in [t["id"] for t in queue]
 
 
@@ -575,7 +576,7 @@ def test_credit_written_on_match_and_reversed_by_unapply(client, auth_headers):
         files={"file": ("v.csv", io.BytesIO(csv), "text/csv")},
         headers=organizer,
     )
-    unmatched = client.get("/api/tournaments/cup/payments/unmatched", headers=organizer).json()
+    unmatched = client.get("/api/tournaments/cup/payments/uncredited", headers=organizer).json()
     transaction_id = unmatched[0]["id"]
     rule = client.post(
         "/api/tournaments/cup/payments/link",

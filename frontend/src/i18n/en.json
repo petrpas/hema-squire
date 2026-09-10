@@ -243,6 +243,7 @@
     "waived": "waived",
     "waived_all": "all waived",
     "waived_amount": "{{amount}} waived",
+    "overpaid": "{{amount}} over",
     "waiver": {
       "title": "Settle without a payment",
       "meaning": "Records that this registration owes nothing and that no money arrived for it. Nothing is credited, so no total of what the tournament received moves.",
@@ -284,7 +285,8 @@
     "cell": {
       "edit": "Edit {{column}}: {{value}}",
       "editEmpty": "Edit {{column}} – still empty"
-    }
+    },
+    "titlePayments": "Payment management"
   },
   "row": {
     "absorbed": "Merged into this row"
@@ -1014,10 +1016,6 @@
   },
   "payments": {
     "flagged": {
-      "title": "Unresolved payments",
-      "vs": "VS",
-      "amount": "Amount",
-      "reason": "Reason",
       "reinstate": "Reinstate reservation",
       "markForRefund": "Mark for refund",
       "actionFailed": "The action failed.",
@@ -1027,7 +1025,8 @@
         "amount_out_of_tolerance": "amount out of tolerance",
         "currency_unconvertible": "currency not convertible",
         "registration_paid": "registration already paid",
-        "registration_cancelled": "registration cancelled"
+        "registration_cancelled": "registration cancelled",
+        "not_an_incoming_payment": "not an incoming payment"
       },
       "settledByHand": "Settled by hand: {{reason}}",
       "settledByPayment": "Settled by a payment recorded by hand: {{amount}}, {{date}}"
@@ -1044,16 +1043,7 @@
     },
     "queue": {
       "failed": "This list could not be loaded.",
-      "empty": "Nothing here.",
-      "tabs": "Payment queues"
-    },
-    "unmatched": {
-      "title": "Unmatched payments",
-      "date": "Date",
-      "payer": "Payer",
-      "amount": "Amount",
-      "message": "Message",
-      "link": "Link to registration"
+      "empty": "Nothing here."
     },
     "link": {
       "title": "Link payment",
@@ -1072,30 +1062,6 @@
       "strongest": "best match",
       "refused": "(you said not them)",
       "unbillable": "{{count}} fencers from the list are not here, because they have no registration — a payment cannot be linked to them until the row is corrected on the Fencers phase:"
-    },
-    "expiredHolding": {
-      "title": "Expired, holding money",
-      "fencer": "Fencer",
-      "vs": "VS",
-      "credited": "Credited",
-      "expiredAt": "Expired",
-      "empty": "No money is stranded on an expired reservation."
-    },
-    "links": {
-      "title": "Payment links",
-      "transaction": "Payment",
-      "vs": "VS",
-      "auto": "by the matcher",
-      "manual": "by hand",
-      "remove": "Remove link",
-      "failed": "The link could not be removed.",
-      "date": "Date",
-      "payer": "Payer",
-      "amount": "Amount",
-      "message": "Message",
-      "fencer": "Fencer",
-      "origin": "Made",
-      "orphaned": "The payment behind one of these links is gone — its statement was cleared. The credit stays with the fencer until the link is removed."
     },
     "intake": {
       "title": "Payment intake",
@@ -1125,7 +1091,9 @@
       "unreadable": "That file does not read as a statement — no column in it holds dates and amounts. Check it is the right export, and that it opens as a table in a spreadsheet.",
       "willIssueWithSymbols": "Importing a statement will issue registrations for {{count}} rows of the fencer list and allocate variable symbols. Symbols are never reclaimed or reused.",
       "dedupPending": "A statement cannot be imported yet: {{count}} duplicates are awaiting review. Settle them on the Deduplication phase.",
-      "issued": "Issued {{count}} registrations."
+      "issued": "Issued {{count}} registrations.",
+      "dropped_one": "One transfer out of the account was not ingested.",
+      "dropped_other": "{{count}} transfers out of the account were not ingested."
     },
     "clear": {
       "action": "Clear payments ({{payments}})…",
@@ -1142,19 +1110,15 @@
         "confirm": "remove permanently"
       }
     },
-    "likely": {
-      "title": "Proposed matches",
-      "explain": "Read from what the payer wrote. Nothing has been credited and nobody has been told — confirming is what pays the registration.",
-      "date": "Date",
-      "payer": "Paid by",
-      "amount": "Amount",
-      "message": "Payer's message",
-      "fencer": "For",
-      "confirm": "Confirm",
-      "reject": "Reject"
-    },
     "tabs": {
-      "fencers": "Fencers"
+      "label": "Tournament payments",
+      "fencers": "Fencers",
+      "payments": "Payments",
+      "credited": "Credited",
+      "uncredited": "Uncredited",
+      "noteProposals_one": "1 of them is a proposal",
+      "noteProposals_other": "{{count}} of them are proposals",
+      "noteCredited": "{{total}} credited"
     },
     "record": {
       "action": "Record a payment",
@@ -1181,34 +1145,43 @@
         "payments_disabled": "Squire does not handle this tournament's payments."
       }
     },
-    "recorded": {
-      "title": "Payments recorded by hand",
-      "date": "Received",
-      "fencer": "Fencer",
-      "amount": "Amount",
-      "method": "How",
-      "note": "Note",
-      "recordedBy": "Recorded by",
-      "remove": "Remove",
-      "removeTitle": "Remove this payment",
-      "removeBody": "{{amount}} recorded for {{name}} will be taken back.",
-      "removeUnsettles": "This registration will stop reading as paid.",
-      "removeConfirm": "Remove"
-    },
     "credited": {
-      "title": "Credited transactions",
+      "date": "Date",
+      "payer": "From",
+      "amount": "Amount",
+      "message": "Message",
+      "registrations": "Credited to",
+      "origin": "Why",
+      "origins": {
+        "auto_vs": "symbol",
+        "payment_link": "paired by hand",
+        "recorded": "recorded by hand",
+        "reinstate": "reinstated reservation",
+        "refund_hold": "held for refund"
+      },
+      "reverse": "Reverse the credit",
+      "reverseTitle": "Reverse this payment’s credit",
+      "reverseBody": "{{amount}} stops counting. The payment returns to the uncredited table.",
+      "reverseUnsettles": "These registrations stop reading as paid: {{names}}.",
+      "reverseNoneUnsettle": "No registration stops reading as paid.",
+      "reverseConfirm": "Reverse the credit",
+      "checking": "Working out what happens.",
+      "actionFailed": "The credit could not be reversed."
+    },
+    "uncredited": {
+      "explain": "Arrived and lying on nobody. Nothing is credited and nobody has been written to.",
       "date": "Date",
       "payer": "Payer",
       "amount": "Amount",
-      "registrations": "Credited to",
-      "reverse": "Reverse the credit",
-      "reverseTitle": "Reverse this transaction's credit",
-      "reverseBody": "{{amount}} will stop counting. The transaction returns to the unmatched queue.",
-      "reverseUnsettles": "These registrations will stop reading as paid: {{names}}.",
-      "reverseNoneUnsettle": "No registration stops reading as paid because of this.",
-      "reverseConfirm": "Reverse",
-      "checking": "Working out what this will do.",
-      "actionFailed": "The credit could not be reversed."
+      "message": "Payer’s message",
+      "disposition": "To do",
+      "owes": "owes {{amount}}",
+      "pairedUncredited": "paired with {{names}}, credited nothing",
+      "confirm": "Confirm",
+      "reject": "Reject the proposal"
+    },
+    "unmatched": {
+      "link": "Pair with a registration"
     }
   },
   "validation": {

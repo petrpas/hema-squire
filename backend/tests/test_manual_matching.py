@@ -67,7 +67,7 @@ def import_csv(client, organizer):
 
 
 def unmatched_transaction_id(client, organizer):
-    queue = client.get("/api/tournaments/cup/payments/unmatched", headers=organizer).json()
+    queue = client.get("/api/tournaments/cup/payments/uncredited", headers=organizer).json()
     return queue[0]["id"]
 
 
@@ -162,7 +162,7 @@ def test_removing_link_rule_reverts(client, auth_headers, mailbox):
     assert delete.status_code == 204
 
     assert state_of(client, fencer_a) == "reserved"
-    queue = client.get("/api/tournaments/cup/payments/unmatched", headers=organizer).json()
+    queue = client.get("/api/tournaments/cup/payments/uncredited", headers=organizer).json()
     assert [t["id"] for t in queue] == [transaction_id]
     assert queue[0]["status_reason"] == "manual_unlink"
 
@@ -300,15 +300,17 @@ def test_link_validation(client, auth_headers, mailbox):
     assert missing.status_code == 404
 
 
-# The links queue exists so a wrong link can be undone, which needs the reader
-# to see which payment and which fencer it joined. The rule states neither: it
-# names the transaction by an external id — a fingerprint of the row's own
-# content where the bank numbers nothing — and the registrations by a symbol
-# that a link made by choosing a fencer does not have (spec `payments-console`).
+# A pairing has to be undoable, which needs the reader to see which payment and
+# which fencer it joined. The rule states neither: it names the transaction by
+# an external id — a fingerprint of the row's own content where the bank numbers
+# nothing — and the registrations by a symbol that a pairing made by choosing a
+# fencer does not have. So the credited table states the payment as the bank
+# wrote it beside the fencers it credited, and undoing the pairing is reversing
+# that credit (spec `payments-console`).
 
 
-def links(client, organizer):
-    response = client.get("/api/tournaments/cup/payments/links", headers=organizer)
+def credited(client, organizer):
+    response = client.get("/api/tournaments/cup/payments/credited", headers=organizer)
     assert response.status_code == 200, response.text
     return response.json()
 
@@ -326,16 +328,17 @@ def test_a_link_states_the_payment_and_the_fencers_it_joins(client, auth_headers
         headers=organizer,
     )
 
-    (link,) = links(client, organizer)
+    (payment,) = credited(client, organizer)
 
-    assert link["fencers"] == ["Adéla", "Boris"]
-    assert link["vs"] == [vs_a, vs_b]
-    assert link["auto_created"] is False
-    # the bank's own words, so the reader can judge the link without leaving
-    assert link["transaction"]["payer_name"] == "Klubový účet"
-    assert link["transaction"]["amount_cents"] == 200000
-    assert link["transaction"]["message"] == "platba za dva"
-    assert link["transaction"]["date"] == "2026-08-01"
+    assert [credit["fencer_name"] for credit in payment["credits"]] == ["Adéla", "Boris"]
+    assert [credit["vs"] for credit in payment["credits"]] == [vs_a, vs_b]
+    # why the money was credited: a pairing somebody made, not a symbol read
+    assert payment["origin"] == "payment_link"
+    # the bank's own words, so the reader can judge the pairing without leaving
+    assert payment["payer_name"] == "Klubový účet"
+    assert payment["amount"] == "2000.00"
+    assert payment["message"] == "platba za dva"
+    assert payment["value_date"] == "2026-08-01"
 
 
 def test_a_link_made_by_choosing_a_fencer_still_names_them(client, auth_headers, mailbox):
@@ -359,13 +362,13 @@ def test_a_link_made_by_choosing_a_fencer_still_names_them(client, auth_headers,
         headers=organizer,
     )
 
-    (link,) = links(client, organizer)
+    (payment,) = credited(client, organizer)
 
-    assert link["fencers"] == ["Adéla"]
-    assert link["transaction"]["payer_name"] == "Klubový účet"
+    assert [credit["fencer_name"] for credit in payment["credits"]] == ["Adéla"]
+    assert payment["payer_name"] == "Klubový účet"
 
 
-def test_a_removed_link_leaves_the_queue(client, auth_headers, mailbox):
+def test_a_removed_link_leaves_the_credited_table(client, auth_headers, mailbox):
     organizer = auth_headers()
     setup(client, organizer)
     _, vs = enroll(client, auth_headers, "a@example.com", "Adéla")
@@ -379,14 +382,18 @@ def test_a_removed_link_leaves_the_queue(client, auth_headers, mailbox):
 
     client.delete(f"/api/tournaments/cup/rules/{made['rule_id']}", headers=organizer)
 
-    assert links(client, organizer) == []
+    # withdrawing the pairing reverses the credit it wrote, so the payment
+    # leaves the credited table and returns to the uncredited one
+    assert credited(client, organizer) == []
+    (back,) = client.get("/api/tournaments/cup/payments/uncredited", headers=organizer).json()
+    assert back["id"] == transaction_id
 
 
-def test_the_links_queue_needs_console_access(client, auth_headers):
+def test_the_credited_table_needs_console_access(client, auth_headers):
     organizer = auth_headers()
     setup(client, organizer)
     outsider = auth_headers(email="nobody@example.com", name="Nikdo")
 
-    response = client.get("/api/tournaments/cup/payments/links", headers=outsider)
+    response = client.get("/api/tournaments/cup/payments/credited", headers=outsider)
 
     assert response.status_code == 403

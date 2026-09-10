@@ -70,7 +70,7 @@ def test_sibling_tournaments_transaction_is_set_aside_then_matches_its_own(clien
     assert result["flagged"] == 0
     assert result["set_aside"] == 1
 
-    b_unmatched = client.get("/api/tournaments/bb/payments/unmatched", headers=organizer).json()
+    b_unmatched = client.get("/api/tournaments/bb/payments/uncredited", headers=organizer).json()
     assert b_unmatched == []
 
     # A's registration is untouched by B's ingestion
@@ -101,5 +101,5 @@ def test_mistyped_prefix_does_not_route_to_a_sibling(client, auth_headers):
     assert result["set_aside"] == 0
     assert result["unmatched"] == 1
 
-    queue = client.get("/api/tournaments/aa/payments/unmatched", headers=organizer).json()
+    queue = client.get("/api/tournaments/aa/payments/uncredited", headers=organizer).json()
     assert queue[0]["status_reason"] == "unknown_vs"

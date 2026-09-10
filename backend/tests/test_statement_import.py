@@ -266,6 +266,10 @@ def test_money_leaving_the_account_is_not_a_payment(client, auth_headers, mailbo
     )
     concluded = settle(client, organizer, kind="statement")
     assert concluded["outcome"]["new"] == 1
+    # the drop happens at ingestion now, for every path rather than this one
+    # alone, and the debit is counted as neither new nor duplicate
+    assert concluded["outcome"]["dropped"] == 1
+    assert concluded["outcome"]["duplicate"] == 0
 
 
 def test_nothing_to_interpret_with(client, auth_headers, mailbox):
