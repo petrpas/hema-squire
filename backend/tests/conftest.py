@@ -272,13 +272,14 @@ def publish(client, headers, slug):
 def auth_headers(client, engine):
     """Signup helper. Accounts default to the Organizer role because most
     tests bootstrap a tournament with them; pass role=Role.FENCER for a
-    plain fencer."""
+    plain fencer. `language` is the account's UI language, which signup
+    otherwise leaves at its default."""
 
-    def make(email="organizer@example.com", name="Organizer", role=Role.ORGANIZER):
-        response = client.post(
-            "/api/auth/signup",
-            json={"email": email, "password": "correct-horse", "display_name": name},
-        )
+    def make(email="organizer@example.com", name="Organizer", role=Role.ORGANIZER, language=None):
+        body = {"email": email, "password": "correct-horse", "display_name": name}
+        if language is not None:
+            body["language"] = language
+        response = client.post("/api/auth/signup", json=body)
         assert response.status_code == 201, response.text
         if role != Role.FENCER:
             with Session(engine) as session:

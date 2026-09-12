@@ -11,7 +11,7 @@ import DedupView from "./DedupView";
 // The Deduplication phase: candidate groups with an editable conclusion, and
 // no fencer table (spec `etl-console`, Deduplication candidate review).
 
-const t = i18n.getFixedT("cs");
+const t = i18n.getFixedT(i18n.language);
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 

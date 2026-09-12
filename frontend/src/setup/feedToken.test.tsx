@@ -15,7 +15,7 @@ import { SaverRegistry } from "./shared";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
-const t = i18n.getFixedT("cs");
+const t = i18n.getFixedT(i18n.language);
 
 const FIO_IBAN = "CZ8620100000002900123456";
 const OTHER_BANK = "CZ6508000000192000145399";

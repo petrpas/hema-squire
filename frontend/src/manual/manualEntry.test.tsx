@@ -13,7 +13,7 @@ import { nowInZone } from "./nowInZone";
 // strict about what it accepts (spec `etl-console`, Manual entry fields follow
 // the tournament's structure / Strict validation of a manual entry).
 
-const t = i18n.getFixedT("cs");
+const t = i18n.getFixedT(i18n.language);
 
 function discipline(slug: string, name: string, kind: "individual" | "team"): Discipline {
   return { slug, name, kind, ordinal: 0, weapon: "LS", gender: "", material: "" } as Discipline;

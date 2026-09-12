@@ -13,18 +13,17 @@ const resources = Object.fromEntries(
   ]),
 );
 
-/** The locale a visitor reads before any account has said otherwise: Czech,
- *  this application's default and its fallback — the one locale guaranteed
- *  complete (spec `localization`). A public screen therefore renders in it
- *  from the first paint rather than being swapped after one.
+/** The locale a visitor reads before any account has said otherwise: English,
+ *  this application's default and its fallback. A public screen therefore
+ *  renders in it from the first paint rather than being swapped after one,
+ *  and it is what the sign-in screen is pinned to anyway.
  *
- *  Not the English the sign-in screen uses: that screen is pinned to English
- *  by its own requirement, and an account's *stored* default being English is
- *  a fact about accounts, not about what an anonymous page is written in. */
+ *  Czech is complete too, but it is a choice an account makes, not the
+ *  language an anonymous page is written in (spec `localization`). */
 i18n.use(initReactI18next).init({
   resources,
-  lng: "cs",
-  fallbackLng: "cs",
+  lng: "en",
+  fallbackLng: "en",
   interpolation: { escapeValue: false },
 });
 

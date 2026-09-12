@@ -110,7 +110,7 @@ def test_export_writes_the_export_tables(client, auth_headers):
     """One worksheet per export table, each carrying its table's columns —
     Czech, because the organizer's own language is what the sheet is written
     in unless they ask for English."""
-    organizer = auth_headers()
+    organizer = auth_headers(language="cs")
     setup(client, auth_headers, organizer)
     sheets = InMemorySheets()
     fetcher = FakeHRFetcher()
@@ -146,7 +146,7 @@ def test_export_writes_the_export_tables(client, auth_headers):
 
 
 def test_an_english_export_carries_english_headers(client, auth_headers):
-    organizer = auth_headers()
+    organizer = auth_headers(language="cs")
     setup(client, auth_headers, organizer)
     sheets = InMemorySheets()
     wire(sheets)
@@ -162,7 +162,7 @@ def test_an_english_export_carries_english_headers(client, auth_headers):
 
 
 def test_an_item_category_gets_a_worksheet_and_an_empty_one_does_not(client, auth_headers):
-    organizer = auth_headers()
+    organizer = auth_headers(language="cs")
     setup(client, auth_headers, organizer)
     shirt = client.post(
         "/api/tournaments/cup/extra-items",
@@ -222,7 +222,7 @@ def test_manual_numbering_survives_the_format_change(client, auth_headers):
     """A spreadsheet written in the v1 format, re-exported: the columns that
     remain keep their contents whatever language the header was in, the ones
     the new format drops are gone, and the ones it adds are filled."""
-    organizer = auth_headers()
+    organizer = auth_headers(language="cs")
     setup(client, auth_headers, organizer)
     sheets = InMemorySheets()
     wire(sheets)

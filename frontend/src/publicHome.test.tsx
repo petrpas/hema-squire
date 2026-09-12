@@ -97,7 +97,7 @@ beforeEach(async () => {
   setToken(null);
   // awaited: an unresolved changeLanguage would land after the one a test
   // makes and quietly put the language back
-  await i18n.changeLanguage("cs");
+  await i18n.changeLanguage("en");
 });
 
 afterEach(() => {
@@ -157,17 +157,17 @@ describe("the shell with no account", () => {
     const tracks = [...page.querySelectorAll(".topbar > *")].map((el) => el.className);
     expect(tracks).toEqual(["topbar-side", "topbar-title", "topbar-side topbar-side-end"]);
     expect(page.querySelector(".logo")?.textContent).toBe("HEMA Squire");
-    expect(page.querySelector(".topbar-title")?.textContent).toBe("Šermířské turnaje a akce");
+    expect(page.querySelector(".topbar-title")?.textContent).toBe(i18n.t("app.listTitle"));
   });
 
   it("pins the language to the default, whatever an ended session left behind", async () => {
-    await i18n.changeLanguage("en");
+    await i18n.changeLanguage("cs");
     lists({});
     const page = mount("/");
     await settle();
 
-    expect(i18n.language).toBe("cs");
-    expect(page.querySelector(".topbar-title")?.textContent).toBe("Šermířské turnaje a akce");
+    expect(i18n.language).toBe("en");
+    expect(page.querySelector(".topbar-title")?.textContent).toBe(i18n.t("app.listTitle"));
   });
 
   it("offers three tabs, Mine not among them", async () => {
@@ -193,14 +193,14 @@ describe("the shell with no account", () => {
 describe("an account's own language", () => {
   it("titles the bar in the account's language, without a reload", async () => {
     setToken("t");
-    vi.spyOn(api, "account").mockResolvedValue({ ...ACCOUNT, language: "en" } as Account);
+    vi.spyOn(api, "account").mockResolvedValue({ ...ACCOUNT, language: "cs" } as Account);
     lists({ mine: [] });
 
     const page = mount("/");
     await settle();
 
-    expect(i18n.language).toBe("en");
-    expect(page.querySelector(".topbar-title")?.textContent).toBe("HEMA Tournaments and Events");
+    expect(i18n.language).toBe("cs");
+    expect(page.querySelector(".topbar-title")?.textContent).toBe("Šermířské turnaje a akce");
     // the application's own name is not a translated string
     expect(page.querySelector(".logo")?.textContent).toBe("HEMA Squire");
   });

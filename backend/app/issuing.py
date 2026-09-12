@@ -188,7 +188,7 @@ def _resolve_fencer(session: Session, row: dict, claimed: set[str]) -> Fencer:
         hr_id=_hr_id_to_carry(row),
         nationality=row.get("nationality"),
         club=row.get("club"),
-        language=row.get("language") or "cs",
+        language=row.get("language") or "en",
     )
     session.add(fencer)
     return fencer
