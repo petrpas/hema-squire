@@ -195,7 +195,7 @@ The detail page's own controls — the tournament's display name, its tab contro
 - **THEN** the four filter tabs are not shown anywhere on the page, and the close control rather than a tab is the way back to the list
 
 ### Requirement: Navigation rewiring
-The tournament list SHALL be the landing screen for every visitor, signed in or not, whatever role they hold. The tournament picker SHALL remain at its own URL, reachable through the account menu's To Organizer entry, and SHALL NOT contain the organizer plea section (the plea lives on the Profile page). The picker SHALL remain the only screen listing a tournament that the public list cannot show — a draft, or a cancelled tournament — which is why the Spravovat control on a card does not replace it.
+The tournament list SHALL be the landing screen for every visitor, signed in or not, whatever role they hold. The tournament picker SHALL remain at its own URL, reachable through the account menu's My tournaments entry, and SHALL NOT contain the organizer plea section (the plea lives on the Profile page). The picker SHALL remain the only screen listing a tournament that the public list cannot show — a draft, or a cancelled tournament — which is why the Spravovat control on a card does not replace it.
 
 Creating a tournament SHALL be offered from the account menu (`tournament-admin`), so an organizer reaches it from any screen rather than only from the picker.
 

@@ -198,20 +198,25 @@ def _open_discipline_out(session: Session, discipline: Discipline) -> OpenDiscip
 
 @router.get("", response_model=list[TournamentOut])
 def list_tournaments(session: SessionDep, fencer: FencerDep):
-    """The tournament picker's listing: every tournament, drafts included, in
-    the console's full shape.
+    """The tournament picker's listing: the caller's own tournaments, drafts
+    included, in the console's full shape.
 
-    Behind a credential. Like `/{slug}` below it, this was open to anyone who
-    asked, which handed out every draft and every bank account on the
-    deployment. The fencer-facing lists are the public ones (`/open`,
+    Behind a credential, and narrowed to what the caller may actually open:
+    the console refuses every other one at the door (`require_console_access`,
+    which no global role bypasses), so a wider listing was rows that answer
+    403 when followed. The fencer-facing lists are the public ones (`/open`,
     `/held`); this is the organizer's own index and is not (spec
     `public-browsing`).
 
     Cancelled tournaments are retired: hidden from listings, but their
     detail/console stay reachable by slug (design D5)."""
+    organized = _organized_tournament_ids(session, fencer)
     tournaments = session.scalars(
         select(Tournament)
-        .where(Tournament.cancelled_at.is_(None))
+        .where(
+            Tournament.cancelled_at.is_(None),
+            or_(Tournament.owner_id == fencer.id, Tournament.id.in_(organized)),
+        )
         .options(selectinload(Tournament.disciplines), selectinload(Tournament.extra_items))
         .order_by(Tournament.date)
     ).all()

@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Outlet, useLocation, useSearchParams } from "react-router-dom";
+import { Outlet, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { type Account, api, type OpenTournament } from "./api";
 import { type FencerOutletContext, type ResumeTab, useUpcoming } from "./FencerHome";
 import FencerShell, { HOME_TABS, type HomeTab } from "./FencerShell";
 import i18n from "./i18n";
 import Login from "./Login";
+import { home } from "./routes";
 import { credentialChanged, useCredential, useSignOut } from "./session";
 
 function namedTab(value: string | null): HomeTab | null {
@@ -46,6 +47,7 @@ function resolveDefault(lists: {
 export default function FencerLayout() {
   const [searchParams] = useSearchParams();
   const location = useLocation();
+  const navigate = useNavigate();
   const signedIn = useCredential() !== null;
   const onLogout = useSignOut();
   // `/t/:slug` carries no `?tab=` of its own; the tab a card was opened from
@@ -118,6 +120,14 @@ export default function FencerLayout() {
           setResume(prompt?.resume ?? null);
           setPrompt(null);
           credentialChanged();
+        }}
+        /* Declining leaves the visitor where they were: the screen behind is
+           still at this URL, so a prompt is simply dropped. Mine has nothing
+           behind it — it is the URL — so that one falls back to the list's
+           default tab. */
+        onCancel={() => {
+          if (prompt !== null) setPrompt(null);
+          else navigate(home(), { replace: true });
         }}
       />
     );

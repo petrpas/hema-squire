@@ -49,17 +49,22 @@ exactly as for an authenticated one.
 - **WHEN** an unpublished tournament's detail is requested with no credential
 - **THEN** the answer is not-found, worded as it is for an authenticated visitor who may not open it
 
-### Requirement: The organizer's index is not public
-The listing that feeds the tournament picker — every tournament on the deployment, drafts
-included, in the console's full shape — SHALL require a credential and SHALL be refused
-without one.
+### Requirement: The organizer's index is the caller's own
+The listing that feeds the tournament picker — drafts included, in the console's full shape —
+SHALL require a credential, SHALL be refused without one, and SHALL carry only the tournaments
+the caller may open a console on: those it owns and those it sits on the console team of,
+cancelled ones excluded. No global role widens it, the console itself admitting none.
 
 It is named here because it carries the same fields the fencer-facing detail withholds, for
-every tournament at once. A public detail that withheld the bank account while a public
-index handed it out would state a rule the deployment does not keep.
+every tournament it lists at once. A public detail that withheld the bank account while an
+index handed it out to any signed-in account would state a rule the deployment does not keep.
+A row the caller cannot follow is a row that answers 403, and the picker is the account's own
+tournaments rather than the deployment's.
 
-The fencer-facing lists remain the public ones. Nothing about which tournaments the picker
-lists, or to whom, changes: only that a visitor with no account is not among them.
+The fencer-facing lists remain the public ones.
+
+The count of that same set SHALL be carried on the account, so the account menu can ask
+whether there is a picker worth offering without fetching the listing on every page.
 
 #### Scenario: The index needs a credential
 - **WHEN** the picker's listing is requested with no credential
@@ -69,9 +74,13 @@ lists, or to whom, changes: only that a visitor with no account is not among the
 - **WHEN** a deployment holds an unpublished tournament with a bank account on file
 - **THEN** no unauthenticated request returns either the draft or the account number
 
-#### Scenario: The picker is unchanged for an account
-- **WHEN** a signed-in organizer opens the picker
-- **THEN** the same tournaments are listed as before, drafts among them
+#### Scenario: Another account's tournament
+- **WHEN** an organizer who neither owns a tournament nor sits on its console team opens the picker
+- **THEN** that tournament is not listed, while their own are, drafts among them
+
+#### Scenario: A seat on the console team
+- **WHEN** an account is added to a tournament's console team
+- **THEN** that tournament appears in their picker, and their account's count of tournaments rises by one
 
 ### Requirement: An anonymous payload carries no bond
 Fields describing the relationship between the caller and a tournament — the
@@ -115,6 +124,38 @@ delivered as an error.
 #### Scenario: No personal list without an account
 - **WHEN** an anonymous visitor opens the personal list's URL directly
 - **THEN** the sign-in screen is shown, and after signing in the personal list is displayed
+
+### Requirement: Sign-in can be declined
+The sign-in screen shown by an action on a public screen SHALL offer a way back
+to the screen it stands in front of, taken either by a control on the form or by
+Escape. The visitor SHALL be returned to the page they were reading, at the URL
+they were already on, with nothing signed in.
+
+The screen renders over that URL rather than at one of its own, so the browser's
+own Back leads away from the page behind it instead of off the sign-in screen:
+without a way back of its own, an anonymous visitor who reaches for a control
+needing an account has no way to decline it.
+
+Where the sign-in screen is the whole of a gated URL — an address whose screen
+cannot be read without an account — the way back SHALL lead to the public
+tournament list instead, and the account-creation form's own way back SHALL lead
+to sign-in rather than out of both screens at once.
+
+#### Scenario: Declining the prompt
+- **WHEN** an anonymous visitor who selected Register takes the sign-in screen's way back
+- **THEN** the tournament's detail is shown again at the same URL, with no account signed in
+
+#### Scenario: Escape dismisses the prompt
+- **WHEN** that visitor presses Escape on the sign-in screen
+- **THEN** the screen is dismissed exactly as its own control dismisses it
+
+#### Scenario: Declining at a gated URL
+- **WHEN** a visitor declines sign-in at the personal list's URL, which has no public page behind it
+- **THEN** the tournament list is shown on the tab that its default resolution names
+
+#### Scenario: Escape on the account-creation form
+- **WHEN** a visitor presses Escape while creating an account
+- **THEN** the sign-in screen is shown again, the screen behind it left standing
 
 ### Requirement: The shell offers sign-in in place of an identity
 On a public screen with no account behind it, the place the shell gives a

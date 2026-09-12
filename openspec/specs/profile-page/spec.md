@@ -73,15 +73,23 @@ At 768px and above the flow SHALL remain within the section, unchanged.
 - **THEN** it appears within the section as before
 
 ### Requirement: Account menu
-Every logged-in page SHALL show an account menu ("⋯") in the top-right corner containing: My Profile; Admin Panel (only for Admin and Owner); To Fencer (Fencer Home); To Organizer (tournament picker); and Logout. Account actions SHALL be consolidated in this menu.
+Every logged-in page SHALL show an account menu ("⋯") in the top-right corner containing: My Profile; Admin Panel (only for Admin and Owner); My tournaments, leading to the tournament picker and shown only where the account holds at least one tournament it may open a console on; Create tournament, shown only where the account may create one; and Logout. Account actions SHALL be consolidated in this menu.
+
+The menu SHALL NOT carry an entry back to the fencer's own screens. The application's name in the top bar is that way back, present on every page and reachable without opening a menu.
+
+Each entry SHALL be named for what it leads to rather than for whom it is meant: an entry that names an audience tells an account holding both roles nothing about which of its two lists it is about to open.
 
 #### Scenario: Menu navigation
 - **WHEN** a logged-in user opens the account menu and selects My Profile
 - **THEN** the Profile page opens, from any logged-in surface
 
-#### Scenario: To Fencer opens Fencer Home
-- **WHEN** a logged-in user selects To Fencer from the account menu
-- **THEN** the Fencer Home page opens
+#### Scenario: The picker entry where there is nothing to pick
+- **WHEN** an account that owns no tournament and sits on no console team opens the account menu
+- **THEN** no My tournaments entry is shown, creation being the only way to a first tournament
+
+#### Scenario: The picker entry where there is something to pick
+- **WHEN** an account holding one tournament opens the account menu
+- **THEN** a My tournaments entry is shown, leading to the picker
 
 #### Scenario: Admin entry hidden for fencers
 - **WHEN** an account below Admin (and not Owner) opens the account menu

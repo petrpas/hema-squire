@@ -116,6 +116,12 @@ function registerTab(page: HTMLElement): HTMLButtonElement | undefined {
   );
 }
 
+/** The sign-in screen's way back out, which renders in English whatever the
+ *  visitor was reading a moment ago. */
+function back(page: HTMLElement): HTMLButtonElement | null {
+  return page.querySelector<HTMLButtonElement>("form#login-form .login-back");
+}
+
 beforeEach(async () => {
   vi.restoreAllMocks();
   setToken(null);
@@ -218,5 +224,38 @@ describe("registering while signed out", () => {
     expect(page.querySelector("form#login-form")).toBeNull();
     const active = page.querySelector(".detail-tabs button.active");
     expect(active?.textContent).toBe(i18n.t("detail.tabs.register"));
+  });
+
+  it("can be declined, leaving the tournament as it was", async () => {
+    detailApi();
+    const page = mount("/t/spring-open");
+    await settle();
+    await act(async () => {
+      registerTab(page)?.click();
+    });
+    expect(page.querySelector("form#login-form")).not.toBeNull();
+
+    await act(async () => {
+      back(page)?.click();
+    });
+
+    expect(page.querySelector("form#login-form")).toBeNull();
+    expect(page.querySelector(".detail-header h1")?.textContent).toBe("Spring Open");
+  });
+
+  it("is dismissed by Escape, the screen being over the page and not at a URL", async () => {
+    detailApi();
+    const page = mount("/t/spring-open");
+    await settle();
+    await act(async () => {
+      registerTab(page)?.click();
+    });
+
+    await act(async () => {
+      document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+    });
+
+    expect(page.querySelector("form#login-form")).toBeNull();
+    expect(page.querySelector(".detail-header h1")?.textContent).toBe("Spring Open");
   });
 });

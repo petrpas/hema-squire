@@ -56,12 +56,18 @@ export default function AccountMenu({
                 {t("menu.admin")}
               </Link>
             )}
-            <Link to={routes.home()} onClick={close}>
-              {t("menu.toFencer")}
-            </Link>
-            <Link to={routes.picker()} onClick={close}>
-              {t("menu.toOrganizer")}
-            </Link>
+            {/* The picker, named for what it lists: the tournaments this
+                account may open a console on. Absent where there are none —
+                an entry leading to an empty list is an entry that answers a
+                question nobody asked, and the way to a first tournament is
+                the create entry below, not this one. There is no entry back
+                to the fencer's own screens: the logo is that, on every page
+                and without opening a menu. */}
+            {account !== null && account.organized_count > 0 && (
+              <Link to={routes.picker()} onClick={close}>
+                {t("menu.myTournaments")}
+              </Link>
+            )}
             {/* Offered from the menu so an organizer reaches creation from any
                 screen rather than only from the picker (spec
                 `tournament-admin`). Not shown at all below the Organizer
@@ -74,7 +80,7 @@ export default function AccountMenu({
                   setCreating(true);
                 }}
               >
-                {t("menu.newTournament")}
+                {t("menu.createTournament")}
               </button>
             )}
             <button

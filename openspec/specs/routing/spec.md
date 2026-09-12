@@ -168,6 +168,20 @@ default-blue link, sentence case throughout.
 - **WHEN** an organizer opens `/organizer/spring-open-2026/console/invoicing`
 - **THEN** the not-found screen is shown rather than the Load phase
 
+### Requirement: The application's name leads to its front page
+The Hema Squire name in the top bar SHALL link to the tournament list, from every screen that
+carries a top bar, the console included. It is the one fixed landmark on the page and SHALL
+mean the same thing everywhere: the console's name used to lead to the tournament picker
+instead, which made the landmark's destination depend on which screen it was read from.
+
+#### Scenario: The name on the console
+- **WHEN** an organizer activates the Hema Squire name in the console's top bar
+- **THEN** the tournament list opens, not the picker
+
+#### Scenario: The name on a public screen
+- **WHEN** a visitor with no account activates the Hema Squire name
+- **THEN** the tournament list opens, as it does for a signed-in account
+
 ### Requirement: Navigation targets are links
 A control whose whole purpose is to open another screen — a tournament card on Fencer Home, a
 row in the tournament picker, a Fencer Home filter tab, and each account-menu destination —

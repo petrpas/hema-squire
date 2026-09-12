@@ -188,6 +188,22 @@ describe("the shell with no account", () => {
     await settle();
     expect(page.querySelector("form#login-form")).not.toBeNull();
   });
+
+  it("lets that gate be declined, landing on a tab a visitor may read", async () => {
+    // Mine has no public page behind it — it is the URL — so declining goes
+    // to the list's default tab rather than leaving the screen standing
+    lists({ upcoming: [tournament("open-one")] });
+    const page = mount("/?tab=mine");
+    await settle();
+
+    await act(async () => {
+      document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+    });
+    await settle();
+
+    expect(page.querySelector("form#login-form")).toBeNull();
+    expect(page.textContent).toContain("open-one");
+  });
 });
 
 describe("an account's own language", () => {
@@ -358,10 +374,14 @@ describe("managing a tournament from its card", () => {
   });
 });
 
-describe("creating a tournament from the account menu", () => {
-  async function menu(role: Account["role"]) {
+describe("what the account menu offers", () => {
+  async function menu(role: Account["role"], organized = 0) {
     setToken("t");
-    vi.spyOn(api, "account").mockResolvedValue({ ...ACCOUNT, role } as Account);
+    vi.spyOn(api, "account").mockResolvedValue({
+      ...ACCOUNT,
+      role,
+      organized_count: organized,
+    } as Account);
     lists({ mine: [] });
     const page = mount("/");
     await settle();
@@ -372,14 +392,36 @@ describe("creating a tournament from the account menu", () => {
     return page;
   }
 
-  it("offers the entry to an organizer", async () => {
+  it("offers creating a tournament to an organizer", async () => {
     const page = await menu("organizer");
-    expect(page.textContent).toContain(i18n.t("menu.newTournament"));
+    expect(page.textContent).toContain(i18n.t("menu.createTournament"));
   });
 
-  it("does not offer it to a plain fencer", async () => {
+  it("does not offer creating one to a plain fencer", async () => {
     const page = await menu("fencer");
-    expect(page.textContent).not.toContain(i18n.t("menu.newTournament"));
+    expect(page.textContent).not.toContain(i18n.t("menu.createTournament"));
+  });
+
+  it("names the picker for the tournaments the account holds", async () => {
+    const page = await menu("organizer", 2);
+    const entry = [...page.querySelectorAll("a")].find(
+      (a) => a.textContent === i18n.t("menu.myTournaments"),
+    );
+    expect(entry?.getAttribute("href")).toBe("/organizer");
+  });
+
+  it("hides that entry where the account holds none", async () => {
+    const page = await menu("organizer", 0);
+    expect(page.textContent).not.toContain(i18n.t("menu.myTournaments"));
+  });
+
+  it("offers no way back to the fencer's screens, the logo being that", async () => {
+    const page = await menu("organizer", 1);
+    const home = [...page.querySelectorAll(".account-menu-dropdown a")].filter(
+      (a) => a.getAttribute("href") === "/",
+    );
+    expect(home).toHaveLength(0);
+    expect(page.querySelector(".logo-button")?.getAttribute("href")).toBe("/");
   });
 });
 

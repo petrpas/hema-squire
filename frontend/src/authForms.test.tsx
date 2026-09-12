@@ -67,10 +67,7 @@ describe("credential managers can read the auth forms", () => {
 
   it("declares the sign-up fields, e-mail included as the identifier", async () => {
     const page = mount(<Login onLogin={() => {}} />);
-    // switch to signup — the create-account control is the last link-button
-    // the create-account control is the last link-button on the card
-    const links = page.querySelectorAll("button.link-button");
-    const toSignup = links[links.length - 1]!;
+    const toSignup = page.querySelector("button.login-create")!;
     await act(async () => {
       toSignup.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
@@ -90,13 +87,43 @@ describe("credential managers can read the auth forms", () => {
     expect(display.getAttribute("autocapitalize")).toBe("words");
   });
 
+  it("returns the signup form to sign-in on Escape, rather than out of both", async () => {
+    // the signup form stands over sign-in, which itself stands over the page
+    // behind: Escape unwinds one screen at a time
+    const onCancel = vi.fn();
+    const page = mount(<Login onLogin={() => {}} onCancel={onCancel} />);
+    await act(async () => {
+      page
+        .querySelector("button.login-create")!
+        .dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    expect(page.querySelector("form")!.id).toBe("signup-form");
+
+    await act(async () => {
+      document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+    });
+
+    expect(page.querySelector("form")!.id).toBe("login-form");
+    expect(onCancel).not.toHaveBeenCalled();
+  });
+
+  it("offers no way back where the screen stands on its own", async () => {
+    // Login is also the whole of a gated URL, where there is nothing behind
+    // it to return to; the control appears only when a caller gives one
+    const page = mount(<Login onLogin={() => {}} />);
+    expect(page.querySelector("button.login-back")).toBeNull();
+
+    await act(async () => {
+      document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+    });
+    expect(page.querySelector("form")!.id).toBe("login-form");
+  });
+
   it("gives the two modes different form identities", async () => {
     const page = mount(<Login onLogin={() => {}} />);
     expect(page.querySelector("form")!.id).toBe("login-form");
 
-    // the create-account control is the last link-button on the card
-    const links = page.querySelectorAll("button.link-button");
-    const toSignup = links[links.length - 1]!;
+    const toSignup = page.querySelector("button.login-create")!;
     await act(async () => {
       toSignup.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
