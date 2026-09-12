@@ -1,8 +1,9 @@
-import { useEffect, useState } from "react";
-import { Outlet, useNavigate, useOutletContext } from "react-router-dom";
-import { ApiError, api, getToken, setToken } from "./api";
+import { useEffect } from "react";
+import { Outlet, useOutletContext } from "react-router-dom";
+import { ApiError, api } from "./api";
 import i18n from "./i18n";
 import Login from "./Login";
+import { credentialChanged, signOut, useCredential, useSignOut } from "./session";
 
 type AuthContext = { onLogout: () => void };
 
@@ -14,8 +15,8 @@ export function useAuth(): AuthContext {
  *  out, so the destination and its query string survive login with no
  *  history entry pushed (design D7). */
 export default function RequireAuth() {
-  const navigate = useNavigate();
-  const [authed, setAuthed] = useState(() => getToken() !== null);
+  const authed = useCredential() !== null;
+  const onLogout = useSignOut();
 
   useEffect(() => {
     if (!authed) return;
@@ -36,21 +37,14 @@ export default function RequireAuth() {
         // expiry costs the session and not the destination as well (spec
         // routing: "Unauthenticated visits keep their destination").
         if (err instanceof ApiError && err.status === 401) {
-          setToken(null);
-          setAuthed(false);
+          signOut();
         }
       },
     );
   }, [authed]);
 
   if (!authed) {
-    return <Login onLogin={() => setAuthed(true)} />;
-  }
-
-  function onLogout() {
-    setToken(null);
-    setAuthed(false);
-    navigate("/", { replace: true });
+    return <Login onLogin={credentialChanged} />;
   }
 
   return <Outlet context={{ onLogout } satisfies AuthContext} />;

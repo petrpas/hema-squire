@@ -157,11 +157,13 @@ describe("a submission in flight is stated in words", () => {
 });
 
 describe("an expired session ends at Login", () => {
+  // mounted on a gated path: `/t/:slug` is public since
+  // `public-tournament-list` and no longer carries the gate at all
   function gate() {
     return mount(
-      <MemoryRouter initialEntries={["/t/spring-open-2026"]}>
+      <MemoryRouter initialEntries={["/profile"]}>
         <Routes>
-          <Route path="/t/:slug" element={<RequireAuth />}>
+          <Route path="/profile" element={<RequireAuth />}>
             <Route index element={<p>signed in</p>} />
           </Route>
         </Routes>

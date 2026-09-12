@@ -13,6 +13,7 @@ from sqlalchemy.sql.elements import ColumnElement
 from app import bank, money_bounds, scheduler, setup, taxonomy
 from app.auth import (
     current_fencer,
+    optional_fencer,
     require_console_access,
     require_published,
     require_role,
@@ -62,6 +63,7 @@ from app.schemas import (
     DisciplineOut,
     ExtraItemIn,
     ExtraItemOut,
+    FencerTournamentOut,
     FioTokenIn,
     FioTokenOut,
     MyRegistrationState,
@@ -90,6 +92,9 @@ router = APIRouter(prefix="/api/tournaments", tags=["tournaments"])
 
 SessionDep = Annotated[Session, Depends(get_session)]
 FencerDep = Annotated[Fencer, Depends(current_fencer)]
+# the public endpoints' dependency: `None` only where no credential was
+# presented, refusing a rejected one exactly as FencerDep does
+OptionalFencerDep = Annotated[Fencer | None, Depends(optional_fencer)]
 
 
 def get_tournament(session: SessionDep, slug: str) -> Tournament:
@@ -192,9 +197,18 @@ def _open_discipline_out(session: Session, discipline: Discipline) -> OpenDiscip
 
 
 @router.get("", response_model=list[TournamentOut])
-def list_tournaments(session: SessionDep):
-    # cancelled tournaments are retired: hidden from public listings, but
-    # their detail/console stay reachable by slug (design D5)
+def list_tournaments(session: SessionDep, fencer: FencerDep):
+    """The tournament picker's listing: every tournament, drafts included, in
+    the console's full shape.
+
+    Behind a credential. Like `/{slug}` below it, this was open to anyone who
+    asked, which handed out every draft and every bank account on the
+    deployment. The fencer-facing lists are the public ones (`/open`,
+    `/held`); this is the organizer's own index and is not (spec
+    `public-browsing`).
+
+    Cancelled tournaments are retired: hidden from listings, but their
+    detail/console stay reachable by slug (design D5)."""
     tournaments = session.scalars(
         select(Tournament)
         .where(Tournament.cancelled_at.is_(None))
@@ -230,13 +244,20 @@ def _my_registration_state(
 
 
 def _fencer_tournament_out(
-    session: Session, tournament: Tournament, fencer: Fencer, *, organized: bool
+    session: Session, tournament: Tournament, fencer: Fencer | None, *, organized: bool | None
 ) -> OpenTournamentOut:
     """One entry of a fencer-facing list. The three scopes (upcoming, held,
     own) share this body so their payloads cannot drift apart — a trimmed DTO
     so drafts and organizer-only config never leak, with per-discipline counts
     and the caller's own bonds folded in to avoid N+1 calls from the
-    frontend."""
+    frontend.
+
+    `fencer` is `None` on a request that carried no credential at all (spec
+    `public-browsing`). The two bond fields are then left unset and drop out of
+    the answer, and the registration-state query is not issued — which makes
+    the anonymous entry cheaper than the signed-in one rather than merely
+    equivalent to it. `organized` is passed as `None` in that case for the same
+    reason: the caller's side of it is what there is none of."""
     reason = setup.registration_availability(tournament, datetime.now(UTC))
     if reason == setup.ORGANIZER_KEPT:
         # Not `closed`: `closed` means a window has passed, and this tournament
@@ -277,7 +298,9 @@ def _fencer_tournament_out(
         registration_opens_at=opens_at,
         timezone=tournament.timezone,
         disciplines=[_open_discipline_out(session, d) for d in tournament.disciplines],
-        my_registration_state=_my_registration_state(session, tournament, fencer),
+        my_registration_state=(
+            _my_registration_state(session, tournament, fencer) if fencer is not None else None
+        ),
         organized=organized,
     )
 
@@ -306,6 +329,18 @@ def _published_tournaments(session: Session, *, upcoming: bool | None) -> list[T
     )
 
 
+def _organized_by(
+    tournament: Tournament, fencer: Fencer | None, organizer_ids: set[int]
+) -> bool | None:
+    """Whether the caller may manage this tournament — as its owner or through
+    its console team. `None` where there is no caller: the question has no
+    subject, and the field is then absent from the answer rather than false
+    (spec `public-browsing`)."""
+    if fencer is None:
+        return None
+    return tournament.owner_id == fencer.id or tournament.id in organizer_ids
+
+
 def _organized_tournament_ids(session: Session, fencer: Fencer) -> set[int]:
     """Tournaments the caller sits on the console team of. Ownership is held on
     the tournament itself and is checked alongside this set, never in it."""
@@ -319,33 +354,37 @@ def _organized_tournament_ids(session: Session, fencer: Fencer) -> set[int]:
 
 
 @router.get("/open", response_model=list[OpenTournamentOut])
-def open_tournaments(session: SessionDep, fencer: FencerDep):
+def open_tournaments(session: SessionDep, fencer: OptionalFencerDep):
     """Upcoming scope of the fencer-facing list: published, non-cancelled
-    tournaments dated today or later, soonest first."""
-    organizer_ids = _organized_tournament_ids(session, fencer)
+    tournaments dated today or later, soonest first.
+
+    Public: answered without a credential, with the same tournaments in the
+    same order, minus the caller's bonds (spec `public-browsing`)."""
+    organizer_ids = _organized_tournament_ids(session, fencer) if fencer is not None else set()
     return [
         _fencer_tournament_out(
             session,
             tournament,
             fencer,
-            organized=tournament.owner_id == fencer.id or tournament.id in organizer_ids,
+            organized=_organized_by(tournament, fencer, organizer_ids),
         )
         for tournament in _published_tournaments(session, upcoming=True)
     ]
 
 
 @router.get("/held", response_model=list[OpenTournamentOut])
-def held_tournaments(session: SessionDep, fencer: FencerDep):
+def held_tournaments(session: SessionDep, fencer: OptionalFencerDep):
     """Held scope: every published, non-cancelled tournament dated before
-    today, newest first, listed for every account whether or not it was
-    involved — the Past tab is a public archive, not a personal history."""
-    organizer_ids = _organized_tournament_ids(session, fencer)
+    today, newest first, listed for every visitor whether or not they were
+    involved — the Past tab is a public archive, not a personal history, and
+    since `public-browsing` it is public in the literal sense too."""
+    organizer_ids = _organized_tournament_ids(session, fencer) if fencer is not None else set()
     return [
         _fencer_tournament_out(
             session,
             tournament,
             fencer,
-            organized=tournament.owner_id == fencer.id or tournament.id in organizer_ids,
+            organized=_organized_by(tournament, fencer, organizer_ids),
         )
         for tournament in _published_tournaments(session, upcoming=False)
     ]
@@ -471,13 +510,35 @@ def setup_suggestions(session: SessionDep, fencer: FencerDep):
 
 
 @router.get("/{slug}", response_model=TournamentOut)
-def tournament_detail(tournament: TournamentDep, session: SessionDep):
+def tournament_detail(tournament: TournamentDep, session: SessionDep, fencer: FencerDep):
+    """The console's view of a tournament: every field, drafts included.
+
+    Behind console access. It used to be open to anyone who asked — which was
+    survivable only while nothing pointed a logged-out visitor at it, and it
+    stopped being survivable the moment the fencer-facing pages became public.
+    The fencer's own view is `/{slug}/public` below (spec `public-browsing`)."""
+    require_console_access(session, tournament, fencer)
     out = TournamentOut.model_validate(tournament)
     out.setup_missing = setup.setup_missing(tournament)
     out.in_app_registrations = _in_app_registrations(session, tournament)
     out.vs_series_editable = not _has_registrations(session, tournament)
     _apply_disciplines_frozen(session, tournament, out)
     return out
+
+
+@router.get("/{slug}/public", response_model=FencerTournamentOut)
+def fencer_tournament_detail(tournament: TournamentDep):
+    """A tournament as a fencer reads it — no credential required, and no
+    organizer configuration in the answer (spec `public-browsing`).
+
+    A draft or a cancelled tournament answers not-found, worded exactly as an
+    unknown slug does: the URL discloses nothing about which tournaments exist
+    (spec `routing`, Unknown URLs end at a not-found screen). Not the 409 that
+    `require_published` raises — that answer is for a console write, whose
+    caller is entitled to know why."""
+    if tournament.published_at is None or tournament.cancelled_at is not None:
+        raise HTTPException(status_code=404, detail="tournament_not_found")
+    return FencerTournamentOut.model_validate(tournament)
 
 
 def _apply_currency_invariants(tournament: Tournament) -> None:

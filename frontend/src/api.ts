@@ -422,6 +422,55 @@ export interface TournamentDetail extends Tournament {
   vs_series_editable: boolean;
 }
 
+/** A tournament as a fencer reads it — the answer of the fencer-facing detail
+ *  endpoint, which carries no organizer configuration at all (spec
+ *  `public-browsing`).
+ *
+ *  Written as a `Pick` of `TournamentDetail` rather than as its own interface
+ *  so the two cannot describe the same field differently, and so a key that
+ *  stops existing on the console's type stops compiling here. The server's
+ *  `FencerTournamentOut` is the authority on which keys arrive; this list
+ *  mirrors it.
+ *
+ *  Every fencer-facing component takes this type rather than
+ *  `TournamentDetail`, which means the console can still hand it its own
+ *  fuller object — a superset satisfies it — while the fencer's page cannot
+ *  reach for a field that no longer arrives. */
+export type FencerTournament = Pick<
+  TournamentDetail,
+  | "slug"
+  | "display_name"
+  | "subtitle"
+  | "has_logo"
+  | "date"
+  | "location"
+  | "description"
+  | "qualification_open"
+  | "qualification_criteria"
+  | "registration_instructions"
+  | "organizers"
+  | "disciplines"
+  | "extra_items"
+  | "discounts"
+  | "local_currency"
+  | "eur_payments_enabled"
+  | "currency_mode"
+  | "registration_opens"
+  | "registration_opens_time"
+  | "registration_closes"
+  | "amendments_close"
+  | "team_composition_deadline"
+  | "timezone"
+  | "registration_opens_at"
+  | "server_time"
+  | "registrations_kept_by"
+  | "external_registration_url"
+  | "feature_schedule"
+  | "feature_payments"
+  | "feature_teams"
+  | "feature_extras"
+>;
+
 export interface SheetRow {
   id: string;
   /** The fixed number this row carries in the tournament, allocated once and
@@ -584,10 +633,16 @@ export interface OpenTournament {
   /** This response's own instant (see TournamentDetail.server_time). */
   server_time: string;
   disciplines: OpenDiscipline[];
-  my_registration_state: MyRegistrationState;
-  /** The caller's other bond: owner or console team member. Independent of
-   *  my_registration_state — an entry may carry both. */
-  organized: boolean;
+  /** The caller's own standing on this tournament — **absent** when there is
+   *  no account behind the request, rather than sent as `none` (spec
+   *  `public-browsing`). Absence is the fact that there is nobody to have a
+   *  standing, which is what separates an anonymous reader from a signed-in
+   *  fencer who happens to hold no registration. */
+  my_registration_state?: MyRegistrationState;
+  /** Whether the caller may manage this tournament: owner or console team
+   *  member. Independent of my_registration_state — an entry may carry both —
+   *  and absent for the same reason as it, with no account to ask about. */
+  organized?: boolean;
 }
 
 export interface Availability {
@@ -981,7 +1036,10 @@ export const api = {
       body: JSON.stringify(data),
     }),
   tournaments: () => request<Tournament[]>("/api/tournaments"),
-  tournament: (slug: string) => request<TournamentDetail>(`/api/tournaments/${slug}`),
+  /** The fencer's view: public, and carrying no organizer configuration. */
+  tournament: (slug: string) => request<FencerTournament>(`/api/tournaments/${slug}/public`),
+  /** The console's view: every field, behind console access. */
+  consoleTournament: (slug: string) => request<TournamentDetail>(`/api/tournaments/${slug}`),
   createTournament: (data: { slug: string; display_name: string; date: string }) =>
     request<TournamentDetail>("/api/tournaments", {
       method: "POST",

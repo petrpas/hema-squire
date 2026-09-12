@@ -1,6 +1,6 @@
 import { useTranslation } from "react-i18next";
 
-import type { TournamentDetail } from "./api";
+import type { FencerTournament } from "./api";
 
 /** Where a tournament's registration is held, on a page that would otherwise
  *  offer a registration form.
@@ -14,7 +14,7 @@ import type { TournamentDetail } from "./api";
  *  an action that leads nowhere is worse than none. A published tournament
  *  cannot be in that state — the address is mandatory to publish one — but a
  *  draft its organizer is previewing can. */
-export default function ExternalRegistrationNotice({ detail }: { detail: TournamentDetail }) {
+export default function ExternalRegistrationNotice({ detail }: { detail: FencerTournament }) {
   const { t } = useTranslation();
   const url = detail.external_registration_url;
   return (

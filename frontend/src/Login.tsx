@@ -263,7 +263,18 @@ function SignupForm({ onSignedUp, onCancel }: { onSignedUp: () => void; onCancel
   );
 }
 
-export default function Login({ onLogin }: { onLogin: () => void }) {
+export default function Login({
+  onLogin,
+  notice,
+}: {
+  onLogin: () => void;
+  /** Locale key for one line saying why sign-in was reached — what a public
+   *  screen states when an action needed an account (spec `public-browsing`).
+   *  A key rather than a string, because this screen renders in English
+   *  whatever the visitor was reading a moment ago, and the caller's `t` is
+   *  not pinned to it. */
+  notice?: string;
+}) {
   // Sign-in has no account context yet, so it always renders in English —
   // pinned per-hook rather than via i18n.changeLanguage, so it can't leak
   // into or be clobbered by the signup form's own language switching.
@@ -305,6 +316,7 @@ export default function Login({ onLogin }: { onLogin: () => void }) {
       <form id="login-form" className="login-card" onSubmit={submit}>
         <h1>{t("app.title")}</h1>
         <p className="login-subtitle">{t("login.subtitle")}</p>
+        {notice && <p className="login-notice">{t(notice)}</p>}
         <label>
           {t("login.email")}
           <input

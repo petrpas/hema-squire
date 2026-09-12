@@ -1,5 +1,6 @@
 import datetime
 import decimal
+from collections.abc import Callable
 from typing import Any, Literal
 
 from pydantic import (
@@ -9,6 +10,7 @@ from pydantic import (
     Field,
     field_serializer,
     field_validator,
+    model_serializer,
     model_validator,
 )
 
@@ -737,6 +739,88 @@ class TournamentOut(BaseModel):
         return self
 
 
+class FencerTournamentOut(BaseModel):
+    """A tournament as a fencer reads it (spec `public-browsing`, The public
+    detail carries no organizer's business).
+
+    A separate model rather than an exclusion list over `TournamentOut`,
+    because an exclusion list lives apart from the schema it filters: a field
+    added to `TournamentOut` later would be public by default, and the failure
+    would be silent. Here a field is fencer-facing only by being written down
+    here, and the whole model is the list.
+
+    What is deliberately absent: the bank account and whether a feed token is
+    on file, the accounting sheet address, the variable-symbol series, the
+    reservation and reminder parameters, the amount tolerance, the unpaid-list
+    treatment, the HR category map, the setup-completeness report, the owner's
+    account id, and the legacy fixed fees. Those are the organizer's own
+    configuration and reach the console through its own authenticated path.
+
+    The four feature flags *are* here: they decide what the fencer is shown at
+    all — whether money is asked for, whether teams and extra services exist,
+    whether a schedule is stated."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    slug: str
+    display_name: str
+    subtitle: str | None
+    has_logo: bool
+    date: datetime.date
+    location: str | None
+    description: str | None
+    qualification_open: bool
+    qualification_criteria: str | None
+    registration_instructions: str | None
+    organizers: list[OrganizerOut]
+    disciplines: list[DisciplineOut]
+    extra_items: list[ExtraItemOut] = []
+    discounts: list[DiscountIn]
+    local_currency: Currency
+    eur_payments_enabled: bool
+    # derived from the pair above, as on TournamentOut
+    currency_mode: CurrencyMode = "local"
+    # the timeline a fencer reads: when registration opens and closes, until
+    # when it can be amended, and by when a team must be composed
+    registration_opens: datetime.date | None
+    registration_opens_time: datetime.time | None
+    registration_closes: datetime.date | None
+    amendments_close: datetime.date | None
+    team_composition_deadline: datetime.date | None
+    timezone: str
+    # resolved and derived exactly as on TournamentOut, so no client resolves
+    # this tournament's daylight-saving rules itself
+    registration_opens_at: datetime.datetime | None = None
+    server_time: datetime.datetime = Field(
+        default_factory=lambda: datetime.datetime.now(datetime.UTC)
+    )
+    # whether Squire holds the registration at all, and where it is held when
+    # it does not — what the page offers in the registration form's place
+    registrations_kept_by: RegistrationsKeptBy
+    external_registration_url: str | None
+    feature_schedule: bool
+    feature_payments: bool
+    feature_teams: bool
+    feature_extras: bool
+
+    @field_validator("organizers", mode="before")
+    @classmethod
+    def _normalize_organizers(cls, value: Any) -> Any:
+        return tolerant_organizers(value)
+
+    @model_validator(mode="after")
+    def _derive_currency_mode(self) -> FencerTournamentOut:
+        self.currency_mode = currency_mode(self.local_currency, self.eur_payments_enabled)
+        return self
+
+    @model_validator(mode="after")
+    def _resolve_opening_instant(self) -> FencerTournamentOut:
+        self.registration_opens_at = setup.opening_instant(
+            self.registration_opens, self.registration_opens_time, self.timezone
+        )
+        return self
+
+
 class TeamAdd(BaseModel):
     email: EmailStr
 
@@ -1092,10 +1176,36 @@ class OpenTournamentOut(BaseModel):
         default_factory=lambda: datetime.datetime.now(datetime.UTC)
     )
     disciplines: list[OpenDisciplineOut]
-    my_registration_state: MyRegistrationState
-    # the caller's other bond to the tournament: owner or console team member.
-    # Independent of my_registration_state — an entry may carry both.
-    organized: bool = False
+    # The two fields describing the caller's bond to the tournament. Both are
+    # claims about an account, so both are `None` — and then *absent from the
+    # answer*, see the serializer below — when there is no account behind the
+    # request (spec `public-browsing`). `organized` is the caller's other bond:
+    # owner or console team member, independent of my_registration_state, an
+    # entry may carry both.
+    my_registration_state: MyRegistrationState | None = None
+    organized: bool | None = None
+
+    @model_serializer(mode="wrap")
+    def _omit_absent_bond(
+        self, handler: Callable[[OpenTournamentOut], dict[str, Any]]
+    ) -> dict[str, Any]:
+        """Drop the two bond fields when there is no account behind the
+        request, rather than answering `none`/`false`.
+
+        A registration state of `none` and an unmanageable tournament are
+        claims; with no caller to make them about, sending them would leave an
+        anonymous answer indistinguishable from a signed-in fencer with no
+        bonds — which is exactly the distinction the client needs to decide
+        between a Register action and a sign-in prompt (spec
+        `public-browsing`). Only these two keys are dropped: every other
+        optional field on this model is a property of the tournament, and its
+        absence would be a different statement."""
+        data = handler(self)
+        if self.my_registration_state is None:
+            data.pop("my_registration_state", None)
+        if self.organized is None:
+            data.pop("organized", None)
+        return data
 
     @field_validator("organizers", mode="before")
     @classmethod

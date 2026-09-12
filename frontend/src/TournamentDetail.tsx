@@ -1,14 +1,15 @@
 import { IconX } from "@tabler/icons-react";
 import { type ReactNode, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useLocation, useNavigate, useParams } from "react-router-dom";
+import { useLocation, useNavigate, useOutletContext, useParams } from "react-router-dom";
 import {
   type Availability,
   api,
   type RegistrationDetail,
-  type TournamentDetail as TournamentDetailData,
+  type FencerTournament as TournamentDetailData,
 } from "./api";
 import ExternalRegistrationNotice from "./ExternalRegistrationNotice";
+import type { FencerOutletContext } from "./FencerHome";
 import type { HomeTab } from "./FencerShell";
 import { formatMoney, formatMoneyWithEur } from "./money";
 import NotFound from "./NotFound";
@@ -348,7 +349,14 @@ export default function TournamentDetail() {
   // held registration, with an amendment opening in place of the latter; the
   // third tab, offered only alongside a held team, carries every roster
   // editor (design team-disciplines D1)
+  const { signedIn, onSignIn, resume, clearResume } = useOutletContext<FencerOutletContext>();
   const [tab, setTab] = useState<"tournament" | "registration" | "teams">("tournament");
+  // A return from the sign-in screen the Register action led to names the tab
+  // it was reaching for (spec `public-browsing`, An action needing an account
+  // leads to sign-in). Read in an effect rather than as this state's initial
+  // value: the page is remounted and the navigation carrying the hint lands in
+  // the commit after it, so an initializer would read the location it left.
+
   // keeps the selected tab visible when the three tabs scroll below 768px
   const band = useTabBand(tab);
   const [amending, setAmending] = useState(false);
@@ -356,6 +364,12 @@ export default function TournamentDetail() {
   function refresh() {
     api.tournament(slug).then(setDetail, () => setNotFound(true));
     api.availability(slug).then(setAvailability, () => setAvailability([]));
+    if (!signedIn) {
+      // nobody to hold a registration; asking would only be answered with 401
+      setRegistration(null);
+      setRegistrationChecked(true);
+      return;
+    }
     api.myRegistration(slug).then(
       (r) => {
         setRegistration(r);
@@ -368,7 +382,7 @@ export default function TournamentDetail() {
     );
   }
 
-  useEffect(refresh, [slug]);
+  useEffect(refresh, [slug, signedIn]);
 
   // the wait for registration to open: no polling, one scheduled unlock, and
   // a refresh at the moment so the seat counts the form opens on are current
@@ -421,6 +435,18 @@ export default function TournamentDetail() {
     }
   }, [secondTabOffered, teamsTabOffered, tab]);
 
+  // The intent held until the tab it names actually exists: the page remounts
+  // signed out, and the registration tab only appears once the detail and the
+  // (absent) registration have both been resolved, several commits later. The
+  // guard above sets `tournament` while the tab is not offered, so waiting is
+  // also what keeps the two from fighting.
+  useEffect(() => {
+    if (resume === "registration" && secondTabOffered) {
+      setTab("registration");
+      clearResume();
+    }
+  }, [resume, secondTabOffered, clearResume]);
+
   /** Leaving the registration tab abandons any amendment in progress — the
    *  page introduces no separate cancel control for it (design D3); this
    *  covers the teams tab for free since the guard is `next !== "registration"`. */
@@ -449,7 +475,14 @@ export default function TournamentDetail() {
             <button
               type="button"
               className={tab === "registration" ? "active" : ""}
-              onClick={() => selectTab("registration")}
+              // With no account there is nothing to register, so the action
+              // leads to sign-in and comes back here on this tab, rather than
+              // opening a form whose submission could only fail.
+              onClick={() =>
+                signedIn
+                  ? selectTab("registration")
+                  : onSignIn("detail.signInToRegister", "registration")
+              }
             >
               {hasActive ? t("detail.tabs.registered") : t("detail.tabs.register")}
             </button>

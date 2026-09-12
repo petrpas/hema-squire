@@ -1,6 +1,7 @@
 {
   "app": {
-    "title": "HEMA Squire"
+    "title": "HEMA Squire",
+    "listTitle": "Šermířské turnaje a akce"
   },
   "common": {
     "loading": "Načítání…",
@@ -824,7 +825,10 @@
     "toFencer": "Pro šermíře",
     "toFencerSoon": "Připravujeme",
     "toOrganizer": "Pro organizátory",
-    "logout": "Odhlásit"
+    "logout": "Odhlásit",
+    "signIn": "Přihlásit",
+    "signInForMine": "Moje turnaje jsou seznam účtu; přihlaste se.",
+    "newTournament": "Nový turnaj"
   },
   "profile": {
     "title": "Profil",
@@ -879,7 +883,8 @@
       "closed": "Registrace uzavřena",
       "opensAt": "Registrace od {{date}} v {{time}}",
       "elsewhere": "registrace jinde"
-    }
+    },
+    "manage": "Spravovat"
   },
   "detail": {
     "disciplines": "Disciplíny",
@@ -912,7 +917,8 @@
     "opensOnNotice": "Přihlašování se otevře {{date}}.",
     "opensIn": "otevře se za {{countdown}}",
     "registrationElsewhere": "Registraci na tento turnaj vede pořadatel mimo Squire.",
-    "registrationElsewhereAction": "Přejít na registraci"
+    "registrationElsewhereAction": "Přejít na registraci",
+    "signInToRegister": "Pro přihlášení na turnaj je potřeba účet."
   },
   "form": {
     "title": "Registrace",

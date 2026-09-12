@@ -245,7 +245,9 @@ def test_cancel_hides_from_public_list_but_keeps_console(client, auth_headers):
     assert cancelled.status_code == 200
     assert cancelled.json()["cancelled_at"] is not None
 
-    listing = client.get("/api/tournaments").json()
+    # the index is behind a credential since `public-tournament-list`; what it
+    # asserts here is the retirement, which is unchanged
+    listing = client.get("/api/tournaments", headers=owner).json()
     assert slug not in [t["slug"] for t in listing]
 
     # console (detail) remains accessible

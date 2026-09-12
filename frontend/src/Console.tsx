@@ -545,7 +545,7 @@ export default function Console({ tournament, phase }: { tournament: Tournament;
       },
       () => setError(true),
     );
-    api.tournament(tournament.slug).then(setDetail, () => {});
+    api.consoleTournament(tournament.slug).then(setDetail, () => {});
     setQueueReload((n) => n + 1);
   }, [tournament.slug]);
 

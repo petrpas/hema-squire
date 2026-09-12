@@ -20,7 +20,7 @@ export default function ConsoleRoute() {
 
   useEffect(() => {
     setTournament(null);
-    api.tournament(slug).then(setTournament, () => setTournament("error"));
+    api.consoleTournament(slug).then(setTournament, () => setTournament("error"));
   }, [slug]);
 
   if (phaseParam !== undefined && !isPhase(phaseParam)) return <NotFound />;

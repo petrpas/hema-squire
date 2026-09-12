@@ -31,7 +31,7 @@ def test_created_tournament_has_no_features(client, auth_headers):
     created = make_tournament(client, headers)
     assert {flag: created[flag] for flag in FLAGS} == NONE_ON
 
-    detail = client.get("/api/tournaments/na-duel-2026").json()
+    detail = client.get("/api/tournaments/na-duel-2026", headers=headers).json()
     assert {flag: detail[flag] for flag in FLAGS} == NONE_ON
 
 

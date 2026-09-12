@@ -1,6 +1,6 @@
 import { useTranslation } from "react-i18next";
 
-import type { TournamentDetail } from "./api";
+import type { FencerTournament } from "./api";
 import { formatCountdown } from "./openingMoment";
 import { zoneAbbreviation } from "./TournamentFace";
 
@@ -17,7 +17,7 @@ export default function OpeningNotice({
   remainingMs,
   counting,
 }: {
-  detail: TournamentDetail;
+  detail: FencerTournament;
   /** Milliseconds until the moment, measured against the server's clock. */
   remainingMs: number | null;
   /** Whether the moment is close enough for a countdown to be worth watching. */

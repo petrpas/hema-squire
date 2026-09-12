@@ -397,6 +397,13 @@ def test_added_organizer_gains_access(client, auth_headers):
 
 
 def test_public_can_read_but_not_write(client, auth_headers):
+    """What a visitor with no credential may read of a tournament.
+
+    Narrowed by `public-tournament-list`: the organizer's index and the
+    console's full payload used to answer anybody who asked, which handed out
+    every draft and every bank account on the deployment. The public surfaces
+    are the fencer-facing ones, and a published tournament's prices are among
+    what they carry (spec `public-browsing`)."""
     headers = auth_headers()
     make_tournament(client, headers)
     client.post(
@@ -404,12 +411,12 @@ def test_public_can_read_but_not_write(client, auth_headers):
         json={"slug": "SA", "weapon": "SA", "capacity": 42, "fee": 700, "fee_early": 600},
         headers=headers,
     )
+    publish(client, headers, "na-duel-2026")
 
-    listing = client.get("/api/tournaments")
-    assert listing.status_code == 200
-    assert listing.json()[0]["slug"] == "na-duel-2026"
+    assert client.get("/api/tournaments").status_code == 401
+    assert client.get("/api/tournaments/na-duel-2026").status_code == 401
 
-    detail = client.get("/api/tournaments/na-duel-2026")
+    detail = client.get("/api/tournaments/na-duel-2026/public")
     assert detail.status_code == 200
     assert detail.json()["disciplines"][0]["fee_early"] == 600
 

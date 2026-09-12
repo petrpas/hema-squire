@@ -49,12 +49,9 @@ def create_token(fencer: Fencer) -> str:
     return jwt.encode(payload, settings.secret_key, algorithm="HS256")
 
 
-def current_fencer(
-    credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(_bearer)],
-    session: Annotated[Session, Depends(get_session)],
-) -> Fencer:
-    if credentials is None:
-        raise HTTPException(status_code=401, detail="not_authenticated")
+def _presented_fencer(credentials: HTTPAuthorizationCredentials, session: Session) -> Fencer:
+    """The account behind a credential that was presented. A credential the
+    server does not accept is refused here, whichever dependency asked."""
     try:
         payload = jwt.decode(credentials.credentials, settings.secret_key, algorithms=["HS256"])
     except jwt.InvalidTokenError:
@@ -63,6 +60,36 @@ def current_fencer(
     if fencer is None:
         raise HTTPException(status_code=401, detail="unknown_account")
     return fencer
+
+
+def current_fencer(
+    credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(_bearer)],
+    session: Annotated[Session, Depends(get_session)],
+) -> Fencer:
+    if credentials is None:
+        raise HTTPException(status_code=401, detail="not_authenticated")
+    return _presented_fencer(credentials, session)
+
+
+def optional_fencer(
+    credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(_bearer)],
+    session: Annotated[Session, Depends(get_session)],
+) -> Fencer | None:
+    """The account behind the request, or `None` where there is no account at
+    all — a public endpoint's dependency (spec `public-browsing`).
+
+    An absent credential and a rejected one are different facts. Only the
+    absent one yields `None`; a credential that was presented and is not
+    accepted is refused with 401 exactly as `current_fencer` refuses it, so a
+    visitor holding an expired session is told to sign in rather than quietly
+    downgraded to an anonymous reader of a stripped page.
+
+    It is a separate dependency rather than a nullable `current_fencer` so that
+    the `None` lives in the type: an endpoint that must have an account cannot
+    reach this one by forgetting a check (design Decision 1)."""
+    if credentials is None:
+        return None
+    return _presented_fencer(credentials, session)
 
 
 def is_deployment_owner(fencer: Fencer) -> bool:
