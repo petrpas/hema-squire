@@ -185,7 +185,9 @@ def test_every_entry_states_the_servers_clock(client, auth_headers):
     for entry in client.get("/api/tournaments/open", headers=fencer).json():
         assert datetime.fromisoformat(entry["server_time"]).utcoffset() is not None
 
-    detail = client.get("/api/tournaments/cup", headers=fencer).json()
+    # the fencer's own view of the tournament, which is where a fencer reads
+    # this clock; the console's full payload states it too, behind its own path
+    detail = client.get("/api/tournaments/cup/public").json()
     assert datetime.fromisoformat(detail["server_time"]).utcoffset() is not None
 
 

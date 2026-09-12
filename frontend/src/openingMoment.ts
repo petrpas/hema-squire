@@ -6,7 +6,7 @@
  *  clock rather than the browser's (design add-registration-open-time D6).
  */
 
-import type { TournamentDetail } from "./api";
+import type { FencerTournament } from "./api";
 
 /** How far the device clock is *behind* the server's, in milliseconds.
  *  Add it to a device reading to get the server's. Measured once per load;
@@ -85,7 +85,7 @@ type RegistrationStatus = "open" | "opens_on" | "closed" | "elsewhere";
  *  `now` is the server's clock as `useOpeningMoment` measures it; it defaults
  *  to the device's only for a caller that has no payload to correct against. */
 export function registrationStatus(
-  detail: TournamentDetail,
+  detail: FencerTournament,
   now: number = Date.now(),
 ): RegistrationStatus {
   // first, and never as `closed`: the organizer keeps this tournament's
@@ -114,7 +114,7 @@ function localDay(now: number, timezone: string): string {
 /** Amendment is closed by every reason registration is, plus its own,
  * earlier `amendments_close` boundary when set (mirrors
  * setup.amendment_availability on the backend). */
-export function amendmentOpen(detail: TournamentDetail, now: number = Date.now()): boolean {
+export function amendmentOpen(detail: FencerTournament, now: number = Date.now()): boolean {
   if (registrationStatus(detail, now) !== "open") return false;
   if (!detail.amendments_close) return true;
   return localDay(now, detail.timezone) <= detail.amendments_close;

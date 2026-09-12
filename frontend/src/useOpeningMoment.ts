@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 
-import type { TournamentDetail } from "./api";
+import type { FencerTournament } from "./api";
 import {
   COUNTDOWN_WINDOW_MS,
   correctedNow,
@@ -43,7 +43,7 @@ export interface OpeningMoment {
  *  Inside the last day it also ticks once a second, which is what re-renders
  *  the countdown figure. Outside it nothing ticks until the window opens. */
 export function useOpeningMoment(
-  detail: TournamentDetail | null,
+  detail: FencerTournament | null,
   onOpen: () => void,
 ): OpeningMoment {
   // measured once per payload: a re-render must not re-measure against a

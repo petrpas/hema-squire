@@ -14,7 +14,7 @@ import {
   type ExtraItem,
   logoUrl,
   type RegistrationDetail,
-  type TournamentDetail as TournamentDetailData,
+  type FencerTournament as TournamentDetailData,
 } from "./api";
 import { FIELD_CONSTRAINTS } from "./constraints";
 import DotJoined from "./DotJoined";

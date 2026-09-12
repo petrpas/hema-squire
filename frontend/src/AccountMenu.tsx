@@ -1,10 +1,11 @@
 import { IconDots } from "@tabler/icons-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import type { Account } from "./api";
 import FencerIdentity from "./FencerIdentity";
 import * as routes from "./routes";
+import TournamentCreateDialog, { canCreateTournament } from "./TournamentCreateDialog";
 
 export default function AccountMenu({
   account,
@@ -14,7 +15,9 @@ export default function AccountMenu({
   onLogout: () => void;
 }) {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const [open, setOpen] = useState(false);
+  const [creating, setCreating] = useState(false);
   const isAdmin = account !== null && (account.role === "admin" || account.is_deployment_owner);
 
   function close() {
@@ -59,6 +62,21 @@ export default function AccountMenu({
             <Link to={routes.picker()} onClick={close}>
               {t("menu.toOrganizer")}
             </Link>
+            {/* Offered from the menu so an organizer reaches creation from any
+                screen rather than only from the picker (spec
+                `tournament-admin`). Not shown at all below the Organizer
+                role — the entry states what the account may do. */}
+            {canCreateTournament(account) && (
+              <button
+                type="button"
+                onClick={() => {
+                  close();
+                  setCreating(true);
+                }}
+              >
+                {t("menu.newTournament")}
+              </button>
+            )}
             <button
               type="button"
               onClick={() => {
@@ -70,6 +88,15 @@ export default function AccountMenu({
             </button>
           </div>
         </>
+      )}
+      {creating && (
+        <TournamentCreateDialog
+          onClose={() => setCreating(false)}
+          onDone={(tournament) => {
+            setCreating(false);
+            navigate(routes.consolePath(tournament.slug, "setup"));
+          }}
+        />
       )}
     </div>
   );
