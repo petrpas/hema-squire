@@ -8,8 +8,8 @@ Creation SHALL take two panels in one window, not two windows: the fields above,
 A tournament SHALL be created in automatic mode with none of its features enabled, so that the settings panel only ever turns things on.
 
 #### Scenario: Create from the account menu
-- **WHEN** an account with the Organizer role opens the account menu from the tournament list and submits the "New tournament" dialog with a name and date
-- **THEN** the settings panel opens; confirming it creates the tournament with the derived slug, makes the account its Tournament Owner, and opens the console on the Setup phase
+- **WHEN** an account with the Organizer role opens the account menu from the tournament list and takes its Create tournament entry, giving a name and a date
+- **THEN** the tournament is created with the derived slug, the account becomes its Tournament Owner, and the console opens on the Setup phase
 
 #### Scenario: Create from picker
 - **WHEN** an account with the Organizer role submits the "New tournament" dialog with a name and date
