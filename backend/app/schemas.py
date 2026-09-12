@@ -109,6 +109,10 @@ class AccountOut(BaseModel):
     role: Role
     # computed from settings.owner_email, not stored (deployment Owner)
     is_deployment_owner: bool = False
+    # how many non-cancelled tournaments this account may open the console of,
+    # owned or sat on the team of. Counted rather than listed: the account menu
+    # only asks whether there are any, and it asks on every signed-in page.
+    organized_count: int = 0
 
 
 class PleaIn(BaseModel):

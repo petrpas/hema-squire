@@ -149,6 +149,7 @@
     "invalid": "Invalid e-mail or password.",
     "failed": "Sign-in failed. Please try again.",
     "createAccount": "Create account",
+    "back": "Back",
     "submitting": "Signing in…"
   },
   "signup": {
@@ -807,13 +808,11 @@
     "ariaLabel": "Account menu",
     "profile": "My Profile",
     "admin": "Admin Panel",
-    "toFencer": "To Fencer",
-    "toFencerSoon": "Coming soon",
-    "toOrganizer": "To Organizer",
+    "myTournaments": "My tournaments",
     "logout": "Log out",
     "signIn": "Sign in",
     "signInForMine": "Your tournaments are an account's list; sign in to read it.",
-    "newTournament": "New tournament"
+    "createTournament": "Create tournament"
   },
   "profile": {
     "title": "Profile",

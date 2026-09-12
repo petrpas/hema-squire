@@ -783,7 +783,11 @@ export default function Console({ tournament, phase }: { tournament: Tournament;
   return (
     <div className="app">
       <header className="topbar">
-        <Link className="logo-button" to={routes.picker()} title={t("picker.title")}>
+        {/* The application's name leads to the application's front page, from
+            the console as from anywhere else. It used to lead to the picker,
+            which made the one fixed landmark on the page mean something
+            different here than it did a screen away. */}
+        <Link className="logo-button" to={routes.home()} title={t("app.title")}>
           <span className="logo">{t("app.title")}</span>
         </Link>
         <nav className="stage-control">

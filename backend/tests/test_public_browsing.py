@@ -373,6 +373,44 @@ def test_the_picker_index_needs_a_credential(client, auth_headers):
     assert [t["slug"] for t in listed.json()] == ["cup"]
 
 
+def test_the_index_lists_only_what_the_caller_may_open(client, auth_headers):
+    """The picker is the account's own tournaments: what it may open a console
+    on, which is ownership or a seat on the console team. A row it cannot
+    follow is a row that answers 403."""
+    owner = auth_headers()
+    make_published(client, owner, "ours")
+    stranger = auth_headers(email="other@example.com", name="Other")
+    make_published(client, stranger, "theirs")
+
+    assert [t["slug"] for t in client.get("/api/tournaments", headers=owner).json()] == ["ours"]
+    assert [t["slug"] for t in client.get("/api/tournaments", headers=stranger).json()] == [
+        "theirs"
+    ]
+
+    # a seat on the console team is the other way in, and the listing says so
+    client.post(
+        "/api/tournaments/ours/team", json={"email": "other@example.com"}, headers=owner
+    )
+    assert sorted(t["slug"] for t in client.get("/api/tournaments", headers=stranger).json()) == [
+        "ours",
+        "theirs",
+    ]
+
+
+def test_the_account_counts_the_tournaments_it_may_open(client, auth_headers):
+    """What the account menu asks before offering the picker at all."""
+    owner = auth_headers()
+    fencer = auth_headers(email="plain@example.com", name="Plain", role=Role.FENCER)
+
+    assert client.get("/api/account", headers=owner).json()["organized_count"] == 0
+    make_published(client, owner, "cup")
+    assert client.get("/api/account", headers=owner).json()["organized_count"] == 1
+    assert client.get("/api/account", headers=fencer).json()["organized_count"] == 0
+
+    client.post("/api/tournaments/cup/team", json={"email": "plain@example.com"}, headers=owner)
+    assert client.get("/api/account", headers=fencer).json()["organized_count"] == 1
+
+
 def test_the_index_hands_out_no_draft_and_no_bank_account(client, auth_headers):
     """The reason the index is gated, stated as the thing it must not do."""
     organizer = auth_headers()

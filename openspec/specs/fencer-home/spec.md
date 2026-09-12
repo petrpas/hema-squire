@@ -608,10 +608,10 @@ A member the search does not find SHALL be enterable as a plain name, and SHALL 
 - **THEN** it is available and saves normally, while the controls that add or remove a team are not offered
 
 ### Requirement: Navigation rewiring
-Fencer Home SHALL be the post-login landing for every role. The tournament picker SHALL remain reachable only through the account menu's To Organizer entry and SHALL no longer contain the organizer plea section (the plea lives on the Profile page).
+Fencer Home SHALL be the post-login landing for every role. The tournament picker SHALL remain reachable only through the account menu's My tournaments entry, which is shown only where the account holds a tournament to open (`profile-page`), and SHALL no longer contain the organizer plea section (the plea lives on the Profile page).
 
 #### Scenario: Organizer lands on Fencer Home
-- **WHEN** an organizer logs in
+- **WHEN** an organizer holding a tournament logs in
 - **THEN** they land on Fencer Home and reach the tournament picker via the account menu
 
 #### Scenario: Plea only on profile

@@ -1,13 +1,20 @@
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import select
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from app.auth import current_fencer, is_deployment_owner
 from app.db import get_session
 from app.hr_index import HRIndex, HRProfile, get_hr_index
-from app.models import Fencer, FencerProfileAudit, OrganizerRequest, RequestState
+from app.models import (
+    Fencer,
+    FencerProfileAudit,
+    OrganizerRequest,
+    RequestState,
+    Tournament,
+    TournamentOrganizer,
+)
 from app.schemas import AccountOut, AccountUpdate, HRBindIn, PleaIn, PleaOut
 
 router = APIRouter(tags=["accounts"])
@@ -33,15 +40,37 @@ def hr_nationalities(hr: HRIndexDep):
     return hr.nationalities()
 
 
-def account_out(fencer: Fencer) -> AccountOut:
+def account_out(session: Session, fencer: Fencer) -> AccountOut:
     out = AccountOut.model_validate(fencer)
     out.is_deployment_owner = is_deployment_owner(fencer)
+    out.organized_count = _organized_count(session, fencer)
     return out
 
 
+def _organized_count(session: Session, fencer: Fencer) -> int:
+    """Tournaments the account may open the console of — owned or sat on the
+    team of, cancelled ones excluded, which is exactly what the picker lists.
+    The same pair of conditions as `require_console_access`, asked once for
+    the whole set rather than per tournament."""
+    organized = select(TournamentOrganizer.tournament_id).where(
+        TournamentOrganizer.fencer_id == fencer.id
+    )
+    return (
+        session.scalar(
+            select(func.count())
+            .select_from(Tournament)
+            .where(
+                Tournament.cancelled_at.is_(None),
+                or_(Tournament.owner_id == fencer.id, Tournament.id.in_(organized)),
+            )
+        )
+        or 0
+    )
+
+
 @router.get("/api/account", response_model=AccountOut)
-def my_account(fencer: FencerDep):
-    return account_out(fencer)
+def my_account(session: SessionDep, fencer: FencerDep):
+    return account_out(session, fencer)
 
 
 def audit_change(session: Session, fencer: Fencer, field: str, new_value: str | None) -> None:
@@ -69,7 +98,7 @@ def update_account(data: AccountUpdate, session: SessionDep, fencer: FencerDep):
         audit_change(session, fencer, field, value)
     session.commit()
     session.refresh(fencer)
-    return account_out(fencer)
+    return account_out(session, fencer)
 
 
 def bind_profile(session: Session, fencer: Fencer, profile: HRProfile) -> None:
@@ -95,7 +124,7 @@ def bind_hr_later(data: HRBindIn, session: SessionDep, fencer: FencerDep, hr: HR
     bind_profile(session, fencer, profile)
     session.commit()
     session.refresh(fencer)
-    return account_out(fencer)
+    return account_out(session, fencer)
 
 
 def _plea_out(plea: OrganizerRequest | None) -> PleaOut:

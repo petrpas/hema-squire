@@ -119,6 +119,13 @@ describe("a draft's phases", () => {
     ]);
   });
 
+  it("leads from the application's name to its front page, not to the picker", async () => {
+    mount(tournamentAt(null), "import");
+    await settle();
+
+    expect(host?.querySelector(".logo-button")?.getAttribute("href")).toBe("/");
+  });
+
   it("opens the phase its URL names rather than redirecting", async () => {
     mount(tournamentAt(null), "matching");
     await settle();

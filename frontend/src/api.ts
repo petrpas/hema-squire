@@ -150,6 +150,10 @@ export interface Account {
   language: string;
   role: Role;
   is_deployment_owner: boolean;
+  /** How many tournaments this account may open the console of. The account
+   *  menu asks only whether there are any, and asks it on every signed-in
+   *  page, so the answer rides on the account rather than on a listing. */
+  organized_count: number;
 }
 
 export type PleaState = "pending" | "granted" | "denied" | "cancelled" | null;

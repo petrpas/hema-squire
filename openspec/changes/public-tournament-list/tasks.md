@@ -62,3 +62,15 @@
 - [x] 9.2 Run the frontend gates from `frontend/`: `npm run typecheck`, `npm run check`, `npm test`, `npm run build`; all clean
 - [x] 9.3 Walk the change in the running app **as an anonymous visitor** — landing tab (Announced, nothing being open), tab band centred in the field, title in the bar, sign-in in the identity's place, no account menu, no Spravovat, and the full detail at `/t/:slug` — each confirmed against its scenario in `specs/`. The signed-in walks (Moje default, Spravovat, create from the menu, register-then-sign-in) are left to a human: driving them needs a password typed into the form, which the agent does not do. Their DOM is asserted in `publicHome.test.tsx` and `publicDetail.test.tsx`.
 - [x] 9.4 Run `uv run deptry .` and read its answer; no dependency changed, so it should report nothing new
+
+## 10. Sign-in can be declined
+
+- [x] 10.1 Give `Login` an optional `onCancel`: a way back on the form and on Escape, absent where no caller offers one; split `SignupForm` into its own file on the way, the file having outgrown one (~360 lines), and give the two link controls stable class names so a test names the one it means
+- [x] 10.2 Wire it where sign-in stands in front of something: `FencerLayout` drops the prompt and leaves the visitor on the page behind it, `?tab=mine` and the gated URLs under `RequireAuth` fall back to the tournament list; verify tests for declining the register prompt, Escape doing the same, and the Mine gate landing on a readable tab
+- [x] 10.3 Let Escape unwind one screen at a time inside account creation — the pending hemaratings candidate, then the search, then back to sign-in; verify a test that Escape on the signup form returns to sign-in without taking the caller's cancel
+
+## 11. The account menu says where it leads
+
+- [x] 11.1 Narrow the picker's listing to what the caller may open — owned or a seat on the console team — and carry that set's size on the account as `organized_count`, so the menu can ask without a listing; verify tests for a stranger's tournament being absent, a team seat adding one, and the count following both
+- [x] 11.2 Drop the To Fencer entry (the logo is that way back), rename To Organizer to My tournaments and show it only where the count is non-zero, and rename New tournament to Create tournament; verify tests for the entry appearing, hiding, and no home link left in the dropdown
+- [x] 11.3 Point the console's logo at the tournament list rather than the picker, so the landmark means one thing everywhere; verify a test on the console's `.logo-button` href

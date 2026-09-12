@@ -1,8 +1,9 @@
 import { useEffect } from "react";
-import { Outlet, useOutletContext } from "react-router-dom";
+import { Outlet, useNavigate, useOutletContext } from "react-router-dom";
 import { ApiError, api } from "./api";
 import i18n from "./i18n";
 import Login from "./Login";
+import { home } from "./routes";
 import { credentialChanged, signOut, useCredential, useSignOut } from "./session";
 
 type AuthContext = { onLogout: () => void };
@@ -17,6 +18,7 @@ export function useAuth(): AuthContext {
 export default function RequireAuth() {
   const authed = useCredential() !== null;
   const onLogout = useSignOut();
+  const navigate = useNavigate();
 
   useEffect(() => {
     if (!authed) return;
@@ -44,7 +46,9 @@ export default function RequireAuth() {
   }, [authed]);
 
   if (!authed) {
-    return <Login onLogin={credentialChanged} />;
+    /* Nothing of this destination is readable without an account, so
+       declining leads to the public list rather than back to a blank gate. */
+    return <Login onLogin={credentialChanged} onCancel={() => navigate(home())} />;
   }
 
   return <Outlet context={{ onLogout } satisfies AuthContext} />;

@@ -155,6 +155,7 @@
     "invalid": "Neplatný e-mail nebo heslo.",
     "failed": "Přihlášení se nezdařilo. Zkus to prosím znovu.",
     "createAccount": "Vytvořit účet",
+    "back": "Zpět",
     "submitting": "Přihlašuji…"
   },
   "signup": {
@@ -822,13 +823,11 @@
     "ariaLabel": "Nabídka účtu",
     "profile": "Můj profil",
     "admin": "Admin panel",
-    "toFencer": "Pro šermíře",
-    "toFencerSoon": "Připravujeme",
-    "toOrganizer": "Pro organizátory",
+    "myTournaments": "Moje turnaje",
     "logout": "Odhlásit",
     "signIn": "Přihlásit",
     "signInForMine": "Moje turnaje jsou seznam účtu; přihlaste se.",
-    "newTournament": "Nový turnaj"
+    "createTournament": "Založit turnaj"
   },
   "profile": {
     "title": "Profil",
