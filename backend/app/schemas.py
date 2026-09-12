@@ -86,7 +86,7 @@ class SignupIn(BaseModel):
     display_name: DisplayNameStr | None = None
     hr_id: RowId | None = None
     club: ClubStr | None = None
-    language: str = "cs"
+    language: str = "en"
 
     @field_validator("language")
     @classmethod

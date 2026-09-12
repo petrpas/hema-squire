@@ -13,7 +13,7 @@ import useOperations, { type OperationsView } from "./useOperations";
 // Long console work is reported from the tournament's record, not from what a
 // component happens to have done (spec `console-operations`).
 
-const t = i18n.getFixedT("cs");
+const t = i18n.getFixedT(i18n.language);
 
 // React only treats updates as batched test work when it is told it is under
 // test; without this every act() call warns.

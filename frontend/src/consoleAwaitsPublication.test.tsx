@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { api, type Sheet, type Tournament } from "./api";
 import Console, { type Phase } from "./Console";
 // the console renders in the deployment language, which is Czech in tests
-import cs from "./i18n/cs.json";
+import en from "./i18n/en.json";
 
 // A draft's console draws every phase and none of them acts, each stating that
 // its work begins at publication (spec etl-console, The console states what it
@@ -14,7 +14,7 @@ import cs from "./i18n/cs.json";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
-const WAIT = cs.console.awaitsPublication;
+const WAIT = en.console.awaitsPublication;
 
 function tournamentAt(published: string | null) {
   return {
@@ -107,15 +107,15 @@ describe("a draft's phases", () => {
       (step) => step.textContent,
     );
     expect(labels).toEqual([
-      cs.phase.setup,
-      cs.phase.import,
-      cs.phase.fencers,
-      cs.phase.matching,
-      cs.phase.dedup,
-      cs.phase.payments,
-      cs.phase.export,
-      cs.phase.teams,
-      cs.phase.queue,
+      en.phase.setup,
+      en.phase.import,
+      en.phase.fencers,
+      en.phase.matching,
+      en.phase.dedup,
+      en.phase.payments,
+      en.phase.export,
+      en.phase.teams,
+      en.phase.queue,
     ]);
   });
 
@@ -124,7 +124,7 @@ describe("a draft's phases", () => {
     await settle();
 
     const active = host?.querySelector(".step.active .step-label");
-    expect(active?.textContent).toBe(cs.phase.matching);
+    expect(active?.textContent).toBe(en.phase.matching);
     expect(text()).toContain(WAIT);
   });
 

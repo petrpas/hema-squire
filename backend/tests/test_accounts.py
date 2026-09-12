@@ -135,10 +135,10 @@ def test_signup_stores_chosen_language(client):
     assert account["language"] == "en"
 
 
-def test_signup_defaults_language_to_cs(client):
+def test_signup_defaults_language_to_en(client):
     response = signup(client)
     account = client.get("/api/account", headers=headers_from(response)).json()
-    assert account["language"] == "cs"
+    assert account["language"] == "en"
 
 
 def test_signup_rejects_unknown_language(client):
@@ -155,14 +155,14 @@ def test_language_change_via_account_update_is_audited(client):
 
     response = signup(client)
     headers = headers_from(response)
-    updated = client.patch("/api/account", json={"language": "en"}, headers=headers)
+    updated = client.patch("/api/account", json={"language": "cs"}, headers=headers)
     assert updated.status_code == 200
-    assert updated.json()["language"] == "en"
+    assert updated.json()["language"] == "cs"
 
     session_gen = app.dependency_overrides[get_session]()
     session = next(session_gen)
     entries = session.scalars(select(FencerProfileAudit)).all()
-    assert [(e.field, e.old_value, e.new_value) for e in entries] == [("language", "cs", "en")]
+    assert [(e.field, e.old_value, e.new_value) for e in entries] == [("language", "en", "cs")]
 
 
 def test_account_update_rejects_unknown_language(client):

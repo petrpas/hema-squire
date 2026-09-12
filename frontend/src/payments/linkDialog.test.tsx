@@ -14,7 +14,7 @@ import LinkDialog from "./LinkDialog";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
-const t = i18n.getFixedT("cs");
+const t = i18n.getFixedT(i18n.language);
 
 function transaction(overrides: Partial<Transaction> = {}): Transaction {
   return {

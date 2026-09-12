@@ -70,9 +70,9 @@ export default function FencerLayout() {
     if (!signedIn) {
       setAccount(null);
       setMine(null);
-      // back to the locale a visitor with no account reads, so a preference
-      // left behind by a session that has ended does not outlive it
-      void i18n.changeLanguage("cs");
+      // back to the locale a visitor with no account reads — English, so a
+      // preference left behind by a session that has ended does not outlive it
+      void i18n.changeLanguage("en");
       return;
     }
     api.account().then(

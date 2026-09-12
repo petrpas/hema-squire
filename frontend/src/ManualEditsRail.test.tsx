@@ -70,7 +70,7 @@ describe("manual-edits entry", () => {
   });
 
   it("keeps naming the same fencer when rows above are removed", () => {
-    const t = i18n.getFixedT("cs");
+    const t = i18n.getFixedT(i18n.language);
     const shortened = ROWS.slice(1);
     const before = entryText(entry({ target: "reg:7" }), ROWS, null, t as never);
     const after = entryText(entry({ target: "reg:7" }), shortened, null, t as never);

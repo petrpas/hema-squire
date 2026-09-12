@@ -45,7 +45,7 @@ function row(id: string, name: string, fields: Partial<SheetRow> = {}): SheetRow
   } as SheetRow;
 }
 
-const t = i18n.getFixedT("cs");
+const t = i18n.getFixedT(i18n.language);
 const en = i18n.getFixedT("en");
 
 describe("the active-only switch", () => {
@@ -128,9 +128,9 @@ describe("the copy action", () => {
   it("carries a header row and the values, in the order given", () => {
     const tsv = toTsv(FENCERS_COLUMNS(t), rows, (id) => t(`export.column.${id}`));
     const lines = tsv.split("\n");
-    expect(lines[0]).toBe("Jméno\tNár.\tKlub\tHR_ID\tDisciplíny\tZaplaceno");
-    expect(lines[1]).toBe("Jan Novák\tCZ\t\t10234\tLS\tAno");
-    expect(lines[2]?.endsWith("Ne")).toBe(true);
+    expect(lines[0]).toBe("Name\tNat.\tClub\tHR_ID\tDisciplines\tPaid");
+    expect(lines[1]).toBe("Jan Novák\tCZ\t\t10234\tLS\tYes");
+    expect(lines[2]?.endsWith("No")).toBe(true);
   });
 
   it("renders headers and yes/no in English when the tick is on", () => {
@@ -219,12 +219,20 @@ describe("the English tick", () => {
     expect(offersEnglishTick("cs")).toBe(true);
   });
 
-  it("does not reach the tables, which stay in the organizer's own language", () => {
+  it("does not reach the tables, which stay in the organizer's own language", async () => {
     // the tables take no `english` prop at all: the tick governs what leaves —
     // the copied values and the sheet write — and the table is also where the
-    // organizer works (design export-tables D5)
-    const html = renderToStaticMarkup(<FencersTable rows={[row("reg:1", "Jan Novák")]} />);
-    expect(html).toContain(t("export.column.name"));
-    expect(html).not.toContain(en("export.column.paid"));
+    // organizer works (design export-tables D5). Read on an organizer working
+    // in Czech, since English is what the console renders in by default and
+    // the tick would have nothing to say there.
+    const cs = i18n.getFixedT("cs");
+    await i18n.changeLanguage("cs");
+    try {
+      const html = renderToStaticMarkup(<FencersTable rows={[row("reg:1", "Jan Novák")]} />);
+      expect(html).toContain(cs("export.column.name"));
+      expect(html).not.toContain(en("export.column.paid"));
+    } finally {
+      await i18n.changeLanguage("en");
+    }
   });
 });

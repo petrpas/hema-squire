@@ -14,7 +14,7 @@ const idle: OperationsView = { running: null, concluded: {}, refresh: () => {} }
 
 // the panel reads its words from the catalogue, so the test asks the catalogue
 // for the same ones rather than hard-coding a translation
-const t = i18n.getFixedT("cs");
+const t = i18n.getFixedT(i18n.language);
 
 // Clearing the imported table: offered only when there is something to clear,
 // stated before it happens, and final once confirmed (spec `table-import`,

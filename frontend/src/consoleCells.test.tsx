@@ -207,7 +207,7 @@ describe("the rentals cell", () => {
     expect(html).toContain("Sabre");
     expect(html).toContain("unpriced-rental");
     expect(html).toContain("help-hint-box");
-    expect(html).toContain("nepůjčuje");
+    expect(html).toContain("lends nothing");
   });
 });
 
@@ -249,7 +249,7 @@ describe("money cells", () => {
       waived_amount: "500.00",
       outstanding_currency: "CZK",
     });
-    expect(html).toContain("odpuštěno 500 Kč");
+    expect(html).toContain("500 Kč waived");
   });
 
   it("says the whole price was forgiven where nothing had been credited", () => {
@@ -259,7 +259,7 @@ describe("money cells", () => {
       settled_by_hand_reason: null,
       waived_amount: null,
     });
-    expect(html).toContain("odpuštěno vše");
+    expect(html).toContain("all waived");
   });
 
   it("names no sum where the money had already covered the price", () => {
@@ -270,8 +270,8 @@ describe("money cells", () => {
       settled_by_hand_reason: null,
       waived_amount: "0.00",
     });
-    expect(html).toContain("odpuštěno");
-    expect(html).not.toContain("odpuštěno vše");
+    expect(html).toContain("waived");
+    expect(html).not.toContain("all waived");
     expect(html).not.toContain("0 Kč");
   });
 
@@ -284,7 +284,7 @@ describe("money cells", () => {
       settled_by_hand: true,
       settled_by_hand_reason: "volný vstup za čtvrté místo dosažené v loňském roce",
     });
-    expect(html).toContain("odpuštěno vše");
+    expect(html).toContain("all waived");
     // the figure it would otherwise owe is gone: nothing was credited and
     // nothing is due, so it is true of neither
     expect(html).not.toContain("1750");
@@ -300,7 +300,7 @@ describe("money cells", () => {
       settled_by_hand: true,
       settled_by_hand_reason: null,
     });
-    expect(html).toContain("odpuštěno");
+    expect(html).toContain("waived");
     expect(html).not.toContain("help-hint-box");
   });
 

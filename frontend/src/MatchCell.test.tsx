@@ -11,7 +11,7 @@ import MatchCell from "./MatchCell";
 // idiom): ratifying costs one click where there is a machine's proposal to
 // ratify, and the search is reachable from every row whatever it reads.
 
-const t = i18n.getFixedT("cs");
+const t = i18n.getFixedT(i18n.language);
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 

@@ -119,7 +119,7 @@ function registerTab(page: HTMLElement): HTMLButtonElement | undefined {
 beforeEach(async () => {
   vi.restoreAllMocks();
   setToken(null);
-  await i18n.changeLanguage("cs");
+  await i18n.changeLanguage("en");
 });
 
 afterEach(() => {
@@ -156,7 +156,7 @@ describe("a tournament's detail is public", () => {
     await settle();
 
     expect(page.querySelector(".topbar .logo")?.textContent).toBe("HEMA Squire");
-    expect(page.querySelector(".topbar-title")?.textContent).toBe("Šermířské turnaje a akce");
+    expect(page.querySelector(".topbar-title")?.textContent).toBe(i18n.t("app.listTitle"));
     expect(page.querySelector(".detail-header h1")?.textContent).toBe("Spring Open");
   });
 });

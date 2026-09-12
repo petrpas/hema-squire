@@ -1,12 +1,12 @@
 # localization Specification
 
 ## Purpose
-Externalize all user-facing text in locale resources, with Czech complete at launch and a distinction between tournament communication language and UI language.
+Externalize all user-facing text in locale resources, with English the default UI locale, Czech complete at launch, and a distinction between tournament communication language and UI language.
 
 ## Requirements
 
 ### Requirement: Fully localized from the start
-All user-facing text — UI, emails, generated documents, and validation messages — SHALL be externalized in locale resources. Czech SHALL be complete at launch; additional languages SHALL be addable without code changes; missing keys SHALL fall back to the default locale.
+All user-facing text — UI, emails, generated documents, and validation messages — SHALL be externalized in locale resources. English SHALL be the default UI locale and the UI's fallback, and both English and Czech SHALL be complete in the UI at launch; additional languages SHALL be addable without code changes; missing keys SHALL fall back to the default locale. Backend-generated text — emails and documents — SHALL fall back to Czech, the locale it is written complete in.
 
 Validation messages are the one surface where silent fallback is not acceptable: a user is being told to fix something, in a language they may not read. Every validation code SHALL therefore have a message in every bundled locale, verified by a parity test that fails on a missing key rather than letting the default locale stand in. Validation messages SHALL interpolate their limits as parameters rather than writing them into the text, so a changed bound never requires a locale edit.
 
@@ -53,6 +53,17 @@ Each account SHALL store a preferred UI language, chosen at signup from the impl
 #### Scenario: Selector follows implemented localizations
 - **WHEN** a new locale resource file is added to the application
 - **THEN** the registration window and Profile page language selectors offer it without code changes
+
+### Requirement: A visitor without an account reads English
+The application SHALL render in English for every visitor who is not signed in — public tournament pages, the picker, and anything else reachable without an account — from the first paint, without a swap after one. Signing out SHALL return the UI to English, so a preference belonging to a session that has ended does not outlive it. Browser-detected locale SHALL NOT select the anonymous language.
+
+#### Scenario: Public page opened without an account
+- **WHEN** a visitor with no account opens a public tournament page
+- **THEN** the page renders in English on its first paint
+
+#### Scenario: Signing out drops the account's language
+- **WHEN** a fencer whose account prefers Czech signs out
+- **THEN** the UI returns to English rather than staying in Czech
 
 ### Requirement: Sign-in screen renders in English
 The sign-in (login) screen SHALL always render in English, independent of the browser's detected locale, any previously stored account or session language, or the signup form's language selection. It has no language selector of its own.
