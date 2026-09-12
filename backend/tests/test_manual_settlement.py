@@ -36,7 +36,7 @@ def make_tournament(client, organizer, **patch):
         json={"slug": "cup", "display_name": "Cup", "date": "2026-12-05"},
         headers=organizer,
     )
-    base = {"location": "Brno", "organizers": [{"name": "Org", "link": None}]}
+    base = {"city": "Brno", "organizers": [{"name": "Org", "link": None}]}
     assert (
         client.patch("/api/tournaments/cup", json=base | patch, headers=organizer).status_code
         == 200

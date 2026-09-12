@@ -48,7 +48,7 @@ def setup(client, organizer, *, capacity=10, **patch):
         json={"slug": "cup", "display_name": "Cup", "date": "2026-12-05"},
         headers=organizer,
     )
-    base = {"location": "Brno", "organizers": [{"name": "Cup Org", "link": None}]}
+    base = {"city": "Brno", "organizers": [{"name": "Cup Org", "link": None}]}
     response = client.patch("/api/tournaments/cup", json=base | patch, headers=organizer)
     assert response.status_code == 200, response.text
     client.post(

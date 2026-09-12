@@ -18,7 +18,7 @@ def setup(client, organizer):
     enable_payments(client, organizer, "cup")
     client.patch(
         "/api/tournaments/cup",
-        json={"location": "Brno", "organizers": [{"name": "Cup Org", "link": None}]},
+        json={"city": "Brno", "organizers": [{"name": "Cup Org", "link": None}]},
         headers=organizer,
     )
     for code in ("LS", "SA"):
@@ -186,7 +186,7 @@ def test_restore_accepts_v1_organizer_names(client, auth_headers):
             "weapon_rental_fee_early": None,
             "afterparty_fee": 0,
             "afterparty_fee_early": None,
-            "location": "Old Hall",
+            "city": "Old Hall",
             "organizer_names": ["Legacy Club"],
             "discounts": [],
             "registration_opens": None,
@@ -352,7 +352,7 @@ def test_tiers_round_trip(client, auth_headers):
     )
     client.patch(
         "/api/tournaments/tiers",
-        json={"location": "Brno", "organizers": [{"name": "Org", "link": None}]},
+        json={"city": "Brno", "organizers": [{"name": "Org", "link": None}]},
         headers=organizer,
     )
     client.post(
@@ -400,7 +400,7 @@ def test_individual_and_team_in_one_weapon_round_trip(client, auth_headers):
     )
     client.patch(
         "/api/tournaments/mixed",
-        json={"location": "Brno", "organizers": [{"name": "Org", "link": None}]},
+        json={"city": "Brno", "organizers": [{"name": "Org", "link": None}]},
         headers=organizer,
     )
     client.post(
@@ -515,7 +515,7 @@ def test_pre_version_document_restores_with_code_as_slug(client, auth_headers):
             "weapon_rental_fee_early": None,
             "afterparty_fee": 0,
             "afterparty_fee_early": None,
-            "location": "Prague",
+            "city": "Prague",
             "description": None,
             "qualification_open": True,
             "qualification_criteria": None,
@@ -574,7 +574,7 @@ def test_opening_moment_round_trips(client, auth_headers):
     client.patch(
         "/api/tournaments/evening",
         json={
-            "location": "Brno",
+            "city": "Brno",
             "organizers": [{"name": "Org", "link": None}],
             "registration_opens": "2026-09-01",
             "registration_opens_time": "18:00:00",
@@ -621,7 +621,7 @@ def test_document_without_an_opening_time_restores_with_the_default_zone(client,
     client.patch(
         "/api/tournaments/older",
         json={
-            "location": "Brno",
+            "city": "Brno",
             "organizers": [{"name": "Org", "link": None}],
             "registration_opens": "2026-09-01",
         },

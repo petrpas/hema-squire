@@ -73,7 +73,7 @@ def make_tournament(client, organizer, *, mode="immediate", capacity=2, fee_eur=
         "bank_account": IBAN,
         "reservation_validity_days": 7,
         "reminder_day": 5,
-        "location": "Brno",
+        "city": "Brno",
         "organizers": [{"name": "Cup Org", "link": None}],
         "payment_mode": mode,
     }
@@ -911,7 +911,7 @@ def test_deposit_amount_is_a_setup_completeness_item(client, auth_headers):
     tournament = Tournament(
         date=datetime.date(2026, 12, 5),
         payment_mode=PaymentMode.DEPOSIT,
-        location="Brno",
+        city="Brno",
         organizers=[{"name": "Org", "link": None}],
         feature_payments=True,
     )

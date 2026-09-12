@@ -9,7 +9,7 @@ Every visitor SHALL land on the tournament list, whether or not they hold an acc
 
 The filter tabs SHALL stand at the top of the main field, centred above the list, and SHALL NOT stand in the top bar (see `Fencer identity header`).
 
-Each card SHALL present, in this order: the tournament logo at the left when one is set, then the tournament name, the subtitle beneath it when one is set, then the date and the location together on their own line in bold, then the organizer names, then the offered disciplines with registered numbers as taken/capacity, and the registration status — open, opens on a date, or closed. The date and place line SHALL separate its parts with the spaced middle dot and SHALL wrap rather than overflow on a narrow screen. The logo SHALL be drawn at twice the size a card gave it before `add-home-card-lines`. Card content SHALL have 1 em of left and right padding inside the card. The card layout SHALL render correctly whether or not a logo, subtitle, location, or organizer is present. Each upcoming tournament SHALL offer a Register action when the account has no active registration for it, or a Manage registration action when it does; both open the tournament detail page, and for an anonymous visitor the Register action leads to sign-in (`public-browsing`). **A tournament in manual mode SHALL state on its card, in that action's place, that its registration is held elsewhere** (`tournament-mode`, `external-registration`), and SHALL offer no Register action. The way out itself SHALL be offered on the tournament detail page the card opens, where the registration form would otherwise be: the card is one link already, and a second inside it would be a link within a link. The card SHALL NOT state that registration is closed, which would be untrue of a window that never existed here. Each tab SHALL show its own empty-state message when it lists nothing.
+Each card SHALL present, in this order: the tournament logo at the left when one is set, then the tournament name, the subtitle beneath it when one is set, then the date and the city together on their own line in bold, then the organizer names, then the offered disciplines with registered numbers as taken/capacity, and the registration status — open, opens on a date, or closed. The date and city line SHALL separate its parts with the spaced middle dot and SHALL wrap rather than overflow on a narrow screen. The logo SHALL be drawn at twice the size a card gave it before `add-home-card-lines`. Card content SHALL have 1 em of left and right padding inside the card. The card layout SHALL render correctly whether or not a logo, subtitle, city, or organizer is present. Each upcoming tournament SHALL offer a Register action when the account has no active registration for it, or a Manage registration action when it does; both open the tournament detail page, and for an anonymous visitor the Register action leads to sign-in (`public-browsing`). **A tournament in manual mode SHALL state on its card, in that action's place, that its registration is held elsewhere** (`tournament-mode`, `external-registration`), and SHALL offer no Register action. The way out itself SHALL be offered on the tournament detail page the card opens, where the registration form would otherwise be: the card is one link already, and a second inside it would be a link within a link. The card SHALL NOT state that registration is closed, which would be untrue of a window that never existed here. Each tab SHALL show its own empty-state message when it lists nothing.
 
 A discipline on a card SHALL be labelled by its name, never by its slug (`discipline-identity`). Names are longer than the codes they replace and a tournament MAY offer several disciplines whose names differ only in a trailing qualifier, so the discipline row on a card SHALL wrap across lines rather than truncate, overflow, or force the card wider, and SHALL remain legible on the narrowest supported screen.
 
@@ -18,7 +18,7 @@ A discipline on a card SHALL be labelled by its name, never by its slug (`discip
 - **THEN** the tournament appears in the Open tab with its name, date and place in bold on their own line, organizers on the line below, each discipline named with its numbers, an "open" status, and a Register button
 
 #### Scenario: Card lines in order
-- **WHEN** a card renders a tournament with a subtitle, a location and two organizers
+- **WHEN** a card renders a tournament with a subtitle, a city and two organizers
 - **THEN** the name, the subtitle, the bold date and place line, and the organizers line appear in that order, with the logo at the left
 
 #### Scenario: Disciplines named, not coded
@@ -33,9 +33,9 @@ A discipline on a card SHALL be labelled by its name, never by its slug (`discip
 - **WHEN** a listed tournament has a logo and a subtitle
 - **THEN** its card shows the logo at the left at the enlarged size and the subtitle beneath the name
 
-#### Scenario: Card degrades without logo, subtitle, or location
-- **WHEN** a listed tournament has no logo, no subtitle, and no location
-- **THEN** its card renders correctly without empty gaps for the missing logo, subtitle, or location line
+#### Scenario: Card degrades without logo, subtitle, or city
+- **WHEN** a listed tournament has no logo, no subtitle, and no city
+- **THEN** its card renders correctly without empty gaps for the missing logo, subtitle, or city line
 
 #### Scenario: Tabs are disjoint
 - **WHEN** a published upcoming tournament's registration has not yet opened or has already closed

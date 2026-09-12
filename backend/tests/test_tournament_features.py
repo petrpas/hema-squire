@@ -217,7 +217,7 @@ def test_flags_changeable_after_publication(client, auth_headers):
     )
     client.patch(
         "/api/tournaments/na-duel-2026",
-        json={"location": "Brno", "organizers": [{"name": "Klub", "link": None}]},
+        json={"city": "Brno", "organizers": [{"name": "Klub", "link": None}]},
         headers=headers,
     )
     published = client.post("/api/tournaments/na-duel-2026/publish", headers=headers)

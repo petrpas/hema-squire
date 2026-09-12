@@ -36,7 +36,7 @@ def setup(client, organizer, *, team=False, rental=False):
     )
     client.patch(
         "/api/tournaments/cup",
-        json={"location": "Brno", "organizers": [{"name": "Cup Org", "link": None}]},
+        json={"city": "Brno", "organizers": [{"name": "Cup Org", "link": None}]},
         headers=organizer,
     )
     client.post(

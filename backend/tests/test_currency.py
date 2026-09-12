@@ -516,7 +516,7 @@ def publish_with_eur(client, headers, *, eur=True, fee=1750, fee_eur=70):
     make_api_tournament(client, headers)
     enable_payments(client, headers, "na-duel-2026")
     patch = {
-        "location": "Brno",
+        "city": "Brno",
         "organizers": [{"name": "Org", "link": None}],
         "bank_account": "CZ6508000000192000145399",
     }
@@ -714,7 +714,7 @@ def test_incomplete_eur_prices_block_registration(client, auth_headers):
     headers = auth_headers()
     make_api_tournament(client, headers)
     patch = {
-        "location": "Brno",
+        "city": "Brno",
         "organizers": [{"name": "Org", "link": None}],
         "eur_payments_enabled": True,
     }

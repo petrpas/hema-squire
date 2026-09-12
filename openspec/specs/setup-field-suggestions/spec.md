@@ -11,21 +11,28 @@ organizer runs year after year.
 
 ### Requirement: Setup fields that recall prior values
 The Setup screen SHALL offer previously used values on the titular organizer entry
-(ORGANIZERS), the tournament location (IDENTITY) and the tournament bank account.
-No other Setup field carries the affordance. A field with nothing to recall SHALL
+(ORGANIZERS), the tournament city and the tournament address (IDENTITY) and the
+tournament bank account. The city and the address SHALL recall independently of
+each other: an organizer who holds the same event in a different town is offered
+each town on one field and each venue on the other, neither dragging the other
+along. No other Setup field carries the affordance. A field with nothing to recall SHALL
 behave exactly as a plain field: no empty list, no placeholder entry, and no
 indication that the feature exists.
 
 #### Scenario: Organizer's second tournament
-- **WHEN** an organizer who has already run one tournament begins typing in the location field of a new one
-- **THEN** the location they used on that earlier tournament is offered
+- **WHEN** an organizer who has already run one tournament begins typing in the city field of a new one
+- **THEN** the city they held that earlier tournament in is offered
 
-#### Scenario: A field outside the three
+#### Scenario: The venue is recalled on its own field
+- **WHEN** that organizer begins typing in the address field
+- **THEN** the address of the earlier tournament is offered there, and the city field offers only cities
+
+#### Scenario: A field outside the four
 - **WHEN** the organizer types in the tournament's subtitle, description or any other Setup field
 - **THEN** nothing is offered, and the field behaves as it did before this capability existed
 
 #### Scenario: The very first tournament
-- **WHEN** an organizer with no earlier tournaments opens Setup and types in any of the three fields
+- **WHEN** an organizer with no earlier tournaments opens Setup and types in any of the four fields
 - **THEN** no list appears and the field shows no sign that suggestions exist
 
 ### Requirement: Suggestions come from the organizer's own tournaments
@@ -36,8 +43,8 @@ once typed. An account SHALL never be offered a value originating from a tournam
 it has no access to.
 
 #### Scenario: One organizer's values stay their own
-- **WHEN** two organizers with no tournaments in common each type in the location field
-- **THEN** neither is offered a location belonging to the other's tournaments
+- **WHEN** two organizers with no tournaments in common each type in the city field
+- **THEN** neither is offered a city belonging to the other's tournaments
 
 #### Scenario: A corrected value stops being offered
 - **WHEN** an organizer fixes a misspelled club name on the tournament it came from, then opens a different tournament's Setup
@@ -60,7 +67,7 @@ subject to the field's own validation exactly as a typed value is.
 
 #### Scenario: Nothing fills itself in
 - **WHEN** the organizer opens Setup on a new tournament
-- **THEN** the three fields hold what the tournament holds — empty if it is empty — and no suggestion has been written into them
+- **THEN** the four fields hold what the tournament holds — empty if it is empty — and no suggestion has been written into them
 
 #### Scenario: Typing past the list
 - **WHEN** the organizer types a value that matches nothing in the list

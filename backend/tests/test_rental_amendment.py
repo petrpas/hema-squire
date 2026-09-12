@@ -69,7 +69,7 @@ def setup(client, organizer):
         client.patch(
             "/api/tournaments/cup",
             json={
-                "location": "Brno",
+                "city": "Brno",
                 "organizers": [{"name": "Cup Org", "link": None}],
                 "bank_account": IBAN,
             },

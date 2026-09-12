@@ -4,7 +4,6 @@ import { Link, useOutletContext } from "react-router-dom";
 import { api, logoUrl, type OpenTournament } from "./api";
 import DotJoined from "./DotJoined";
 import { HOME_TABS, type HomeTab, PUBLIC_HOME_TABS } from "./FencerShell";
-import InlineProse from "./InlineProse";
 import { openingHourIn } from "./openingMoment";
 import { consolePath, detail, home } from "./routes";
 import { useTabBand } from "./useTabBand";
@@ -95,15 +94,14 @@ function CardHeading({ tournament, badge }: { tournament: OpenTournament; badge:
       <div className="home-card-heading">
         <h2>{tournament.display_name}</h2>
         {tournament.subtitle && <p className="home-card-subtitle">{tournament.subtitle}</p>}
-        {/* the card itself is the link to the tournament, so a location
-            written as a markdown link contributes its label only */}
+        {/* the town alone, as plain text: everyone knows where Brno is, and
+            the card is itself a link, so a link inside it has nowhere to go.
+            Where in town is read on the tournament's own page. */}
         <DotJoined
           className="home-card-when"
           parts={[
             new Date(tournament.date).toLocaleDateString("cs"),
-            tournament.location?.trim() ? (
-              <InlineProse key="location" source={tournament.location} links={false} />
-            ) : null,
+            tournament.city?.trim() ? tournament.city : null,
           ]}
         />
         {tournament.organizers.length > 0 && (

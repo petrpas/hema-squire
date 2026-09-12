@@ -17,7 +17,7 @@ def make_tournament(client, organizer, slug="cup", **patch):
     )
     enable_payments(client, organizer, slug)
     base = {
-        "location": "Brno",
+        "city": "Brno",
         "organizers": [{"name": "Cup Org", "link": None}],
         "bank_account": "CZ6508000000192000145399",
     }
@@ -76,7 +76,7 @@ def test_publishing_makes_it_appear_and_accept(client, auth_headers):
 
 def test_publishing_incomplete_tournament_names_missing_items(client, auth_headers):
     organizer = auth_headers()
-    # location present, organizers cleared, no discipline added
+    # city present, organizers cleared, no discipline added
     slug = make_tournament(client, organizer, organizers=[])
 
     response = client.post(f"/api/tournaments/{slug}/publish", headers=organizer)
@@ -193,12 +193,12 @@ def test_emptying_the_location_on_published_tournament_rejected(client, auth_hea
     add_priced_discipline(client, organizer, slug)
     publish(client, organizer, slug)
 
-    response = client.patch(f"/api/tournaments/{slug}", json={"location": ""}, headers=organizer)
+    response = client.patch(f"/api/tournaments/{slug}", json={"city": ""}, headers=organizer)
     assert response.status_code == 422
-    assert response.json()["detail"] == {"reason": "setup_incomplete", "missing": ["location"]}
+    assert response.json()["detail"] == {"reason": "setup_incomplete", "missing": ["city"]}
 
     detail = client.get(f"/api/tournaments/{slug}", headers=organizer).json()
-    assert detail["location"] == "Brno"
+    assert detail["city"] == "Brno"
 
 
 def test_removing_the_last_organizer_on_published_tournament_rejected(client, auth_headers):
@@ -305,7 +305,7 @@ def test_draft_may_be_saved_without_bank_account(client, auth_headers):
     add_priced_discipline(client, organizer, slug)
 
     response = client.patch(
-        f"/api/tournaments/{slug}", json={"location": "Praha"}, headers=organizer
+        f"/api/tournaments/{slug}", json={"city": "Praha"}, headers=organizer
     )
     assert response.status_code == 200
     assert response.json()["bank_account"] is None
@@ -348,8 +348,8 @@ def test_same_operations_succeed_on_a_draft(client, auth_headers):
     assert deleted.status_code == 204
 
     cleared = client.patch(
-        f"/api/tournaments/{slug}", json={"organizers": [], "location": ""}, headers=organizer
+        f"/api/tournaments/{slug}", json={"organizers": [], "city": ""}, headers=organizer
     )
     assert cleared.status_code == 200
     assert cleared.json()["organizers"] == []
-    assert cleared.json()["location"] == ""
+    assert cleared.json()["city"] == ""

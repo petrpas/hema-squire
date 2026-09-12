@@ -71,7 +71,7 @@ def make_tournament(client, organizer, **params):
         "bank_account": IBAN,
         "reservation_validity_days": 7,
         "reminder_day": 5,
-        "location": "Brno",
+        "city": "Brno",
         "organizers": [{"name": "Cup Org", "link": None}],
         "payment_mode": "immediate",
     }

@@ -292,7 +292,7 @@ def _fencer_tournament_out(
         subtitle=tournament.subtitle,
         has_logo=tournament.has_logo,
         date=tournament.date,
-        location=tournament.location,
+        city=tournament.city,
         description=tournament.description,
         qualification_open=tournament.qualification_open,
         qualification_criteria=tournament.qualification_criteria,
@@ -498,7 +498,7 @@ def _distinct_organizers(
 @router.get("/suggestions", response_model=SetupSuggestionsOut)
 def setup_suggestions(session: SessionDep, fencer: FencerDep):
     """The values this account has used on its own earlier tournaments, offered
-    back on the three Setup fields that recall them. Read-only and derived per
+    back on the Setup fields that recall them. Read-only and derived per
     request — nothing is stored, so correcting a value at its source is all it
     takes to stop it being suggested.
 
@@ -508,7 +508,8 @@ def setup_suggestions(session: SessionDep, fencer: FencerDep):
     `/{slug}` so "suggestions" is never captured as a slug."""
     tournaments = _suggestion_scope(session, fencer)
     return SetupSuggestionsOut(
-        locations=_distinct_recent(t.location for t in tournaments),
+        cities=_distinct_recent(t.city for t in tournaments),
+        addresses=_distinct_recent(t.address for t in tournaments),
         bank_accounts=_distinct_recent(t.bank_account for t in tournaments),
         organizers=_distinct_organizers(tournaments),
     )

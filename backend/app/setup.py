@@ -34,7 +34,7 @@ NOT_YET_OPEN = "not_yet_open"
 CLOSED = "closed"
 
 # stable item keys, referenced by the frontend checklist and i18n catalogues
-MISSING_LOCATION = "location"
+MISSING_CITY = "city"
 MISSING_ORGANIZERS = "organizers"
 MISSING_DISCIPLINES = "disciplines"
 MISSING_DISCIPLINE_PRICES = "discipline_prices"
@@ -97,8 +97,8 @@ def charges_money(tournament: Tournament) -> bool:
 
 def setup_missing(tournament: Tournament) -> list[str]:
     missing = []
-    if not (tournament.location or "").strip():
-        missing.append(MISSING_LOCATION)
+    if not (tournament.city or "").strip():
+        missing.append(MISSING_CITY)
     if not tournament.organizers:
         missing.append(MISSING_ORGANIZERS)
     if not tournament.disciplines:

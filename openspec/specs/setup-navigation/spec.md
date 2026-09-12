@@ -70,7 +70,7 @@ Every Setup settings section SHALL belong to exactly one tab, and no section SHA
 dropped, duplicated, or split by this navigation:
 
 - `TOURNAMENT` — the tournament's identity fields (display name, subtitle, logo, date,
-  location, description, qualification statement, registration instructions) and the
+  city, address, description, qualification statement, registration instructions) and the
   titular organizers.
 - `DISCIPLINES` — the disciplines table.
 - `EXTRA` — the extra-items table.
@@ -218,7 +218,7 @@ the tab bar, drawn in `--stamp` with a localized accessible label, so that an it
 on `PUBLISH` can be traced to the tab that resolves it.
 
 **Every item the publication check can report SHALL be attributed to a tab, and that tab
-SHALL hold a section that resolves it.** Location and organizers attribute to
+SHALL hold a section that resolves it.** The city and organizers attribute to
 `TOURNAMENT`; missing disciplines, missing discipline prices and missing team bounds to
 `DISCIPLINES`; missing extra-item prices to `EXTRA`; and the missing bank account, missing
 discount amounts, the missing deposit amount, and the currency-mode conflicts — including

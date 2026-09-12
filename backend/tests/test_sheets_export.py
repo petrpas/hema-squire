@@ -66,7 +66,7 @@ def setup(client, auth_headers, organizer):
         "/api/tournaments/cup",
         json={
             "output_sheet_url": "https://sheets.example/cup",
-            "location": "Brno",
+            "city": "Brno",
             "organizers": [{"name": "Cup Org", "link": None}],
         },
         headers=organizer,
@@ -338,7 +338,7 @@ def test_two_tiers_produce_two_worksheets(client, auth_headers):
         "/api/tournaments/tiers",
         json={
             "output_sheet_url": "https://sheets.example/tiers",
-            "location": "Brno",
+            "city": "Brno",
             "organizers": [{"name": "Org", "link": None}],
         },
         headers=organizer,
@@ -380,7 +380,7 @@ def test_custom_weapon_worksheet_has_empty_rating_columns(client, auth_headers):
         "/api/tournaments/messer",
         json={
             "output_sheet_url": "https://sheets.example/messer",
-            "location": "Brno",
+            "city": "Brno",
             "organizers": [{"name": "Org", "link": None}],
         },
         headers=organizer,

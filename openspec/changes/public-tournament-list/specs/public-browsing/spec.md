@@ -96,7 +96,7 @@ for an authenticated request.
 
 #### Scenario: Bond fields omitted
 - **WHEN** the list is answered without a credential
-- **THEN** each entry omits the caller's registration state and the manage mark, and carries its name, subtitle, date, location, organizers, disciplines with counts, and registration status unchanged
+- **THEN** each entry omits the caller's registration state and the manage mark, and carries its name, subtitle, date, city, organizers, disciplines with counts, and registration status unchanged
 
 #### Scenario: Counts are not personal
 - **WHEN** an anonymous visitor and a registered fencer read the same tournament's entry
@@ -183,7 +183,7 @@ signed out.
 
 ### Requirement: The public detail carries no organizer's business
 The fencer-facing detail SHALL carry only what a fencer reads: the tournament's identity,
-dates, location, qualification, organizers, disciplines with their fees and counts, extra
+dates, city and address, qualification, organizers, disciplines with their fees and counts, extra
 services with their prices, the registration window and its status, the currency, and the
 feature flags that decide which of those are shown at all.
 

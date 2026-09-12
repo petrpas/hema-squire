@@ -66,7 +66,7 @@ def setup(client, organizer, *, sb_capacity=20, early_fee=None, early_until=None
         headers=organizer,
     )
     patch = {
-        "location": "Brno",
+        "city": "Brno",
         "organizers": [{"name": "Cup Org", "link": None}],
         "bank_account": IBAN,
     }

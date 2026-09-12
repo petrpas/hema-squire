@@ -33,7 +33,7 @@ def make_published(client, organizer, slug, **overrides):
     }
     payload.update({k: v for k, v in overrides.items() if k in ("slug", "display_name", "date")})
     client.post("/api/tournaments", json=payload, headers=organizer)
-    patch = {"location": "Brno", "organizers": [{"name": "Org", "link": None}]}
+    patch = {"city": "Brno", "organizers": [{"name": "Org", "link": None}]}
     patch.update({k: v for k, v in overrides.items() if k not in ("slug", "display_name", "date")})
     client.patch(f"/api/tournaments/{slug}", json=patch, headers=organizer)
     client.post(
@@ -223,7 +223,8 @@ FENCER_DETAIL_KEYS = {
     "subtitle",
     "has_logo",
     "date",
-    "location",
+    "city",
+    "address",
     "description",
     "qualification_open",
     "qualification_criteria",

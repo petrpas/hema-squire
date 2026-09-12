@@ -6,7 +6,7 @@ Provide the fencer-facing GUI: a post-login Fencer Home landing listing open tou
 ### Requirement: Fencer Home landing
 Every logged-in account SHALL land on the Fencer Home page after login. The page SHALL be a full-screen console-style view with a top bar and a tournament list, filtered by four tabs: Vyhlášené turnaje (Announced — published, non-cancelled, upcoming tournaments whose registration is not open: not yet opened or already closed), Otevřené turnaje (Open — published, non-cancelled, upcoming tournaments whose registration is open right now), Proběhlé turnaje (Past — every published, non-cancelled tournament dated before today, whoever was involved), and Moje turnaje (Mine — the account's own, per its own requirement). The first three SHALL be disjoint and SHALL together hold every published, non-cancelled tournament; Mine overlaps them by design. "Published" means the tournament carries a publication record, not that its setup happens to be complete. The Open tab SHALL be selected after login. Upcoming tournaments SHALL be ordered by date ascending, tournaments already held by date descending.
 
-Each card SHALL present, in this order: the tournament logo at the left when one is set, then the tournament name, the subtitle beneath it when one is set, then the date and the location together on their own line in bold, then the organizer names, then the offered disciplines with registered numbers as taken/capacity, and the registration status — open, opens on a date, or closed. The date and place line SHALL separate its parts with the spaced middle dot and SHALL wrap rather than overflow on a narrow screen. The logo SHALL be drawn at twice the size a card gave it before this change. Card content SHALL have 1 em of left and right padding inside the card. The card layout SHALL render correctly whether or not a logo, subtitle, location, or organizer is present. Each upcoming tournament SHALL offer a Register action when the account has no active registration for it, or a Manage registration action when it does; both open the tournament detail page. **A tournament in manual mode SHALL state on its card, in that action's place, that its registration is held elsewhere** (`tournament-mode`, `external-registration`), and SHALL offer no Register action. The way out itself SHALL be offered on the tournament detail page the card opens, where the registration form would otherwise be: the card is one link already, and a second inside it would be a link within a link. The card SHALL NOT state that registration is closed, which would be untrue of a window that never existed here. Each tab SHALL show its own empty-state message when it lists nothing.
+Each card SHALL present, in this order: the tournament logo at the left when one is set, then the tournament name, the subtitle beneath it when one is set, then the date and the city together on their own line in bold, then the organizer names, then the offered disciplines with registered numbers as taken/capacity, and the registration status — open, opens on a date, or closed. The date and city line SHALL separate its parts with the spaced middle dot and SHALL wrap rather than overflow on a narrow screen. The logo SHALL be drawn at twice the size a card gave it before this change. Card content SHALL have 1 em of left and right padding inside the card. The card layout SHALL render correctly whether or not a logo, subtitle, city, or organizer is present. Each upcoming tournament SHALL offer a Register action when the account has no active registration for it, or a Manage registration action when it does; both open the tournament detail page. **A tournament in manual mode SHALL state on its card, in that action's place, that its registration is held elsewhere** (`tournament-mode`, `external-registration`), and SHALL offer no Register action. The way out itself SHALL be offered on the tournament detail page the card opens, where the registration form would otherwise be: the card is one link already, and a second inside it would be a link within a link. The card SHALL NOT state that registration is closed, which would be untrue of a window that never existed here. Each tab SHALL show its own empty-state message when it lists nothing.
 
 A discipline on a card SHALL be labelled by its name, never by its slug (`discipline-identity`). Names are longer than the codes they replace and a tournament MAY offer several disciplines whose names differ only in a trailing qualifier, so the discipline row on a card SHALL wrap across lines rather than truncate, overflow, or force the card wider, and SHALL remain legible on the narrowest supported screen.
 
@@ -15,7 +15,7 @@ A discipline on a card SHALL be labelled by its name, never by its slug (`discip
 - **THEN** the tournament appears in the Open tab with its name, date and place in bold on their own line, organizers on the line below, each discipline named with its numbers, an "open" status, and a Register button
 
 #### Scenario: Card lines in order
-- **WHEN** a card renders a tournament with a subtitle, a location and two organizers
+- **WHEN** a card renders a tournament with a subtitle, a city and two organizers
 - **THEN** the name, the subtitle, the bold date and place line, and the organizers line appear in that order, with the logo at the left
 
 #### Scenario: Disciplines named, not coded
@@ -30,9 +30,9 @@ A discipline on a card SHALL be labelled by its name, never by its slug (`discip
 - **WHEN** a listed tournament has a logo and a subtitle
 - **THEN** its card shows the logo at the left at the enlarged size and the subtitle beneath the name
 
-#### Scenario: Card degrades without logo, subtitle, or location
-- **WHEN** a listed tournament has no logo, no subtitle, and no location
-- **THEN** its card renders correctly without empty gaps for the missing logo, subtitle, or location line
+#### Scenario: Card degrades without logo, subtitle, or city
+- **WHEN** a listed tournament has no logo, no subtitle, and no city
+- **THEN** its card renders correctly without empty gaps for the missing logo, subtitle, or city line
 
 #### Scenario: Tabs are disjoint
 - **WHEN** a published upcoming tournament's registration has not yet opened or has already closed
@@ -62,19 +62,33 @@ A discipline on a card SHALL be labelled by its name, never by its slug (`discip
 - **WHEN** the fencer already has an active (reserved or paid) registration for a listed upcoming tournament
 - **THEN** that tournament shows Manage registration instead of Register
 
-### Requirement: Location presentation on cards and the information line
-The tournament location SHALL be presented as an inline markdown field (`organizer-prose`) everywhere a fencer reads it. On the tournament information screen it SHALL render on the `date · place · qualification` line, a location link appearing there as a link. On a Fencer Home card it SHALL render on the bold date-and-place line as label text only, because the card is itself a link. In both places the rendered location SHALL stay on the line it belongs to — it SHALL NOT introduce a block, a line break, or a heading — SHALL wrap rather than overflow on a narrow screen, and SHALL leave no stray middle dot when the location is absent.
+### Requirement: Where a tournament is, said in two fields
+Where a tournament is held SHALL be carried as two fields: the **city**, the town it is in, and the **address**, where in that town. They are read by different screens and written to different rules.
 
-#### Scenario: Linked place on the information screen
-- **WHEN** a tournament whose location is `[ZŠ Bílá](https://osm.org/go/0J0ajlLg8?m=)` is opened
-- **THEN** the identity line reads date · ZŠ Bílá · qualification, with `ZŠ Bílá` a link opening in a new tab, and no markup characters visible
+The city SHALL be plain text — no markdown, no link. It is what a listing has room for, and everyone already knows where Berlin is. It SHALL be part of mandatory setup, as the single location field was before it.
 
-#### Scenario: Same place on a home card
-- **WHEN** the same tournament is listed on Fencer Home
-- **THEN** the bold date-and-place line reads date · ZŠ Bílá as text, and selecting anywhere on the card still opens the tournament
+The address SHALL be an inline markdown field (`organizer-prose`), a link among its honored constructs, so a venue can carry a map link. It SHALL be optional: a tournament that names its town has said where it is, and where in town can follow.
 
-#### Scenario: Absent location leaves no separator
-- **WHEN** a listed tournament has no location
+A Fencer Home card SHALL present the city, on the bold date-and-place line, and SHALL NOT present the address. The card is itself a link, and a second link inside it would be a link within a link.
+
+The tournament information screen SHALL present the city on the `date · place · qualification` line and the address on its own line beneath it, rendered with its links live. Its own line rather than a fourth dot-joined part: an address runs longer than the short facts that line is made of.
+
+Neither field SHALL introduce a block, a line break, or a heading of its own, both SHALL wrap rather than overflow on a narrow screen, and an absent field SHALL leave no stray middle dot and no empty line.
+
+#### Scenario: City and address on the information screen
+- **WHEN** a tournament in Brno whose address is `[ZŠ Bílá](https://osm.org/go/0J0ajlLg8?m=)` is opened
+- **THEN** the identity line reads date · Brno · qualification and the line beneath it reads `ZŠ Bílá` as a link opening in a new tab, with no markup characters visible
+
+#### Scenario: The same tournament on a home card
+- **WHEN** that tournament is listed on Fencer Home
+- **THEN** the bold date-and-place line reads date · Brno, the address appears nowhere on the card, and selecting anywhere on the card opens the tournament
+
+#### Scenario: A tournament with no address yet
+- **WHEN** a tournament names its city and no address
+- **THEN** the information screen shows the city with no empty line beneath it, and setup does not report the address as missing
+
+#### Scenario: Absent city leaves no separator
+- **WHEN** a listed tournament has no city
 - **THEN** the date stands alone on its line with no middle dot before or after it, on the card and on the information screen alike
 
 ### Requirement: Fencer identity header
@@ -205,7 +219,7 @@ underline, and the same card and tab treatment as before.
 - **THEN** cards and tabs look exactly as they did as buttons, with no link colour or underline introduced
 
 ### Requirement: Read-only past tournament detail
-WHEN a tournament detail is shown for a tournament dated before today, the page SHALL present the tournament information (name, date, location, organizers, disciplines with fees, extra services with prices) and, when the account had a registration, its summary — state, selected disciplines and extra services, and the computed total. The page SHALL NOT offer registration, payment instructions, or cancellation.
+WHEN a tournament detail is shown for a tournament dated before today, the page SHALL present the tournament information (name, date, city and address, organizers, disciplines with fees, extra services with prices) and, when the account had a registration, its summary — state, selected disciplines and extra services, and the computed total. The page SHALL NOT offer registration, payment instructions, or cancellation.
 
 Read-only-ness SHALL be a property of the tournament's date rather than of the way the page was reached, so that it holds for a detail opened from the Past tab, from the Mine tab, and from a `/t/:slug` link followed directly.
 
@@ -330,7 +344,7 @@ The detail page's own controls — the tournament's display name, its tab contro
 - **THEN** the detail closes and the Open list is shown
 
 ### Requirement: Tournament detail — information
-The tournament detail page SHALL open, from the list, on an information screen that presents the tournament's full public information and does not itself contain the registration form. It SHALL open with the tournament's identity stated as consecutive lines in this order: the title; the subtitle when set; the date, the location and the qualification statement on one line; the registration opening moment and closing date on one line; the titular organizers; and the description. Parts sharing a line SHALL be separated by the spaced middle dot, and a line whose every part is absent SHALL be omitted rather than left blank. The logo, when set, stands beside these lines.
+The tournament detail page SHALL open, from the list, on an information screen that presents the tournament's full public information and does not itself contain the registration form. It SHALL open with the tournament's identity stated as consecutive lines in this order: the title; the subtitle when set; the date, the city and the qualification statement on one line; the address on its own line when set; the registration opening moment and closing date on one line; the titular organizers; and the description. Parts sharing a line SHALL be separated by the spaced middle dot, and a line whose every part is absent SHALL be omitted rather than left blank. The logo, when set, stands beside these lines.
 
 The opening moment SHALL be stated with its time of day whenever the tournament sets one, and with the zone that time is stated in. Where the tournament sets no opening time, the opening SHALL be stated as a date alone exactly as before, with no invented hour and no zone.
 
@@ -340,10 +354,10 @@ Where a discipline or an action carries any of its optional when/where/ruleset/r
 
 #### Scenario: Fencer reviews a tournament
 - **WHEN** a fencer opens a tournament's detail from Fencer Home
-- **THEN** they read the title, the subtitle, the date · place · qualification line, the registration window line, the organizers and the description in that order, followed by each discipline under its name with its fee, registered/capacity count, and any when/where and ruleset
+- **THEN** they read the title, the subtitle, the date · place · qualification line, the address line, the registration window line, the organizers and the description in that order, followed by each discipline under its name with its fee, registered/capacity count, and any when/where and ruleset
 
 #### Scenario: Absent parts collapse
-- **WHEN** a tournament has no subtitle, no location and no registration dates
+- **WHEN** a tournament has no subtitle, no city, no address and no registration dates
 - **THEN** those lines are omitted and no blank line, stray dot, or empty gap is left behind
 
 #### Scenario: Opening moment states its hour

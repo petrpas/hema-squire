@@ -94,7 +94,7 @@ def setup(client, organizer, *, fee=800, early_fee=None, early_until=None):
     client.patch(
         "/api/tournaments/cup",
         json={
-            "location": "Brno",
+            "city": "Brno",
             "organizers": [{"name": "Cup Org", "link": None}],
             # set here rather than left to the publish helper, because a test
             # that turns payments on afterwards needs a published tournament to

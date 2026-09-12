@@ -84,7 +84,7 @@ def setup_tournament(client, organizer, capacity=10, **patch):
     )
     enable_payments(client, organizer, "cup")
     base = {
-        "location": "Brno",
+        "city": "Brno",
         "organizers": [{"name": "Cup Org", "link": None}],
         "bank_account": IBAN,
     }

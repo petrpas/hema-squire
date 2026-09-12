@@ -44,7 +44,7 @@ def setup_draft(client, organizer, slug="cup"):
     client.patch(
         f"/api/tournaments/{slug}",
         json={
-            "location": "Brno",
+            "city": "Brno",
             "organizers": [{"name": "Cup Org", "link": None}],
             "bank_account": "CZ6508000000192000145399",
         },

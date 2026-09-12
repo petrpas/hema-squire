@@ -6,14 +6,14 @@ Define the markdown contract for organizer-authored long-form text — which fie
 ## Requirements
 
 ### Requirement: Markdown-authored prose fields
-The organizer-authored long-form text fields — the tournament `description` and the tournament `registration instructions` — SHALL be authored in markdown and presented as formatted content. The tournament `location` and a discipline's `ruleset` SHALL be authored in the inline markdown subset defined below. The stored value SHALL always be the organizer's markdown source, unmodified: the system SHALL NOT store rendered output, and SHALL NOT rewrite, normalize, or escape the source on save. Rendering SHALL happen at presentation time only. No other field SHALL be treated as markdown; subtitle, qualification criteria, organizer names, a discipline's `when` and `where`, and extra-item names, `when`, `where` and `remark` remain plain text.
+The organizer-authored long-form text fields — the tournament `description` and the tournament `registration instructions` — SHALL be authored in markdown and presented as formatted content. The tournament `address` and a discipline's `ruleset` SHALL be authored in the inline markdown subset defined below. The tournament `city` is plain text and SHALL NOT be treated as markdown: it names a town, which needs no link. The stored value SHALL always be the organizer's markdown source, unmodified: the system SHALL NOT store rendered output, and SHALL NOT rewrite, normalize, or escape the source on save. Rendering SHALL happen at presentation time only. No other field SHALL be treated as markdown; subtitle, city, qualification criteria, organizer names, a discipline's `when` and `where`, and extra-item names, `when`, `where` and `remark` remain plain text.
 
 #### Scenario: Source stored verbatim
 - **WHEN** the organizer saves a description containing `## Program`, `- longsword`, and `**bring a mask**`
 - **THEN** the stored value contains exactly those characters, and re-opening the Setup field shows the same markdown source the organizer typed
 
-#### Scenario: Location source stored verbatim
-- **WHEN** the organizer saves the location `[ZŠ Bílá](https://osm.org/go/0J0ajlLg8?m=)`
+#### Scenario: Address source stored verbatim
+- **WHEN** the organizer saves the address `[ZŠ Bílá](https://osm.org/go/0J0ajlLg8?m=)`
 - **THEN** the stored value is exactly that text, re-opening the Setup field shows it unchanged, and no migration or format conversion is applied to locations stored earlier
 
 #### Scenario: Presented as formatted content
@@ -47,23 +47,23 @@ Rendering SHALL honor exactly this subset: paragraphs; soft line breaks (a singl
 An inline markdown field SHALL honor exactly this subset: links, emphasis, strong emphasis, and inline code. Block constructs — headings, lists, block quotes, horizontal rules, fenced code, and paragraph or line breaks — SHALL NOT render as markup, and rendering an inline field SHALL NOT introduce a block element or a line break into the line that contains it. Images and tables SHALL NOT render. Text outside the honored subset SHALL be presented literally. Rendered output SHALL pass through the same allowlist sanitizer and the same single rendering entry point as long-form prose, so raw HTML, event-handler attributes and `javascript:` destinations SHALL NOT reach the document under any input.
 
 #### Scenario: Link renders
-- **WHEN** a location reads `[ZŠ Bílá](https://osm.org/go/0J0ajlLg8?m=)`
+- **WHEN** an address reads `[ZŠ Bílá](https://osm.org/go/0J0ajlLg8?m=)`
 - **THEN** the line shows `ZŠ Bílá` as a link to that destination, with no brackets, parentheses or URL text visible
 
 #### Scenario: Block syntax stays literal
-- **WHEN** a location reads `# Praha` or `- Praha`
+- **WHEN** an address reads `# Praha` or `- Praha`
 - **THEN** no heading and no list item is produced, the line does not gain a break, and the characters are presented as typed
 
 #### Scenario: Inline field cannot inject markup
-- **WHEN** a location contains `<script>alert(1)</script>`, `<img src=x onerror=alert(1)>` or `[click](javascript:alert(1))`
+- **WHEN** an address contains `<script>alert(1)</script>`, `<img src=x onerror=alert(1)>` or `[click](javascript:alert(1))`
 - **THEN** no script executes, no such element appears in the document, and no `javascript:` destination is carried
 
-#### Scenario: Plain text location unchanged
-- **WHEN** a location written before inline markdown existed reads `Sportovní hala, Praha 6`
+#### Scenario: Plain text address unchanged
+- **WHEN** an address written without any markdown reads `Sportovní hala, Praha 6`
 - **THEN** it is presented exactly as written, with no characters lost or added
 
-#### Scenario: Empty location renders nothing
-- **WHEN** a tournament has no location
+#### Scenario: Empty address renders nothing
+- **WHEN** a tournament has no address
 - **THEN** no empty element, separator, or reserved space is rendered for it
 
 ### Requirement: Rendered output is sanitized
@@ -96,11 +96,11 @@ Rendered prose SHALL obey the design system's prohibitions and token discipline.
 WHEN an inline markdown field is presented inside a region that is itself a link, its links SHALL be rendered as their label text only — never as a nested link — while the rest of the honored subset still renders. Elsewhere, links in an inline field SHALL follow the design system's link presentation: `--ink` with an underline, opening in a new browsing context with `rel="noopener noreferrer"`.
 
 #### Scenario: Label only inside a linked card
-- **WHEN** a location `[ZŠ Bílá](https://osm.org/go/0J0ajlLg8?m=)` appears on a card whose whole surface links to the tournament
+- **WHEN** an inline field carrying `[ZŠ Bílá](https://osm.org/go/0J0ajlLg8?m=)` appears on a card whose whole surface links to the tournament
 - **THEN** the card shows `ZŠ Bílá` as plain text, the card's own link still works, and the document contains no link nested inside another link
 
 #### Scenario: Real link outside a link target
-- **WHEN** the same location appears on the tournament information screen
+- **WHEN** the same field appears on the tournament information screen
 - **THEN** it is a link to that destination, `--ink` and underlined, opening in a new tab with `rel="noopener noreferrer"`
 
 ### Requirement: Plain text stays correct
@@ -121,13 +121,13 @@ In the console Setup phase, each markdown prose field SHALL be edited in a monos
 - **WHEN** the organizer opens the description or registration-instructions field in Setup
 - **THEN** the text is set in `--font-data` and a one-line syntax reminder appears beneath the field in the console's language
 
-#### Scenario: Location hint names only the inline subset
-- **WHEN** the organizer opens the location field in Setup
+#### Scenario: Address hint names only the inline subset
+- **WHEN** the organizer opens the address field in Setup
 - **THEN** it is still a single-line control, and the reminder beneath it names links and emphasis and does not name headings, lists, quotes or rules
 
 #### Scenario: The ruleset field carries the same hint
 - **WHEN** the organizer opens a discipline's ruleset field in Setup
-- **THEN** it is a single-line control carrying the same reminder the location field carries
+- **THEN** it is a single-line control carrying the same reminder the address field carries
 
 #### Scenario: The hint spells out the link form
 - **WHEN** the organizer reads the reminder beneath any inline markdown field

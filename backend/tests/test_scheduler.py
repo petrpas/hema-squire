@@ -42,7 +42,7 @@ def setup(client, organizer):
         json={
             "reservation_validity_days": 7,
             "reminder_day": 5,
-            "location": "Brno",
+            "city": "Brno",
             "organizers": [{"name": "Cup Org", "link": None}],
         },
         headers=organizer,

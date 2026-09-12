@@ -53,9 +53,10 @@ from app.fieldtypes import (
     TeamNameStr,
     TolerantDecimal,
     TolerantInt,
+    TournamentAddressStr,
+    TournamentCityStr,
     TournamentDescriptionStr,
     TournamentDisplayNameStr,
-    TournamentLocationStr,
     TournamentQualificationCriteriaStr,
     TournamentRegistrationInstructionsStr,
     TournamentSubtitleStr,
@@ -409,7 +410,8 @@ class SetupSuggestionsOut(BaseModel):
     those tournaments' current values — nothing here is stored, so a value
     corrected at its source stops being suggested."""
 
-    locations: list[str] = []
+    cities: list[str] = []
+    addresses: list[str] = []
     bank_accounts: list[str] = []
     # name and link travel together: choosing a remembered club fills both
     organizers: list[OrganizerOut] = []
@@ -440,7 +442,8 @@ class TournamentUpdate(BaseModel):
     subtitle: TournamentSubtitleStr | None = None
     date: datetime.date | None = None
     language: str | None = None
-    location: TournamentLocationStr | None = None
+    city: TournamentCityStr | None = None
+    address: TournamentAddressStr | None = None
     description: TournamentDescriptionStr | None = None
     qualification_open: bool | None = None
     qualification_criteria: TournamentQualificationCriteriaStr | None = None
@@ -662,7 +665,8 @@ class TournamentOut(BaseModel):
     weapon_rental_fee_early: int | None
     afterparty_fee: int
     afterparty_fee_early: int | None
-    location: str | None
+    city: str | None
+    address: str | None
     description: str | None
     qualification_open: bool
     qualification_criteria: str | None
@@ -773,7 +777,8 @@ class FencerTournamentOut(BaseModel):
     subtitle: str | None
     has_logo: bool
     date: datetime.date
-    location: str | None
+    city: str | None
+    address: str | None
     description: str | None
     qualification_open: bool
     qualification_criteria: str | None
@@ -1157,7 +1162,9 @@ class OpenTournamentOut(BaseModel):
     subtitle: str | None = None
     has_logo: bool = False
     date: datetime.date
-    location: str | None
+    # the card names the town and nothing more; the address is read on the
+    # tournament's own page (spec `fencer-home`)
+    city: str | None
     description: str | None = None
     qualification_open: bool = True
     qualification_criteria: str | None = None

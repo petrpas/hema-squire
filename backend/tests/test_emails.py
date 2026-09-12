@@ -54,7 +54,7 @@ def _setup(client, organizer):
         json={
             "bank_account": "CZ6508000000192000145399",
             "afterparty_fee": 300,
-            "location": "Brno",
+            "city": "Brno",
             "organizers": [{"name": "Cup Org", "link": None}],
         },
         headers=organizer,
@@ -105,7 +105,7 @@ def test_confirmation_email_states_iban_alone_for_foreign_account(client, auth_h
         "/api/tournaments/cup",
         json={
             "bank_account": "DE89370400440532013000",
-            "location": "Brno",
+            "city": "Brno",
             "organizers": [{"name": "Cup Org", "link": None}],
         },
         headers=organizer,

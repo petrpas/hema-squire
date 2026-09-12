@@ -284,7 +284,7 @@ def test_time_left_standing_from_an_earlier_save_is_refused(client, auth_headers
     )
     # a later save that touches neither, on a tournament that has both, must
     # still pass
-    ok = client.patch("/api/tournaments/cup", json={"location": "Brno"}, headers=organizer)
+    ok = client.patch("/api/tournaments/cup", json={"city": "Brno"}, headers=organizer)
     assert ok.status_code == 200
     assert ok.json()["registration_opens_time"] == "18:00:00"
 
@@ -367,7 +367,7 @@ def test_gate_opens_at_the_named_hour_end_to_end(client, auth_headers, monkeypat
     setup_tournament(
         client,
         organizer,
-        location="Brno",
+        city="Brno",
         organizers=[{"name": "Org", "link": None}],
         registration_opens="2026-09-01",
         registration_opens_time="18:00:00",

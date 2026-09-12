@@ -92,7 +92,7 @@ def setup(client, organizer, capacity=10):
             "reservation_validity_days": 7,
             "reminder_day": 5,
             "amount_tolerance_percent": 5,
-            "location": "Brno",
+            "city": "Brno",
             "organizers": [{"name": "Cup Org", "link": None}],
         },
         headers=organizer,

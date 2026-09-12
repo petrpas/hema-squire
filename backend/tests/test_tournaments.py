@@ -45,7 +45,8 @@ def test_setup_fields_patch_round_trip_and_detail(client, auth_headers):
     make_tournament(client, headers)
 
     patch = {
-        "location": "Brno, Sportovní hala",
+        "city": "Brno",
+        "address": "[Sportovní hala](https://osm.org/go/0J0ajlLg8?m=)",
         "organizers": [
             {"name": "Duelanti od sv. Rocha", "link": "https://duelanti.example"},
             {"name": "Klub X", "link": None},
@@ -64,7 +65,8 @@ def test_setup_fields_patch_round_trip_and_detail(client, auth_headers):
     response = client.patch("/api/tournaments/na-duel-2026", json=patch, headers=headers)
     assert response.status_code == 200, response.text
     body = response.json()
-    assert body["location"] == "Brno, Sportovní hala"
+    assert body["city"] == "Brno"
+    assert body["address"] == "[Sportovní hala](https://osm.org/go/0J0ajlLg8?m=)"
     assert body["organizers"] == [
         {"name": "Duelanti od sv. Rocha", "link": "https://duelanti.example"},
         {"name": "Klub X", "link": None},
@@ -75,7 +77,8 @@ def test_setup_fields_patch_round_trip_and_detail(client, auth_headers):
     assert body["discounts"][0]["scope"] == ["discipline"]
 
     detail = client.get("/api/tournaments/na-duel-2026", headers=headers).json()
-    assert detail["location"] == "Brno, Sportovní hala"
+    assert detail["city"] == "Brno"
+    assert detail["address"] == "[Sportovní hala](https://osm.org/go/0J0ajlLg8?m=)"
     # setup still incomplete: no disciplines yet
     assert "disciplines" in detail["setup_missing"]
 

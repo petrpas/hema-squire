@@ -49,7 +49,7 @@ def make_tournament(client, organizer, *, fee=1000, tolerance=None, capacity=10)
     payload = {
         "bank_account": IBAN,
         "reservation_validity_days": 7,
-        "location": "Brno",
+        "city": "Brno",
         "organizers": [{"name": "Cup Org", "link": None}],
     }
     if tolerance is not None:

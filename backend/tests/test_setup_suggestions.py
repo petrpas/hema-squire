@@ -107,7 +107,12 @@ def test_first_tournament_offers_nothing(client, auth_headers):
     headers = auth_headers()
     response = client.get(SUGGESTIONS, headers=headers)
     assert response.status_code == 200
-    assert response.json() == {"locations": [], "bank_accounts": [], "organizers": []}
+    assert response.json() == {
+        "cities": [],
+        "addresses": [],
+        "bank_accounts": [],
+        "organizers": [],
+    }
 
 
 def test_second_tournament_recalls_the_first(client, auth_headers):
@@ -117,23 +122,48 @@ def test_second_tournament_recalls_the_first(client, auth_headers):
         client,
         headers,
         "prvni",
-        location="Sokolovna Praha",
+        city="Sokolovna Praha",
+        address="[Sokolovna](https://sokolovna.example)",
         bank_account="CZ6508000000192000145399",
         organizers=[{"name": "SHBU", "link": "https://shbu.example"}],
     )
     body = client.get(SUGGESTIONS, headers=headers).json()
-    assert body["locations"] == ["Sokolovna Praha"]
+    assert body["cities"] == ["Sokolovna Praha"]
+    assert body["addresses"] == ["[Sokolovna](https://sokolovna.example)"]
     assert body["bank_accounts"] == ["CZ6508000000192000145399"]
     assert body["organizers"] == [{"name": "SHBU", "link": "https://shbu.example"}]
+
+
+def test_the_address_recalls_independently_of_the_city(client, auth_headers):
+    """Two fields, two lists: an organizer who moves the same club night
+    between towns is offered each town and each venue on its own field."""
+    headers = auth_headers()
+    make_tournament(
+        client, headers, "loni", date="2025-05-01", city="Brno", address="Sokolovna Brno"
+    )
+    make_tournament(
+        client, headers, "letos", date="2026-05-01", city="Praha", address="Sokolovna Praha"
+    )
+    body = client.get(SUGGESTIONS, headers=headers).json()
+    assert body["cities"] == ["Praha", "Brno"]
+    assert body["addresses"] == ["Sokolovna Praha", "Sokolovna Brno"]
+
+
+def test_a_city_without_an_address_offers_nothing_on_the_address(client, auth_headers):
+    headers = auth_headers()
+    make_tournament(client, headers, "cup", city="Brno")
+    body = client.get(SUGGESTIONS, headers=headers).json()
+    assert body["cities"] == ["Brno"]
+    assert body["addresses"] == []
 
 
 def test_ordered_by_tournament_date_descending(client, auth_headers):
     """The tournament carries no creation stamp, so the event date is the proxy
     for recency (design D5)."""
     headers = auth_headers()
-    make_tournament(client, headers, "stary", date="2025-03-01", location="Brno")
-    make_tournament(client, headers, "novy", date="2026-09-01", location="Praha")
-    assert client.get(SUGGESTIONS, headers=headers).json()["locations"] == ["Praha", "Brno"]
+    make_tournament(client, headers, "stary", date="2025-03-01", city="Brno")
+    make_tournament(client, headers, "novy", date="2026-09-01", city="Praha")
+    assert client.get(SUGGESTIONS, headers=headers).json()["cities"] == ["Praha", "Brno"]
 
 
 def test_value_used_on_many_tournaments_appears_once(client, auth_headers):
@@ -141,24 +171,24 @@ def test_value_used_on_many_tournaments_appears_once(client, auth_headers):
     headers = auth_headers()
     for index in range(5):
         make_tournament(
-            client, headers, f"t{index}", date=f"202{index}-05-01", location="Sokolovna"
+            client, headers, f"t{index}", date=f"202{index}-05-01", city="Sokolovna"
         )
-    assert client.get(SUGGESTIONS, headers=headers).json()["locations"] == ["Sokolovna"]
+    assert client.get(SUGGESTIONS, headers=headers).json()["cities"] == ["Sokolovna"]
 
 
 def test_drafts_and_cancelled_are_included(client, auth_headers):
     """A draft is exactly where a value about to be reused sits (design D6).
     A tournament is a draft until published, so this one never is."""
     headers = auth_headers()
-    make_tournament(client, headers, "koncept", location="Tělocvična Zlín")
-    assert client.get(SUGGESTIONS, headers=headers).json()["locations"] == ["Tělocvična Zlín"]
+    make_tournament(client, headers, "koncept", city="Tělocvična Zlín")
+    assert client.get(SUGGESTIONS, headers=headers).json()["cities"] == ["Tělocvična Zlín"]
 
 
 def test_legacy_bare_string_organizers_do_not_break_the_endpoint(client, auth_headers, engine):
     """A restored-from-old-export deployment can hold bare strings; the endpoint
     serves them as name-with-no-link rather than failing."""
     headers = auth_headers()
-    make_tournament(client, headers, "obnoveny", location="Olomouc")
+    make_tournament(client, headers, "obnoveny", city="Olomouc")
     with Session(engine) as session:
         tournament = session.scalars(select(Tournament).where(Tournament.slug == "obnoveny")).one()
         tournament.organizers = ["Starý spolek"]
@@ -182,7 +212,7 @@ def test_one_organizers_values_stay_their_own(client, auth_headers):
         client,
         first,
         "prvni",
-        location="Praha",
+        city="Praha",
         bank_account="CZ6508000000192000145399",
         organizers=[{"name": "Spolek A", "link": None}],
     )
@@ -190,18 +220,18 @@ def test_one_organizers_values_stay_their_own(client, auth_headers):
         client,
         second,
         "druhy",
-        location="Ostrava",
+        city="Ostrava",
         bank_account="CZ5301000000430000010009",
         organizers=[{"name": "Spolek B", "link": None}],
     )
 
     first_body = client.get(SUGGESTIONS, headers=first).json()
-    assert first_body["locations"] == ["Praha"]
+    assert first_body["cities"] == ["Praha"]
     assert first_body["bank_accounts"] == ["CZ6508000000192000145399"]
     assert first_body["organizers"] == [{"name": "Spolek A", "link": None}]
 
     second_body = client.get(SUGGESTIONS, headers=second).json()
-    assert second_body["locations"] == ["Ostrava"]
+    assert second_body["cities"] == ["Ostrava"]
     assert second_body["bank_accounts"] == ["CZ5301000000430000010009"]
     assert second_body["organizers"] == [{"name": "Spolek B", "link": None}]
 
@@ -211,9 +241,9 @@ def test_console_access_granted_after_the_fact_widens_the_scope(client, auth_hea
     both count, which is the pair the rest of the console checks."""
     owner = auth_headers(email="owner@example.com", name="Vlastník")
     helper = auth_headers(email="helper@example.com", name="Pomocník")
-    make_tournament(client, owner, "turnaj", location="Hradec Králové")
+    make_tournament(client, owner, "turnaj", city="Hradec Králové")
 
-    assert client.get(SUGGESTIONS, headers=helper).json()["locations"] == []
+    assert client.get(SUGGESTIONS, headers=helper).json()["cities"] == []
 
     with Session(engine) as session:
         tournament = session.scalars(select(Tournament).where(Tournament.slug == "turnaj")).one()
@@ -221,7 +251,7 @@ def test_console_access_granted_after_the_fact_widens_the_scope(client, auth_hea
         session.add(TournamentOrganizer(tournament_id=tournament.id, fencer_id=fencer.id))
         session.commit()
 
-    assert client.get(SUGGESTIONS, headers=helper).json()["locations"] == ["Hradec Králové"]
+    assert client.get(SUGGESTIONS, headers=helper).json()["cities"] == ["Hradec Králové"]
 
 
 def test_requires_authentication(client):
@@ -235,21 +265,21 @@ def test_a_corrected_value_stops_being_offered(client, auth_headers):
     """spec: A corrected value stops being offered. This is the whole payoff of
     deriving rather than recording: the fix is a single edit at the source."""
     headers = auth_headers()
-    make_tournament(client, headers, "turnaj", location="Sokolvna Praha")
-    assert client.get(SUGGESTIONS, headers=headers).json()["locations"] == ["Sokolvna Praha"]
+    make_tournament(client, headers, "turnaj", city="Sokolvna Praha")
+    assert client.get(SUGGESTIONS, headers=headers).json()["cities"] == ["Sokolvna Praha"]
 
-    client.patch("/api/tournaments/turnaj", json={"location": "Sokolovna Praha"}, headers=headers)
-    assert client.get(SUGGESTIONS, headers=headers).json()["locations"] == ["Sokolovna Praha"]
+    client.patch("/api/tournaments/turnaj", json={"city": "Sokolovna Praha"}, headers=headers)
+    assert client.get(SUGGESTIONS, headers=headers).json()["cities"] == ["Sokolovna Praha"]
 
 
 def test_reading_suggestions_modifies_nothing(client, auth_headers, engine):
     """spec: Suggestions are read-only and leave no trace."""
     headers = auth_headers()
-    make_tournament(client, headers, "turnaj", location="Zlín")
+    make_tournament(client, headers, "turnaj", city="Zlín")
 
     with Session(engine) as session:
         before = [
-            (t.slug, t.location, t.bank_account, t.organizers)
+            (t.slug, t.city, t.bank_account, t.organizers)
             for t in session.scalars(select(Tournament)).all()
         ]
 
@@ -257,7 +287,7 @@ def test_reading_suggestions_modifies_nothing(client, auth_headers, engine):
 
     with Session(engine) as session:
         after = [
-            (t.slug, t.location, t.bank_account, t.organizers)
+            (t.slug, t.city, t.bank_account, t.organizers)
             for t in session.scalars(select(Tournament)).all()
         ]
     assert before == after
@@ -265,10 +295,10 @@ def test_reading_suggestions_modifies_nothing(client, auth_headers, engine):
 
 @pytest.mark.parametrize("field", ["display_name", "subtitle", "description"])
 def test_no_other_field_is_suggested(client, auth_headers, field):
-    """spec: A field outside the three. The payload names exactly three lists;
-    a fourth field would have to be added here deliberately."""
+    """spec: A field outside the four. The payload names exactly four lists;
+    a fifth field would have to be added here deliberately."""
     headers = auth_headers()
-    make_tournament(client, headers, "turnaj", location="Zlín")
+    make_tournament(client, headers, "turnaj", city="Zlín")
     body = client.get(SUGGESTIONS, headers=headers).json()
-    assert set(body) == {"locations", "bank_accounts", "organizers"}
+    assert set(body) == {"cities", "addresses", "bank_accounts", "organizers"}
     assert field not in body
