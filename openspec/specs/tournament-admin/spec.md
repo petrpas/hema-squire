@@ -757,11 +757,15 @@ Each tournament SHALL have exactly one Tournament Owner (initially the creator) 
 - **THEN** the tournament is published and the publication record names that account
 
 ### Requirement: In-app tournament creation
-An account holding the global Organizer role or higher SHALL be able to create a tournament from the tournament picker via a minimal dialog asking display name and date. The slug SHALL be auto-derived from the name and be editable before submission. Derivation SHALL append the event's year only when the slugified name does not already carry one: a four-digit group between 1900 and 2099 standing as its own token in the slug counts as a year already present, and in that case the slug is the slugified name alone. The creator SHALL become the tournament's Tournament Owner and land in the console's Setup phase. Accounts below the Organizer role SHALL NOT be able to create tournaments.
+An account holding the global Organizer role or higher SHALL be able to create a tournament from **the account menu**, from any screen, via a minimal dialog asking display name and date. The same dialog SHALL remain reachable from the tournament picker, which is where an organizer already stands when working through their tournaments. Wherever it is opened from, it SHALL be one dialog with one behaviour. The slug SHALL be auto-derived from the name and be editable before submission. Derivation SHALL append the event's year only when the slugified name does not already carry one: a four-digit group between 1900 and 2099 standing as its own token in the slug counts as a year already present, and in that case the slug is the slugified name alone. The creator SHALL become the tournament's Tournament Owner and land in the console's Setup phase. Accounts below the Organizer role SHALL NOT be able to create tournaments, and the menu SHALL NOT offer the entry to them at all.
 
 Creation SHALL take two panels in one window, not two windows: the fields above, then the tournament's settings as fixed by `setup-navigation`. **No tournament SHALL exist until the second panel is confirmed** — the request that creates it carries its settings, so there is no moment at which one exists without them and none at which one exists because of a step the organizer then backed out of. Cancelling the second panel SHALL return to the first with every field intact, having created nothing.
 
 A tournament SHALL be created in automatic mode with none of its features enabled, so that the settings panel only ever turns things on.
+
+#### Scenario: Create from the account menu
+- **WHEN** an account with the Organizer role opens the account menu from the tournament list and takes its Create tournament entry, giving a name and a date
+- **THEN** the tournament is created with the derived slug, the account becomes its Tournament Owner, and the console opens on the Setup phase
 
 #### Scenario: Create from picker
 - **WHEN** an account with the Organizer role submits the "New tournament" dialog with a name and date
@@ -787,6 +791,10 @@ A tournament SHALL be created in automatic mode with none of its features enable
 - **WHEN** an account with only the Fencer role attempts to create a tournament
 - **THEN** creation is rejected with an authorization error
 
+#### Scenario: A fencer is not offered the entry
+- **WHEN** an account with only the Fencer role opens the account menu
+- **THEN** no tournament-creation entry is shown
+
 #### Scenario: Created tournament starts with no features
 - **WHEN** an organizer confirms the settings panel without changing anything
 - **THEN** the tournament is created in automatic mode with every feature off, and the console opens on Setup
@@ -794,7 +802,6 @@ A tournament SHALL be created in automatic mode with none of its features enable
 #### Scenario: Cancelling the settings panel creates nothing
 - **WHEN** an organizer reaches the settings panel and cancels
 - **THEN** no tournament has been created, and the first panel holds the name, date and slug that were typed
-
 ### Requirement: Tournament ownership transfer
 The Tournament Owner SHALL be able to transfer ownership to a team member; on transfer the previous owner SHALL remain on the team. A global Admin SHALL be able to assign or reassign a tournament's owner as a fallback (for example when the owner's account is gone or the tournament has no owner).
 
