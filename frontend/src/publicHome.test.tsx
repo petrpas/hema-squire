@@ -42,7 +42,7 @@ function tournament(slug: string, over: Partial<OpenTournament> = {}): OpenTourn
     subtitle: null,
     has_logo: false,
     date: "2026-09-20",
-    location: null,
+    city: null,
     description: null,
     qualification_open: true,
     qualification_criteria: null,
@@ -180,6 +180,18 @@ describe("the shell with no account", () => {
       i18n.t("home.tabs.open"),
       i18n.t("home.tabs.past"),
     ]);
+  });
+
+  it("names the town on a card and nothing more of where it is", async () => {
+    // the card is itself a link, so a venue link inside it has nowhere to go;
+    // the address is read on the tournament's own page (spec `fencer-home`)
+    lists({ upcoming: [tournament("open-one", { city: "Brno" })] });
+    const page = mount("/?tab=open");
+    await settle();
+
+    const when = page.querySelector(".home-card-when");
+    expect(when?.textContent).toContain("Brno");
+    expect(when?.querySelector("a")).toBeNull();
   });
 
   it("gates ?tab=mine at its own URL", async () => {

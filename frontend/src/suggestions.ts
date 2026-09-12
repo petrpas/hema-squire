@@ -12,7 +12,8 @@ export interface SuggestionEntry {
 /** The lists arrive from the backend already distinct, ordered most-recent-first
  *  and capped, so nothing here re-orders them. */
 export const EMPTY_SUGGESTIONS: SetupSuggestions = {
-  locations: [],
+  cities: [],
+  addresses: [],
   bank_accounts: [],
   organizers: [],
 };

@@ -253,7 +253,7 @@ def publish(client, headers, slug):
     chooses: its disciplines and their prices. A tournament missing one of
     those cannot publish, and that is the test saying so."""
     filler = {
-        "location": "Brno",
+        "city": "Brno",
         "organizers": [{"name": "Org", "link": None}],
         "bank_account": "CZ6508000000192000145399",
     }

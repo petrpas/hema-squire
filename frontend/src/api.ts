@@ -329,7 +329,8 @@ export interface Organizer {
  *  stops being offered. Empty lists mean an organizer with no history yet, which
  *  renders no affordance at all. */
 export interface SetupSuggestions {
-  locations: string[];
+  cities: string[];
+  addresses: string[];
   bank_accounts: string[];
   // name and link travel together: choosing a remembered club fills both
   organizers: Organizer[];
@@ -368,7 +369,8 @@ export interface TournamentDetail extends Tournament {
   weapon_rental_fee_early: number | null;
   afterparty_fee: number;
   afterparty_fee_early: number | null;
-  location: string | null;
+  city: string | null;
+  address: string | null;
   description: string | null;
   qualification_open: boolean;
   qualification_criteria: string | null;
@@ -447,7 +449,8 @@ export type FencerTournament = Pick<
   | "subtitle"
   | "has_logo"
   | "date"
-  | "location"
+  | "city"
+  | "address"
   | "description"
   | "qualification_open"
   | "qualification_criteria"
@@ -620,7 +623,9 @@ export interface OpenTournament {
   subtitle: string | null;
   has_logo: boolean;
   date: string;
-  location: string | null;
+  /** The town, and only the town: the card has room for the name and nothing
+   *  more, and the address is read on the tournament's own page. */
+  city: string | null;
   description: string | null;
   qualification_open: boolean;
   qualification_criteria: string | null;

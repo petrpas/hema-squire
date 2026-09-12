@@ -18,8 +18,12 @@ export const IDENTITY_FIELDS = [
   { key: "display_name", type: "text" },
   { key: "subtitle", type: "text" },
   { key: "date", type: "date" },
-  // one line, so the inline markdown subset only — links and emphasis
-  { key: "location", type: "text", inlineMarkdown: true },
+  // the town, plain: it is what a card carries, where a link would have
+  // nowhere to go — the card is a link already
+  { key: "city", type: "text" },
+  // where in that town. One line, so the inline markdown subset only — a
+  // venue with a map link is the whole reason this field is separate
+  { key: "address", type: "text", inlineMarkdown: true },
   { key: "description", type: "textarea", markdown: true },
   // shown only on the registration form, unlike description
   {
@@ -38,15 +42,15 @@ export const IDENTITY_FIELDS = [
   },
 ] as const;
 
-// rendered as three runs — [display_name, subtitle], [date, location, description],
-// [registration_instructions] — with the logo block after the first and the
-// qualification block after the second, so the section reads name, subtitle,
-// logo, date, location, description, qualification, reg. instructions (design
-// D5). The registration window moved to TIMELINE (regroup-setup-parameters);
+// rendered as three runs — [display_name, subtitle], [date, city, address,
+// description], [registration_instructions] — with the logo block after the
+// first and the qualification block after the second, so the section reads
+// name, subtitle, logo, date, city, address, description, qualification,
+// reg. instructions (design D5). The registration window moved to TIMELINE (regroup-setup-parameters);
 // the tournament's own date stays here, its only editor.
 const IDENTITY_RUN_1 = IDENTITY_FIELDS.slice(0, 2);
-const IDENTITY_RUN_2 = IDENTITY_FIELDS.slice(2, 5);
-const IDENTITY_RUN_3 = IDENTITY_FIELDS.slice(5);
+const IDENTITY_RUN_2 = IDENTITY_FIELDS.slice(2, 6);
+const IDENTITY_RUN_3 = IDENTITY_FIELDS.slice(6);
 
 // text/textarea IDENTITY_FIELDS checked against TournamentUpdate's bounds
 // (dates are excluded — the browser's own date input is already typed)
@@ -54,7 +58,8 @@ const IDENTITY_TEXT_CHECKS: Record<string, (value: string) => FieldErrorValue | 
   display_name: (value) =>
     checkString("display_name", "TournamentUpdate.display_name", value, { required: true }),
   subtitle: (value) => checkString("subtitle", "TournamentUpdate.subtitle", value),
-  location: (value) => checkString("location", "TournamentUpdate.location", value),
+  city: (value) => checkString("city", "TournamentUpdate.city", value),
+  address: (value) => checkString("address", "TournamentUpdate.address", value),
   description: (value) =>
     checkString("description", "TournamentUpdate.description", value, { multiline: true }),
   registration_instructions: (value) =>
@@ -90,21 +95,32 @@ export function IdentitySection({
   const validation = useFieldValidation();
   const fieldRefs = useRef<Record<string, HTMLInputElement | HTMLTextAreaElement | null>>({});
 
-  // LOCATION recalls the venues this organizer has used before. Choosing sets
+  // CITY and ADDRESS recall what this organizer has used before — the towns
+  // they have held tournaments in, and the venues within them. Choosing sets
   // the value through the same path typing does, so the dirty flag and the
   // field's own validation behave identically either way.
-  const locationSuggestions = useSuggestions(
-    plainEntries(suggestions.locations),
-    values.location ?? "",
-    (entry) => {
-      setValues((current) => ({ ...current, location: entry.value }));
+  function recall(key: "city" | "address") {
+    return (entry: { value: string }) => {
+      setValues((current) => ({ ...current, [key]: entry.value }));
       setDirty(true);
-      validation.clearIfValid(
-        "location",
-        () => IDENTITY_TEXT_CHECKS.location?.(entry.value) ?? null,
-      );
-    },
+      validation.clearIfValid(key, () => IDENTITY_TEXT_CHECKS[key]?.(entry.value) ?? null);
+    };
+  }
+  const citySuggestions = useSuggestions(
+    plainEntries(suggestions.cities),
+    values.city ?? "",
+    recall("city"),
   );
+  const addressSuggestions = useSuggestions(
+    plainEntries(suggestions.addresses),
+    values.address ?? "",
+    recall("address"),
+  );
+  // keyed by the field they belong to, so the input below asks for its own
+  // rather than testing for each key in turn
+  const RECALLED = { city: citySuggestions, address: addressSuggestions };
+  const recalled = (key: string) =>
+    key in RECALLED ? RECALLED[key as keyof typeof RECALLED] : null;
 
   function qualificationCriteriaCheck(): FieldErrorValue | null {
     if (!qualificationOpen && qualificationCriteria.trim() === "") {
@@ -221,6 +237,7 @@ export function IdentitySection({
   function renderField(field: (typeof IDENTITY_FIELDS)[number]) {
     const check = IDENTITY_TEXT_CHECKS[field.key];
     const error = validation.errors[field.key];
+    const suggest = recalled(field.key);
     return field.type === "textarea" ? (
       <label key={field.key} className="form-field">
         <span>
@@ -251,9 +268,9 @@ export function IdentitySection({
     ) : (
       <label key={field.key} className="form-field">
         <span>{t(`param.${field.key}`)}</span>
-        {/* LOCATION is the one field here that recalls prior values; the anchor
-            positions its list, and the combobox props ride on the same input */}
-        <SuggestionAnchor active={field.key === "location"}>
+        {/* CITY and ADDRESS recall prior values; the anchor positions the
+            list, and the combobox props ride on the same input */}
+        <SuggestionAnchor active={suggest !== null}>
           <input
             ref={(el) => {
               fieldRefs.current[field.key] = el;
@@ -266,16 +283,16 @@ export function IdentitySection({
               if (check) validation.clearIfValid(field.key, () => check(event.target.value));
             }}
             onBlur={(event) => {
-              if (field.key === "location") locationSuggestions.close();
+              suggest?.close();
               if (check) validation.touch(field.key, () => check(event.target.value));
             }}
-            {...(field.key === "location" ? locationSuggestions.inputProps : {})}
+            {...(suggest ? suggest.inputProps : {})}
             {...invalidProps(field.key, error)}
           />
-          {field.key === "location" && (
+          {suggest && (
             <SuggestionList
-              suggestions={locationSuggestions}
-              label={t("setup.suggestions.locations")}
+              suggestions={suggest}
+              label={t(`setup.suggestions.${field.key === "city" ? "cities" : "addresses"}`)}
             />
           )}
         </SuggestionAnchor>

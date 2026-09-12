@@ -350,7 +350,8 @@
     "output_sheet_url": "URL výstupní Google tabulky",
     "display_name": "Název turnaje",
     "date": "Datum",
-    "location": "Místo konání",
+    "city": "Město",
+    "address": "Adresa",
     "language": "Jazyk komunikace",
     "registration_opens": "Registrace od",
     "registration_closes": "Registrace do",
@@ -441,7 +442,7 @@
       "turnOnFeature": "Nastavení téhle položky je skryté — zapni funkci „{{feature}}“ v režimu turnaje na kartě ostatní, aby šla upravit."
     },
     "missing": {
-      "location": "Chybí místo konání",
+      "city": "Chybí město",
       "organizers": "Chybí alespoň jeden pořadatel",
       "disciplines": "Chybí alespoň jedna disciplína",
       "discipline_prices": "Chybí cena u některé disciplíny",
@@ -495,7 +496,8 @@
       "linkPlaceholder": "Odkaz (nepovinné)"
     },
     "suggestions": {
-      "locations": "dříve použitá místa konání",
+      "cities": "dříve použitá města",
+      "addresses": "dříve použité adresy",
       "bankAccounts": "dříve použité účty",
       "organizers": "dříve uvedení pořadatelé"
     },

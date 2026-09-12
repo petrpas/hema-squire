@@ -26,7 +26,7 @@ def organizer_with_tournament(client, auth_headers):
         )
     client.patch(
         "/api/tournaments/cup",
-        json={"location": "Brno", "organizers": [{"name": "Cup Org", "link": None}]},
+        json={"city": "Brno", "organizers": [{"name": "Cup Org", "link": None}]},
         headers=organizer,
     )
     publish(client, organizer, "cup")

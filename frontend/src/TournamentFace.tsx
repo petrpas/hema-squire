@@ -125,14 +125,19 @@ export function InfoHeader({ detail }: { detail: TournamentDetailData }) {
           className="detail-facts"
           parts={[
             new Date(detail.date).toLocaleDateString("cs"),
-            detail.location?.trim() ? (
-              <InlineProse key="location" source={detail.location} />
-            ) : null,
+            // the town on the facts line; the address, which may carry a map
+            // link, gets its own line below (spec `fencer-home`)
+            detail.city?.trim() ? detail.city : null,
             detail.qualification_open
               ? t("detail.qualificationOpen")
               : t("detail.qualificationRequired", { criteria: detail.qualification_criteria }),
           ]}
         />
+        {detail.address?.trim() && (
+          <p className="detail-address">
+            <InlineProse source={detail.address} />
+          </p>
+        )}
         <DotJoined
           className="rail-hint"
           parts={[

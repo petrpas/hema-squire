@@ -67,7 +67,7 @@ def make_tournament(client, organizer, *, payments=True, fee_eur=None, **params)
     payload = {
         "bank_account": IBAN,
         "reservation_validity_days": 7,
-        "location": "Brno",
+        "city": "Brno",
         "organizers": [{"name": "Cup Org", "link": None}],
     }
     payload.update(params)

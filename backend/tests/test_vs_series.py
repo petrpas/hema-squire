@@ -16,7 +16,7 @@ def create_tournament(client, organizer, slug, date="2026-12-05"):
     assert response.status_code == 201, response.text
     client.patch(
         f"/api/tournaments/{slug}",
-        json={"location": "Brno", "organizers": [{"name": "Org", "link": None}]},
+        json={"city": "Brno", "organizers": [{"name": "Org", "link": None}]},
         headers=organizer,
     )
     client.post(

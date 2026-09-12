@@ -57,7 +57,7 @@ def test_admin_retains_fencer_capabilities(client, auth_headers):
     create_tournament(client, organizer)
     client.patch(
         "/api/tournaments/cup",
-        json={"location": "Praha", "organizers": [{"name": "Rocha", "link": None}]},
+        json={"city": "Praha", "organizers": [{"name": "Rocha", "link": None}]},
         headers=organizer,
     )
     client.post(
@@ -101,7 +101,7 @@ def test_owner_flag_not_leaked_to_others(client, auth_headers, owner_email):
 
 
 def edit_location(client, headers):
-    return client.patch("/api/tournaments/cup", json={"location": "Brno"}, headers=headers)
+    return client.patch("/api/tournaments/cup", json={"city": "Brno"}, headers=headers)
 
 
 def test_console_access_owner_and_team_only(client, auth_headers):

@@ -191,7 +191,7 @@ def test_the_poll_asks_for_the_tournament_s_own_window(client, auth_headers):
             json={
                 "date": "2026-05-23",
                 "registration_opens": "2026-04-01",
-                "location": "Brno",
+                "city": "Brno",
                 "organizers": [{"name": "Cup Org", "link": None}],
             },
             headers=organizer,
@@ -224,7 +224,7 @@ def test_the_window_never_asks_about_days_that_have_not_happened(client, auth_he
             "/api/tournaments/cup",
             json={
                 "registration_opens": "2026-09-01",
-                "location": "Brno",
+                "city": "Brno",
                 "organizers": [{"name": "Cup Org", "link": None}],
             },
             headers=organizer,

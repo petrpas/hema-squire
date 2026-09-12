@@ -114,8 +114,8 @@ phase presents. Mandatory setup is defined by `tournament-admin` and is unchange
 publication.
 
 #### Scenario: Incomplete setup refuses publication
-- **WHEN** a tournament with no location and an unpriced discipline is published
-- **THEN** the attempt is refused and names the missing location and the missing discipline price
+- **WHEN** a tournament with no city and an unpriced discipline is published
+- **THEN** the attempt is refused and names the missing city and the missing discipline price
 
 #### Scenario: Complete setup allows publication
 - **WHEN** the last missing item is configured and the tournament is published
@@ -126,7 +126,7 @@ Once a tournament is published, any save that would leave a mandatory setup item
 unconfigured SHALL be rejected, naming the item that would be missing, and SHALL write
 nothing. This SHALL hold for every route by which a mandatory item can be changed —
 clearing a price, removing the last discipline or the last titular organizer, emptying
-the location, or switching to a currency mode whose newly required prices are not all
+the city, or switching to a currency mode whose newly required prices are not all
 filled. A draft SHALL NOT be restricted this way: any of its mandatory items may be
 emptied or removed freely.
 
@@ -146,7 +146,7 @@ mandatory setup, and the registration gate SHALL NOT re-check completeness.
 - **THEN** the save is rejected naming the missing EUR price, and the currency mode is unchanged
 
 #### Scenario: Ordinary edits still allowed
-- **WHEN** the organizer changes the location text, adds a second discipline with a price, or edits the description of a published tournament
+- **WHEN** the organizer changes the city, adds a second discipline with a price, or edits the description of a published tournament
 - **THEN** the save succeeds as it would on a draft
 
 #### Scenario: A draft may be emptied
@@ -175,8 +175,8 @@ state; it SHALL NOT save those changes, and it SHALL NOT let them satisfy or blo
 publication.
 
 #### Scenario: Draft with blocking items
-- **WHEN** the organizer opens `PUBLISH` on a draft missing its location and a discipline price
-- **THEN** the tab states the tournament is not published, lists the missing location and discipline price, and the publish control is inert with a hint that those items must be configured first
+- **WHEN** the organizer opens `PUBLISH` on a draft missing its city and a discipline price
+- **THEN** the tab states the tournament is not published, lists the missing city and discipline price, and the publish control is inert with a hint that those items must be configured first
 
 #### Scenario: Draft ready to publish
 - **WHEN** the organizer opens `PUBLISH` on a setup-complete draft

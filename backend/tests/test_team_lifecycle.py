@@ -127,12 +127,12 @@ def test_owner_transfers_to_team_member(client, auth_headers):
     )
     helper = {"Authorization": f"Bearer {login.json()['token']}"}
     assert (
-        client.patch(f"/api/tournaments/{slug}", json={"location": "X"}, headers=helper).status_code
+        client.patch(f"/api/tournaments/{slug}", json={"city": "X"}, headers=helper).status_code
         == 200
     )
     # the previous owner (now a team member) still has console access
     assert (
-        client.patch(f"/api/tournaments/{slug}", json={"location": "Y"}, headers=owner).status_code
+        client.patch(f"/api/tournaments/{slug}", json={"city": "Y"}, headers=owner).status_code
         == 200
     )
     # but the previous owner can no longer manage the team or transfer again
@@ -183,7 +183,7 @@ def test_admin_assigns_owner_fallback(client, auth_headers):
     assert response.status_code == 200
     assert (
         client.patch(
-            f"/api/tournaments/{slug}", json={"location": "Z"}, headers=new_owner
+            f"/api/tournaments/{slug}", json={"city": "Z"}, headers=new_owner
         ).status_code
         == 200
     )
@@ -215,7 +215,7 @@ def test_delete_blocked_by_registrations(client, auth_headers):
     slug = make_tournament(client, owner)
     client.patch(
         f"/api/tournaments/{slug}",
-        json={"location": "Brno", "organizers": [{"name": "Cup Org", "link": None}]},
+        json={"city": "Brno", "organizers": [{"name": "Cup Org", "link": None}]},
         headers=owner,
     )
     add_priced_discipline(client, owner, slug)
@@ -233,7 +233,7 @@ def test_cancel_hides_from_public_list_but_keeps_console(client, auth_headers):
     slug = make_tournament(client, owner)
     client.patch(
         f"/api/tournaments/{slug}",
-        json={"location": "Brno", "organizers": [{"name": "Cup Org", "link": None}]},
+        json={"city": "Brno", "organizers": [{"name": "Cup Org", "link": None}]},
         headers=owner,
     )
     add_priced_discipline(client, owner, slug)
@@ -255,7 +255,7 @@ def test_cancel_hides_from_public_list_but_keeps_console(client, auth_headers):
     assert detail.status_code == 200
     assert (
         client.patch(
-            f"/api/tournaments/{slug}", json={"location": "Nove"}, headers=owner
+            f"/api/tournaments/{slug}", json={"city": "Nove"}, headers=owner
         ).status_code
         == 200
     )
@@ -266,7 +266,7 @@ def test_cancelled_tournament_rejects_new_registrations_as_closed(client, auth_h
     slug = make_tournament(client, owner)
     client.patch(
         f"/api/tournaments/{slug}",
-        json={"location": "Brno", "organizers": [{"name": "Cup Org", "link": None}]},
+        json={"city": "Brno", "organizers": [{"name": "Cup Org", "link": None}]},
         headers=owner,
     )
     add_priced_discipline(client, owner, slug)

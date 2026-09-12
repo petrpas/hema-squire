@@ -17,7 +17,7 @@ def setup_tournament(client, organizer, early_bird=False):
         "weapon_rental_fee": 200,
         "afterparty_fee": 300,
         "refundable_until": "2026-11-01",
-        "location": "Brno",
+        "city": "Brno",
         "organizers": [{"name": "Cup Org", "link": None}],
     }
     if early_bird:
@@ -893,7 +893,7 @@ def test_slug_frozen_after_team_entry(client, auth_headers):
     )
     client.patch(
         "/api/tournaments/cup",
-        json={"location": "Brno", "organizers": [{"name": "Org", "link": None}]},
+        json={"city": "Brno", "organizers": [{"name": "Org", "link": None}]},
         headers=organizer,
     )
     client.post(
@@ -976,7 +976,7 @@ def test_entering_one_tier_does_not_count_against_the_other(client, auth_headers
     )
     client.patch(
         "/api/tournaments/cup",
-        json={"location": "Brno", "organizers": [{"name": "Org", "link": None}]},
+        json={"city": "Brno", "organizers": [{"name": "Org", "link": None}]},
         headers=organizer,
     )
     client.post(

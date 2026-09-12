@@ -3155,6 +3155,14 @@ label.checkbox-chip,
   color: var(--ink);
 }
 
+/* where in town, under the date · place · qualification line it elaborates.
+   Its own line because an address runs longer than a town name and carries a
+   venue link, neither of which belongs in a dot-joined run of short facts. */
+.detail-address {
+  font-size: 13px;
+  color: var(--ink);
+}
+
 /* the team-event marker stands off the discipline name it qualifies, rather
    than sitting flush against it */
 .team-flag {

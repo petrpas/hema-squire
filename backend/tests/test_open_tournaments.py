@@ -20,7 +20,7 @@ def make_open_tournament(client, organizer, slug, **overrides):
     }
     payload.update({k: v for k, v in overrides.items() if k in ("slug", "display_name", "date")})
     client.post("/api/tournaments", json=payload, headers=organizer)
-    patch = {"location": "Brno", "organizers": [{"name": "Org", "link": None}]}
+    patch = {"city": "Brno", "organizers": [{"name": "Org", "link": None}]}
     patch.update({k: v for k, v in overrides.items() if k not in ("slug", "display_name", "date")})
     client.patch(f"/api/tournaments/{slug}", json=patch, headers=organizer)
     client.post(
@@ -35,7 +35,7 @@ def test_open_hides_drafts_cancelled_and_past(client, auth_headers):
     organizer = auth_headers()
     make_open_tournament(client, organizer, "ready")
 
-    # draft: missing setup (no location/organizers/disciplines)
+    # draft: missing setup (no city/organizers/disciplines)
     client.post(
         "/api/tournaments",
         json={
@@ -74,7 +74,10 @@ def test_open_carries_discipline_counts_and_own_state(client, auth_headers):
     assert cup["registration_status"] == "open"
     assert cup["my_registration_state"] == "reserved"
     assert cup["organizers"] == [{"name": "Org", "link": None}]
-    assert cup["location"] == "Brno"
+    assert cup["city"] == "Brno"
+    # the card names the town and stops there: where in town is read on the
+    # tournament's own page (spec `fencer-home`)
+    assert "address" not in cup
 
     listed_other = client.get("/api/tournaments/open", headers=other).json()
     assert next(t for t in listed_other if t["slug"] == "cup")["my_registration_state"] == "none"

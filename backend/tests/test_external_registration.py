@@ -33,7 +33,7 @@ def make_tournament(client, organizer, **patch):
         json={"slug": "cup", "display_name": "Cup", "date": "2026-12-05"},
         headers=organizer,
     )
-    base = {"location": "Brno", "organizers": [{"name": "Org", "link": None}]}
+    base = {"city": "Brno", "organizers": [{"name": "Org", "link": None}]}
     response = client.patch("/api/tournaments/cup", json=base | patch, headers=organizer)
     assert response.status_code == 200, response.text
     client.post(
@@ -159,7 +159,7 @@ def test_the_other_mandatory_items_still_apply_when_organizer_kept(client, auth_
     )
     kept_by_organizer(client, organizer)
     missing = set(client.get("/api/tournaments/cup", headers=organizer).json()["setup_missing"])
-    assert app_setup.MISSING_LOCATION in missing
+    assert app_setup.MISSING_CITY in missing
     assert app_setup.MISSING_ORGANIZERS in missing
     assert app_setup.MISSING_DISCIPLINES in missing
     assert app_setup.MISSING_EXTERNAL_REGISTRATION in missing

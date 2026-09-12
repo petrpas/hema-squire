@@ -285,7 +285,12 @@ class Tournament(Base):
     published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     published_by_id: Mapped[int | None] = mapped_column(ForeignKey("fencers.id"))
     language: Mapped[str] = mapped_column(String(10), default="cs")
-    location: Mapped[str | None] = mapped_column(String(300))
+    # the town the tournament is held in, plain text: everyone knows where
+    # Berlin is, and a card has room for the name and nothing more
+    city: Mapped[str | None] = mapped_column(String(120))
+    # where in that town, inline markdown so a venue can carry a map link;
+    # read on the tournament's own page, never on a card
+    address: Mapped[str | None] = mapped_column(String(300))
     # optional free-form plain text, presented with line breaks preserved;
     # never interpreted as markup
     description: Mapped[str | None] = mapped_column(Text)

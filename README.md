@@ -26,7 +26,7 @@ Vite's dev server already does this.
 
 With `--seed` you get the **Na Duel! 2026** demo tournament — organizer login
 `petr@example.com` / `demo-heslo-123` at <http://localhost:5173>: a complete
-Setup (location, titular organizers, an open registration window, itemized
+Setup (city, titular organizers, an open registration window, itemized
 pricing with extra services across categories, a discipline-count discount,
 and an early-bird percent discount), four in-app registrations exercising
 that pricing (one paid via a simulated Fio statement), an imported

@@ -230,7 +230,7 @@ def setup_team_tournament(client, organizer, *, team_min=3, team_max=4, capacity
         json={"slug": "cup", "display_name": "Cup", "date": "2026-12-05", "language": "cs"},
         headers=organizer,
     )
-    patch = {"location": "Brno", "organizers": [{"name": "Cup Org", "link": None}]}
+    patch = {"city": "Brno", "organizers": [{"name": "Cup Org", "link": None}]}
     if deadline is not None:
         patch["team_composition_deadline"] = deadline
     client.patch("/api/tournaments/cup", json=patch, headers=organizer)
@@ -338,7 +338,7 @@ def test_full_individual_discipline_unaffected_by_teams(client, auth_headers):
     )
     client.patch(
         "/api/tournaments/cup",
-        json={"location": "Brno", "organizers": [{"name": "Org", "link": None}]},
+        json={"city": "Brno", "organizers": [{"name": "Org", "link": None}]},
         headers=organizer,
     )
     client.post(
@@ -853,7 +853,7 @@ def test_v5_fixture_restores_with_no_teams(client, auth_headers):
             "weapon_rental_fee_early": None,
             "afterparty_fee": 0,
             "afterparty_fee_early": None,
-            "location": "Prague",
+            "city": "Prague",
             "description": None,
             "qualification_open": True,
             "qualification_criteria": None,
@@ -928,7 +928,7 @@ def test_teams_absent_from_sheets_export(client, auth_headers):
         "/api/tournaments/cup",
         json={
             "output_sheet_url": "https://sheets.example/cup",
-            "location": "Brno",
+            "city": "Brno",
             "organizers": [{"name": "Cup Org", "link": None}],
         },
         headers=organizer,
@@ -1055,7 +1055,7 @@ def test_no_team_discipline_regression(client, auth_headers):
     )
     client.patch(
         "/api/tournaments/cup",
-        json={"location": "Brno", "organizers": [{"name": "Org", "link": None}]},
+        json={"city": "Brno", "organizers": [{"name": "Org", "link": None}]},
         headers=organizer,
     )
     client.post(

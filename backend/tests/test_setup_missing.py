@@ -11,7 +11,7 @@ def make_tournament(**kwargs) -> Tournament:
         slug="t",
         display_name="T",
         date=date(2026, 10, 3),
-        location="Brno",
+        city="Brno",
         organizers=[{"name": "Duelanti od sv. Rocha", "link": None}],
         vs_year=2026,
         vs_series=1,
@@ -42,8 +42,11 @@ def test_complete_setup_has_nothing_missing():
 
 
 def test_each_mandatory_item_reported():
-    assert setup_missing(make_tournament(location=None)) == ["location"]
-    assert setup_missing(make_tournament(location="  ")) == ["location"]
+    assert setup_missing(make_tournament(city=None)) == ["city"]
+    assert setup_missing(make_tournament(city="  ")) == ["city"]
+    # the address is not mandatory: a tournament that names its town has said
+    # where it is, and where in town can follow later
+    assert setup_missing(make_tournament(address=None)) == []
     assert setup_missing(make_tournament(organizers=[])) == ["organizers"]
     assert setup_missing(make_tournament(disciplines=[])) == ["disciplines"]
 
@@ -55,8 +58,8 @@ def test_unpriced_discipline_blocks():
 
 
 def test_multiple_gaps_accumulate():
-    tournament = make_tournament(location=None, organizers=[], disciplines=[])
-    assert setup_missing(tournament) == ["location", "organizers", "disciplines"]
+    tournament = make_tournament(city=None, organizers=[], disciplines=[])
+    assert setup_missing(tournament) == ["city", "organizers", "disciplines"]
 
 
 def test_eur_payments_without_a_rate_is_fine():

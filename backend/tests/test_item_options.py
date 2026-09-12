@@ -39,7 +39,7 @@ def make_ready_tournament(client, headers):
     make_api_tournament(client, headers)
     client.patch(
         f"/api/tournaments/{SLUG}",
-        json={"location": "Brno", "organizers": [{"name": "Org", "link": None}]},
+        json={"city": "Brno", "organizers": [{"name": "Org", "link": None}]},
         headers=headers,
     )
     client.post(

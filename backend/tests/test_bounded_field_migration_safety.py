@@ -41,7 +41,7 @@ def test_over_long_tournament_description_still_renders_and_only_blocks_its_own_
     assert detail.json()["description"] == over_long
 
     # an unrelated field can still be saved without touching description
-    unrelated = client.patch("/api/tournaments/cup", json={"location": "Prague"}, headers=headers)
+    unrelated = client.patch("/api/tournaments/cup", json={"city": "Prague"}, headers=headers)
     assert unrelated.status_code == 200
 
     # only resubmitting the offending field itself is rejected

@@ -49,7 +49,8 @@ const DETAIL = {
   subtitle: null,
   has_logo: false,
   date: "2099-05-01",
-  location: null,
+  city: null,
+  address: null,
   description: null,
   qualification_open: true,
   qualification_criteria: null,
@@ -102,8 +103,8 @@ const AVAILABILITY = [
   { slug: "LS", kind: "individual", capacity: 20, taken: 1, free: 19, queue_length: 0 },
 ] as unknown as Availability[];
 
-function detailApi() {
-  vi.spyOn(api, "tournament").mockResolvedValue(DETAIL);
+function detailApi(over: Partial<FencerTournament> = {}) {
+  vi.spyOn(api, "tournament").mockResolvedValue({ ...DETAIL, ...over });
   vi.spyOn(api, "availability").mockResolvedValue(AVAILABILITY);
   vi.spyOn(api, "openTournaments").mockResolvedValue([]);
   vi.spyOn(api, "heldTournaments").mockResolvedValue([]);
@@ -154,6 +155,31 @@ describe("a tournament's detail is public", () => {
 
     expect(page.querySelector(".home-tabs")).toBeNull();
     expect(page.textContent).not.toContain(i18n.t("home.tabs.announced"));
+  });
+
+  it("names the town on its facts line and the address under it, link and all", async () => {
+    detailApi({
+      city: "Brno",
+      address: "[Sportovní hala](https://osm.org/go/0J0ajlLg8?m=)",
+    });
+    const page = mount("/t/spring-open");
+    await settle();
+
+    expect(page.querySelector(".detail-facts")?.textContent).toContain("Brno");
+    const address = page.querySelector(".detail-address");
+    expect(address?.textContent).toBe("Sportovní hala");
+    expect(address?.querySelector("a")?.getAttribute("href")).toBe(
+      "https://osm.org/go/0J0ajlLg8?m=",
+    );
+  });
+
+  it("leaves no address line where there is no address", async () => {
+    detailApi({ city: "Brno" });
+    const page = mount("/t/spring-open");
+    await settle();
+
+    expect(page.querySelector(".detail-facts")?.textContent).toContain("Brno");
+    expect(page.querySelector(".detail-address")).toBeNull();
   });
 
   it("keeps the shared top bar", async () => {

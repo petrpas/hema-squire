@@ -16,7 +16,7 @@ def create_tournament(client, organizer, slug, date="2026-12-05"):
     client.patch(
         f"/api/tournaments/{slug}",
         json={
-            "location": "Brno",
+            "city": "Brno",
             "organizers": [{"name": "Org", "link": None}],
             "bank_account": "CZ6508000000192000145399",
         },

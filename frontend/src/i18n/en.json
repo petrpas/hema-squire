@@ -336,7 +336,8 @@
     "output_sheet_url": "Output Google Sheet URL",
     "display_name": "Tournament name",
     "date": "Date",
-    "location": "Location",
+    "city": "City",
+    "address": "Address",
     "language": "Communication language",
     "registration_opens": "Registration opens",
     "registration_closes": "Registration closes",
@@ -426,7 +427,7 @@
       "turnOnFeature": "This item has no editor in the current mode — turn the {{feature}} feature on, in the tournament mode on the other tab, to get it back."
     },
     "missing": {
-      "location": "Location is missing",
+      "city": "City is missing",
       "organizers": "At least one titular organizer is missing",
       "disciplines": "At least one discipline is missing",
       "discipline_prices": "Some discipline has no price",
@@ -480,7 +481,8 @@
       "linkPlaceholder": "Link (optional)"
     },
     "suggestions": {
-      "locations": "previously used venues",
+      "cities": "towns used before",
+      "addresses": "venues used before",
       "bankAccounts": "previously used accounts",
       "organizers": "previously named organizers"
     },

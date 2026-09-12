@@ -231,8 +231,11 @@ TournamentDisplayNameStr = Annotated[
 TournamentSubtitleStr = Annotated[
     str, SingleLine, Field(max_length=constraints.TOURNAMENT_SUBTITLE_MAX_LENGTH)
 ]
-TournamentLocationStr = Annotated[
-    str, SingleLine, Field(max_length=constraints.TOURNAMENT_LOCATION_MAX_LENGTH)
+TournamentCityStr = Annotated[
+    str, SingleLine, Field(max_length=constraints.TOURNAMENT_CITY_MAX_LENGTH)
+]
+TournamentAddressStr = Annotated[
+    str, SingleLine, Field(max_length=constraints.TOURNAMENT_ADDRESS_MAX_LENGTH)
 ]
 BankAccountStr = Annotated[
     str,
@@ -421,9 +424,10 @@ __all__ = [
     "TolerantDecimal",
     "UtcInstant",
     "TolerantInt",
+    "TournamentAddressStr",
+    "TournamentCityStr",
     "TournamentDescriptionStr",
     "TournamentDisplayNameStr",
-    "TournamentLocationStr",
     "TournamentQualificationCriteriaStr",
     "TournamentRegistrationInstructionsStr",
     "TournamentSubtitleStr",

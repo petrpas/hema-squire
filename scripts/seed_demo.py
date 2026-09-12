@@ -144,7 +144,8 @@ def main() -> None:
     # / early_bird_until stay unset, as new-style tournaments never set them.
     call("PATCH", f"/api/tournaments/{SLUG}", token, {
         "bank_account": "CZ6508000000192000145399",
-        "location": "Praha, Sportovní hala Podolí",
+        "city": "Praha",
+        "address": "[Sportovní hala Podolí](https://www.podoli-praha.cz/)",
         "organizers": [{"name": "Duelanti od sv. Rocha"},
                        {"name": "Pražský Šermířský Klub"}],
         "registration_opens": "2026-01-01",
