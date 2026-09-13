@@ -19,7 +19,8 @@
     "delete": "Delete row (reversible)",
     "restore": "Restore row",
     "removeRule": "Undo this change",
-    "moveUp": "Move up"
+    "moveUp": "Move up",
+    "substitute": "Replace fencer"
   },
   "import": {
     "title": "Table import",
@@ -295,7 +296,9 @@
   },
   "marker": {
     "note": "Note",
-    "problem": "Parse problem"
+    "problem": "Parse problem",
+    "substitutedFor": "took over from {{name}}",
+    "substituted": "Substitution"
   },
   "column": {
     "name": "Name",
@@ -381,7 +384,8 @@
       "mergedInto": "merged into {{row}}",
       "meta": "{{actor}} · {{time}}",
       "empty": "—",
-      "unknownRow": "row no longer in the table"
+      "unknownRow": "row no longer in the table",
+      "substituted": "{{substitute}} takes {{previous}}'s place"
     }
   },
   "sheet": {
@@ -1291,6 +1295,29 @@
     "reason": {
       "no_discipline": "enters no discipline",
       "no_name": "has no name"
+    }
+  },
+  "substitute": {
+    "title": "Choose a substitute",
+    "replacing": "Taking over from: {{name}}",
+    "profile": "HEMA Ratings",
+    "profileOptional": "A profile is optional — enter a name HEMA Ratings does not carry as typed.",
+    "clearProfile": "clear the chosen profile",
+    "email": "E-mail",
+    "keepAddress": "keep the current one ({{address}})",
+    "mailNotice": "Word of the substitution goes to {{address}}.",
+    "mailNoticeBlank": "Word of the substitution goes to the address given.",
+    "submit": "replace",
+    "refusal": {
+      "substitute_email_required": "an address is required in automatic mode.",
+      "substitute_email_malformed": "that is not the shape of an e-mail address.",
+      "substitute_name_required": "the substitute's name is required.",
+      "substitute_already_registered": "this fencer is already entered in the tournament.",
+      "substitute_is_the_fencer_on_the_row": "that is the fencer already on the row.",
+      "row_is_deleted": "a deleted row is restored, not handed on.",
+      "row_was_absorbed": "this row was merged into another.",
+      "hr_id_must_be_a_whole_number": "a HEMA Ratings id is a whole number.",
+      "failed": "the substitution was not accepted."
     }
   }
 }

@@ -693,6 +693,19 @@ class Registration(Base):
     # Fixed fencer number) and the list does not show them twice, once as a row
     # and once as a registration.
     source_row_id: Mapped[str | None] = mapped_column(String(80), unique=True)
+    # The seat's own address, where it differs from the address of the account
+    # holding it. Written by a substitution that kept the address the seat came
+    # with: a club that entered three people under one address keeps that
+    # address when one of the three is replaced, and it cannot be written onto
+    # the substitute's fencer record, which is a different person's and carries
+    # an address of its own (spec `registration`, "A registration may carry a
+    # contact address of its own").
+    #
+    # **It is not credentials.** Nothing can be signed in with it, no account is
+    # created for it, and it is not unique — several seats may share one. Every
+    # message Squire sends about this registration goes here where it is set;
+    # `emails.recipient` is the one place that decides.
+    contact_email: Mapped[str | None] = mapped_column(String(320))
     reminded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     cancelled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     refundable: Mapped[bool | None]

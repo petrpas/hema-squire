@@ -19,7 +19,8 @@
     "delete": "Smazat řádek (vratné)",
     "restore": "Obnovit řádek",
     "removeRule": "Vrátit tuto úpravu",
-    "moveUp": "Posunout výš"
+    "moveUp": "Posunout výš",
+    "substitute": "Nahradit šermíře"
   },
   "import": {
     "title": "Import tabulky",
@@ -309,7 +310,9 @@
   },
   "marker": {
     "note": "Poznámka",
-    "problem": "Problém parsování"
+    "problem": "Problém parsování",
+    "substitutedFor": "místo po {{name}}",
+    "substituted": "Náhrada"
   },
   "column": {
     "name": "Jméno",
@@ -395,7 +398,8 @@
       "mergedInto": "sloučeno do {{row}}",
       "meta": "{{actor}} · {{time}}",
       "empty": "—",
-      "unknownRow": "řádek už v tabulce není"
+      "unknownRow": "řádek už v tabulce není",
+      "substituted": "místo {{previous}} nastupuje {{substitute}}"
     }
   },
   "sheet": {
@@ -1323,6 +1327,29 @@
     "reason": {
       "no_discipline": "nemá žádnou disciplínu",
       "no_name": "nemá jméno"
+    }
+  },
+  "substitute": {
+    "title": "Výběr náhradníka",
+    "replacing": "Místo po: {{name}}",
+    "profile": "HEMA Ratings",
+    "profileOptional": "Profil není povinný — koho HEMA Ratings nezná, zadejte jménem.",
+    "clearProfile": "zrušit výběr profilu",
+    "email": "E-mail",
+    "keepAddress": "ponechat stávající ({{address}})",
+    "mailNotice": "Na adresu {{address}} odejde informace o provedení náhrady.",
+    "mailNoticeBlank": "Na zadanou adresu odejde informace o provedení náhrady.",
+    "submit": "nahradit",
+    "refusal": {
+      "substitute_email_required": "v automatickém režimu je e-mail povinný.",
+      "substitute_email_malformed": "tohle není tvar e-mailové adresy.",
+      "substitute_name_required": "jméno náhradníka je povinné.",
+      "substitute_already_registered": "tento šermíř už je na turnaj přihlášen.",
+      "substitute_is_the_fencer_on_the_row": "to je šermíř, který na řádku už je.",
+      "row_is_deleted": "smazaný řádek se nenahrazuje, jen obnovuje.",
+      "row_was_absorbed": "tento řádek byl sloučen do jiného.",
+      "hr_id_must_be_a_whole_number": "HEMA Ratings id musí být celé číslo.",
+      "failed": "náhrada nebyla přijata."
     }
   }
 }

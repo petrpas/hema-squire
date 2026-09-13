@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-/** A row's note or its parse problems: a marker where there is something to
+const GLYPH = { note: "[i]", problem: "[!]", substituted: "[»]" } as const;
+
+/** A row's note, its parse problems, or the seat it took over: a marker where there is something to
  *  read, and nothing at all where there is not (spec `etl-console`, Note and
  *  problem markers).
  *
@@ -10,7 +12,13 @@ import { useTranslation } from "react-i18next";
  *  organizer's to rewrite. Opening is a click or a keypress, not a hover: this
  *  is content to read, not a hint to glance at, and a marker reachable only by
  *  pointer would put a parse doubt out of reach of the keyboard. */
-export default function NoteMarker({ kind, text }: { kind: "note" | "problem"; text: string }) {
+export default function NoteMarker({
+  kind,
+  text,
+}: {
+  kind: "note" | "problem" | "substituted";
+  text: string;
+}) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const wrapper = useRef<HTMLSpanElement>(null);
@@ -42,7 +50,7 @@ export default function NoteMarker({ kind, text }: { kind: "note" | "problem"; t
         title={label}
         onClick={() => setOpen((was) => !was)}
       >
-        {kind === "note" ? "[i]" : "[!]"}
+        {GLYPH[kind]}
       </button>
       {open && (
         <span className="note-marker-panel">

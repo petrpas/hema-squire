@@ -1442,6 +1442,12 @@ fieldset.form-field > legend {
   margin-bottom: 0.6rem;
 }
 
+/* A checkbox on a line of its own, with no frame around it. `.checkbox-chip` is
+   for a *set* of choices, where the chip shape reads as a token that can be
+   picked up; a lone qualifier under a field is not one, and a border around it
+   fences off a single sentence for no reason. `.qualification-option` was this
+   shape already and keeps its name where it is used. */
+.checkbox-line,
 .qualification-option {
   display: flex;
   align-items: center;
@@ -1453,6 +1459,7 @@ fieldset.form-field > legend {
   color: var(--ink);
 }
 
+.checkbox-line input[type="checkbox"],
 .qualification-option input[type="radio"],
 .qualification-option input[type="checkbox"] {
   accent-color: var(--stamp);
@@ -1745,6 +1752,29 @@ fieldset.form-field > legend {
   font-size: 12px;
 }
 
+/* A labelled block that is not a field: the label above, and under it a
+   sentence or a control rather than an input. `.form-field` cannot be used —
+   its casing and letter-spacing are the label's, and they would set the
+   explanation in capitals too, where it would read as a second heading. */
+.form-label {
+  font-size: var(--label-size);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-weight: 500;
+  color: var(--ink-faded);
+}
+
+.substitute-profile {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.substitute-profile-chosen {
+  font-size: var(--field-size);
+  color: var(--ink);
+}
+
 /* The global reset zeroes every margin, so paragraphs stacked in a card ran
    together into one block — a stated refusal read as part of the hint above
    it. Smaller than the gap a button takes (.param-save, 0.6rem), so a run of
@@ -1810,6 +1840,13 @@ fieldset.form-field > legend {
 .col-actions {
   width: 2.4rem;
   text-align: center;
+}
+
+/* Two actions at the end of a row need room for two. Sized from what the phase
+   offers rather than from what a given row happens to show, so the column does
+   not breathe as rows are deleted and restored. */
+.col-actions-pair {
+  width: 4.8rem;
 }
 
 .row-actions {

@@ -8,6 +8,7 @@ causing rule. Rule creation/update/deletion is journaled append-only.
 """
 
 import copy
+import re
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -19,7 +20,14 @@ from sqlalchemy.orm import Session
 
 from app import amendment
 from app.hr_index import HRIndex, country_code, evidence_fields
-from app.models import DisciplineKind, Fencer, Rule, RuleJournalEntry, Tournament
+from app.models import (
+    DisciplineKind,
+    Fencer,
+    RegistrationsKeptBy,
+    Rule,
+    RuleJournalEntry,
+    Tournament,
+)
 
 Row = dict[str, Any]
 # A handler mutates rows in place and returns (target, field, before, after)
@@ -122,6 +130,58 @@ def _apply_row_restore(rows: dict[str, Row], target: str, payload: dict):
     return [(target, "_deleted", before, False)]
 
 
+def _apply_row_substitute(rows: dict[str, Row], target: str, payload: dict):
+    """A seat handed on: the row is about a different person from now on.
+
+    The third kind whose subject is neither a projected field nor a
+    registration's billing, but **who the row is about** (spec `edit-rules`, "A
+    rule may replace the person a row is about"). Where a registration stands
+    behind the row, `substitution.reassign` has already moved it beside this
+    rule, the way an amendment is applied beside its own; what is written here
+    is the projection, which keeps replay coherent and is the whole of the rule
+    for a row that has been issued no registration.
+
+    One rule and not a handful of field edits: field edits are withdrawn one at
+    a time, and half a withdrawal leaves a row wearing two people's names.
+
+    The audit reports one line, and not against a column: a substitution has no
+    cell of its own, and reported as a change to the name cell it would read as
+    a correction to somebody's spelling. `_substituted` is a sentence in the
+    log, the way a deletion and a merge already are (spec `edit-rules`, "The
+    substitution reads as a sentence in the log"). The rest of the identity
+    moves with it silently, as a match resolution's evidence register does.
+    """
+    row = rows[target]
+    previous = payload.get("previous") or {}
+    # The name the seat was under, read from the rule and not from the row: a
+    # reassignment has already moved the registration, so the base projection
+    # names the substitute, and a `before` read off the row would say the
+    # substitution changed nothing. This is the amendment kind's reason for
+    # carrying its `base`, met again.
+    before = previous.get("name")
+    row["name"] = payload.get("name") or ""
+    row["hr_id"] = payload.get("hr_id")
+    row["nationality"] = payload.get("nationality")
+    row["club"] = payload.get("club")
+    row["email"] = payload.get("email")
+    # The name the seat was registered under belonged to the fencer who has
+    # gone; leaving it beside the substitute's would state that the substitute
+    # registered under it.
+    row["reg_name"] = None
+    bound = payload.get("hr_id") is not None
+    row["match_verdict"] = "confirmed" if bound else "unknown"
+    row["hr_name"] = payload.get("hr_name") if bound else None
+    nationality = payload.get("hr_nationality") if bound else None
+    row["hr_nationality"] = country_code(nationality) or nationality
+    row["hr_club"] = payload.get("hr_club") if bound else None
+    # Ratings are left where they are, as a match resolution leaves them: they
+    # are a lookup keyed by hr_id, made where the base row is built, so the
+    # substitute's arrive on the next projection and a rating the organizer has
+    # typed is not wiped by a rule that knows nothing about it.
+    row["_substituted_for"] = before
+    return [(target, "_substituted", before, row["name"])]
+
+
 def _apply_dedup_decision(rows: dict[str, Row], target: str, payload: dict):
     """A confirmed merge: the target row takes the merged field values, the
     absorbed rows disappear from the table (they stay visible in the audit).
@@ -185,6 +245,7 @@ HANDLERS: dict[str, Handler] = {
     "field_edit": _apply_field_edit,
     "row_delete": _apply_row_delete,
     "row_restore": _apply_row_restore,
+    "row_substitute": _apply_row_substitute,
     "match_resolution": _apply_match_resolution,
     "registration_amendment": _apply_registration_amendment,
     "rating_override": _apply_rating_override,
@@ -341,6 +402,44 @@ AMENDMENT = "registration_amendment"
 
 RATING_OVERRIDE = "rating_override"
 
+SUBSTITUTION = "row_substitute"
+
+
+# The shape of an address, checked as the manual-entry dialog checks one: an
+# address is refused for its shape and nothing more, since whether anybody reads
+# it is not knowable here.
+_ADDRESS = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+
+
+def validate_substitution(tournament: Tournament, payload: dict) -> None:
+    """What a substitution must state to be accepted at all.
+
+    An address is required on an automatic tournament, where Squire keeps the
+    list and writes to the people on it, and optional on a manual one, where it
+    sends nothing (spec `fencer-substitution`, "An automatic tournament requires
+    an address for the seat").
+
+    Pure, and called from both sides: `create_rule` validates every rule that
+    reaches it, and `substitution.prepare` validates before it creates a fencer
+    record it would otherwise have to take back.
+    """
+    if not isinstance(payload, dict):
+        raise HTTPException(status_code=422, detail="substitute_name_required")
+    name = payload.get("name")
+    if not isinstance(name, str) or not name.strip():
+        raise HTTPException(status_code=422, detail="substitute_name_required")
+    hr_id = payload.get("hr_id")
+    # bool is an int in Python, and a ticked checkbox arriving here is a bug in
+    # the caller rather than a profile number
+    if hr_id is not None and (isinstance(hr_id, bool) or not isinstance(hr_id, int)):
+        raise HTTPException(status_code=422, detail="hr_id_must_be_a_whole_number")
+    email = payload.get("email")
+    if email is not None and (not isinstance(email, str) or not _ADDRESS.match(email.strip())):
+        raise HTTPException(status_code=422, detail="substitute_email_malformed")
+    if email is None and tournament.registrations_kept_by is RegistrationsKeptBy.SQUIRE:
+        raise HTTPException(status_code=422, detail="substitute_email_required")
+
+
 # The fields of a registration an organizer may correct from the table. Each of
 # them is priced, which is why the correction is an amendment rather than a
 # field edit: what the row says and what the registration bills have to move
@@ -471,6 +570,8 @@ def create_rule(
         raise HTTPException(status_code=422, detail="field_is_not_amendable")
     if kind == RATING_OVERRIDE:
         _check_rating_override(tournament, payload)
+    if kind == SUBSTITUTION:
+        validate_substitution(tournament, payload)
     if payload.get("field") in AMENDABLE_FIELDS and kind in ("field_edit", AMENDMENT):
         value = payload.get("value")
         if payload.get("field") == "disciplines":

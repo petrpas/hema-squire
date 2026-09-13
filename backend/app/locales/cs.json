@@ -81,6 +81,18 @@
     "promotedNoPayment": {
       "subject": "Uvolnilo se místo — {tournament}",
       "body": "Ahoj {name},\n\nv disciplíně {discipline} na {tournament} se pro tebe uvolnilo místo — už nejsi náhradník.\n\nTvá registrace vychází na {total}. Částka je pro informaci — platbu řeší organizátor mimo tento systém.\n\nTým {tournament}"
+    },
+    "substituteArrived": {
+      "subject": "Přebíráš místo — {tournament}",
+      "body": "Ahoj {name},\n\npřebíráš na {tournament} místo po {previous}. Registrace zůstává beze změny, jen je nově tvoje:\n\n{summary}\n\nDoplatit zbývá {amount}, a to do {due}.\n\nÚčet: {account}\nVariabilní symbol: {vs}\n\nZaplatit můžeš naskenováním přiloženého QR kódu — je vystavený přesně na tuto částku.\n\nTým {tournament}"
+    },
+    "substituteArrivedSettled": {
+      "subject": "Přebíráš místo — {tournament}",
+      "body": "Ahoj {name},\n\npřebíráš na {tournament} místo po {previous}. Registrace zůstává beze změny, jen je nově tvoje:\n\n{summary}\n\nRegistrace je uhrazená, doplácet nemusíš nic.\n\nTým {tournament}"
+    },
+    "substituteDeparted": {
+      "subject": "Tvé místo přebírá někdo jiný — {tournament}",
+      "body": "Ahoj {name},\n\ntvé místo na {tournament} přebírá {substitute}. Tvá registrace tím končí.\n\nPřípadné vyrovnání startovného si domluvte mezi sebou — Squire nic nevrací.\n\nTým {tournament}"
     }
   },
   "export": {

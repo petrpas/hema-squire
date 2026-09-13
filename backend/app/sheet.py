@@ -316,7 +316,10 @@ def base_rows(
             "hr_id": row_hr_id,
             **_evidence(index, row_hr_id, row_hr_payload),
             "match_verdict": row_verdict,
-            "email": registration.fencer.email,
+            # the seat's own address where it carries one, the account
+            # holder's otherwise — the same order every message about this
+            # registration is addressed in (`emails.recipient`)
+            "email": registration.contact_email or registration.fencer.email,
             "disciplines": [e.discipline.slug for e in registration.entries if not e.is_substitute],
             "substitute_for": [e.discipline.slug for e in registration.entries if e.is_substitute],
             # what HEMA Ratings says, per discipline slug, before a correction.

@@ -37,6 +37,7 @@ function row(id: string, name: string, number: number | null = null): SheetRow {
     afterparty: false,
     aftersparring: false,
     notes: null,
+    email: null,
   } as SheetRow;
 }
 

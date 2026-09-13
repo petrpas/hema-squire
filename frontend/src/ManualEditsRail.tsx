@@ -76,6 +76,14 @@ export function changeText(
     return entry.after === true ? t("rail.edit.deleted") : t("rail.edit.restored");
   if (entry.field === "_merged_into")
     return t("rail.edit.mergedInto", { row: rowText(entry.after, rows, t) });
+  // a substitution has no column of its own, and reported against the name cell
+  // it would read as a correction to somebody's spelling (spec `edit-rules`,
+  // The substitution reads as a sentence in the log)
+  if (entry.field === "_substituted")
+    return t("rail.edit.substituted", {
+      previous: String(entry.before ?? ""),
+      substitute: String(entry.after ?? ""),
+    });
   return t("rail.edit.assignment", {
     field: fieldText(entry.field, t),
     before: valueText(entry.field, entry.before, timezone, t),

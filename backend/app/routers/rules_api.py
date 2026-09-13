@@ -3,12 +3,12 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
 
-from app import amendment, ledger, matching, rules, sheet
+from app import amendment, emails, ledger, matching, rules, sheet, substitution
 from app.auth import require_console_access, require_published
 from app.fieldtypes import RowId
 from app.hr_index import HRIndex, get_hr_index
 from app.mail import Mailer, get_mailer
-from app.models import Rule, RuleJournalEntry
+from app.models import RegistrationsKeptBy, Rule, RuleJournalEntry
 from app.routers.tournaments import FencerDep, SessionDep, TournamentDep
 from app.schemas import (
     AmendmentOut,
@@ -50,6 +50,15 @@ def create_rule(
 ):
     require_console_access(session, tournament, fencer)
     require_published(tournament)
+    payload = data.payload
+    prepared = None
+    if data.kind == rules.SUBSTITUTION:
+        # Settled before the rule is written, because every refusal a
+        # substitution can meet — the shape of what was typed, a substitute
+        # already entered, a row that has been deleted or absorbed — has to be
+        # met before the seat's record exists (spec `fencer-substitution`).
+        prepared = _prepare_substitution(session, tournament, index, data.target, payload)
+        payload = prepared.payload(payload)
     rule = rules.create_rule(
         session,
         tournament,
@@ -57,15 +66,49 @@ def create_rule(
         data.phase,
         data.kind,
         data.target,
-        data.payload,
+        payload,
         index,
     )
+    if prepared is not None:
+        substitution.commit(session, prepared)
+        session.commit()
+        _announce_substitution(tournament, prepared, mailer)
+        return rule
     if rule.kind == rules.AMENDMENT:
         result = _settle_amendments(session, tournament, rule, mailer)
         out = RuleOut.model_validate(rule)
         out.amendment = None if result is None else AmendmentOut(**result.__dict__)
         return out
     return rule
+
+
+def _prepare_substitution(
+    session, tournament, index: HRIndex, target: str, payload: dict
+) -> substitution.Prepared:
+    """The row as the organizer is reading it, and the substitution settled
+    against it.
+
+    The replayed row and not the base one: what a substitution replaces is what
+    the table says now, which on a twice-substituted row is not what the source
+    record says."""
+    base = sheet.base_rows(session, tournament, index)
+    rows, _audit = rules.replay(base, rules.active_rules(session, tournament))
+    row = rows.get(target)
+    if row is None:
+        raise HTTPException(status_code=404, detail="row_not_found")
+    registration = amendment.registration_for_row(session, tournament, target)
+    return substitution.prepare(session, tournament, registration, row, payload)
+
+
+def _announce_substitution(tournament, prepared: substitution.Prepared, mailer: Mailer) -> None:
+    """Tell the two people it concerns, on a tournament Squire keeps.
+
+    Sent from here and never from the rule's replay: replay runs on every read
+    of the table and must stay free of side effects, which is why an amendment's
+    letter is sent from beside its rule too."""
+    if tournament.registrations_kept_by is not RegistrationsKeptBy.SQUIRE:
+        return
+    emails.send_substitution(mailer, tournament, prepared)
 
 
 def _settle_amendments(
@@ -129,6 +172,11 @@ def delete_rule(
     rules.delete_rule(session, rule, fencer)
     if rule.kind == "payment_link":
         matching.unapply_payment_link(session, tournament, rule, ledger.actor_label(fencer))
+    if rule.kind == rules.SUBSTITUTION:
+        # the seat goes back to the fencer the rule names, and nothing else
+        # moves — nothing else moved when it was made
+        substitution.withdraw(session, tournament, rule)
+        session.commit()
     if rule.kind == rules.AMENDMENT:
         # withdrawal is a replay of what remains, not an inverse of what went:
         # where nothing remains for this field, the registration returns to the

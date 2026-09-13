@@ -1,10 +1,11 @@
-import { IconArrowBackUp, IconCoins, IconTrash } from "@tabler/icons-react";
+import { IconArrowBackUp, IconCoins, IconTrash, IconUserShare } from "@tabler/icons-react";
 import { useTranslation } from "react-i18next";
 
 import type { SheetRow, TournamentDetail } from "./api";
 import {
   absorbedInto,
   CellDisplay,
+  canSubstitute,
   editableHere,
   MARKER_COLUMNS,
   PHASE_COLUMNS,
@@ -61,6 +62,7 @@ export default function SheetArea({
   onEdit,
   onValidate,
   onDelete,
+  onSubstitute,
   onRestore,
   onRatify,
   onSearch,
@@ -91,6 +93,9 @@ export default function SheetArea({
   onEdit: (row: SheetRow, column: string, raw: string) => void;
   onValidate: (column: string, raw: string) => FieldError | null;
   onDelete: (row: SheetRow) => void;
+  /** Hands the row's seat to somebody else. Absent on every phase but the
+   *  fencer list, where the roster is settled. */
+  onSubstitute?: (row: SheetRow) => void;
   /** Marks a registration settled, or unmarks it. Offered on the Payments
    *  phase of every tournament: on the boned-out one it is the phase's whole
    *  content, and on a collecting one it is the waiver.
@@ -122,7 +127,14 @@ export default function SheetArea({
   // The end-of-row column, which Import and Fencers use for delete and restore
   // and Payments now uses for recording a payment. Asked of the phase rather
   // than of the rows, as `actionable` is, so the table keeps its width.
-  const rowActions = actionable || onRecordPayment !== undefined;
+  const rowActions = actionable || onRecordPayment !== undefined || onSubstitute !== undefined;
+  // How many actions the phase offers, asked of the phase and not of the rows
+  // it happens to list, so the column keeps its width as rows are deleted and
+  // restored — the same reason `phaseRemovesRows` is a phase question.
+  const actionsClass =
+    (actionable ? 1 : 0) + (onRecordPayment ? 1 : 0) + (onSubstitute ? 1 : 0) > 1
+      ? "col-actions col-actions-pair"
+      : "col-actions";
   // read from the rows this phase lists, so a count and the table beneath it
   // are two statements about the same thing
   const summary = phaseSummary(phase, visibleRows);
@@ -174,7 +186,7 @@ export default function SheetArea({
                   {/* the column exists only where the phase offers something to
                     do to a row; drawn empty it is a gap at the end of every
                     row with nothing to explain it */}
-                  {rowActions && <th className="col-actions" />}
+                  {rowActions && <th className={actionsClass} />}
                 </tr>
               </thead>
               <tbody>
@@ -256,41 +268,59 @@ export default function SheetArea({
                       );
                     })}
                     {rowActions && (
-                      <td className="col-actions">
-                        {/* money that arrived where the feed does not reach.
+                      <td className={actionsClass}>
+                        {/* Side by side and on one line: two actions at the end
+                          of a row are two decisions offered together, and
+                          stacked they read as one above the other. */}
+                        <div className="row-actions">
+                          {/* money that arrived where the feed does not reach.
                           Sits with the row actions rather than in a column,
                           because it is an action and not a value */}
-                        {onRecordPayment && typeof row.registration_id === "number" && (
-                          <button
-                            type="button"
-                            className="row-action"
-                            title={t("payments.record.action")}
-                            onClick={() => onRecordPayment(row)}
-                          >
-                            <IconCoins size={16} stroke={1.5} />
-                            <span className="visually-hidden">{t("payments.record.action")}</span>
-                          </button>
-                        )}
-                        {rowAction(row, phase) === null ? null : rowAction(row, phase) ===
-                          "restore" ? (
-                          <button
-                            type="button"
-                            className="row-action"
-                            title={t("actions.restore")}
-                            onClick={() => onRestore(row)}
-                          >
-                            <IconArrowBackUp size={16} stroke={1.5} />
-                          </button>
-                        ) : (
-                          <button
-                            type="button"
-                            className="row-action"
-                            title={t("actions.delete")}
-                            onClick={() => onDelete(row)}
-                          >
-                            <IconTrash size={16} stroke={1.5} />
-                          </button>
-                        )}
+                          {onRecordPayment && typeof row.registration_id === "number" && (
+                            <button
+                              type="button"
+                              className="row-action"
+                              title={t("payments.record.action")}
+                              onClick={() => onRecordPayment(row)}
+                            >
+                              <IconCoins size={16} stroke={1.5} />
+                              <span className="visually-hidden">{t("payments.record.action")}</span>
+                            </button>
+                          )}
+                          {/* a seat handed on, beside the seat given up: two
+                          different decisions, both of them the roster's */}
+                          {onSubstitute && canSubstitute(row, phase) && (
+                            <button
+                              type="button"
+                              className="row-action"
+                              title={t("actions.substitute")}
+                              onClick={() => onSubstitute(row)}
+                            >
+                              <IconUserShare size={16} stroke={1.5} />
+                              <span className="visually-hidden">{t("actions.substitute")}</span>
+                            </button>
+                          )}
+                          {rowAction(row, phase) === null ? null : rowAction(row, phase) ===
+                            "restore" ? (
+                            <button
+                              type="button"
+                              className="row-action"
+                              title={t("actions.restore")}
+                              onClick={() => onRestore(row)}
+                            >
+                              <IconArrowBackUp size={16} stroke={1.5} />
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              className="row-action"
+                              title={t("actions.delete")}
+                              onClick={() => onDelete(row)}
+                            >
+                              <IconTrash size={16} stroke={1.5} />
+                            </button>
+                          )}
+                        </div>
                       </td>
                     )}
                   </tr>

@@ -374,7 +374,9 @@ def process_composition_reminders(session: Session, tournament: Tournament, mail
     sent = 0
     for teams in by_fencer.values():
         fencer = teams[0].registration.fencer
-        emails.send_composition_reminder(mailer, tournament, fencer, teams, deadline)
+        emails.send_composition_reminder(
+            mailer, tournament, fencer, teams[0].registration, teams, deadline
+        )
         for team in teams:
             team.composition_reminded_at = _now()
         sent += len(teams)

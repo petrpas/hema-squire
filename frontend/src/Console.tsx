@@ -48,6 +48,7 @@ import { useAuth } from "./RequireAuth";
 import * as routes from "./routes";
 import SetupPanel from "./SetupPanel";
 import SheetArea from "./SheetArea";
+import SubstituteDialog from "./substitute/SubstituteDialog";
 import TeamsPanel from "./TeamsPanel";
 import TolerancePanel from "./TolerancePanel";
 import useOperations from "./useOperations";
@@ -364,6 +365,17 @@ export function phaseRemovesRows(phase: Phase): boolean {
   return ROW_REMOVING_PHASES.has(phase);
 }
 
+/** Whether this row may be handed on where it is being read.
+ *
+ *  The fencer list alone, and not Import: the Import view is the record of what
+ *  a file contained, and rewriting a person on it would make it say the file
+ *  held somebody it did not. A deleted row offers to come back rather than to
+ *  change hands, and an absorbed one is not a seat of its own (spec
+ *  `etl-console`, Substitution is offered on the fencer list). */
+export function canSubstitute(row: SheetRow, phase: Phase): boolean {
+  return phase === "fencers" && !row._deleted && row._merged_into === undefined;
+}
+
 export function rowAction(row: SheetRow, phase: Phase): "delete" | "restore" | null {
   if (!phaseRemovesRows(phase)) return null;
   if (row._merged_into !== undefined) return null;
@@ -397,6 +409,15 @@ export function StateBadge({ id, state }: { id: string; state: string }) {
   );
 }
 
+/** The mark a substituted row carries: the fencer whose seat it is, read on
+ *  demand from the row rather than printed into the name column, which belongs
+ *  to the person competing (spec `etl-console`, A substituted row states that
+ *  it was substituted). */
+function SubstitutedMarker({ previous }: { previous: string }) {
+  const { t } = useTranslation();
+  return <NoteMarker kind="substituted" text={t("marker.substitutedFor", { name: previous })} />;
+}
+
 /** `timezone` is the tournament's own zone, the frame every moment in the
  *  table is read in; it is null until the tournament detail has arrived
  *  beside the sheet, and the moment falls back to the reader's zone until it
@@ -427,7 +448,18 @@ export function CellDisplay({
     const { text, declared } = identityValue(row, column, hrIdentity);
     // the italic is the whole of the marking: no dash, no badge, no second
     // column (spec `etl-console`, HR identity in the phases after matching)
-    return declared ? <span className="identity-declared">{text}</span> : text;
+    const body = declared ? <span className="identity-declared">{text}</span> : text;
+    // whose seat this is, where it changed hands. Beside the name and nowhere
+    // else: a reader meeting an unfamiliar name on a paid row is owed the
+    // explanation where they meet it, and the row is otherwise fully live
+    if (column === "name" && row._substituted_for) {
+      return (
+        <>
+          {body} <SubstitutedMarker previous={row._substituted_for} />
+        </>
+      );
+    }
+    return body;
   }
   switch (column) {
     case "total_amount":
@@ -701,6 +733,7 @@ export default function Console({ tournament, phase }: { tournament: Tournament;
   // decision (design export-tables D5). The table on screen never follows it.
   const [english, setEnglish] = useState(false);
   const [recording, setRecording] = useState<SheetRow | null>(null);
+  const [substituting, setSubstituting] = useState<SheetRow | null>(null);
   const collects = (detail ?? tournament).feature_payments;
 
   // Which of the phase's three tabs is open, and which of the two money tables
@@ -1032,6 +1065,9 @@ export default function Console({ tournament, phase }: { tournament: Tournament;
                   onEdit={saveEdit}
                   onValidate={cellCheck}
                   onDelete={(row) => void addRule("row_delete", row.id, {})}
+                  /* the roster is settled on the fencer list, and a seat is
+               handed on where it is given up */
+                  onSubstitute={phase === "fencers" ? setSubstituting : undefined}
                   onRestore={(row) => void addRule("row_restore", row.id, {})}
                   /* the mark is offered on every tournament: as the boned-out
                phase's own column, and as the waiver on the state cell where
@@ -1044,6 +1080,17 @@ export default function Console({ tournament, phase }: { tournament: Tournament;
                   onSearch={setMatchRow}
                 />
               </PaymentTabsProvider>
+            )}
+            {substituting && detail && (
+              <SubstituteDialog
+                slug={tournament.slug}
+                row={substituting}
+                automatic={detail.registrations_kept_by === "squire"}
+                /* the table, the log and every queue read the seat again: the
+               row is about somebody else from now on */
+                onSubstituted={refresh}
+                onClose={() => setSubstituting(null)}
+              />
             )}
             {recording && detail && (
               <RecordPaymentDialog

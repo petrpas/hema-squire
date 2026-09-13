@@ -282,7 +282,62 @@ def test_the_composition_reminder_refuses_too(client, auth_headers, mailbox):
 
     with pytest.raises(NoRecipientError):
         emails.send_composition_reminder(
-            mailbox, registration.tournament, registration.fencer, [], deadline
+            mailbox, registration.tournament, registration.fencer, registration, [], deadline
         )
 
     assert mailbox.sent == []
+
+
+# The seat's own address (spec `registration`, "A registration may carry a
+# contact address of its own"). Parametrized over the same senders as the
+# address-less guard above, for the same reason: routing that holds at one
+# caller and not the next is worse than no routing, because it looks right.
+
+
+@pytest.mark.parametrize("name", SENDERS_TAKING_A_REGISTRATION)
+def test_a_contact_address_takes_the_message(client, auth_headers, mailbox, name):
+    from app import emails
+
+    organizer = auth_headers()
+    _setup(client, organizer)
+    fencer = auth_headers(email="jan@example.com", name="Jan Novák")
+    client.post("/api/tournaments/cup/register", json={"disciplines": ["LS"]}, headers=fencer)
+
+    from sqlalchemy import select
+
+    from app.models import Registration
+    from tests.test_matching import db_session
+
+    session = db_session()
+    registration = session.scalars(select(Registration)).all()[-1]
+    registration.contact_email = "klub@example.com"
+    session.commit()
+    mailbox.sent.clear()
+
+    getattr(emails, name)(mailbox, registration.tournament, registration.fencer, registration)
+
+    assert [message["To"] for message in mailbox.sent] == ["klub@example.com"]
+
+
+def test_without_a_contact_address_the_fencer_is_written_to(client, auth_headers, mailbox):
+    from app import emails
+
+    organizer = auth_headers()
+    _setup(client, organizer)
+    fencer = auth_headers(email="jan@example.com", name="Jan Novák")
+    client.post("/api/tournaments/cup/register", json={"disciplines": ["LS"]}, headers=fencer)
+
+    from sqlalchemy import select
+
+    from app.models import Registration
+    from tests.test_matching import db_session
+
+    session = db_session()
+    registration = session.scalars(select(Registration)).all()[-1]
+    mailbox.sent.clear()
+
+    emails.send_payment_reminder(
+        mailbox, registration.tournament, registration.fencer, registration
+    )
+
+    assert [message["To"] for message in mailbox.sent] == ["jan@example.com"]

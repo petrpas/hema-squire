@@ -530,6 +530,11 @@ export interface SheetRow {
   hr_nationality: string | null;
   hr_club: string | null;
   merge_note?: string | null;
+  /** The fencer this seat was taken from, where a substitution took it. A
+   *  statement about the row, not a removal: the row is fully live and the
+   *  table says whose seat it was (spec `etl-console`, A substituted row states
+   *  that it was substituted). */
+  _substituted_for?: string | null;
   _merged_into?: string;
   /** True once a deletion or a merge has taken the row out of the table. */
   _deleted?: boolean;
@@ -549,6 +554,10 @@ export interface SheetRow {
   afterparty: boolean;
   aftersparring: boolean;
   notes: string | null;
+  /** The address this seat is written to: its own contact address where a
+   *  substitution left it one, the account holder's otherwise
+   *  (`emails.recipient`). Null on a row that carries none. */
+  email: string | null;
   [key: string]: unknown;
 }
 
@@ -1213,6 +1222,19 @@ export const api = {
       method: "POST",
       body: JSON.stringify(rule),
     }),
+  /** Hands a fencer-list row's seat to somebody else. A rule like any other —
+   *  the seat keeps its number, its symbol, its totals and its journal, and
+   *  only the person changes (spec `fencer-substitution`). */
+  substituteFencer: (slug: string, target: string, substitute: SubstituteIn) =>
+    request<{ id: number }>(`/api/tournaments/${slug}/rules`, {
+      method: "POST",
+      body: JSON.stringify({
+        phase: "fencers",
+        kind: "row_substitute",
+        target,
+        payload: substitute,
+      }),
+    }),
   /** Links an unmatched transaction to one or more registrations by VS. The
    *  first frontend caller of the manual-link endpoint. Rejects with 404 and
    *  `detail.unknown_vs` when a VS resolves to nothing, 409 `already_matched`
@@ -1729,6 +1751,18 @@ export interface ManualEntryIn {
 export interface ManualRow extends ManualEntryIn {
   id: number;
   registered_at: string;
+}
+
+export interface SubstituteIn {
+  name: string;
+  /** The profile the organizer picked, or null where the substitute is not in
+   *  HEMA Ratings — a name the index does not carry is accepted as typed. */
+  hr_id: number | null;
+  nationality: string | null;
+  club: string | null;
+  /** The seat's address. Required where Squire keeps the registrations, since
+   *  the substitution is written to it; optional otherwise. */
+  email: string | null;
 }
 
 export interface HRProfile {

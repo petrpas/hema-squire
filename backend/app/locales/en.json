@@ -50,6 +50,18 @@
     "promotedNoPayment": {
       "subject": "A place has opened — {tournament}",
       "body": "Hi {name},\n\na place has opened for you in {discipline} at {tournament} — you are no longer a substitute.\n\nYour registration comes to {total}. The amount is for your information — payment is settled by the organizer outside this system.\n\n{tournament} team"
+    },
+    "substituteArrived": {
+      "subject": "You are taking a place — {tournament}",
+      "body": "Hi {name},\n\nyou are taking over {previous}'s place at {tournament}. The registration is unchanged, it is simply yours now:\n\n{summary}\n\n{amount} is still due, by {due}.\n\nAccount: {account}\nVariable symbol: {vs}\n\nYou can pay by scanning the attached QR code — it's made out for exactly this amount.\n\n{tournament} team"
+    },
+    "substituteArrivedSettled": {
+      "subject": "You are taking a place — {tournament}",
+      "body": "Hi {name},\n\nyou are taking over {previous}'s place at {tournament}. The registration is unchanged, it is simply yours now:\n\n{summary}\n\nThe registration is paid for; nothing is owed.\n\n{tournament} team"
+    },
+    "substituteDeparted": {
+      "subject": "Someone else is taking your place — {tournament}",
+      "body": "Hi {name},\n\n{substitute} is taking over your place at {tournament}. Your registration ends with that.\n\nAny settling of the entry fee is between the two of you — Squire refunds nothing.\n\n{tournament} team"
     }
   },
   "export": {
