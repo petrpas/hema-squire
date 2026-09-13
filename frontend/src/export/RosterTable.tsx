@@ -27,8 +27,9 @@ export default function RosterTable({
   slug: string;
   capacity: number | null;
   lineKind: "queue" | "capacity";
-  /** Whether the tab is switched to active only, which is when the roster is
-   *  read as a seeding order rather than as a list of who is entered. */
+  /** Whether the organizer asked for the seeding order by rating, rather than
+   *  the list of who is entered in registration order. Independent of the
+   *  active-only switch. */
   seeded: boolean;
   /** Whether this row's rating carries an organizer's correction, marked the
    *  way every other manual edit is. */
@@ -39,9 +40,9 @@ export default function RosterTable({
   const columns = ROSTER_COLUMNS(t, slug);
   const { rows: ordered, line } = rosterOrder(rows, slug, capacity, lineKind, seeded);
 
-  function cell(row: SheetRow, column: ExportColumn) {
+  function cell(row: SheetRow, column: ExportColumn, index: number) {
     if (!column.editable) return null;
-    const display = column.value(row);
+    const display = column.value(row, index);
     return (
       <EditableCell
         label={t("export.column.rating")}

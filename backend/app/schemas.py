@@ -1550,6 +1550,15 @@ class ExportTabOut(BaseModel):
     line: str | None = None
 
 
+class ExportBandTabOut(ExportTabOut):
+    """A tab as the band lists it: with how many it holds. `queued` is the
+    discipline's substitute entries and is 0 on every other tab; neither
+    follows the tab's active-only switch."""
+
+    count: int
+    queued: int
+
+
 class ExportTableOut(ExportTabOut):
     rows: list[dict]
 

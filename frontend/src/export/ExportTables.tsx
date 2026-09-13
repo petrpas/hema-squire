@@ -1,29 +1,28 @@
-import { useCallback, useEffect, useState } from "react";
+import { type ReactNode, useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { api, type ExportTab, type NetChange, type SheetRow } from "../api";
+import { api, type ExportBandTab, type NetChange, type SheetRow } from "../api";
+import ExportPanel from "../ExportPanel";
 import { useTabBand } from "../useTabBand";
 import { FENCERS_COLUMNS, ITEM_COLUMNS, ROSTER_COLUMNS, toTsv } from "./columns";
 import FencersTable from "./FencersTable";
 import ItemsTable from "./ItemsTable";
 import { activeOnly, rosterOrder } from "./ordering";
 import RosterTable from "./RosterTable";
-
-const tabId = (tab: ExportTab) => `${tab.kind}:${tab.key}`;
-
-/** Whether the English tick is offered. Not to an organizer already working in
- *  English, where it would be a tick that changes nothing. */
-export function offersEnglishTick(language: string): boolean {
-  return !language.startsWith("en");
-}
+import TableOperations from "./TableOperations";
+import { tabCount, tabId, tabLabel } from "./tabs";
 
 /** The Export phase: a band of tables derived from the tournament, in place of
  *  the single fencer table.
  *
- *  Each tab holds its own all/active-only state, because the tabs answer
- *  different questions — who is coming, who is seeded where, who ordered a
- *  T-shirt — and carrying a filter across would answer one of them with
- *  another's setting.
+ *  The active-only switch and the seeding order hold across tabs: an organizer
+ *  who has narrowed to the paid is still reading the paid on the next tab, and
+ *  one reading disciplines in seeding order reads the next discipline so too
+ *  (owner decision, change export-layouts).
+ *
+ *  Above the table stands only the band. What acts on the open tab is the
+ *  phase's operations and goes into the rail, which the console hands in so
+ *  that the tab state stays here, beside the table it drives.
  */
 export default function ExportTables({
   slug,
@@ -32,6 +31,7 @@ export default function ExportTables({
   onEnglishChange,
   onChanged,
   revision,
+  renderRail,
 }: {
   slug: string;
   /** The phase's manual edits, read to mark a corrected rating as one. */
@@ -40,24 +40,30 @@ export default function ExportTables({
   onEnglishChange: (english: boolean) => void;
   onChanged: () => void;
   /** Bumped by the console whenever the tournament's rows changed, so the open
-   *  table is re-read rather than left stating what it stated before. */
+   *  table and the band's counts are re-read rather than left stating what
+   *  they stated before. */
   revision: number;
+  /** The console's rail, with this phase's cards in its panel slot. */
+  renderRail: (panel: ReactNode) => ReactNode;
 }) {
   const { t, i18n } = useTranslation();
-  const [tabs, setTabs] = useState<ExportTab[]>([]);
+  const [tabs, setTabs] = useState<ExportBandTab[]>([]);
   const [selected, setSelected] = useState<string>("fencers:");
   const [rows, setRows] = useState<SheetRow[]>([]);
-  const [actives, setActives] = useState<Record<string, boolean>>({});
+  const [active, setActive] = useState(false);
+  const [seeded, setSeeded] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   const tab = tabs.find((candidate) => tabId(candidate) === selected) ?? null;
-  const active = actives[selected] ?? false;
   const band = useTabBand(selected);
 
-  useEffect(() => {
+  // the selection is held by id, so a re-read keeps the open tab open
+  const loadTabs = useCallback(() => {
     void api.exportTabs(slug).then(setTabs);
   }, [slug]);
+
+  useEffect(loadTabs, [loadTabs, revision]);
 
   const reload = useCallback(() => {
     if (tab === null) return;
@@ -113,7 +119,7 @@ export default function ExportTables({
     // the copy follows the order on screen, and the line is not part of it
     const ordered =
       tab.kind === "discipline"
-        ? rosterOrder(listed, tab.key, tab.capacity, tab.line ?? "capacity", active).rows
+        ? rosterOrder(listed, tab.key, tab.capacity, tab.line ?? "capacity", seeded).rows
         : listed;
     void navigator.clipboard.writeText(toTsv(columns, ordered, header));
     setMessage(t("export.copied", { count: ordered.length }));
@@ -124,83 +130,63 @@ export default function ExportTables({
     edits.some((edit) => edit.target === row.id && edit.field === `rating:${tab.key}`);
 
   return (
-    <main className="sheet-area">
-      <div className="sheet-header">
-        <h1>{t("export.tablesTitle")}</h1>
-      </div>
+    <>
+      <main className="sheet-area">
+        {/* the band stands on the title's line: it is what the title names */}
+        <div className="sheet-header export-header">
+          <h1>{t("export.tablesTitle")}</h1>
+          <nav className="stage-control stage-control-band" ref={band}>
+            {tabs.map((candidate) => (
+              <button
+                key={tabId(candidate)}
+                type="button"
+                className={tabId(candidate) === selected ? "active" : ""}
+                aria-pressed={tabId(candidate) === selected}
+                onClick={() => setSelected(tabId(candidate))}
+              >
+                {tabLabel(t, candidate)}
+                <span className="tab-count">{tabCount(candidate)}</span>
+              </button>
+            ))}
+          </nav>
+        </div>
 
-      <nav className="stage-control stage-control-band" ref={band}>
-        {tabs.map((candidate) => (
-          <button
-            key={tabId(candidate)}
-            type="button"
-            className={tabId(candidate) === selected ? "active" : ""}
-            aria-pressed={tabId(candidate) === selected}
-            onClick={() => setSelected(tabId(candidate))}
-          >
-            {candidate.kind === "fencers"
-              ? t("export.tab.fencers")
-              : candidate.kind === "category"
-                ? t(`export.category.${candidate.key}`)
-                : candidate.label}
-          </button>
-        ))}
-      </nav>
-
-      <div className="export-controls">
-        <label>
-          <input
-            type="checkbox"
-            checked={active}
-            onChange={(event) =>
-              setActives({ ...actives, [selected]: event.currentTarget.checked })
-            }
+        {tab === null ? null : tab.kind === "fencers" ? (
+          <FencersTable rows={listed} />
+        ) : tab.kind === "discipline" ? (
+          <RosterTable
+            rows={listed}
+            slug={tab.key}
+            capacity={tab.capacity}
+            lineKind={tab.line ?? "capacity"}
+            seeded={seeded}
+            edited={rated}
+            onRate={(row, raw) => void rate(row, raw)}
           />
-          <span>{t("export.activeOnly")}</span>
-        </label>
-        <button type="button" className="secondary" onClick={copy}>
-          {t("export.copy")}
-        </button>
-        {offersEnglishTick(i18n.language) && (
-          <label>
-            <input
-              type="checkbox"
-              checked={english}
-              onChange={(event) => onEnglishChange(event.currentTarget.checked)}
-            />
-            <span>{t("export.english")}</span>
-          </label>
+        ) : (
+          <ItemsTable rows={listed} category={tab.key} />
         )}
-        {tab?.kind === "discipline" && (
-          <button
-            type="button"
-            className="secondary"
-            disabled={busy}
-            onClick={() => void refreshRatings()}
-            title={t("export.refreshesTournament")}
-          >
-            {busy ? t("common.loading") : t("export.fetchRatings")}
-          </button>
-        )}
-      </div>
-      {tab?.kind === "discipline" && <p className="rail-hint">{t("export.refreshesTournament")}</p>}
-      {message && <p className="rail-hint">{message}</p>}
+      </main>
 
-      {tab === null ? null : tab.kind === "fencers" ? (
-        <FencersTable rows={listed} />
-      ) : tab.kind === "discipline" ? (
-        <RosterTable
-          rows={listed}
-          slug={tab.key}
-          capacity={tab.capacity}
-          lineKind={tab.line ?? "capacity"}
-          seeded={active}
-          edited={rated}
-          onRate={(row, raw) => void rate(row, raw)}
-        />
-      ) : (
-        <ItemsTable rows={listed} category={tab.key} />
+      {renderRail(
+        <>
+          {tab !== null && (
+            <TableOperations
+              title={tabLabel(t, tab)}
+              active={active}
+              onActiveChange={setActive}
+              seeded={
+                tab.kind === "discipline" ? { checked: seeded, onChange: setSeeded } : undefined
+              }
+              onCopy={copy}
+              onRefreshRatings={tab.kind === "discipline" ? () => void refreshRatings() : undefined}
+              refreshing={busy}
+              message={message}
+            />
+          )}
+          <ExportPanel slug={slug} english={english} onEnglishChange={onEnglishChange} />
+        </>,
       )}
-    </main>
+    </>
   );
 }

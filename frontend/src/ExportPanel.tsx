@@ -3,11 +3,26 @@ import { useTranslation } from "react-i18next";
 
 import { ApiError, api, getToken } from "./api";
 
-/** The Export phase's rail: the canonical JSON document and the write to the
- *  organizer's spreadsheet. The ratings refresh left it for the discipline
- *  tabs, where the ratings a reader is looking at are. */
-export default function ExportPanel({ slug, english }: { slug: string; english: boolean }) {
-  const { t } = useTranslation();
+/** Whether the English tick is offered. Not to an organizer already working in
+ *  English, where it would be a tick that changes nothing. */
+export function offersEnglishTick(language: string): boolean {
+  return !language.startsWith("en");
+}
+
+/** The Export phase's rail card for what leaves the phase: the English tick,
+ *  the canonical JSON document and the write to the organizer's spreadsheet.
+ *  The tick sits here rather than on a tab's card because it governs the copy
+ *  and the spreadsheet write alike, not what one tab shows. */
+export default function ExportPanel({
+  slug,
+  english,
+  onEnglishChange,
+}: {
+  slug: string;
+  english: boolean;
+  onEnglishChange: (english: boolean) => void;
+}) {
+  const { t, i18n } = useTranslation();
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -48,6 +63,16 @@ export default function ExportPanel({ slug, english }: { slug: string; english: 
     <section className="rail-card">
       <h2>{t("export.title")}</h2>
       <p className="rail-hint">{t("export.hint")}</p>
+      {offersEnglishTick(i18n.language) && (
+        <label className="rail-check">
+          <input
+            type="checkbox"
+            checked={english}
+            onChange={(event) => onEnglishChange(event.currentTarget.checked)}
+          />
+          <span>{t("export.english")}</span>
+        </label>
+      )}
       <button
         type="button"
         className="secondary param-save"

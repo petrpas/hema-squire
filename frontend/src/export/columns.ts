@@ -18,11 +18,20 @@ export interface ExportColumn {
   /** The rating cell, and only it, opens for editing (spec export-tables, The
    *  rating is the organizer's to correct). */
   editable?: boolean;
-  value: (row: SheetRow) => string;
+  /** `index` is the row's place in the table as displayed, from 0 — read only
+   *  by the position column, which states it. */
+  value: (row: SheetRow, index: number) => string;
 }
 
 const text = (value: unknown): string =>
   value === null || value === undefined ? "" : String(value);
+
+/** The row's place in the table as displayed, from 1: after the filter and in
+ *  the tab's order, running straight across a discipline's capacity line. It
+ *  travels in the copy, as the order it states is a value the reader may want
+ *  to keep, but has no counterpart among the backend's spreadsheet columns
+ *  (owner decision, change export-layouts). */
+export const POSITION: ExportColumn = { id: "position", value: (_row, index) => String(index + 1) };
 
 export const NAME: ExportColumn = { id: "name", value: (row) => text(row.name) };
 export const NATIONALITY: ExportColumn = { id: "nat", value: (row) => text(row.nationality) };
@@ -99,6 +108,7 @@ export function rankOf(row: SheetRow, slug: string): number | null {
 }
 
 export const FENCERS_COLUMNS = (t: TFunction): ExportColumn[] => [
+  POSITION,
   NAME,
   NATIONALITY,
   CLUB,
@@ -108,6 +118,7 @@ export const FENCERS_COLUMNS = (t: TFunction): ExportColumn[] => [
 ];
 
 export const ROSTER_COLUMNS = (t: TFunction, slug: string): ExportColumn[] => [
+  POSITION,
   NAME,
   NATIONALITY,
   CLUB,
@@ -118,6 +129,7 @@ export const ROSTER_COLUMNS = (t: TFunction, slug: string): ExportColumn[] => [
 ];
 
 export const ITEM_COLUMNS = (t: TFunction, category: string): ExportColumn[] => [
+  POSITION,
   NAME,
   NATIONALITY,
   CLUB,
@@ -133,8 +145,8 @@ export const ITEM_COLUMNS = (t: TFunction, category: string): ExportColumn[] => 
  *  export-tables, A table leaves by the clipboard). */
 export function toTsv(columns: ExportColumn[], rows: SheetRow[], header: (id: string) => string) {
   const lines = [columns.map((column) => header(column.id)).join("\t")];
-  for (const row of rows) {
-    lines.push(columns.map((column) => column.value(row)).join("\t"));
-  }
+  rows.forEach((row, index) => {
+    lines.push(columns.map((column) => column.value(row, index)).join("\t"));
+  });
   return lines.join("\n");
 }

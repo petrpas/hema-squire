@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { type ReactNode, useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useNavigate } from "react-router-dom";
 import AccountMenu from "./AccountMenu";
@@ -19,7 +19,6 @@ import {
 import BalanceCell from "./BalanceCell";
 import DedupPanel from "./dedup/DedupPanel";
 import DedupView from "./dedup/DedupView";
-import ExportPanel from "./ExportPanel";
 import ExportTables from "./export/ExportTables";
 import ImportPanel from "./ImportPanel";
 import { IDENTITY_COLUMNS, identityValue, usesHRIdentity } from "./identity";
@@ -838,11 +837,12 @@ export default function Console({ tournament, phase }: { tournament: Tournament;
   const phaseEdits = editsForPhase(sheet?.edits ?? [], phase);
 
   /* The parameter rail: the phase's own operation panel and its
-     manual-edits log. Held as an element rather than written into the
-     workspace, because two branches draw it — the phases that show the
-     fencer table, and Export, which shows a band of tables instead and
-     keeps the rail all the same. */
-  const rail = (
+     manual-edits log. A function rather than written into the workspace,
+     because two branches draw it — the phases that show the fencer table, and
+     Export, which shows a band of tables instead and hands in the cards acting
+     on its open tab, whose state lives beside that band (design export-layouts
+     D5). */
+  const renderRail = (panel?: ReactNode) => (
     <aside className="rail">
       <div className="rail-title">
         {t("rail.operations")} · {t(`phase.${phase}`)}
@@ -887,7 +887,7 @@ export default function Console({ tournament, phase }: { tournament: Tournament;
           <TolerancePanel detail={detail} slug={tournament.slug} onSaved={refresh} />
         </>
       )}
-      {phase === "export" && <ExportPanel slug={tournament.slug} english={english} />}
+      {panel}
 
       <ManualEditsRail
         entries={phaseEdits}
@@ -971,18 +971,16 @@ export default function Console({ tournament, phase }: { tournament: Tournament;
              individual discipline, one per extra-item category the tournament
              offers — and the fencer list is one tab of it rather than the
              phase's own table (spec export-tables). The rail is the phase's as
-             it is every other phase's */
-          <>
-            <ExportTables
-              slug={tournament.slug}
-              edits={phaseEdits}
-              english={english}
-              onEnglishChange={setEnglish}
-              onChanged={refresh}
-              revision={sheet?.edits.length ?? 0}
-            />
-            {rail}
-          </>
+             it is every other phase's, drawn by the band beside it */
+          <ExportTables
+            slug={tournament.slug}
+            edits={phaseEdits}
+            english={english}
+            onEnglishChange={setEnglish}
+            onChanged={refresh}
+            revision={sheet?.edits.length ?? 0}
+            renderRail={renderRail}
+          />
         ) : (
           <>
             {phase === "dedup" ? (
@@ -1105,7 +1103,7 @@ export default function Console({ tournament, phase }: { tournament: Tournament;
               />
             )}
 
-            {rail}
+            {renderRail()}
           </>
         )}
       </div>

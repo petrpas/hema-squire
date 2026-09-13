@@ -9,8 +9,8 @@ one selling T-shirts, and a category nobody offers has no table at all.
 Narrowing and ordering live here rather than in the console because two
 surfaces read them: the console's tabs and the spreadsheet the export writes.
 The one order this module does not produce is the seeding order — rating
-descending, which a discipline tab takes when it is switched to active only.
-That switch is the reader's own state and never leaves the screen, so the
+descending, which a discipline tab takes when the organizer ticks it.
+That tick is the reader's own state and never leaves the screen, so the
 console sorts for it over the rows this module hands back.
 """
 
@@ -135,3 +135,20 @@ def table_rows(rows: list[Row], tab: Tab) -> list[Row]:
             ]
         )
     return _paid_first([row for row in live if (row.get("extras") or {}).get(tab.key)])
+
+
+def tab_counts(rows: list[Row], tab: Tab) -> tuple[int, int]:
+    """How many a tab lists, as the band states it beside the tab's name:
+    `(count, queued)` (spec export-tables, Every tab states how many it lists).
+
+    Counted over `table_rows`, so a deleted row counts nowhere and an item tab
+    counts its buyers. A discipline splits its population the way its capacity
+    line does — a row not seated in the discipline is holding a substitute
+    entry in it — and every other tab has no queue. The active-only switch is
+    the reader's own and never reaches a count.
+    """
+    listed = table_rows(rows, tab)
+    if tab.kind != DISCIPLINE:
+        return len(listed), 0
+    queued = sum(1 for row in listed if tab.key not in (row.get("disciplines") or []))
+    return len(listed) - queued, queued

@@ -604,6 +604,14 @@ export interface ExportTab {
   line: "queue" | "capacity" | null;
 }
 
+/** A tab as the band lists it, with how many it holds: `queued` counts a
+ *  discipline's substitute entries and is 0 on every other tab. Neither
+ *  follows the tab's active-only switch (spec export-tables). */
+export interface ExportBandTab extends ExportTab {
+  count: number;
+  queued: number;
+}
+
 export interface ExportTable extends ExportTab {
   rows: SheetRow[];
 }
@@ -1373,7 +1381,7 @@ export const api = {
       `/api/tournaments/${slug}/export/sheet?english=${english}`,
       { method: "POST" },
     ),
-  exportTabs: (slug: string) => request<ExportTab[]>(`/api/tournaments/${slug}/export/tables`),
+  exportTabs: (slug: string) => request<ExportBandTab[]>(`/api/tournaments/${slug}/export/tables`),
   exportTable: (slug: string, kind: string, key: string) =>
     request<ExportTable>(
       `/api/tournaments/${slug}/export/table?kind=${encodeURIComponent(kind)}&key=${encodeURIComponent(key)}`,

@@ -91,6 +91,7 @@
       "other_action": "Other programme"
     },
     "column": {
+      "position": "#",
       "name": "Name",
       "nat": "Nat.",
       "club": "Club",
@@ -108,6 +109,7 @@
     "yes": "Yes",
     "no": "No",
     "activeOnly": "Active only",
+    "seedByRating": "Seeding order by HR rating",
     "copy": "Copy table",
     "copied": "Copied · {{count}} rows.",
     "english": "Export in English",

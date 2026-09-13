@@ -3,13 +3,15 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
 import type { SheetRow } from "../api";
+import ExportPanel, { offersEnglishTick } from "../ExportPanel";
 import i18n from "../i18n";
 import { FENCERS_COLUMNS, ITEM_COLUMNS, ROSTER_COLUMNS, selectionsOf, toTsv } from "./columns";
-import { offersEnglishTick } from "./ExportTables";
 import FencersTable from "./FencersTable";
 import ItemsTable from "./ItemsTable";
 import { activeOnly, rosterOrder, seedingOrder } from "./ordering";
 import RosterTable from "./RosterTable";
+import TableOperations from "./TableOperations";
+import { tabCount, tabLabel } from "./tabs";
 
 // The Export phase's tables: what each lists, the order it lists it in, where
 // the capacity line falls, and what leaves by the clipboard (spec
@@ -111,7 +113,7 @@ describe("an item tab", () => {
   it("states the item, its option and its quantity", () => {
     const columns = ITEM_COLUMNS(t, "merch");
     const items = columns.find((column) => column.id === "items");
-    expect(items?.value(buyer)).toBe("t-shirt (M) x2");
+    expect(items?.value(buyer, 0)).toBe("t-shirt (M) x2");
   });
 
   it("reads nothing for a category the fencer bought nothing in", () => {
@@ -128,15 +130,15 @@ describe("the copy action", () => {
   it("carries a header row and the values, in the order given", () => {
     const tsv = toTsv(FENCERS_COLUMNS(t), rows, (id) => t(`export.column.${id}`));
     const lines = tsv.split("\n");
-    expect(lines[0]).toBe("Name\tNat.\tClub\tHR_ID\tDisciplines\tPaid");
-    expect(lines[1]).toBe("Jan Novák\tCZ\t\t10234\tLS\tYes");
+    expect(lines[0]).toBe("#\tName\tNat.\tClub\tHR_ID\tDisciplines\tPaid");
+    expect(lines[1]).toBe("1\tJan Novák\tCZ\t\t10234\tLS\tYes");
     expect(lines[2]?.endsWith("No")).toBe(true);
   });
 
   it("renders headers and yes/no in English when the tick is on", () => {
     const tsv = toTsv(FENCERS_COLUMNS(en), rows, (id) => en(`export.column.${id}`));
     const lines = tsv.split("\n");
-    expect(lines[0]).toBe("Name\tNat.\tClub\tHR_ID\tDisciplines\tPaid");
+    expect(lines[0]).toBe("#\tName\tNat.\tClub\tHR_ID\tDisciplines\tPaid");
     expect(lines[1]?.endsWith("Yes")).toBe(true);
   });
 
@@ -234,5 +236,131 @@ describe("the English tick", () => {
     } finally {
       await i18n.changeLanguage("en");
     }
+  });
+});
+
+describe("a tab's count", () => {
+  it("states a discipline's queue after its seats", () => {
+    expect(tabCount({ count: 24, queued: 3 })).toBe("24 + 3");
+  });
+
+  it("leaves out an empty queue", () => {
+    expect(tabCount({ count: 16, queued: 0 })).toBe("16");
+  });
+
+  it("states a seated zero", () => {
+    expect(tabCount({ count: 0, queued: 0 })).toBe("0");
+  });
+});
+
+describe("the rail card of the open tab", () => {
+  const card = (discipline: boolean, active: boolean) =>
+    renderToStaticMarkup(
+      <TableOperations
+        title="Sabre Open"
+        active={active}
+        onActiveChange={() => {}}
+        seeded={discipline ? { checked: false, onChange: () => {} } : undefined}
+        onCopy={() => {}}
+        onRefreshRatings={discipline ? () => {} : undefined}
+        refreshing={false}
+        message={null}
+      />,
+    );
+
+  it("is headed by the tab it acts on and offers the switch and the copy", () => {
+    const html = card(false, false);
+    expect(html).toContain("Sabre Open");
+    expect(html).toContain(t("export.activeOnly"));
+    expect(html).toContain(t("export.copy"));
+  });
+
+  it("offers the ratings refresh only on a discipline", () => {
+    expect(card(false, false)).not.toContain(t("export.fetchRatings"));
+    expect(card(true, false)).toContain(t("export.fetchRatings"));
+  });
+
+  it("offers the seeding order only on a discipline, beside the active-only switch", () => {
+    expect(card(false, false)).not.toContain(t("export.seedByRating"));
+    const html = card(true, false);
+    expect(html).toContain(t("export.seedByRating"));
+    expect(html).toContain(t("export.activeOnly"));
+  });
+
+  it("states the switch of the tab it is given", () => {
+    expect(card(true, true)).toContain("checked");
+    expect(card(true, false)).not.toContain("checked");
+  });
+
+  it("is headed by the same name the band gives the tab", () => {
+    const tab = {
+      kind: "category" as const,
+      key: "rental",
+      label: "rental",
+      capacity: null,
+      line: null,
+    };
+    expect(tabLabel(t, tab)).toBe(t("export.category.rental"));
+  });
+});
+
+describe("the Export card", () => {
+  it("carries the English tick beside what leaves the phase", async () => {
+    await i18n.changeLanguage("cs");
+    try {
+      const html = renderToStaticMarkup(
+        <ExportPanel slug="cup" english={false} onEnglishChange={() => {}} />,
+      );
+      expect(html).toContain(i18n.getFixedT("cs")("export.english"));
+      expect(html).toContain(i18n.getFixedT("cs")("export.runSheets"));
+    } finally {
+      await i18n.changeLanguage("en");
+    }
+  });
+});
+
+describe("the position column", () => {
+  it("opens every table", () => {
+    for (const columns of [FENCERS_COLUMNS(t), ROSTER_COLUMNS(t, "LS"), ITEM_COLUMNS(t, "merch")]) {
+      expect(columns[0]?.id).toBe("position");
+    }
+  });
+
+  it("numbers the rows from 1 as they are drawn, straight across the line", () => {
+    const { rows, line } = rosterOrder(
+      [
+        row("reg:1", "Seated One"),
+        row("reg:2", "Seated Two"),
+        row("reg:3", "Queued Three", { disciplines: [], substitute_for: ["LS"] }),
+      ],
+      "LS",
+      2,
+      "queue",
+      false,
+    );
+    const html = renderToStaticMarkup(
+      <RosterTable
+        rows={rows}
+        slug="LS"
+        capacity={2}
+        lineKind="queue"
+        seeded={false}
+        edited={() => false}
+        onRate={() => {}}
+      />,
+    );
+    const numbers = [...html.matchAll(/<td class="col-index">(\d+)<\/td>/g)].map((m) => m[1]);
+    expect(line.after).toBe(2);
+    expect(numbers).toEqual(["1", "2", "3"]);
+  });
+
+  it("travels in the copy, numbering what the filter leaves", () => {
+    const rows = activeOnly(
+      [row("reg:1", "Unpaid One"), row("reg:2", "Paid Two", { paid: true })],
+      true,
+    );
+    const lines = toTsv(FENCERS_COLUMNS(en), rows, (id) => en(`export.column.${id}`)).split("\n");
+    expect(lines[0]?.split("\t")[0]).toBe("#");
+    expect(lines[1]?.split("\t").slice(0, 2)).toEqual(["1", "Paid Two"]);
   });
 });

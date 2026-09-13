@@ -4103,22 +4103,28 @@ button.secondary.tolerance-save:disabled {
 
    The Export phase is a band of tables derived from the tournament (spec
    export-tables). The band itself is `.stage-control-band`, which every other
-   tab band in the console already is; what is new here is the strip of
-   controls under it and the one line a discipline table draws. */
+   tab band in the console already is; what is new here is where it ends, the
+   ticks its rail cards carry, and the one line a discipline table draws. */
 
-.export-controls {
-  display: flex;
+/* The band stands on the title's line and ends at its last tab. Where the two
+   do not fit side by side the band wraps under the title; below 768px
+   `.stage-control-band` sets width: 100%, so it wraps there always and stays
+   the full-width scroller. */
+.export-header {
+  justify-content: flex-start;
   align-items: center;
-  gap: 1rem;
   flex-wrap: wrap;
-  margin-bottom: 0.8rem;
-  font-size: 13px;
+  gap: 0.6rem 1.2rem;
 }
 
-.export-controls label {
+/* A tick in a rail card: the box beside its label, on a line of its own above
+   the card's buttons. */
+.rail-check {
   display: flex;
   align-items: center;
   gap: 0.35rem;
+  margin-bottom: 0.6rem;
+  font-size: 13px;
 }
 
 /* The capacity line: one row of the table with a rule above it, not a break

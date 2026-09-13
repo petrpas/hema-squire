@@ -5,7 +5,7 @@ from fastapi import APIRouter, Body, Depends, HTTPException
 from app import export_json, exporttables, rules, sheet, sheets_export
 from app.auth import require_console_access, require_published
 from app.routers.tournaments import FencerDep, SessionDep, TournamentDep
-from app.schemas import ExportTableOut, ExportTabOut
+from app.schemas import ExportBandTabOut, ExportTableOut
 
 router = APIRouter(prefix="/api/tournaments", tags=["export"])
 
@@ -22,15 +22,27 @@ def export_tournament(tournament: TournamentDep, session: SessionDep, fencer: Fe
     return export_json.export_tournament(session, tournament)
 
 
-@router.get("/{slug}/export/tables", response_model=list[ExportTabOut])
-def export_tabs(tournament: TournamentDep, session: SessionDep, fencer: FencerDep):
+@router.get("/{slug}/export/tables", response_model=list[ExportBandTabOut])
+def export_tabs(
+    tournament: TournamentDep, session: SessionDep, fencer: FencerDep
+) -> list[ExportBandTabOut]:
     """The band of tables this tournament exports: the fencer list, its
     individual disciplines, and the extra-item categories it offers something
     in. Derived from the tournament, so a category it sells nothing in is
-    absent rather than empty."""
+    absent rather than empty.
+
+    Each tab carries how many it lists, counted over the replayed rows by the
+    same narrowing its table applies."""
     require_console_access(session, tournament, fencer)
     require_published(tournament)
-    return [ExportTabOut(**tab.__dict__) for tab in exporttables.tabs(tournament)]
+    base = sheet.base_rows(session, tournament)
+    replayed, _ = rules.replay(base, rules.active_rules(session, tournament))
+    rows = list(replayed.values())
+    band: list[ExportBandTabOut] = []
+    for tab in exporttables.tabs(tournament):
+        count, queued = exporttables.tab_counts(rows, tab)
+        band.append(ExportBandTabOut(**tab.__dict__, count=count, queued=queued))
+    return band
 
 
 @router.get("/{slug}/export/table", response_model=ExportTableOut)

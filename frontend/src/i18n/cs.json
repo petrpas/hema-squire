@@ -87,7 +87,7 @@
       "fencers": "Šermíři"
     },
     "category": {
-      "rental": "Půjčovna",
+      "rental": "Zápůjčky",
       "merch": "Merch",
       "other_item": "Ostatní zboží",
       "seminar": "Semináře",
@@ -95,6 +95,7 @@
       "other_action": "Ostatní program"
     },
     "column": {
+      "position": "#",
       "name": "Jméno",
       "nat": "Nár.",
       "club": "Klub",
@@ -112,6 +113,7 @@
     "yes": "Ano",
     "no": "Ne",
     "activeOnly": "Jen aktivní",
+    "seedByRating": "Pořadí dle HR",
     "copy": "Kopírovat tabulku",
     "copied": "Zkopírováno · {{count}} řádků.",
     "english": "Export v angličtině",

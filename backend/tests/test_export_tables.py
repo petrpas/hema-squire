@@ -2,6 +2,7 @@
 correction of one (spec export-tables, The rating is the organizer's to
 correct)."""
 
+from app import exporttables
 from app.hr_sync import get_hr_fetcher
 from app.main import app
 from tests.conftest import publish
@@ -362,3 +363,66 @@ def test_a_refresh_fetches_each_fighter_page_once(client, auth_headers):
 
     rows, _ = sheet_rows(client, organizer)
     assert rows["Jan Novák"]["ratings"] == {"LS": 1400.0, "SA": 1100.0, "RA": 1000.0}
+
+
+def counts(client, organizer):
+    return {
+        (tab["kind"], tab["key"]): (tab["count"], tab["queued"]) for tab in tabs(client, organizer)
+    }
+
+
+def test_every_tab_states_how_many_it_lists(client, auth_headers):
+    organizer = organizer_with_tournament(client, auth_headers)
+    shirt = add_item(client, organizer, "t-shirt", "merch")
+    buyer = auth_headers(email="buyer@example.com", name="Buyer One")
+    client.post(
+        "/api/tournaments/cup/register",
+        json={"disciplines": ["LS"], "extras": [{"extra_item_id": shirt["id"]}]},
+        headers=buyer,
+    )
+    other = auth_headers(email="other@example.com", name="Other Two")
+    client.post("/api/tournaments/cup/register", json={"disciplines": ["LS"]}, headers=other)
+
+    assert counts(client, organizer) == {
+        ("fencers", ""): (2, 0),
+        ("discipline", "LS"): (2, 0),
+        ("discipline", "SA"): (0, 0),
+        ("category", "merch"): (1, 0),
+    }
+
+
+def test_a_deleted_row_counts_nowhere(client, auth_headers):
+    organizer = organizer_with_tournament(client, auth_headers)
+    register_bound_fencer(client, auth_headers, disciplines=["LS"])
+    rows, _ = sheet_rows(client, organizer)
+    client.post(
+        "/api/tournaments/cup/rules",
+        json={
+            "phase": "export",
+            "kind": "row_delete",
+            "target": rows["Jan Novák"]["id"],
+            "payload": {},
+        },
+        headers=organizer,
+    )
+
+    listed = counts(client, organizer)
+    assert listed[("fencers", "")] == (0, 0)
+    assert listed[("discipline", "LS")] == (0, 0)
+
+
+def test_a_discipline_counts_its_queue_apart_from_its_seats():
+    """The split the capacity line draws: a row the discipline's table lists
+    without seating it holds a substitute entry there, and a paid row is
+    counted whether or not the reader has switched to active only."""
+    tab = exporttables.Tab(kind=exporttables.DISCIPLINE, key="LS", label="LS", capacity=2)
+    rows = [
+        {"id": "reg:1", "disciplines": ["LS"], "substitute_for": [], "paid": True},
+        {"id": "reg:2", "disciplines": ["LS"], "substitute_for": [], "paid": False},
+        {"id": "reg:3", "disciplines": [], "substitute_for": ["LS"], "paid": True},
+        {"id": "reg:4", "disciplines": ["SA"], "substitute_for": [], "paid": True},
+        {"id": "reg:5", "disciplines": [], "substitute_for": ["LS"], "_deleted": True},
+    ]
+    assert exporttables.tab_counts(rows, tab) == (2, 1)
+    fencers = exporttables.Tab(kind=exporttables.FENCERS, key="", label="fencers")
+    assert exporttables.tab_counts(rows, fencers) == (4, 0)
