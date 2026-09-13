@@ -1,9 +1,4 @@
-# export-tables Specification
-
-## Purpose
-Fix what leaves a tournament as a table: the Export phase's band of tabs — the fencer list, one per individual discipline, one per extra-item category — their columns and order, the paid filter, the seeding roster and its capacity line, the organizer's correction of a rating, and the two ways a table leaves the screen.
-
-## Requirements
+## MODIFIED Requirements
 
 ### Requirement: The Export phase is a band of tables
 The Export phase SHALL replace the single fencer table with a band of tabs, each
@@ -48,50 +43,6 @@ band in the console is, and the selected tab SHALL be kept visible in it.
 #### Scenario: The band ends at its last tab
 - **WHEN** a tournament with three tabs is exported on a wide screen
 - **THEN** the band's frame ends at the third tab
-
-### Requirement: Every tab states how many it lists
-Every tab SHALL state, beside its name, how many rows it lists.
-
-A **discipline** tab SHALL state two numbers: the fencers holding a seated entry
-in the discipline, then the fencers holding a substitute entry in it, joined as
-`24 + 3`. Where nobody holds a substitute entry, the second number and its `+`
-SHALL be left out. That is always the case on a tournament whose conduct creates
-no substitute placements. The seated number SHALL be stated even when it is
-zero, because a discipline with nobody entered is something the organizer needs
-to see.
-
-The **Fencers** tab and each **item category** tab SHALL state one number: the
-rows the tab lists.
-
-The counts SHALL be of the tab's whole population, as the tab lists it with the
-active-only switch off, and a row a deletion took out of the table SHALL count
-nowhere. The switch SHALL NOT change a count. The count states how large the tab
-is, and a number that changed with a per-tab switch would make two tabs
-incomparable at a glance.
-
-The counts SHALL follow the tournament's rows. A registration entered, deleted,
-restored or moved in or out of a queue SHALL be reflected in the band on the
-next read, without the organizer reopening the phase.
-
-#### Scenario: A discipline states its seated fencers and its queue
-- **WHEN** Sabre Open has 24 fencers holding a seated entry and 3 holding a substitute entry
-- **THEN** its tab reads SABRE OPEN 24 + 3
-
-#### Scenario: An empty queue is not stated
-- **WHEN** Longsword has 16 seated fencers and nobody queued
-- **THEN** its tab reads LONGSWORD 16, with no + 0
-
-#### Scenario: The Fencers and item tabs state one number
-- **WHEN** a tournament knows 41 fencers and 7 of them have borrowed equipment
-- **THEN** the Fencers tab reads 41 and the rental tab reads 7
-
-#### Scenario: The switch does not change the count
-- **WHEN** 20 of Sabre Open's 24 seated fencers have paid and the organizer switches that tab to active only
-- **THEN** the tab still reads 24 + 3
-
-#### Scenario: A deleted row is not counted
-- **WHEN** the organizer deletes one of the 41 rows on the Fencers phase and opens Export
-- **THEN** the Fencers tab reads 40
 
 ### Requirement: Each tab states its own columns and order
 Every tab SHALL open with a **position** column, headed `#`, numbering its rows
@@ -157,6 +108,29 @@ that is sometimes a word and sometimes a sum can be neither counted nor filtered
 #### Scenario: A registration owing nothing has not paid
 - **WHEN** a fencer's entries all sit in a queue, so the registration is priced at zero and has been credited nothing
 - **THEN** their paid column reads no on every tab
+
+### Requirement: A table leaves by the clipboard
+Every tab SHALL offer a copy action putting the table on the clipboard as
+tab-separated values with a header row, in the order and with the filter on
+screen, so it pastes into a spreadsheet as the columns it is.
+
+Marker and layout SHALL NOT travel: the capacity line does not, and a manual-edit
+marking does not. What travels is the values. The position column SHALL travel
+as the first column, numbering the copied rows as they were numbered on screen,
+because the order it states — a seeding position, a place past capacity — is a
+value the reader keeps. The spreadsheet write SHALL NOT carry it.
+
+#### Scenario: A tab is pasted into a spreadsheet
+- **WHEN** the organizer copies the Fencers tab and pastes into a spreadsheet
+- **THEN** the columns land in their own cells under their own headers, the first headed #
+
+#### Scenario: The copy follows the filter
+- **WHEN** the organizer copies a tab switched to active only
+- **THEN** only the active rows are copied, numbered from 1
+
+#### Scenario: The spreadsheet has no position column
+- **WHEN** the organizer writes the export to the organizer's spreadsheet
+- **THEN** no worksheet carries the position column
 
 ### Requirement: Every tab filters to the paid
 Each tab SHALL offer a switch between all rows and active rows only. Active SHALL
@@ -255,94 +229,51 @@ block in the displayed order and SHALL NOT carry the line.
 - **WHEN** the organizer opens the Fencers tab or an item tab
 - **THEN** no seeding order tick is offered
 
-### Requirement: The rating is the organizer's to correct
-The rating cell of a discipline tab SHALL be editable. A typed rating SHALL
-persist as a rule replayed over the projection, keyed to the row and the
-discipline, so a fencer entered in two disciplines carries two independent
-corrections.
+## ADDED Requirements
 
-The typed rating SHALL be the rating every reader gets: the tab's order, the
-capacity line, and the spreadsheet export alike. A ratings refresh SHALL NOT
-overwrite it — a refresh stores what HEMA Ratings currently says, and the
-correction is replayed over that, so the correction stands until it is removed.
-Removing it SHALL expose the fetched value again, as removing any rule exposes
-what it covered.
+### Requirement: Every tab states how many it lists
+Every tab SHALL state, beside its name, how many rows it lists.
 
-A corrected rating SHALL be marked as an organizer's edit wherever it is shown,
-by the same marking every other manual edit carries, and SHALL appear in the
-phase's manual-edits log with its discipline named.
+A **discipline** tab SHALL state two numbers: the fencers holding a seated entry
+in the discipline, then the fencers holding a substitute entry in it, joined as
+`24 + 3`. Where nobody holds a substitute entry, the second number and its `+`
+SHALL be left out. That is always the case on a tournament whose conduct creates
+no substitute placements. The seated number SHALL be stated even when it is
+zero, because a discipline with nobody entered is something the organizer needs
+to see.
 
-Rank SHALL NOT be editable. It states what HEMA Ratings says, and an overridden
-rating standing beside an unchanged rank is the intended reading: the correction
-is the organizer's, the rank is the register's.
+The **Fencers** tab and each **item category** tab SHALL state one number: the
+rows the tab lists.
 
-#### Scenario: A typed rating stands
-- **WHEN** the organizer types a rating into a discipline tab and reloads the console
-- **THEN** the typed rating is shown, marked as a manual edit
+The counts SHALL be of the tab's whole population, as the tab lists it with the
+active-only switch off, and a row a deletion took out of the table SHALL count
+nowhere. The switch SHALL NOT change a count. The count states how large the tab
+is, and a number that changed with a per-tab switch would make two tabs
+incomparable at a glance.
 
-#### Scenario: A refresh does not overwrite it
-- **WHEN** the organizer refreshes ratings after typing one
-- **THEN** the typed rating is still shown and every other fencer's rating is the freshly fetched one
+The counts SHALL follow the tournament's rows. A registration entered, deleted,
+restored or moved in or out of a queue SHALL be reflected in the band on the
+next read, without the organizer reopening the phase.
 
-#### Scenario: Removing the correction exposes the fetch
-- **WHEN** the organizer removes that edit from the manual-edits log
-- **THEN** the cell states the fetched rating again
+#### Scenario: A discipline states its seated fencers and its queue
+- **WHEN** Sabre Open has 24 fencers holding a seated entry and 3 holding a substitute entry
+- **THEN** its tab reads SABRE OPEN 24 + 3
 
-#### Scenario: The correction reaches the order and the line
-- **WHEN** a typed rating puts a fencer above another
-- **THEN** the seeding order lists them in that order
+#### Scenario: An empty queue is not stated
+- **WHEN** Longsword has 16 seated fencers and nobody queued
+- **THEN** its tab reads LONGSWORD 16, with no + 0
 
-#### Scenario: Two disciplines, two corrections
-- **WHEN** a fencer entered in longsword and rapier has their longsword rating corrected
-- **THEN** their rapier rating is unchanged
+#### Scenario: The Fencers and item tabs state one number
+- **WHEN** a tournament knows 41 fencers and 7 of them have borrowed equipment
+- **THEN** the Fencers tab reads 41 and the rental tab reads 7
 
-#### Scenario: Rank is not editable
-- **WHEN** the organizer clicks a rank cell
-- **THEN** no edit opens
+#### Scenario: The switch does not change the count
+- **WHEN** 20 of Sabre Open's 24 seated fencers have paid and the organizer switches that tab to active only
+- **THEN** the tab still reads 24 + 3
 
-### Requirement: A table leaves by the clipboard
-Every tab SHALL offer a copy action putting the table on the clipboard as
-tab-separated values with a header row, in the order and with the filter on
-screen, so it pastes into a spreadsheet as the columns it is.
-
-Marker and layout SHALL NOT travel: the capacity line does not, and a manual-edit
-marking does not. What travels is the values. The position column SHALL travel
-as the first column, numbering the copied rows as they were numbered on screen,
-because the order it states — a seeding position, a place past capacity — is a
-value the reader keeps. The spreadsheet write SHALL NOT carry it.
-
-#### Scenario: A tab is pasted into a spreadsheet
-- **WHEN** the organizer copies the Fencers tab and pastes into a spreadsheet
-- **THEN** the columns land in their own cells under their own headers, the first headed #
-
-#### Scenario: The copy follows the filter
-- **WHEN** the organizer copies a tab switched to active only
-- **THEN** only the active rows are copied, numbered from 1
-
-#### Scenario: The spreadsheet has no position column
-- **WHEN** the organizer writes the export to the organizer's spreadsheet
-- **THEN** no worksheet carries the position column
-
-### Requirement: A table can leave in English
-The Export phase SHALL offer a tick rendering what leaves it in English: the
-copied values and the worksheets written to the organizer's spreadsheet, headers
-and yes/no values alike. The table on screen SHALL stay in the organizer's own
-language, because the table is also where they work.
-
-The tick SHALL be offered only to an organizer whose interface language is not
-already English, where it would change nothing.
-
-#### Scenario: An English copy from a Czech console
-- **WHEN** a Czech-speaking organizer ticks the English option and copies the Fencers tab
-- **THEN** the pasted header reads Name, Nat., Club and the paid column reads Yes and No
-
-#### Scenario: The screen is not switched
-- **WHEN** the same organizer ticks it
-- **THEN** the table on screen is still in Czech
-
-#### Scenario: Not offered where it would do nothing
-- **WHEN** an organizer whose interface is English opens the Export phase
-- **THEN** no such tick is shown
+#### Scenario: A deleted row is not counted
+- **WHEN** the organizer deletes one of the 41 rows on the Fencers phase and opens Export
+- **THEN** the Fencers tab reads 40
 
 ### Requirement: A tab's controls are the phase's operations
 Above its table, the Export phase SHALL show only the band. The controls acting on
