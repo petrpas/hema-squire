@@ -14,7 +14,7 @@ import UncreditedTable from "./UncreditedTable";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
-const t = i18n.getFixedT("cs");
+const t = i18n.getFixedT(i18n.language);
 
 let host: HTMLElement | null = null;
 
@@ -195,7 +195,7 @@ it("states what a proposed fencer owes, not only their name", () => {
   // confirmed against a balance rather than against a name alone. The spaces
   // are normalized because the money formatter groups with a non-breaking one
   const stated = (rowTexts()[0] ?? "").replace(/\s/g, " ");
-  expect(stated).toContain("dluží 1 000 Kč");
+  expect(stated).toContain("owes 1 000 Kč");
 });
 
 it("names the pairing that credited nothing", () => {

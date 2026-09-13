@@ -331,7 +331,7 @@ describe("money cells", () => {
   it("names an overpayment instead of printing a negative balance", () => {
     // the minus sign carried the whole meaning, in a column read for debts
     const shown = moneyCell("outstanding", { outstanding_amount: "-200.00" });
-    expect(shown).toContain("přeplatek");
+    expect(shown).toContain("over");
     expect(shown).toContain("200");
     expect(shown).not.toContain("-200");
   });

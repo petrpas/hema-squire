@@ -12,7 +12,7 @@ import PaymentTabs, { type PaymentTab } from "./PaymentTabs";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
-const t = i18n.getFixedT("cs");
+const t = i18n.getFixedT(i18n.language);
 
 let host: HTMLElement | null = null;
 
