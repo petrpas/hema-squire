@@ -81,8 +81,7 @@ dropped, duplicated, or split by this navigation:
   the reminder day), the bank account payments are collected into, the currency and
   exchange-rate section, the VS series statement, the discount list, and — only while
   the tournament still carries them — the legacy fixed fees.
-- `OTHER` — the tournament mode, console team access, the export sheet address, and the
-  danger zone.
+- `OTHER` — the tournament mode, console team access, and the danger zone.
 - `PUBLISH` — the publication state, the items blocking publication, and the publish
   action, as fixed by `tournament-publication`.
 
@@ -108,6 +107,13 @@ in the console's phase panels. A feature turned off SHALL NOT move a field to a 
 editor: it removes the one editor there is, and the item it governs is reported on
 `PUBLISH` naming the feature that restores it.
 
+**A tool's destination is not a tournament parameter.** A value that only says where one
+console tool puts its output — governing no rule, gating no publication, read by nothing
+but the tool itself — SHALL be configured with that tool in its phase panel rather than in
+Setup, and SHALL then not appear in Setup at all. The export sheet address is such a
+value, and is fixed there by `data-export`. This is the only exception to the paragraph
+above, and it does not weaken it: the field still has exactly one editor.
+
 The team composition deadline SHALL sit on `TIMELINE` in its chronological place, and
 SHALL be offered only while the team disciplines feature is on and at least one
 discipline row is of the team kind, including a row added in the current unsaved draft on
@@ -128,7 +134,7 @@ account with console access.
 
 #### Scenario: Every section reachable
 - **WHEN** the organizer of a tournament with every feature enabled visits all seven tabs
-- **THEN** every settings section that existed before this change is present on exactly one of them, and every tournament parameter formerly offered in a console phase panel is present on one of them
+- **THEN** every settings section the tournament has is present on exactly one of them, and every tournament parameter is present on one of them
 
 #### Scenario: Deadline appears with the first team row
 - **WHEN** the organizer of a tournament with the team feature on sets a discipline row's kind to team in an unsaved draft on `DISCIPLINES`
@@ -156,7 +162,7 @@ account with console access.
 
 #### Scenario: Mode section always on OTHER
 - **WHEN** the tournament owner opens `OTHER` on a tournament with no feature enabled
-- **THEN** the tournament mode section is present alongside the console team, the export sheet address and the danger zone
+- **THEN** the tournament mode section is present alongside the console team and the danger zone
 
 #### Scenario: Bank account has one editor
 - **WHEN** the organizer looks for the bank account in the console's payments-phase panels
@@ -173,6 +179,14 @@ account with console access.
 #### Scenario: Non-owner sees no empty tab
 - **WHEN** a console team member who is not the tournament owner opens Setup
 - **THEN** the `OTHER` tab is not offered, and the remaining tabs its mode allows — including `PUBLISH` — behave as usual
+
+#### Scenario: The export address is not in Setup
+- **WHEN** the organizer of a published tournament visits every Setup tab
+- **THEN** none of them offers the export sheet address, and `OTHER` carries the mode section, console team access and the danger zone
+
+#### Scenario: The exception is narrow
+- **WHEN** the organizer looks in a console phase panel for any tournament parameter other than the export sheet address
+- **THEN** it is not offered there, and its one editor is in Setup
 
 ### Requirement: The timeline carries the opening time and the tournament timezone
 The opening time of day SHALL sit on `TIMELINE` beside the registration-opens date it belongs to, in every mode, as one field pair rather than as two independent rows: it is read as a qualifier of that date, not as a date of its own, and SHALL therefore never take its own place in the chronological sequence the timeline presents.
