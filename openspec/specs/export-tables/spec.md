@@ -2,16 +2,15 @@
 
 ## Purpose
 Fix what leaves a tournament as a table: the Export phase's band of tabs — the fencer list, one per individual discipline, one per extra-item category — their columns and order, the paid filter, the seeding roster and its capacity line, the organizer's correction of a rating, and the two ways a table leaves the screen.
-
 ## Requirements
-
 ### Requirement: The Export phase is a band of tables
 The Export phase SHALL replace the single fencer table with a band of tabs, each
 tab one table. The band SHALL be derived from the tournament rather than fixed:
 a **Fencers** tab first, then one tab per individual discipline in the
 tournament's discipline order, then one tab per extra-item category for which
 the tournament offers at least one item, goods categories before programme
-categories.
+categories, and last a **Summary** tab, which every tournament has and whose
+table `export-summary` fixes.
 
 A category the tournament offers nothing in SHALL have no tab, and a category
 the tournament does offer SHALL have one whatever it is — a tournament selling
@@ -27,7 +26,7 @@ band in the console is, and the selected tab SHALL be kept visible in it.
 
 #### Scenario: Tabs follow what the tournament offers
 - **WHEN** a tournament offering two individual disciplines, a rental and a merch item is exported
-- **THEN** the band holds Fencers, the two disciplines, Rentals and Merch, and no afterparty or seminar tab
+- **THEN** the band holds Fencers, the two disciplines, Rentals, Merch and Summary, and no afterparty or seminar tab
 
 #### Scenario: A category with no items has no tab
 - **WHEN** the same tournament has no afterparty item
@@ -41,16 +40,22 @@ band in the console is, and the selected tab SHALL be kept visible in it.
 - **WHEN** a tournament offers one individual and one team longsword discipline
 - **THEN** only the individual discipline has a tab
 
+#### Scenario: The summary is the last tab
+- **WHEN** a tournament offering one discipline and nothing else is exported
+- **THEN** the band holds Fencers, the discipline and Summary, in that order
+
 #### Scenario: The band stands beside the title
 - **WHEN** the organizer opens the Export phase on a wide screen
 - **THEN** the band is on the same line as the tables' title, after it
 
 #### Scenario: The band ends at its last tab
 - **WHEN** a tournament with three tabs is exported on a wide screen
-- **THEN** the band's frame ends at the third tab
+- **THEN** the band's frame ends at the third tab, which is Summary
 
 ### Requirement: Every tab states how many it lists
-Every tab SHALL state, beside its name, how many rows it lists.
+Every tab but Summary SHALL state, beside its name, how many rows it lists.
+The Summary tab SHALL state no number: its rows are lines of an offer, not a
+population, and a number beside it would read as one comparable with the others.
 
 A **discipline** tab SHALL state two numbers: the fencers holding a seated entry
 in the discipline, then the fencers holding a substitute entry in it, joined as
@@ -85,6 +90,10 @@ next read, without the organizer reopening the phase.
 - **WHEN** a tournament knows 41 fencers and 7 of them have borrowed equipment
 - **THEN** the Fencers tab reads 41 and the rental tab reads 7
 
+#### Scenario: The summary states no count
+- **WHEN** the organizer opens the Export phase
+- **THEN** the Summary tab carries its name alone
+
 #### Scenario: The switch does not change the count
 - **WHEN** 20 of Sabre Open's 24 seated fencers have paid and the organizer switches that tab to active only
 - **THEN** the tab still reads 24 + 3
@@ -94,7 +103,7 @@ next read, without the organizer reopening the phase.
 - **THEN** the Fencers tab reads 40
 
 ### Requirement: Each tab states its own columns and order
-Every tab SHALL open with a **position** column, headed `#`, numbering its rows
+Every tab but Summary SHALL open with a **position** column, headed `#`, numbering its rows
 from 1 in the order they are displayed — after the tab's filter and in the tab's
 own order. On a discipline tab the numbering SHALL run straight across the
 capacity line, so the first fencer below it states how far past capacity they
@@ -111,6 +120,10 @@ An **item category** tab SHALL list, after the position, name, nationality, club
 the items the fencer selected in that category with their quantities, and paid,
 ordered by paid then registration order. It SHALL list only fencers holding a
 selection in that category.
+
+The **Summary** tab SHALL list the columns and rows `export-summary` fixes. It
+carries no position column, because its order is the offer's and a number
+stating a place in it would state nothing.
 
 A row a deletion has taken out of the table SHALL appear in no tab, as it appears
 in no export.
@@ -160,6 +173,10 @@ that is sometimes a word and sometimes a sum can be neither counted nor filtered
 - **WHEN** a fencer ordered two T-shirts
 - **THEN** their row states the item with its quantity
 
+#### Scenario: The summary has no position column
+- **WHEN** the organizer opens the Summary tab
+- **THEN** its first column is the item
+
 #### Scenario: A deleted row is in no tab
 - **WHEN** a row is deleted on the Fencers phase and the organizer opens Export
 - **THEN** it appears on no tab
@@ -173,7 +190,9 @@ that is sometimes a word and sometimes a sum can be neither counted nor filtered
 - **THEN** their paid column reads no on every tab
 
 ### Requirement: Every tab filters to the paid
-Each tab SHALL offer a switch between all rows and active rows only. Active SHALL
+Each tab but Summary SHALL offer a switch between all rows and active rows only.
+The Summary tab SHALL NOT offer it: its columns already state the paid and the
+unpaid side by side, and narrowing it would empty one of them. Active SHALL
 mean the registration is settled — whether Squire collected the money or the
 organizer waived the price by hand — so that the switch answers the same question
 on a tournament whose payments Squire does not handle. A registration credited
@@ -204,6 +223,10 @@ on every tab they open.
 #### Scenario: The switch holds across tabs
 - **WHEN** the organizer switches the Merch tab to active only and moves to the Fencers tab
 - **THEN** the Fencers tab lists only the paid, and its switch is on
+
+#### Scenario: The summary is not narrowed
+- **WHEN** the organizer has switched the Merch tab to active only and opens Summary
+- **THEN** the summary states both its paid and its unpaid counts, and on returning to Merch its switch is still on
 
 #### Scenario: An item tab narrows twice
 - **WHEN** four fencers ordered a T-shirt and two of them have paid, and the organizer switches the Merch tab to active only
@@ -368,7 +391,7 @@ already English, where it would change nothing.
 Above its table, the Export phase SHALL show only the band. The controls acting on
 the open tab SHALL be offered in the phase's operations rail, as every other
 phase offers its operations there:
-- the active-only switch,
+- the active-only switch, on every tab but Summary,
 - on a discipline tab, the seeding order tick,
 - the copy action,
 - on a discipline tab, the HR ratings refresh with its statement that it refreshes
@@ -403,6 +426,11 @@ offered it.
 - **WHEN** the organizer ticks the seeding order on Sabre Open, opens Merch and then Longsword
 - **THEN** Merch offers no seeding order, and Longsword is listed in seeding order with the tick on
 
+#### Scenario: The summary card offers the copy alone
+- **WHEN** the organizer opens the Summary tab
+- **THEN** the rail holds a card headed Summary with the copy action and no switch, tick or refresh
+
 #### Scenario: A copy reports where it was asked
 - **WHEN** the organizer copies a tab from the rail card
 - **THEN** the card states how many rows were copied
+

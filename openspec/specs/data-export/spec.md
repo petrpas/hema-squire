@@ -75,10 +75,13 @@ The document version SHALL be raised for this addition. Documents produced befor
 The Google Sheets export SHALL write one worksheet per export table: a `Fencers`
 worksheet, one worksheet per individual discipline named for the discipline's
 slug, and one worksheet per extra-item category the tournament offers, named for
-the category. Each worksheet SHALL carry its table's columns and its table's
-order, as `export-tables` fixes them.
+the category, and a `Summary` worksheet. Each worksheet SHALL carry its table's
+columns and its table's order, as `export-tables` and `export-summary` fix them.
+Worksheet names SHALL be the same in every locale, since the export finds an
+existing worksheet by its name.
 
-Every worksheet SHALL open, as every tab does, with a position column headed `#`.
+Every worksheet but `Summary` SHALL open, as every tab but Summary does, with a
+position column headed `#`.
 No worksheet SHALL carry a blank column left for numbering by hand. The position SHALL number the
 worksheet's rows 1 to n from the top as the worksheet stands after the export,
 rewritten on every export. Because a re-export keeps existing rows where they
@@ -86,8 +89,8 @@ stand and appends new ones, the position numbers the sheet, not the console:
 after the console's order has moved, the two may differ, and the sheet's
 numbering still runs unbroken down the sheet.
 
-The position, the HEMA Ratings identifier, the rating and the rank SHALL be
-written to the worksheet as numbers, not as text, whatever locale the
+The position, the HEMA Ratings identifier, the rating, the rank and the
+summary's paid and unpaid counts SHALL be written to the worksheet as numbers, not as text, whatever locale the
 spreadsheet is set to; a cell of those columns holding no number SHALL be
 written as it stands.
 
@@ -124,7 +127,7 @@ otherwise.
 
 #### Scenario: A worksheet per tab
 - **WHEN** a tournament offering two individual disciplines, a rental item and a merch item is exported to Sheets
-- **THEN** five worksheets are written — Fencers, the two discipline slugs, Rentals and Merch — each carrying its table's columns
+- **THEN** six worksheets are written — Fencers, the two discipline slugs, Rentals, Merch and Summary — each carrying its table's columns
 
 #### Scenario: Tiers produce separate worksheets
 - **WHEN** a tournament offering two longsword disciplines is exported to Sheets
@@ -144,14 +147,19 @@ otherwise.
 
 #### Scenario: Teams absent from the sheet
 - **WHEN** a tournament with team disciplines and rosters is exported to Sheets
-- **THEN** the worksheets are exactly those the same tournament would produce without teams, and no roster member appears in the Fencers worksheet
+- **THEN** the worksheets are exactly those the same tournament would produce without teams, no roster member appears in the Fencers worksheet, and the Summary worksheet has no line for a team discipline
 
 #### Scenario: An English sheet from a Czech console
 - **WHEN** a Czech-speaking organizer ticks the English export and writes to Sheets
-- **THEN** the worksheets carry English headers and Yes/No in the paid column
+- **THEN** the worksheets carry English headers and Yes/No in the paid column, and the Summary worksheet's queue and unanswered lines read in English
 
 ### Requirement: Repeat-export preservation semantics
-Re-exporting to an existing sheet SHALL always refresh the position, rating and rank columns, and SHALL write other cells only when blank or unchanged, preserving downstream manual work.
+Re-exporting to an existing sheet SHALL always refresh the position, rating and rank columns of a table's worksheet, and SHALL write its other cells only when blank or unchanged, preserving downstream manual work.
+
+The `Summary` worksheet SHALL be written whole on every export, replacing what it
+held. It is a report of counts, not a list staff work through. It has no row
+identity a merge could keep a cell by, and a preserved count would be a stale one.
+Anything written into it by hand SHALL NOT survive the next export.
 
 These semantics SHALL survive the change of worksheet shape. Existing cells are
 addressed by their header name, so a column that remains keeps its contents, a
@@ -171,6 +179,10 @@ every time, because it is what the tournament currently holds.
 #### Scenario: A sheet in an older format keeps what remains
 - **WHEN** the organizer re-exports to a spreadsheet written in an older format
 - **THEN** cells of the columns that remain keep their contents, the columns the current format drops are gone, and the columns it adds are filled
+
+#### Scenario: The summary is rewritten
+- **WHEN** downstream staff typed a note into the Summary worksheet and the organizer re-exports after two more shirts were ordered
+- **THEN** the Summary worksheet states the new counts and the note is gone
 
 #### Scenario: A correction is rewritten, not preserved
 - **WHEN** the organizer corrects a rating and re-exports twice
