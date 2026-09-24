@@ -17,7 +17,12 @@ if TYPE_CHECKING:  # a substitution reaches its mail, and mail is not part of it
     from app.substitution import Prepared
 
 
-def _summary_lines(registration: Registration, tournament: Tournament, lang: str) -> str:
+def _summary_lines(
+    registration: Registration,
+    tournament: Tournament,
+    lang: str,
+    waits_for: list[str] | None = None,
+) -> str:
     lines = [
         f"  {entry.discipline.name}"
         + (f" ({t('email.confirmation.substitute', lang)})" if entry.is_substitute else "")
@@ -52,6 +57,17 @@ def _summary_lines(registration: Registration, tournament: Tournament, lang: str
         lines.append(f"  {selection.item.name}{qty_suffix}{option}")
     if registration.aftersparring:
         lines.append(f"  {t('email.confirmation.aftersparring', lang)}")
+    # the participation condition, and — where it is not met — what the fencer
+    # is waiting for (spec registration, Participation condition)
+    condition = [e.discipline for e in registration.entries if e.conditional]
+    if condition:
+        names = ", ".join(discipline.name for discipline in condition)
+        lines.append(f"  {t('email.confirmation.condition', lang, disciplines=names)}")
+        full = [d.name for d in condition if d.slug in (waits_for or [])]
+        if full:
+            lines.append(
+                f"  {t('email.confirmation.conditionWaits', lang, disciplines=', '.join(full))}"
+            )
     return "\n".join(lines)
 
 
@@ -203,8 +219,15 @@ def _send_confirmation_without_payment(
 
 
 def send_registration_confirmation(
-    mailer: Mailer, tournament: Tournament, fencer: Fencer, registration: Registration
+    mailer: Mailer,
+    tournament: Tournament,
+    fencer: Fencer,
+    registration: Registration,
+    *,
+    waits_for: list[str] | None = None,
 ) -> None:
+    """`waits_for` names, by slug, the disciplines of an unmet participation
+    condition that have no free place, which the summary states."""
     if _dormant_by_origin(registration):
         return
     lang = tournament.language
@@ -223,7 +246,7 @@ def send_registration_confirmation(
             lang,
             name=fencer.display_name,
             tournament=tournament.display_name,
-            summary=_summary_lines(registration, tournament, lang),
+            summary=_summary_lines(registration, tournament, lang, waits_for),
         )
         mailer.send(
             build_message(recipient(registration, fencer), settings.email_sender, subject, body)
@@ -236,7 +259,7 @@ def send_registration_confirmation(
         lang,
         name=fencer.display_name,
         tournament=tournament.display_name,
-        summary=_summary_lines(registration, tournament, lang),
+        summary=_summary_lines(registration, tournament, lang, waits_for),
         total=_total_text(tournament, registration),
         eur_note=_eur_note(tournament, lang),
         account=_account_text(tournament),

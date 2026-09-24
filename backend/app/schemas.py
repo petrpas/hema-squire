@@ -965,6 +965,26 @@ class RegisterIn(BaseModel):
     notes: str | None = None
     extras: list[ExtraSelectionIn] = []
     teams: list[TeamEntryIn] = []
+    # the participation condition: individual disciplines of this submission
+    # the fencer attends only together (spec registration, Participation
+    # condition). The form sends every individual discipline selected, or none
+    condition: list[str] = []
+
+    @model_validator(mode="after")
+    def _condition_within_selection(self) -> RegisterIn:
+        _check_condition(self.condition, self.disciplines)
+        return self
+
+
+def _check_condition(condition: list[str], disciplines: list[str]) -> None:
+    """A condition names at least two of the submission's own individual
+    disciplines: over one it would mean nothing a plain entry does not."""
+    if not condition:
+        return
+    if len(set(condition)) < 2:
+        raise ValueError("condition_needs_two_disciplines")
+    if not set(condition) <= set(disciplines):
+        raise ValueError("condition_outside_selection")
 
 
 class ManualEntryIn(BaseModel):
@@ -988,6 +1008,13 @@ class ManualEntryIn(BaseModel):
     weapon_rentals: list[str] = []
     afterparty: bool = False
     notes: ManualEntryNotesStr | None = None
+    # offered on an automatic tournament only, where a hand entry is placed
+    condition: list[str] = []
+
+    @model_validator(mode="after")
+    def _condition_within_selection(self) -> ManualEntryIn:
+        _check_condition(self.condition, self.disciplines)
+        return self
 
     @field_validator("nationality", "club", "notes")
     @classmethod
@@ -1028,6 +1055,8 @@ class RegistrationEntryOut(BaseModel):
     slug: str
     is_substitute: bool
     queue_position: int | None
+    # one of the disciplines the fencer attends only together
+    conditional: bool = False
 
 
 class RegistrationExtraOut(BaseModel):
@@ -1085,6 +1114,9 @@ class RegistrationOut(BaseModel):
     refund_state: RefundState
     extras: list[RegistrationExtraOut] = []
     entries: list[RegistrationEntryOut]
+    # where the participation condition is not met, the disciplines of it that
+    # have no free place — what the fencer is waiting for (spec registration)
+    condition_waits_for: list[str] = []
     teams: list[TeamEntryOut] = []
     # the same per-discount breakdown the price preview carries, for the
     # selection this registration holds: the lines above are list prices, so
@@ -1124,6 +1156,20 @@ class PricePreviewOut(BaseModel):
     # one entry per discount the tournament configures, in configured order,
     # empty for a tournament that configures none
     discounts: list[DiscountBreakdownOut] = []
+
+
+class AmendmentPlacementOut(BaseModel):
+    """Where an amendment would place the registration, stated before it is
+    submitted (spec registration, Participation condition). A statement, not a
+    reservation: the submission re-places on the server."""
+
+    # individual disciplines that would wait in the queue, by slug
+    queued: list[str] = []
+    # the registration holds a place now and would hold none afterwards
+    moves_to_queue: bool = False
+    # the amendment would be refused, and why — money is not put in the queue
+    # by a fencer's own edit
+    refusal: str | None = None
 
 
 class PaymentInstructionsOut(BaseModel):

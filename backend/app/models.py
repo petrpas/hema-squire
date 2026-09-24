@@ -1689,6 +1689,11 @@ class RegistrationDiscipline(Base):
     # was offered (spec seating-queue, Organizer promotion from the queue).
     # Cleared on the whole registration once it reads settled (`ledger`).
     promoted_unpaid: Mapped[bool] = mapped_column(default=False)
+    # One of the disciplines the fencer attends only together: the registration's
+    # participation condition is its conditional entries, and they are wholly
+    # seated or wholly queued at every moment (spec registration, Participation
+    # condition; `placement.place`).
+    conditional: Mapped[bool] = mapped_column(default=False)
 
     registration: Mapped[Registration] = relationship(back_populates="entries")
     discipline: Mapped[Discipline] = relationship()

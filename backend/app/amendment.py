@@ -16,10 +16,11 @@ whether a full discipline seats or queues, and which notice goes out.
 from dataclasses import dataclass
 from datetime import UTC, datetime
 
+from fastapi import HTTPException
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
-from app import emails, pricing, setup
+from app import emails, placement, pricing, setup
 from app.availability import full_disciplines, team_waitlist_flags
 from app.mail import Mailer
 from app.models import (
@@ -82,6 +83,7 @@ def apply_amendment(
     extras: list | None = None,
     team_entries: list | None = None,
     fields: dict | None = None,
+    condition: set[str] | None = None,
 ) -> AmendmentResult:
     """Replace a registration's selection, re-price it and tell whoever is owed
     telling. Commits.
@@ -96,6 +98,14 @@ def apply_amendment(
     (design Decision 2): an issued registration's every discipline seats,
     because a substitute placement is not billed and queueing a correction to an
     imported roster would make that fencer free.
+
+    `condition` is the participation condition the amendment states, by slug;
+    `None` keeps the condition each kept discipline already carried, which is
+    what a correction from the console means by not mentioning it. The
+    registration is re-placed under it (`placement.place`), and a fencer's own
+    amendment that would move a registration holding credit into the queue is
+    refused: money is not put in the queue by a fencer's edit (spec
+    registration, Participation condition).
     """
     was_paid = registration.settled
     previous_total = registration.total_amount
@@ -109,6 +119,10 @@ def apply_amendment(
     promoted_unpaid = {
         entry.discipline_id for entry in registration.entries if entry.promoted_unpaid
     }
+    previous_condition = {
+        entry.discipline_id for entry in registration.entries if entry.conditional
+    }
+    held_a_seat = not registration.fully_queued
 
     # drop the current selection before checking capacity, so the registration's
     # own existing seats are not counted as taken against itself
@@ -180,11 +194,17 @@ def apply_amendment(
         registration.entries.append(
             RegistrationDiscipline(
                 discipline=discipline,
-                is_substitute=discipline.slug in full,
                 queued_since=previous_moments.get(discipline.id, registration.registered_at),
-                promoted_unpaid=discipline.id in promoted_unpaid and discipline.slug not in full,
+                conditional=(
+                    discipline.slug in condition
+                    if condition is not None
+                    else discipline.id in previous_condition
+                ),
             )
         )
+    placement.place(registration.entries, full)
+    for entry in registration.entries:
+        entry.promoted_unpaid = entry.discipline_id in promoted_unpaid and not entry.is_substitute
     for selection in extras or []:
         value = (selection.option_value or "").strip()
         registration.extra_selections.append(
@@ -212,6 +232,15 @@ def apply_amendment(
                 )
             )
     session.flush()
+
+    if (
+        notice == FENCER
+        and held_a_seat
+        and registration.fully_queued
+        and (registration.credited_in("local") > 0 or registration.credited_in("eur") > 0)
+    ):
+        session.rollback()
+        raise HTTPException(status_code=409, detail="amendment_would_queue_paid")
 
     # vs and expires_at are read-only through this path: amending must not
     # renew the hold or reissue the QR (Decision 3, the load-bearing guarantee).

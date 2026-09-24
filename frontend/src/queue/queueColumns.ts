@@ -43,9 +43,16 @@ export function queuedText(
   const since = row.queued_since?.[slug] ?? row.registered_at;
   const demoted = since !== null && row.registered_at !== null && since !== row.registered_at;
   const moment = registeredMoment(since, timezone);
-  return `${t("queue.position", { position })} ${
+  const line = `${t("queue.position", { position })} ${
     demoted ? t("queue.demotedAt", { moment }) : t("queue.registeredAt", { moment })
   }`;
+  // a registration waiting on its participation condition says what else it
+  // waits for, so why it carries no arrow is legible (spec seating-queue)
+  const others = (row.conditional ?? []).filter((other) => other !== slug);
+  const waitsWhole = others.length > 0 && (row.disciplines ?? []).length === 0;
+  return waitsWhole
+    ? `${line} · ${t("queue.alsoWaitsFor", { disciplines: others.join(", ") })}`
+    : line;
 }
 
 /** The Queue roster's columns: who, their rating as Export states it (not

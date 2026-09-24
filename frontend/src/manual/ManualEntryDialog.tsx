@@ -37,6 +37,9 @@ export default function ManualEntryDialog({
   const [email, setEmail] = useState("");
   const [registeredAt, setRegisteredAt] = useState(() => nowInZone(detail.timezone));
   const [disciplines, setDisciplines] = useState<string[]>([]);
+  // the participation condition, offered as the registration form offers it:
+  // only where an entry is placed, which is an automatic tournament
+  const [together, setTogether] = useState(false);
   const [rentals, setRentals] = useState<string[]>([]);
   const [afterparty, setAfterparty] = useState(false);
   const [notes, setNotes] = useState("");
@@ -46,6 +49,7 @@ export default function ManualEntryDialog({
   // a team is entered through the tournament's team handling, never by naming
   // a team discipline on a fencer's row
   const offered = detail.disciplines.filter((discipline) => discipline.kind === "individual");
+  const offersCondition = detail.registrations_kept_by === "squire" && disciplines.length >= 2;
   const lent = detail.extra_items.filter((item) => item.category === "rental");
   const holdsAfterparty = detail.extra_items.some((item) => item.category === "afterparty");
 
@@ -77,6 +81,7 @@ export default function ManualEntryDialog({
       email: email.trim() || null,
       registered_at: registeredAt || null,
       disciplines,
+      condition: offersCondition && together ? disciplines : [],
       weapon_rentals: rentals,
       afterparty,
       notes: notes.trim() || null,
@@ -197,6 +202,16 @@ export default function ManualEntryDialog({
               </label>
             ))}
           </fieldset>
+          {offersCondition && (
+            <label className="checkbox-chip">
+              <input
+                type="checkbox"
+                checked={together}
+                onChange={(event) => setTogether(event.target.checked)}
+              />
+              <span>{t("form.condition.label")}</span>
+            </label>
+          )}
 
           {lent.length > 0 && (
             <fieldset className="form-field">

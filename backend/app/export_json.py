@@ -44,7 +44,7 @@ from app.models import (
 )
 from app.routers.tournaments import _lowest_free_series
 
-SCHEMA_VERSION = 15
+SCHEMA_VERSION = 16
 
 _TOURNAMENT_FIELDS = [
     "slug",
@@ -356,6 +356,8 @@ def export_tournament(session: Session, tournament: Tournament) -> dict:
                         "is_substitute": e.is_substitute,
                         "queued_since": e.queued_since.isoformat(),
                         "promoted_unpaid": e.promoted_unpaid,
+                        # v16: the participation condition
+                        "conditional": e.conditional,
                     }
                     for e in r.entries
                 ],
@@ -504,7 +506,7 @@ def _guard_uncomposable_payment_state(data: dict) -> None:
 
 def restore_tournament(session: Session, data: dict, actor: Fencer) -> Tournament:
     version = data.get("schema_version")
-    if version not in (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, SCHEMA_VERSION):
+    if version not in (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, SCHEMA_VERSION):
         raise HTTPException(status_code=422, detail="unsupported_schema_version")
     if version != SCHEMA_VERSION:
         _guard_uncomposable_payment_state(data)
@@ -669,6 +671,8 @@ def restore_tournament(session: Session, data: dict, actor: Fencer) -> Tournamen
                         _parse_dt(item.get("queued_since")) or registration.registered_at
                     ),
                     promoted_unpaid=item.get("promoted_unpaid", False),
+                    # before v16 no registration carried a condition
+                    conditional=item.get("conditional", False),
                 )
             )
         for extra in entry.get("extras", []):

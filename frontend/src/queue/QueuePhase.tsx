@@ -133,7 +133,9 @@ export default function QueuePhase({
             rows={rows}
             slug={tab.key}
             capacity={tab.capacity}
-            free={places?.free ?? 0}
+            freeBySlug={Object.fromEntries(
+              (summary?.disciplines ?? []).map((discipline) => [discipline.slug, discipline.free]),
+            )}
             timezone={timezone}
             busy={busy}
             onPromote={promote}

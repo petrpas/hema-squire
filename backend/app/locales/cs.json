@@ -16,7 +16,9 @@
       "afterparty": "Afterparty",
       "aftersparring": "After-sparring",
       "option": "volba",
-      "eur_note": "\n\nPlatit můžeš i v eurech — použij přiložený QR kód označený EUR."
+      "eur_note": "\n\nPlatit můžeš i v eurech — použij přiložený QR kód označený EUR.",
+      "condition": "Pojedu jen, pokud dostanu místo ve všech: {disciplines}.",
+      "conditionWaits": "Zatím je plno v: {disciplines} — čekáš proto ve frontě ve všech disciplínách."
     },
     "reminder": {
       "subject": "Připomínka platby — {tournament}",

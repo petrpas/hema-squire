@@ -31,6 +31,7 @@ function row(id: string, name: string, fields: Partial<SheetRow> = {}): SheetRow
     disciplines: ["LS"],
     substitute_for: [],
     queued_since: {},
+    conditional: [],
     state: "reserved",
     registration_id: Number(id.split(":")[1]),
     vs: null,
@@ -71,13 +72,13 @@ const demoted = queued(
 );
 const ROWS = [demoted, paid, waiting, owing];
 
-function roster(rows: SheetRow[], free: number): string {
+function roster(rows: SheetRow[], free: number, sabreFree = 0): string {
   return renderToStaticMarkup(
     <QueueRoster
       rows={rows}
       slug="LS"
       capacity={2}
-      free={free}
+      freeBySlug={{ LS: free, SA: sabreFree }}
       timezone="Europe/Prague"
       busy={false}
       onPromote={() => {}}
@@ -137,6 +138,22 @@ describe("the Queue roster", () => {
 
     const open = roster(ROWS, 1);
     expect(open.match(/posunout na místo/g)).toHaveLength(2);
+  });
+
+  it("withholds the arrow from a registration waiting on a full discipline of its condition", () => {
+    // waits for Longsword and Sabre together: Longsword has a place, Sabre none
+    const conditional = {
+      ...queued("reg:5", "Both Five", "2026-03-06T09:00:00+00:00"),
+      conditional: ["LS", "SA"],
+    };
+    const blocked = roster([paid, conditional], 1, 0);
+    expect(blocked).toContain("čeká i na: SA");
+    expect(blocked).not.toContain("posunout na místo");
+    // a later fencer in the same queue may be promoted past it
+    const later = queued("reg:6", "Later Six", "2026-03-07T09:00:00+00:00");
+    expect(roster([paid, conditional, later], 1, 0).match(/posunout na místo/g)).toHaveLength(1);
+    // with Sabre free as well, it carries the arrow
+    expect(roster([paid, conditional], 1, 1)).toContain("posunout na místo");
   });
 
   it("gives a row with no registration no arrow, and says it holds no seat", () => {

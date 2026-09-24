@@ -493,6 +493,8 @@ export interface SheetRow {
   /** Each queued placement's queue moment by discipline slug, which orders the
    *  rows below a discipline tab's line (spec `seating-queue`). */
   queued_since: Record<string, string>;
+  /** The participation condition's disciplines, by slug; empty for none. */
+  conditional: string[];
   state: string;
   /** The registration standing in this row's place, where one has been issued
    *  for it; null while the row is still a row. Disciplines are the row's to
@@ -722,6 +724,9 @@ export interface RegistrationEntry {
   slug: string;
   is_substitute: boolean;
   queue_position: number | null;
+  /** One of the disciplines the fencer attends only together (spec
+   *  `registration`, Participation condition). */
+  conditional: boolean;
 }
 
 export interface RegistrationExtraSelection {
@@ -772,6 +777,9 @@ export interface RegistrationDetail {
   total_eur: number | null;
   expires_at: string | null;
   registered_at: string;
+  /** Where the participation condition is not met, its disciplines that have
+   *  no free place — what the fencer is waiting for. */
+  condition_waits_for: string[];
   paid_at: string | null;
   weapon_rentals: string[];
   afterparty: boolean;
@@ -806,6 +814,9 @@ export interface TeamEntryPayload {
 
 export interface RegisterPayload {
   disciplines: string[];
+  /** The participation condition, by slug: every individual discipline
+   *  selected where the fencer ticked it, none otherwise. */
+  condition?: string[];
   weapon_rentals?: string[];
   afterparty?: boolean;
   aftersparring?: boolean;
@@ -813,6 +824,14 @@ export interface RegisterPayload {
   notes?: string | null;
   extras?: ExtraSelectionPayload[];
   teams?: TeamEntryPayload[];
+}
+
+/** Where an amendment would place the registration, before it is sent: a
+ *  statement, not a reservation (design participation-condition D5). */
+export interface AmendmentPlacement {
+  queued: string[];
+  moves_to_queue: boolean;
+  refusal: string | null;
 }
 
 export interface PricePreviewPayload {
@@ -1499,6 +1518,11 @@ export const api = {
     request<RegistrationDetail>(`/api/tournaments/${slug}/my-registration/cancel`, {
       method: "POST",
     }),
+  previewAmendment: (slug: string, data: RegisterPayload) =>
+    request<AmendmentPlacement>(`/api/tournaments/${slug}/my-registration/amend/preview`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
   amendRegistration: (slug: string, data: RegisterPayload) =>
     request<RegistrationDetail>(`/api/tournaments/${slug}/my-registration/amend`, {
       method: "POST",
@@ -1780,6 +1804,8 @@ export interface ManualEntryIn {
   weapon_rentals: string[];
   afterparty: boolean;
   notes?: string | null;
+  /** The participation condition, offered on an automatic tournament. */
+  condition?: string[];
 }
 
 /** What a hand entry became: a source row on a manual tournament, a

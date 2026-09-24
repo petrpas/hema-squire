@@ -15,14 +15,17 @@ import { seatedIn } from "./queueColumns";
 export default function ArrowCell({
   row,
   slug,
-  free,
+  freeBySlug,
   busy,
   onPromote,
   onReturn,
 }: {
   row: SheetRow;
   slug: string;
-  free: number;
+  /** Free places per individual discipline: a registration waiting on its
+   *  participation condition is promoted only while every discipline of it has
+   *  one (spec seating-queue, A conditional registration moves as one). */
+  freeBySlug: Record<string, number>;
   busy: boolean;
   onPromote: (registrationId: number) => void;
   onReturn: (registrationId: number) => void;
@@ -37,7 +40,11 @@ export default function ArrowCell({
       <button
         type="button"
         className="row-action"
-        title={t("queue.returnHint")}
+        title={
+          (row.conditional ?? []).includes(slug)
+            ? t("queue.returnConditionHint")
+            : t("queue.returnHint")
+        }
         disabled={busy}
         onClick={() => onReturn(registrationId)}
       >
@@ -47,7 +54,7 @@ export default function ArrowCell({
     );
   }
 
-  if (free <= 0) return null;
+  if (promotionBlocked(row, slug, freeBySlug)) return null;
   return (
     <button
       type="button"
@@ -60,4 +67,17 @@ export default function ArrowCell({
       <span className="visually-hidden">{t("queue.promote")}</span>
     </button>
   );
+}
+
+/** Whether promoting this queued row would be refused for want of a place: in
+ *  its own discipline, or — where its registration waits on an unmet condition
+ *  — in any discipline of the condition, all of which it would be seated in. */
+export function promotionBlocked(
+  row: SheetRow,
+  slug: string,
+  freeBySlug: Record<string, number>,
+): boolean {
+  const waitsWhole = (row.conditional ?? []).length > 0 && (row.disciplines ?? []).length === 0;
+  const needed = waitsWhole ? new Set([slug, ...(row.conditional ?? [])]) : new Set([slug]);
+  return [...needed].some((needs) => (freeBySlug[needs] ?? 0) <= 0);
 }

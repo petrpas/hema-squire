@@ -540,8 +540,16 @@ export function RegistrationForm({
   const [discounts, setDiscounts] = useState<DiscountBreakdown[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // the participation condition, offered as one tick over every individual
+  // discipline selected, unticked by default (spec registration)
+  const [together, setTogether] = useState(
+    () => initial?.entries.some((entry) => entry.conditional) ?? false,
+  );
+  const [amendStatement, setAmendStatement] = useState<string | null>(null);
 
   const bySlug = new Map(availability.map((a) => [a.slug, a]));
+  const offersCondition = disciplines.size >= 2;
+  const condition = together && offersCondition ? [...disciplines] : [];
 
   // trial selections made against a since-changed tournament (the preview's
   // `detail` can change identity mid-session) must not keep keys the
@@ -647,6 +655,49 @@ export function RegistrationForm({
     setTeams((prev) => prev.filter((_, i) => i !== index));
   }
 
+  // An amendment that moves the registration into the queue says so before it
+  // is sent, and one that would move money there says it will be refused. The
+  // server re-places on submit; this is a statement, not a reservation.
+  const conditionKey = condition.join(",");
+  const disciplinesKey = [...disciplines].join(",");
+  useEffect(() => {
+    if (!amending) return;
+    const selected = disciplinesKey === "" ? [] : disciplinesKey.split(",");
+    if (selected.length === 0) {
+      setAmendStatement(null);
+      return;
+    }
+    let live = true;
+    api
+      .previewAmendment(detail.slug, {
+        disciplines: selected,
+        condition: conditionKey === "" ? [] : conditionKey.split(","),
+        teams: teams.map((team) => ({
+          ...(team.id ? { id: team.id } : {}),
+          slug: team.slug,
+          name: team.name,
+        })),
+      })
+      .then(
+        (placement) => {
+          if (!live) return;
+          setAmendStatement(
+            placement.refusal !== null
+              ? t("form.condition.refused")
+              : placement.moves_to_queue
+                ? t("form.condition.movesToQueue")
+                : null,
+          );
+        },
+        () => {
+          if (live) setAmendStatement(null);
+        },
+      );
+    return () => {
+      live = false;
+    };
+  }, [amending, detail.slug, disciplinesKey, conditionKey, teams, t]);
+
   function toggleDiscipline(slug: string) {
     setDisciplines((prev) => {
       const next = new Set(prev);
@@ -712,6 +763,7 @@ export function RegistrationForm({
     try {
       const payload = {
         disciplines: [...disciplines],
+        condition,
         weapon_rentals: weaponRentals(),
         afterparty,
         // the API keeps both fields for the table-import path; the in-app
@@ -734,6 +786,10 @@ export function RegistrationForm({
       // the gate is the authority, and it may still refuse: registration had
       // not opened when the submission landed. The page goes back to stating
       // the moment, with the countdown recomputed from the fresh response
+      if (err instanceof ApiError && err.detail === "amendment_would_queue_paid") {
+        setError(t("form.condition.refused"));
+        return;
+      }
       if (err instanceof ApiError && err.status === 403 && mode.kind === "register") {
         const refusal = err.detail as { reason?: string } | null;
         if (refusal?.reason === "not_yet_open") {
@@ -783,6 +839,19 @@ export function RegistrationForm({
             );
           })}
       </div>
+      {offersCondition && (
+        <>
+          <label className="rail-check">
+            <input
+              type="checkbox"
+              checked={together}
+              onChange={(event) => setTogether(event.currentTarget.checked)}
+            />
+            <span>{t("form.condition.label")}</span>
+          </label>
+          <p className="rail-hint">{t("form.condition.consequence")}</p>
+        </>
+      )}
 
       {teamDisciplines.length > 0 && (
         <>
@@ -878,6 +947,7 @@ export function RegistrationForm({
         </label>
       </div>
 
+      {amendStatement && <p className="rail-hint">{amendStatement}</p>}
       {error && <p className="login-error">{error}</p>}
 
       {mode.kind === "preview" ? (

@@ -19,7 +19,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app import issuing, pricing, rownumbers
+from app import issuing, placement, pricing, rownumbers
 from app.availability import queued_on_entry
 from app.models import (
     Discipline,
@@ -90,12 +90,14 @@ def register(
     weapon_rentals: list[str],
     afterparty: bool,
     notes: str | None,
+    condition: set[str] | None = None,
 ) -> Registration:
     """Create the registration for one hand entry, placed, priced and numbered,
     and commit it. Sends nothing: the organizer who entered the fencer is the
     one in contact with them."""
     now = datetime.datetime.now(datetime.UTC)
     queued = queued_on_entry(session, tournament, disciplines, now)
+    condition = condition or set()
     fencer = _fencer(
         session,
         tournament,
@@ -128,10 +130,11 @@ def register(
             registration.entries.append(
                 RegistrationDiscipline(
                     discipline=discipline,
-                    is_substitute=discipline.slug in queued,
                     queued_since=registered_at,
+                    conditional=discipline.slug in condition,
                 )
             )
+        placement.place(registration.entries, queued)
         session.add(registration)
         try:
             session.flush()

@@ -971,7 +971,13 @@
     "optionRequired": "Choose {{label}} for {{item}}.",
     "amendTitle": "Amend registration",
     "amendSubmit": "Save amendment",
-    "totalLabel": "Total"
+    "totalLabel": "Total",
+    "condition": {
+      "label": "I will attend only if I get a place in every discipline I selected",
+      "consequence": "While any of them is full, you wait in the queue for all of them and hold a place in none. You owe nothing meanwhile.",
+      "movesToQueue": "This change moves your registration into the queue — you will hold a place in no discipline.",
+      "refused": "This change would move a registration that has already been paid for into the queue. Only the organizer can do that — please contact them."
+    }
   },
   "discounts": {
     "title": "Discounts",
@@ -1016,7 +1022,9 @@
     "outstanding": "Outstanding: {{amount}}",
     "outstandingLabel": "Outstanding",
     "amendConfirm": "Amending recomputes the price. A paid registration may end up owing more.",
-    "amendConfirmButton": "Yes, amend registration"
+    "amendConfirmButton": "Yes, amend registration",
+    "condition": "You attend only with a place in all of: {{disciplines}}.",
+    "conditionWaits": "Still full: {{disciplines}}, so you wait in the queue for all of them."
   },
   "roster": {
     "title": "Roster — {{team}}",
@@ -1290,8 +1298,11 @@
       "no_substitute_entry": "The fencer is no longer queued in this discipline.",
       "no_seated_entry": "The fencer no longer holds a place in this discipline.",
       "seating_already_settled": "Someone else has already settled seating.",
-      "fallback": "“{{action}}” did not go through. Try again."
-    }
+      "fallback": "“{{action}}” did not go through. Try again.",
+      "condition_discipline_full": "The registration waits for every discipline of its condition and one of them is full — it cannot be promoted."
+    },
+    "alsoWaitsFor": "also waits for: {{disciplines}}",
+    "returnConditionHint": "Return the whole registration to the queue — the fencer attends only with every discipline of their condition. No email is sent."
   },
   "manualEntry": {
     "title": "Manual entry",
@@ -1305,7 +1316,9 @@
       "team_discipline_not_individual": "a team discipline is entered through the teams tab, not here.",
       "unknown_rentals": "that item is not one this tournament lends.",
       "failed": "the entry was not accepted.",
-      "already_registered": "this address belongs to {{name}}, who is already registered here (VS {{vs}})."
+      "already_registered": "this address belongs to {{name}}, who is already registered here (VS {{vs}}).",
+      "condition_needs_two_disciplines": "a condition needs at least two disciplines.",
+      "condition_not_offered": "a condition can be entered on an automatic tournament only."
     },
     "registersHint": "On an automatic tournament this creates a registration at once, at the tournament's price and placed by capacity — a full discipline queues it. Nothing is mailed to the fencer: you are the one in contact with them."
   },

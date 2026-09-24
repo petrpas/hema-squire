@@ -121,6 +121,23 @@ function RegistrationLines({
           })}`}
         />
       ))}
+      {/* the participation condition, and what it waits for where unmet */}
+      {registration.entries.some((e) => e.conditional) && (
+        <p className="rail-hint">
+          {t("registration.condition", {
+            disciplines: registration.entries
+              .filter((e) => e.conditional)
+              .map((e) => discipline.get(e.slug)?.name ?? e.slug)
+              .join(", "),
+          })}
+          {registration.condition_waits_for.length > 0 &&
+            ` ${t("registration.conditionWaits", {
+              disciplines: registration.condition_waits_for
+                .map((slug) => discipline.get(slug)?.name ?? slug)
+                .join(", "),
+            })}`}
+        </p>
+      )}
       {registration.teams.map((team) => (
         <AmountLine
           key={`team-${team.id}`}

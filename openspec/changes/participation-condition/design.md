@@ -89,6 +89,22 @@ the placement too) so it can state the consequence before submitting.
 `export_json` bumps its schema version and carries `conditional` per entry; older
 documents import with no condition.
 
+### D7. Found in implementation
+
+- **The API carries the condition as a set, `condition: [slug, …]`**, on submission,
+  amendment and hand entry; the form sends every individual discipline selected or
+  none. A set over fewer than two, or naming a discipline outside the submission, is
+  refused at the schema.
+- **The amendment's statement comes from its own endpoint**,
+  `POST /my-registration/amend/preview`, not from the public price preview: only a
+  request that knows the registration can leave its own seats out of the count, as the
+  amendment itself does.
+- **A condition on a manual tournament's hand entry is refused**
+  (`condition_not_offered`): a source row is placed by nobody.
+- **A promotion seating a whole condition marks every placement it seats** as
+  promoted-unpaid (`demotion-hardening` D6b), so a lapse takes the condition back whole
+  and the invariant holds through it.
+
 ## Risks / Trade-offs
 
 - [A conditional registration first in line can look "skipped" to the fencer] → their

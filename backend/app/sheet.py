@@ -342,6 +342,8 @@ def base_rows(
             "email": registration.contact_email or registration.fencer.email,
             "disciplines": [e.discipline.slug for e in registration.entries if not e.is_substitute],
             "substitute_for": [e.discipline.slug for e in registration.entries if e.is_substitute],
+            # the participation condition: disciplines attended only together
+            "conditional": [e.discipline.slug for e in registration.entries if e.conditional],
             # each queued placement's queue moment, which orders the rows below
             # a discipline tab's line (spec seating-queue, export-tables)
             "queued_since": {
@@ -519,6 +521,7 @@ def _imported_rows(
             "disciplines": disciplines,
             "substitute_for": [],
             "queued_since": {},
+            "conditional": [],
             # a source row carries no ratings: a snapshot is taken over the
             # fencers the tournament has registered, and a row that has not
             # been issued one is in no snapshot to read
@@ -567,6 +570,7 @@ def _unparsed_row(row_id: str, row: ImportedRow) -> Row:
         "disciplines": [],
         "substitute_for": [],
         "queued_since": {},
+        "conditional": [],
         "ratings": {},
         "ranks": {},
         "extras": {},
@@ -623,6 +627,7 @@ def _manual_row(row: ManualRow, index: HRIndex | None = None) -> Row:
         "disciplines": list(row.disciplines),
         "substitute_for": [],
         "queued_since": {},
+        "conditional": [],
         "ratings": {},
         "ranks": {},
         "extras": {},

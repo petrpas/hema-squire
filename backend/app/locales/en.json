@@ -77,6 +77,10 @@
     "promotedPaid": {
       "subject": "A place has opened — {tournament}",
       "body": "Hi {name},\n\na place has opened for you in {discipline} at {tournament} — you are no longer a substitute.\n\nThe place is already paid for, so there is nothing more to pay. Your participation is confirmed.\n\n{tournament} team"
+    },
+    "confirmation": {
+      "condition": "Attending only with a place in all of: {disciplines}.",
+      "conditionWaits": "Still full: {disciplines} — so you wait in the queue for every discipline."
     }
   },
   "export": {

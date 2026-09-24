@@ -1044,6 +1044,7 @@ def _queued_registration_document(client, auth_headers):
     longsword.is_substitute = True
     longsword.queued_since = registration.registered_at + datetime.timedelta(days=3)
     sabre.promoted_unpaid = True
+    sabre.conditional = True
     session.commit()
     document = client.get("/api/tournaments/cup/export/json", headers=organizer).json()
     return document
@@ -1071,7 +1072,7 @@ def test_queue_moments_and_promotion_marks_round_trip(client, auth_headers):
     restored = _restored_entries(client, auth_headers, document)
 
     for slug in ("LS", "SA"):
-        for field in ("is_substitute", "queued_since", "promoted_unpaid"):
+        for field in ("is_substitute", "queued_since", "promoted_unpaid", "conditional"):
             assert restored[slug][field] == exported[slug][field], (slug, field)
 
 
@@ -1084,9 +1085,11 @@ def test_a_v14_document_queues_by_registration_time(client, auth_headers):
         for entry in registration["entries"]:
             entry.pop("queued_since")
             entry.pop("promoted_unpaid")
+            entry.pop("conditional")
 
     restored = _restored_entries(client, auth_headers, document)
 
     assert restored["LS"]["queued_since"] == restored["registered_at"]
     assert restored["SA"]["queued_since"] == restored["registered_at"]
     assert restored["SA"]["promoted_unpaid"] is False
+    assert restored["SA"]["conditional"] is False

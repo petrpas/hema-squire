@@ -15,7 +15,7 @@ export default function QueueRoster({
   rows,
   slug,
   capacity,
-  free,
+  freeBySlug,
   timezone,
   busy,
   onPromote,
@@ -24,7 +24,7 @@ export default function QueueRoster({
   rows: SheetRow[];
   slug: string;
   capacity: number | null;
-  free: number;
+  freeBySlug: Record<string, number>;
   timezone: string | null;
   busy: boolean;
   onPromote: (registrationId: number) => void;
@@ -45,7 +45,7 @@ export default function QueueRoster({
           <ArrowCell
             row={row}
             slug={slug}
-            free={free}
+            freeBySlug={freeBySlug}
             busy={busy}
             onPromote={onPromote}
             onReturn={onReturn}

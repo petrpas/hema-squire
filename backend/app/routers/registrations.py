@@ -8,7 +8,18 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import delete, func, select, update
 from sqlalchemy.exc import IntegrityError
 
-from app import accounts, amendment, emails, ledger, matching, pricing, rownumbers, setup, spayd
+from app import (
+    accounts,
+    amendment,
+    emails,
+    ledger,
+    matching,
+    placement,
+    pricing,
+    rownumbers,
+    setup,
+    spayd,
+)
 from app.auth import require_console_access, require_published
 from app.availability import (
     live_registration,
@@ -42,6 +53,7 @@ from app.models import (
 )
 from app.routers.tournaments import FencerDep, SessionDep, TournamentDep
 from app.schemas import (
+    AmendmentPlacementOut,
     AvailabilityOut,
     DiscountBreakdownOut,
     DiscountEffect,
@@ -149,6 +161,20 @@ def _team_out(team: Team, tournament: Tournament, at) -> dict:
     }
 
 
+def condition_waits_for(session, registration: Registration) -> list[str]:
+    """The disciplines of a registration's unmet participation condition that
+    have no free place, by slug — empty where there is no condition or it is
+    met. What the fencer is told they are waiting for."""
+    condition = [e for e in registration.entries if e.conditional]
+    if not condition or not all(e.is_substitute for e in condition):
+        return []
+    return [
+        e.discipline.slug
+        for e in condition
+        if taken_seats(session, e.discipline) >= e.discipline.capacity
+    ]
+
+
 def registration_out(session, registration: Registration, tournament: Tournament) -> dict:
     balance, balance_currency = registration.balance_cents(tournament)
     at = registration.registered_at.date()
@@ -190,9 +216,11 @@ def registration_out(session, registration: Registration, tournament: Tournament
                 "slug": entry.discipline.slug,
                 "is_substitute": entry.is_substitute,
                 "queue_position": queue_position(session, entry) if entry.is_substitute else None,
+                "conditional": entry.conditional,
             }
             for entry in registration.entries
         ],
+        "condition_waits_for": condition_waits_for(session, registration),
         "teams": [_team_out(team, tournament, at) for team in registration.teams],
         "discounts": [
             {
@@ -545,14 +573,16 @@ def register(
         registration.aftersparring = data.aftersparring
         registration.accommodation = data.accommodation
         registration.notes = data.notes
+        condition = set(data.condition)
         for discipline in selected:
             registration.entries.append(
                 RegistrationDiscipline(
                     discipline=discipline,
-                    is_substitute=discipline.slug in full,
                     queued_since=registration.registered_at,
+                    conditional=discipline.slug in condition,
                 )
             )
+        placement.place(registration.entries, full)
         for selection in data.extras:
             value = (selection.option_value or "").strip()
             registration.extra_selections.append(
@@ -597,7 +627,13 @@ def register(
     # re-registration reuses the cancelled row's id, so it keeps its number too.
     rownumbers.allocate(session, tournament, [f"reg:{registration.id}"])
     session.commit()
-    emails.send_registration_confirmation(mailer, tournament, fencer, registration)
+    emails.send_registration_confirmation(
+        mailer,
+        tournament,
+        fencer,
+        registration,
+        waits_for=condition_waits_for(session, registration),
+    )
     return registration_out(session, registration, tournament)
 
 
@@ -697,8 +733,53 @@ def amend_registration(
             "accommodation": data.accommodation,
             "notes": data.notes,
         },
+        condition=set(data.condition),
     )
     return registration_out(session, registration, tournament)
+
+
+@router.post("/my-registration/amend/preview", response_model=AmendmentPlacementOut)
+def preview_amendment(
+    data: RegisterIn,
+    tournament: TournamentDep,
+    session: SessionDep,
+    fencer: FencerDep,
+):
+    """Where the amendment in `data` would place the registration, so the form
+    can say before submitting that it moves the registration into the queue
+    (design participation-condition D5).
+
+    Counted the way the amendment counts: the registration's own seats do not
+    stand against it. Teams are read as the amendment leaves a kept team —
+    where it stands — since only an individual placement answers to the
+    condition."""
+    registration = get_my_registration(session, tournament, fencer)
+    selected, _extras = _resolve_selection(tournament, data)
+    own = {e.discipline.slug for e in registration.entries if not e.is_substitute}
+    full = {
+        d.slug
+        for d in selected
+        if taken_seats(session, d) - (1 if d.slug in own else 0) >= d.capacity
+    }
+    condition = set(data.condition)
+    queued = (
+        {d.slug for d in selected}
+        if any(slug in full for slug in condition)
+        else {d.slug for d in selected if d.slug in full}
+    )
+    kept_teams = {team.id: team for team in registration.teams}
+    keeps_a_team_seat = any(
+        team_in.id in kept_teams and not kept_teams[team_in.id].waitlisted
+        for team_in in data.teams
+        if team_in.id is not None
+    )
+    moves = not registration.fully_queued and len(queued) == len(selected) and not keeps_a_team_seat
+    holds_credit = registration.credited_in("local") > 0 or registration.credited_in("eur") > 0
+    return AmendmentPlacementOut(
+        queued=sorted(queued),
+        moves_to_queue=moves,
+        refusal="amendment_would_queue_paid" if moves and holds_credit else None,
+    )
 
 
 @router.get("/my-registration/payment", response_model=PaymentInstructionsOut)
@@ -919,13 +1000,25 @@ def admit_substitute(
     # action that resolves it upward permanently unavailable (design D4).
     if registration.state in (RegistrationState.CANCELLED, RegistrationState.EXPIRED):
         raise HTTPException(status_code=409, detail="registration_not_active")
-    if taken_seats(session, entry.discipline) >= entry.discipline.capacity:
-        raise HTTPException(status_code=409, detail="discipline_full")
+    # A registration waiting on its participation condition is seated as one:
+    # every discipline of the condition together with the one promoted, and
+    # only while each has a free place — never part of a condition (spec
+    # seating-queue, A conditional registration moves as one)
+    to_seat = _promotion_set(registration, entry)
+    for placement_ in to_seat:
+        if taken_seats(session, placement_.discipline) >= placement_.discipline.capacity:
+            if len(to_seat) == 1:
+                raise HTTPException(status_code=409, detail="discipline_full")
+            raise HTTPException(
+                status_code=409,
+                detail={"condition_discipline_full": placement_.discipline.slug},
+            )
 
     was_paid = registration.settled
     previous_total = registration.total_amount
 
-    entry.is_substitute = False
+    for placement_ in to_seat:
+        placement_.is_substitute = False
     # Fees are frozen to the original registration date; admission bills the
     # admitted discipline (plus extras on first admission) and opens a fresh
     # window. Nothing about payment is assigned: a registration that now owes
@@ -950,7 +1043,8 @@ def admit_substitute(
     # takes back this placement alone and never a seat already paid for. A
     # promotion that opens no window cannot lapse and is not marked.
     if registration.expires_at is not None and not registration.settled:
-        entry.promoted_unpaid = True
+        for placement_ in to_seat:
+            placement_.promoted_unpaid = True
     elif registration.settled:
         registration.expires_at = None
     if was_paid:
@@ -971,9 +1065,25 @@ def admit_substitute(
     # information (seating-queue) — a promotion that opens no window cannot
     # lapse, so such a registration never returns to the queue on a clock.
     emails.send_promoted(
-        mailer, tournament, registration.fencer, registration, entry.discipline.name
+        mailer,
+        tournament,
+        registration.fencer,
+        registration,
+        ", ".join(placement_.discipline.name for placement_ in to_seat),
     )
     return registration_out(session, registration, tournament)
+
+
+def _promotion_set(
+    registration: Registration, entry: RegistrationDiscipline
+) -> list[RegistrationDiscipline]:
+    """What promoting `entry` seats: the entry alone, or — where the
+    registration's condition is not met — every discipline of the condition
+    with it (design participation-condition D3)."""
+    condition = [e for e in registration.entries if e.conditional]
+    if condition and all(e.is_substitute for e in condition):
+        return [entry, *(e for e in condition if e is not entry)]
+    return [entry]
 
 
 @router.post(
@@ -1023,9 +1133,16 @@ def return_to_queue(
     if registration.settled:
         raise HTTPException(status_code=409, detail="registration_paid_cancel_instead")
 
-    entry.is_substitute = True
-    # the promotion that seated it, if one did, is withdrawn with it
-    entry.promoted_unpaid = False
+    # a placement of a met condition returns the whole registration, since the
+    # fencer does not come without the condition; one outside it moves alone
+    # (spec seating-queue, A conditional registration moves as one)
+    returned = (
+        [e for e in registration.entries if not e.is_substitute] if entry.conditional else [entry]
+    )
+    for placement_ in returned:
+        placement_.is_substitute = True
+        # the promotion that seated it, if one did, is withdrawn with it
+        placement_.promoted_unpaid = False
     totals = pricing.registration_total(registration, tournament)
     registration.total_amount = totals.local
     registration.total_eur = totals.eur
@@ -1036,7 +1153,8 @@ def return_to_queue(
             tournament_id=tournament.id,
             registration_id=registration.id,
             kind="returned_to_queue",
-            detail=f"{registration.audit_label}: {discipline_slug}",
+            detail=f"{registration.audit_label}: "
+            + ", ".join(placement_.discipline.slug for placement_ in returned),
         )
     )
     session.commit()

@@ -986,7 +986,13 @@
     "optionRequired": "Vyber {{label}} u položky {{item}}.",
     "amendTitle": "Úprava registrace",
     "amendSubmit": "Uložit úpravu",
-    "totalLabel": "Celkem"
+    "totalLabel": "Celkem",
+    "condition": {
+      "label": "Pojedu jen, pokud dostanu místo ve všech vybraných disciplínách",
+      "consequence": "Dokud je některá z nich plná, čekáš ve frontě na všechny a nedržíš místo v žádné. Nic přitom neplatíš.",
+      "movesToQueue": "Touto úpravou se registrace přesune do fronty — nebudeš držet místo v žádné disciplíně.",
+      "refused": "Touto úpravou by se do fronty přesunula registrace, na kterou už dorazily peníze. Tohle může udělat jen organizátor — obrať se na něj."
+    }
   },
   "discounts": {
     "title": "Slevy",
@@ -1032,7 +1038,9 @@
     "outstanding": "Zbývá doplatit: {{amount}}",
     "outstandingLabel": "Zbývá doplatit",
     "amendConfirm": "Úpravou se cena přepočítá. U zaplacené registrace může vzniknout doplatek.",
-    "amendConfirmButton": "Ano, upravit registraci"
+    "amendConfirmButton": "Ano, upravit registraci",
+    "condition": "Jedeš jen s místem ve všech: {{disciplines}}.",
+    "conditionWaits": "Zatím je plno v: {{disciplines}}, proto čekáš ve frontě ve všech."
   },
   "roster": {
     "title": "Soupiska — {{team}}",
@@ -1321,8 +1329,11 @@
       "no_substitute_entry": "Šermíř už v této disciplíně nečeká ve frontě.",
       "no_seated_entry": "Šermíř už v této disciplíně nedrží místo.",
       "seating_already_settled": "Místa už uzavřel někdo jiný.",
-      "fallback": "Akce „{{action}}“ neprošla. Zkus to znovu."
-    }
+      "fallback": "Akce „{{action}}“ neprošla. Zkus to znovu.",
+      "condition_discipline_full": "Registrace čeká na všechny disciplíny své podmínky a některá z nich je plná — posunout nelze."
+    },
+    "alsoWaitsFor": "čeká i na: {{disciplines}}",
+    "returnConditionHint": "Vrátit do fronty celou registraci — šermíř jede jen se všemi disciplínami své podmínky. Bez e-mailu."
   },
   "manualEntry": {
     "title": "Ruční zadání",
@@ -1336,7 +1347,9 @@
       "team_discipline_not_individual": "týmová disciplína se zadává na kartě týmů, ne zde.",
       "unknown_rentals": "tuto věc turnaj nepůjčuje.",
       "failed": "zadání nebylo přijato.",
-      "already_registered": "tato adresa patří šermíři {{name}}, který už je na turnaji registrovaný (VS {{vs}})."
+      "already_registered": "tato adresa patří šermíři {{name}}, který už je na turnaji registrovaný (VS {{vs}}).",
+      "condition_needs_two_disciplines": "podmínka potřebuje aspoň dvě disciplíny.",
+      "condition_not_offered": "podmínku lze zadat jen na automatickém turnaji."
     },
     "registersHint": "Na automatickém turnaji vznikne rovnou registrace za cenu turnaje, umístěná podle kapacity — co je plné, jde do fronty. Šermíři se nic neposílá: v kontaktu s ním jsi ty."
   },

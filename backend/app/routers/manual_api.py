@@ -73,6 +73,11 @@ def create_manual_row(
     registered_at = data.registered_at or datetime.datetime.now(zone)
     disciplines = list(dict.fromkeys(data.disciplines))
     rentals = list(dict.fromkeys(data.weapon_rentals))
+    if data.condition and not enters_registration(tournament):
+        # a manual tournament queues nobody, so a condition would have nothing
+        # to govern (spec etl-console, Manual entry fields follow the
+        # tournament's structure)
+        raise HTTPException(status_code=422, detail="condition_not_offered")
     if enters_registration(tournament):
         by_slug = {d.slug: d for d in tournament.disciplines}
         registration = handentry.register(
@@ -94,6 +99,7 @@ def create_manual_row(
             weapon_rentals=rentals,
             afterparty=data.afterparty,
             notes=data.notes,
+            condition=set(data.condition),
         )
         return ManualEntryOut(registration_id=registration.id)
     row = manualrows.create(
