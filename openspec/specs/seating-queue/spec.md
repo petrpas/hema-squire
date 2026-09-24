@@ -146,7 +146,9 @@ The count the console states before firing SHALL be the set the settlement then 
 
 It SHALL be refused on a tournament whose seating has already settled, so settlement happens once however it is triggered.
 
-It SHALL NOT be reversible, and the console SHALL confirm before firing it, stating how many registrations will be demoted. The organizer's route to correct an individual case afterwards is promotion.
+It SHALL NOT be reversible, and the console SHALL confirm before firing it, stating how many registrations will be demoted and, where any of them carries a team, how many teams will be waitlisted with them. The organizer's route to correct an individual case afterwards is promotion.
+
+The action SHALL live in the Queue phase's rail, beside the seating deadline and whether and when seating settled, so that the organizer settles with the rosters it will change in view. Once seating has settled the rail SHALL state when, and SHALL NOT offer the action.
 
 #### Scenario: Organizer settles early
 - **WHEN** the organizer settles seating a week before the seating deadline
@@ -155,6 +157,14 @@ It SHALL NOT be reversible, and the console SHALL confirm before firing it, stat
 #### Scenario: Confirmation states the effect
 - **WHEN** the organizer opens the settle action on a tournament with eleven unpaid seated registrations
 - **THEN** the confirmation states that eleven registrations will be moved to the queue and that the action cannot be undone
+
+#### Scenario: Teams counted in the confirmation
+- **WHEN** four of the registrations settlement would demote carry one seated team each
+- **THEN** the confirmation states the registrations and that four teams will be waitlisted with them
+
+#### Scenario: Settled seating stated in the rail
+- **WHEN** the organizer opens the Queue phase after seating settled
+- **THEN** the rail states when it settled and offers no settle action
 
 #### Scenario: The count excludes what settlement will not move
 - **WHEN** the organizer opens the settle action on a tournament holding four unpaid seated registrations and six dormant ones
@@ -177,17 +187,31 @@ It SHALL NOT be reversible, and the console SHALL confirm before firing it, stat
 - **THEN** no registration is demoted, every seat is kept, and the tournament is recorded as settled
 
 ### Requirement: Queue view for the organizer
-The organizer SHALL have a view of the substitute queue per discipline, listing each queued registration in queue order with the fencer, their queue moment, and their position. It SHALL show the discipline's free places, so the organizer can see how many promotions are available.
+The organizer SHALL have a view of the substitute queue as a **band of rosters**, one tab per individual discipline in the tournament's discipline order, each tab labelled and counted as the Export phase labels and counts its discipline tabs. Each roster SHALL list the same fencers, in the same order and with the same line, as the Export roster of that discipline in its own order: seated fencers above the line, queued fencers below it in queue order. The two views SHALL be drawn from one ordering, so that the line cannot fall in one place here and another there. The view SHALL NOT offer the seeding order or the active-only switch: it is read in the tab's own order, and the unpaid are the fencers it exists for.
+
+Each row SHALL state the fencer, their club, their rating as the Export roster states it (not editable here), and:
+- on a seated row, the money: paid, settled by hand, or what is owed with the date by which it is due, or that nothing is due where no window runs;
+- on a queued row, its position and its **queue moment**.
 
 The **queue moment** of a placement is the moment its place in the queue counts from: the registration time for a placement queued at registration, and the moment of demotion for one moved there for non-payment. Each entry's queue moment SHALL be stated as a day and a clock time together, on the 24-hour scale to the minute, read in the tournament's own zone — never as a day alone. The queue is ordered by that moment, and two fencers on either side of the line can share a day; the view SHALL show what it is ordering by, and SHALL say which of the two the moment is, so that a fencer demoted at settlement is legibly behind one who registered later.
 
-The view SHALL offer promotion on each queued entry and return-to-queue on each seated one, and SHALL state plainly when a queue is empty rather than being hidden.
+The view SHALL state each discipline's free places, so the organizer can see how many promotions are available.
+
+The view's row actions SHALL be two, and SHALL be its only row actions: **promote** (↑) on a queued row and **return to the queue** (↓) on a seated row. Each SHALL be offered only where the server would carry it out — promotion while the discipline has a free place, return while the registration is unpaid — and a row whose registration would be refused SHALL NOT carry the arrow. A row with no registration behind it SHALL carry neither arrow and SHALL say that it holds no seat yet. An action refused all the same — another organizer acting first — SHALL be reported in words naming why, never as the server's code.
+
+After an action the view SHALL re-read the roster, the band's counts and the discipline's free places, and the console's other readers of the money SHALL be told the tournament changed.
+
+A discipline nobody is queued in SHALL still have its tab, its roster stating its seated fencers with no line drawn below them.
 
 After the seating deadline the system SHALL NOT promote anyone automatically by any rule. The view presents the data; the organizer decides.
 
 #### Scenario: Queue listed in order
-- **WHEN** the organizer opens the queue for a discipline with four waiting fencers
-- **THEN** all four are listed in queue order with their positions, their queue moments and the discipline's free places
+- **WHEN** the organizer opens the Queue tab of a discipline with four waiting fencers
+- **THEN** all four are listed below the line in queue order with their positions and queue moments, and the discipline's free places are stated
+
+#### Scenario: The same line as Export
+- **WHEN** the organizer compares a discipline's Queue roster with its Export roster in the tab's own order
+- **THEN** the same fencers stand above and below the line, in the same order
 
 #### Scenario: Two entries registered on one day
 - **WHEN** two of the queued fencers registered on the same day, minutes apart
@@ -197,9 +221,21 @@ After the seating deadline the system SHALL NOT promote anyone automatically by 
 - **WHEN** a fencer who registered early was demoted at settlement and sits behind a substitute who registered later
 - **THEN** their entry states the moment of demotion and that it is one, so the order is legible
 
-#### Scenario: Empty queue stated
+#### Scenario: Money stated on the seated
+- **WHEN** a discipline holds one paid fencer and one who owes 1750 by the 12th
+- **THEN** the first row states paid and the second states 1750 owed by the 12th
+
+#### Scenario: No arrow the server would refuse
+- **WHEN** a discipline is full and a seated fencer has paid
+- **THEN** no queued row carries a promote arrow and the paid row carries no return arrow
+
+#### Scenario: A refusal in words
+- **WHEN** another organizer fills the last free place a moment before this one presses promote
+- **THEN** the refusal states that the discipline is full, not a code
+
+#### Scenario: A discipline with nobody queued
 - **WHEN** a discipline has no substitutes
-- **THEN** the view states that the queue is empty rather than omitting the discipline
+- **THEN** its tab is present and lists its seated fencers with no queue below them
 
 #### Scenario: No automatic promotion
 - **WHEN** the seating deadline passes and seats are freed by demotion
