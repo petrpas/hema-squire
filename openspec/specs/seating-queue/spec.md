@@ -16,7 +16,7 @@ Four consequences follow and SHALL hold:
 
 - Queue length and queue position SHALL be counted from substitute placements on **live** registrations — those reserved within their validity window, and those paid — rather than from the registration's state. A registration that has paid for a seated placement SHALL still be counted, at the place its queue moment gives it, for a placement it holds in the queue. Counting from reserved registrations alone would drop a paid fencer out of the queue they are waiting in and hand their position to somebody else.
 - A registration holding a substitute placement SHALL NOT expire on a lapsed payment window; it is demoted instead, as `registration` fixes. Money owed for a seat SHALL NOT cost the fencer a queue place they never owed for.
-- Money arriving on a registration sitting entirely in the queue SHALL NOT be credited to it. It SHALL be held for the organizer's decision, as `payments` fixes under **Payments arriving on a queued registration**, and a registration sitting entirely in the queue SHALL NOT read as paid whatever it has been credited, as `payment-ledger` fixes. Money it already held when it was moved there — a forfeited deposit — stays recorded against it and counts on promotion.
+- Money arriving on a registration sitting entirely in the queue SHALL NOT be credited to it **while it sits there**. Where the tournament lets paying substitutes take free places (`tournament-admin`), such a registration MAY be told what it would owe — its claim — and a payment of it SHALL seat the registration before it is credited, as **A paying substitute takes free places** fixes; the money is never credited to a registration that holds no seat. It SHALL be held for the organizer's decision, as `payments` fixes under **Payments arriving on a queued registration**, and a registration sitting entirely in the queue SHALL NOT read as paid whatever it has been credited, as `payment-ledger` fixes. Money it already held when it was moved there — a forfeited deposit — stays recorded against it and counts on promotion.
 - Returning a placement to the queue SHALL be refused once the registration has been paid. Demoting a seat that has been paid for would leave money in the queue, and the organizer's route for a paid registration is cancellation, which carries the existing refund handling.
 
 #### Scenario: Queued registration owes nothing
@@ -203,7 +203,9 @@ After an action the view SHALL re-read the roster, the band's counts and the dis
 
 A discipline nobody is queued in SHALL still have its tab, its roster stating its seated fencers with no line drawn below them.
 
-After the seating deadline the system SHALL NOT promote anyone automatically by any rule. The view presents the data; the organizer decides.
+After the seating deadline the system SHALL NOT promote anyone automatically by any rule over the queue. The view presents the data; the organizer decides. The one exception is a fencer's own payment where the tournament lets paying substitutes take free places (**A paying substitute takes free places**); it is triggered by the fencer, not by the queue's order.
+
+A queued row whose payment is being held SHALL state it, so that the organizer sees who has already paid for a place they are waiting for.
 
 #### Scenario: Queue listed in order
 - **WHEN** the organizer opens the Queue tab of a discipline with four waiting fencers
@@ -237,8 +239,12 @@ After the seating deadline the system SHALL NOT promote anyone automatically by 
 - **WHEN** a discipline has no substitutes
 - **THEN** its tab is present and lists its seated fencers with no queue below them
 
+#### Scenario: A held payment stated
+- **WHEN** a queued fencer's payment is held for the organizer
+- **THEN** their row states that a payment is held
+
 #### Scenario: No automatic promotion
-- **WHEN** the seating deadline passes and seats are freed by demotion
+- **WHEN** the seating deadline passes on a tournament that does not let paying substitutes take places, and seats are freed by demotion
 - **THEN** no queued registration is promoted automatically, and every seat is filled by an explicit organizer action
 
 ### Requirement: Seating settles on the tournament's own day
@@ -296,3 +302,40 @@ Demotion for non-payment already moves a whole registration and SHALL continue t
 #### Scenario: A placement outside the condition moves alone
 - **WHEN** the organizer returns the Rapier placement of a registration whose condition is Longsword and Sabre
 - **THEN** only Rapier is queued
+
+### Requirement: A paying substitute takes free places
+Where the tournament lets paying substitutes take free places, a registration that sits wholly in the queue — at least one individual placement, every one of them queued — and whose lifecycle clocks run SHALL have a **claim**: what it would owe with every one of its queued individual placements seated, less what it has already been credited. The claim SHALL be computed with the registration's frozen prices and stored in each currency the tournament prices in, beside its totals and recomputed with them, so that every surface and every QR code states one stored amount. Its waitlisted teams SHALL NOT be part of it and SHALL stay waitlisted.
+
+A payment on such a registration SHALL seat it when both hold at the moment it is evaluated: its amount matches the claim in its lane within the tournament's tolerance, and every discipline the registration waits for has a free place. Then every queued individual placement SHALL be seated together, the registration SHALL be repriced, the payment SHALL be credited, and the fencer SHALL be told they have a place and that the payment was received. The seating SHALL be recorded under its own audit event, distinct from an organizer's promotion.
+
+The payment SHALL seat everything the registration waits for or nothing: a registration waiting for two disciplines of which one has a free place SHALL NOT be seated in that one by its payment. This is the participation condition applied to what was paid for.
+
+A payment that does not seat the registration SHALL be held, as `payments` fixes. A held payment whose amount matched the claim and whose only obstacle was a discipline without a free place SHALL be re-evaluated on every matching pass and SHALL seat the registration when the places free. Where several held payments wait for the same place, the one whose payment arrived first SHALL be seated first.
+
+The organizer's actions SHALL stand beside this: they may promote any fencer, return any unpaid one, or refund a held payment, at any time, and no pass SHALL undo what they did.
+
+A registration whose clocks are dormant SHALL have no claim, SHALL be offered no instructions, and SHALL NOT be seated by a payment.
+
+#### Scenario: Payment seats a waiting fencer
+- **WHEN** paying substitutes may take places, a fencer waiting for Longsword pays their claim of 1750, and Longsword has a free place
+- **THEN** they are seated, credited, and told they have a place
+
+#### Scenario: Payment into a full discipline waits
+- **WHEN** the same payment arrives while Longsword is full
+- **THEN** it is held, the fencer is told it is held, and they stay in the queue
+
+#### Scenario: A held payment seats itself when a place frees
+- **WHEN** a place in Longsword frees and the next matching pass runs
+- **THEN** the fencer whose held payment arrived first is seated and credited
+
+#### Scenario: Everything or nothing
+- **WHEN** a fencer waiting for Longsword and Sabre pays their claim while only Longsword has a free place
+- **THEN** they are not seated in Longsword, and the payment is held
+
+#### Scenario: Forfeited deposit counts toward the claim
+- **WHEN** a registration demoted at settlement holding a 500 deposit waits for a place priced 1750
+- **THEN** its claim is 1250
+
+#### Scenario: A dormant registration has no claim
+- **WHEN** a hand-entered registration waits in the queue on a tournament that lets paying substitutes take places
+- **THEN** it is offered no instructions, and a payment on it is held for the organizer

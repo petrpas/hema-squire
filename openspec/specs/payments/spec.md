@@ -613,7 +613,7 @@ What a registration has been credited SHALL be the sum of both kinds together, s
 - **THEN** the entry states whether an automatic match, a payment link, a reinstatement or a refund hold decided it
 
 ### Requirement: Payments arriving on a queued registration
-A payment whose VS resolves to a registration sitting entirely in the substitute queue SHALL NOT be credited to it, by an automatic pass or by a bare token. The queue holds no money, and a registration credited there would read as a fencer who paid for a place they do not hold. The transaction SHALL be flagged with a reason of its own, distinct from every expiry reason, naming that the registration is queued.
+A payment whose VS resolves to a registration sitting entirely in the substitute queue SHALL NOT be credited to it, by an automatic pass or by a bare token, **except where it seats the registration first**, as `seating-queue` fixes under **A paying substitute takes free places** for a tournament that lets paying substitutes take free places. The queue holds no money, and a registration credited there would read as a fencer who paid for a place they do not hold. The transaction SHALL be flagged with a reason of its own, distinct from every expiry reason, naming that the registration is queued. Where the tournament lets paying substitutes take free places, the reason SHALL further distinguish a payment that matched the claim but found a discipline full — which the next passes may seat — from one whose amount is not the claim, which only the organizer resolves.
 
 The fencer SHALL be notified that the payment arrived, that they are waiting in the queue and hold no place, and that the organizer will be in contact. The notice SHALL NOT promise a place and SHALL NOT imply the money is lost.
 
@@ -640,3 +640,11 @@ A registration holding a seated placement beside a queued one is not sitting ent
 #### Scenario: A mixed registration is paid as usual
 - **WHEN** a transaction arrives for a registration holding one unpaid seat and one queued placement
 - **THEN** it is matched against what the seat owes, exactly as any other payment
+
+#### Scenario: Seated by payment where the tournament allows it
+- **WHEN** paying substitutes may take places and a payment matching a waiting registration's claim arrives while its disciplines have free places
+- **THEN** the registration is seated and the payment credited, and nothing is flagged
+
+#### Scenario: A wrong amount is held for the organizer
+- **WHEN** paying substitutes may take places and a payment on a waiting registration does not match its claim
+- **THEN** it is held with a reason naming the amount, and no later pass seats it by itself

@@ -464,6 +464,8 @@ On registration for a tournament whose payments feature is on, the system SHALL 
 
 **On a tournament whose payments feature is off, the confirmation email SHALL carry the summary and the total and nothing about paying it**: no bank account, no variable symbol, no QR code, no expiry date and no payment instruction. It SHALL confirm the registration rather than request money, and where the organizer has written registration instructions those SHALL be the tournament's own statement of how it is settled. No reminder, expiry notice, surcharge or payment-received mail SHALL be sent for such a tournament, because nothing generates one.
 
+A registration placed wholly in the queue at submission SHALL, where the tournament lets paying substitutes take free places, carry instructions and a QR code for its claim instead of a total owed, with the statement of when the payment takes a place.
+
 Each discipline entered SHALL be summarized by its name alone. The email SHALL NOT carry discipline slugs, which are not fencer-facing text (`discipline-identity`); where a tournament offers several disciplines classified alike, the name is what tells the fencer which one they entered.
 
 Each QR code SHALL encode the stored total of its own currency, with the SPAYD currency field taken from that currency. No amount in either QR code SHALL be produced by conversion.
@@ -509,6 +511,10 @@ The account SHALL be stated in the same form as the in-app instructions: a Czech
 #### Scenario: Emailed amounts stable against configuration changes
 - **WHEN** the organizer changes prices or the recorded ratio after a confirmation email was sent
 - **THEN** the reminder and the in-app instructions for that reservation state the same amounts and carry the same QR codes as the original confirmation
+
+#### Scenario: Queued at submission, told what to pay
+- **WHEN** a fencer registers into a full discipline on a tournament that lets paying substitutes take places
+- **THEN** the confirmation states they are queued and carries instructions and a QR code for their claim, with its condition
 
 ### Requirement: Capacity and substitutes
 Discipline capacity SHALL be consumed by confirmed registrations and by reservations within their validity window. When an individual discipline is full, further registrations SHALL join a substitute queue, in the queue order `seating-queue` fixes — for a placement queued at registration, its registration time. When a team discipline is full, further teams SHALL join a team waitlist in entry order, counted in teams rather than fencers, as fixed by `team-disciplines`. When a spot frees through expiry or cancellation, the organizer SHALL be able to admit substitutes from the individual queue; admitting a waitlisted team is not offered.
@@ -698,7 +704,7 @@ The account SHALL be presented in the form the payer can use. Where the tourname
 
 Whether anything is owed SHALL be decided in one place, by the system that holds the registration, and SHALL NOT be decided a second time by the surface that displays the answer. A registration owes nothing exactly when every individual entry it carries is queued as a substitute **and** every team it carries is waitlisted; a registration carrying nothing on one of those axes SHALL be judged on the other alone, so that a team-only registration is judged on its teams. No presentation SHALL predict this answer before requesting the instructions.
 
-A fencer holding a reservation SHALL be told either how to pay or why they cannot yet. Where instructions cannot be produced, the reason SHALL be shown in terms the fencer can act on, and the absence of instructions SHALL NOT be presented as an empty space. Three reasons SHALL be distinguished: that nothing is owed because every place requested is queued; that the tournament has recorded no bank account to pay into; and that the reservation is no longer awaiting payment. A reason the fencer cannot resolve SHALL say who will resolve it rather than instructing the fencer to act.
+A fencer holding a reservation SHALL be told either how to pay or why they cannot yet. Where instructions cannot be produced, the reason SHALL be shown in terms the fencer can act on, and the absence of instructions SHALL NOT be presented as an empty space. Where the tournament lets paying substitutes take free places, a registration wholly in the queue whose clocks run SHALL instead be given instructions for its **claim** (`seating-queue`, **A paying substitute takes free places**), in the same form as any instructions, stating that the payment takes the places waited for only if all of them are free when it is credited, and otherwise waits until they free or the organizer decides. Three reasons SHALL be distinguished: that nothing is owed because every place requested is queued, where the tournament does not let paying substitutes take places; that the tournament has recorded no bank account to pay into; and that the reservation is no longer awaiting payment. A reason the fencer cannot resolve SHALL say who will resolve it rather than instructing the fencer to act.
 
 #### Scenario: Owner retrieves payment data
 - **WHEN** the fencer who holds an unpaid reservation requests its payment instructions
@@ -747,6 +753,10 @@ A fencer holding a reservation SHALL be told either how to pay or why they canno
 #### Scenario: Reservation settled while its instructions were open
 - **WHEN** the fencer's reservation is matched to a payment between the page being opened and the instructions being requested
 - **THEN** the fencer is told the reservation is no longer awaiting payment rather than being shown an empty panel
+
+#### Scenario: Claim instructions for a waiting fencer
+- **WHEN** a fencer wholly in the queue opens their registration on a tournament that lets paying substitutes take places
+- **THEN** they are shown instructions for their claim with its condition, not told that nothing is owed
 
 ### Requirement: Fencer-facing tournament list
 The system SHALL expose a tournament list for fencers containing only published, non-cancelled tournaments, each with its public information — including its subtitle and a reference to its logo when set, and its local currency — its per-discipline registered numbers (seats taken per capacity, counting confirmed registrations and unexpired reservations), the registration availability status (open, not yet open with the opening moment, or closed), and whether the requesting account has an active registration. The subtitle and logo reference SHALL be omitted (null/absent) when not set, and their absence SHALL NOT change the rest of the payload.
@@ -898,7 +908,7 @@ A contact address SHALL NOT be credentials. It SHALL grant no access, and no acc
 ### Requirement: Demotion is announced
 A registration moved to the substitute queue for non-payment SHALL be notified, as an expired one is. This SHALL hold for every path by which non-payment demotes: seating settlement, whether reached by the deadline or triggered by the organizer; a promotion window lapsing after seating has settled; and a payment window lapsing on a registration that also holds a queued placement.
 
-The notice SHALL name each discipline and each team the registration was moved out of a seat in, and the queue position it now holds in each. It SHALL state that nothing is owed while the registration waits, that no payment should be sent, and that a place is offered by the organizer promoting the fencer, at which point a new payment window opens. Where the registration holds credit — a deposit paid, or any partial payment — the notice SHALL state that the amount stays recorded against the registration and counts if the fencer is promoted, and SHALL NOT promise its refund.
+The notice SHALL name each discipline and each team the registration was moved out of a seat in, and the queue position it now holds in each. It SHALL state that nothing is owed while the registration waits, that no payment should be sent, and that a place is offered by the organizer promoting the fencer, at which point a new payment window opens — except where the tournament lets paying substitutes take free places, where it SHALL instead carry instructions and a QR code for the registration's claim, with the statement of when the payment takes a place. Where the registration holds credit — a deposit paid, or any partial payment — the notice SHALL state that the amount stays recorded against the registration and counts if the fencer is promoted, and SHALL NOT promise its refund.
 
 A registration the organizer returns to the queue by hand SHALL NOT be sent this notice; the organizer's return is a correction they communicate themselves. A dormant registration is never demoted and so SHALL never be sent it. The notice SHALL be sent once per demotion, and a demotion that moves nothing SHALL send nothing.
 
@@ -923,6 +933,10 @@ The notice SHALL be recorded in the audit trail alongside the demotion it announ
 #### Scenario: Nothing moved, nothing sent
 - **WHEN** seating settles on a tournament where no registration owes money
 - **THEN** no demotion notice is sent to anyone
+
+#### Scenario: Demotion notice carries the claim where the tournament allows it
+- **WHEN** a registration is demoted at settlement on a tournament that lets paying substitutes take places
+- **THEN** the notice carries instructions for its claim rather than asking the fencer not to pay
 
 ### Requirement: A registration entered by hand
 On an **automatic** tournament a fencer entered by hand at the console SHALL become a registration at the moment of entry. It SHALL be one of the tournament's registrations in every respect the rest of this capability fixes, except where this requirement says otherwise.
