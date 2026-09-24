@@ -12,7 +12,7 @@ The organizer console SHALL present phase tabs in the fixed order Setup, Import,
 
 A phase whose operation concerns a small and usually empty subset of the fencers SHALL NOT be given the fencer table for that reason: where the work is a handful of rows out of fifty, listing the fifty states the work in the one place it is hardest to see. Deduplication is such a phase and shows its candidates instead.
 
-Which phases are offered SHALL follow the tournament's settings. The Teams phase SHALL be offered only while the team disciplines feature is on (`tournament-features`). **The Queue phase SHALL be offered only on an automatic tournament** (`tournament-mode`): a manual tournament never places anyone in a queue, so the phase would hold a capacity mark with nothing to act on. **The Payments phase SHALL be offered on every tournament**, whoever handles its payments: where Squire handles them it holds what it holds today, and where it does not it is boned out to the settled mark alone (`payments`). It is the place a reader looks for who has paid, and that answer SHALL NOT move to another phase depending on a setting the reader may not know about. The remaining phases SHALL always be offered, since they are what every tournament is made of. Whichever phases are offered SHALL keep the fixed order above; a setting removes phases, it never reorders them.
+Which phases are offered SHALL follow the tournament's settings. The Teams phase SHALL be offered only while the team disciplines feature is on (`tournament-features`). **The Import phase SHALL be offered only on a manual tournament** (`table-import`): an automatic tournament's entrants register in the application or are entered by hand, and neither arrives by file. **The Queue phase SHALL be offered only on an automatic tournament** (`tournament-mode`): a manual tournament never places anyone in a queue, so the phase would hold a capacity mark with nothing to act on. **The Payments phase SHALL be offered on every tournament**, whoever handles its payments: where Squire handles them it holds what it holds today, and where it does not it is boned out to the settled mark alone (`payments`). It is the place a reader looks for who has paid, and that answer SHALL NOT move to another phase depending on a setting the reader may not know about. The remaining phases SHALL always be offered, since they are what every tournament is made of. Whichever phases are offered SHALL keep the fixed order above; a setting removes phases, it never reorders them.
 
 A phase's **columns** SHALL remain a property of that phase. Where a phase's contents follow a tournament's settings, it SHALL be the phase that branches, not its column table — so that no column has to be understood as sometimes present.
 
@@ -23,7 +23,7 @@ A phase the mode does not offer SHALL NOT be reachable by its URL either. Addres
 - **THEN** the table re-renders with payment columns and the Payments parameter panel and edits log, over the same fencer list, and the URL names the Payments phase
 
 #### Scenario: Import shows imported rows alone
-- **WHEN** a tournament has ten in-app registrations and a five-row imported batch, and the organizer opens Import
+- **WHEN** a manual tournament has ten registrations entered by other roads and a five-row imported batch, and the organizer opens Import
 - **THEN** the five imported rows are listed and none of the ten registrations is
 
 #### Scenario: Fencers shows both populations
@@ -69,6 +69,10 @@ A phase the mode does not offer SHALL NOT be reachable by its URL either. Addres
 #### Scenario: Phase reappears with its feature
 - **WHEN** the organizer of a tournament that handled its own payments switches it to Squire handling them
 - **THEN** the Payments phase, which was present all along, gains the queues, the intake and the transactions in its fixed place between Deduplication and Export — what returns with the setting is the phase's contents, not the phase
+
+#### Scenario: No Import on an automatic tournament
+- **WHEN** the organizer opens the console of an automatic tournament, or a saved URL naming its Import phase
+- **THEN** no Import phase is offered, and the URL opens the console on its default phase
 
 #### Scenario: Queue before Export
 - **WHEN** the organizer reads the phase tabs of an automatic tournament
@@ -667,15 +671,27 @@ Re-uploading a corrected file SHALL preserve the Import log's corrections for ro
 ### Requirement: Manual entry of a fencer
 The organizer MAY add a fencer to the fencer list by hand, without a file and without the fencer registering. The action SHALL be offered on the Fencers tab and nowhere else, and SHALL open a dialog rather than an editable blank row — a row is entered whole or not at all.
 
-A manually entered row SHALL be a source record of the tournament in its own right, a third population beside in-app registrations and imported rows. It SHALL take a fixed number when it is entered, SHALL sort by the registration moment it states, SHALL carry its note, and SHALL travel through matching, deduplication and export exactly as an imported row does. It SHALL be editable and deletable by the same means as any other row.
+**What an entry becomes depends on the tournament's mode.** On an **automatic** tournament it SHALL become a registration at once, as `registration` fixes under **A registration entered by hand**: placed against capacity, carrying a variable symbol, and sent nothing. On a **manual** tournament it SHALL be a source record, as follows in the rest of this requirement.
 
-A manually entered row SHALL NOT create an account for the fencer, and SHALL NOT cause any mail to be sent. **It SHALL NOT be given a variable symbol or a payment instruction when it is entered.** It states who is competing; entering it does not enrol them in the application.
+On a manual tournament a manually entered row SHALL be a source record of the tournament in its own right, a third population beside in-app registrations and imported rows. It SHALL take a fixed number when it is entered, SHALL sort by the registration moment it states, SHALL carry its note, and SHALL travel through matching, deduplication and export exactly as an imported row does. It SHALL be editable and deletable by the same means as any other row.
 
-A row SHALL become billable when registrations are issued for the fencer list, which happens as a step of payment intake rather than by any action the organizer takes on this phase (`imported-registrations`). Issuing SHALL apply to manually entered rows and imported rows alike — both state who is competing, and neither is enrolled by arriving. Being issued a registration SHALL NOT cause mail to be sent either, and SHALL NOT create an account.
+A manual entry SHALL NOT create an account for the fencer, and SHALL NOT cause any mail to be sent, in either mode. **On a manual tournament it SHALL NOT be given a variable symbol or a payment instruction when it is entered.** It states who is competing; entering it does not enrol them in the application.
+
+On a manual tournament a row SHALL become billable when registrations are issued for the fencer list, which happens as a step of payment intake rather than by any action the organizer takes on this phase (`imported-registrations`). Issuing SHALL apply to manually entered rows and imported rows alike — both state who is competing, and neither is enrolled by arriving. Being issued a registration SHALL NOT cause mail to be sent either, and SHALL NOT create an account.
 
 The Fencers phase SHALL NOT offer an action that issues registrations. An organizer reconciling a payment SHALL NOT have to know that issuing exists, and SHALL NOT be sent to another phase to make the roster billable first.
 
 A manually entered row SHALL NOT appear on the Import view, in any state. The Import view records what a file contained, and a manual entry came from no file.
+
+The entry SHALL be offered whenever the tournament is published, including after registration closes and after seating settles: the fencer at the door on the tournament's day is the case it exists for.
+
+#### Scenario: Entered at the door of an automatic tournament
+- **WHEN** the organizer of an automatic tournament enters a fencer by hand for a discipline with a free place, before seating settles
+- **THEN** a registration is created at once, seated, carrying a variable symbol, and no mail is sent
+
+#### Scenario: Entered after seating settled
+- **WHEN** the organizer of an automatic tournament enters a fencer by hand after seating settled
+- **THEN** the registration is placed in the queue, from where the organizer may promote it
 
 #### Scenario: Fencer entered at the door
 - **WHEN** the organizer enters a fencer by hand on the Fencers tab
@@ -702,11 +718,11 @@ A manually entered row SHALL NOT appear on the Import view, in any state. The Im
 - **THEN** no account exists for them, no confirmation mail is sent, and no payment instruction is issued
 
 #### Scenario: Entry alone issues no variable symbol
-- **WHEN** a fencer is entered by hand on a tournament whose payments feature is on
+- **WHEN** a fencer is entered by hand on a manual tournament whose payments feature is on
 - **THEN** the row carries no variable symbol until the next payment intake issues registrations for the list
 
 #### Scenario: Manual rows are issued alongside imported ones
-- **WHEN** a statement is imported against a list holding both imported and manually entered rows
+- **WHEN** a statement is imported against a manual tournament's list holding both imported and manually entered rows
 - **THEN** both populations are issued registrations, and neither is sent mail
 
 #### Scenario: The Fencers phase offers no issuing action

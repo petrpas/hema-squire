@@ -19,7 +19,7 @@ surface an organizer reads calls it the tournament's mode; the two names are one
 setting.
 ## Requirements
 ### Requirement: A tournament has a mode, and it is the only thing so called
-Each tournament SHALL have a **mode** with exactly two values: **automatic**, in which Squire keeps the tournament's list of entrants — fencers register in the application and Squire manages the window, the clocks, the mail and the queue — and **manual**, in which the organizer keeps the list outside Squire and it reaches Squire by import, Squire cleaning, matching, pricing and exporting it while running nothing against it.
+Each tournament SHALL have a **mode** with exactly two values: **automatic**, in which Squire keeps the tournament's list of entrants — fencers register in the application and Squire manages the window, the clocks, the mail and the queue — and **manual**, in which the organizer keeps the list outside Squire and it reaches Squire by import — the only mode that imports — Squire cleaning, matching, pricing and exporting it while running nothing against it.
 
 This SHALL be the only thing in the product called a mode. It qualifies because it is stored, has a small closed set of values, and changes what the system does. No label derived from other settings SHALL be given the name, and in particular the features fixed by `tournament-features` SHALL NOT be described as a mode however many of them are enabled.
 
@@ -36,8 +36,12 @@ The mode SHALL be independent of the features fixed by `tournament-features` and
 - **THEN** both see the same mode
 
 #### Scenario: Not derived from contents
-- **WHEN** an organizer imports a table of fifty entrants into an automatic tournament
-- **THEN** the tournament stays automatic and the rows are stored
+- **WHEN** a manual tournament holds fifty entrants all entered by hand and no imported row
+- **THEN** it stays manual
+
+#### Scenario: An automatic tournament takes no import
+- **WHEN** an organizer uploads a table of fifty entrants to an automatic tournament
+- **THEN** the upload is refused, the tournament stays automatic, and nothing is stored
 
 #### Scenario: Existing tournaments are automatic
 - **WHEN** a tournament that existed before this capability is read
