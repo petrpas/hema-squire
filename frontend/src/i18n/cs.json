@@ -75,7 +75,12 @@
   },
   "export": {
     "title": "Export",
-    "hint": "Google Sheet — list Fencers, list pro každou disciplínu a pro každou kategorii položek, nebo úplný JSON zálohový export.",
+    "hints": {
+      "runSheets": "Zapíše do výstupní tabulky list Fencers, list pro každou disciplínu a pro každou kategorii položek. Co v tabulce někdo ručně opravil, zůstane.",
+      "sheetLink": "Otevře výstupní tabulku v nové záložce.",
+      "forgetSheet": "Zapomene odkaz na výstupní tabulku. Tabulka i všechno v ní zůstane; příští export se zeptá na odkaz znovu — takto se tabulka mění.",
+      "downloadJson": "Úplný záložní export turnaje v JSON — z něj se dá turnaj celý obnovit."
+    },
     "fetchRatings": "Stáhnout HR ratingy",
     "ratingsDone": "Ratingy staženy · {{ratings}} hodnot pro {{fencers}} šermířů.",
     "ratingsFailed": "Stažení ratingů se nezdařilo (index/formát stránky?).",
@@ -124,12 +129,8 @@
       "create": "Založ novou prázdnou tabulku v Google Sheets.",
       "share": "Nasdílej ji pro zápis tomuto účtu:",
       "copyAccount": "Kopírovat adresu účtu",
-      "notConfigured": "Tento server nemá nastavený přístup ke Google, takže export zatím nemá čím zapisovat. Odkaz si ulož, zapíše se, jakmile bude přístup nastavený.",
       "paste": "Sem vlož odkaz na tu tabulku:",
-      "confirm": "Uložit odkaz",
-      "confirmExport": "Exportovat",
-      "open": "Nastavit výstupní tabulku",
-      "change": "Změnit výstupní tabulku"
+      "confirmExport": "Exportovat"
     },
     "sheetLink": "Otevřít výstupní tabulku",
     "forgetSheet": "Smazat odkaz",

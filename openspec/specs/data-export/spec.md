@@ -225,15 +225,18 @@ and it is discovered at the moment that tool is used. An organizer who has just 
 Export is the only person who has ever needed it.
 
 The address SHALL remain one field in storage with one editor, so that the value the
-export reads is the value the organizer last entered.
+export reads is the value the organizer last entered. The editor is the destination
+dialog, and it SHALL open only from an export pressed with no destination stored: a
+destination is changed by forgetting it and exporting again, so the rail offers no
+separate control for changing one.
 
 #### Scenario: Setup no longer offers the address
 - **WHEN** the organizer opens Setup and visits every tab
 - **THEN** no tab offers the export sheet address
 
-#### Scenario: The address is edited beside the export
-- **WHEN** the organizer opens the Export phase
-- **THEN** the rail offers a control that opens the address for editing, on the same screen as the export control
+#### Scenario: The address is changed beside the export
+- **WHEN** the organizer forgets the stored destination and presses export
+- **THEN** the destination dialog opens on the same screen, and confirming it stores the new address and runs the export
 
 ### Requirement: Configuring the destination is a stated three-step procedure
 The console SHALL offer the destination not as a bare address field but as a dialog
@@ -249,7 +252,8 @@ identity, so an organizer's own access to their spreadsheet grants the export no
 a spreadsheet that is merely visible is not writable. Without that sentence the export
 fails on a permission the organizer has no way to guess at.
 
-Confirming the dialog SHALL store the address. Dismissing it SHALL store nothing.
+Confirming the dialog SHALL store the address and run the export the organizer pressed
+for. Dismissing it SHALL store nothing.
 
 #### Scenario: The procedure is stated in order
 - **WHEN** the organizer opens the destination dialog
@@ -281,7 +285,7 @@ tournament. It is an operational address, not a public one.
 
 #### Scenario: No credentials, no export offered
 - **WHEN** the server holds no Google credentials
-- **THEN** the export control is not offered, and the dialog says in place of its second step that the server has no Google access configured
+- **THEN** the export control is not offered, the card says that the server has no Google access configured, and the JSON download is still offered
 
 #### Scenario: The account is not public
 - **WHEN** a request without console access to the tournament asks for the export's configuration
@@ -337,7 +341,14 @@ nothing to forget.
 
 ### Requirement: The rail states the destination as a link
 Where the tournament has a stored destination, the Export phase's rail SHALL state it as a
-link that opens the spreadsheet, below the export control.
+link that opens the spreadsheet. The export control, the link, the control that forgets
+the destination and the JSON download SHALL stand on one row, in that order, each as an
+icon whose word is its accessible name and whose hint says what it does; the English tick
+SHALL stand below that row.
+
+Every control of the card SHALL carry a hint saying what it does, opened by hovering or
+focusing the control itself, and the card SHALL carry no standing paragraph explaining
+them.
 
 While an export is running the link SHALL be withdrawn, and SHALL return when the run
 concludes. The withdrawal is how a run states that it is a run: the export has no progress

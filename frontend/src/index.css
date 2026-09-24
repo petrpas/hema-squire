@@ -4172,24 +4172,73 @@ button.secondary.tolerance-save:disabled {
   min-width: 8.5rem;
 }
 
-/* The destination, stated in the rail where the export was run. It withdraws
-   for the duration of a run, which is the card's one honest signal that a run
-   is in flight: the export reports no progress and admits no interruption, so
-   there is nothing for a bar or a spinner to be honest about. */
-.export-destination {
-  margin: 0.2rem 0 0;
-  font-size: 12px;
-  overflow-wrap: anywhere;
+/* The spreadsheet's three actions — export, open, forget — on one row, as
+   icons. Open and forget are there only while a destination is stored, and
+   withdraw for the duration of a run, which is the card's one honest signal
+   that a run is in flight: the export reports no progress and admits no
+   interruption, so there is nothing for a bar or a spinner to be honest about.
+   The row is the hints' positioning context, so a box opened from its last
+   icon spans the card rather than hanging past its edge. */
+.export-actions {
+  position: relative;
   display: flex;
-  flex-wrap: wrap;
-  gap: 0.2rem 0.8rem;
+  gap: 0.5rem;
+  margin: 0.2rem 0 0.4rem;
 }
 
-/* Forgetting the destination is the lesser of the two, and says so by size:
-   the link is what an organizer came for, this is the footnote beside it. */
-.export-destination > button {
-  font-size: 11px;
-  color: var(--ink-faded);
+.icon-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  padding: 0;
+  border: var(--border-w) solid var(--ink);
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--ink);
+  transition: background-color 120ms;
+}
+
+@media (hover: hover) {
+  .icon-action:hover:not(:disabled) {
+    background: var(--paper-shade);
+  }
+}
+
+.icon-action:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+@media (pointer: coarse) {
+  .icon-action {
+    width: 44px;
+    height: 44px;
+  }
+}
+
+/* A control that is its own hint marker (`HintedAction`): the hint box opens
+   off the control. On its own it anchors to the control; inside the action row
+   it anchors to the row, across the card's width. */
+.action-hint {
+  position: relative;
+  display: flex;
+}
+
+.export-actions .action-hint {
+  position: static;
+}
+
+.export-actions .help-hint-box {
+  right: 0;
+  width: auto;
+  max-width: none;
+}
+
+.action-hint > :first-child:hover + .help-hint-box,
+.action-hint > :first-child:focus-visible + .help-hint-box {
+  display: block;
 }
 
 .export-header {

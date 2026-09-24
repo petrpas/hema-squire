@@ -71,7 +71,12 @@
   },
   "export": {
     "title": "Export",
-    "hint": "Google Sheet — a Fencers worksheet, one per discipline and one per item category, or the full JSON backup export.",
+    "hints": {
+      "runSheets": "Writes a Fencers worksheet, one per discipline and one per item category into the output spreadsheet. Whatever someone corrected there by hand stays.",
+      "sheetLink": "Opens the output spreadsheet in a new tab.",
+      "forgetSheet": "Forgets the link to the output spreadsheet. The spreadsheet and everything in it stay; the next export asks for a link again — which is how the spreadsheet is changed.",
+      "downloadJson": "The tournament's full backup export as JSON — the whole tournament can be restored from it."
+    },
     "fetchRatings": "Fetch HR ratings",
     "ratingsDone": "Ratings fetched · {{ratings}} values for {{fencers}} fencers.",
     "ratingsFailed": "Ratings fetch failed (index/page format?).",
@@ -120,12 +125,8 @@
       "create": "Create a new, empty Google spreadsheet.",
       "share": "Share it for writing with this account:",
       "copyAccount": "Copy the account address",
-      "notConfigured": "This server has no Google access configured, so the export has nothing to write with yet. Record the link anyway; it will be written to once access is configured.",
       "paste": "Paste the link to that spreadsheet here:",
-      "confirm": "Save the link",
-      "confirmExport": "Export",
-      "open": "Set the output spreadsheet",
-      "change": "Change the output spreadsheet"
+      "confirmExport": "Export"
     },
     "sheetLink": "Open the output spreadsheet",
     "forgetSheet": "Forget the spreadsheet",

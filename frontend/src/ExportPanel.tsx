@@ -1,7 +1,9 @@
+import { IconBraces, IconExternalLink, IconLinkOff, IconTableExport } from "@tabler/icons-react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { api, type ExportSheetConfig, getToken } from "./api";
+import HintedAction from "./export/HintedAction";
 import SheetWizard from "./export/SheetWizard";
 
 /** Whether the English tick is offered. Not to an organizer already working in
@@ -34,10 +36,10 @@ export default function ExportPanel({
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [config, setConfig] = useState<ExportSheetConfig | null>(null);
-  // `pending` marks a wizard the export button opened, as against one opened to
-  // change an address that already works: only the first owes the organizer the
-  // export they pressed for.
-  const [wizard, setWizard] = useState<"closed" | "open" | "pending">("closed");
+  // The wizard opens only from an export pressed with no destination stored,
+  // so confirming it always owes the organizer the export they pressed for. A
+  // destination is changed by forgetting it and exporting again.
+  const [wizard, setWizard] = useState(false);
 
   useEffect(() => {
     void api.exportSheetConfig(slug).then(setConfig);
@@ -65,17 +67,16 @@ export default function ExportPanel({
   function runSheets() {
     if (config === null) return;
     if (config.output_sheet_url === null) {
-      setWizard("pending");
+      setWizard(true);
       return;
     }
     void exportNow();
   }
 
   function saved(url: string) {
-    const owed = wizard === "pending";
     setConfig((current) => (current === null ? current : { ...current, output_sheet_url: url }));
-    setWizard("closed");
-    if (owed) void exportNow();
+    setWizard(false);
+    void exportNow();
   }
 
   /** Forgets the destination, so the next export asks for one again.
@@ -112,7 +113,76 @@ export default function ExportPanel({
   return (
     <section className="rail-card">
       <h2>{t("export.title")}</h2>
-      <p className="rail-hint">{t("export.hint")}</p>
+      {/* Where the server holds no credentials the export cannot write at all.
+          Saying so is better than offering a button that answers 503 once
+          pressed, which is what the card did before. */}
+      {config !== null && !config.configured && <p className="rail-hint">{t("export.noGoogle")}</p>}
+      <div className="export-actions">
+        {config?.configured === true && (
+          <HintedAction hint={t("export.hints.runSheets")}>
+            {(hintId) => (
+              <button
+                type="button"
+                className="icon-action"
+                disabled={busy}
+                aria-describedby={hintId}
+                onClick={runSheets}
+              >
+                <IconTableExport size={18} stroke={1.5} />
+                <span className="visually-hidden">{t("export.runSheets")}</span>
+              </button>
+            )}
+          </HintedAction>
+        )}
+        {/* Absent while the run is in flight, back when it concludes — on a
+            failure too, since the spreadsheet is still where it is. */}
+        {config?.configured === true && destination !== null && !busy && (
+          <>
+            <HintedAction hint={t("export.hints.sheetLink")}>
+              {(hintId) => (
+                <a
+                  className="icon-action export-open"
+                  href={destination}
+                  target="_blank"
+                  rel="noreferrer"
+                  aria-describedby={hintId}
+                >
+                  <IconExternalLink size={18} stroke={1.5} />
+                  <span className="visually-hidden">{t("export.sheetLink")}</span>
+                </a>
+              )}
+            </HintedAction>
+            <HintedAction hint={t("export.hints.forgetSheet")}>
+              {(hintId) => (
+                <button
+                  type="button"
+                  className="icon-action"
+                  aria-describedby={hintId}
+                  onClick={() => void forget()}
+                >
+                  <IconLinkOff size={18} stroke={1.5} />
+                  <span className="visually-hidden">{t("export.forgetSheet")}</span>
+                </button>
+              )}
+            </HintedAction>
+          </>
+        )}
+        {/* the canonical document touches no Google service, so it is offered
+            whether or not the server can write a spreadsheet */}
+        <HintedAction hint={t("export.hints.downloadJson")}>
+          {(hintId) => (
+            <button
+              type="button"
+              className="icon-action"
+              aria-describedby={hintId}
+              onClick={() => void downloadJson()}
+            >
+              <IconBraces size={18} stroke={1.5} />
+              <span className="visually-hidden">{t("export.downloadJson")}</span>
+            </button>
+          )}
+        </HintedAction>
+      </div>
       {offersEnglishTick(i18n.language) && (
         <label className="rail-check">
           <input
@@ -123,53 +193,14 @@ export default function ExportPanel({
           <span>{t("export.english")}</span>
         </label>
       )}
-      {/* Where the server holds no credentials the export cannot write at all.
-          Saying so is better than offering a button that answers 503 once
-          pressed, which is what the card did before. */}
-      {config !== null && !config.configured && <p className="rail-hint">{t("export.noGoogle")}</p>}
-      {config?.configured === true && (
-        <>
-          <button
-            type="button"
-            className="secondary param-save"
-            disabled={busy}
-            onClick={runSheets}
-          >
-            {busy ? t("common.loading") : t("export.runSheets")}
-          </button>
-          {/* Absent while the run is in flight, back when it concludes —
-              on a failure too, since the spreadsheet is still where it is. */}
-          {destination !== null && !busy && (
-            <p className="export-destination">
-              <a href={destination} target="_blank" rel="noreferrer">
-                {t("export.sheetLink")}
-              </a>
-              {/* Beside the thing it forgets, not among the card's actions:
-                  it is about this destination, and it reads as a footnote to
-                  the link rather than as a fourth thing the card does. */}
-              <button type="button" className="link-button" onClick={() => void forget()}>
-                {t("export.forgetSheet")}
-              </button>
-            </p>
-          )}
-        </>
-      )}
-      <button type="button" className="secondary param-save" onClick={() => void downloadJson()}>
-        {t("export.downloadJson")}
-      </button>
-      <button type="button" className="link-button" onClick={() => setWizard("open")}>
-        {destination === null ? t("export.wizard.open") : t("export.wizard.change")}
-      </button>
       {message && <p className="rail-hint">{message}</p>}
       {error && <p className="login-error">{error}</p>}
-      {wizard !== "closed" && config !== null && (
+      {wizard && config?.service_account != null && (
         <SheetWizard
           slug={slug}
           account={config.service_account}
-          current={config.output_sheet_url}
-          exports={wizard === "pending"}
           onSaved={saved}
-          onClose={() => setWizard("closed")}
+          onClose={() => setWizard(false)}
         />
       )}
     </section>

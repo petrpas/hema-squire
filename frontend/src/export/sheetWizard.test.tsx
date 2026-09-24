@@ -66,7 +66,7 @@ async function typeDestination(value: string) {
 }
 
 function destinationLink() {
-  return host?.querySelector(".export-destination a") as HTMLAnchorElement | null;
+  return host?.querySelector("a.export-open") as HTMLAnchorElement | null;
 }
 
 it("opens the procedure instead of exporting when no destination is stored", async () => {
@@ -117,15 +117,6 @@ it("offers no Sheets export where the server has no Google access", async () => 
   expect(buttonNamed(t("export.downloadJson"))).toBeDefined();
 });
 
-it("states the missing access in place of the share step", async () => {
-  await mount({ configured: false, service_account: null });
-
-  await click(buttonNamed(t("export.wizard.open")));
-
-  expect(document.body.textContent).toContain(t("export.wizard.notConfigured"));
-  expect(document.body.textContent).not.toContain(t("export.wizard.share"));
-});
-
 it("stores the pasted destination and runs the export the organizer pressed for", async () => {
   const update = vi.spyOn(api, "updateTournament").mockResolvedValue({} as never);
   const exported = vi
@@ -143,40 +134,15 @@ it("stores the pasted destination and runs the export the organizer pressed for"
   expect(exported).toHaveBeenCalledWith("cup", false);
 });
 
-it("does not export when the procedure was opened on its own", async () => {
-  const update = vi.spyOn(api, "updateTournament").mockResolvedValue({} as never);
-  const exported = vi.spyOn(api, "exportSheet");
-  await mount({ output_sheet_url: SHEET });
-
-  await click(buttonNamed(t("export.wizard.change")));
-  await typeDestination(`${SHEET}2`);
-  await click(buttonNamed(t("export.wizard.confirm")));
-
-  expect(update).toHaveBeenCalled();
-  expect(exported).not.toHaveBeenCalled();
-});
-
 it("stores nothing when the procedure is dismissed", async () => {
   const update = vi.spyOn(api, "updateTournament");
   await mount({ output_sheet_url: null });
 
-  await click(buttonNamed(t("export.wizard.open")));
+  await click(buttonNamed(t("export.runSheets")));
   await typeDestination(SHEET);
   await click(buttonNamed(t("common.cancel")));
 
   expect(update).not.toHaveBeenCalled();
-});
-
-it("names the confirm after what it does in each of the two ways in", async () => {
-  await mount({ output_sheet_url: SHEET });
-
-  await click(buttonNamed(t("export.runSheets")));
-  expect(buttonNamed(t("export.wizard.confirm"))).toBeUndefined();
-
-  await click(buttonNamed(t("export.wizard.change")));
-  // opened on its own, confirming stores an address and stops there
-  expect(buttonNamed(t("export.wizard.confirm"))).toBeDefined();
-  expect(buttonNamed(t("export.wizard.confirmExport"))).toBeUndefined();
 });
 
 it("forgets the destination, and the next export asks for one again", async () => {
@@ -188,8 +154,6 @@ it("forgets the destination, and the next export asks for one again", async () =
 
   expect(update).toHaveBeenCalledWith("cup", { output_sheet_url: null });
   expect(destinationLink()).toBeNull();
-  // and the card offers to set one rather than to change one
-  expect(buttonNamed(t("export.wizard.open"))).toBeDefined();
 
   await click(buttonNamed(t("export.runSheets")));
   expect(exported).not.toHaveBeenCalled();

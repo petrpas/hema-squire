@@ -12,20 +12,10 @@ import CopyButton from "../CopyButton";
  *  without it, every export fails on a permission error naming an address the
  *  organizer has never seen.
  *
- *  Where the server holds no credentials there is no address to state, and the
- *  step says so rather than showing an empty value: the link can still be
- *  recorded, it simply will not be written to until the deployment is
- *  configured. */
-export default function ServiceAccountStep({ account }: { account: string | null }) {
+ *  The dialog opens only from an export control, which a server without
+ *  credentials does not offer, so there is always an address to state. */
+export default function ServiceAccountStep({ account }: { account: string }) {
   const { t } = useTranslation();
-
-  if (account === null) {
-    return (
-      <li>
-        <p>{t("export.wizard.notConfigured")}</p>
-      </li>
-    );
-  }
 
   return (
     <li>

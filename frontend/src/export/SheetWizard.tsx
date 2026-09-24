@@ -9,7 +9,8 @@ import { apiErrors, checkUrl, type FieldError as FieldErrorValue } from "../vali
 import ServiceAccountStep from "./ServiceAccountStep";
 
 /** Where the Sheets export writes, as the three things that have to be true
- *  for it to succeed rather than as a bare address field.
+ *  for it to succeed rather than as a bare address field. It opens from an
+ *  export pressed with no destination stored, and from nowhere else.
  *
  *  The field on its own was the old shape, and it sat in Setup two tabs from
  *  the button that used it. What it never stated is the step that actually
@@ -23,25 +24,16 @@ import ServiceAccountStep from "./ServiceAccountStep";
 export default function SheetWizard({
   slug,
   account,
-  current,
-  exports,
   onSaved,
   onClose,
 }: {
   slug: string;
-  account: string | null;
-  current: string | null;
-  /** Whether confirming this dialog goes on to run the export — true for the
-   *  wizard the export button opened, false for one opened to change an
-   *  address that already works. It is what the confirming button is named
-   *  after: a button reading "export" that only saves would be a lie, and the
-   *  organizer who pressed export is owed the word they pressed. */
-  exports: boolean;
+  account: string;
   onSaved: (url: string) => void;
   onClose: () => void;
 }) {
   const { t } = useTranslation();
-  const [value, setValue] = useState(current ?? "");
+  const [value, setValue] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const validation = useFieldValidation();
@@ -119,9 +111,9 @@ export default function SheetWizard({
             disabled={busy}
             onClick={() => void confirm()}
           >
-            {busy
-              ? t("common.loading")
-              : t(exports ? "export.wizard.confirmExport" : "export.wizard.confirm")}
+            {/* named after what it goes on to do: the organizer pressed
+                export, and is owed the word they pressed */}
+            {busy ? t("common.loading") : t("export.wizard.confirmExport")}
           </button>
         </div>
       </div>
