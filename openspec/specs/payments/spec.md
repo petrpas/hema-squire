@@ -302,7 +302,7 @@ Where the sum does not match within tolerance, the transaction SHALL be presente
 - **THEN** the system does not settle those five automatically and presents all six as a candidate
 
 ### Requirement: Reminders and expiry notices
-The system SHALL send an automatic reminder email, including the payment QR, to an unpaid reservation, and a notification when a reservation expires. Reminder emails SHALL carry the same payment content as the original confirmation, including the EUR amount and EUR QR when the tournament has EUR payments enabled on a non-EUR local currency. Both events SHALL be audited.
+The system SHALL send an automatic reminder email, including the payment QR, to an unpaid reservation, a notification when a reservation expires, and a notification when a registration is moved to the substitute queue for non-payment, as `registration` fixes under **Demotion is announced**. Reminder emails SHALL carry the same payment content as the original confirmation, including the EUR amount and EUR QR when the tournament has EUR payments enabled on a non-EUR local currency. Each of these events SHALL be audited.
 
 The reminder SHALL be sent once, the configured number of days before the obligation the reservation is under falls due — before the payment window closes where one is running, and before the seating deadline where the seat is held without a payment window. A reservation that owes nothing SHALL NOT be reminded.
 
@@ -331,6 +331,10 @@ A registration sitting entirely in the substitute queue owes nothing and SHALL N
 #### Scenario: Deposit paid, balance outstanding
 - **WHEN** a deposit-mode registration has paid its deposit and the seating deadline approaches with a balance outstanding
 - **THEN** a reminder is sent naming the outstanding balance and the seating deadline
+
+#### Scenario: Demotion notified
+- **WHEN** a registration is moved to the substitute queue at seating settlement for owing money
+- **THEN** the fencer is notified of the move, and the notice is audited
 
 ### Requirement: Foreign transfers without a VS field
 Payment instructions for foreign payers SHALL request the VS in the payment message, and ingestion SHALL capture every text-bearing field the bank provides — the message, the payer's own reference or user identification, any comment or specification field, and the specific symbol — so that matching can search all of them. Matching SHALL NOT restrict its search to the message field alone.
@@ -607,3 +611,32 @@ What a registration has been credited SHALL be the sum of both kinds together, s
 #### Scenario: The decision behind a credit is answerable too
 - **WHEN** a reader asks why a registration was credited by a given transaction
 - **THEN** the entry states whether an automatic match, a payment link, a reinstatement or a refund hold decided it
+
+### Requirement: Payments arriving on a queued registration
+A payment whose VS resolves to a registration sitting entirely in the substitute queue SHALL NOT be credited to it, by an automatic pass or by a bare token. The queue holds no money, and a registration credited there would read as a fencer who paid for a place they do not hold. The transaction SHALL be flagged with a reason of its own, distinct from every expiry reason, naming that the registration is queued.
+
+The fencer SHALL be notified that the payment arrived, that they are waiting in the queue and hold no place, and that the organizer will be in contact. The notice SHALL NOT promise a place and SHALL NOT imply the money is lost.
+
+The organizer SHALL resolve such a transaction in one of two ways:
+- by **promoting** the fencer, which re-evaluates the transaction at once, as `seating-queue` fixes, so that it is credited against the placement the fencer now owes for; or
+- by **marking it for refund**, the existing action on a flagged transaction, recording the amount against the fencer for manual settlement.
+
+A matching pass SHALL keep re-evaluating such a transaction, as it re-evaluates every flagged one, so that a transaction whose registration has since been promoted by any path is credited by the next pass even where the promotion did not reach it.
+
+A registration holding a seated placement beside a queued one is not sitting entirely in the queue: money arriving on it SHALL be matched against what its seated placements owe, as today.
+
+#### Scenario: Payment on a queued registration held
+- **WHEN** a transaction carrying the VS of a registration demoted at settlement arrives
+- **THEN** it is flagged with the queued reason, nothing is credited, and the fencer is told the payment arrived and the organizer will be in contact
+
+#### Scenario: Promotion credits the held payment
+- **WHEN** the organizer promotes that fencer into a free place
+- **THEN** the flagged transaction is credited against the place, and it leaves the flagged list
+
+#### Scenario: Refund instead of a place
+- **WHEN** the organizer marks the held transaction for refund
+- **THEN** the amount is recorded against the fencer for manual settlement and the registration stays in the queue
+
+#### Scenario: A mixed registration is paid as usual
+- **WHEN** a transaction arrives for a registration holding one unpaid seat and one queued placement
+- **THEN** it is matched against what the seat owes, exactly as any other payment

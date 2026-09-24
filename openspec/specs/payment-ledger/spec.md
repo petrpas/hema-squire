@@ -136,6 +136,8 @@ Whether a registration is settled SHALL be derived, at every reading, from a liv
 
 A registration holding credit whose total later falls to zero or below SHALL continue to read as settled, its balance stating the overpayment. What settles a registration is that money arrived against it, not that a total happens to be covered.
 
+**A registration sitting entirely in the substitute queue SHALL NOT read as settled, whatever it has been credited**, unless it has been waived. Every one of its placements is a place it is waiting for, and the queue holds no money (`seating-queue`): credit it holds there — a deposit forfeited at settlement, a partial payment on a registration demoted by a lapsed window — is recorded against it, counts when it is promoted, and SHALL NOT make it read as paid. A registration sitting entirely in the queue is one with at least one placement, every individual placement of which is a substitute placement and every team of which is waitlisted.
+
 The stored lifecycle SHALL hold what a person or a clock decided — that a registration is reserved, has expired, or was cancelled — and SHALL NOT hold whether it is paid. Where the lifecycle and the derivation meet, the lifecycle SHALL win: a registration credited after it expired reads as expired, and a cancelled one reads as cancelled, however much money stands against it.
 
 The state a reader is shown SHALL continue to be one of reserved, paid, expired and cancelled, composed from the lifecycle and the derivation at the point it is read.
@@ -163,6 +165,14 @@ The state a reader is shown SHALL continue to be one of reserved, paid, expired 
 #### Scenario: A fully-queued registration is not paid
 - **WHEN** a registration sits entirely in the substitute queue, so that nothing it holds is priced and it owes nothing
 - **THEN** it reads as reserved, and appears on no roster as having paid
+
+#### Scenario: A forfeited deposit does not read as paid
+- **WHEN** a deposit-mode registration credited its 500 deposit is demoted at settlement and its total recomputed to nothing
+- **THEN** it reads as reserved, its credit of 500 stands against it, and it appears on no roster as having paid
+
+#### Scenario: Promotion lets the held credit count
+- **WHEN** that registration is promoted into a place priced 1750
+- **THEN** it owes 1250, and reads as paid once 1250 more is credited
 
 #### Scenario: A tournament that charges nothing
 - **WHEN** a registration on a tournament whose total comes to zero is read

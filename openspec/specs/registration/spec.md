@@ -203,12 +203,12 @@ A registration SHALL store a total per configured currency, computed when the re
 ### Requirement: Reservation lifecycle
 A reservation's lifecycle SHALL depend on the tournament's payment mode, and SHALL be governed by two independent clocks that produce two different outcomes:
 
-- The **payment window** is the interval between money being requested and money being due, configured per tournament in days. It belongs to one registration. A reservation whose payment window passes unpaid SHALL expire, freeing any capacity it held and leaving the fencer outside the substitute queue — **except where the registration also holds a substitute placement**, in which case it SHALL be demoted rather than expired, as fixed below.
-- The **seating deadline** is a single date for the whole tournament, on which seating settles. A reservation still owing money when the seating deadline passes SHALL be moved to the substitute queue — it SHALL NOT expire, and it SHALL keep its place in registration order.
+- The **payment window** is the interval between money being requested and money being due, configured per tournament in days. It belongs to one registration. A reservation whose payment window passes unpaid SHALL expire, freeing any capacity it held and leaving the fencer outside the substitute queue — **except where the registration also holds a substitute placement**, in which case it SHALL be demoted rather than expired, as fixed below. Where the window was opened by a promotion, what the lapse takes back is first the placements that promotion seated, as `seating-queue` fixes under **Organizer promotion from the queue**; a paid seat SHALL NOT be lost for an unpaid promotion.
+- The **seating deadline** is a single date for the whole tournament, on which seating settles. A reservation still owing money when the seating deadline passes SHALL be moved to the substitute queue — it SHALL NOT expire, and the placements it is moved out of seats with SHALL join the end of the queue, as **Seating settlement at the deadline** fixes.
 
 The seating deadline SHALL NOT be expressed as a payment window on individual registrations, so that the expiry of a payment window can never release a seat that the seating deadline would have queued.
 
-**A registration holding a substitute placement SHALL NOT expire.** When its payment window passes unpaid, it SHALL be demoted instead: every seated placement becomes a substitute placement, every seated team is waitlisted, the payment window closes, and the registration stays reserved in its original registration order. It loses the seat it did not pay for and keeps the queue place it never owed for. A queue place SHALL NOT be forfeited for money owed on a different placement, for the same reason a lapsed promotion after seating settles returns to the queue rather than expiring out of it (`seating-queue`): the fencer's place in line was never what the money was for.
+**A registration holding a substitute placement SHALL NOT expire.** When its payment window passes unpaid, it SHALL be demoted instead: every seated placement becomes a substitute placement joining the end of its discipline's queue, every seated team is waitlisted at the end of its discipline's waitlist, the payment window closes, its stored totals are recomputed, the fencer is notified as **Demotion is announced** fixes, and the registration stays reserved. It loses the seat it did not pay for and keeps, in the queue moment it already held, the queue place it never owed for. A queue place SHALL NOT be forfeited for money owed on a different placement, for the same reason a lapsed promotion after seating settles returns to the queue rather than expiring out of it (`seating-queue`): the fencer's place in line was never what the money was for.
 
 A registration holding no substitute placement SHALL expire on a lapsed payment window exactly as it does today.
 
@@ -236,11 +236,11 @@ An expired reservation SHALL NOT bar the fencer from the tournament. A fencer wh
 
 #### Scenario: Mixed registration demoted rather than expired
 - **WHEN** the payment window passes unpaid on a registration holding one seated placement and one queued placement
-- **THEN** the seated placement becomes a substitute placement, its capacity is freed, the registration stays reserved, and its queue place is kept in its original registration order
+- **THEN** the seated placement becomes a substitute placement at the end of its discipline's queue, its capacity is freed, the registration stays reserved, and the placement that was already queued keeps its place
 
 #### Scenario: Queue place survives money owed elsewhere
 - **WHEN** a fencer never pays for the discipline they were seated in
-- **THEN** they remain in the queue for the discipline they were queued in, at the position their registration time gives them, owing nothing
+- **THEN** they remain in the queue for the discipline they were queued in, at the position their queue moment gives them, owing nothing
 
 #### Scenario: Payment arrives in time
 - **WHEN** a matching payment is ingested before the payment window closes
@@ -295,13 +295,13 @@ An expired reservation SHALL NOT bar the fencer from the tournament. A fencer wh
 - **THEN** those registrations remain seated, acquire no due date, are not demoted when seating settles, and are sent nothing
 
 ### Requirement: Seating settlement at the deadline
-Seating SHALL settle when the tournament's seating deadline passes, or earlier if the organizer settles it by hand. Settling SHALL do the same thing in both cases: every registration that is still reserved — that is, still owing money — and whose lifecycle clocks are not dormant SHALL have each of its seated discipline entries marked as a substitute placement and each of its non-waitlisted teams waitlisted, in place, freeing the capacity they held. The registration SHALL remain reserved, SHALL keep its VS, and SHALL have no payment window.
+Seating SHALL settle when the tournament's seating deadline passes, or earlier if the organizer settles it by hand. Settling SHALL do the same thing in both cases: every registration that is still reserved — that is, still owing money — and whose lifecycle clocks are not dormant SHALL have each of its seated discipline entries marked as a substitute placement and each of its non-waitlisted teams waitlisted, in place, freeing the capacity they held. The registration SHALL remain reserved, SHALL keep its VS, SHALL have no payment window, and SHALL have its stored totals recomputed, so that it no longer states the price of a seat it does not hold. Its fencer SHALL be notified as **Demotion is announced** fixes.
 
 A dormant registration SHALL NOT be demoted, for whichever cause made it dormant, as fixed by **One dormancy predicate governs the lifecycle passes**. Being reserved is what identifies a debtor only where money was asked for; where none was, the state means nothing about what is owed and SHALL NOT be read as though it did.
 
 Closing seating SHALL NOT depend on there being anything to demote. Settlement SHALL record the tournament as settled whether it moved every registration or none, so that seating closes on its deadline on every tournament alike and later registrations join the queue.
 
-Settled registrations SHALL take their position in the substitute queue by registration time, ranked among existing substitutes as though they had been queued from the start, so that a fencer who registered early keeps that advantage over one who registered late.
+Each placement moved by settlement SHALL join the **end** of its discipline's queue: its queue moment SHALL be the moment of settlement, so that it ranks after every fencer already waiting, however early it registered. A fencer who held a seat and did not pay for it SHALL NOT take precedence over one who waited in the queue from the start. Registrations moved by one settlement SHALL rank among themselves by registration time. A placement the registration already held in the queue SHALL keep its queue moment. Teams SHALL join the end of their discipline's waitlist on the same terms.
 
 Settlement SHALL be recorded per registration under a distinct audit event.
 
@@ -327,11 +327,15 @@ Seating SHALL be treated as settled when it has been settled explicitly, and als
 
 #### Scenario: Deposit paid, balance not
 - **WHEN** the seating deadline passes on a deposit-mode registration that paid its deposit but not its balance
-- **THEN** it is moved to the substitute queue and the deposit is not refunded
+- **THEN** it is moved to the substitute queue, the deposit stays recorded against it and is not refunded, and it does not read as paid
 
-#### Scenario: Registration order preserved across demotion
-- **WHEN** two registrations are demoted at settlement and a third was already queued between them by registration time
-- **THEN** all three sit in the queue in registration order
+#### Scenario: Demoted registrations join the end of the queue
+- **WHEN** two registrations are demoted at settlement and a third, registered between them, was already queued
+- **THEN** the already-queued one ranks first, and the two demoted ones follow it in registration order
+
+#### Scenario: Demotion reprices the registration
+- **WHEN** a reservation-mode registration owing 1750 for its one seat is demoted at settlement
+- **THEN** its stored total no longer includes the seat, and its balance does not state 1750 as owed
 
 #### Scenario: Teams follow their registration
 - **WHEN** a demoted registration carries a team that was not waitlisted
@@ -507,7 +511,7 @@ The account SHALL be stated in the same form as the in-app instructions: a Czech
 - **THEN** the reminder and the in-app instructions for that reservation state the same amounts and carry the same QR codes as the original confirmation
 
 ### Requirement: Capacity and substitutes
-Discipline capacity SHALL be consumed by confirmed registrations and by reservations within their validity window. When an individual discipline is full, further registrations SHALL join a substitute queue in registration order. When a team discipline is full, further teams SHALL join a team waitlist in entry order, counted in teams rather than fencers, as fixed by `team-disciplines`. When a spot frees through expiry or cancellation, the organizer SHALL be able to admit substitutes from the individual queue; admitting a waitlisted team is not offered.
+Discipline capacity SHALL be consumed by confirmed registrations and by reservations within their validity window. When an individual discipline is full, further registrations SHALL join a substitute queue, in the queue order `seating-queue` fixes — for a placement queued at registration, its registration time. When a team discipline is full, further teams SHALL join a team waitlist in entry order, counted in teams rather than fencers, as fixed by `team-disciplines`. When a spot frees through expiry or cancellation, the organizer SHALL be able to admit substitutes from the individual queue; admitting a waitlisted team is not offered.
 
 **Each discipline in a submission SHALL be placed against its own capacity**, independently of every other discipline in the same submission. A selection mixing full and open disciplines SHALL seat the open ones and queue the full ones, in one operation. A full discipline SHALL NOT cost the fencer a seat in an open one, and an open discipline SHALL NOT seat a fencer in a full one. Teams follow the same rule per team, as they already do.
 
@@ -885,3 +889,32 @@ A contact address SHALL NOT be credentials. It SHALL grant no access, and no acc
 #### Scenario: A contact address is not a login
 - **WHEN** a registration carries a contact address belonging to no account
 - **THEN** nobody can sign in with it and no account exists for it
+
+### Requirement: Demotion is announced
+A registration moved to the substitute queue for non-payment SHALL be notified, as an expired one is. This SHALL hold for every path by which non-payment demotes: seating settlement, whether reached by the deadline or triggered by the organizer; a promotion window lapsing after seating has settled; and a payment window lapsing on a registration that also holds a queued placement.
+
+The notice SHALL name each discipline and each team the registration was moved out of a seat in, and the queue position it now holds in each. It SHALL state that nothing is owed while the registration waits, that no payment should be sent, and that a place is offered by the organizer promoting the fencer, at which point a new payment window opens. Where the registration holds credit — a deposit paid, or any partial payment — the notice SHALL state that the amount stays recorded against the registration and counts if the fencer is promoted, and SHALL NOT promise its refund.
+
+A registration the organizer returns to the queue by hand SHALL NOT be sent this notice; the organizer's return is a correction they communicate themselves. A dormant registration is never demoted and so SHALL never be sent it. The notice SHALL be sent once per demotion, and a demotion that moves nothing SHALL send nothing.
+
+The notice SHALL be recorded in the audit trail alongside the demotion it announces.
+
+#### Scenario: Settlement announces the demotion
+- **WHEN** a reservation-mode registration is demoted at seating settlement
+- **THEN** its fencer is mailed that they were moved to the queue, in which disciplines and at which positions, and that nothing is owed now
+
+#### Scenario: Deposit named in the notice
+- **WHEN** a deposit-mode registration that paid its 500 deposit and not its balance is demoted at settlement
+- **THEN** the notice states that the 500 stays recorded against the registration and counts on promotion, and does not promise a refund
+
+#### Scenario: A lapsed promotion is announced
+- **WHEN** a fencer promoted after settlement lets the promotion window lapse unpaid
+- **THEN** they are returned to the queue and mailed that they were
+
+#### Scenario: The organizer's return is not announced
+- **WHEN** the organizer returns a seated registration to the queue by hand
+- **THEN** no demotion notice is sent
+
+#### Scenario: Nothing moved, nothing sent
+- **WHEN** seating settles on a tournament where no registration owes money
+- **THEN** no demotion notice is sent to anyone
