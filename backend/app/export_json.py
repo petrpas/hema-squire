@@ -44,7 +44,7 @@ from app.models import (
 )
 from app.routers.tournaments import _lowest_free_series
 
-SCHEMA_VERSION = 14
+SCHEMA_VERSION = 15
 
 _TOURNAMENT_FIELDS = [
     "slug",
@@ -348,8 +348,16 @@ def export_tournament(session: Session, tournament: Tournament) -> dict:
                 # before schema 12; `fencer_ref` is what the link is made on
                 "fencer_email": r.fencer.email,
                 **_record(r, _REGISTRATION_FIELDS),
+                # the queue moment and the promotion mark arrived in v15
+                # (design demotion-hardening D7)
                 "entries": [
-                    {"slug": e.discipline.slug, "is_substitute": e.is_substitute} for e in r.entries
+                    {
+                        "slug": e.discipline.slug,
+                        "is_substitute": e.is_substitute,
+                        "queued_since": e.queued_since.isoformat(),
+                        "promoted_unpaid": e.promoted_unpaid,
+                    }
+                    for e in r.entries
                 ],
                 "extras": [
                     {
@@ -365,6 +373,8 @@ def export_tournament(session: Session, tournament: Tournament) -> dict:
                         "name": team.name,
                         "discipline_slug": team.discipline.slug,
                         "waitlisted": team.waitlisted,
+                        "waitlisted_since": team.waitlisted_since.isoformat(),
+                        "promoted_unpaid": team.promoted_unpaid,
                         "members": [
                             {
                                 "name": m.name,
@@ -494,7 +504,7 @@ def _guard_uncomposable_payment_state(data: dict) -> None:
 
 def restore_tournament(session: Session, data: dict, actor: Fencer) -> Tournament:
     version = data.get("schema_version")
-    if version not in (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, SCHEMA_VERSION):
+    if version not in (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, SCHEMA_VERSION):
         raise HTTPException(status_code=422, detail="unsupported_schema_version")
     if version != SCHEMA_VERSION:
         _guard_uncomposable_payment_state(data)
@@ -653,6 +663,12 @@ def restore_tournament(session: Session, data: dict, actor: Fencer) -> Tournamen
                     registration_id=registration.id,
                     discipline_id=disciplines[slug].id,
                     is_substitute=item["is_substitute"],
+                    # before v15 every placement queued by its registration
+                    # time, so that is the moment it restores with
+                    queued_since=(
+                        _parse_dt(item.get("queued_since")) or registration.registered_at
+                    ),
+                    promoted_unpaid=item.get("promoted_unpaid", False),
                 )
             )
         for extra in entry.get("extras", []):
@@ -681,6 +697,10 @@ def restore_tournament(session: Session, data: dict, actor: Fencer) -> Tournamen
                 discipline_id=disciplines[slug].id,
                 name=team_entry["name"],
                 waitlisted=team_entry["waitlisted"],
+                waitlisted_since=(
+                    _parse_dt(team_entry.get("waitlisted_since")) or registration.registered_at
+                ),
+                promoted_unpaid=team_entry.get("promoted_unpaid", False),
             )
             session.add(team)
             session.flush()

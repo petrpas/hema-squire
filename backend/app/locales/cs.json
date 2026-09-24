@@ -93,6 +93,21 @@
     "substituteDeparted": {
       "subject": "Tvé místo přebírá někdo jiný — {tournament}",
       "body": "Ahoj {name},\n\ntvé místo na {tournament} přebírá {substitute}. Tvá registrace tím končí.\n\nPřípadné vyrovnání startovného si domluvte mezi sebou — Squire nic nevrací.\n\nTým {tournament}"
+    },
+    "demoted": {
+      "subject": "Přesun do fronty náhradníků — {tournament}",
+      "body": "Ahoj {name},\n\nplatba za tvou registraci na {tournament} (VS {vs}) nedorazila v termínu, a tak jsme tě přesunuli do fronty náhradníků:\n\n{moved}\n\nDokud čekáš ve frontě, nic nedlužíš — nic prosím neposílej. Pokud se uvolní místo a organizátor tě posune zpět, pošleme ti pokyny k platbě a otevře se nová lhůta.{credit}\n\nTým {tournament}",
+      "entry": "{discipline} — {position}. ve frontě",
+      "team": "{team} — {discipline}: {position}. na čekací listině",
+      "credit": "\n\nČástka {amount}, kterou jsi už zaplatil/a, zůstává evidovaná u tvé registrace a započítá se, pokud tě organizátor posune na místo."
+    },
+    "paymentWhileQueued": {
+      "subject": "Platba přijata, čekáš ve frontě — {tournament}",
+      "body": "Ahoj {name},\n\ndorazila tvá platba (VS {vs}) k registraci na {tournament}. Registrace ale čeká celá ve frontě náhradníků a zatím nemáš žádné místo, takže jsme platbu nezapočítali. Ozve se ti organizátor a domluví další postup.\n\nTým {tournament}"
+    },
+    "promotedPaid": {
+      "subject": "Uvolnilo se místo — {tournament}",
+      "body": "Ahoj {name},\n\nv disciplíně {discipline} na {tournament} se pro tebe uvolnilo místo — už nejsi náhradník.\n\nMísto je už uhrazené, takže nic dalšího neplatíš. Tvoje účast je potvrzena.\n\nTým {tournament}"
     }
   },
   "export": {

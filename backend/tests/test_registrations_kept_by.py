@@ -429,13 +429,17 @@ def test_manual_settlement_demotes_nobody(client, auth_headers, mailbox):
         clocks_dormant=False,
     )
     registration.entries.append(
-        RegistrationDiscipline(discipline_id=tournament.disciplines[0].id, is_substitute=False)
+        RegistrationDiscipline(
+            discipline_id=tournament.disciplines[0].id,
+            is_substitute=False,
+            queued_since=datetime.now(UTC),
+        )
     )
     session.add(registration)
     session.commit()
 
     assert pending_demotions(session, tournament) == 0
-    assert settle_seating(session, tournament) == 0
+    assert settle_seating(session, tournament, get_mailer()) == 0
     assert tournament_row().seating_settled_at is not None
 
     after = db_session().get(Registration, registration.id)

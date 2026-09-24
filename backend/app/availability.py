@@ -11,7 +11,7 @@ wrong pair for a discipline's kind is a programming error, asserted below."""
 from collections.abc import Sequence
 from datetime import UTC, datetime
 
-from sqlalchemy import func, select
+from sqlalchemy import ColumnElement, and_, func, or_, select
 from sqlalchemy.orm import Session
 
 from app.models import (
@@ -45,6 +45,74 @@ def live_registration():
         | (Registration.expires_at.is_(None))
         | (Registration.expires_at > datetime.now(UTC))
     )
+
+
+QUEUE_ORDER = (RegistrationDiscipline.queued_since, Registration.registered_at, Registration.id)
+"""The substitute queue's order: the placement's queue moment, then the
+registration time, then the registration. The moment is the registration time
+for a placement queued at registration and the moment of demotion for one moved
+there for non-payment (spec seating-queue); registrations demoted together share
+it and so fall back to the order they registered in. Every reader of queue
+order sorts by this, so the position a fencer is shown and the order the
+organizer's view lists them in cannot disagree."""
+
+
+def queued_before(entry: RegistrationDiscipline) -> ColumnElement[bool]:
+    """Whether a placement in the selection sits ahead of `entry` in
+    `QUEUE_ORDER`. Spelled out rather than as a row-value comparison, which not
+    every database this runs on accepts with bound parameters."""
+    moment, registered_at, registration_id = QUEUE_ORDER
+    registration = entry.registration
+    return or_(
+        moment < entry.queued_since,
+        and_(
+            moment == entry.queued_since,
+            or_(
+                registered_at < registration.registered_at,
+                and_(
+                    registered_at == registration.registered_at, registration_id < registration.id
+                ),
+            ),
+        ),
+    )
+
+
+def queue_position(session: Session, entry: RegistrationDiscipline) -> int:
+    """Where a substitute placement stands in its discipline's queue, counted
+    over live placements in `QUEUE_ORDER`."""
+    earlier = session.scalar(
+        select(func.count())
+        .select_from(RegistrationDiscipline)
+        .join(Registration)
+        .where(
+            RegistrationDiscipline.discipline_id == entry.discipline_id,
+            RegistrationDiscipline.is_substitute.is_(True),
+            live_registration(),
+            queued_before(entry),
+        )
+    )
+    return (earlier or 0) + 1
+
+
+def team_waitlist_position(session: Session, team: Team) -> int:
+    """Where a waitlisted team stands on its discipline's waitlist: entry order,
+    except that a team demoted for non-payment waits from the moment it was
+    demoted — `(waitlisted_since, id)`, as the console's team view lists them."""
+    earlier = session.scalar(
+        select(func.count())
+        .select_from(Team)
+        .join(Registration)
+        .where(
+            Team.discipline_id == team.discipline_id,
+            Team.waitlisted.is_(True),
+            live_registration(),
+            or_(
+                Team.waitlisted_since < team.waitlisted_since,
+                and_(Team.waitlisted_since == team.waitlisted_since, Team.id < team.id),
+            ),
+        )
+    )
+    return (earlier or 0) + 1
 
 
 def full_disciplines(session: Session, disciplines: list[Discipline]) -> set[str]:

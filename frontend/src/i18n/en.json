@@ -1058,7 +1058,8 @@
         "currency_unconvertible": "currency not convertible",
         "registration_paid": "registration already paid",
         "registration_cancelled": "registration cancelled",
-        "not_an_incoming_payment": "not an incoming payment"
+        "not_an_incoming_payment": "not an incoming payment",
+        "registration_queued": "registration is waiting entirely in the queue — promote it, or mark the payment for refund"
       },
       "settledByHand": "Settled by hand: {{reason}}",
       "settledByPayment": "Settled by a payment recorded by hand: {{amount}}, {{date}}"
@@ -1257,6 +1258,7 @@
     "noneSeated": "Nobody holds a place in this discipline.",
     "position": "{{position}}.",
     "registeredAt": "registered {{moment}}",
+    "demotedAt": "queued since {{moment}}, moved for non-payment",
     "promote": "promote",
     "returnToQueue": "return to queue",
     "noDisciplines": "This tournament offers no individual discipline.",

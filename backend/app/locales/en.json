@@ -62,6 +62,21 @@
     "substituteDeparted": {
       "subject": "Someone else is taking your place — {tournament}",
       "body": "Hi {name},\n\n{substitute} is taking over your place at {tournament}. Your registration ends with that.\n\nAny settling of the entry fee is between the two of you — Squire refunds nothing.\n\n{tournament} team"
+    },
+    "demoted": {
+      "subject": "Moved to the substitute queue — {tournament}",
+      "body": "Hi {name},\n\nthe payment for your registration at {tournament} (VS {vs}) did not arrive in time, so you have been moved to the substitute queue:\n\n{moved}\n\nWhile you wait in the queue you owe nothing — please do not send any payment. If a place opens and the organizer promotes you, we will send payment instructions and a new payment window will open.{credit}\n\n{tournament} team",
+      "entry": "{discipline} — number {position} in the queue",
+      "team": "{team} — {discipline}: number {position} on the waitlist",
+      "credit": "\n\nThe {amount} you have already paid stays recorded against your registration and counts if the organizer promotes you."
+    },
+    "paymentWhileQueued": {
+      "subject": "Payment received while you are queued — {tournament}",
+      "body": "Hi {name},\n\nyour payment (VS {vs}) arrived for your registration at {tournament}. Your registration is waiting entirely in the substitute queue and holds no place yet, so the payment has not been credited. The organizer will be in contact about what happens next.\n\n{tournament} team"
+    },
+    "promotedPaid": {
+      "subject": "A place has opened — {tournament}",
+      "body": "Hi {name},\n\na place has opened for you in {discipline} at {tournament} — you are no longer a substitute.\n\nThe place is already paid for, so there is nothing more to pay. Your participation is confirmed.\n\n{tournament} team"
     }
   },
   "export": {

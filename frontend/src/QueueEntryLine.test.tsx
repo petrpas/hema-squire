@@ -6,17 +6,20 @@ import type { QueueEntry } from "./api";
 import i18n from "./i18n";
 import QueueEntryLine from "./QueueEntryLine";
 
-// The queue is ordered by the registration moment, so the line has to state
-// the moment it is ordered by — the day alone cannot separate two fencers who
-// registered the same morning (spec `seating-queue`).
+// The queue is ordered by the queue moment, so the line has to state the moment
+// it is ordered by — the day alone cannot separate two fencers who registered
+// the same morning — and whether it is a registration or a demotion (spec
+// `seating-queue`).
 
-function entry(position: number, registeredAt: string): QueueEntry {
+function entry(position: number, registeredAt: string, queuedSince = registeredAt): QueueEntry {
   return {
     registration_id: position,
     fencer: `Fencer ${position}`,
     club: null,
     vs: null,
     registered_at: registeredAt,
+    queued_since: queuedSince,
+    demoted: queuedSince !== registeredAt,
     queue_position: position,
   };
 }
@@ -42,5 +45,11 @@ describe("queue entry line", () => {
       <QueueEntryLine entry={entry(1, "2026-03-14T23:30:00Z")} timezone="Pacific/Auckland" />,
     );
     expect(html).toContain("registered 15. 3. 2026 12:30");
+  });
+
+  it("states a demotion moment as one, so a fencer demoted at settlement is legibly behind", () => {
+    const html = line(entry(3, "2026-03-01T08:00:00Z", "2026-05-01T22:00:00Z"));
+    expect(html).toContain("queued since 2. 5. 2026 00:00, moved for non-payment");
+    expect(html).not.toContain("registered 1. 3. 2026");
   });
 });

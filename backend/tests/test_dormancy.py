@@ -274,7 +274,7 @@ def test_pending_demotions_and_settlement_agree(client, auth_headers, mailbox):
 
     tournament = tournament_row(session)
     assert pending_demotions(session, tournament) == 4
-    assert settle_seating(session, tournament) == 4
+    assert settle_seating(session, tournament, get_mailer()) == 4
 
     for registration in owing:
         assert placements(registration["vs"]) == [True]

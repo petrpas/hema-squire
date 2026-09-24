@@ -8,12 +8,13 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import delete, func, select, update
 from sqlalchemy.exc import IntegrityError
 
-from app import accounts, amendment, emails, ledger, pricing, rownumbers, setup, spayd
+from app import accounts, amendment, emails, ledger, matching, pricing, rownumbers, setup, spayd
 from app.auth import require_console_access, require_published
 from app.availability import (
     full_disciplines,
     live_registration,
     queue_length,
+    queue_position,
     taken_seats,
     taken_team_slots,
     team_queue_length,
@@ -82,21 +83,6 @@ def _unavailable(tournament: Tournament, reason: str, now: datetime) -> HTTPExce
         detail["opens_at"] = opens_at.isoformat() if opens_at is not None else None
         detail["server_time"] = now.isoformat()
     return HTTPException(status_code=403, detail=detail)
-
-
-def queue_position(session, entry: RegistrationDiscipline) -> int:
-    earlier = session.scalar(
-        select(func.count())
-        .select_from(RegistrationDiscipline)
-        .join(Registration)
-        .where(
-            RegistrationDiscipline.discipline_id == entry.discipline_id,
-            RegistrationDiscipline.is_substitute.is_(True),
-            live_registration(),
-            Registration.registered_at < entry.registration.registered_at,
-        )
-    )
-    return (earlier or 0) + 1
 
 
 def next_vs(session, tournament: Tournament) -> int:
@@ -561,7 +547,11 @@ def register(
         registration.notes = data.notes
         for discipline in selected:
             registration.entries.append(
-                RegistrationDiscipline(discipline=discipline, is_substitute=discipline.slug in full)
+                RegistrationDiscipline(
+                    discipline=discipline,
+                    is_substitute=discipline.slug in full,
+                    queued_since=registration.registered_at,
+                )
             )
         for selection in data.extras:
             value = (selection.option_value or "").strip()
@@ -587,6 +577,7 @@ def register(
                     discipline=discipline,
                     name=team_in.name,
                     waitlisted=waitlisted,
+                    waitlisted_since=registration.registered_at,
                 )
             )
         try:
@@ -950,6 +941,18 @@ def admit_substitute(
     # unify-lifecycle-dormancy D1)
     if setup.clocks_run(tournament, registration):
         registration.expires_at = _promotion_expires_at(tournament)
+    # Money the fencer sent while sitting entirely in the queue was held rather
+    # than credited; it is credited now, against the place it pays for, so the
+    # letter below states what is still due after it (spec seating-queue).
+    session.flush()
+    matching.credit_held_for(session, tournament, registration)
+    # A promotion not yet paid for is marked, so a lapse of the window it opens
+    # takes back this placement alone and never a seat already paid for. A
+    # promotion that opens no window cannot lapse and is not marked.
+    if registration.expires_at is not None and not registration.settled:
+        entry.promoted_unpaid = True
+    elif registration.settled:
+        registration.expires_at = None
     if was_paid:
         session.add(
             PaymentEvent(
@@ -986,9 +989,15 @@ def return_to_queue(
 ):
     """The inverse of `admit_substitute`: put a seated placement back below the
     line, freeing its seat and closing any payment window the registration was
-    under. `queue_position` ranks by `Registration.registered_at`, so the
-    fencer returns to the place they always had rather than the back of the
-    queue.
+    under.
+
+    The placement's queue moment is left as it stands. Promotion never moves
+    it, so the fencer returns to the place they held before — their
+    registration time if they were never queued, the moment of their demotion
+    if they were demoted and promoted since — rather than the back of the
+    queue. This is a correction, not a demotion for non-payment: it neither
+    moves the moment nor sends the demotion notice (spec seating-queue,
+    Organizer return to the queue).
 
     Refused on a paid registration: demoting one would leave money in the
     queue, which the queue deliberately never holds (design D5). The
@@ -1015,6 +1024,8 @@ def return_to_queue(
         raise HTTPException(status_code=409, detail="registration_paid_cancel_instead")
 
     entry.is_substitute = True
+    # the promotion that seated it, if one did, is withdrawn with it
+    entry.promoted_unpaid = False
     totals = pricing.registration_total(registration, tournament)
     registration.total_amount = totals.local
     registration.total_eur = totals.eur

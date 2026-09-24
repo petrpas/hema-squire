@@ -271,7 +271,11 @@ def _issue_one(
             # them owing nothing at all (spec imported-registrations, "Capacity
             # does not apply to an issued registration").
             registration.entries.append(
-                RegistrationDiscipline(discipline=discipline, is_substitute=False)
+                RegistrationDiscipline(
+                    discipline=discipline,
+                    is_substitute=False,
+                    queued_since=registration.registered_at,
+                )
             )
         session.add(registration)
         try:

@@ -569,6 +569,26 @@ def send_promoted(
         )
         return
 
+    if registration.settled:
+        # money the fencer sent while queued was credited by the promotion
+        # itself and covers the place, so the letter confirms it rather than
+        # asking for anything (spec seating-queue)
+        mailer.send(
+            build_message(
+                recipient(registration, fencer),
+                settings.email_sender,
+                t("email.promotedPaid.subject", lang, tournament=tournament.display_name),
+                t(
+                    "email.promotedPaid.body",
+                    lang,
+                    name=fencer.display_name,
+                    tournament=tournament.display_name,
+                    discipline=discipline_name,
+                ),
+            )
+        )
+        return
+
     outstanding_local = (Decimal(registration.outstanding_cents) / 100).quantize(
         Decimal("0.01"), rounding=ROUND_HALF_UP
     )
@@ -647,6 +667,99 @@ def send_payment_after_expiry(
     )
     mailer.send(
         build_message(recipient(registration, fencer), settings.email_sender, subject, body)
+    )
+
+
+def _credit_text(tournament: Tournament, registration: Registration, lang: str) -> str | None:
+    """What this registration holds in credit, in each lane that holds any, or
+    None where it holds nothing. The two lanes are alternative prices, so each
+    is stated in its own currency and never summed."""
+    parts = []
+    for which, currency in (("local", tournament.local_currency), ("eur", Currency.EUR)):
+        cents = registration.credited_in(which)
+        if cents > 0:
+            # a whole amount reads as one, as the fencer paid it
+            amount = cents // 100 if cents % 100 == 0 else Decimal(cents) / 100
+            parts.append(format_money(amount, currency, lang))
+    return " + ".join(parts) if parts else None
+
+
+def send_demoted(
+    mailer: Mailer,
+    tournament: Tournament,
+    fencer: Fencer,
+    registration: Registration,
+    moved: list[tuple[str, int]],
+    moved_teams: list[tuple[str, str, int]],
+) -> bool:
+    """A registration moved to the substitute queue for non-payment (spec
+    registration, Demotion is announced): the disciplines — `(name, queue
+    position)` — and teams — `(team, discipline, waitlist position)` — it was
+    moved out of a seat in, that nothing is owed while it waits and nothing
+    should be sent, and that a promotion opens a new window.
+
+    Credit it holds — a deposit, a partial payment — is stated as staying
+    recorded and counting on promotion. Its refund is never promised: whether
+    the money comes back is the organizer's decision, not this letter's.
+
+    The positions are read by the caller after the demotion is committed, so
+    they are the ones the fencer then sees in the app. Returns whether a
+    message was sent, so the caller can record the notice beside the demotion."""
+    if _payment_mail_suppressed(tournament, registration):
+        return False
+    lang = tournament.language
+    lines = [
+        "  " + t("email.demoted.entry", lang, discipline=name, position=position)
+        for name, position in moved
+    ] + [
+        "  " + t("email.demoted.team", lang, team=team, discipline=name, position=position)
+        for team, name, position in moved_teams
+    ]
+    held = _credit_text(tournament, registration, lang)
+    body = t(
+        "email.demoted.body",
+        lang,
+        name=fencer.display_name,
+        tournament=tournament.display_name,
+        vs=registration.vs,
+        moved="\n".join(lines),
+        credit=t("email.demoted.credit", lang, amount=held) if held is not None else "",
+    )
+    mailer.send(
+        build_message(
+            recipient(registration, fencer),
+            settings.email_sender,
+            t("email.demoted.subject", lang, tournament=tournament.display_name),
+            body,
+        )
+    )
+    return True
+
+
+def send_payment_while_queued(
+    mailer: Mailer, tournament: Tournament, fencer: Fencer, registration: Registration
+) -> None:
+    """A payment on a registration sitting entirely in the queue, held rather
+    than credited (spec payments, Payments arriving on a queued registration):
+    it arrived, the fencer holds no place, and the organizer will be in contact.
+    It promises no place and does not imply the money is lost — the organizer
+    resolves it by promoting the fencer or by marking it for refund."""
+    if _payment_mail_suppressed(tournament, registration):
+        return
+    lang = tournament.language
+    mailer.send(
+        build_message(
+            recipient(registration, fencer),
+            settings.email_sender,
+            t("email.paymentWhileQueued.subject", lang, tournament=tournament.display_name),
+            t(
+                "email.paymentWhileQueued.body",
+                lang,
+                name=fencer.display_name,
+                tournament=tournament.display_name,
+                vs=registration.vs,
+            ),
+        )
     )
 
 

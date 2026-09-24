@@ -332,6 +332,13 @@ def base_rows(
             "email": registration.contact_email or registration.fencer.email,
             "disciplines": [e.discipline.slug for e in registration.entries if not e.is_substitute],
             "substitute_for": [e.discipline.slug for e in registration.entries if e.is_substitute],
+            # each queued placement's queue moment, which orders the rows below
+            # a discipline tab's line (spec seating-queue, export-tables)
+            "queued_since": {
+                e.discipline.slug: e.queued_since.isoformat()
+                for e in registration.entries
+                if e.is_substitute
+            },
             # what HEMA Ratings says, per discipline slug, before a correction.
             # An organizer's typed rating is a rule replayed over this map, so
             # a refresh reseeds it and the correction is written again on top
@@ -501,6 +508,7 @@ def _imported_rows(
             "email": record.get("email"),
             "disciplines": disciplines,
             "substitute_for": [],
+            "queued_since": {},
             # a source row carries no ratings: a snapshot is taken over the
             # fencers the tournament has registered, and a row that has not
             # been issued one is in no snapshot to read
@@ -548,6 +556,7 @@ def _unparsed_row(row_id: str, row: ImportedRow) -> Row:
         "email": None,
         "disciplines": [],
         "substitute_for": [],
+        "queued_since": {},
         "ratings": {},
         "ranks": {},
         "extras": {},
@@ -603,6 +612,7 @@ def _manual_row(row: ManualRow, index: HRIndex | None = None) -> Row:
         "email": row.email,
         "disciplines": list(row.disciplines),
         "substitute_for": [],
+        "queued_since": {},
         "ratings": {},
         "ranks": {},
         "extras": {},

@@ -17,6 +17,7 @@ looks like afterward. The two currency lanes are never summed.
 
 import re
 from datetime import UTC, datetime, timedelta
+from email.message import EmailMessage
 from typing import Literal
 
 from pydantic import BaseModel
@@ -50,6 +51,11 @@ LABELLED_VS = re.compile(r"\bVS[:\s]*(\d{1,10})\b", re.IGNORECASE)
 # vs); the lookaround keeps it from matching inside a longer digit run
 # (design Decision 5, tier 2).
 BARE_VS = re.compile(r"(?<!\d)\d{7}(?!\d)")
+
+# The flag a transaction carries while its registration sits entirely in the
+# queue — distinct from every expiry reason, because what resolves it is a
+# promotion or a refund, not a reinstatement
+QUEUED_REASON = "registration_queued"
 
 MatchCurrency = Literal["local", "eur"]
 MatchOutcome = Literal["paid", "partial", "overpaid"]
@@ -562,6 +568,28 @@ def _evaluate_single_vs(
         )
         result.flagged += 1
         return
+    elif registration.waiting_in_queue:
+        # The queue holds no money: a registration credited here would read as
+        # a fencer who paid for a place they do not hold. Held for the
+        # organizer, who promotes the fencer — which credits it at once
+        # (`credit_held_for`) — or marks it for refund (spec payments,
+        # Payments arriving on a queued registration). Every pass re-evaluates
+        # a flagged transaction, so the event and the letter are written the
+        # first time only.
+        first_time = transaction.status_reason != QUEUED_REASON
+        _finish(transaction, "flagged", QUEUED_REASON)
+        result.flagged += 1
+        if first_time:
+            _event(
+                session,
+                transaction,
+                "match_conflict",
+                f"VS {vs}: registration is waiting in the queue",
+                registration,
+            )
+            session.flush()
+            emails.send_payment_while_queued(mailer, tournament, registration.fencer, registration)
+        return
 
     which = match_currency(transaction, tournament)
     due_cents = None
@@ -621,6 +649,45 @@ def _evaluate_single_vs(
         result.matched += 1
 
 
+class _Unsent:
+    """A mailer that sends nothing, for a re-evaluation whose outcome another
+    letter states. `Mailer` is the seam, so nothing below needs to know."""
+
+    def send(self, message: EmailMessage) -> None:
+        return None
+
+
+def credit_held_for(session: Session, tournament: Tournament, registration: Registration) -> int:
+    """Re-evaluate at once every transaction held because it arrived while this
+    registration sat entirely in the queue, now that a promotion has given it a
+    place to pay for (spec seating-queue, Organizer promotion from the queue).
+
+    Scoped to transactions naming this registration's VS, so a promotion never
+    runs a whole matching pass inside a request. The ordinary evaluation does
+    the crediting — tolerance, deposit threshold, events — with its letters
+    withheld: the promotion's own notice, composed from the resulting balance,
+    is the one the fencer receives. Returns how many were credited."""
+    if registration.vs is None or not tournament.feature_payments:
+        return 0
+    held = session.scalars(
+        select(BankTransaction)
+        .where(
+            BankTransaction.tournament_id == tournament.id,
+            BankTransaction.status == "flagged",
+            BankTransaction.status_reason == QUEUED_REASON,
+        )
+        .order_by(BankTransaction.date, BankTransaction.id)
+    ).all()
+    result = MatchResult()
+    for transaction in held:
+        if registration.vs not in detected_vs_tokens(transaction):
+            continue
+        transaction.last_evaluated_at = datetime.now(UTC)
+        _evaluate_transaction(session, tournament, _Unsent(), transaction, result)
+    session.flush()
+    return result.matched + result.partial
+
+
 def _evaluate_multi_vs(
     session: Session,
     tournament: Tournament,
@@ -660,6 +727,9 @@ def _evaluate_multi_vs(
             ~Registration.settled,
         )
     ).all()
+    # one waiting entirely in the queue owes nothing and takes no money, so
+    # it is not one of the registrations this payment can be covering
+    registrations = [r for r in registrations if not r.waiting_in_queue]
     if len(registrations) < 2:
         # fewer than two are actually still payable — not a genuine
         # multi-registration payment; leave it for the organizer, who sees

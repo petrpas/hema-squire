@@ -20,6 +20,7 @@ from app.auth import (
     require_tournament_owner,
 )
 from app.availability import (
+    QUEUE_ORDER,
     queue_length,
     taken_seats,
     taken_team_slots,
@@ -28,6 +29,7 @@ from app.availability import (
 from app.db import get_session
 from app.errors import FieldValidationError
 from app.fieldtypes import RowId
+from app.mail import Mailer, get_mailer
 from app.models import (
     ACTION_CATEGORIES,
     BankTransaction,
@@ -1181,7 +1183,9 @@ def console_teams(tournament: TournamentDep, session: SessionDep, fencer: Fencer
             select(Team)
             .where(Team.discipline_id == discipline.id)
             .options(selectinload(Team.members), selectinload(Team.registration))
-            .order_by(Team.created_at)
+            # entry order, except that a team demoted for non-payment waits
+            # from the moment it was demoted, at the end of the waitlist
+            .order_by(Team.waitlisted_since, Team.id)
         ).all()
         waitlist_position = 0
         team_rows = []
@@ -1244,7 +1248,7 @@ def console_queue(tournament: TournamentDep, session: SessionDep, fencer: Fencer
                 Registration.state == RegistrationState.RESERVED,
             )
             .options(selectinload(RegistrationDiscipline.registration))
-            .order_by(Registration.registered_at)
+            .order_by(*QUEUE_ORDER)
         ).all()
         seated, queued = [], []
         for entry in entries:
@@ -1255,9 +1259,14 @@ def console_queue(tournament: TournamentDep, session: SessionDep, fencer: Fencer
                 club=registration.fencer.club,
                 vs=registration.vs,
                 registered_at=registration.registered_at,
-                # the query is already ordered by registration time, which is
-                # exactly what queue_position ranks by, so position is the
-                # running count rather than a per-row subquery
+                queued_since=entry.queued_since,
+                # a moment other than the registration time is only ever
+                # written by a demotion for non-payment, and the view says
+                # which of the two it is ordering by (spec seating-queue)
+                demoted=entry.queued_since != registration.registered_at,
+                # the query is already ordered by queue order, which is exactly
+                # what queue_position ranks by, so position is the running
+                # count rather than a per-row subquery
                 queue_position=len(queued) + 1 if entry.is_substitute else None,
             )
             (queued if entry.is_substitute else seated).append(row)
@@ -1282,7 +1291,12 @@ def console_queue(tournament: TournamentDep, session: SessionDep, fencer: Fencer
 
 
 @router.post("/{slug}/settle-seating", response_model=SettleSeatingOut)
-def settle_seating(tournament: TournamentDep, session: SessionDep, fencer: FencerDep):
+def settle_seating(
+    tournament: TournamentDep,
+    session: SessionDep,
+    fencer: FencerDep,
+    mailer: Annotated[Mailer, Depends(get_mailer)],
+):
     """Close seating early, once the roster looks the way the organizer wants
     it. The same pass the deadline runs, through the same stamp, so a manual
     settlement and a scheduled one can never both happen — whichever fires
@@ -1296,7 +1310,7 @@ def settle_seating(tournament: TournamentDep, session: SessionDep, fencer: Fence
     require_published(tournament)
     if tournament.seating_settled_at is not None:
         raise HTTPException(status_code=409, detail="seating_already_settled")
-    demoted = scheduler.settle_seating(session, tournament)
+    demoted = scheduler.settle_seating(session, tournament, mailer)
     settled_at = tournament.seating_settled_at
     if settled_at is None:  # pragma: no cover - settle_seating stamps it
         raise AssertionError("settle_seating stamps the tournament")

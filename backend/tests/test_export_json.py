@@ -1012,3 +1012,75 @@ def test_a_pre_v13_document_restores_unmarked(client, auth_headers):
     [row] = [r for r in rows if r["vs"] == vs]
     assert row["settled_by_hand"] is False
     assert _restored_manual_payments() == []
+
+
+def _queued_registration_document(client, auth_headers):
+    """A document holding one registration whose Longsword placement was
+    demoted — a queue moment other than its registration time — and whose
+    Sabre seat carries a promotion's mark."""
+    import datetime
+
+    from sqlalchemy import select
+
+    from app.db import get_session
+    from app.main import app
+    from app.models import Registration
+
+    organizer = auth_headers()
+    setup(client, organizer)
+    fencer = auth_headers(email="jan@example.com", name="Jan Novak")
+    vs = client.post(
+        "/api/tournaments/cup/register", json={"disciplines": ["LS", "SA"]}, headers=fencer
+    ).json()["vs"]
+    session = next(app.dependency_overrides[get_session]())
+    registration = session.scalar(select(Registration).where(Registration.vs == vs))
+    longsword, sabre = sorted(registration.entries, key=lambda e: e.discipline.slug)
+    longsword.is_substitute = True
+    longsword.queued_since = registration.registered_at + datetime.timedelta(days=3)
+    sabre.promoted_unpaid = True
+    session.commit()
+    document = client.get("/api/tournaments/cup/export/json", headers=organizer).json()
+    return document
+
+
+def _restored_entries(client, auth_headers, document) -> dict[str, dict]:
+    new_organizer, restore_client = fresh_deployment(client, auth_headers)
+    restore = restore_client.post("/api/tournaments/restore", json=document, headers=new_organizer)
+    assert restore.status_code == 201, restore.text
+    # a restored tournament lands as a draft, which exports once published
+    publish(restore_client, new_organizer, "cup")
+    again = restore_client.get("/api/tournaments/cup/export/json", headers=new_organizer).json()
+    (registration,) = again["registrations"]
+    return {
+        "registered_at": registration["registered_at"],
+        **{entry["slug"]: entry for entry in registration["entries"]},
+    }
+
+
+def test_queue_moments_and_promotion_marks_round_trip(client, auth_headers):
+    document = _queued_registration_document(client, auth_headers)
+    exported = {e["slug"]: e for e in document["registrations"][0]["entries"]}
+    assert exported["LS"]["queued_since"] != document["registrations"][0]["registered_at"]
+
+    restored = _restored_entries(client, auth_headers, document)
+
+    for slug in ("LS", "SA"):
+        for field in ("is_substitute", "queued_since", "promoted_unpaid"):
+            assert restored[slug][field] == exported[slug][field], (slug, field)
+
+
+def test_a_v14_document_queues_by_registration_time(client, auth_headers):
+    """Before v15 every placement queued by its registration time, so that is
+    the moment each restores with — no queue reorders on restore."""
+    document = _queued_registration_document(client, auth_headers)
+    document["schema_version"] = 14
+    for registration in document["registrations"]:
+        for entry in registration["entries"]:
+            entry.pop("queued_since")
+            entry.pop("promoted_unpaid")
+
+    restored = _restored_entries(client, auth_headers, document)
+
+    assert restored["LS"]["queued_since"] == restored["registered_at"]
+    assert restored["SA"]["queued_since"] == restored["registered_at"]
+    assert restored["SA"]["promoted_unpaid"] is False

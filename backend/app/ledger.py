@@ -115,6 +115,7 @@ def credit(
     # a list loaded before this row existed
     if entry not in registration.credits:
         registration.credits.append(entry)
+    clear_promotion_marks(registration)
     return entry
 
 
@@ -231,7 +232,25 @@ def grant_waiver(
     session.flush()
     if entry not in registration.waivers:
         registration.waivers.append(entry)
+    clear_promotion_marks(registration)
     return entry
+
+
+def clear_promotion_marks(registration: Registration) -> None:
+    """Once a registration reads settled, what a promotion seated is paid for,
+    and a lapse of the window it opened has nothing left to take back (spec
+    seating-queue, Organizer promotion from the queue).
+
+    Here, where money and waivers are written, rather than at each caller of
+    them: a transaction, a payment link, a recorded payment and a waiver all
+    arrive through the two functions above, and a mark left standing by one
+    route that forgot would put a paid seat back in the queue."""
+    if not registration.settled:
+        return
+    for entry in registration.entries:
+        entry.promoted_unpaid = False
+    for team in registration.teams:
+        team.promoted_unpaid = False
 
 
 def revoke_waiver(

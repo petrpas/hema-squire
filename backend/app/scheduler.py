@@ -6,18 +6,22 @@ loop (started from the app lifespan) and the organizer endpoint both call them.
 
 import asyncio
 import logging
+from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app import bank, emails, matching
+from app import bank, emails, matching, pricing
+from app.availability import queue_position, team_waitlist_position
 from app.config import settings
 from app.db import SessionLocal
 from app.mail import Mailer, get_mailer
 from app.models import (
     PaymentEvent,
+    PaymentMode,
     Registration,
+    RegistrationDiscipline,
     RegistrationsKeptBy,
     RegistrationState,
     Team,
@@ -111,18 +115,32 @@ def process_expiries(session: Session, tournament: Tournament, mailer: Mailer) -
     since the organizer is left holding money for a reservation that no
     longer exists.
 
-    Once seating has settled the outcome changes: a lapsed window returns the
-    registration to the queue instead of expiring it (design Decision 8). The
-    only registrations under a window then are ones the organizer promoted
-    deliberately, and EXPIRED would discard them along with the registration
-    order they would never get back.
+    **A lapsed promotion takes back only what it seated** (design
+    demotion-hardening D6b). Placements and teams a promotion seated carry
+    `promoted_unpaid` until the registration reads paid; they go back to the
+    end of the queue first, the registration is repriced, and whatever it had
+    already paid for keeps its seat. Only where it still owes, still holds a
+    seat, and what it owes was due within the window that lapsed does the
+    ordinary outcome below apply to the rest.
+
+    Once seating has settled the ordinary outcome changes: a lapsed window
+    returns the registration to the queue instead of expiring it (design
+    Decision 8). The only registrations under a window then are ones the
+    organizer promoted deliberately, and EXPIRED would discard them.
 
     A registration still holding a substitute placement is demoted rather than
     expired whether or not seating has settled (design place-substitutes-per-
     discipline D5). Its queue place was never what the money was for: expiring
     it would make an unpaid seat cost a queue position the fencer owed nothing
-    for. Returns how many registrations were expired; a demoted one is not
-    among them, because it still exists."""
+    for.
+
+    Every demotion goes to the end of the queue and is mailed after the commit
+    (spec registration, Demotion is announced). Returns how many registrations
+    were expired — and, once seating has settled, how many lapsed promotions
+    were returned to the queue, that being what a lapse then does in place of
+    expiring. A registration demoted before settlement is not counted, because
+    it still exists and nothing it held was a promotion."""
+    now = _now()
     overdue = session.scalars(
         select(Registration).where(
             Registration.tournament_id == tournament.id,
@@ -131,47 +149,43 @@ def process_expiries(session: Session, tournament: Tournament, mailer: Mailer) -
             # reserved state used to say on its own
             ~Registration.settled,
             Registration.expires_at.is_not(None),
-            Registration.expires_at <= _now(),
+            Registration.expires_at <= now,
         )
     ).all()
     # Stated rather than left to follow from expires_at being NULL: a dormant
     # registration never expires for non-payment whatever else is written on it
     # (design unify-lifecycle-dormancy D1)
     overdue = [r for r in overdue if clocks_run(tournament, r)]
-    if seating_has_settled(tournament, _now()):
-        returned = 0
-        for registration in overdue:
-            registration.expires_at = None
-            if not _demote(registration):
-                continue
-            returned += 1
-            session.add(
-                PaymentEvent(
-                    tournament_id=tournament.id,
-                    registration_id=registration.id,
-                    kind="promotion_lapsed",
-                    detail=registration.audit_label,
-                )
-            )
-        session.commit()
-        return returned
+    settled_seating = seating_has_settled(tournament, now)
+    announced: list[tuple[Registration, Demotion]] = []
     expired = 0
     for registration in overdue:
-        if registration.holds_queued_placement:
-            # The seat it did not pay for is given up; the queue place it never
-            # owed for is kept, in its original registration order. A distinct
-            # kind from `promotion_lapsed`: the cause is an unpaid seat, not an
-            # unpaid promotion.
+        demotion = Demotion()
+        if _carries_promotion_marks(registration):
+            demotion = _demote(registration, tournament, now, marked_only=True)
+            _record(session, tournament, registration, "promotion_lapsed", demotion)
+            if not _still_owed_under_window(tournament, registration, settled_seating):
+                # the window was the promotion's, and it is over
+                registration.expires_at = None
+                if demotion:
+                    announced.append((registration, demotion))
+                    if settled_seating:
+                        expired += 1
+                continue
+        if settled_seating or registration.holds_queued_placement:
+            # After settlement a lapsed promotion returns to the queue; before
+            # it, the seat it did not pay for is given up and the queue place
+            # it never owed for is kept. A distinct kind for the second: the
+            # cause is an unpaid seat, not an unpaid promotion.
+            kind = "promotion_lapsed" if settled_seating else "seat_lapsed_to_queue"
+            rest = _demote(registration, tournament, now)
             registration.expires_at = None
-            _demote(registration)
-            session.add(
-                PaymentEvent(
-                    tournament_id=tournament.id,
-                    registration_id=registration.id,
-                    kind="seat_lapsed_to_queue",
-                    detail=registration.audit_label,
-                )
-            )
+            _record(session, tournament, registration, kind, rest)
+            demotion = demotion.merged(rest)
+            if demotion:
+                announced.append((registration, demotion))
+                if settled_seating:
+                    expired += 1
             continue
         registration.state = RegistrationState.EXPIRED
         expired += 1
@@ -199,27 +213,177 @@ def process_expiries(session: Session, tournament: Tournament, mailer: Mailer) -
             holding_payment=holding_payment,
         )
     session.commit()
+    _announce(session, tournament, mailer, announced)
     return expired
 
 
-def _demote(registration: Registration) -> bool:
-    """Move one registration below the line, in place: every seated entry
-    becomes a substitute placement, every team is waitlisted, and any payment
-    window is closed, because the queue holds no money (design D5). The
-    registration stays RESERVED and keeps its VS — it is queued, not expired.
+@dataclass
+class Demotion:
+    """What one demotion moved below the line. Falsy when it moved nothing,
+    which is what keeps a registration already wholly in the queue from being
+    counted, audited or mailed a second time."""
 
-    False when there was nothing above the line to move, so a registration
-    already fully queued is neither counted nor audited twice."""
-    seated = [entry for entry in registration.entries if not entry.is_substitute]
-    seated_teams = [team for team in registration.teams if not team.waitlisted]
-    if not seated and not seated_teams:
-        return False
-    for entry in seated:
+    entries: list[RegistrationDiscipline] = field(default_factory=list)
+    teams: list[Team] = field(default_factory=list)
+
+    def __bool__(self) -> bool:
+        return bool(self.entries or self.teams)
+
+    def merged(self, other: Demotion) -> Demotion:
+        return Demotion(self.entries + other.entries, self.teams + other.teams)
+
+    @property
+    def detail(self) -> str:
+        return ", ".join(
+            [entry.discipline.slug for entry in self.entries]
+            + [f"{team.name} ({team.discipline.slug})" for team in self.teams]
+        )
+
+
+def _demote(
+    registration: Registration,
+    tournament: Tournament,
+    now: datetime,
+    *,
+    marked_only: bool = False,
+) -> Demotion:
+    """Move one registration below the line for non-payment, in place: every
+    seated entry becomes a substitute placement and every team is waitlisted —
+    or, with `marked_only`, only those a promotion seated and nobody has paid
+    for yet. The registration stays RESERVED and keeps its VS — it is queued,
+    not expired.
+
+    What it moves joins the **end** of the queue: its queue moment becomes
+    `now`, so a fencer who held a seat and did not pay for it never takes
+    precedence over one who waited from the start (spec registration, Seating
+    settlement at the deadline). A placement already in the queue keeps its
+    moment. The stored totals are recomputed, exactly as the organizer's
+    return-to-queue does, so the registration no longer states the price of a
+    seat it does not hold; and where nothing is left seated no payment window
+    may keep running, because the queue holds no money (design D5)."""
+    entries = [
+        entry
+        for entry in registration.entries
+        if not entry.is_substitute and (entry.promoted_unpaid or not marked_only)
+    ]
+    teams = [
+        team
+        for team in registration.teams
+        if not team.waitlisted and (team.promoted_unpaid or not marked_only)
+    ]
+    for entry in entries:
         entry.is_substitute = True
-    for team in seated_teams:
+        entry.queued_since = now
+        entry.promoted_unpaid = False
+    for team in teams:
         team.waitlisted = True
-    registration.expires_at = None
+        team.waitlisted_since = now
+        team.promoted_unpaid = False
+    if entries or teams:
+        totals = pricing.registration_total(registration, tournament)
+        registration.total_amount = totals.local
+        registration.total_eur = totals.eur
+    if registration.fully_queued:
+        registration.expires_at = None
+    return Demotion(entries, teams)
+
+
+def _carries_promotion_marks(registration: Registration) -> bool:
+    return any(entry.promoted_unpaid for entry in registration.entries) or any(
+        team.promoted_unpaid for team in registration.teams
+    )
+
+
+def _still_owed_under_window(
+    tournament: Tournament, registration: Registration, settled_seating: bool
+) -> bool:
+    """Whether, once a lapsed promotion has taken back what it seated, the
+    registration still owes money that was due within the window that lapsed —
+    which is when the ordinary outcome of a lapsed window applies to the rest.
+
+    Owing nothing, or holding no seat, it is left where it is. Before seating
+    settles, a seat whose own money was not due yet is left too: a
+    `reservation`-mode seat owes by the seating deadline, and a `deposit`-mode
+    one whose deposit is in owes its balance by then; neither was ever under
+    the window that lapsed, and taking it would lose a seat to a promotion the
+    fencer was offered and declined (spec seating-queue)."""
+    if registration.settled or registration.fully_queued:
+        return False
+    if settled_seating:
+        return True
+    if tournament.payment_mode is PaymentMode.RESERVATION:
+        return False
+    if tournament.payment_mode is PaymentMode.DEPOSIT:
+        return not _deposit_reached(tournament, registration)
     return True
+
+
+def _deposit_reached(tournament: Tournament, registration: Registration) -> bool:
+    """The same threshold `matching._apply_deposit_threshold` closes a window
+    on, asked of each lane against its own figure."""
+    local, eur = tournament.deposit_amount, tournament.deposit_amount_eur
+    return (local is not None and registration.credited_in("local") >= local * 100) or (
+        eur is not None and registration.credited_in("eur") >= eur * 100
+    )
+
+
+def _record(
+    session: Session,
+    tournament: Tournament,
+    registration: Registration,
+    kind: str,
+    demotion: Demotion,
+) -> None:
+    """The audit line a demotion leaves, naming what it moved. Nothing where it
+    moved nothing."""
+    if not demotion:
+        return
+    session.add(
+        PaymentEvent(
+            tournament_id=tournament.id,
+            registration_id=registration.id,
+            kind=kind,
+            detail=f"{registration.audit_label}: {demotion.detail}",
+        )
+    )
+
+
+def _announce(
+    session: Session,
+    tournament: Tournament,
+    mailer: Mailer,
+    announced: list[tuple[Registration, Demotion]],
+) -> None:
+    """Mail every committed demotion, once each, and record the notice beside
+    it (spec registration, Demotion is announced).
+
+    After the commit and not before: the tick commits per tournament, a mail
+    must never announce a demotion that was rolled back, and the queue
+    positions it states are read from what was committed, so they are the ones
+    the fencer then sees in the app."""
+    if not announced:
+        return
+    for registration, demotion in announced:
+        moved = [
+            (entry.discipline.name, queue_position(session, entry)) for entry in demotion.entries
+        ]
+        moved_teams = [
+            (team.name, team.discipline.name, team_waitlist_position(session, team))
+            for team in demotion.teams
+        ]
+        sent = emails.send_demoted(
+            mailer, tournament, registration.fencer, registration, moved, moved_teams
+        )
+        if sent:
+            session.add(
+                PaymentEvent(
+                    tournament_id=tournament.id,
+                    registration_id=registration.id,
+                    kind="demotion_notified",
+                    detail=f"{registration.audit_label}: {demotion.detail}",
+                )
+            )
+    session.commit()
 
 
 def _demotable(session: Session, tournament: Tournament) -> list[Registration]:
@@ -271,7 +435,7 @@ def pending_demotions(session: Session, tournament: Tournament) -> int:
     return len(_demotable(session, tournament))
 
 
-def settle_seating(session: Session, tournament: Tournament) -> int:
+def settle_seating(session: Session, tournament: Tournament, mailer: Mailer) -> int:
     """Close the tournament's seating: every registration still owing money —
     that is, still RESERVED and not dormant — is moved to the substitute queue
     in place, and the tournament is stamped as settled. Returns how many were
@@ -279,9 +443,11 @@ def settle_seating(session: Session, tournament: Tournament) -> int:
 
     A pure pass with no trigger condition of its own, so the deadline tick and
     the organizer's settle-early action are literally the same operation
-    (design D6); the caller decides when. `queue_position` ranks by
-    `Registration.registered_at`, so demotion places each registration in the
-    queue in registration order with no sorting here.
+    (design D6); the caller decides when. Every placement it moves takes the
+    moment of settlement as its queue moment and so joins the end of the queue;
+    registrations moved together share that moment and rank among themselves by
+    registration time (`availability.QUEUE_ORDER`). Each is mailed once the
+    settlement is committed.
 
     **The stamp is unconditional.** Closing seating and demoting debtors are two
     things this pass does at once, and only the second is about money: seats are
@@ -295,25 +461,24 @@ def settle_seating(session: Session, tournament: Tournament) -> int:
     "reserved, seated and not dormant", which is exactly what `admit_substitute`
     produces, so without the stamp every later tick would silently unwind the
     organizer's promotions."""
-    demoted = 0
+    now = _now()
+    announced: list[tuple[Registration, Demotion]] = []
     for registration in _demotable(session, tournament):
-        if not _demote(registration):
+        demotion = _demote(registration, tournament, now)
+        if not demotion:
             continue
-        demoted += 1
-        session.add(
-            PaymentEvent(
-                tournament_id=tournament.id,
-                registration_id=registration.id,
-                kind="seating_demoted",
-                detail=registration.audit_label,
-            )
-        )
-    tournament.seating_settled_at = _now()
+        registration.expires_at = None
+        _record(session, tournament, registration, "seating_demoted", demotion)
+        announced.append((registration, demotion))
+    tournament.seating_settled_at = now
     session.commit()
-    return demoted
+    _announce(session, tournament, mailer, announced)
+    return len(announced)
 
 
-def settle_seating_if_due(session: Session, tournament: Tournament, now: datetime) -> int:
+def settle_seating_if_due(
+    session: Session, tournament: Tournament, now: datetime, mailer: Mailer
+) -> int:
     """Run the settlement pass if the deadline has passed and it has not run
     yet. The one place that decides *when* seating settles by itself — the
     organizer's settle-early action deliberately does not go through it, and
@@ -329,7 +494,7 @@ def settle_seating_if_due(session: Session, tournament: Tournament, now: datetim
         return 0
     if not seating_has_settled(tournament, now):
         return 0
-    return settle_seating(session, tournament)
+    return settle_seating(session, tournament, mailer)
 
 
 def process_composition_reminders(session: Session, tournament: Tournament, mailer: Mailer) -> int:
@@ -406,7 +571,7 @@ def run_tournament_tick(
     # without a fixed order whether an unpaid deposit expiring on the deadline
     # date is queued or expired would come down to tick timing. Settling first
     # makes it uniform — everything still reserved at the deadline is queued.
-    result["seating_demoted"] = settle_seating_if_due(session, tournament, _now())
+    result["seating_demoted"] = settle_seating_if_due(session, tournament, _now(), mailer)
     # Every pass runs on every tournament, and each asks `setup.dormancy_cause`
     # what it may touch. The payments feature used to be tested here as well,
     # skipping these two wholesale — a second decision point that reached two of

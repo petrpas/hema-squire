@@ -1635,7 +1635,12 @@ class QueueEntryOut(BaseModel):
     club: str | None
     vs: int | None
     registered_at: UtcInstant
-    # place in the substitute queue by registration time; None when seated
+    # the moment the placement's queue place counts from, which the queue is
+    # ordered by: the registration time, or the moment of a demotion for
+    # non-payment, in which case `demoted` says so (spec seating-queue)
+    queued_since: UtcInstant
+    demoted: bool = False
+    # place in the substitute queue by queue moment; None when seated
     queue_position: int | None = None
 
 

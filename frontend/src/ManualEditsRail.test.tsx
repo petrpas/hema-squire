@@ -24,6 +24,7 @@ function row(id: string, name: string, number: number | null = null): SheetRow {
     hr_club: null,
     disciplines: [],
     substitute_for: [],
+    queued_since: {},
     state: "reserved",
     registration_id: null,
     vs: null,

@@ -30,6 +30,7 @@ function row(id: string, name: string, fields: Partial<SheetRow> = {}): SheetRow
     hr_club: null,
     disciplines: ["LS"],
     substitute_for: [],
+    queued_since: {},
     state: "reserved",
     registration_id: null,
     vs: null,
@@ -85,6 +86,30 @@ describe("a discipline tab as a seeding roster", () => {
     const { rows, line } = rosterOrder([seeded, top, queued], "LS", 16, "queue", true);
     expect(rows.map((r) => r.name)).toEqual(["Top Two", "Mid One", "Queued Star"]);
     expect(line).toEqual({ after: 2, kind: "queue" });
+  });
+
+  it("orders the queued by queue moment, so a fencer demoted at settlement waits last", () => {
+    // rows arrive in registration order; the early registrant was demoted at
+    // settlement, after the later one had already joined the queue
+    const queued = (id: string, name: string, moment: string) =>
+      row(id, name, { disciplines: [], substitute_for: ["LS"], queued_since: { LS: moment } });
+    const demotedEarly = queued("reg:5", "Demoted Early", "2026-05-01T22:00:00+00:00");
+    const waitedLater = queued("reg:6", "Waited Later", "2026-03-10T10:00:00+00:00");
+    const demotedToo = queued("reg:7", "Demoted Too", "2026-05-01T22:00:00+00:00");
+    const { rows, line } = rosterOrder(
+      [seeded, demotedEarly, waitedLater, demotedToo],
+      "LS",
+      1,
+      "queue",
+      false,
+    );
+    expect(rows.map((r) => r.name)).toEqual([
+      "Mid One",
+      "Waited Later",
+      "Demoted Early",
+      "Demoted Too",
+    ]);
+    expect(line).toEqual({ after: 1, kind: "queue" });
   });
 
   it("marks only where capacity falls where nobody is queued", () => {

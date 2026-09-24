@@ -31,12 +31,31 @@ export function seedingOrder(rows: SheetRow[], slug: string): SheetRow[] {
   });
 }
 
+/** Queued rows in queue order: by the placement's queue moment, stable, so
+ *  rows sharing a moment keep the registration order they arrived in. Every
+ *  queued row is a registration's and carries its moment; one that somehow
+ *  does not goes last rather than being guessed a place. */
+export function queueOrder(rows: SheetRow[], slug: string): SheetRow[] {
+  const moment = (row: SheetRow) => {
+    const at = Date.parse(row.queued_since?.[slug] ?? "");
+    return Number.isNaN(at) ? Number.POSITIVE_INFINITY : at;
+  };
+  return [...rows].sort((left, right) => {
+    const a = moment(left);
+    const b = moment(right);
+    return a === b ? 0 : a < b ? -1 : 1;
+  });
+}
+
 /** A discipline tab's rows in display order, and where its line falls.
  *
  *  Fencers holding a substitute entry sit below the line whatever the sort key
- *  says, in queue order — which is registration order, the order the rows
- *  arrive in. A fencer with the highest rating in the discipline is still
- *  below it if that is where the tournament put them.
+ *  says, in queue order — by each placement's queue moment, which is its
+ *  registration time unless it was demoted for non-payment (spec
+ *  `seating-queue`). The sort is stable over rows arriving in registration
+ *  order, so fencers sharing a moment keep that order. A fencer with the
+ *  highest rating in the discipline is still below it if that is where the
+ *  tournament put them.
  *
  *  Where the tournament's conduct creates no substitute placements there is no
  *  queued group, and the line marks where capacity falls in the tab's own
@@ -52,7 +71,10 @@ export function rosterOrder(
   seeded: boolean,
 ): { rows: SheetRow[]; line: CapacityLine } {
   const seatedRows = rows.filter((row) => (row.disciplines ?? []).includes(slug));
-  const queuedRows = rows.filter((row) => !(row.disciplines ?? []).includes(slug));
+  const queuedRows = queueOrder(
+    rows.filter((row) => !(row.disciplines ?? []).includes(slug)),
+    slug,
+  );
   const seed = (group: SheetRow[]) => (seeded ? seedingOrder(group, slug) : group);
   if (queuedRows.length > 0) {
     const above = seed(seatedRows);

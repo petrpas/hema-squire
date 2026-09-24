@@ -99,6 +99,16 @@ def apply_amendment(
     """
     was_paid = registration.settled
     previous_total = registration.total_amount
+    # A discipline the amendment keeps keeps its queue moment, so restating a
+    # selection never moves a demoted placement back to its registration time
+    # (design demotion-hardening D1). A newly named one counts from the
+    # registration time, as it always has (design Open Questions).
+    previous_moments = {entry.discipline_id: entry.queued_since for entry in registration.entries}
+    # and a seat a promotion gave that is still unpaid stays marked, so a
+    # lapse still takes back that seat alone rather than the whole registration
+    promoted_unpaid = {
+        entry.discipline_id for entry in registration.entries if entry.promoted_unpaid
+    }
 
     # drop the current selection before checking capacity, so the registration's
     # own existing seats are not counted as taken against itself
@@ -168,7 +178,12 @@ def apply_amendment(
             setattr(registration, name, value)
     for discipline in selected:
         registration.entries.append(
-            RegistrationDiscipline(discipline=discipline, is_substitute=discipline.slug in full)
+            RegistrationDiscipline(
+                discipline=discipline,
+                is_substitute=discipline.slug in full,
+                queued_since=previous_moments.get(discipline.id, registration.registered_at),
+                promoted_unpaid=discipline.id in promoted_unpaid and discipline.slug not in full,
+            )
         )
     for selection in extras or []:
         value = (selection.option_value or "").strip()
@@ -192,6 +207,8 @@ def apply_amendment(
                     discipline=discipline,
                     name=team_in.name,
                     waitlisted=waitlisted,
+                    # a team waitlists in entry order, and this is its entry
+                    waitlisted_since=_now(),
                 )
             )
     session.flush()

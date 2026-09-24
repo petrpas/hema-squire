@@ -27,6 +27,7 @@ from sqlalchemy import (
     exists,
     func,
     literal,
+    not_,
     or_,
     select,
     text,
@@ -752,6 +753,18 @@ class Registration(Base):
         )
 
     @property
+    def waiting_in_queue(self) -> bool:
+        """Whether this registration sits entirely in the substitute queue: it
+        holds at least one placement, and every one of them is below the line.
+
+        Not `fully_queued`, which is vacuously true of a registration holding
+        nothing. This is the question money asks — such a registration holds
+        no place, so it is not credited (`matching`) and never reads as paid
+        whatever it has been credited (`settled`) — and a registration with
+        nothing in it is not waiting for anything."""
+        return bool(self.entries or self.teams) and self.fully_queued
+
+    @property
     def holds_queued_placement(self) -> bool:
         """Whether any part of this registration sits below the line — one
         substitute entry or one waitlisted team is enough.
@@ -947,9 +960,19 @@ class Registration(Base):
         everything a paid fencer bought leaves them paid, their balance stating
         the overpayment, which is what happens today (design D5).
 
+        **A registration waiting entirely in the queue is never settled by
+        money**, however much it holds (spec payment-ledger). The queue holds
+        no money: its credit — a deposit forfeited at settlement, a partial
+        payment on a registration a lapsed window demoted — stays recorded and
+        counts once it is promoted, but repricing it to nothing must not turn
+        it into a paid fencer sitting in the queue. A waiver still settles it:
+        that is a person's word that nothing is owed, not money in the queue.
+
         This does **not** say what state a reader is shown; `wire_state` does,
         and the lifecycle wins over this wherever the two meet."""
-        return self.waived or self.settling_lane is not None
+        if self.waived:
+            return True
+        return not self.waiting_in_queue and self.settling_lane is not None
 
     @settled.inplace.expression
     @classmethod
@@ -962,13 +985,18 @@ class Registration(Base):
         return or_(
             cls.waived,
             and_(
-                local_credited > 0,
-                local_total - local_credited <= local_total * percent / 100,
-            ),
-            and_(
-                cls.total_eur.is_not(None),
-                eur_credited > 0,
-                eur_total - eur_credited <= eur_total * percent / 100,
+                not_(_waiting_in_queue_sql(cls)),
+                or_(
+                    and_(
+                        local_credited > 0,
+                        local_total - local_credited <= local_total * percent / 100,
+                    ),
+                    and_(
+                        cls.total_eur.is_not(None),
+                        eur_credited > 0,
+                        eur_total - eur_credited <= eur_total * percent / 100,
+                    ),
+                ),
             ),
         )
 
@@ -1394,6 +1422,27 @@ def _shows_eur_sql(cls: type[Registration]) -> ColumnElement[bool]:
     )
 
 
+def _waiting_in_queue_sql(cls: type[Registration]) -> ColumnElement[bool]:
+    """`Registration.waiting_in_queue` as SQL: some placement, and none of them
+    above the line.
+
+    Correlated to the registration alone. The queries that ask it — counting a
+    discipline's seats or its queue — select from these very tables, and left
+    to auto-correlation the subqueries would read the outer query's row instead
+    of this registration's placements."""
+    entries = (
+        select(RegistrationDiscipline.id)
+        .where(RegistrationDiscipline.registration_id == cls.id)
+        .correlate_except(RegistrationDiscipline)
+    )
+    teams = select(Team.id).where(Team.registration_id == cls.id).correlate_except(Team)
+    return and_(
+        or_(exists(entries), exists(teams)),
+        not_(exists(entries.where(RegistrationDiscipline.is_substitute.is_(False)))),
+        not_(exists(teams.where(Team.waitlisted.is_(False)))),
+    )
+
+
 def _credited_sql(cls: type[Registration], currency: ColumnElement[Any]) -> ColumnElement[int]:
     """The sum of the registration's live credits in one currency."""
     return (
@@ -1615,7 +1664,8 @@ class SheetRowNumber(Base):
 
 
 class RegistrationDiscipline(Base):
-    """A registration's entry into one discipline; substitutes queue by registration time."""
+    """A registration's entry into one discipline; substitutes queue by their
+    queue moment, `queued_since`."""
 
     __tablename__ = "registration_disciplines"
     __table_args__ = (UniqueConstraint("registration_id", "discipline_id"),)
@@ -1624,6 +1674,21 @@ class RegistrationDiscipline(Base):
     registration_id: Mapped[int] = mapped_column(ForeignKey("registrations.id"))
     discipline_id: Mapped[int] = mapped_column(ForeignKey("disciplines.id"))
     is_substitute: Mapped[bool] = mapped_column(default=False)
+    # Where this placement's place in the queue counts from (spec seating-queue,
+    # Queue view for the organizer). Set to the registration time when the
+    # placement is made, seated or queued, and moved only by a demotion for
+    # non-payment, which puts it at the end of the queue. A promotion leaves it
+    # standing, so an organizer's return puts the placement back where it was
+    # rather than at its registration time or at the end (design
+    # demotion-hardening D1). The queue orders by
+    # `(queued_since, registered_at, registration id)`.
+    queued_since: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    # Seated by a promotion that has not been paid for yet. A lapsed promotion
+    # window takes back exactly the placements carrying this, so a registration
+    # that paid for one seat never loses it for not paying for a second one it
+    # was offered (spec seating-queue, Organizer promotion from the queue).
+    # Cleared on the whole registration once it reads settled (`ledger`).
+    promoted_unpaid: Mapped[bool] = mapped_column(default=False)
 
     registration: Mapped[Registration] = relationship(back_populates="entries")
     discipline: Mapped[Discipline] = relationship()
@@ -1645,6 +1710,13 @@ class Team(Base):
     registration_id: Mapped[int] = mapped_column(ForeignKey("registrations.id"))
     name: Mapped[str] = mapped_column(String(200))
     waitlisted: Mapped[bool] = mapped_column(default=False)
+    # The team's counterparts of `RegistrationDiscipline.queued_since` and
+    # `promoted_unpaid`. A team waitlists in entry order (spec team-disciplines),
+    # so its moment starts as the moment it was entered rather than its
+    # registration's time, and a demotion for non-payment moves it to the end
+    # of the waitlist. The waitlist orders by `(waitlisted_since, id)`.
+    waitlisted_since: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    promoted_unpaid: Mapped[bool] = mapped_column(default=False)
     # set once a composition reminder has been sent, so a later tick does not
     # resend it (design D7); unrelated to registration.reminded_at
     composition_reminded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

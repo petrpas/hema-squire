@@ -490,6 +490,9 @@ export interface SheetRow {
   hr_id: number | null;
   disciplines: string[];
   substitute_for: string[];
+  /** Each queued placement's queue moment by discipline slug, which orders the
+   *  rows below a discipline tab's line (spec `seating-queue`). */
+  queued_since: Record<string, string>;
   state: string;
   /** The registration standing in this row's place, where one has been issued
    *  for it; null while the row is still a row. Disciplines are the row's to
@@ -853,7 +856,12 @@ export interface QueueEntry {
   club: string | null;
   vs: number | null;
   registered_at: string;
-  /** Place in the queue by registration time; null when seated. */
+  /** The moment the placement's queue place counts from, which the queue is
+   *  ordered by: the registration time, or the moment of a demotion for
+   *  non-payment, which `demoted` marks (spec `seating-queue`). */
+  queued_since: string;
+  demoted: boolean;
+  /** Place in the queue by queue moment; null when seated. */
   queue_position: number | null;
 }
 

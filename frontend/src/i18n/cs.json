@@ -1074,7 +1074,8 @@
         "currency_unconvertible": "měnu nelze převést",
         "registration_paid": "registrace už je zaplacená",
         "registration_cancelled": "registrace zrušena",
-        "not_an_incoming_payment": "není příchozí platba"
+        "not_an_incoming_payment": "není příchozí platba",
+        "registration_queued": "registrace čeká celá ve frontě — posuň ji na místo, nebo označ platbu k vrácení"
       },
       "settledByHand": "Zaplaceno ručně: {{reason}}",
       "settledByPayment": "Zaplaceno ručně zadanou platbou: {{amount}}, {{date}}"
@@ -1285,6 +1286,7 @@
     "noneSeated": "V této disciplíně nikdo nedrží místo.",
     "position": "{{position}}.",
     "registeredAt": "registrace {{moment}}",
+    "demotedAt": "ve frontě od {{moment}}, přesun pro nezaplacení",
     "promote": "posunout na místo",
     "returnToQueue": "vrátit do fronty",
     "noDisciplines": "Turnaj nenabízí žádnou individuální disciplínu.",

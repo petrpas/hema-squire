@@ -271,7 +271,7 @@ def process_lifecycle(
     require_console_access(session, tournament, fencer)
     require_published(tournament)
     bank.require_payments_enabled(tournament)
-    demoted = scheduler.settle_seating_if_due(session, tournament, datetime.now(UTC))
+    demoted = scheduler.settle_seating_if_due(session, tournament, datetime.now(UTC), mailer)
     expired = scheduler.process_expiries(session, tournament, mailer)
     return {
         "reminders": scheduler.process_reminders(session, tournament, mailer),

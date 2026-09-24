@@ -332,7 +332,7 @@ def test_settlement_demotes_the_unpaid_and_leaves_the_paid_alone(client, auth_he
     assert demoted.vs == unpaid["vs"]
     assert demoted.expires_at is None
     assert [e.is_substitute for e in demoted.entries] == [True]
-    assert event_kinds(unpaid["vs"]) == ["seating_demoted"]
+    assert event_kinds(unpaid["vs"]) == ["seating_demoted", "demotion_notified"]
 
     still_seated = registration_by_vs(paid["vs"])
     assert [e.is_substitute for e in still_seated.entries] == [False]
@@ -354,6 +354,7 @@ def test_settlement_waits_for_the_deadline_day_to_end_where_the_tournament_is(cl
     and 22:30 UTC on the deadline day is already tomorrow in Prague and still
     today in New York. `client` is taken only for the session it stands up.
     """
+    from app.mail import get_mailer
     from app.scheduler import settle_seating_if_due
 
     deadline = datetime.date(2026, 10, 1)
@@ -374,7 +375,7 @@ def test_settlement_waits_for_the_deadline_day_to_end_where_the_tournament_is(cl
         )
         session.add(tournament)
         session.commit()
-        settle_seating_if_due(session, tournament, instant)
+        settle_seating_if_due(session, tournament, instant, get_mailer())
         assert (tournament.seating_settled_at is not None) is settles
         # the two answers agree at the same instant, whichever way they fall
         assert seating_has_settled(tournament, instant) is settles
@@ -766,7 +767,7 @@ def test_returned_registration_keeps_its_place_in_the_queue(client, auth_headers
         f"/api/tournaments/cup/registrations/{seated.id}/return-to-queue/LS", headers=organizer
     )
 
-    from app.routers.registrations import queue_position
+    from app.availability import queue_position
 
     session = db_session()
     positions = {}
