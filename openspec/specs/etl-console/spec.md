@@ -734,6 +734,8 @@ The manual entry dialog SHALL offer the tournament's own structure rather than a
 
 Team disciplines SHALL NOT be offered in the dialog. A team is entered through the tournament's team handling, not by naming a team discipline on a fencer's row.
 
+Where at least two individual disciplines are chosen, the dialog SHALL offer the participation condition as the registration form does (`registration`, **Participation condition**), as one tick, unticked by default. It SHALL be offered on an automatic tournament only: a manual tournament queues nobody, so the condition would have nothing to govern.
+
 The dialog SHALL additionally take the fencer's name, nationality, club, HEMA Ratings id, e-mail, a registration moment, and a note. The registration moment SHALL default to the present moment in the tournament's own time zone and SHALL be changeable, so that a form received last week can be entered with the moment it was received.
 
 #### Scenario: Only the offered disciplines appear
@@ -751,6 +753,10 @@ The dialog SHALL additionally take the fencer's name, nationality, club, HEMA Ra
 #### Scenario: Backdated entry
 - **WHEN** the organizer changes the registration moment to a date three days ago and submits
 - **THEN** the row is listed among the rows registered that day, not among today's
+
+#### Scenario: The condition offered at the door
+- **WHEN** the organizer of an automatic tournament chooses two disciplines in the dialog
+- **THEN** the participation condition tick is offered, unticked
 
 ### Requirement: Strict validation of a manual entry
 A manual entry SHALL be accepted whole or refused whole. The system SHALL NOT repair, guess at, or silently drop any value the organizer supplied.
