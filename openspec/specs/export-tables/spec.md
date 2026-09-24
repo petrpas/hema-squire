@@ -225,8 +225,10 @@ discipline SHALL be below it whatever the sort key says, in the queue order
 `seating-queue` fixes.
 
 Where the tournament's conduct creates no substitute placements, no fencer SHALL
-be marked as queued and the line SHALL mark only where capacity falls in the
-current order. The line SHALL state which of the two it is, so that a reader is
+be marked as queued and the line SHALL mark where capacity falls in the tab's
+own order — paid first, then registration order. The seeding order SHALL NOT
+move a fencer across that line: it orders the fencers above it among
+themselves, and those below it keep the tab's own order, as a queue does. The line SHALL state which of the two it is, so that a reader is
 never left to infer it from a setting they may not know about.
 
 The line SHALL be a marking within one table, not a split into two. What leaves
@@ -260,6 +262,10 @@ block in the displayed order and SHALL NOT carry the line.
 #### Scenario: No queue, only a capacity mark
 - **WHEN** a tournament whose conduct creates no substitute placements has 20 fencers in a discipline of capacity 16
 - **THEN** the line falls after the 16th row, states that it marks capacity rather than a queue, and no fencer is marked as queued
+
+#### Scenario: Seeding does not cross the capacity mark
+- **WHEN** a tournament whose conduct creates no substitute placements has 44 paid fencers in a discipline of capacity 42 and the organizer ticks the seeding order
+- **THEN** the first 42 in the tab's own order stay above the line, ordered by rating, and the other 2 stay below it in registration order however they rate
 
 #### Scenario: The line does not leave the screen
 - **WHEN** the organizer copies a discipline tab holding a queue

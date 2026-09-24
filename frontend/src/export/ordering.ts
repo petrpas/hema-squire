@@ -39,8 +39,10 @@ export function seedingOrder(rows: SheetRow[], slug: string): SheetRow[] {
  *  below it if that is where the tournament put them.
  *
  *  Where the tournament's conduct creates no substitute placements there is no
- *  queued group, and the line marks only where capacity falls in the current
- *  order, naming nobody as queued.
+ *  queued group, and the line marks where capacity falls in the tab's own
+ *  order, naming nobody as queued. The seeding order does not move it: it
+ *  orders the fencers above the line among themselves, and a fencer inside
+ *  capacity is never shown past it for having a low rating.
  */
 export function rosterOrder(
   rows: SheetRow[],
@@ -51,11 +53,14 @@ export function rosterOrder(
 ): { rows: SheetRow[]; line: CapacityLine } {
   const seatedRows = rows.filter((row) => (row.disciplines ?? []).includes(slug));
   const queuedRows = rows.filter((row) => !(row.disciplines ?? []).includes(slug));
-  const above = seeded ? seedingOrder(seatedRows, slug) : seatedRows;
-  const ordered = [...above, ...queuedRows];
+  const seed = (group: SheetRow[]) => (seeded ? seedingOrder(group, slug) : group);
   if (queuedRows.length > 0) {
-    return { rows: ordered, line: { after: above.length, kind } };
+    const above = seed(seatedRows);
+    return { rows: [...above, ...queuedRows], line: { after: above.length, kind } };
   }
-  const overflows = capacity !== null && ordered.length > capacity;
-  return { rows: ordered, line: { after: overflows ? capacity : null, kind } };
+  if (capacity === null || seatedRows.length <= capacity) {
+    return { rows: seed(seatedRows), line: { after: null, kind } };
+  }
+  const above = seed(seatedRows.slice(0, capacity));
+  return { rows: [...above, ...seatedRows.slice(capacity)], line: { after: capacity, kind } };
 }

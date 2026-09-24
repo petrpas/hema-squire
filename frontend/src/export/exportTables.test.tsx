@@ -93,6 +93,15 @@ describe("a discipline tab as a seeding roster", () => {
     expect(line).toEqual({ after: 2, kind: "capacity" });
   });
 
+  it("seeds only those inside capacity where nobody is queued", () => {
+    // Mid One and No Rating Three arrived first and fit the capacity of two;
+    // Top Two came third. Seeding orders the two above the line and moves
+    // nobody across it, however they rate.
+    const { rows, line } = rosterOrder([unrated, seeded, top], "LS", 2, "capacity", true);
+    expect(rows.map((r) => r.name)).toEqual(["Mid One", "No Rating Three", "Top Two"]);
+    expect(line).toEqual({ after: 2, kind: "capacity" });
+  });
+
   it("draws no line on a table shorter than the capacity", () => {
     const { line } = rosterOrder([seeded, top], "LS", 16, "capacity", false);
     expect(line.after).toBeNull();
