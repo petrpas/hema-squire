@@ -489,6 +489,9 @@ class TournamentUpdate(BaseModel):
     # ignored in the others (router-checked)
     deposit_amount: TolerantInt | None = Field(default=None, ge=0)
     deposit_amount_eur: TolerantInt | None = Field(default=None, ge=0)
+    # whether substitutes who pay take free places by themselves; unset leaves
+    # the stored value alone (spec tournament-admin)
+    queue_payment_seats: bool | None = None
     reservation_validity_days: int | None = Field(
         default=None,
         ge=constraints.RESERVATION_VALIDITY_DAYS_MIN,
@@ -648,6 +651,7 @@ class TournamentOut(BaseModel):
     seating_settled_at: UtcInstant | None
     deposit_amount: int | None
     deposit_amount_eur: int | None
+    queue_payment_seats: bool
     reservation_validity_days: int
     reminder_day: int
     amount_tolerance_percent: int
@@ -1173,7 +1177,9 @@ class AmendmentPlacementOut(BaseModel):
 
 
 class PaymentInstructionsOut(BaseModel):
-    amount: int
+    # the stored total; for a claim, what is still to pay of it, which a
+    # forfeited deposit may leave off a whole amount
+    amount: int | float
     currency: Currency = Currency.CZK
     iban: str
     # the domestic form for a Czech account, so a Czech payer is not made to
@@ -1186,9 +1192,13 @@ class PaymentInstructionsOut(BaseModel):
     spayd: str
     qr_png_base64: str
     # the EUR pair is absent, not empty, when the tournament takes no EUR
-    eur_amount: int | None = None
+    eur_amount: int | float | None = None
     eur_spayd: str | None = None
     eur_qr_png_base64: str | None = None
+    # instructions for a waiting registration's claim: the payment takes the
+    # places waited for only if all are free when it is credited (spec
+    # payments, In-app payment instructions retrieval)
+    claim: bool = False
 
 
 class OpenDisciplineOut(BaseModel):

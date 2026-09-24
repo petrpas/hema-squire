@@ -280,9 +280,7 @@ def _demote(
         team.waitlisted_since = now
         team.promoted_unpaid = False
     if entries or teams:
-        totals = pricing.registration_total(registration, tournament)
-        registration.total_amount = totals.local
-        registration.total_eur = totals.eur
+        pricing.reprice(registration, tournament)
     if registration.fully_queued:
         registration.expires_at = None
     return Demotion(entries, teams)

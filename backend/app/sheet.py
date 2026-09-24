@@ -29,6 +29,7 @@ from app import (
     importer,
     ledger,
     manualrows,
+    matching,
     pricing,
     rownumbers,
     setup,
@@ -287,6 +288,8 @@ def base_rows(
         .order_by(Registration.registered_at)
     ).all()
 
+    held = matching.held_symbols(session, tournament)
+
     rows: dict[str, Row] = {}
     for registration in registrations:
         # A registration issued for a fencer-list row stands in that row's
@@ -344,6 +347,8 @@ def base_rows(
             "substitute_for": [e.discipline.slug for e in registration.entries if e.is_substitute],
             # the participation condition: disciplines attended only together
             "conditional": [e.discipline.slug for e in registration.entries if e.conditional],
+            # a payment sent from the queue that is held for the organizer
+            "payment_held": registration.vs is not None and registration.vs in held,
             # each queued placement's queue moment, which orders the rows below
             # a discipline tab's line (spec seating-queue, export-tables)
             "queued_since": {

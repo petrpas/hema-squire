@@ -248,9 +248,7 @@ def apply_amendment(
     # an early-bird deadline is still priced at the fees that applied when the
     # fencer registered (spec imported-registrations, What an issued
     # registration is worth).
-    totals = pricing.registration_total(registration, tournament)
-    registration.total_amount = totals.local
-    registration.total_eur = totals.eur
+    pricing.reprice(registration, tournament)
     overpaid = registration.balance_cents(tournament)[0] < 0
     if was_paid and overpaid:
         registration.refund_state = RefundState.PENDING

@@ -24,7 +24,7 @@ from pydantic import BaseModel
 from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
-from app import bank, emails, ledger, nameresolve
+from app import bank, emails, ledger, nameresolve, pricing
 from app import rules as rules_engine
 from app.availability import taken_seats
 from app.mail import Mailer
@@ -56,6 +56,12 @@ BARE_VS = re.compile(r"(?<!\d)\d{7}(?!\d)")
 # queue — distinct from every expiry reason, because what resolves it is a
 # promotion or a refund, not a reinstatement
 QUEUED_REASON = "registration_queued"
+# Where paying substitutes take free places, a held payment says why it did not
+# seat: it matched the claim and found a discipline full — the next passes may
+# seat it — or its amount is not the claim, which only the organizer resolves
+QUEUED_NO_PLACE = "queued_no_place"
+QUEUED_AMOUNT_MISMATCH = "queued_amount_mismatch"
+QUEUED_REASONS = frozenset({QUEUED_REASON, QUEUED_NO_PLACE, QUEUED_AMOUNT_MISMATCH})
 
 MatchCurrency = Literal["local", "eur"]
 MatchOutcome = Literal["paid", "partial", "overpaid"]
@@ -569,26 +575,7 @@ def _evaluate_single_vs(
         result.flagged += 1
         return
     elif registration.waiting_in_queue:
-        # The queue holds no money: a registration credited here would read as
-        # a fencer who paid for a place they do not hold. Held for the
-        # organizer, who promotes the fencer — which credits it at once
-        # (`credit_held_for`) — or marks it for refund (spec payments,
-        # Payments arriving on a queued registration). Every pass re-evaluates
-        # a flagged transaction, so the event and the letter are written the
-        # first time only.
-        first_time = transaction.status_reason != QUEUED_REASON
-        _finish(transaction, "flagged", QUEUED_REASON)
-        result.flagged += 1
-        if first_time:
-            _event(
-                session,
-                transaction,
-                "match_conflict",
-                f"VS {vs}: registration is waiting in the queue",
-                registration,
-            )
-            session.flush()
-            emails.send_payment_while_queued(mailer, tournament, registration.fencer, registration)
+        _evaluate_queued(session, tournament, mailer, transaction, registration, vs, result)
         return
 
     which = match_currency(transaction, tournament)
@@ -649,6 +636,138 @@ def _evaluate_single_vs(
         result.matched += 1
 
 
+def _evaluate_queued(
+    session: Session,
+    tournament: Tournament,
+    mailer: Mailer,
+    transaction: BankTransaction,
+    registration: Registration,
+    vs: int,
+    result: MatchResult,
+) -> None:
+    """A payment on a registration waiting wholly in the queue.
+
+    The queue holds no money: a registration credited there would read as a
+    fencer who paid for a place they do not hold. So the payment is held for the
+    organizer, who promotes the fencer — which credits it at once
+    (`credit_held_for`) — or marks it for refund (spec payments, Payments
+    arriving on a queued registration).
+
+    **Except where it seats the registration first.** On a tournament that lets
+    paying substitutes take free places, a payment of the registration's claim
+    arriving while every discipline it waits for has a free place seats all of
+    them and only then is credited: the money never lands on a registration
+    without a seat. It seats everything waited for or nothing (spec
+    seating-queue, A paying substitute takes free places; design
+    paying-substitutes D2).
+
+    Every pass re-evaluates a flagged transaction, so the event and the letter
+    are written the first time it is held, whatever the reason."""
+    previous = transaction.status_reason
+    reason = QUEUED_REASON
+    if pricing.ensure_claim(registration, tournament):
+        reason = _seat_by_payment(session, tournament, mailer, transaction, registration, vs)
+        if reason is None:
+            result.matched += 1
+            return
+    _finish(transaction, "flagged", reason)
+    result.flagged += 1
+    if previous not in QUEUED_REASONS:
+        _event(
+            session,
+            transaction,
+            "match_conflict",
+            f"VS {vs}: registration is waiting in the queue ({reason})",
+            registration,
+        )
+        session.flush()
+        emails.send_payment_while_queued(
+            mailer, tournament, registration.fencer, registration, reason=reason
+        )
+
+
+def _seat_by_payment(
+    session: Session,
+    tournament: Tournament,
+    mailer: Mailer,
+    transaction: BankTransaction,
+    registration: Registration,
+    vs: int,
+) -> str | None:
+    """Seat a waiting registration by its payment of the claim, or say why not.
+
+    A payment whose amount was once found not to be the claim is never seated
+    by a pass: that is the organizer's to resolve, and the amount has not
+    changed since. One that found a discipline full is tried again against the
+    places as they stand now, which is what lets it seat itself when a place
+    frees; the pass meets held payments in arrival order, and each seating is
+    flushed before the next is tried, so the one that arrived first takes a
+    single freed place (design paying-substitutes D3)."""
+    if transaction.status_reason == QUEUED_AMOUNT_MISMATCH:
+        return QUEUED_AMOUNT_MISMATCH
+    which = match_currency(transaction, tournament)
+    claim = None if which is None else pricing.claim_outstanding_cents(registration, which)
+    if which is None or claim is None:
+        return QUEUED_AMOUNT_MISMATCH
+    total = registration.claim_total if which == "local" else registration.claim_total_eur
+    tolerance = (total or 0) * 100 * tournament.amount_tolerance_percent / 100
+    if abs(transaction.amount_cents - claim) > tolerance:
+        return QUEUED_AMOUNT_MISMATCH
+    waiting = [entry for entry in registration.entries if entry.is_substitute]
+    if any(
+        taken_seats(session, entry.discipline) >= entry.discipline.capacity for entry in waiting
+    ):
+        return QUEUED_NO_PLACE
+
+    for entry in waiting:
+        entry.is_substitute = False
+        entry.promoted_unpaid = False
+    pricing.reprice(registration, tournament)
+    registration.expires_at = None
+    _credit(
+        session,
+        tournament,
+        registration,
+        transaction,
+        transaction.amount_cents,
+        CreditOrigin.AUTO_VS,
+    )
+    transaction.matched_registration_id = registration.id
+    _finish(transaction, "matched", "queue_payment_seated")
+    _event(
+        session,
+        transaction,
+        "queue_payment_seated",
+        f"VS {vs}: {transaction.amount_cents} cents seated "
+        + ", ".join(entry.discipline.slug for entry in waiting),
+        registration,
+    )
+    # the next held payment in this pass must see these places taken
+    session.flush()
+    emails.send_seated_by_payment(
+        mailer,
+        tournament,
+        registration.fencer,
+        registration,
+        ", ".join(entry.discipline.name for entry in waiting),
+    )
+    return None
+
+
+def held_symbols(session: Session, tournament: Tournament) -> set[int]:
+    """The variable symbols named by payments held because their registration
+    waits in the queue — so a roster can say who has already paid for a place
+    they are waiting for (spec seating-queue, Queue view for the organizer)."""
+    held = session.scalars(
+        select(BankTransaction).where(
+            BankTransaction.tournament_id == tournament.id,
+            BankTransaction.status == "flagged",
+            BankTransaction.status_reason.in_(QUEUED_REASONS),
+        )
+    ).all()
+    return {vs for transaction in held for vs in detected_vs_tokens(transaction)}
+
+
 class _Unsent:
     """A mailer that sends nothing, for a re-evaluation whose outcome another
     letter states. `Mailer` is the seam, so nothing below needs to know."""
@@ -674,7 +793,7 @@ def credit_held_for(session: Session, tournament: Tournament, registration: Regi
         .where(
             BankTransaction.tournament_id == tournament.id,
             BankTransaction.status == "flagged",
-            BankTransaction.status_reason == QUEUED_REASON,
+            BankTransaction.status_reason.in_(QUEUED_REASONS),
         )
         .order_by(BankTransaction.date, BankTransaction.id)
     ).all()

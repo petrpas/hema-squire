@@ -56,12 +56,17 @@ export function PaymentModeSection({
   const [windowDays, setWindowDays] = useState("");
   const [reminderDay, setReminderDay] = useState("");
   const [unpaidTreatment, setUnpaidTreatment] = useState("greyed");
+  const [queueSeats, setQueueSeats] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const validation = useFieldValidation();
   const fieldRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
   const eur = showsEur(detail);
+  // offered where Squire keeps the list and collects: a manual tournament
+  // queues nobody, and without payments there is nothing to pay. Hidden, it is
+  // retained as it stands (spec tournament-admin)
+  const offersQueueSeats = detail.registrations_kept_by === "squire" && detail.feature_payments;
   const currency = detail.local_currency;
   const deadline = effectiveDeadline(detail);
   const deadlineText = t(`setup.paymentMode.deadline.${deadline.via}`, {
@@ -75,6 +80,7 @@ export function PaymentModeSection({
     setWindowDays(String(detail.reservation_validity_days));
     setReminderDay(String(detail.reminder_day));
     setUnpaidTreatment(detail.unpaid_list_treatment);
+    setQueueSeats(detail.queue_payment_seats);
     validation.clearAll();
     setError(null);
     setDirty(false);
@@ -117,6 +123,7 @@ export function PaymentModeSection({
           reminder_day: _int(reminderDay),
           unpaid_list_treatment: unpaidTreatment,
         };
+        if (offersQueueSeats) patch.queue_payment_seats = queueSeats;
         // outside deposit mode the amounts mean nothing and are left alone
         if (mode === "deposit") {
           patch.deposit_amount = _int(depositLocal);
@@ -235,6 +242,24 @@ export function PaymentModeSection({
       </div>
       {!detail.fio_token_configured && (
         <p className="rail-hint">{t("setup.paymentMode.depositNeedsFeed")}</p>
+      )}
+      {offersQueueSeats && (
+        <>
+          <label className="rail-check">
+            <input
+              type="checkbox"
+              checked={queueSeats}
+              onChange={(event) => {
+                setQueueSeats(event.currentTarget.checked);
+                setDirty(true);
+              }}
+            />
+            <span>{t("setup.paymentMode.queueSeats.label")}</span>
+          </label>
+          {/* the consequence one line each way, and what it costs the queue */}
+          <p className="rail-hint">{t("setup.paymentMode.queueSeats.off")}</p>
+          <p className="rail-hint">{t("setup.paymentMode.queueSeats.on")}</p>
+        </>
       )}
       <div className="form-fields">
         {numberField("reservation_validity_days", "param.hint.reservation_validity_days")}

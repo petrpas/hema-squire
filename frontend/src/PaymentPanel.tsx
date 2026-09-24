@@ -55,9 +55,12 @@ function localFields(payment: PaymentInstructions, t: Translate): SlipField[] {
       shown: String(payment.vs),
       copy: String(payment.vs),
     },
-    // nothing to copy: a date is read, never entered into a transfer
-    { key: "expires", label: t("payment.expiresAt"), shown: expiry(payment) },
   );
+  // nothing to copy: a date is read, never entered into a transfer. None where
+  // no window runs — a claim, or a seat held until the seating deadline
+  if (payment.expires_at !== null) {
+    fields.push({ key: "expires", label: t("payment.expiresAt"), shown: expiry(payment) });
+  }
   return fields;
 }
 
@@ -78,7 +81,9 @@ function eurFields(payment: PaymentInstructions, amount: number, t: Translate): 
       shown: payment.message,
       copy: payment.message,
     },
-    { key: "expires", label: t("payment.expiresAt"), shown: expiry(payment) },
+    ...(payment.expires_at === null
+      ? []
+      : [{ key: "expires", label: t("payment.expiresAt"), shown: expiry(payment) }]),
   ];
 }
 
@@ -142,6 +147,9 @@ export default function PaymentPanel({ slug }: { slug: string }) {
     <section className="payment-slip">
       <div className="payment-slip-heading">
         <h2 className="payment-slip-title">{t("payment.title")}</h2>
+        {/* a claim takes a place only if every discipline waited for is free
+            when the payment arrives (spec payments) */}
+        {payment.claim && <p className="rail-hint">{t("payment.claimCondition")}</p>}
 
         {eur && (
           <div className="stage-control" role="tablist">

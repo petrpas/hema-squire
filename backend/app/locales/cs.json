@@ -34,7 +34,8 @@
     },
     "queued": {
       "subject": "Zařazení do fronty náhradníků — {tournament}",
-      "body": "Ahoj {name},\n\ntvá registrace na {tournament} čeká ve frontě náhradníků:\n\n{summary}\n\nZatím nic neplatíš. Jakmile se uvolní místo a organizátor tě přijme, pošleme ti pokyny k platbě.\n\nTým {tournament}"
+      "body": "Ahoj {name},\n\ntvá registrace na {tournament} čeká ve frontě náhradníků:\n\n{summary}\n\nZatím nic neplatíš. Jakmile se uvolní místo a organizátor tě přijme, pošleme ti pokyny k platbě.\n\nTým {tournament}",
+      "bodyClaim": "Ahoj {name},\n\ntvá registrace na {tournament} čeká ve frontě náhradníků:\n\n{summary}\n\n{claim}\n\nTým {tournament}"
     },
     "amendment": {
       "subject": "Úprava registrace na {tournament} — pokyny k platbě",
@@ -101,15 +102,25 @@
       "body": "Ahoj {name},\n\nplatba za tvou registraci na {tournament} (VS {vs}) nedorazila v termínu, a tak jsme tě přesunuli do fronty náhradníků:\n\n{moved}\n\nDokud čekáš ve frontě, nic nedlužíš — nic prosím neposílej. Pokud se uvolní místo a organizátor tě posune zpět, pošleme ti pokyny k platbě a otevře se nová lhůta.{credit}\n\nTým {tournament}",
       "entry": "{discipline} — {position}. ve frontě",
       "team": "{team} — {discipline}: {position}. na čekací listině",
-      "credit": "\n\nČástka {amount}, kterou jsi už zaplatil/a, zůstává evidovaná u tvé registrace a započítá se, pokud tě organizátor posune na místo."
+      "credit": "\n\nČástka {amount}, kterou jsi už zaplatil/a, zůstává evidovaná u tvé registrace a započítá se, pokud tě organizátor posune na místo.",
+      "bodyClaim": "Ahoj {name},\n\nplatba za tvou registraci na {tournament} (VS {vs}) nedorazila v termínu, a tak jsme tě přesunuli do fronty náhradníků:\n\n{moved}{credit}\n\n{claim}\n\nTým {tournament}"
     },
     "paymentWhileQueued": {
       "subject": "Platba přijata, čekáš ve frontě — {tournament}",
-      "body": "Ahoj {name},\n\ndorazila tvá platba (VS {vs}) k registraci na {tournament}. Registrace ale čeká celá ve frontě náhradníků a zatím nemáš žádné místo, takže jsme platbu nezapočítali. Ozve se ti organizátor a domluví další postup.\n\nTým {tournament}"
+      "body": "Ahoj {name},\n\ndorazila tvá platba (VS {vs}) k registraci na {tournament}. Registrace ale čeká celá ve frontě náhradníků a zatím nemáš žádné místo, takže jsme platbu nezapočítali. Ozve se ti organizátor a domluví další postup.\n\nTým {tournament}",
+      "bodyNoPlace": "Ahoj {name},\n\ndorazila tvá platba (VS {vs}) k registraci na {tournament}. Odpovídá částce za místa, na která čekáš, ale některá z těch disciplín je teď plná. Platbu držíme: jakmile budou volná místa ve všech, obsadí je sama a dáme ti vědět. Organizátor tě také může posunout na místo, nebo platbu vrátit.\n\nTým {tournament}",
+      "bodyAmountMismatch": "Ahoj {name},\n\ndorazila tvá platba (VS {vs}) k registraci na {tournament}. Registrace čeká ve frontě a částka neodpovídá tomu, co je za místa, na která čekáš, třeba zaplatit — sama tě proto na místo neposune. Platbu držíme a organizátor se ti ozve.\n\nTým {tournament}"
     },
     "promotedPaid": {
       "subject": "Uvolnilo se místo — {tournament}",
       "body": "Ahoj {name},\n\nv disciplíně {discipline} na {tournament} se pro tebe uvolnilo místo — už nejsi náhradník.\n\nMísto je už uhrazené, takže nic dalšího neplatíš. Tvoje účast je potvrzena.\n\nTým {tournament}"
+    },
+    "seatedByPayment": {
+      "subject": "Máš místo — {tournament}",
+      "body": "Ahoj {name},\n\ntvá platba (VS {vs}) dorazila a místa, na která jsi čekal/a, byla volná: v disciplínách {discipline} na {tournament} teď máš místo. Přijali jsme {total} a tvoje účast je potvrzena.\n\nTým {tournament}"
+    },
+    "claim": {
+      "block": "Pokud chceš místo obsadit hned, jak se uvolní, můžeš zaplatit {amount}.\n\nÚčet: {account}\nVariabilní symbol: {vs}\n\nPlatba ti místa zajistí, jen pokud budou ve chvíli, kdy dorazí, volná ve všech disciplínách, na které čekáš. Jinak ji podržíme, dokud se neuvolní, nebo dokud organizátor nerozhodne jinak. QR kód v příloze je vystavený přesně na tuto částku."
     }
   },
   "export": {

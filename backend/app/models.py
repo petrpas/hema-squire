@@ -397,6 +397,12 @@ class Tournament(Base):
     # registration is amended, after it had already been paid (design D4)
     deposit_amount: Mapped[int | None]
     deposit_amount_eur: Mapped[int | None]
+    # Substitutes who pay take free places by themselves (spec tournament-admin,
+    # Paying substitutes may take free places). Off, money sent from the queue
+    # waits for the organizer; on, a registration waiting wholly in the queue is
+    # told its claim and a payment of it seats it where every discipline it
+    # waits for has a free place (spec seating-queue).
+    queue_payment_seats: Mapped[bool] = mapped_column(default=False)
     # set by the settlement pass, by the deadline tick or by the organizer
     # settling early. Settlement is one-shot: its predicate is "reserved and
     # seated", which is exactly what admit_substitute produces, so without
@@ -665,6 +671,16 @@ class Registration(Base):
     # NULL for a tournament that does not price in EUR (design Decision 1) —
     # never recomputed on read, never moved by a later price or rate change
     total_eur: Mapped[int | None]
+    # The claim: what this registration would be priced at with every queued
+    # individual placement seated, stored beside the totals and recomputed with
+    # them (`pricing.reprice`), so every instruction and QR code states one
+    # stored amount. Set only while the tournament lets paying substitutes take
+    # places and the registration waits wholly in the queue with its clocks
+    # running; null otherwise. What is still to pay of it is derived, as every
+    # outstanding figure is (spec seating-queue, A paying substitute takes free
+    # places).
+    claim_total: Mapped[int | None]
+    claim_total_eur: Mapped[int | None]
     expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     # Both lifecycle clocks are dormant for this registration, by virtue of its
     # origin: it was issued for a row that states who is competing rather than

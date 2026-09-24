@@ -618,9 +618,7 @@ def register(
     else:
         raise HTTPException(status_code=409, detail="vs_allocation_failed")
 
-    totals = pricing.registration_total(registration, tournament)
-    registration.total_amount = totals.local
-    registration.total_eur = totals.eur
+    pricing.reprice(registration, tournament)
     registration.expires_at = _initial_expires_at(tournament, registration)
     # the row enters the tournament's table here and takes its fixed number,
     # which it keeps for good (spec etl-console, Fixed fencer number). A
@@ -797,7 +795,11 @@ def my_registration_payment(tournament: TournamentDep, session: SessionDep, fenc
         # has been paid for is `reserved` like any other, and instructions for
         # money already in would be a demand aimed at nobody
         raise HTTPException(status_code=409, detail="not_unpaid")
-    if registration.fully_queued:
+    # a registration waiting wholly in the queue owes nothing — unless the
+    # tournament lets paying substitutes take free places, when it is told its
+    # claim instead (spec payments)
+    claim = pricing.ensure_claim(registration, tournament)
+    if registration.fully_queued and not claim:
         raise HTTPException(status_code=409, detail="no_payment_due")
     if not tournament.bank_account:
         raise HTTPException(status_code=404, detail="no_bank_account")
@@ -810,6 +812,27 @@ def my_registration_payment(tournament: TournamentDep, session: SessionDep, fenc
     # built by the same helpers the confirmation email uses, so the two can
     # never drift apart
     message = emails.payment_message(tournament, registration)
+    if claim:
+        session.commit()  # a claim computed on this read is stored with it
+        local_due, eur_due = emails.claim_due(registration)
+        primary, eur = emails.payment_spayd(
+            tournament, registration, local_amount=local_due, eur_amount=eur_due
+        )
+        return PaymentInstructionsOut(
+            amount=_plain(local_due),
+            currency=tournament.local_currency,
+            iban=tournament.bank_account,
+            account_domestic=accounts.to_domestic(tournament.bank_account),
+            vs=vs,
+            message=message,
+            expires_at=None,
+            spayd=primary,
+            qr_png_base64=base64.b64encode(spayd.qr_png(primary)).decode(),
+            eur_amount=None if eur_due is None else _plain(eur_due),
+            eur_spayd=eur,
+            eur_qr_png_base64=(base64.b64encode(spayd.qr_png(eur)).decode() if eur else None),
+            claim=True,
+        )
     primary, eur = emails.payment_spayd(tournament, registration)
     return PaymentInstructionsOut(
         amount=registration.total_amount,
@@ -825,6 +848,11 @@ def my_registration_payment(tournament: TournamentDep, session: SessionDep, fenc
         eur_spayd=eur,
         eur_qr_png_base64=(base64.b64encode(spayd.qr_png(eur)).decode() if eur else None),
     )
+
+
+def _plain(amount: Decimal) -> int | float:
+    """A money figure as the instructions state it: whole where it is whole."""
+    return int(amount) if amount == amount.to_integral_value() else float(amount)
 
 
 @router.post("/my-registration/cancel", response_model=RegistrationOut)
@@ -1024,9 +1052,7 @@ def admit_substitute(
     # window. Nothing about payment is assigned: a registration that now owes
     # more reads that off its credits against the new total, exactly as an
     # amendment leaves it, and the window is what it has to pay in.
-    totals = pricing.registration_total(registration, tournament)
-    registration.total_amount = totals.local
-    registration.total_eur = totals.eur
+    pricing.reprice(registration, tournament)
     # A dormant registration's promotion bills it but opens no window: it never
     # acquires a due date, whatever happens to it later. Asked of the one
     # predicate the lifecycle passes ask, so the promotion path cannot come to
@@ -1143,9 +1169,7 @@ def return_to_queue(
         placement_.is_substitute = True
         # the promotion that seated it, if one did, is withdrawn with it
         placement_.promoted_unpaid = False
-    totals = pricing.registration_total(registration, tournament)
-    registration.total_amount = totals.local
-    registration.total_eur = totals.eur
+    pricing.reprice(registration, tournament)
     # nothing is owed from the queue, so no window may keep running against it
     registration.expires_at = None
     session.add(

@@ -342,6 +342,9 @@ export type PaymentMode = "immediate" | "deposit" | "reservation";
 
 export interface TournamentDetail extends Tournament {
   payment_mode: PaymentMode;
+  /** Substitutes who pay take free places by themselves (spec
+   *  `tournament-admin`); off by default. */
+  queue_payment_seats: boolean;
   /** Whether a Fio API token is on file, so the bank can be polled at all.
    *  Never the token itself — the console needs only this. */
   fio_token_configured: boolean;
@@ -495,6 +498,8 @@ export interface SheetRow {
   queued_since: Record<string, string>;
   /** The participation condition's disciplines, by slug; empty for none. */
   conditional: string[];
+  /** A payment sent from the queue is held for the organizer. */
+  payment_held?: boolean;
   state: string;
   /** The registration standing in this row's place, where one has been issued
    *  for it; null while the row is still a row. Disciplines are the row's to
@@ -1135,6 +1140,9 @@ export interface PaymentInstructions {
   eur_amount: number | null;
   eur_spayd: string | null;
   eur_qr_png_base64: string | null;
+  /** Instructions for a waiting registration's claim: the payment takes the
+   *  places waited for only if all are free when it is credited. */
+  claim: boolean;
 }
 
 export const api = {

@@ -705,7 +705,12 @@
       "deadline.own": "{{date}}",
       "deadline.close": "{{date}} (uzávěrka přihlášek)",
       "deadline.date": "{{date}} (datum turnaje)",
-      "depositNeedsFeed": "Zálohový režim potřebuje bankovní feed, aby se záloha poznala hned po připsání. Nastav Fio token, aby šel použít."
+      "depositNeedsFeed": "Zálohový režim potřebuje bankovní feed, aby se záloha poznala hned po připsání. Nastav Fio token, aby šel použít.",
+      "queueSeats": {
+        "label": "Náhradníci, kteří zaplatí, zaplní volná místa sami",
+        "off": "Vypnuto: peníze poslané z fronty čekají na organizátora, který šermíře posune na místo, nebo platbu vrátí.",
+        "on": "Zapnuto: šermíř čekající ve frontě dostane pokyny k platbě a jeho platba obsadí místa, na která čeká, jakmile jsou volná ve všech. O tom, kdo dostane místo, pak nerozhoduje pořadí ve frontě."
+      }
     },
     "legacyFees": {
       "title": "Staré pevné poplatky",
@@ -1020,7 +1025,8 @@
       "not_unpaid": "Tato rezervace už nečeká na platbu.",
       "generic": "Platební instrukce se nepodařilo načíst (chyba {{status}}). Zkus stránku znovu načíst."
     },
-    "saveQr": "Uložit QR kód"
+    "saveQr": "Uložit QR kód",
+    "claimCondition": "Platba ti místa zajistí, jen pokud budou ve chvíli, kdy dorazí, volná ve všech disciplínách, na které čekáš. Jinak ji podržíme, dokud se neuvolní, nebo dokud organizátor nerozhodne jinak."
   },
   "registration": {
     "title": "Tvoje registrace",
@@ -1086,7 +1092,9 @@
         "registration_paid": "registrace už je zaplacená",
         "registration_cancelled": "registrace zrušena",
         "not_an_incoming_payment": "není příchozí platba",
-        "registration_queued": "registrace čeká celá ve frontě — posuň ji na místo, nebo označ platbu k vrácení"
+        "registration_queued": "registrace čeká celá ve frontě — posuň ji na místo, nebo označ platbu k vrácení",
+        "queued_no_place": "čeká ve frontě, zaplaceno — obsadí místa, jakmile budou volná",
+        "queued_amount_mismatch": "čeká ve frontě, částka neodpovídá — posuň ho na místo, nebo označ k vrácení"
       },
       "settledByHand": "Zaplaceno ručně: {{reason}}",
       "settledByPayment": "Zaplaceno ručně zadanou platbou: {{amount}}, {{date}}"
@@ -1333,7 +1341,8 @@
       "condition_discipline_full": "Registrace čeká na všechny disciplíny své podmínky a některá z nich je plná — posunout nelze."
     },
     "alsoWaitsFor": "čeká i na: {{disciplines}}",
-    "returnConditionHint": "Vrátit do fronty celou registraci — šermíř jede jen se všemi disciplínami své podmínky. Bez e-mailu."
+    "returnConditionHint": "Vrátit do fronty celou registraci — šermíř jede jen se všemi disciplínami své podmínky. Bez e-mailu.",
+    "paymentHeld": "platba držena"
   },
   "manualEntry": {
     "title": "Ruční zadání",

@@ -44,7 +44,7 @@ from app.models import (
 )
 from app.routers.tournaments import _lowest_free_series
 
-SCHEMA_VERSION = 16
+SCHEMA_VERSION = 17
 
 _TOURNAMENT_FIELDS = [
     "slug",
@@ -81,6 +81,8 @@ _TOURNAMENT_FIELDS = [
     "vs_series",
     "vs_next_seq",
     "team_composition_deadline",
+    # v17: whether paying substitutes take free places (off before it existed)
+    "queue_payment_seats",
 ]
 
 # v6 addition, defaulted when restoring an older file so a v1-v5 export lands
@@ -121,6 +123,9 @@ _REGISTRATION_FIELDS = [
     "aftersparring",
     "accommodation",
     "notes",
+    # v17: the stored claim, null before it existed
+    "claim_total",
+    "claim_total_eur",
 ]
 
 # A payment the organizer recorded by hand. Removed ones are not exported:
@@ -506,7 +511,7 @@ def _guard_uncomposable_payment_state(data: dict) -> None:
 
 def restore_tournament(session: Session, data: dict, actor: Fencer) -> Tournament:
     version = data.get("schema_version")
-    if version not in (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, SCHEMA_VERSION):
+    if version not in (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, SCHEMA_VERSION):
         raise HTTPException(status_code=422, detail="unsupported_schema_version")
     if version != SCHEMA_VERSION:
         _guard_uncomposable_payment_state(data)
@@ -638,6 +643,10 @@ def restore_tournament(session: Session, data: dict, actor: Fencer) -> Tournamen
         # reserved; whether it reads paid afterwards is the credits below
         if entry.get("state") == "paid":
             entry["state"] = "reserved"
+        # a document before v17 carries no claim; the next repricing computes
+        # one where it applies
+        entry.setdefault("claim_total", None)
+        entry.setdefault("claim_total_eur", None)
         payload = {k: entry[k] for k in _REGISTRATION_FIELDS}
         for field in (
             "registered_at",

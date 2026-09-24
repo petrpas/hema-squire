@@ -50,9 +50,11 @@ export function queuedText(
   // waits for, so why it carries no arrow is legible (spec seating-queue)
   const others = (row.conditional ?? []).filter((other) => other !== slug);
   const waitsWhole = others.length > 0 && (row.disciplines ?? []).length === 0;
-  return waitsWhole
-    ? `${line} · ${t("queue.alsoWaitsFor", { disciplines: others.join(", ") })}`
-    : line;
+  const parts = [line];
+  if (waitsWhole) parts.push(t("queue.alsoWaitsFor", { disciplines: others.join(", ") }));
+  // who has already paid for a place they are waiting for (spec seating-queue)
+  if (row.payment_held) parts.push(t("queue.paymentHeld"));
+  return parts.join(" · ");
 }
 
 /** The Queue roster's columns: who, their rating as Export states it (not

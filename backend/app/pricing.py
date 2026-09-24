@@ -26,7 +26,7 @@ from decimal import ROUND_HALF_UP, Decimal
 from typing import Literal, NamedTuple
 
 from app.models import Discipline, ExtraCategory, ExtraItem, Registration, Tournament
-from app.setup import local_date
+from app.setup import clocks_run, local_date
 
 # which currency column a computation reads: the tournament's local currency,
 # or its optional second, EUR-denominated one
@@ -428,3 +428,74 @@ def registration_total(registration: Registration, tournament: Tournament) -> To
         at=_priced_on(registration, tournament),
         team_disciplines=team_disciplines,
     )
+
+
+def claim_applies(registration: Registration, tournament: Tournament) -> bool:
+    """Whether this registration has a claim: the tournament lets paying
+    substitutes take free places, the registration waits wholly in the queue
+    with at least one individual placement, and its clocks run — a dormant
+    registration is offered nothing and seated by nothing (spec seating-queue,
+    A paying substitute takes free places)."""
+    return (
+        tournament.queue_payment_seats
+        and bool(registration.entries)
+        and registration.waiting_in_queue
+        and clocks_run(tournament, registration)
+    )
+
+
+def claim_totals(registration: Registration, tournament: Tournament) -> Totals:
+    """What the registration would be priced at with every queued individual
+    placement seated, at its own frozen prices. Its waitlisted teams are not
+    part of it and stay waitlisted."""
+    _active, extras, team_disciplines = _registration_selection(registration)
+    return selection_totals(
+        tournament,
+        disciplines=[entry.discipline for entry in registration.entries],
+        extras=extras,
+        weapon_rentals=registration.weapon_rentals,
+        afterparty=registration.afterparty,
+        at=_priced_on(registration, tournament),
+        team_disciplines=team_disciplines,
+    )
+
+
+def reprice(registration: Registration, tournament: Tournament) -> None:
+    """Recompute and store the registration's totals, and its claim beside
+    them — every place that reprices a registration does it through this, so
+    the claim a fencer is told is never older than the totals it stands beside
+    (design paying-substitutes D1)."""
+    totals = registration_total(registration, tournament)
+    registration.total_amount = totals.local
+    registration.total_eur = totals.eur
+    if claim_applies(registration, tournament):
+        claim = claim_totals(registration, tournament)
+        registration.claim_total = claim.local
+        registration.claim_total_eur = claim.eur
+    else:
+        registration.claim_total = None
+        registration.claim_total_eur = None
+
+
+def ensure_claim(registration: Registration, tournament: Tournament) -> bool:
+    """Store the registration's claim where it applies and none is stored yet —
+    the setting was turned on after it was last repriced — and say whether it
+    has one. A claim is only ever computed when it is read or repriced, so
+    turning the setting on needs no backfill (design paying-substitutes D1)."""
+    if not claim_applies(registration, tournament):
+        return False
+    if registration.claim_total is None:
+        claim = claim_totals(registration, tournament)
+        registration.claim_total = claim.local
+        registration.claim_total_eur = claim.eur
+    return True
+
+
+def claim_outstanding_cents(registration: Registration, which: str) -> int | None:
+    """What is still to pay of the claim in one lane, in cents: the stored claim
+    less what that lane has been credited (a forfeited deposit counts). None
+    where the lane has no claim."""
+    total = registration.claim_total if which == "local" else registration.claim_total_eur
+    if total is None:
+        return None
+    return total * 100 - registration.credited_in(which)

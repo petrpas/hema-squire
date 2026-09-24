@@ -298,9 +298,7 @@ def _issue_one(
     # call an in-app registration is priced by, which reads
     # `registration.registered_at` — so early-bird applies as it did the day the
     # fencer signed up, and the total is then frozen like any other
-    totals = pricing.registration_total(registration, tournament)
-    registration.total_amount = totals.local
-    registration.total_eur = totals.eur
+    pricing.reprice(registration, tournament)
     return registration
 
 

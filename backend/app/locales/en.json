@@ -68,11 +68,14 @@
       "body": "Hi {name},\n\nthe payment for your registration at {tournament} (VS {vs}) did not arrive in time, so you have been moved to the substitute queue:\n\n{moved}\n\nWhile you wait in the queue you owe nothing — please do not send any payment. If a place opens and the organizer promotes you, we will send payment instructions and a new payment window will open.{credit}\n\n{tournament} team",
       "entry": "{discipline} — number {position} in the queue",
       "team": "{team} — {discipline}: number {position} on the waitlist",
-      "credit": "\n\nThe {amount} you have already paid stays recorded against your registration and counts if the organizer promotes you."
+      "credit": "\n\nThe {amount} you have already paid stays recorded against your registration and counts if the organizer promotes you.",
+      "bodyClaim": "Hi {name},\n\nthe payment for your registration at {tournament} (VS {vs}) did not arrive in time, so you have been moved to the substitute queue:\n\n{moved}{credit}\n\n{claim}\n\n{tournament} team"
     },
     "paymentWhileQueued": {
       "subject": "Payment received while you are queued — {tournament}",
-      "body": "Hi {name},\n\nyour payment (VS {vs}) arrived for your registration at {tournament}. Your registration is waiting entirely in the substitute queue and holds no place yet, so the payment has not been credited. The organizer will be in contact about what happens next.\n\n{tournament} team"
+      "body": "Hi {name},\n\nyour payment (VS {vs}) arrived for your registration at {tournament}. Your registration is waiting entirely in the substitute queue and holds no place yet, so the payment has not been credited. The organizer will be in contact about what happens next.\n\n{tournament} team",
+      "bodyNoPlace": "Hi {name},\n\nyour payment (VS {vs}) arrived for your registration at {tournament}. It matches what the places you are waiting for cost, but one of those disciplines is full right now. We are holding it: as soon as there are free places in all of them it takes them by itself, and we will let you know. The organizer may also promote you or refund the payment.\n\n{tournament} team",
+      "bodyAmountMismatch": "Hi {name},\n\nyour payment (VS {vs}) arrived for your registration at {tournament}. Your registration is waiting in the queue and the amount is not what the places you are waiting for cost, so it will not take a place by itself. We are holding it and the organizer will be in contact.\n\n{tournament} team"
     },
     "promotedPaid": {
       "subject": "A place has opened — {tournament}",
@@ -81,6 +84,16 @@
     "confirmation": {
       "condition": "Attending only with a place in all of: {disciplines}.",
       "conditionWaits": "Still full: {disciplines} — so you wait in the queue for every discipline."
+    },
+    "seatedByPayment": {
+      "subject": "You have a place — {tournament}",
+      "body": "Hi {name},\n\nyour payment (VS {vs}) arrived and the places you were waiting for were free: you now have a place in {discipline} at {tournament}. We received {total} and your participation is confirmed.\n\n{tournament} team"
+    },
+    "claim": {
+      "block": "If you want to take a place as soon as one frees, you can pay {amount}.\n\nAccount: {account}\nVariable symbol: {vs}\n\nThe payment takes your places only if every discipline you are waiting for has a free place when it arrives. Otherwise we hold it until they free, or until the organizer decides otherwise. The attached QR code is made out for exactly this amount."
+    },
+    "queued": {
+      "bodyClaim": "Hi {name},\n\nyour registration at {tournament} is waiting in the substitute queue:\n\n{summary}\n\n{claim}\n\n{tournament} team"
     }
   },
   "export": {

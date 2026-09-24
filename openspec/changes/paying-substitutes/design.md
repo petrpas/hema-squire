@@ -89,6 +89,22 @@ while the setting is off.
   the condition sentence.
 - Queue roster (from `queue-rosters`): a marker on a queued row with a held transaction.
 
+### D6. Found in implementation
+
+- **Every repricing goes through `pricing.reprice`**, which stores the totals and the
+  claim together; the seven sites that set totals by hand now call it. Where a claim is
+  read before any repricing has stored one — the setting was turned on since —
+  `pricing.ensure_claim` computes and stores it (instructions, matching, the mails).
+- **The instructions' `amount` may be a fraction** for a claim, since a forfeited
+  deposit is subtracted from it; the field is `int | float`, and whole amounts stay
+  whole. A claim's instructions carry `claim: true` and no expiry; the fencer's slip no
+  longer draws an expiry row where none runs (which also mends the reservation-mode slip
+  that drew an unreadable date).
+- **The held notice is sent once per transaction**, whatever its reason becomes on a
+  later pass; its wording follows the reason it was first held for.
+- **A row's held payment is read from the flagged transactions' own symbols**
+  (`matching.held_symbols`), carried on the sheet row as `payment_held`.
+
 ## Risks / Trade-offs
 
 - [The queue order stops meaning much on a willing tournament] → stated in the setting's

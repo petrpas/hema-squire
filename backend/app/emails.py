@@ -241,12 +241,36 @@ def send_registration_confirmation(
 
     if queued:
         subject = t("email.queued.subject", lang, tournament=tournament.display_name)
+        summary = _summary_lines(registration, tournament, lang, waits_for)
+        if pricing.ensure_claim(registration, tournament) and tournament.bank_account:
+            # the tournament lets paying substitutes take free places: the
+            # fencer is told what to pay and when it takes a place (spec payments)
+            claim, qr, qr_eur = _claim_block(tournament, registration, lang)
+            body = t(
+                "email.queued.bodyClaim",
+                lang,
+                name=fencer.display_name,
+                tournament=tournament.display_name,
+                summary=summary,
+                claim=claim,
+            )
+            mailer.send(
+                build_message(
+                    recipient(registration, fencer),
+                    settings.email_sender,
+                    subject,
+                    body,
+                    qr=qr,
+                    qr_eur=qr_eur,
+                )
+            )
+            return
         body = t(
             "email.queued.body",
             lang,
             name=fencer.display_name,
             tournament=tournament.display_name,
-            summary=_summary_lines(registration, tournament, lang, waits_for),
+            summary=summary,
         )
         mailer.send(
             build_message(recipient(registration, fencer), settings.email_sender, subject, body)
@@ -771,44 +795,77 @@ def send_demoted(
         for team, name, position in moved_teams
     ]
     held = _credit_text(tournament, registration, lang)
-    body = t(
-        "email.demoted.body",
-        lang,
-        name=fencer.display_name,
-        tournament=tournament.display_name,
-        vs=registration.vs,
-        moved="\n".join(lines),
-        credit=t("email.demoted.credit", lang, amount=held) if held is not None else "",
-    )
+    credit = t("email.demoted.credit", lang, amount=held) if held is not None else ""
+    qr = qr_eur = None
+    if pricing.ensure_claim(registration, tournament) and tournament.bank_account:
+        # where paying substitutes take free places the notice tells the fencer
+        # what to pay instead of asking them not to (spec registration)
+        claim, qr, qr_eur = _claim_block(tournament, registration, lang)
+        body = t(
+            "email.demoted.bodyClaim",
+            lang,
+            name=fencer.display_name,
+            tournament=tournament.display_name,
+            vs=registration.vs,
+            moved="\n".join(lines),
+            credit=credit,
+            claim=claim,
+        )
+    else:
+        body = t(
+            "email.demoted.body",
+            lang,
+            name=fencer.display_name,
+            tournament=tournament.display_name,
+            vs=registration.vs,
+            moved="\n".join(lines),
+            credit=credit,
+        )
     mailer.send(
         build_message(
             recipient(registration, fencer),
             settings.email_sender,
             t("email.demoted.subject", lang, tournament=tournament.display_name),
             body,
+            qr=qr,
+            qr_eur=qr_eur,
         )
     )
     return True
 
 
 def send_payment_while_queued(
-    mailer: Mailer, tournament: Tournament, fencer: Fencer, registration: Registration
+    mailer: Mailer,
+    tournament: Tournament,
+    fencer: Fencer,
+    registration: Registration,
+    *,
+    reason: str = "registration_queued",
 ) -> None:
     """A payment on a registration sitting entirely in the queue, held rather
     than credited (spec payments, Payments arriving on a queued registration):
     it arrived, the fencer holds no place, and the organizer will be in contact.
     It promises no place and does not imply the money is lost — the organizer
-    resolves it by promoting the fencer or by marking it for refund."""
+    resolves it by promoting the fencer or by marking it for refund.
+
+    Where paying substitutes take free places the letter says why it was held:
+    it matched the claim and a discipline is full, so it will take the places
+    as soon as they free — or its amount is not the claim, which the organizer
+    resolves (spec payments)."""
     if _payment_mail_suppressed(tournament, registration):
         return
     lang = tournament.language
+    body_key = {
+        "queued_no_place": "email.paymentWhileQueued.bodyNoPlace",
+        "queued_amount_mismatch": "email.paymentWhileQueued.bodyAmountMismatch",
+    }.get(reason, "email.paymentWhileQueued.body")
     mailer.send(
         build_message(
             recipient(registration, fencer),
             settings.email_sender,
             t("email.paymentWhileQueued.subject", lang, tournament=tournament.display_name),
             t(
-                "email.paymentWhileQueued.body",
+                body_key,
                 lang,
                 name=fencer.display_name,
                 tournament=tournament.display_name,
@@ -816,6 +873,72 @@ def send_payment_while_queued(
             ),
         )
     )
+
+
+def send_seated_by_payment(
+    mailer: Mailer,
+    tournament: Tournament,
+    fencer: Fencer,
+    registration: Registration,
+    disciplines: str,
+) -> None:
+    """A waiting fencer's payment of their claim took the places they waited
+    for: they have a place, and the payment was received (spec seating-queue,
+    A paying substitute takes free places)."""
+    if _payment_mail_suppressed(tournament, registration):
+        return
+    lang = tournament.language
+    mailer.send(
+        build_message(
+            recipient(registration, fencer),
+            settings.email_sender,
+            t("email.seatedByPayment.subject", lang, tournament=tournament.display_name),
+            t(
+                "email.seatedByPayment.body",
+                lang,
+                name=fencer.display_name,
+                tournament=tournament.display_name,
+                discipline=disciplines,
+                total=_total_text(tournament, registration),
+                vs=registration.vs,
+            ),
+        )
+    )
+
+
+def claim_due(registration: Registration) -> tuple[Decimal, Decimal | None]:
+    """What is still to pay of the registration's stored claim, per lane, as
+    the amounts a letter and its QR codes state (design paying-substitutes D1)."""
+    local = Decimal(pricing.claim_outstanding_cents(registration, "local") or 0) / 100
+    eur_cents = pricing.claim_outstanding_cents(registration, "eur")
+    eur = None if eur_cents is None else Decimal(eur_cents) / 100
+    return (
+        local.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP),
+        None if eur is None else eur.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP),
+    )
+
+
+def _claim_block(
+    tournament: Tournament, registration: Registration, lang: str
+) -> tuple[str, bytes | None, bytes | None]:
+    """The instructions for a waiting registration's claim, as a paragraph and
+    its QR codes: the amount, the account, the symbol, and when the payment
+    takes a place."""
+    local, eur = claim_due(registration)
+
+    def stated(amount: Decimal) -> int | Decimal:
+        # a whole amount reads as one
+        return int(amount) if amount == amount.to_integral_value() else amount
+
+    text = t(
+        "email.claim.block",
+        lang,
+        amount=_amount_text(tournament, lang, stated(local), None if eur is None else stated(eur)),
+        account=_account_text(tournament),
+        vs=registration.vs,
+    )
+    qr, qr_eur = payment_qrs(tournament, registration, local_amount=local, eur_amount=eur)
+    return text, qr, qr_eur
 
 
 def send_composition_reminder(

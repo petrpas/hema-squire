@@ -156,6 +156,12 @@ describe("the Queue roster", () => {
     expect(roster([paid, conditional], 1, 1)).toContain("posunout na místo");
   });
 
+  it("states a payment held from the queue", () => {
+    const held = { ...waiting, payment_held: true };
+    expect(roster([paid, held], 0)).toContain("platba držena");
+    expect(roster([paid, waiting], 0)).not.toContain("platba držena");
+  });
+
   it("gives a row with no registration no arrow, and says it holds no seat", () => {
     const imported = row("imp:9", "Imported Nine", { registration_id: null });
     const html = roster([imported], 1);

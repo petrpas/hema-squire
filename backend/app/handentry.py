@@ -155,9 +155,7 @@ def register(
         registration,
         {"weapon_rentals": weapon_rentals, "afterparty": afterparty},
     )
-    totals = pricing.registration_total(registration, tournament)
-    registration.total_amount = totals.local
-    registration.total_eur = totals.eur
+    pricing.reprice(registration, tournament)
     # it enters the tournament's table here and takes its fixed number
     rownumbers.allocate(session, tournament, [f"reg:{registration.id}"])
     session.commit()

@@ -690,7 +690,12 @@
       "deadline.own": "{{date}}",
       "deadline.close": "{{date}} (the registration close)",
       "deadline.date": "{{date}} (the tournament date)",
-      "depositNeedsFeed": "The deposit mode needs a bank feed, so that a deposit is noticed as it arrives. Record a Fio token to use it."
+      "depositNeedsFeed": "The deposit mode needs a bank feed, so that a deposit is noticed as it arrives. Record a Fio token to use it.",
+      "queueSeats": {
+        "label": "Substitutes who pay take free places by themselves",
+        "off": "Off: money sent from the queue waits for the organizer, who promotes the fencer or refunds it.",
+        "on": "On: a fencer waiting in the queue is told what to pay, and their payment takes the places they wait for as soon as all are free. The queue's order then no longer decides who gets a place."
+      }
     },
     "legacyFees": {
       "title": "Legacy fixed fees",
@@ -1004,7 +1009,8 @@
       "not_unpaid": "This reservation is no longer awaiting payment.",
       "generic": "Payment instructions could not be loaded (error {{status}}). Try reloading the page."
     },
-    "saveQr": "Save QR code"
+    "saveQr": "Save QR code",
+    "claimCondition": "The payment takes your places only if every discipline you wait for has a free place when it arrives. Otherwise we hold it until they free, or until the organizer decides otherwise."
   },
   "registration": {
     "title": "Your registration",
@@ -1070,7 +1076,9 @@
         "registration_paid": "registration already paid",
         "registration_cancelled": "registration cancelled",
         "not_an_incoming_payment": "not an incoming payment",
-        "registration_queued": "registration is waiting entirely in the queue — promote it, or mark the payment for refund"
+        "registration_queued": "registration is waiting entirely in the queue — promote it, or mark the payment for refund",
+        "queued_no_place": "queued, paid — takes the places as soon as they free",
+        "queued_amount_mismatch": "queued, amount does not match — promote them, or mark for refund"
       },
       "settledByHand": "Settled by hand: {{reason}}",
       "settledByPayment": "Settled by a payment recorded by hand: {{amount}}, {{date}}"
@@ -1302,7 +1310,8 @@
       "condition_discipline_full": "The registration waits for every discipline of its condition and one of them is full — it cannot be promoted."
     },
     "alsoWaitsFor": "also waits for: {{disciplines}}",
-    "returnConditionHint": "Return the whole registration to the queue — the fencer attends only with every discipline of their condition. No email is sent."
+    "returnConditionHint": "Return the whole registration to the queue — the fencer attends only with every discipline of their condition. No email is sent.",
+    "paymentHeld": "payment held"
   },
   "manualEntry": {
     "title": "Manual entry",
