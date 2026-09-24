@@ -111,6 +111,10 @@ const BASE_COLUMNS = ["name", "nationality", "club"];
 // and empty on most rows.
 export const MARKER_COLUMNS = new Set(["notes", "problems"]);
 
+// Columns that state a number: right-aligned, so they read by magnitude down
+// the column. A date is not among them — it is read, not compared by size.
+export const NUMERIC_COLUMNS = new Set(["hr_id", "vs", "total_amount", "outstanding"]);
+
 export const PHASE_COLUMNS: Record<Phase, string[]> = {
   setup: [],
   import: ["disciplines", "problems", "notes"],

@@ -1,6 +1,7 @@
-import { IconCopy } from "@tabler/icons-react";
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
+
+import CopyButton from "./CopyButton";
 
 /** One transfer detail: its label, the value as the fencer must enter it into
  *  their bank, and — where the value has to be typed by hand — whether it can
@@ -14,70 +15,17 @@ export type SlipField = {
   copy?: string;
 };
 
-/** Whether this browser exposes a clipboard at all.
- *
- *  `navigator.clipboard` is only present in a secure context: it is there on
- *  hemasquire.eu and on localhost, and absent over a LAN IP — which is exactly
- *  how a phone is usually pointed at a dev server. The control is rendered
- *  from this check rather than assumed, so where copying cannot work no button
- *  is offered, instead of one that fails silently when pressed. */
-function clipboardAvailable(): boolean {
-  return typeof navigator !== "undefined" && typeof navigator.clipboard?.writeText === "function";
-}
-
 function CopyableField({ field }: { field: SlipField }) {
   const { t } = useTranslation();
-  const [copied, setCopied] = useState(false);
-  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  useEffect(
-    () => () => {
-      if (timer.current !== null) clearTimeout(timer.current);
-    },
-    [],
-  );
-
-  const offered = field.copy !== undefined && clipboardAvailable();
-
-  async function copy() {
-    if (field.copy === undefined) return;
-    try {
-      await navigator.clipboard.writeText(field.copy);
-    } catch {
-      // The clipboard can still refuse — a permission policy, a page that lost
-      // focus. Saying nothing is right: the value is on screen and readable,
-      // and an error banner over a payment slip reads as a payment problem.
-      return;
-    }
-    setCopied(true);
-    if (timer.current !== null) clearTimeout(timer.current);
-    timer.current = setTimeout(() => setCopied(false), 2400);
-  }
 
   return (
     <div className="param-field">
       <span>{field.label}</span>
       <div className="slip-value-row">
         <strong className="data-value">{field.shown}</strong>
-        {/* The action names itself by its glyph: the row is a value and the
-            one thing to do with it, and a word there competed with the value
-            for the eye. Outline, never filled. */}
-        {offered && (
-          <button
-            type="button"
-            className="row-action slip-copy"
-            title={t("payment.copy")}
-            aria-label={t("payment.copy")}
-            onClick={() => void copy()}
-          >
-            <IconCopy size={16} stroke={1.5} />
-          </button>
+        {field.copy !== undefined && (
+          <CopyButton value={field.copy} label={t("common.copy")} done={t("common.copied")} />
         )}
-        {/* Static note, and it leaves by fading out — the design admits a
-            fade-out departure and nothing else. No toast, no icon swap. */}
-        <span className={copied ? "slip-copied is-shown" : "slip-copied"} aria-live="polite">
-          {copied ? t("payment.copied") : ""}
-        </span>
       </div>
     </div>
   );

@@ -1076,6 +1076,20 @@ button.secondary:disabled {
   font-family: var(--font-data);
 }
 
+/* A column that states a number stands right-aligned, so a rating, an amount
+   or an identifier is read by magnitude down the column (the table's figures
+   are tabular already); the row number is one of them, and so is every numeric
+   field a table holds. A row header in the index column — a duplicate group's
+   conclusion — is a word and keeps to the left. Scoped to the table: the cell
+   rule above names the table too, and a bare class would lose to it. */
+.sheet-table td.col-index,
+.sheet-table thead th.col-index,
+.sheet-table .col-number,
+.sheet-table .col-number .cell-input,
+.sheet-table .cell-input[inputmode="numeric"] {
+  text-align: right;
+}
+
 .col-state {
   text-align: center;
   width: 4rem;
@@ -1887,6 +1901,15 @@ fieldset.form-field > legend {
 
 tr.row-deleted td {
   opacity: 0.5;
+  text-decoration: line-through;
+}
+
+/* A line-through does not reach into an inline-block, and a value carrying a
+   hint — an unpriced borrowed item — sits in one, as a match verdict's tag
+   does; both are struck with the rest of the row. The hint box is positioned
+   out of the flow and stays legible. */
+tr.row-deleted td .help-hint,
+tr.row-deleted td .tag {
   text-decoration: line-through;
 }
 
@@ -4110,6 +4133,65 @@ button.secondary.tolerance-save:disabled {
    do not fit side by side the band wraps under the title; below 768px
    `.stage-control-band` sets width: 100%, so it wraps there always and stays
    the full-width scroller. */
+/* The destination procedure, as three numbered steps. The numbers are the
+   list's own markers rather than drawn characters, so a reader is told it is
+   an ordered list and not merely shown one. */
+.wizard-steps {
+  margin: 0;
+  padding-left: 1.4rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+
+.wizard-steps > li::marker {
+  color: var(--ink-faded);
+}
+
+.wizard-steps p {
+  margin: 0 0 0.35rem;
+}
+
+.wizard-account {
+  font-size: 12px;
+}
+
+/* The two actions carry labels of very different lengths, and padding alone
+   would size each to its own word. One width for both instead, so the row
+   reads as a pair — but a width the words ask for, not the dialog's: they sit
+   together at the end with a gap between them rather than stretched across it.
+   Below 480px `.modal-actions` stacks them full-width, which is right under a
+   thumb and is left alone. */
+.wizard-actions {
+  justify-content: flex-end;
+  gap: 0.8rem;
+}
+
+.wizard-actions > button {
+  flex: 0 0 auto;
+  min-width: 8.5rem;
+}
+
+/* The destination, stated in the rail where the export was run. It withdraws
+   for the duration of a run, which is the card's one honest signal that a run
+   is in flight: the export reports no progress and admits no interruption, so
+   there is nothing for a bar or a spinner to be honest about. */
+.export-destination {
+  margin: 0.2rem 0 0;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.2rem 0.8rem;
+}
+
+/* Forgetting the destination is the lesser of the two, and says so by size:
+   the link is what an organizer came for, this is the footnote beside it. */
+.export-destination > button {
+  font-size: 11px;
+  color: var(--ink-faded);
+}
+
 .export-header {
   justify-content: flex-start;
   align-items: center;

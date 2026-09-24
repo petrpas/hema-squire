@@ -175,9 +175,7 @@ def test_a_rejected_credential_is_not_treated_as_anonymous(client, auth_headers,
     organizer = auth_headers()
     make_published(client, organizer, "cup")
 
-    refused = client.get(
-        f"/api/tournaments/{scope}", headers={"Authorization": "Bearer not-a-jwt"}
-    )
+    refused = client.get(f"/api/tournaments/{scope}", headers={"Authorization": "Bearer not-a-jwt"})
     assert refused.status_code == 401
 
 
@@ -389,9 +387,7 @@ def test_the_index_lists_only_what_the_caller_may_open(client, auth_headers):
     ]
 
     # a seat on the console team is the other way in, and the listing says so
-    client.post(
-        "/api/tournaments/ours/team", json={"email": "other@example.com"}, headers=owner
-    )
+    client.post("/api/tournaments/ours/team", json={"email": "other@example.com"}, headers=owner)
     assert sorted(t["slug"] for t in client.get("/api/tournaments", headers=stranger).json()) == [
         "ours",
         "theirs",

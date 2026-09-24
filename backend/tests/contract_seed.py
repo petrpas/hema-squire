@@ -40,12 +40,13 @@ class StubSheet:
     """
 
     def __init__(self) -> None:
-        self.grids: dict[str, list[list[str]]] = {}
+        self.grids: dict[str, list[list[sheets_export.Cell]]] = {}
 
     def read(self, worksheet: str) -> list[list[str]] | None:
-        return self.grids.get(worksheet)
+        grid = self.grids.get(worksheet)
+        return None if grid is None else [[str(value) for value in row] for row in grid]
 
-    def write(self, worksheet: str, grid: list[list[str]]) -> None:
+    def write(self, worksheet: str, grid: list[list[sheets_export.Cell]]) -> None:
         self.grids[worksheet] = grid
 
 

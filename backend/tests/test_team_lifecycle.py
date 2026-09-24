@@ -182,9 +182,7 @@ def test_admin_assigns_owner_fallback(client, auth_headers):
     )
     assert response.status_code == 200
     assert (
-        client.patch(
-            f"/api/tournaments/{slug}", json={"city": "Z"}, headers=new_owner
-        ).status_code
+        client.patch(f"/api/tournaments/{slug}", json={"city": "Z"}, headers=new_owner).status_code
         == 200
     )
 
@@ -254,9 +252,7 @@ def test_cancel_hides_from_public_list_but_keeps_console(client, auth_headers):
     detail = client.get(f"/api/tournaments/{slug}", headers=owner)
     assert detail.status_code == 200
     assert (
-        client.patch(
-            f"/api/tournaments/{slug}", json={"city": "Nove"}, headers=owner
-        ).status_code
+        client.patch(f"/api/tournaments/{slug}", json={"city": "Nove"}, headers=owner).status_code
         == 200
     )
 

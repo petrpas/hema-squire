@@ -79,7 +79,7 @@ export default function UncreditedTable({
           <tr>
             <th>{t("payments.uncredited.date")}</th>
             <th>{t("payments.uncredited.payer")}</th>
-            <th>{t("payments.uncredited.amount")}</th>
+            <th className="col-number">{t("payments.uncredited.amount")}</th>
             <th>{t("payments.uncredited.message")}</th>
             <th>{t("payments.uncredited.disposition")}</th>
             <th className="col-actions" />
@@ -90,7 +90,9 @@ export default function UncreditedTable({
             <tr key={payment.id}>
               <td>{new Date(payment.date).toLocaleDateString("cs")}</td>
               <td>{payment.payer_name ?? "—"}</td>
-              <td>{formatTransactionAmount(payment.amount_cents, payment.currency)}</td>
+              <td className="col-number">
+                {formatTransactionAmount(payment.amount_cents, payment.currency)}
+              </td>
               {/* the bank's own words, in full: judging them is the work */}
               <td className="muted">{payment.message ?? "—"}</td>
               <td>

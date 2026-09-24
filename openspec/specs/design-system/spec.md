@@ -44,7 +44,7 @@ A control whose size is inherited from the density of a data table it sits in �
 - **THEN** the difference is the recorded 16px control size, not drift, and is left in place
 
 ### Requirement: Ledger table behavior
-Tables SHALL have no zebra stripes. Rows are separated by a 1px `--hairline` rule; the header is underlined by a 2px `--rule-strong` rule. Row hover SHALL only change `background` to `--paper-shade`, no other hover effect. The first column SHALL show a zero-padded ordinal (`001, 002…`) in `--font-data`, colored `--ink-faded`. The table footer SHALL show a left-aligned summary and right-aligned metadata in `--font-data`.
+Tables SHALL have no zebra stripes. Rows are separated by a 1px `--hairline` rule; the header is underlined by a 2px `--rule-strong` rule. Row hover SHALL only change `background` to `--paper-shade`, no other hover effect. The first column SHALL show a zero-padded ordinal (`001, 002…`) in `--font-data`, colored `--ink-faded`. The table footer SHALL show a left-aligned summary and right-aligned metadata in `--font-data`. A column that states a number — the row's ordinal, an identifier, a variable symbol, an amount, a rating, a rank, a numeric field — SHALL state it right-aligned; a column of words or dates SHALL be left-aligned.
 
 #### Scenario: Hovering a table row
 - **WHEN** a user hovers over a ledger row

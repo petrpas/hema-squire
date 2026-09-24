@@ -68,8 +68,7 @@
     "yes": "Yes",
     "no": "No",
     "column": {
-      "reg": "Reg.",
-      "no": "No.",
+      "position": "#",
       "name": "Name",
       "nat": "Nat.",
       "club": "Club",

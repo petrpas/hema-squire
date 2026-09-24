@@ -23,7 +23,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app import amendment, rules
-from app.hr_index import name_key
+from app.hr_index import country_code, name_key
 from app.models import Fencer, Registration, RegistrationState, Rule, Tournament
 
 
@@ -57,7 +57,9 @@ def identity_from_payload(payload: dict) -> Identity:
     return Identity(
         name=payload.get("name") or "",
         hr_id=payload.get("hr_id"),
-        nationality=payload.get("nationality"),
+        # the dialog hands over the index's English spelling where a profile
+        # was picked; the list speaks ISO codes
+        nationality=country_code(payload.get("nationality")) or payload.get("nationality"),
         club=payload.get("club"),
         email=payload.get("email"),
         fencer_id=payload.get("fencer_id"),

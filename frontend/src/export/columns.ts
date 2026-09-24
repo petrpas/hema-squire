@@ -18,6 +18,9 @@ export interface ExportColumn {
   /** The rating cell, and only it, opens for editing (spec export-tables, The
    *  rating is the organizer's to correct). */
   editable?: boolean;
+  /** States a number — the position, an identifier, a rating, a rank — and so
+   *  stands right-aligned, its digits in a column under one another. */
+  numeric?: boolean;
   /** `index` is the row's place in the table as displayed, from 0 — read only
    *  by the position column, which states it. */
   value: (row: SheetRow, index: number) => string;
@@ -31,12 +34,16 @@ const text = (value: unknown): string =>
  *  travels in the copy, as the order it states is a value the reader may want
  *  to keep, but has no counterpart among the backend's spreadsheet columns
  *  (owner decision, change export-layouts). */
-export const POSITION: ExportColumn = { id: "position", value: (_row, index) => String(index + 1) };
+export const POSITION: ExportColumn = {
+  id: "position",
+  numeric: true,
+  value: (_row, index) => String(index + 1),
+};
 
 export const NAME: ExportColumn = { id: "name", value: (row) => text(row.name) };
 export const NATIONALITY: ExportColumn = { id: "nat", value: (row) => text(row.nationality) };
 export const CLUB: ExportColumn = { id: "club", value: (row) => text(row.club) };
-export const HR_ID: ExportColumn = { id: "hr_id", value: (row) => text(row.hr_id) };
+export const HR_ID: ExportColumn = { id: "hr_id", numeric: true, value: (row) => text(row.hr_id) };
 export const DISCIPLINES: ExportColumn = {
   id: "disciplines",
   value: (row) => (row.disciplines ?? []).join(", "),
@@ -55,12 +62,13 @@ export function ratingColumn(slug: string): ExportColumn {
   return {
     id: "rating",
     editable: true,
+    numeric: true,
     value: (row) => text(ratingOf(row, slug)),
   };
 }
 
 export function rankColumn(slug: string): ExportColumn {
-  return { id: "rank", value: (row) => text(rankOf(row, slug)) };
+  return { id: "rank", numeric: true, value: (row) => text(rankOf(row, slug)) };
 }
 
 /** What a fencer bought in one category, as the item tab states it: the item,

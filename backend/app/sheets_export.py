@@ -4,17 +4,17 @@ semantics.
 The merge is a pure function over the existing worksheet grid and the current
 roster; the SheetsClient protocol only reads and writes whole worksheets, so
 the semantics live here and run identically against the in-memory test fake
-and the gspread client. Per the spec: Reg./No. cells are never touched,
-HRating/HRank always refresh, every other cell is written only when blank
-(downstream manual work wins), and deleted rows appear in no worksheet.
+and the gspread client. Per the spec: the # position and HRating/HRank always
+refresh, every other cell is written only when blank (downstream manual work
+wins), and deleted rows appear in no worksheet.
 
 A column has an **identity** and a **label**. The label is rendered through
 `app.i18n`, so a Czech organizer's spreadsheet reads Czech and an English
 export reads English; the identity is what the merge addresses old cells by,
 matching every label that column has ever carried in any locale. Without that
 split, switching the export's language would read as every column being
-dropped and a new one arriving — and the numbering downstream staff fill in by
-hand would be lost by a tick.
+dropped and a new one arriving — and every cell downstream staff corrected by
+hand would be overwritten by a tick.
 """
 
 import unicodedata
@@ -46,36 +46,36 @@ CATEGORY_SHEETS = {
 class Column:
     """One column of one export table.
 
-    `preserved` marks a column downstream staff manage by hand, which the
-    export never writes; `refreshed` one that is written afresh every time
-    rather than only when blank — the rating, which is what the tournament
-    currently holds and never a cell to be preserved.
+    `refreshed` marks one that is written afresh every time rather than only
+    when blank — the rating, which is what the tournament currently holds and
+    never a cell to be preserved. `numeric` one whose cells go to the
+    spreadsheet as numbers, so they stand right-aligned and sort by magnitude
+    rather than as text.
     """
 
     id: str
-    preserved: bool = False
     refreshed: bool = False
+    numeric: bool = False
 
     @property
     def key(self) -> str:
         return f"export.column.{self.id}"
 
 
-REG = Column("reg", preserved=True)
-NUMBER = Column("no", preserved=True)
+POSITION = Column("position", refreshed=True, numeric=True)
 NAME = Column("name")
 NATIONALITY = Column("nat")
 CLUB = Column("club")
-HR_ID = Column("hr_id")
+HR_ID = Column("hr_id", numeric=True)
 DISCIPLINES = Column("disciplines")
-RATING = Column("rating", refreshed=True)
-RANK = Column("rank", refreshed=True)
+RATING = Column("rating", refreshed=True, numeric=True)
+RANK = Column("rank", refreshed=True, numeric=True)
 ITEMS = Column("items")
 PAID = Column("paid")
 
-FENCERS_COLUMNS = [REG, NAME, NATIONALITY, CLUB, HR_ID, DISCIPLINES, PAID]
-DISCIPLINE_COLUMNS = [NUMBER, NAME, NATIONALITY, CLUB, HR_ID, RATING, RANK, PAID]
-CATEGORY_COLUMNS = [NAME, NATIONALITY, CLUB, ITEMS, PAID]
+FENCERS_COLUMNS = [POSITION, NAME, NATIONALITY, CLUB, HR_ID, DISCIPLINES, PAID]
+DISCIPLINE_COLUMNS = [POSITION, NAME, NATIONALITY, CLUB, HR_ID, RATING, RANK, PAID]
+CATEGORY_COLUMNS = [POSITION, NAME, NATIONALITY, CLUB, ITEMS, PAID]
 
 
 def header_for(columns: list[Column], locale: str) -> list[str]:
@@ -151,10 +151,45 @@ def _category_values(row: Row, category: str, locale: str) -> dict[str, str]:
     }
 
 
+Cell = str | int | float
+
+
 class SheetsClient(Protocol):
     def read(self, worksheet: str) -> list[list[str]] | None: ...
 
-    def write(self, worksheet: str, grid: list[list[str]]) -> None: ...
+    def write(self, worksheet: str, grid: list[list[Cell]]) -> None: ...
+
+
+def _number(text: str) -> Cell:
+    """The number a cell states, or the text itself where it states none — a
+    blank rating, or a cell downstream staff wrote a word into."""
+    try:
+        return int(text)
+    except ValueError:
+        pass
+    try:
+        return float(text)
+    except ValueError:
+        return text
+
+
+def typed_grid(grid: list[list[str]], columns: list[Column]) -> list[list[Cell]]:
+    """The merged grid as it is written: numeric columns' cells as numbers.
+
+    The merge works in text, as the spreadsheet reads back; only the write
+    types them. A number sent as a number is stored as one whatever locale the
+    spreadsheet is set to, where text parsed by the spreadsheet would read
+    1250.5 as a date in a Czech one.
+    """
+    numeric = {index for index, column in enumerate(columns) if column.numeric}
+    header, *rows = grid
+    return [
+        list(header),
+        *(
+            [_number(value) if index in numeric else value for index, value in enumerate(row)]
+            for row in rows
+        ),
+    ]
 
 
 def merge_grid(
@@ -166,14 +201,20 @@ def merge_grid(
     """Merge the roster into the existing grid.
 
     `roster` is (identity, column values by column id) in export order.
-    Existing rows keep their order and preserved cells; rows whose identity
-    left the roster are dropped; new roster entries append at the bottom with
-    preserved cells blank.
+    Existing rows keep their order and their non-blank cells; rows whose
+    identity left the roster are dropped; new roster entries append at the
+    bottom.
 
     A column of the existing grid is found by any label it has ever carried, so
     a grid written in the v1 format — or in another language — keeps its
     contents where the column remains, and loses them only where the column
     itself is gone.
+
+    The position column numbers the merged grid's rows 1..n top to bottom,
+    rewritten every time. It numbers the sheet as it stands, not the console's
+    order: the merge keeps old rows where they are, so after a re-export the
+    two can differ, and a column that skipped numbers down the sheet would
+    serve nobody reading it.
     """
     header = header_for(columns, locale)
     old_header = existing[0] if existing else header
@@ -191,9 +232,9 @@ def merge_grid(
         position = positions.get(column.id)
         if position is None or position >= len(row):
             return ""
-        return row[position]
+        return str(row[position])
 
-    values_by_identity = dict(roster)
+    values_by_identity = {identity: {**values, POSITION.id: ""} for identity, values in roster}
     merged: list[list[str]] = [header]
     seen: set[str] = set()
     for old_row in old_rows:
@@ -204,18 +245,21 @@ def merge_grid(
         seen.add(identity)
         merged.append(
             [
-                cell(old_row, column)
-                if column.preserved
-                else values[column.id]
+                values[column.id]
                 if column.refreshed or not cell(old_row, column).strip()
                 else cell(old_row, column)
                 for column in columns
             ]
         )
-    for identity, values in roster:
+    for identity, _ in roster:
         if identity in seen:
             continue
-        merged.append(["" if column.preserved else values[column.id] for column in columns])
+        values = values_by_identity[identity]
+        merged.append([values[column.id] for column in columns])
+    if POSITION in columns:
+        index = columns.index(POSITION)
+        for number, row in enumerate(merged[1:], start=1):
+            row[index] = str(number)
     return merged
 
 
@@ -258,7 +302,8 @@ def export_to_sheets(
             roster = _roster(
                 table, lambda row, category=tab.key: _category_values(row, category, locale)
             )
-        client.write(name, merge_grid(client.read(name), columns, roster, locale))
+        merged = merge_grid(client.read(name), columns, roster, locale)
+        client.write(name, typed_grid(merged, columns))
         written.append(name)
     return {"worksheets": written, "fencers": fencers}
 
@@ -280,7 +325,7 @@ class GspreadSheetsClient:
         except gspread.exceptions.WorksheetNotFound:
             return None
 
-    def write(self, worksheet: str, grid: list[list[str]]) -> None:
+    def write(self, worksheet: str, grid: list[list[Cell]]) -> None:
         import gspread
 
         try:
@@ -311,3 +356,53 @@ def get_sheets_client_factory() -> SheetsClientFactory | None:
         return GspreadSheetsClient(settings.google_credentials_path, tournament.output_sheet_url)
 
     return factory
+
+
+# Keyed on the credentials path, because the file does not change under a
+# running server and the address is read on a request path. The path itself is
+# the key rather than a bare flag, so a test that points the setting at another
+# file is answered from that file and not from the first one read.
+_SERVICE_ACCOUNTS: dict[str, str | None] = {}
+
+
+def _client_email(credentials_path: str) -> str | None:
+    """The address a service-account credentials file acts as, or None where
+    the file is missing, unreadable, or not one.
+
+    A file that cannot be read is not an error here: it is the same state as no
+    credentials at all, which the console already has something to say about.
+    Raising instead would turn a deployment that was never configured into a
+    500 on a read the organizer cannot act on.
+    """
+    if credentials_path in _SERVICE_ACCOUNTS:
+        return _SERVICE_ACCOUNTS[credentials_path]
+    import json
+    from pathlib import Path
+
+    email: str | None = None
+    try:
+        loaded = json.loads(Path(credentials_path).read_text(encoding="utf-8"))
+    except OSError, ValueError:
+        loaded = None
+    if isinstance(loaded, dict):
+        found = loaded.get("client_email")
+        if isinstance(found, str) and found:
+            email = found
+    _SERVICE_ACCOUNTS[credentials_path] = email
+    return email
+
+
+def service_account_email() -> str | None:
+    """The address the Sheets export writes as, for the console to state.
+
+    An organizer has to share their spreadsheet with this address for writing:
+    the service account is its own identity, and the organizer's own access to
+    the document grants it nothing. It is read from the credentials the export
+    actually uses rather than configured a second time, so that the address the
+    console states and the address that opens the spreadsheet cannot disagree.
+    """
+    from app.config import settings
+
+    if not settings.google_credentials_path:
+        return None
+    return _client_email(settings.google_credentials_path)

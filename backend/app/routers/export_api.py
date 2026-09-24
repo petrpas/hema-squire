@@ -5,7 +5,7 @@ from fastapi import APIRouter, Body, Depends, HTTPException
 from app import export_json, exporttables, rules, sheet, sheets_export
 from app.auth import require_console_access, require_published
 from app.routers.tournaments import FencerDep, SessionDep, TournamentDep
-from app.schemas import ExportBandTabOut, ExportTableOut
+from app.schemas import ExportBandTabOut, ExportSheetConfigOut, ExportTableOut
 
 router = APIRouter(prefix="/api/tournaments", tags=["export"])
 
@@ -36,7 +36,9 @@ def export_tabs(
     require_console_access(session, tournament, fencer)
     require_published(tournament)
     base = sheet.base_rows(session, tournament)
-    replayed, _ = rules.replay(base, rules.active_rules(session, tournament))
+    replayed, _ = rules.replay(
+        base, rules.active_rules(session, tournament), sheet.rating_lookup(session, tournament)
+    )
     rows = list(replayed.values())
     band: list[ExportBandTabOut] = []
     for tab in exporttables.tabs(tournament):
@@ -67,10 +69,37 @@ def export_table(
     if tab is None:
         raise HTTPException(status_code=404, detail="unknown_export_table")
     base = sheet.base_rows(session, tournament)
-    replayed, _ = rules.replay(base, rules.active_rules(session, tournament))
+    replayed, _ = rules.replay(
+        base, rules.active_rules(session, tournament), sheet.rating_lookup(session, tournament)
+    )
     return ExportTableOut(
         **tab.__dict__,
         rows=exporttables.table_rows(list(replayed.values()), tab),
+    )
+
+
+@router.get("/{slug}/export/sheet-config", response_model=ExportSheetConfigOut)
+def export_sheet_config(
+    tournament: TournamentDep, session: SessionDep, fencer: FencerDep
+) -> ExportSheetConfigOut:
+    """What the Export rail must know before a first export can succeed:
+    whether this server holds Google credentials, the address they act as, and
+    where this tournament currently writes.
+
+    Not gated on publication, unlike the export itself. Naming the destination
+    is preparation, and an organizer does it while the tournament is still a
+    draft; refusing the read until publication would put the procedure out of
+    reach exactly when it is being followed.
+
+    The address is operational, not secret — it opens nothing without the
+    private key — but it is stated only to an account with console access, as
+    every other read of this tournament's console is."""
+    require_console_access(session, tournament, fencer)
+    email = sheets_export.service_account_email()
+    return ExportSheetConfigOut(
+        configured=email is not None,
+        service_account=email,
+        output_sheet_url=tournament.output_sheet_url,
     )
 
 
@@ -95,7 +124,9 @@ def export_sheet(
     if client is None:
         raise HTTPException(status_code=422, detail="output_sheet_url_not_set")
     base = sheet.base_rows(session, tournament)
-    rows, _ = rules.replay(base, rules.active_rules(session, tournament))
+    rows, _ = rules.replay(
+        base, rules.active_rules(session, tournament), sheet.rating_lookup(session, tournament)
+    )
     locale = "en" if english else fencer.language
     return sheets_export.export_to_sheets(tournament, list(rows.values()), client, locale)
 

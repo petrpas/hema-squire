@@ -254,7 +254,7 @@ describe("a tab's count", () => {
 });
 
 describe("the rail card of the open tab", () => {
-  const card = (discipline: boolean, active: boolean) =>
+  const card = (discipline: boolean, active: boolean, ratingsMessage: string | null = null) =>
     renderToStaticMarkup(
       <TableOperations
         title="Sabre Open"
@@ -264,6 +264,7 @@ describe("the rail card of the open tab", () => {
         onCopy={() => {}}
         onRefreshRatings={discipline ? () => {} : undefined}
         refreshing={false}
+        ratingsMessage={ratingsMessage}
         message={null}
       />,
     );
@@ -278,6 +279,12 @@ describe("the rail card of the open tab", () => {
   it("offers the ratings refresh only on a discipline", () => {
     expect(card(false, false)).not.toContain(t("export.fetchRatings"));
     expect(card(true, false)).toContain(t("export.fetchRatings"));
+  });
+
+  it("states a ratings fetch only where the fetch is offered", () => {
+    const done = t("export.ratingsDone", { ratings: 81, fencers: 50 });
+    expect(card(true, false, done)).toContain(done);
+    expect(card(false, false, done)).not.toContain(done);
   });
 
   it("offers the seeding order only on a discipline, beside the active-only switch", () => {
@@ -312,10 +319,26 @@ describe("the Export card", () => {
         <ExportPanel slug="cup" english={false} onEnglishChange={() => {}} />,
       );
       expect(html).toContain(i18n.getFixedT("cs")("export.english"));
-      expect(html).toContain(i18n.getFixedT("cs")("export.runSheets"));
+      // The Sheets control waits on the server's configuration, which a static
+      // render never fetches; what it writes to is `sheetWizard.test.tsx`.
+      expect(html).toContain(i18n.getFixedT("cs")("export.downloadJson"));
     } finally {
       await i18n.changeLanguage("en");
     }
+  });
+});
+
+describe("numeric columns", () => {
+  it("are the position, the identifier, the rating and the rank, and no other", () => {
+    const numeric = ROSTER_COLUMNS(t, "LS")
+      .filter((column) => column.numeric)
+      .map((column) => column.id);
+    expect(numeric).toEqual(["position", "hr_id", "rating", "rank"]);
+    expect(
+      FENCERS_COLUMNS(t)
+        .filter((column) => column.numeric)
+        .map((c) => c.id),
+    ).toEqual(["position", "hr_id"]);
   });
 });
 
@@ -349,7 +372,9 @@ describe("the position column", () => {
         onRate={() => {}}
       />,
     );
-    const numbers = [...html.matchAll(/<td class="col-index">(\d+)<\/td>/g)].map((m) => m[1]);
+    const numbers = [...html.matchAll(/<td class="col-index col-number">(\d+)<\/td>/g)].map(
+      (m) => m[1],
+    );
     expect(line.after).toBe(2);
     expect(numbers).toEqual(["1", "2", "3"]);
   });

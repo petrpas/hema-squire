@@ -8,7 +8,9 @@
     "logout": "Log out",
     "cancel": "Cancel",
     "back": "Back",
-    "close": "Close"
+    "close": "Close",
+    "copy": "Copy",
+    "copied": "Copied"
   },
   "notFound": {
     "title": "Page not found",
@@ -19,6 +21,7 @@
     "delete": "Delete row (reversible)",
     "restore": "Restore row",
     "removeRule": "Undo this change",
+    "removeSubstitution": "Undo the substitution — the matching and rating corrections made after it go with it",
     "moveUp": "Move up",
     "substitute": "Replace fencer"
   },
@@ -75,8 +78,6 @@
     "runSheets": "Export to Google Sheets",
     "downloadJson": "Download JSON",
     "done": "Done · {{fencers}} fencers exported.",
-    "noUrl": "Set the output sheet URL first (parameter on the left).",
-    "notConfigured": "Google access is not configured on the server.",
     "failed": "Export failed.",
     "tablesTitle": "Export tables",
     "tab": {
@@ -113,7 +114,22 @@
     "copy": "Copy table",
     "copied": "Copied · {{count}} rows.",
     "english": "Export in English",
-    "refreshesTournament": "Refreshes the whole tournament's ratings, not this discipline alone."
+    "refreshesTournament": "Refreshes the whole tournament's ratings, not this discipline alone.",
+    "wizard": {
+      "title": "Output spreadsheet",
+      "create": "Create a new, empty Google spreadsheet.",
+      "share": "Share it for writing with this account:",
+      "copyAccount": "Copy the account address",
+      "notConfigured": "This server has no Google access configured, so the export has nothing to write with yet. Record the link anyway; it will be written to once access is configured.",
+      "paste": "Paste the link to that spreadsheet here:",
+      "confirm": "Save the link",
+      "confirmExport": "Export",
+      "open": "Set the output spreadsheet",
+      "change": "Change the output spreadsheet"
+    },
+    "sheetLink": "Open the output spreadsheet",
+    "forgetSheet": "Forget the spreadsheet",
+    "noGoogle": "The Sheets export is not available on this server — Google access is missing."
   },
   "dedup": {
     "title": "Deduplication",
@@ -669,10 +685,6 @@
       "explanation": "This tournament still prices through the old fixed weapon-rental and afterparty fees. They have no EUR counterpart, so EUR cannot be enabled while they are set, and they are no longer editable — extra-service items replace them. Clearing them discards the amounts below.",
       "clear": "Clear legacy fees"
     },
-    "exportSheet": {
-      "title": "Sheet export",
-      "hint": "The Google Sheet the export writes into."
-    },
     "settings": {
       "title": "Tournament settings",
       "mode": {
@@ -974,8 +986,6 @@
       "not_unpaid": "This reservation is no longer awaiting payment.",
       "generic": "Payment instructions could not be loaded (error {{status}}). Try reloading the page."
     },
-    "copy": "Copy",
-    "copied": "Copied",
     "saveQr": "Save QR code"
   },
   "registration": {

@@ -8,6 +8,7 @@ import {
   canSubstitute,
   editableHere,
   MARKER_COLUMNS,
+  NUMERIC_COLUMNS,
   PHASE_COLUMNS,
   type Phase,
   phaseRemovesRows,
@@ -176,6 +177,7 @@ export default function SheetArea({
                           ? "col-phase"
                           : "",
                         MARKER_COLUMNS.has(column) ? "col-marker" : "",
+                        NUMERIC_COLUMNS.has(column) ? "col-number" : "",
                       ]
                         .filter(Boolean)
                         .join(" ")}
@@ -211,7 +213,9 @@ export default function SheetArea({
                           key={column}
                           className={`${phaseOwned ? "col-phase" : ""} ${
                             isMatch ? "col-verdict" : ""
-                          } ${MARKER_COLUMNS.has(column) ? "col-marker" : ""}`}
+                          } ${MARKER_COLUMNS.has(column) ? "col-marker" : ""} ${
+                            NUMERIC_COLUMNS.has(column) ? "col-number" : ""
+                          }`}
                         >
                           {column === "settled" && onToggleSettled ? (
                             <SettledCell

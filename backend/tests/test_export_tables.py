@@ -283,6 +283,50 @@ def test_a_deleted_row_is_in_no_table(client, auth_headers):
     assert table(client, organizer, "discipline", "LS")["rows"] == []
 
 
+def test_a_bound_row_states_what_hema_ratings_records():
+    """HR's nationality and club stand over what the fencer gave; a value HR
+    does not carry leaves the fencer's own, and an unbound row is as given."""
+    fencers = exporttables.Tab(kind=exporttables.FENCERS, key="", label="")
+    rows = [
+        {
+            "id": "a",
+            "name": "Bound",
+            "hr_id": 1,
+            "nationality": "Russia",
+            "club": None,
+            "hr_nationality": "RU",
+            "hr_club": "AKA",
+        },
+        {
+            "id": "b",
+            "name": "Partial",
+            "hr_id": 2,
+            "nationality": "CZ",
+            "club": "Own club",
+            "hr_nationality": None,
+            "hr_club": None,
+        },
+        {
+            "id": "c",
+            "name": "Unbound",
+            "hr_id": None,
+            "nationality": "DE",
+            "club": "Club",
+            "hr_nationality": "PL",
+            "hr_club": "Proposal club",
+        },
+    ]
+    stated = {
+        row["name"]: (row["nationality"], row["club"])
+        for row in exporttables.table_rows(rows, fencers)
+    }
+    assert stated == {
+        "Bound": ("RU", "AKA"),
+        "Partial": ("CZ", "Own club"),
+        "Unbound": ("DE", "Club"),
+    }
+
+
 def test_an_item_table_lists_only_its_buyers(client, auth_headers):
     organizer = organizer_with_tournament(client, auth_headers)
     shirt = add_item(client, organizer, "t-shirt", "merch")

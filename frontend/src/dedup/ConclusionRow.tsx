@@ -70,7 +70,10 @@ export default function ConclusionRow({
         {GROUP_COLUMNS.map((column) => {
           const open = editable && editableInConclusion(column, members);
           return (
-            <td key={column} className="conclusion-td">
+            <td
+              key={column}
+              className={column === "hr_id" ? "conclusion-td col-number" : "conclusion-td"}
+            >
               {open ? (
                 <ConclusionCell
                   column={column}

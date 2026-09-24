@@ -170,9 +170,7 @@ def test_value_used_on_many_tournaments_appears_once(client, auth_headers):
     """spec: A value used on many tournaments."""
     headers = auth_headers()
     for index in range(5):
-        make_tournament(
-            client, headers, f"t{index}", date=f"202{index}-05-01", city="Sokolovna"
-        )
+        make_tournament(client, headers, f"t{index}", date=f"202{index}-05-01", city="Sokolovna")
     assert client.get(SUGGESTIONS, headers=headers).json()["cities"] == ["Sokolovna"]
 
 

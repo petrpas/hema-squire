@@ -304,9 +304,7 @@ def test_draft_may_be_saved_without_bank_account(client, auth_headers):
     slug = make_tournament(client, organizer, bank_account=None)
     add_priced_discipline(client, organizer, slug)
 
-    response = client.patch(
-        f"/api/tournaments/{slug}", json={"city": "Praha"}, headers=organizer
-    )
+    response = client.patch(f"/api/tournaments/{slug}", json={"city": "Praha"}, headers=organizer)
     assert response.status_code == 200
     assert response.json()["bank_account"] is None
 

@@ -15,6 +15,7 @@ export default function TableOperations({
   onCopy,
   onRefreshRatings,
   refreshing,
+  ratingsMessage,
   message,
 }: {
   title: string;
@@ -27,6 +28,9 @@ export default function TableOperations({
   /** Offered on a discipline tab only, where the ratings being read are. */
   onRefreshRatings?: () => void;
   refreshing: boolean;
+  /** What the last ratings fetch did — stated beside the fetch, so a tab
+   *  that offers none does not carry it. */
+  ratingsMessage: string | null;
   message: string | null;
 }) {
   const { t } = useTranslation();
@@ -65,6 +69,7 @@ export default function TableOperations({
             {refreshing ? t("common.loading") : t("export.fetchRatings")}
           </button>
           <p className="rail-hint">{t("export.refreshesTournament")}</p>
+          {ratingsMessage && <p className="rail-hint">{ratingsMessage}</p>}
         </>
       )}
       {message && <p className="rail-hint">{message}</p>}

@@ -5,7 +5,7 @@ import io
 from app.hr_sync import get_hr_fetcher
 from app.importer import get_import_parser
 from app.main import app
-from app.sheets_export import get_sheets_client_factory
+from app.sheets_export import DISCIPLINE_COLUMNS, get_sheets_client_factory, typed_grid
 from tests.conftest import publish
 from tests.test_import import CSV, FakeParser
 
@@ -103,7 +103,9 @@ def export(client, organizer):
 
 
 def grid_row(grid, name):
-    return next(r for r in grid[1:] if r[1] == name)
+    """The row naming `name`, found by the name column wherever it stands."""
+    at = next(i for i, label in enumerate(grid[0]) if label in ("Jméno", "Name"))
+    return next(r for r in grid[1:] if r[at] == name)
 
 
 def test_export_writes_the_export_tables(client, auth_headers):
@@ -123,7 +125,7 @@ def test_export_writes_the_export_tables(client, auth_headers):
 
     fencers = sheets.worksheets["Fencers"]
     assert fencers[0] == [
-        "Reg.",
+        "#",
         "Jméno",
         "Nár.",
         "Klub",
@@ -132,14 +134,15 @@ def test_export_writes_the_export_tables(client, auth_headers):
         "Zaplaceno",
     ]
     jan = grid_row(fencers, "Jan Novák")
-    assert jan[0] == ""  # Reg. is downstream's column
-    assert jan[4] == "10234"
+    assert jan[4] == 10234  # numbers go to the sheet as numbers
     assert jan[5] == "LS"
     assert jan[6] == "Ne"  # payment state in the Paid column
+    # every worksheet opens with its rows numbered as they stand
+    assert [row[0] for row in fencers[1:]] == list(range(1, len(fencers)))
 
     ls = sheets.worksheets["LS"]
-    assert ls[0] == ["Č.", "Jméno", "Nár.", "Klub", "HR_ID", "HRating", "HRank", "Zaplaceno"]
-    assert grid_row(ls, "Jan Novák")[5:7] == ["1250.5", "17"]
+    assert ls[0] == ["#", "Jméno", "Nár.", "Klub", "HR_ID", "HRating", "HRank", "Zaplaceno"]
+    assert grid_row(ls, "Jan Novák")[5:7] == [1250.5, 17]
     # imported SA fencers land on the SA tab only
     assert len(sheets.worksheets["SA"]) == 3
     assert all(row[1] != "Jan Novák" for row in sheets.worksheets["SA"][1:])
@@ -157,7 +160,7 @@ def test_an_english_export_carries_english_headers(client, auth_headers):
     assert response.status_code == 200, response.text
 
     fencers = sheets.worksheets["Fencers"]
-    assert fencers[0] == ["Reg.", "Name", "Nat.", "Club", "HR_ID", "Disciplines", "Paid"]
+    assert fencers[0] == ["#", "Name", "Nat.", "Club", "HR_ID", "Disciplines", "Paid"]
     assert grid_row(fencers, "Jan Novák")[6] == "No"
 
 
@@ -183,10 +186,10 @@ def test_an_item_category_gets_a_worksheet_and_an_empty_one_does_not(client, aut
     assert "Rentals" not in body["worksheets"]  # the tournament sells none
 
     merch = sheets.worksheets["Merch"]
-    assert merch[0] == ["Jméno", "Nár.", "Klub", "Položky", "Zaplaceno"]
-    # the item worksheet carries no hand-numbering column, so the name leads it
-    assert [row[0] for row in merch[1:]] == ["Buyer One"]
-    assert merch[1][3] == "t-shirt x2"
+    assert merch[0] == ["#", "Jméno", "Nár.", "Klub", "Položky", "Zaplaceno"]
+    # the item worksheet carries no hand-numbering column, only the position
+    assert [row[:2] for row in merch[1:]] == [[1, "Buyer One"]]
+    assert merch[1][4] == "t-shirt x2"
 
 
 def test_a_corrected_rating_is_what_the_sheet_carries(client, auth_headers):
@@ -211,17 +214,90 @@ def test_a_corrected_rating_is_what_the_sheet_carries(client, auth_headers):
     )
 
     export(client, organizer)
-    assert grid_row(sheets.worksheets["LS"], "Jan Novák")[5] == "1555.0"
+    assert grid_row(sheets.worksheets["LS"], "Jan Novák")[5] == 1555.0
 
     # written afresh every time rather than preserved as a stale cell
     export(client, organizer)
-    assert grid_row(sheets.worksheets["LS"], "Jan Novák")[5] == "1555.0"
+    assert grid_row(sheets.worksheets["LS"], "Jan Novák")[5] == 1555.0
 
 
-def test_manual_numbering_survives_the_format_change(client, auth_headers):
-    """A spreadsheet written in the v1 format, re-exported: the columns that
+def rebind(client, organizer, name, hr_id):
+    """The organizer resolves a row's HR match to another profile."""
+    rows = client.get("/api/tournaments/cup/sheet", headers=organizer).json()["rows"]
+    target = next(r for r in rows if r["name"] == name)["id"]
+    response = client.post(
+        "/api/tournaments/cup/rules",
+        json={
+            "phase": "matching",
+            "kind": "match_resolution",
+            "target": target,
+            "payload": {"field": "hr_id", "value": hr_id},
+        },
+        headers=organizer,
+    )
+    assert response.status_code in (200, 201), response.text
+    return target
+
+
+def test_a_rebound_row_carries_its_new_profiles_rating(client, auth_headers):
+    """A rule that binds a row to another HR profile brings that profile's
+    rating along, in the console and in the sheet — the base row was seeded
+    for the profile it was built with, and that one is not the fencer."""
+    organizer = auth_headers()
+    setup(client, auth_headers, organizer)
+    sheets = InMemorySheets()
+    fetcher = FakeHRFetcher()
+    fetcher.pages[10234] = fighter_page([("Mixed & Men's Steel Longsword", 1250.5, 17)])
+    fetcher.pages[20468] = fighter_page([("Mixed & Men's Steel Longsword", 1600.0, 5)])
+    wire(sheets, fetcher)
+    rebind(client, organizer, "Jan Novák", 20468)
+    snapshot(client, organizer)
+
+    rows = client.get("/api/tournaments/cup/sheet", headers=organizer).json()["rows"]
+    jan = next(r for r in rows if r["name"] == "Jan Novák")
+    assert jan["ratings"] == {"LS": 1600.0}
+    assert jan["ranks"] == {"LS": 5}
+
+    export(client, organizer)
+    assert grid_row(sheets.worksheets["LS"], "Jan Novák")[5:7] == [1600.0, 5]
+
+
+def test_a_correction_outlives_a_rebinding(client, auth_headers):
+    """A rating the organizer typed belongs to the row, not to the profile it
+    was bound to when they typed it."""
+    organizer = auth_headers()
+    setup(client, auth_headers, organizer)
+    sheets = InMemorySheets()
+    fetcher = FakeHRFetcher()
+    fetcher.pages[10234] = fighter_page([("Mixed & Men's Steel Longsword", 1250.5, 17)])
+    fetcher.pages[20468] = fighter_page([("Mixed & Men's Steel Longsword", 1600.0, 5)])
+    wire(sheets, fetcher)
+    snapshot(client, organizer)
+    rows = client.get("/api/tournaments/cup/sheet", headers=organizer).json()["rows"]
+    target = next(r for r in rows if r["name"] == "Jan Novák")["id"]
+    client.post(
+        "/api/tournaments/cup/rules",
+        json={
+            "phase": "export",
+            "kind": "rating_override",
+            "target": target,
+            "payload": {"discipline": "LS", "rating": 1555.0},
+        },
+        headers=organizer,
+    )
+    rebind(client, organizer, "Jan Novák", 20468)
+    snapshot(client, organizer)
+
+    export(client, organizer)
+    # the typed rating stands; the rank is the new profile's
+    assert grid_row(sheets.worksheets["LS"], "Jan Novák")[5:7] == [1555.0, 5]
+
+
+def test_an_old_format_sheet_keeps_what_remains(client, auth_headers):
+    """A spreadsheet written in an older format, re-exported: the columns that
     remain keep their contents whatever language the header was in, the ones
-    the new format drops are gone, and the ones it adds are filled."""
+    the format drops — the hand-numbering column among them — are gone, and
+    the ones it adds are filled."""
     organizer = auth_headers(language="cs")
     setup(client, auth_headers, organizer)
     sheets = InMemorySheets()
@@ -234,11 +310,11 @@ def test_manual_numbering_survives_the_format_change(client, auth_headers):
     export(client, organizer)
 
     fencers = sheets.worksheets["Fencers"]
-    assert fencers[0] == ["Reg.", "Jméno", "Nár.", "Klub", "HR_ID", "Disciplíny", "Zaplaceno"]
+    assert fencers[0] == ["#", "Jméno", "Nár.", "Klub", "HR_ID", "Disciplíny", "Zaplaceno"]
     jan = grid_row(fencers, "Jan Novák")
-    assert jan[0] == "R-01"  # the numbering downstream staff filled by hand
     assert jan[3] == "Praha Sword Society"  # a non-blank cell is not clobbered
-    assert len(jan) == 7  # Afterparty and Notes are gone with their columns
+    assert len(jan) == 7  # Reg., Afterparty and Notes are gone; the position arrived
+    assert jan[0] == 1
 
 
 def test_reexport_preserves_manual_work_and_refreshes_ratings(client, auth_headers):
@@ -251,26 +327,19 @@ def test_reexport_preserves_manual_work_and_refreshes_ratings(client, auth_heade
     snapshot(client, organizer)
     export(client, organizer)
 
-    # downstream staff number rows and fix a club by hand; the rating moves
-    # on hemaratings and a fresh snapshot is taken
-    fencers = sheets.worksheets["Fencers"]
-    jan = grid_row(fencers, "Jan Novák")
-    jan[0] = "R-01"
+    # downstream staff fix a club by hand; the rating moves on hemaratings and
+    # a fresh snapshot is taken
+    jan = grid_row(sheets.worksheets["Fencers"], "Jan Novák")
     jan[3] = "Praha Sword Society"
-    ls = sheets.worksheets["LS"]
-    grid_row(ls, "Jan Novák")[0] = "7"
     fetcher.pages[10234] = fighter_page([("Mixed & Men's Steel Longsword", 1301.0, 12)])
     snapshot(client, organizer)
 
     export(client, organizer)
 
-    fencers = sheets.worksheets["Fencers"]
-    jan = grid_row(fencers, "Jan Novák")
-    assert jan[0] == "R-01"  # Reg. untouched
+    jan = grid_row(sheets.worksheets["Fencers"], "Jan Novák")
     assert jan[3] == "Praha Sword Society"  # non-blank cell not clobbered
     ls_jan = grid_row(sheets.worksheets["LS"], "Jan Novák")
-    assert ls_jan[0] == "7"  # No. untouched
-    assert ls_jan[5:7] == ["1301.0", "12"]  # ratings always refresh
+    assert ls_jan[5:7] == [1301.0, 12]  # ratings always refresh
 
 
 def test_deleted_rows_excluded_from_every_worksheet(client, auth_headers):
@@ -292,6 +361,8 @@ def test_deleted_rows_excluded_from_every_worksheet(client, auth_headers):
 
     for grid in sheets.worksheets.values():
         assert all(row[1] != "Alexander Bryzgalov" for row in grid[1:])
+    # the numbering closes over the gap rather than keeping the old numbers
+    assert [row[0] for row in sheets.worksheets["SA"][1:]] == [1]
 
 
 def test_export_requires_configuration(client, auth_headers):
@@ -397,3 +468,18 @@ def test_custom_weapon_worksheet_has_empty_rating_columns(client, auth_headers):
     assert response.status_code == 200, response.text
     row = grid_row(sheets.worksheets["Messer"], "Messer Fencer")
     assert row[5:7] == ["", ""]  # HRating, HRank: no taxonomy counterpart
+
+
+def test_only_numeric_columns_are_written_as_numbers():
+    """A club named by a year stays text; a blank rating stays blank; a word
+    downstream staff wrote into a numeric column stays the word."""
+    grid = [
+        ["#", "Jméno", "Nár.", "Klub", "HR_ID", "HRating", "HRank", "Zaplaceno"],
+        ["1", "Jan", "CZ", "1996", "10234", "1250.5", "17", "Ne"],
+        ["2", "Eva", "CZ", "", "", "", "n/a", "Ano"],
+    ]
+    assert typed_grid(grid, DISCIPLINE_COLUMNS) == [
+        grid[0],
+        [1, "Jan", "CZ", "1996", 10234, 1250.5, 17, "Ne"],
+        [2, "Eva", "CZ", "", "", "", "n/a", "Ano"],
+    ]

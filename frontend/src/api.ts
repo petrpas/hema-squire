@@ -616,6 +616,17 @@ export interface ExportTable extends ExportTab {
   rows: SheetRow[];
 }
 
+/** What the Export rail needs before a first export can be run: whether this
+ *  deployment holds Google credentials at all, the address they act as — which
+ *  the organizer has to share their spreadsheet with for writing — and where
+ *  this tournament currently writes. `service_account` is null exactly when
+ *  `configured` is false. */
+export interface ExportSheetConfig {
+  configured: boolean;
+  service_account: string | null;
+  output_sheet_url: string | null;
+}
+
 /** `elsewhere` says the organizer keeps the registrations, so this tournament
  *  has no window here at all — distinct from `closed`, which means a window has
  *  passed (design add-registrations-kept-by D4). */
@@ -1381,6 +1392,8 @@ export const api = {
       `/api/tournaments/${slug}/export/sheet?english=${english}`,
       { method: "POST" },
     ),
+  exportSheetConfig: (slug: string) =>
+    request<ExportSheetConfig>(`/api/tournaments/${slug}/export/sheet-config`),
   exportTabs: (slug: string) => request<ExportBandTab[]>(`/api/tournaments/${slug}/export/tables`),
   exportTable: (slug: string, kind: string, key: string) =>
     request<ExportTable>(

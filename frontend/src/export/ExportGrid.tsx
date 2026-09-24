@@ -17,6 +17,14 @@ import type { CapacityLine } from "./ordering";
  *  left inferring from a setting whether the fencers below it are queued or
  *  merely past the cut.
  */
+function columnClass(column: ExportColumn): string | undefined {
+  const classes = [
+    column.id === POSITION.id ? "col-index" : null,
+    column.numeric ? "col-number" : null,
+  ].filter(Boolean);
+  return classes.length > 0 ? classes.join(" ") : undefined;
+}
+
 export default function ExportGrid({
   columns,
   rows,
@@ -38,7 +46,7 @@ export default function ExportGrid({
         <thead>
           <tr>
             {columns.map((column) => (
-              <th key={column.id} className={column.id === POSITION.id ? "col-index" : undefined}>
+              <th key={column.id} className={columnClass(column)}>
                 {t(`export.column.${column.id}`)}
               </th>
             ))}
@@ -54,10 +62,7 @@ export default function ExportGrid({
               )}
               <tr>
                 {columns.map((column) => (
-                  <td
-                    key={column.id}
-                    className={column.id === POSITION.id ? "col-index" : undefined}
-                  >
+                  <td key={column.id} className={columnClass(column)}>
                     {cell?.(row, column, index) ?? column.value(row, index)}
                   </td>
                 ))}

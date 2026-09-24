@@ -7,6 +7,7 @@ FastAPI dependency `get_hr_index` is the single swap point.
 """
 
 import unicodedata
+from collections.abc import Callable
 from difflib import SequenceMatcher
 from typing import Annotated, Protocol
 
@@ -33,6 +34,11 @@ class HRProfile(BaseModel):
 class HRRating(BaseModel):
     rating: float | None
     rank: int | None
+
+
+# What the latest ratings snapshot holds for an HR ID: (rating, rank) per
+# discipline slug. `sheet` builds it; `rules.replay` reseeds a rebound row by it.
+RatingLookup = Callable[[int | None], tuple[dict[str, float | None], dict[str, int | None]]]
 
 
 class HRIndex(Protocol):

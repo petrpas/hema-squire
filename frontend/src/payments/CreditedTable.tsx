@@ -88,7 +88,7 @@ export default function CreditedTable({
           <tr>
             <th>{t("payments.credited.date")}</th>
             <th>{t("payments.credited.payer")}</th>
-            <th>{t("payments.credited.amount")}</th>
+            <th className="col-number">{t("payments.credited.amount")}</th>
             <th>{t("payments.credited.message")}</th>
             <th>{t("payments.credited.registrations")}</th>
             <th>{t("payments.credited.origin")}</th>
@@ -101,7 +101,7 @@ export default function CreditedTable({
               <td>{new Date(payment.value_date).toLocaleDateString("cs")}</td>
               {/* the bank's counterparty, or the organizer who said so */}
               <td>{payment.payer_name ?? payment.recorded_by ?? "—"}</td>
-              <td>{formatMoney(payment.amount, payment.currency)}</td>
+              <td className="col-number">{formatMoney(payment.amount, payment.currency)}</td>
               {/* kept here as well as on the uncredited table: the message is
                   how an organizer finds this payment again in their own bank */}
               <td className="muted">{payment.message ?? payment.note ?? "—"}</td>

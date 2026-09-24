@@ -8,7 +8,9 @@
     "logout": "Odhlásit",
     "cancel": "Zrušit",
     "back": "Zpět",
-    "close": "Zavřít"
+    "close": "Zavřít",
+    "copy": "Kopírovat",
+    "copied": "Zkopírováno"
   },
   "notFound": {
     "title": "Stránka nenalezena",
@@ -19,6 +21,7 @@
     "delete": "Smazat řádek (vratné)",
     "restore": "Obnovit řádek",
     "removeRule": "Vrátit tuto úpravu",
+    "removeSubstitution": "Vrátit náhradu — odejde s ní i párování a opravy ratingu provedené po ní",
     "moveUp": "Posunout výš",
     "substitute": "Nahradit šermíře"
   },
@@ -79,8 +82,6 @@
     "runSheets": "Export do Google Sheets",
     "downloadJson": "Stáhnout JSON",
     "done": "Hotovo · {{fencers}} šermířů exportováno.",
-    "noUrl": "Nejdřív nastav URL výstupní tabulky (parametr vlevo).",
-    "notConfigured": "Google přístup není na serveru nakonfigurován.",
     "failed": "Export se nezdařil.",
     "tablesTitle": "Exportní tabulky",
     "tab": {
@@ -117,7 +118,22 @@
     "copy": "Kopírovat tabulku",
     "copied": "Zkopírováno · {{count}} řádků.",
     "english": "Export v angličtině",
-    "refreshesTournament": "Obnoví ratingy celého turnaje, ne jen této disciplíny."
+    "refreshesTournament": "Obnoví ratingy celého turnaje, ne jen této disciplíny.",
+    "wizard": {
+      "title": "Výstupní tabulka",
+      "create": "Založ novou prázdnou tabulku v Google Sheets.",
+      "share": "Nasdílej ji pro zápis tomuto účtu:",
+      "copyAccount": "Kopírovat adresu účtu",
+      "notConfigured": "Tento server nemá nastavený přístup ke Google, takže export zatím nemá čím zapisovat. Odkaz si ulož, zapíše se, jakmile bude přístup nastavený.",
+      "paste": "Sem vlož odkaz na tu tabulku:",
+      "confirm": "Uložit odkaz",
+      "confirmExport": "Exportovat",
+      "open": "Nastavit výstupní tabulku",
+      "change": "Změnit výstupní tabulku"
+    },
+    "sheetLink": "Otevřít výstupní tabulku",
+    "forgetSheet": "Smazat odkaz",
+    "noGoogle": "Export do Sheets není na tomto serveru k dispozici — chybí přístup ke Google."
   },
   "dedup": {
     "title": "Deduplikace",
@@ -684,10 +700,6 @@
       "explanation": "Tento turnaj stále počítá cenu přes staré pevné poplatky za zapůjčení zbraně a afterparty. Nemají protějšek v EUR, takže dokud jsou nastavené, nelze zapnout EUR, a už se nedají upravovat — nahrazují je položky doplňkových služeb. Vymazáním se níže uvedené částky zahodí.",
       "clear": "Vymazat staré poplatky"
     },
-    "exportSheet": {
-      "title": "Export do tabulky",
-      "hint": "Google tabulka, do které export zapisuje."
-    },
     "settings": {
       "title": "Nastavení turnaje",
       "mode": {
@@ -990,8 +1002,6 @@
       "not_unpaid": "Tato rezervace už nečeká na platbu.",
       "generic": "Platební instrukce se nepodařilo načíst (chyba {{status}}). Zkus stránku znovu načíst."
     },
-    "copy": "Kopírovat",
-    "copied": "Zkopírováno",
     "saveQr": "Uložit QR kód"
   },
   "registration": {

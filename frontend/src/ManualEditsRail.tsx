@@ -142,7 +142,11 @@ export default function ManualEditsRail({
               <button
                 type="button"
                 className="row-action"
-                title={t("actions.removeRule")}
+                title={
+                  entry.field === "_substituted"
+                    ? t("actions.removeSubstitution")
+                    : t("actions.removeRule")
+                }
                 onClick={() => onUndo(entry.rule_ids)}
               >
                 <IconX size={16} stroke={1.5} />

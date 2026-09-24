@@ -216,7 +216,9 @@ def sheet_view(
     how it got there, so operations that undo one another leave nothing."""
     require_console_access(session, tournament, fencer)
     base = sheet.base_rows(session, tournament, index)
-    rows, audit = rules.replay(base, rules.active_rules(session, tournament))
+    rows, audit = rules.replay(
+        base, rules.active_rules(session, tournament), sheet.rating_lookup(session, tournament)
+    )
     # Deleted rows are included with _deleted=True so the console can render
     # them greyed with a restore action; exports are where they disappear.
     return SheetOut(

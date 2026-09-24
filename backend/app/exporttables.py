@@ -113,6 +113,21 @@ def _paid_first(rows: list[Row]) -> list[Row]:
     return sorted(rows, key=lambda row: not row.get("paid"))
 
 
+def _hr_first(row: Row) -> Row:
+    """The row as the export states it: where it is bound to a HEMA Ratings
+    profile, the profile's nationality and club stand over the ones the fencer
+    gave. What HR records is what the tournament's tooling downstream
+    reconciles against, and a club the fencer left blank is often one HR knows.
+    A value HR does not carry leaves the fencer's own standing."""
+    if row.get("hr_id") is None:
+        return row
+    return {
+        **row,
+        "nationality": row.get("hr_nationality") or row.get("nationality"),
+        "club": row.get("hr_club") or row.get("club"),
+    }
+
+
 def table_rows(rows: list[Row], tab: Tab) -> list[Row]:
     """The rows of one table: the replayed fencer table narrowed to what the
     tab is of, in the tab's own order.
@@ -122,7 +137,7 @@ def table_rows(rows: list[Row], tab: Tab) -> list[Row]:
     entry, `substitute_for` for a queued one — so the console draws the
     capacity line from the rows it already holds.
     """
-    live = [row for row in rows if not row.get("_deleted")]
+    live = [_hr_first(row) for row in rows if not row.get("_deleted")]
     if tab.kind == FENCERS:
         return live
     if tab.kind == DISCIPLINE:

@@ -99,8 +99,7 @@
     "yes": "Ano",
     "no": "Ne",
     "column": {
-      "reg": "Reg.",
-      "no": "Č.",
+      "position": "#",
       "name": "Jméno",
       "nat": "Nár.",
       "club": "Klub",

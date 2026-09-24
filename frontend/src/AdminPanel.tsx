@@ -48,7 +48,7 @@ function AccountsSection({
             <th>{t("admin.accounts.email")}</th>
             <th>{t("admin.accounts.displayName")}</th>
             <th>{t("admin.accounts.role")}</th>
-            <th>{t("admin.accounts.hrId")}</th>
+            <th className="col-number">{t("admin.accounts.hrId")}</th>
             <th>{t("admin.accounts.plea")}</th>
             <th className="col-actions" />
           </tr>
@@ -75,7 +75,7 @@ function AccountsSection({
                   </select>
                 )}
               </td>
-              <td>
+              <td className="col-number">
                 {account.hr_id ?? "—"}
                 {account.hr_shared && (
                   <span

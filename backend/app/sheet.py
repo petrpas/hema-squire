@@ -34,7 +34,7 @@ from app import (
     setup,
     taxonomy,
 )
-from app.hr_index import DbHRIndex, HRIndex, HRRating, evidence_fields
+from app.hr_index import DbHRIndex, HRIndex, HRRating, RatingLookup, evidence_fields
 from app.models import (
     Currency,
     DisciplineKind,
@@ -91,6 +91,13 @@ def _extras_by_category(registration: Registration) -> dict[str, list[dict]]:
             }
         )
     return dict(by_category)
+
+
+def rating_lookup(session: Session, tournament: Tournament) -> RatingLookup:
+    """What the latest snapshot holds for an HR ID, per discipline slug — for
+    `rules.replay` to reseed a row a rule has bound to another profile."""
+    _taken_at, snapshot_ratings = hr_sync.latest_ratings(session, tournament)
+    return lambda hr_id: _rating_maps(tournament, snapshot_ratings, hr_id)
 
 
 def _rating_maps(

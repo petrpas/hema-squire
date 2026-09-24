@@ -189,6 +189,95 @@ def test_a_seat_substituted_twice_goes_back_one_step(client, auth_headers, mailb
     assert rows(client, organizer)[0]["name"] == "First Substitute"
 
 
+def resolve(client, organizer, target, hr_id, hr_name):
+    response = client.post(
+        "/api/tournaments/cup/rules",
+        json={
+            "phase": "matching",
+            "kind": "match_resolution",
+            "target": target,
+            "payload": {"field": "hr_id", "value": hr_id, "hr_name": hr_name},
+        },
+        headers=organizer,
+    )
+    assert response.status_code in (200, 201), response.text
+    return response.json()
+
+
+def override_rating(client, organizer, target, rating):
+    response = client.post(
+        "/api/tournaments/cup/rules",
+        json={
+            "phase": "export",
+            "kind": "rating_override",
+            "target": target,
+            "payload": {"discipline": "LS", "rating": rating},
+        },
+        headers=organizer,
+    )
+    assert response.status_code in (200, 201), response.text
+    return response.json()
+
+
+def active_rule_ids(client, organizer):
+    return {
+        rule["id"] for rule in client.get("/api/tournaments/cup/rules", headers=organizer).json()
+    }
+
+
+def test_withdrawal_takes_the_substitutes_verdicts_with_it(client, auth_headers, mailbox):
+    """A match resolution made on the substitute judged the substitute: left
+    standing, it would go on naming them over the fencer the seat returned to.
+    Withdrawing the substitution withdraws it too — and a verdict made before
+    the substitution, on the fencer themselves, stands."""
+    organizer = auth_headers()
+    setup(client, organizer)
+    register(client, auth_headers)
+    target = rows(client, organizer)[0]["id"]
+    own = resolve(client, organizer, target, 10234, "Jan Novák")
+
+    rule = substitute(client, organizer, target).json()
+    theirs = resolve(client, organizer, target, 20468, "Petr Náhradník HR")
+    typed = override_rating(client, organizer, target, 1500.0)
+    assert rows(client, organizer)[0]["name"] == "Petr Náhradník HR"
+
+    client.delete(f"/api/tournaments/cup/rules/{rule['id']}", headers=organizer)
+
+    after = rows(client, organizer)[0]
+    assert after["name"] == "Jan Novák"
+    assert after["hr_id"] == 10234
+    assert "LS" not in after["ratings"]
+    live = active_rule_ids(client, organizer)
+    assert own["id"] in live
+    assert theirs["id"] not in live and typed["id"] not in live
+
+
+def test_a_substitute_does_not_inherit_a_typed_rating(client, auth_headers, mailbox):
+    """The rating the organizer typed was the replaced fencer's."""
+    organizer = auth_headers()
+    setup(client, organizer)
+    register(client, auth_headers)
+    target = rows(client, organizer)[0]["id"]
+    override_rating(client, organizer, target, 1500.0)
+
+    substitute(client, organizer, target)
+
+    assert "LS" not in rows(client, organizer)[0]["ratings"]
+
+
+def test_a_substitutes_country_is_stated_as_a_code(client, auth_headers, mailbox):
+    """The dialog hands over the HR index's English spelling where a profile
+    was picked; the list speaks ISO codes."""
+    organizer = auth_headers()
+    setup(client, organizer)
+    register(client, auth_headers)
+    target = rows(client, organizer)[0]["id"]
+
+    substitute(client, organizer, target, nationality="Russia")
+
+    assert rows(client, organizer)[0]["nationality"] == "RU"
+
+
 def test_a_row_with_no_registration_is_substituted_in_the_projection(client, auth_headers, mailbox):
     """2.9 — a hand-entered row that has been issued nothing."""
     organizer = auth_headers()

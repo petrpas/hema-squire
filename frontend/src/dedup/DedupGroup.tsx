@@ -88,7 +88,12 @@ export default function DedupGroup({
           <tr>
             <th className="col-index">#</th>
             {GROUP_COLUMNS.map((column) => (
-              <th key={column} className={column === "notes" ? "col-marker" : ""}>
+              <th
+                key={column}
+                className={
+                  column === "notes" ? "col-marker" : column === "hr_id" ? "col-number" : ""
+                }
+              >
                 {t(`column.${column}`)}
               </th>
             ))}
@@ -129,7 +134,7 @@ export default function DedupGroup({
                 }
                 const value = member[column];
                 return (
-                  <td key={column}>
+                  <td key={column} className={column === "hr_id" ? "col-number" : undefined}>
                     {value === null || value === undefined || value === "" ? "—" : String(value)}
                   </td>
                 );

@@ -115,6 +115,16 @@ selection in that category.
 A row a deletion has taken out of the table SHALL appear in no tab, as it appears
 in no export.
 
+The columns that state a number — the position, the HEMA Ratings identifier,
+the rating and the rank — SHALL stand right-aligned with their digits in columns
+under one another; every other column SHALL stand left-aligned.
+
+Where a row is bound to a HEMA Ratings profile, its nationality and club SHALL be
+stated as HEMA Ratings records them, over what the fencer gave; a value the
+profile does not carry SHALL leave the fencer's own standing. A row with no
+profile SHALL state what the fencer gave. The nationality SHALL be stated as its
+ISO code in every case.
+
 The paid column SHALL state the registration's settled state as yes or no and
 nothing else — settled as `payment-ledger` derives it, from a live waiver or a
 lane credited to within tolerance, never from a mark a reader could find
@@ -129,6 +139,10 @@ that is sometimes a word and sometimes a sum can be neither counted nor filtered
 #### Scenario: The fencers table is the whole tournament
 - **WHEN** the organizer opens the Fencers tab
 - **THEN** every fencer the tournament knows is listed in registration order with their disciplines and their paid mark
+
+#### Scenario: HEMA Ratings speaks for a bound fencer
+- **WHEN** a fencer who left the club blank is bound to a profile that records a club
+- **THEN** every tab and the worksheet state the profile's club and its nationality code
 
 #### Scenario: Rows are numbered as displayed
 - **WHEN** the organizer switches a tab of thirty fencers, twenty of them paid, to active only

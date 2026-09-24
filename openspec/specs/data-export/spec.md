@@ -80,6 +80,19 @@ slug, and one worksheet per extra-item category the tournament offers, named for
 the category. Each worksheet SHALL carry its table's columns and its table's
 order, as `export-tables` fixes them.
 
+Every worksheet SHALL open, as every tab does, with a position column headed `#`.
+No worksheet SHALL carry a blank column left for numbering by hand. The position SHALL number the
+worksheet's rows 1 to n from the top as the worksheet stands after the export,
+rewritten on every export. Because a re-export keeps existing rows where they
+stand and appends new ones, the position numbers the sheet, not the console:
+after the console's order has moved, the two may differ, and the sheet's
+numbering still runs unbroken down the sheet.
+
+The position, the HEMA Ratings identifier, the rating and the rank SHALL be
+written to the worksheet as numbers, not as text, whatever locale the
+spreadsheet is set to; a cell of those columns holding no number SHALL be
+written as it stands.
+
 Slugs are unique within a tournament, so several disciplines classified alike
 produce several distinct worksheets. A worksheet whose discipline has no HEMA
 Ratings counterpart SHALL still be produced, with its rating and rank columns
@@ -89,6 +102,11 @@ The rating written SHALL be the rating the console states — the fetched value 
 corrected by the organizer — so that re-exporting never restores a stale fetched
 value over a typed one.
 
+The fetched value SHALL be the one for the HR profile the row is bound to as the
+console states it, including a binding an organizer's match resolution, merge or
+substitution made. A correction the organizer typed SHALL outlive a later change
+of that binding: it belongs to the row, not to the profile.
+
 Teams SHALL NOT change this format. A roster member SHALL NOT appear in the
 `Fencers` worksheet — they hold no registration, so they have no row — and a team
 discipline SHALL NOT produce a worksheet. How team participation reaches
@@ -97,6 +115,14 @@ in-tournament tooling remains out of scope here.
 The export SHALL write English column headers and English yes/no values when the
 organizer has asked for an English export, and the organizer's own language
 otherwise.
+
+#### Scenario: A rebound row carries its new profile's rating
+- **WHEN** the organizer resolves a fencer's match to another HR profile and takes a snapshot
+- **THEN** the worksheet carries that profile's rating and rank, and a rating the organizer had typed for the fencer still stands
+
+#### Scenario: The position numbers the sheet as it stands
+- **WHEN** the organizer re-exports after one fencer was deleted and another registered
+- **THEN** the deleted fencer's row is gone, the new fencer's row is appended, and the `#` column reads 1 to n down the worksheet with no gap
 
 #### Scenario: A worksheet per tab
 - **WHEN** a tournament offering two individual disciplines, a rental item and a merch item is exported to Sheets
@@ -127,26 +153,26 @@ otherwise.
 - **THEN** the worksheets carry English headers and Yes/No in the paid column
 
 ### Requirement: Repeat-export preservation semantics
-Re-exporting to an existing sheet SHALL leave manually managed columns (Reg., No.) untouched, SHALL always refresh the rating and rank columns, and SHALL write other cells only when blank or unchanged, preserving downstream manual work.
+Re-exporting to an existing sheet SHALL always refresh the position, rating and rank columns, and SHALL write other cells only when blank or unchanged, preserving downstream manual work.
 
 These semantics SHALL survive the change of worksheet shape. Existing cells are
 addressed by their header name, so a column that remains keeps its contents, a
-column that goes is dropped, and a column that arrives is filled — and the `Reg.`
-and `No.` columns downstream staff fill by hand are preserved across the format
-change itself, not only across re-exports of one format.
+column that goes is dropped, and a column that arrives is filled. A sheet written
+while the format carried `Reg.` and `No.` columns loses them on its next export,
+with whatever downstream staff had written into them.
 
 What the rating column refreshes to SHALL be the rating the console states,
 including an organizer's correction. A correction is therefore never overwritten
 by a re-export, and never preserved as a stale cell either: it is written afresh
 every time, because it is what the tournament currently holds.
 
-#### Scenario: Manual numbering survives
-- **WHEN** the organizer re-exports after downstream staff filled the No. column
-- **THEN** the numbering is preserved while ratings refresh
+#### Scenario: Manual work survives
+- **WHEN** the organizer re-exports after downstream staff corrected a fencer's club in the sheet
+- **THEN** the correction is preserved while ratings refresh
 
-#### Scenario: Manual numbering survives the format change
-- **WHEN** the organizer re-exports to a spreadsheet written in the old format whose No. column downstream staff had filled
-- **THEN** the numbering is preserved, columns the new format drops are gone, and columns it adds are filled
+#### Scenario: A sheet in an older format keeps what remains
+- **WHEN** the organizer re-exports to a spreadsheet written in an older format
+- **THEN** cells of the columns that remain keep their contents, the columns the current format drops are gone, and the columns it adds are filled
 
 #### Scenario: A correction is rewritten, not preserved
 - **WHEN** the organizer corrects a rating and re-exports twice

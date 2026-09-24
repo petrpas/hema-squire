@@ -19,7 +19,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app import amendment
-from app.hr_index import HRIndex, country_code, evidence_fields
+from app.hr_index import HRIndex, RatingLookup, country_code, evidence_fields
 from app.models import (
     DisciplineKind,
     Fencer,
@@ -161,7 +161,9 @@ def _apply_row_substitute(rows: dict[str, Row], target: str, payload: dict):
     before = previous.get("name")
     row["name"] = payload.get("name") or ""
     row["hr_id"] = payload.get("hr_id")
-    row["nationality"] = payload.get("nationality")
+    # resolved on the way out, as a match resolution's is: a rule recorded
+    # before substitutions spoke in ISO codes carries the index's spelling
+    row["nationality"] = country_code(payload.get("nationality")) or payload.get("nationality")
     row["club"] = payload.get("club")
     row["email"] = payload.get("email")
     # The name the seat was registered under belonged to the fencer who has
@@ -174,10 +176,8 @@ def _apply_row_substitute(rows: dict[str, Row], target: str, payload: dict):
     nationality = payload.get("hr_nationality") if bound else None
     row["hr_nationality"] = country_code(nationality) or nationality
     row["hr_club"] = payload.get("hr_club") if bound else None
-    # Ratings are left where they are, as a match resolution leaves them: they
-    # are a lookup keyed by hr_id, made where the base row is built, so the
-    # substitute's arrive on the next projection and a rating the organizer has
-    # typed is not wiped by a rule that knows nothing about it.
+    # Ratings are not touched here: `replay` seeds them afresh for the
+    # substitute's hr_id, keeping any rating the organizer has typed.
     row["_substituted_for"] = before
     return [(target, "_substituted", before, row["name"])]
 
@@ -356,14 +356,26 @@ def _mark_removal(row: Row, phase: str, field: str, after: Any) -> None:
         row["_removed_in"] = phase
 
 
-def replay(base: dict[str, Row], rules: list[Rule]) -> tuple[dict[str, Row], list[AppliedChange]]:
-    """Pure function: identical inputs produce identical state and audit."""
+def replay(
+    base: dict[str, Row], rules: list[Rule], ratings: RatingLookup | None = None
+) -> tuple[dict[str, Row], list[AppliedChange]]:
+    """Pure function: identical inputs produce identical state and audit.
+
+    `ratings` answers what the latest snapshot holds for an HR ID. The base row
+    was seeded for the HR ID it was built with, so a rule that binds another —
+    a match resolution, a merge, a substitution — leaves it carrying the old
+    one's ratings, or none. Where the reader shows ratings it passes the
+    lookup, and a row whose HR ID a rule changed is seeded afresh for the new
+    one, with the organizer's corrections made so far laid back over it: a
+    correction belongs to the row, not to the profile it was bound to.
+    """
     rows = copy.deepcopy(base)
     audit: list[AppliedChange] = []
     for rule in rules:
         if rule.target not in rows:
             continue  # target vanished from source data; rule is inert, not an error
         handler = HANDLERS[rule.kind]
+        bound = rows[rule.target].get("hr_id")
         for target, field, before, after in handler(rows, rule.target, rule.payload):
             _mark_removal(rows[target], rule.phase, field, after)
             audit.append(
@@ -378,7 +390,30 @@ def replay(base: dict[str, Row], rules: list[Rule]) -> tuple[dict[str, Row], lis
                     at=_utc(rule.created_at),
                 )
             )
+        # after the rule's own changes are in the audit, so a substitution's
+        # reseed sees the hand-over it has just made
+        if ratings is not None and (
+            rule.kind == SUBSTITUTION or rows[rule.target].get("hr_id") != bound
+        ):
+            _reseed(rows[rule.target], rule.target, ratings, audit)
     return rows, audit
+
+
+def _reseed(row: Row, target: str, ratings: RatingLookup, audit: list[AppliedChange]) -> None:
+    """Seed the row for its HR ID and lay the organizer's corrections back over
+    it — only those made since the seat last changed hands. A substitute does
+    not inherit the rating of the fencer they replaced (spec
+    fencer-substitution), typed or fetched."""
+    row["ratings"], row["ranks"] = ratings(row.get("hr_id"))
+    corrections: dict[str, Any] = {}
+    for change in audit:
+        if change.target != target:
+            continue
+        if change.field == "_substituted":
+            corrections.clear()
+        elif change.field.startswith("rating:"):
+            corrections[change.field.removeprefix("rating:")] = change.after
+    row["ratings"].update(corrections)
 
 
 def _journal(session: Session, rule: Rule, action: str, actor: Fencer) -> None:
@@ -669,4 +704,44 @@ def delete_rule(session: Session, rule: Rule, actor: Fencer) -> None:
     rule.deleted_at = datetime.now(UTC)
     rule.deleted_by = actor.id
     _journal(session, rule, "deleted", actor)
+    if rule.kind == SUBSTITUTION:
+        for later in _person_rules_since(session, rule):
+            later.deleted_at = rule.deleted_at
+            later.deleted_by = actor.id
+            _journal(session, later, "deleted", actor)
     session.commit()
+
+
+# The rules that describe the person on a row rather than the seat: which HR
+# profile they are, and what their rating is.
+PERSON_KINDS = ("match_resolution", RATING_OVERRIDE)
+
+
+def _person_rules_since(session: Session, substitution: Rule) -> list[Rule]:
+    """The live rules describing the person that were made on the row after
+    `substitution` and before the seat changed hands again.
+
+    They judged the substitute, and a withdrawal returns the seat to the fencer
+    it was taken from with their own name, profile and rating (spec
+    fencer-substitution, A substitution is recorded, readable and reversible);
+    left standing, a match resolution would go on stating the substitute's name
+    over the returned fencer. A later substitution closes the span: what was
+    decided after it concerns whoever took the seat then.
+    """
+    later = session.scalars(
+        select(Rule)
+        .where(
+            Rule.tournament_id == substitution.tournament_id,
+            Rule.target == substitution.target,
+            Rule.id > substitution.id,
+            Rule.deleted_at.is_(None),
+        )
+        .order_by(Rule.id)
+    ).all()
+    span: list[Rule] = []
+    for rule in later:
+        if rule.kind == SUBSTITUTION:
+            break
+        if rule.kind in PERSON_KINDS:
+            span.append(rule)
+    return span

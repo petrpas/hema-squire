@@ -170,6 +170,10 @@ Withdrawing the rule SHALL return the seat to the fencer it was taken from, rest
 
 Withdrawal SHALL send no mail. A message already sent SHALL NOT be unsent, and the console SHALL say so where the withdrawal is offered rather than leaving the organizer to assume the news was recalled.
 
+Withdrawing the rule SHALL also withdraw the rules that describe the person which were made on the row after it and before any later substitution: HR match resolutions and rating corrections. They judged the substitute; left standing, a match resolution would go on naming the substitute over the fencer the seat returned to. Rules of that kind made before the substitution SHALL stand. Each withdrawn rule SHALL be journaled as withdrawn by the organizer who withdrew the substitution, and the console SHALL say, where the withdrawal is offered, that they go with it.
+
+A rating correction the organizer typed SHALL NOT pass to a substitute: after a seat changes hands, only corrections made since then SHALL apply to it.
+
 A seat MAY be substituted more than once. Each substitution SHALL be its own rule, and withdrawing one SHALL return the seat to whoever held it when that rule was made.
 
 #### Scenario: The log names both
@@ -179,6 +183,14 @@ A seat MAY be substituted more than once. Each substitution SHALL be its own rul
 #### Scenario: Withdrawal restores the fencer
 - **WHEN** the organizer withdraws a substitution
 - **THEN** the replaced fencer holds the seat again with their profile, club and account, and the seat's number, symbol, total and credits are unchanged
+
+#### Scenario: Withdrawal takes the substitute's verdicts with it
+- **WHEN** the organizer resolves the substitute's HR match, then withdraws the substitution
+- **THEN** the row names the fencer the seat returned to, with their own profile, and the resolution made on the substitute is withdrawn while one made earlier on the fencer stands
+
+#### Scenario: A typed rating does not pass to the substitute
+- **WHEN** the organizer corrected the fencer's rating and then substitutes the seat
+- **THEN** the substitute's row carries no rating the organizer typed for the fencer
 
 #### Scenario: Withdrawal does not recall the mail
 - **WHEN** the organizer moves to withdraw a substitution on an automatic tournament

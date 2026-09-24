@@ -1563,6 +1563,22 @@ class ExportTableOut(ExportTabOut):
     rows: list[dict]
 
 
+class ExportSheetConfigOut(BaseModel):
+    """Everything the Export rail needs before a first export can be run:
+    whether the server holds Google credentials at all, the address those
+    credentials act as — which the organizer must share their spreadsheet with
+    for writing — and the destination the tournament currently names.
+
+    `service_account` is None exactly when `configured` is False. The
+    destination travels here rather than being read from the tournament detail
+    because the rail is mounted inside the export band, which carries no
+    tournament detail of its own; one read answers the whole card."""
+
+    configured: bool
+    service_account: str | None
+    output_sheet_url: str | None
+
+
 class ConsoleTeamOut(BaseModel):
     """One team as the organizer's read-only teams view presents it (spec:
     "Organizer's read-only teams view"). Offers no action — no admission, no

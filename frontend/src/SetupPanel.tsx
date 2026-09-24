@@ -8,7 +8,6 @@ import { CurrencySection } from "./setup/CurrencySection";
 import { DangerZoneSection } from "./setup/DangerZoneSection";
 import { DisciplinesSection } from "./setup/DisciplinesSection";
 import { DiscountsSection } from "./setup/DiscountsSection";
-import { ExportSheetSection } from "./setup/ExportSheetSection";
 import { ExtraItemsSection } from "./setup/ExtraItemsSection";
 import { IdentitySection, VsSeriesSection } from "./setup/IdentitySection";
 import { LegacyFeesSection } from "./setup/LegacyFeesSection";
@@ -222,7 +221,6 @@ export default function SetupPanel({
             >
               <SettingsSection detail={detail} onApplied={onSaved} />
               <TeamSection slug={slug} />
-              <ExportSheetSection detail={detail} slug={slug} registry={registry} />
               <DangerZoneSection
                 slug={slug}
                 hasRegistrations={hasRegistrations}

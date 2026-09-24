@@ -53,6 +53,7 @@ export default function ExportTables({
   const [active, setActive] = useState(false);
   const [seeded, setSeeded] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [ratingsMessage, setRatingsMessage] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   const tab = tabs.find((candidate) => tabId(candidate) === selected) ?? null;
@@ -92,14 +93,16 @@ export default function ExportTables({
 
   async function refreshRatings() {
     setBusy(true);
-    setMessage(null);
+    setRatingsMessage(null);
     try {
       const outcome = await api.ratingsSnapshot(slug);
-      setMessage(t("export.ratingsDone", { ratings: outcome.ratings, fencers: outcome.fencers }));
+      setRatingsMessage(
+        t("export.ratingsDone", { ratings: outcome.ratings, fencers: outcome.fencers }),
+      );
       reload();
       onChanged();
     } catch {
-      setMessage(t("export.ratingsFailed"));
+      setRatingsMessage(t("export.ratingsFailed"));
     } finally {
       setBusy(false);
     }
@@ -142,7 +145,11 @@ export default function ExportTables({
                 type="button"
                 className={tabId(candidate) === selected ? "active" : ""}
                 aria-pressed={tabId(candidate) === selected}
-                onClick={() => setSelected(tabId(candidate))}
+                onClick={() => {
+                  setSelected(tabId(candidate));
+                  // a copy's confirmation speaks of the tab it was made on
+                  setMessage(null);
+                }}
               >
                 {tabLabel(t, candidate)}
                 <span className="tab-count">{tabCount(candidate)}</span>
@@ -181,6 +188,7 @@ export default function ExportTables({
               onCopy={copy}
               onRefreshRatings={tab.kind === "discipline" ? () => void refreshRatings() : undefined}
               refreshing={busy}
+              ratingsMessage={ratingsMessage}
               message={message}
             />
           )}
