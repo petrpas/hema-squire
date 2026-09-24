@@ -21,7 +21,9 @@ from app.models import (
     RegistrationDiscipline,
     RegistrationState,
     Team,
+    Tournament,
 )
+from app.setup import seating_has_settled
 
 
 def live_registration():
@@ -133,6 +135,23 @@ def full_disciplines(session: Session, disciplines: list[Discipline]) -> set[str
         for d in disciplines
         if d.kind == DisciplineKind.INDIVIDUAL and taken_seats(session, d) >= d.capacity
     }
+
+
+def queued_on_entry(
+    session: Session, tournament: Tournament, disciplines: list[Discipline], now: datetime
+) -> set[str]:
+    """Which of a new submission's individual disciplines are placed in the
+    queue rather than a seat, by slug: each full one — and, once seating has
+    settled, every one, free places or not (spec registration, Registration
+    after seating has settled).
+
+    The placement every new registration is given, whichever road it arrives
+    by: the fencer's own submission and an organizer's hand entry ask this
+    rather than each deciding, so an entry at the door is placed exactly as a
+    submission is (design manual-entry-registers D1)."""
+    if seating_has_settled(tournament, now):
+        return {d.slug for d in disciplines}
+    return full_disciplines(session, disciplines)
 
 
 def _require_kind(discipline: Discipline, kind: DisciplineKind) -> None:

@@ -1015,6 +1015,15 @@ class ManualRowOut(BaseModel):
     notes: str | None
 
 
+class ManualEntryOut(BaseModel):
+    """What a hand entry became: a source row on a manual tournament, a
+    registration on an automatic one (spec etl-console, Manual entry of a
+    fencer). Exactly one of the two is set."""
+
+    row_id: int | None = None
+    registration_id: int | None = None
+
+
 class RegistrationEntryOut(BaseModel):
     slug: str
     is_substitute: bool

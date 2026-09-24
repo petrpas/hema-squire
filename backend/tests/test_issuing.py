@@ -25,6 +25,10 @@ from app.models import Fencer, Registration, RegistrationState
 from tests.conftest import credit_registration
 from tests.test_matching import db_session
 
+# an automatic tournament's imported and hand-entered rows, made before
+# `manual-entry-registers`: the state these tests exercise is left as it is
+pytestmark = pytest.mark.usefixtures("before_manual_entry_registers")
+
 
 class CollectingMailer:
     def __init__(self):

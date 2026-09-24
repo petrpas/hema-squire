@@ -293,7 +293,7 @@ def _issue_one(
     else:  # pragma: no cover - the loop always breaks or raises
         raise RuntimeError("vs allocation exhausted its retries")
 
-    _select_extras(tournament, registration, row)
+    select_extras(tournament, registration, row)
     # priced from what the row itself holds, at the row's own moment: the same
     # call an in-app registration is priced by, which reads
     # `registration.registered_at` — so early-bird applies as it did the day the
@@ -304,7 +304,7 @@ def _issue_one(
     return registration
 
 
-def _select_extras(tournament: Tournament, registration: Registration, row: dict) -> None:
+def select_extras(tournament: Tournament, registration: Registration, row: dict) -> None:
     """Turn what the row borrows and answers into the item selections the
     tournament prices by.
 

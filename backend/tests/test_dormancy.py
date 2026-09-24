@@ -117,9 +117,12 @@ def unsaved_tournament(
     return tournament
 
 
-def unsaved_registration(clocks_dormant) -> Registration:
+def unsaved_registration(clocks_dormant, source_row_id: str | None = "imp:row") -> Registration:
+    """Dormant by origin, issued for a source row unless `source_row_id` says
+    it had none — which is a hand entry on an automatic tournament."""
     registration = Registration()
     registration.clocks_dormant = clocks_dormant
+    registration.source_row_id = source_row_id if clocks_dormant else None
     return registration
 
 
@@ -148,6 +151,15 @@ def test_dormancy_cause_over_the_closed_set(payments, kept_by, issued, expected)
     registration = unsaved_registration(issued)
     assert app_setup.dormancy_cause(tournament, registration) == expected
     assert app_setup.clocks_run(tournament, registration) == (expected is None)
+
+
+def test_a_hand_entry_names_its_own_cause():
+    """Dormant by origin like an issued registration, but it took the place of
+    no source row, and the cause says which of the two it is."""
+    tournament = unsaved_tournament(True)
+    registration = unsaved_registration(True, source_row_id=None)
+    assert app_setup.dormancy_cause(tournament, registration) == app_setup.DORMANT_ENTERED_BY_HAND
+    assert not app_setup.clocks_run(tournament, registration)
 
 
 @pytest.mark.parametrize(

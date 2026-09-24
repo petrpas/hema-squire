@@ -150,9 +150,30 @@ def _payment_mail_suppressed(
     message says so; nothing else passes it."""
     if not tournament.feature_payments:
         return True
+    if registration is not None and _entered_by_hand(registration):
+        # no exception reaches a hand entry: the organizer who entered the
+        # fencer is the one in contact with them (design manual-entry-registers D3)
+        return True
     if despite_dormancy:
         return False
     return registration is not None and registration.clocks_dormant
+
+
+def _dormant_by_origin(registration: Registration) -> bool:
+    """A registration Squire never writes to, whatever the tournament's payments
+    setting: one issued for a source row, whose fencer registered through
+    somebody else's form, and one entered by hand at the console, whose fencer
+    is in contact with the organizer who entered them (spec registration, A
+    registration entered by hand). Asked by the letters `_payment_mail_suppressed`
+    does not guard — the confirmations and the promotion notice, which a
+    payments-off tournament still sends."""
+    return registration.clocks_dormant
+
+
+def _entered_by_hand(registration: Registration) -> bool:
+    """Dormant by origin and issued for no source row: a hand entry on an
+    automatic tournament (design manual-entry-registers D2)."""
+    return registration.clocks_dormant and registration.source_row_id is None
 
 
 def _send_confirmation_without_payment(
@@ -184,6 +205,8 @@ def _send_confirmation_without_payment(
 def send_registration_confirmation(
     mailer: Mailer, tournament: Tournament, fencer: Fencer, registration: Registration
 ) -> None:
+    if _dormant_by_origin(registration):
+        return
     lang = tournament.language
     queued = registration.fully_queued
 
@@ -425,6 +448,8 @@ def send_amendment_confirmation(
     """Same content as the initial confirmation — the updated summary, the
     recomputed amount, and a QR against the unchanged VS — reissued because a
     reserved amendment leaves `vs` and `expires_at` untouched (Decision 3)."""
+    if _dormant_by_origin(registration):
+        return
     lang = tournament.language
     queued = all(entry.is_substitute for entry in registration.entries) and all(
         team.waitlisted for team in registration.teams
@@ -483,7 +508,7 @@ def send_surcharge_due(
     registration: Registration,
     *,
     despite_dormancy: bool = False,
-) -> None:
+) -> bool:
     """A registration amended upward: payment instructions for exactly the
     difference in each currency, against the same VS the fencer already paid
     once. The two currencies' outstanding amounts are independent — a price
@@ -491,9 +516,9 @@ def send_surcharge_due(
 
     `despite_dormancy` is the organizer's discipline correction: an issued
     registration that now owes more is told, because the change is theirs to
-    act on and nothing else will tell them."""
+    act on and nothing else will tell them. Returns whether a message was sent."""
     if _payment_mail_suppressed(tournament, registration, despite_dormancy=despite_dormancy):
-        return
+        return False
     lang = tournament.language
     outstanding_local = (Decimal(registration.outstanding_cents) / 100).quantize(
         Decimal("0.01"), rounding=ROUND_HALF_UP
@@ -527,6 +552,7 @@ def send_surcharge_due(
             qr_eur=qr_eur,
         )
     )
+    return True
 
 
 def send_promoted(
@@ -549,7 +575,13 @@ def send_promoted(
 
     With payments off no window opens and nothing is due, so the same news is
     sent with the registration's total stated as information — the shape
-    `send_surcharge_due` has no room for."""
+    `send_surcharge_due` has no room for.
+
+    A registration dormant by origin is sent neither: its fencer was never
+    written to by Squire and a promotion does not start (spec registration, A
+    registration entered by hand; imported-registrations)."""
+    if _dormant_by_origin(registration):
+        return
     lang = tournament.language
     if not tournament.feature_payments:
         mailer.send(
@@ -820,7 +852,9 @@ def send_substitution(mailer: Mailer, tournament: Tournament, prepared: Prepared
     pay it twice.
     """
     registration = prepared.registration
-    if registration is None:
+    if registration is None or _entered_by_hand(registration):
+        # a hand-entered seat is sent nothing of any kind; the organizer who
+        # entered it is the one in contact (spec registration)
         return
     lang = tournament.language
     substitute, previous = prepared.substitute, prepared.previous

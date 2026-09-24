@@ -101,6 +101,9 @@ export default function ManualEntryDialog({
     <Modal onClose={onClose}>
       <div className="modal">
         <h2>{t("manualEntry.title")}</h2>
+        {detail.registrations_kept_by === "squire" && (
+          <p className="rail-hint">{t("manualEntry.registersHint")}</p>
+        )}
         <div className="form-fields">
           <label className="form-field">
             <span>{t("column.name")}</span>
@@ -255,13 +258,26 @@ export default function ManualEntryDialog({
 
 /** The server's own refusals, in the organizer's words. A detail this does not
  *  know is reported as a plain refusal rather than as its own wire text. */
-function refusalText(t: (key: string) => string, error: unknown): string {
+function refusalText(
+  t: (key: string, params?: Record<string, unknown>) => string,
+  error: unknown,
+): string {
   const detail = (error as { detail?: unknown })?.detail;
   if (typeof detail === "string") {
     return t(`manualEntry.refusal.${detail}`);
   }
   if (detail && typeof detail === "object") {
     const [reason] = Object.keys(detail as Record<string, unknown>);
+    // the one refusal that names somebody: the fencer this address already
+    // belongs to, registered here, so the organizer can find them
+    if (reason === "already_registered") {
+      const holder = (detail as { already_registered: { name: string; vs: number | null } })
+        .already_registered;
+      return t("manualEntry.refusal.already_registered", {
+        name: holder.name,
+        vs: holder.vs ?? "—",
+      });
+    }
     if (reason) return t(`manualEntry.refusal.${reason}`);
   }
   return t("manualEntry.refusal.failed");

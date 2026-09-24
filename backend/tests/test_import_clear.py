@@ -3,6 +3,7 @@
 
 import io
 
+import pytest
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -18,6 +19,10 @@ from app.models import (
     SheetRowNumber,
 )
 from tests.conftest import outcome, publish
+
+# an automatic tournament's imported and hand-entered rows, made before
+# `manual-entry-registers`: the state these tests exercise is left as it is
+pytestmark = pytest.mark.usefixtures("before_manual_entry_registers")
 
 CSV = "Name,Club\nAnna Import,Twerchhau\nBoris Import,Mordschlag\n"
 OTHER_CSV = "Name,Club\nCyril Import,Fechtschule\n"

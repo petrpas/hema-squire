@@ -11,10 +11,10 @@ from sqlalchemy.exc import IntegrityError
 from app import accounts, amendment, emails, ledger, matching, pricing, rownumbers, setup, spayd
 from app.auth import require_console_access, require_published
 from app.availability import (
-    full_disciplines,
     live_registration,
     queue_length,
     queue_position,
+    queued_on_entry,
     taken_seats,
     taken_team_slots,
     team_queue_length,
@@ -477,7 +477,7 @@ def register(
     # placement joins the queue, free seats or not (spec: "Registration after
     # seating has settled").
     settled = setup.seating_has_settled(tournament, _now())
-    full = {d.slug for d in selected} if settled else full_disciplines(session, selected)
+    full = queued_on_entry(session, tournament, selected, _now())
 
     # `next_vs` durably commits its own counter bump, so a rollback below
     # (retrying after a `Registration.vs` collision) cannot also undo the

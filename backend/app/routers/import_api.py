@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from app import dedup, hr_match, importclear, importer, issuing, operations, sheet
 from app.auth import require_console_access, require_published
 from app.hr_index import HRIndex, get_hr_index
-from app.models import Fencer, Operation, OperationKind, Tournament
+from app.models import Fencer, Operation, OperationKind, RegistrationsKeptBy, Tournament
 from app.routers.registrations import next_vs
 from app.routers.tournaments import FencerDep, SessionDep, TournamentDep
 
@@ -47,6 +47,15 @@ def _start(
         ) from None
 
 
+def accepts_import(tournament: Tournament) -> bool:
+    """Whether a table may be imported into this tournament: a manual one only.
+    An automatic tournament's entrants register in the application or are
+    entered by hand, and a list kept elsewhere is what manual mode is for
+    (design manual-entry-registers D5). Rows an automatic tournament took before
+    this held are left as they are, and every path serving them stays live."""
+    return tournament.registrations_kept_by is RegistrationsKeptBy.ORGANIZER
+
+
 @router.post("", status_code=202)
 async def import_table(
     file: UploadFile,
@@ -63,6 +72,9 @@ async def import_table(
     """
     require_console_access(session, tournament, fencer)
     require_published(tournament)
+    # refused before the file is read, so nothing is stored (spec table-import)
+    if not accepts_import(tournament):
+        raise HTTPException(status_code=409, detail="import_needs_manual_mode")
     _refuse_while_busy(session, tournament)
     data = await file.read()
     try:

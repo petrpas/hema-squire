@@ -46,9 +46,14 @@ def _legacy_code(d: dict) -> str:
 
 ARCHIVE = Path.home() / "hema/hema-agent/data/Na Duel! 2026"
 
-pytestmark = pytest.mark.skipif(
-    not ARCHIVE.exists(), reason="Na Duel! 2026 archive not present on this machine"
-)
+# an automatic tournament's imported and hand-entered rows, made before
+# `manual-entry-registers`: the state these tests exercise is left as it is
+pytestmark = [
+    pytest.mark.skipif(
+        not ARCHIVE.exists(), reason="Na Duel! 2026 archive not present on this machine"
+    ),
+    pytest.mark.usefixtures("before_manual_entry_registers"),
+]
 
 
 @pytest.fixture

@@ -16,6 +16,10 @@ from schemathesis.specs.openapi.checks import response_schema_conformance
 from app.main import app
 from tests import contract_seed
 
+# an automatic tournament's imported and hand-entered rows, made before
+# `manual-entry-registers`: the state these tests exercise is left as it is
+pytestmark = pytest.mark.usefixtures("before_manual_entry_registers")
+
 # Exactly the two questions this phase set out to ask (static-analysis spec,
 # phase 4): does a schema-valid request ever produce a 500, and does what comes
 # back match what the schema promised. Schemathesis v4 offers a dozen more, and

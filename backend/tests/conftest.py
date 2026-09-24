@@ -424,3 +424,20 @@ def paid_at_of(registration):
     from app import ledger
 
     return ledger.paid_at(registration, registration.tournament)
+
+
+@pytest.fixture
+def before_manual_entry_registers(monkeypatch):
+    """An automatic tournament as it could be made before
+    `manual-entry-registers`: it took a table import, and a fencer entered by
+    hand became a source row waiting to be issued.
+
+    Such tournaments are left as they are: their rows stay, issuing serves them
+    with a variable symbol from Squire's sequence, and every path reading them
+    is still live. The API can no longer make one, so the suites exercising
+    those paths lift the two gates the way they stood when theirs were made. A
+    test about either gate itself never asks for this."""
+    from app.routers import import_api, manual_api
+
+    monkeypatch.setattr(import_api, "accepts_import", lambda tournament: True)
+    monkeypatch.setattr(manual_api, "enters_registration", lambda tournament: False)

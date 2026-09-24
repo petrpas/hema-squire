@@ -46,7 +46,8 @@
       "body": "odstraní {{rows}} z {{files}}, spolu s každou opravou a rozhodnutím, které se jich týkalo.",
       "final": "registrace a ručně zadaní šermíři zůstávají. odstranění nelze vzít zpět.",
       "confirm": "trvale odstranit"
-    }
+    },
+    "needsManualMode": "Import tabulky je jen pro manuální turnaj. Na automatickém se šermíři registrují sami nebo je zadáš ručně."
   },
   "match": {
     "title": "Párování na HEMA Ratings",
@@ -1334,8 +1335,10 @@
       "unknown_disciplines": "tuto disciplínu turnaj nenabízí.",
       "team_discipline_not_individual": "týmová disciplína se zadává na kartě týmů, ne zde.",
       "unknown_rentals": "tuto věc turnaj nepůjčuje.",
-      "failed": "zadání nebylo přijato."
-    }
+      "failed": "zadání nebylo přijato.",
+      "already_registered": "tato adresa patří šermíři {{name}}, který už je na turnaji registrovaný (VS {{vs}})."
+    },
+    "registersHint": "Na automatickém turnaji vznikne rovnou registrace za cenu turnaje, umístěná podle kapacity — co je plné, jde do fronty. Šermíři se nic neposílá: v kontaktu s ním jsi ty."
   },
   "operation": {
     "kind": {

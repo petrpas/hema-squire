@@ -87,6 +87,26 @@ reading the file. `offeredPhases` drops `import` on an automatic tournament. Cle
 available through the API (nothing offers it in the console on an automatic tournament,
 and existing rows are the owner's to leave).
 
+### D6. Found in implementation
+
+- **Refusal only while the holder's registration is live.** An address held by a fencer
+  whose registration here is cancelled or expired is not "certainly on the list"; the
+  new record simply carries no address, as for any other holder.
+- **No mail of any kind reaches a hand entry**, the substitution notice included: the
+  guard is the registration's, so a seat that changes hands at the door is told by the
+  organizer too. The surcharge's `despite_dormancy` reaches issued registrations only.
+- **The discipline correction seats past capacity for issued registrations only**
+  (`amendment.dormant_by_origin` now requires a `source_row_id`): capacity applies to a
+  hand entry like any registration.
+- **The suites that exercise imported rows on an automatic tournament keep doing so**
+  through one conftest fixture, `before_manual_entry_registers`, which lifts the two
+  gates (`import_api.accepts_import`, `manual_api.enters_registration`) the way they
+  stood — the legacy state the proposal leaves as it is, and which the API can no
+  longer produce. Tests of the gates themselves never use it.
+- **Deduplication of two registrations is not sane** (task 5.1): a merge marks the
+  absorbed registration's row deleted in the fencer list, while that registration keeps
+  its seat, its symbol and its money. Recorded as a follow-up; this change leaves it.
+
 ## Risks / Trade-offs
 
 - [Deduplication of two registrations — a hand entry and an in-app one without a shared

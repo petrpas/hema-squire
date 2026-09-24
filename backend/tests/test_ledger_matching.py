@@ -5,12 +5,17 @@ etl-console, The ledger idiom / HR matching review).
 
 import io
 
+import pytest
 from conftest import outcome, publish, settle
 
 from app.hr_index import HRProfile, StubHRIndex, get_hr_index
 from app.hr_match import HRMatchResult, get_hr_matcher
 from app.importer import ImportParser, ParsedFencer, get_import_parser
 from app.main import app
+
+# an automatic tournament's imported and hand-entered rows, made before
+# `manual-entry-registers`: the state these tests exercise is left as it is
+pytestmark = pytest.mark.usefixtures("before_manual_entry_registers")
 
 # One roster, five verdicts.
 CSV = (

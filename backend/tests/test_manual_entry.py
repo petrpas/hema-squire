@@ -3,12 +3,17 @@ validation that guards the way in (spec etl-console, Manual entry of a fencer)."
 
 import io
 
+import pytest
 from conftest import outcome
 
 from app.dedup import MergeProposal, ThreeBands, default_merge, get_dedup_llm
 from app.importer import ParsedFencer, get_import_parser
 from app.main import app
 from tests.conftest import publish, set_features
+
+# an automatic tournament's imported and hand-entered rows, made before
+# `manual-entry-registers`: the state these tests exercise is left as it is
+pytestmark = pytest.mark.usefixtures("before_manual_entry_registers")
 
 ENTRY = {"name": "Hand Entered", "disciplines": ["LS"], "nationality": "CZ"}
 

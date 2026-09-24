@@ -73,7 +73,6 @@ describe("the phase list", () => {
   it("puts Queue between Payments and Export, since it changes who holds a seat", () => {
     expect(offeredPhases(mode("squire"))).toEqual([
       "setup",
-      "import",
       "fencers",
       "matching",
       "dedup",
@@ -82,6 +81,12 @@ describe("the phase list", () => {
       "export",
       "teams",
     ]);
+  });
+
+  it("offers Import on a manual tournament alone, which is the one that imports", () => {
+    // the route lands a URL naming an unoffered phase on the default one
+    expect(offeredPhases(mode("squire"))).not.toContain("import");
+    expect(offeredPhases(mode("organizer"))).toContain("import");
   });
 
   it("offers no Queue on a manual tournament, which queues nobody", () => {

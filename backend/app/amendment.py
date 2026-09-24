@@ -274,25 +274,29 @@ def apply_amendment(
         if underpaid and registration.total_amount > previous_total:
             # dormancy does not suppress it: what is dormant is the passage of
             # time, not a statement about money that has just changed
-            emails.send_surcharge_due(
+            # what the console is told went out. A tournament Squire collects
+            # nothing for sends no payment mail at all, nor is a hand entry
+            # written to, and reporting a letter that was never composed would
+            # be worse than reporting none
+            notified = emails.send_surcharge_due(
                 mailer, tournament, fencer, registration, despite_dormancy=True
             )
-            # what the console is told went out. A tournament Squire collects
-            # nothing for sends no payment mail at all, and reporting a letter
-            # that was never composed would be worse than reporting none
-            notified = tournament.feature_payments
     return AmendmentResult(
         previous_total=previous_total, total=registration.total_amount, notified=notified
     )
 
 
 def dormant_by_origin(registration: Registration) -> bool:
-    """Whether this registration was issued rather than made in the application.
+    """Whether this registration was issued for a source row rather than made
+    in the application or entered by hand.
 
-    Read from the registration's own dormancy flag rather than through
+    Read from what the registration itself stores rather than through
     `setup.dormancy_cause`, which also answers for tournament-wide causes that
-    say nothing about where this registration came from (design Decision 2)."""
-    return registration.clocks_dormant
+    say nothing about where this registration came from (design Decision 2). A
+    hand entry is dormant too but took no row's place, and capacity applies to
+    it as to any registration (spec registration, A registration entered by
+    hand), so it is not one of these."""
+    return registration.clocks_dormant and registration.source_row_id is not None
 
 
 def is_live(registration: Registration) -> bool:

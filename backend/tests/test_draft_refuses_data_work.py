@@ -28,6 +28,10 @@ from app.models import (
 )
 from tests.conftest import publish
 
+# an automatic tournament's imported and hand-entered rows, made before
+# `manual-entry-registers`: the state these tests exercise is left as it is
+pytestmark = pytest.mark.usefixtures("before_manual_entry_registers")
+
 
 def db_session():
     return next(app.dependency_overrides[get_session]())

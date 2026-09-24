@@ -22,6 +22,10 @@ from app.main import app
 from app.models import BankTransaction, ImportDecision, Registration, Rule
 from tests.test_matching import db_session, enroll, setup
 
+# an automatic tournament's imported and hand-entered rows, made before
+# `manual-entry-registers`: the state these tests exercise is left as it is
+pytestmark = pytest.mark.usefixtures("before_manual_entry_registers")
+
 
 class CollectingMailer:
     def __init__(self):

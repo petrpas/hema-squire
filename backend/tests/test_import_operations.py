@@ -8,6 +8,7 @@ console-operations, An operation is a record, not a request).
 import io
 from datetime import datetime, timedelta
 
+import pytest
 from conftest import publish, settle
 from sqlalchemy.orm import Session
 
@@ -28,6 +29,10 @@ from app.models import (
     Tournament,
     TournamentOrganizer,
 )
+
+# an automatic tournament's imported and hand-entered rows, made before
+# `manual-entry-registers`: the state these tests exercise is left as it is
+pytestmark = pytest.mark.usefixtures("before_manual_entry_registers")
 
 CSV_HEADER = "Time,Name,Club,Nationality,Disciplines,hr,Note\n"
 

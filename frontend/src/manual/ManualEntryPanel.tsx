@@ -24,6 +24,12 @@ export default function ManualEntryPanel({
       <section className="rail-card">
         <h2>{t("manualEntry.title")}</h2>
         <p className="rail-hint">{t("manualEntry.hint")}</p>
+        {/* what the entry becomes follows the mode: a registration at once on
+            an automatic tournament, which the organizer should know before
+            pressing (design manual-entry-registers) */}
+        {detail?.registrations_kept_by === "squire" && (
+          <p className="rail-hint">{t("manualEntry.registersHint")}</p>
+        )}
         {/* the dialog is built from the tournament's structure, so it opens
             only once that structure has arrived */}
         <button

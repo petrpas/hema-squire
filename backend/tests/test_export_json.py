@@ -3,10 +3,16 @@
 import io
 from decimal import Decimal
 
+import pytest
+
 from app.export_json import SCHEMA_VERSION
 from app.importer import get_import_parser
 from tests.conftest import enable_payments, publish
 from tests.test_import import CSV, FakeParser
+
+# an automatic tournament's imported and hand-entered rows, made before
+# `manual-entry-registers`: the state these tests exercise is left as it is
+pytestmark = pytest.mark.usefixtures("before_manual_entry_registers")
 
 
 def setup(client, organizer):

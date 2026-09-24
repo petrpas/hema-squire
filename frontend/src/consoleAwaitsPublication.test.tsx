@@ -22,6 +22,7 @@ function tournamentAt(published: string | null) {
     display_name: "Cup",
     date: "2026-12-05",
     published_at: published,
+    registrations_kept_by: "squire",
     feature_schedule: false,
     feature_payments: true,
     feature_teams: true,
@@ -99,7 +100,7 @@ describe("a draft's phases", () => {
     expect(host?.querySelector(".sheet-table")).toBeNull();
   });
 
-  it("draws the whole phase strip, in the usual order", async () => {
+  it("draws the whole phase strip its mode offers, in the usual order", async () => {
     mount(tournamentAt(null), "import");
     await settle();
 
@@ -108,7 +109,6 @@ describe("a draft's phases", () => {
     );
     expect(labels).toEqual([
       en.phase.setup,
-      en.phase.import,
       en.phase.fencers,
       en.phase.matching,
       en.phase.dedup,

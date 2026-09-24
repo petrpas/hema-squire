@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { api, type ImportResult, type ImportStatus } from "./api";
+import { ApiError, api, type ImportResult, type ImportStatus } from "./api";
 import Modal from "./Modal";
 import { conclusionText, kindName } from "./operationText";
 import type { OperationsView } from "./useOperations";
@@ -25,6 +25,7 @@ export default function ImportPanel({
   const [clearing, setClearing] = useState(false);
   const [result, setResult] = useState<ImportResult | null>(null);
   const [failed, setFailed] = useState(false);
+  const [wrongMode, setWrongMode] = useState(false);
   const [status, setStatus] = useState<ImportStatus | null>(null);
   const [confirming, setConfirming] = useState(false);
 
@@ -56,7 +57,10 @@ export default function ImportPanel({
       operations.refresh();
       refreshStatus();
       onImported();
-    } catch {
+    } catch (error) {
+      // an automatic tournament takes no table: its entrants register or are
+      // entered by hand (design manual-entry-registers D5)
+      setWrongMode(error instanceof ApiError && error.detail === "import_needs_manual_mode");
       setFailed(true);
     } finally {
       if (inputRef.current) inputRef.current.value = "";
@@ -123,7 +127,9 @@ export default function ImportPanel({
         {running !== null && running.kind !== "parse" && (
           <p className="rail-hint">{t("operation.busy", { kind: kindName(t, running.kind) })}</p>
         )}
-        {failed && <p className="login-error">{t("import.failed")}</p>}
+        {failed && (
+          <p className="login-error">{t(wrongMode ? "import.needsManualMode" : "import.failed")}</p>
+        )}
         {parse?.status === "failed" && <p className="login-error">{conclusion}</p>}
         {parse?.status === "interrupted" && <p className="rail-hint">{conclusion}</p>}
         {outcome && (

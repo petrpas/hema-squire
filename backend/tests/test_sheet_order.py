@@ -3,9 +3,15 @@ moment, rows stating none last (spec etl-console, Order of the fencer list)."""
 
 import io
 
+import pytest
+
 from app.importer import ParsedFencer, get_import_parser
 from app.main import app
 from tests.conftest import publish
+
+# an automatic tournament's imported and hand-entered rows, made before
+# `manual-entry-registers`: the state these tests exercise is left as it is
+pytestmark = pytest.mark.usefixtures("before_manual_entry_registers")
 
 CSV = (
     "Name,When\n"

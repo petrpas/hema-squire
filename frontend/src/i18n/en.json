@@ -42,7 +42,8 @@
       "body": "this removes {{rows}} from {{files}}, together with every correction and decision made about them.",
       "final": "registrations and hand-entered fencers stay. the removal cannot be undone.",
       "confirm": "remove permanently"
-    }
+    },
+    "needsManualMode": "A table can be imported into a manual tournament only. On an automatic one, fencers register themselves or you enter them by hand."
   },
   "match": {
     "title": "Matching on HEMA Ratings",
@@ -1303,8 +1304,10 @@
       "unknown_disciplines": "that discipline is not one this tournament offers.",
       "team_discipline_not_individual": "a team discipline is entered through the teams tab, not here.",
       "unknown_rentals": "that item is not one this tournament lends.",
-      "failed": "the entry was not accepted."
-    }
+      "failed": "the entry was not accepted.",
+      "already_registered": "this address belongs to {{name}}, who is already registered here (VS {{vs}})."
+    },
+    "registersHint": "On an automatic tournament this creates a registration at once, at the tournament's price and placed by capacity — a full discipline queues it. Nothing is mailed to the fencer: you are the one in contact with them."
   },
   "operation": {
     "kind": {

@@ -1339,7 +1339,7 @@ export const api = {
     request<ClearResult>(`/api/tournaments/${slug}/import`, { method: "DELETE" }),
   importStatus: (slug: string) => request<ImportStatus>(`/api/tournaments/${slug}/import/status`),
   createManualRow: (slug: string, entry: ManualEntryIn) =>
-    request<ManualRow>(`/api/tournaments/${slug}/manual-rows`, {
+    request<ManualEntryOut>(`/api/tournaments/${slug}/manual-rows`, {
       method: "POST",
       body: JSON.stringify(entry),
     }),
@@ -1782,9 +1782,11 @@ export interface ManualEntryIn {
   notes?: string | null;
 }
 
-export interface ManualRow extends ManualEntryIn {
-  id: number;
-  registered_at: string;
+/** What a hand entry became: a source row on a manual tournament, a
+ *  registration on an automatic one (design manual-entry-registers D1). */
+export interface ManualEntryOut {
+  row_id: number | null;
+  registration_id: number | null;
 }
 
 export interface SubstituteIn {

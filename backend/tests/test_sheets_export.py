@@ -2,6 +2,8 @@
 
 import io
 
+import pytest
+
 from app.exportsummary import ITEM, QUEUE, SummaryLine
 from app.hr_sync import get_hr_fetcher
 from app.importer import get_import_parser
@@ -16,6 +18,10 @@ from app.sheets_export import (
 )
 from tests.conftest import publish
 from tests.test_import import CSV, FakeParser
+
+# an automatic tournament's imported and hand-entered rows, made before
+# `manual-entry-registers`: the state these tests exercise is left as it is
+pytestmark = pytest.mark.usefixtures("before_manual_entry_registers")
 
 
 class InMemorySheets:

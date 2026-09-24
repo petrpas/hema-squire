@@ -89,6 +89,10 @@ export const DEFAULT_PHASE: Phase = "fencers";
 export function offeredPhases(mode: ConsoleMode): Phase[] {
   return PHASES.filter((phase) => {
     if (phase === "teams") return mode.feature_teams;
+    // a table arrives by file only where the organizer keeps the list; an
+    // automatic tournament's entrants register or are entered by hand (design
+    // manual-entry-registers D5)
+    if (phase === "import") return mode.registrations_kept_by === "organizer";
     // a manual tournament never places anyone in a queue, so the phase would
     // hold a capacity mark with nothing to act on (design queue-rosters D5)
     if (phase === "queue") return mode.registrations_kept_by !== "organizer";

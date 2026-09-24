@@ -26,6 +26,7 @@ DORMANT_UNPUBLISHED = "unpublished"
 DORMANT_PAYMENTS_OFF = "payments_off"
 DORMANT_ORGANIZER_KEPT = "organizer_kept"
 DORMANT_ISSUED_FROM_IMPORT = "issued_from_import"
+DORMANT_ENTERED_BY_HAND = "entered_by_hand"
 
 # distinct 4xx reasons a registration submission can be rejected with
 ORGANIZER_KEPT = "organizer_kept"
@@ -428,6 +429,12 @@ def dormancy_cause(tournament: Tournament, registration: Registration) -> str | 
     if tournament.registrations_kept_by is RegistrationsKeptBy.ORGANIZER:
         return DORMANT_ORGANIZER_KEPT
     if registration.clocks_dormant:
+        # one stored origin, told apart by what else is stored: an issued
+        # registration took the place of a source row and names it, and a
+        # hand entry on an automatic tournament never had one (design
+        # manual-entry-registers D2)
+        if registration.source_row_id is None:
+            return DORMANT_ENTERED_BY_HAND
         return DORMANT_ISSUED_FROM_IMPORT
     return None
 

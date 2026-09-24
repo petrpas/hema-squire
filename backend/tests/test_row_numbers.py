@@ -1,12 +1,17 @@
 """The fixed number a row carries in a tournament's table (spec etl-console,
 Fixed fencer number)."""
 
+import pytest
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app import rownumbers
 from app.models import SheetRowNumber, Tournament
 from tests.conftest import publish
+
+# an automatic tournament's imported and hand-entered rows, made before
+# `manual-entry-registers`: the state these tests exercise is left as it is
+pytestmark = pytest.mark.usefixtures("before_manual_entry_registers")
 
 
 def setup(client, organizer):

@@ -15,12 +15,18 @@ import copy
 import io
 from datetime import UTC, datetime
 
+import pytest
+
 from app.importer import get_import_parser
 from app.main import app
 from app.models import Fencer, Rule
 from app.rules import replay
 from tests.conftest import enable_payments, publish
 from tests.test_import import CSV, FakeParser
+
+# an automatic tournament's imported and hand-entered rows, made before
+# `manual-entry-registers`: the state these tests exercise is left as it is
+pytestmark = pytest.mark.usefixtures("before_manual_entry_registers")
 
 _seq = 0
 
