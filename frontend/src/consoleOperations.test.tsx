@@ -3,7 +3,7 @@ import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { MemoryRouter, Outlet, Route, Routes } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { api, type Sheet, type Tournament } from "./api";
+import { api, type Sheet, type TournamentDetail } from "./api";
 import Console from "./Console";
 
 // The fencer list follows a concluded operation: nothing the organizer does
@@ -19,7 +19,7 @@ const tournament = {
   feature_payments: false,
   feature_teams: false,
   feature_extras: false,
-} as unknown as Tournament;
+} as unknown as TournamentDetail;
 
 const emptySheet = { rows: [], edits: [] } as unknown as Sheet;
 

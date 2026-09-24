@@ -12,7 +12,6 @@ import {
   type NetChange,
   type Sheet,
   type SheetRow,
-  type Tournament,
   type TournamentDetail,
   type TournamentFlags,
 } from "./api";
@@ -41,7 +40,7 @@ import PaymentTabs, { type PaymentTab, PaymentTabsProvider } from "./payments/Pa
 import RecordPaymentDialog from "./payments/RecordPaymentDialog";
 import UncreditedTable from "./payments/UncreditedTable";
 import { usePaymentTables } from "./payments/usePaymentTables";
-import QueuePanel from "./QueuePanel";
+import QueuePhase from "./queue/QueuePhase";
 import RentalsCell from "./RentalsCell";
 import { useAuth } from "./RequireAuth";
 import * as routes from "./routes";
@@ -56,9 +55,10 @@ import WaivedBalance from "./WaivedBalance";
 
 const STAGES = ["pre", "in", "post"] as const;
 // Setup is step 0, ahead of the fencer-list phases (spec: etl-console).
-// Teams is a read-only view of team disciplines (design team-disciplines
-// 7.2) and Queue is the seating view (design add-payment-modes), both tacked
-// on at the end — neither is part of the ETL sequence.
+// Queue, the seating view, stands before Export: it changes who holds a seat,
+// and Export is what leaves the tournament once nothing further changes it
+// (design queue-rosters). Teams is a read-only view of team disciplines
+// (design team-disciplines 7.2), tacked on at the end.
 export const PHASES = [
   "setup",
   "import",
@@ -66,9 +66,9 @@ export const PHASES = [
   "matching",
   "dedup",
   "payments",
+  "queue",
   "export",
   "teams",
-  "queue",
 ] as const;
 export type Phase = (typeof PHASES)[number];
 
@@ -86,12 +86,19 @@ export const DEFAULT_PHASE: Phase = "fencers";
  *  looks for who has paid, and that answer must not move to another phase
  *  depending on a setting the reader may not know about; what varies is the
  *  phase's contents, not its presence (spec add-manual-paid-marking D4). */
-export function offeredPhases(mode: TournamentFlags): Phase[] {
+export function offeredPhases(mode: ConsoleMode): Phase[] {
   return PHASES.filter((phase) => {
     if (phase === "teams") return mode.feature_teams;
+    // a manual tournament never places anyone in a queue, so the phase would
+    // hold a capacity mark with nothing to act on (design queue-rosters D5)
+    if (phase === "queue") return mode.registrations_kept_by !== "organizer";
     return true;
   });
 }
+
+/** What decides which phases are offered: the features, and who keeps the
+ *  tournament's list of entrants. */
+export type ConsoleMode = TournamentFlags & Pick<TournamentDetail, "registrations_kept_by">;
 
 /** Whether the Payments phase is boned out: on a tournament whose payments
  *  Squire does not handle it holds the settled mark and nothing else — no
@@ -555,7 +562,13 @@ export function CellDisplay({
   }
 }
 
-export default function Console({ tournament, phase }: { tournament: Tournament; phase: Phase }) {
+export default function Console({
+  tournament,
+  phase,
+}: {
+  tournament: TournamentDetail;
+  phase: Phase;
+}) {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { onLogout } = useAuth();
@@ -969,7 +982,16 @@ export default function Console({ tournament, phase }: { tournament: Tournament;
         ) : phase === "teams" ? (
           <TeamsPanel slug={tournament.slug} />
         ) : phase === "queue" ? (
-          <QueuePanel slug={tournament.slug} timezone={detail?.timezone ?? null} />
+          /* a band of discipline rosters with the two arrows that change who
+             holds a seat; the settle action is in the rail beside them (spec
+             seating-queue) */
+          <QueuePhase
+            slug={tournament.slug}
+            timezone={detail?.timezone ?? null}
+            revision={queueReload}
+            onChanged={refresh}
+            renderRail={renderRail}
+          />
         ) : phase === "export" ? (
           /* the Export phase is a band of tables — the fencer list, one per
              individual discipline, one per extra-item category the tournament

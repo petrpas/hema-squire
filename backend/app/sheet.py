@@ -155,6 +155,16 @@ def _wall_clock(value: object, zone: datetime.tzinfo) -> str | None:
     return moment.isoformat()
 
 
+def _instant(moment: datetime.datetime) -> str:
+    """A stored instant as the row states it: with its zone, so the console
+    reads it in the tournament's own. Every such column holds UTC, and SQLite
+    hands it back without the zone — stated bare, it would be read as a wall
+    clock and shown unshifted, as an imported row's stamp is."""
+    if moment.tzinfo is None:
+        moment = moment.replace(tzinfo=datetime.UTC)
+    return moment.isoformat()
+
+
 def _display_order(rows: dict[str, Row], zone: datetime.tzinfo) -> dict[str, Row]:
     """Every population interleaved by registration moment, earliest first;
     rows stating none after them, in the order they were numbered — which for
@@ -335,7 +345,7 @@ def base_rows(
             # each queued placement's queue moment, which orders the rows below
             # a discipline tab's line (spec seating-queue, export-tables)
             "queued_since": {
-                e.discipline.slug: e.queued_since.isoformat()
+                e.discipline.slug: _instant(e.queued_since)
                 for e in registration.entries
                 if e.is_substitute
             },
@@ -371,7 +381,7 @@ def base_rows(
             # what the waiver forgave, where it forgave only part; null where
             # it forgave the whole price
             "waived_amount": waived,
-            "registered_at": registration.registered_at.isoformat(),
+            "registered_at": _instant(registration.registered_at),
             "total_amount": registration.total_amount,
             # what is still owed, as a decimal string exactly as
             # RegistrationOut states it — the same quantity, so the same shape.
@@ -384,7 +394,7 @@ def base_rows(
             # conversion of the first.
             "outstanding_amount": _money(balance),
             "outstanding_currency": balance_currency,
-            "expires_at": registration.expires_at.isoformat() if registration.expires_at else None,
+            "expires_at": _instant(registration.expires_at) if registration.expires_at else None,
             "paid_at": settled_on.isoformat() if settled_on else None,
             "weapon_rentals": registration.weapon_rentals or extra_rentals,
             # of those, the ones this tournament lends nothing by that name and

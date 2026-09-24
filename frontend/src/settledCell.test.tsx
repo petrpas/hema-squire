@@ -3,8 +3,14 @@ import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, expect, it, vi } from "vitest";
 
-import type { SheetRow, TournamentFlags } from "./api";
-import { BONED_PAYMENTS_COLUMNS, offeredPhases, PHASE_COLUMNS, paymentsBonedOut } from "./Console";
+import type { SheetRow } from "./api";
+import {
+  BONED_PAYMENTS_COLUMNS,
+  type ConsoleMode,
+  offeredPhases,
+  PHASE_COLUMNS,
+  paymentsBonedOut,
+} from "./Console";
 import i18n from "./i18n";
 import SettledCell from "./SettledCell";
 
@@ -33,8 +39,9 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-function flags(overrides: Partial<TournamentFlags> = {}): TournamentFlags {
+function flags(overrides: Partial<ConsoleMode> = {}): ConsoleMode {
   return {
+    registrations_kept_by: "squire",
     feature_schedule: false,
     feature_payments: false,
     feature_teams: false,

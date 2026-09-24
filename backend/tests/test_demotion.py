@@ -208,11 +208,9 @@ def test_settlement_sends_the_demoted_to_the_end_of_the_queue(client, auth_heade
     # the one who waited from the start ranks first, however early the two
     # demoted registered, and the two demoted together keep their own order
     assert positions("LS", waiting, first, second) == [1, 2, 3]
-    queued = client.get("/api/tournaments/cup/queue", headers=organizer).json()
-    lines = queued["disciplines"][0]["queued"]
-    assert [line["vs"] for line in lines] == [waiting, first, second]
-    assert [line["demoted"] for line in lines] == [False, True, True]
-    assert lines[1]["queued_since"] != lines[1]["registered_at"]
+    demoted = registration(first)
+    assert entry(first, "LS").queued_since != demoted.registered_at
+    assert entry(waiting, "LS").queued_since == registration(waiting).registered_at
 
 
 def test_settlement_reprices_and_announces_each_demotion_once(client, auth_headers, mailbox):

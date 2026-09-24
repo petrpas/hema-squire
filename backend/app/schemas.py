@@ -1626,45 +1626,31 @@ class ConsoleTeamDisciplineOut(BaseModel):
     teams: list[ConsoleTeamOut] = []
 
 
-class QueueEntryOut(BaseModel):
-    """One fencer's placement in one individual discipline, above or below the
-    line, as the organizer's queue view presents it."""
-
-    registration_id: int
-    fencer: str
-    club: str | None
-    vs: int | None
-    registered_at: UtcInstant
-    # the moment the placement's queue place counts from, which the queue is
-    # ordered by: the registration time, or the moment of a demotion for
-    # non-payment, in which case `demoted` says so (spec seating-queue)
-    queued_since: UtcInstant
-    demoted: bool = False
-    # place in the substitute queue by queue moment; None when seated
-    queue_position: int | None = None
-
-
 class QueueDisciplineOut(BaseModel):
+    """One individual discipline's places: what the Queue phase's rail states
+    beside the roster, and what its promote arrow is offered by. The rows
+    themselves are the discipline's export table, so the two views cannot draw
+    the line in different places (design queue-rosters D1)."""
+
     slug: str
-    name: str
     capacity: int
     taken: int
     free: int
-    seated: list[QueueEntryOut] = []
-    queued: list[QueueEntryOut] = []
 
 
 class QueueOut(BaseModel):
-    """The seating picture for the whole tournament: where the line falls in
-    every individual discipline, and whether it has been drawn yet."""
+    """The seating picture for the whole tournament: whether the line has been
+    drawn yet, what drawing it now would move, and each discipline's places."""
 
     # the resolved deadline, falling back to registration close and then the
     # tournament date (setup.seating_deadline_for) — never the raw column
     seating_deadline: datetime.date
     seating_settled_at: UtcInstant | None
-    # how many registrations settling now would move below the line; what the
-    # console states before asking to confirm an irreversible settlement
+    # how many registrations settling now would move below the line, and how
+    # many of their teams would be waitlisted with them; what the console
+    # states before asking to confirm an irreversible settlement
     pending_demotions: int
+    pending_team_waitlistings: int
     disciplines: list[QueueDisciplineOut] = []
 
 

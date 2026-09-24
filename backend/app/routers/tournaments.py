@@ -20,7 +20,6 @@ from app.auth import (
     require_tournament_owner,
 )
 from app.availability import (
-    QUEUE_ORDER,
     queue_length,
     taken_seats,
     taken_team_slots,
@@ -74,7 +73,6 @@ from app.schemas import (
     OrganizerOut,
     OwnerTransferIn,
     QueueDisciplineOut,
-    QueueEntryOut,
     QueueOut,
     RegistrationsKeptByIn,
     RosterMemberOut,
@@ -1228,65 +1226,35 @@ def console_teams(tournament: TournamentDep, session: SessionDep, fencer: Fencer
 
 @router.get("/{slug}/queue", response_model=QueueOut)
 def console_queue(tournament: TournamentDep, session: SessionDep, fencer: FencerDep):
-    """Where the line falls in every individual discipline: who is seated, who
-    is queued and in what order, and how many places are free.
+    """The seating summary the Queue phase reads beside its rosters: the
+    deadline, whether and when seating settled, what settling now would move,
+    and each individual discipline's free places.
 
-    Nothing here promotes anyone. After the seating deadline the system shows
-    the data and the organizer decides (design Non-Goals), so the view's job is
-    to make the pending work obvious. A discipline with an empty queue is still
-    listed, stated as empty rather than hidden."""
+    The rows are not here. They are the discipline's export table, ordered by
+    the same `rosterOrder` Export uses, so the Queue roster and the Export
+    roster draw one line by construction (design queue-rosters D1). A discipline
+    nobody entered is still listed, with all its places free."""
     require_console_access(session, tournament, fencer)
-    result = []
+    pending = scheduler.pending_settlement(session, tournament)
+    disciplines = []
     for discipline in tournament.disciplines:
         if discipline.kind != DisciplineKind.INDIVIDUAL:
             continue
-        entries = session.scalars(
-            select(RegistrationDiscipline)
-            .join(Registration)
-            .where(
-                RegistrationDiscipline.discipline_id == discipline.id,
-                Registration.state == RegistrationState.RESERVED,
-            )
-            .options(selectinload(RegistrationDiscipline.registration))
-            .order_by(*QUEUE_ORDER)
-        ).all()
-        seated, queued = [], []
-        for entry in entries:
-            registration = entry.registration
-            row = QueueEntryOut(
-                registration_id=registration.id,
-                fencer=registration.fencer.display_name,
-                club=registration.fencer.club,
-                vs=registration.vs,
-                registered_at=registration.registered_at,
-                queued_since=entry.queued_since,
-                # a moment other than the registration time is only ever
-                # written by a demotion for non-payment, and the view says
-                # which of the two it is ordering by (spec seating-queue)
-                demoted=entry.queued_since != registration.registered_at,
-                # the query is already ordered by queue order, which is exactly
-                # what queue_position ranks by, so position is the running
-                # count rather than a per-row subquery
-                queue_position=len(queued) + 1 if entry.is_substitute else None,
-            )
-            (queued if entry.is_substitute else seated).append(row)
         taken = taken_seats(session, discipline)
-        result.append(
+        disciplines.append(
             QueueDisciplineOut(
                 slug=discipline.slug,
-                name=discipline.name,
                 capacity=discipline.capacity,
                 taken=taken,
                 free=max(discipline.capacity - taken, 0),
-                seated=seated,
-                queued=queued,
             )
         )
     return QueueOut(
         seating_deadline=setup.seating_deadline_for(tournament),
         seating_settled_at=tournament.seating_settled_at,
-        pending_demotions=scheduler.pending_demotions(session, tournament),
-        disciplines=result,
+        pending_demotions=pending.registrations,
+        pending_team_waitlistings=pending.teams,
+        disciplines=disciplines,
     )
 
 

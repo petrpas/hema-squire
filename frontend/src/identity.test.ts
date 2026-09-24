@@ -41,7 +41,7 @@ describe("usesHRIdentity", () => {
 
   it("does not hold for any other phase", () => {
     const others = PHASES.filter((phase) => !usesHRIdentity(phase));
-    expect(others).toEqual(["setup", "import", "fencers", "matching", "teams", "queue"]);
+    expect(others).toEqual(["setup", "import", "fencers", "matching", "queue", "teams"]);
   });
 });
 

@@ -113,7 +113,9 @@
       "items": "Položky",
       "paid": "Zaplaceno",
       "item": "Položka",
-      "unpaid": "Nezaplaceno"
+      "unpaid": "Nezaplaceno",
+      "standing": "Stav",
+      "action": "Akce"
     },
     "line": {
       "queue": "hranice kapacity — níže náhradníci",
@@ -1280,18 +1282,12 @@
     "settledOn": "Místa uzavřena {{date}}",
     "notSettled": "Místa zatím nejsou uzavřena.",
     "freePlaces": "volných míst {{free}} z {{capacity}}",
-    "seated": "Na místě",
-    "queued": "Fronta",
-    "emptyQueue": "Na tuto disciplínu nikdo nečeká.",
-    "noneSeated": "V této disciplíně nikdo nedrží místo.",
     "position": "{{position}}.",
     "registeredAt": "registrace {{moment}}",
     "demotedAt": "ve frontě od {{moment}}, přesun pro nezaplacení",
     "promote": "posunout na místo",
     "returnToQueue": "vrátit do fronty",
     "noDisciplines": "Turnaj nenabízí žádnou individuální disciplínu.",
-    "error": "Frontu se nepodařilo načíst. Jsi organizátor tohoto turnaje?",
-    "actionFailed": "Neprošlo to: {{reason}}",
     "settle": "Uzavřít místa",
     "settleTitle": "uzavřít místa",
     "settleBody_one": "{{count}} registrace stále dluží peníze a přesune se do fronty. Registrace odeslané potom míří do fronty místo na místo.",
@@ -1301,7 +1297,31 @@
     "settleConfirm": "uzavřít místa",
     "settleDone_one": "{{count}} registrace přesunuta do fronty.",
     "settleDone_few": "{{count}} registrace přesunuty do fronty.",
-    "settleDone_other": "{{count}} registrací přesunuto do fronty."
+    "settleDone_other": "{{count}} registrací přesunuto do fronty.",
+    "seatingTitle": "Místa",
+    "settleTeams_one": "Spolu s nimi se {{count}} tým přesune na čekací listinu.",
+    "settleTeams_few": "Spolu s nimi se {{count}} týmy přesunou na čekací listinu.",
+    "settleTeams_other": "Spolu s nimi se {{count}} týmů přesune na čekací listinu.",
+    "noSeatYet": "zatím nedrží místo",
+    "noArrow": "bez registrace",
+    "promoteHint": "Posunout na volné místo — otevře lhůtu k zaplacení a pošle pokyny.",
+    "returnHint": "Vrátit do fronty na místo, které ve frontě měl — bez e-mailu.",
+    "money": {
+      "paid": "zaplaceno",
+      "waived": "zaplaceno bez platby",
+      "nothingDue": "nic nedluží",
+      "owes": "dluží {{amount}}",
+      "owesBy": "dluží {{amount}} do {{date}}"
+    },
+    "refused": {
+      "discipline_full": "Disciplína je mezitím plná — posunout nelze.",
+      "registration_paid_cancel_instead": "Registrace je mezitím zaplacená — vrátit ji do fronty nelze, jen zrušit.",
+      "registration_not_active": "Registrace je zrušená nebo propadlá.",
+      "no_substitute_entry": "Šermíř už v této disciplíně nečeká ve frontě.",
+      "no_seated_entry": "Šermíř už v této disciplíně nedrží místo.",
+      "seating_already_settled": "Místa už uzavřel někdo jiný.",
+      "fallback": "Akce „{{action}}“ neprošla. Zkus to znovu."
+    }
   },
   "manualEntry": {
     "title": "Ruční zadání",

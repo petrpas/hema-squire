@@ -848,39 +848,24 @@ export interface ConsoleTeamDiscipline {
   teams: ConsoleTeam[];
 }
 
-/** One fencer's placement in one individual discipline, above or below the
- *  line, as the organizer's queue view presents it. */
-export interface QueueEntry {
-  registration_id: number;
-  fencer: string;
-  club: string | null;
-  vs: number | null;
-  registered_at: string;
-  /** The moment the placement's queue place counts from, which the queue is
-   *  ordered by: the registration time, or the moment of a demotion for
-   *  non-payment, which `demoted` marks (spec `seating-queue`). */
-  queued_since: string;
-  demoted: boolean;
-  /** Place in the queue by queue moment; null when seated. */
-  queue_position: number | null;
-}
-
+/** One individual discipline's places, as the Queue phase states them beside
+ *  its roster. The rows are the discipline's export table (design queue-rosters
+ *  D1). */
 export interface QueueDiscipline {
   slug: string;
-  name: string;
   capacity: number;
   taken: number;
   free: number;
-  seated: QueueEntry[];
-  queued: QueueEntry[];
 }
 
 export interface Queue {
   /** The resolved deadline, never the raw column. */
   seating_deadline: string;
   seating_settled_at: string | null;
-  /** How many registrations settling now would move below the line. */
+  /** How many registrations settling now would move below the line, and how
+   *  many of their teams would be waitlisted with them. */
   pending_demotions: number;
+  pending_team_waitlistings: number;
   disciplines: QueueDiscipline[];
 }
 

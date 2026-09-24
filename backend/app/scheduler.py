@@ -428,11 +428,33 @@ def _demotable(session: Session, tournament: Tournament) -> list[Registration]:
     ]
 
 
+@dataclass(frozen=True)
+class PendingSettlement:
+    """What settling seating now would move: the registrations, and the seated
+    teams among them that would be waitlisted with them."""
+
+    registrations: int
+    teams: int
+
+
+def pending_settlement(session: Session, tournament: Tournament) -> PendingSettlement:
+    """What `settle_seating` would move right now — what the console states
+    before asking the organizer to confirm an irreversible settlement. Both
+    figures are read off the one `_demotable` selection settlement acts on, so
+    the confirmation cannot promise a team the settlement then leaves seated
+    (spec seating-queue, Organizer-triggered seating settlement)."""
+    demotable = _demotable(session, tournament)
+    return PendingSettlement(
+        registrations=len(demotable),
+        teams=sum(
+            1 for registration in demotable for team in registration.teams if not team.waitlisted
+        ),
+    )
+
+
 def pending_demotions(session: Session, tournament: Tournament) -> int:
-    """How many registrations `settle_seating` would move below the line right
-    now — what the console states before asking the organizer to confirm an
-    irreversible settlement."""
-    return len(_demotable(session, tournament))
+    """How many registrations `settle_seating` would move below the line."""
+    return pending_settlement(session, tournament).registrations
 
 
 def settle_seating(session: Session, tournament: Tournament, mailer: Mailer) -> int:

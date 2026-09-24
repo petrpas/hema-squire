@@ -7,6 +7,7 @@ import {
   DEFAULT_PHASE,
   editableHere,
   editsForPhase,
+  offeredPhases,
   PHASE_COLUMNS,
   PHASES,
   type Phase,
@@ -59,6 +60,34 @@ describe("the phase list", () => {
 
   it("opens on the fencer list, so an organizer who never imports lands somewhere", () => {
     expect(DEFAULT_PHASE).toBe("fencers");
+  });
+
+  const mode = (registrations_kept_by: "squire" | "organizer") => ({
+    feature_schedule: false,
+    feature_payments: true,
+    feature_teams: true,
+    feature_extras: false,
+    registrations_kept_by,
+  });
+
+  it("puts Queue between Payments and Export, since it changes who holds a seat", () => {
+    expect(offeredPhases(mode("squire"))).toEqual([
+      "setup",
+      "import",
+      "fencers",
+      "matching",
+      "dedup",
+      "payments",
+      "queue",
+      "export",
+      "teams",
+    ]);
+  });
+
+  it("offers no Queue on a manual tournament, which queues nobody", () => {
+    // the route lands a URL naming an unoffered phase on the default one
+    expect(offeredPhases(mode("organizer"))).not.toContain("queue");
+    expect(offeredPhases(mode("organizer"))).toContain(DEFAULT_PHASE);
   });
 });
 

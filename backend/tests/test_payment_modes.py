@@ -22,6 +22,7 @@ from app.models import (
     PaymentMode,
     Registration,
     RegistrationState,
+    Team,
     Tournament,
 )
 from app.setup import seating_has_settled
@@ -925,7 +926,7 @@ def test_deposit_amount_is_a_setup_completeness_item(client, auth_headers):
 # ------------------------------------------------------- queue view
 
 
-def test_queue_view_lists_every_discipline_including_empty_ones(client, auth_headers):
+def test_queue_summary_lists_every_discipline_including_empty_ones(client, auth_headers):
     organizer = auth_headers()
     make_tournament(client, organizer, mode="reservation", capacity=2)
     client.post(
@@ -938,27 +939,57 @@ def test_queue_view_lists_every_discipline_including_empty_ones(client, auth_hea
     queue = client.get("/api/tournaments/cup/queue", headers=organizer).json()
     assert queue["seating_settled_at"] is None
     assert queue["pending_demotions"] == 1
+    assert queue["pending_team_waitlistings"] == 0
     by_slug = {d["slug"]: d for d in queue["disciplines"]}
-    assert by_slug["LS"]["free"] == 1
-    assert [row["fencer"] for row in by_slug["LS"]["seated"]] == ["Jan"]
-    assert by_slug["LS"]["queued"] == []
+    assert (by_slug["LS"]["taken"], by_slug["LS"]["free"]) == (1, 1)
     # a discipline nobody entered is stated, not hidden
-    assert by_slug["SA"]["seated"] == [] and by_slug["SA"]["queued"] == []
+    assert (by_slug["SA"]["taken"], by_slug["SA"]["free"]) == (0, 3)
 
 
-def test_queue_view_numbers_the_queue_in_registration_order(client, auth_headers):
+def test_queue_summary_counts_the_teams_settlement_then_waitlists(client, auth_headers, mailbox):
+    """The confirmation and the settlement are one selection: the teams it
+    promises to waitlist are the teams settlement waitlists."""
     organizer = auth_headers()
-    make_tournament(client, organizer, mode="reservation", capacity=1)
-    enroll(client, auth_headers, email="a@example.com", name="A")
-    enroll(client, auth_headers, email="b@example.com", name="B")
-    enroll(client, auth_headers, email="c@example.com", name="C")
+    make_tournament(client, organizer, mode="reservation", capacity=4)
+    client.post(
+        "/api/tournaments/cup/disciplines",
+        json={
+            "slug": "LS-T",
+            "weapon": "LS",
+            "kind": "team",
+            "team_min": 1,
+            "team_max": 3,
+            "capacity": 4,
+            "fee": 500,
+        },
+        headers=organizer,
+    )
+    enroll(client, auth_headers, teams=[{"slug": "LS-T", "name": "Wolves"}])
+    enroll(
+        client,
+        auth_headers,
+        email="eva@example.com",
+        name="Eva",
+        teams=[{"slug": "LS-T", "name": "Bears"}, {"slug": "LS-T", "name": "Owls"}],
+    )
+    _, paid = enroll(
+        client,
+        auth_headers,
+        email="petr@example.com",
+        name="Petr",
+        teams=[{"slug": "LS-T", "name": "Paid"}],
+    )
+    session = db_session()
+    registration = session.scalar(select(Registration).where(Registration.vs == paid["vs"]))
+    credit_registration(session, registration, registration.total_amount * 100)
 
     queue = client.get("/api/tournaments/cup/queue", headers=organizer).json()
-    (discipline,) = queue["disciplines"]
-    assert [(row["fencer"], row["queue_position"]) for row in discipline["queued"]] == [
-        ("B", 1),
-        ("C", 2),
-    ]
+    assert (queue["pending_demotions"], queue["pending_team_waitlistings"]) == (2, 3)
+
+    client.post("/api/tournaments/cup/settle-seating", headers=organizer)
+    session = db_session()
+    waitlisted = session.scalars(select(Team).where(Team.waitlisted.is_(True))).all()
+    assert sorted(team.name for team in waitlisted) == ["Bears", "Owls", "Wolves"]
 
 
 def test_non_organizer_cannot_read_the_queue(client, auth_headers):

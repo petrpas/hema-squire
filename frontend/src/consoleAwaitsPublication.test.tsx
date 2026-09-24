@@ -3,7 +3,7 @@ import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { MemoryRouter, Outlet, Route, Routes } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { api, type Sheet, type Tournament } from "./api";
+import { api, type Sheet, type TournamentDetail } from "./api";
 import Console, { type Phase } from "./Console";
 // the console renders in the deployment language, which is Czech in tests
 import en from "./i18n/en.json";
@@ -26,14 +26,14 @@ function tournamentAt(published: string | null) {
     feature_payments: true,
     feature_teams: true,
     feature_extras: false,
-  } as unknown as Tournament;
+  } as unknown as TournamentDetail;
 }
 
 const emptySheet = { rows: [], edits: [] } as unknown as Sheet;
 
 let host: HTMLElement | null = null;
 
-function mount(tournament: Tournament, phase: Phase) {
+function mount(tournament: TournamentDetail, phase: Phase) {
   host = document.createElement("div");
   document.body.append(host);
   const root = createRoot(host);
@@ -81,9 +81,9 @@ const DRAFT_PHASES: Phase[] = [
   "matching",
   "dedup",
   "payments",
+  "queue",
   "export",
   "teams",
-  "queue",
 ];
 
 describe("a draft's phases", () => {
@@ -113,9 +113,9 @@ describe("a draft's phases", () => {
       en.phase.matching,
       en.phase.dedup,
       en.phase.payments,
+      en.phase.queue,
       en.phase.export,
       en.phase.teams,
-      en.phase.queue,
     ]);
   });
 

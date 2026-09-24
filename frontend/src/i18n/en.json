@@ -109,7 +109,9 @@
       "items": "Items",
       "paid": "Paid",
       "item": "Item",
-      "unpaid": "Unpaid"
+      "unpaid": "Unpaid",
+      "standing": "Standing",
+      "action": "Action"
     },
     "line": {
       "queue": "capacity line — substitutes below",
@@ -1252,18 +1254,12 @@
     "settledOn": "Seating settled {{date}}",
     "notSettled": "Seating has not settled yet.",
     "freePlaces": "{{free}} of {{capacity}} places free",
-    "seated": "Seated",
-    "queued": "Queue",
-    "emptyQueue": "Nobody is waiting for this discipline.",
-    "noneSeated": "Nobody holds a place in this discipline.",
     "position": "{{position}}.",
     "registeredAt": "registered {{moment}}",
     "demotedAt": "queued since {{moment}}, moved for non-payment",
     "promote": "promote",
     "returnToQueue": "return to queue",
     "noDisciplines": "This tournament offers no individual discipline.",
-    "error": "Could not load the queue. Are you an organizer of this tournament?",
-    "actionFailed": "That did not go through: {{reason}}",
     "settle": "Settle seating",
     "settleTitle": "settle seating now",
     "settleBody_one": "{{count}} registration still owes money and will be moved to the queue. Registrations submitted afterwards join the queue instead of taking a place.",
@@ -1271,7 +1267,30 @@
     "settleIrreversible": "This cannot be undone. Individual cases are corrected by promoting from the queue.",
     "settleConfirm": "settle seating",
     "settleDone_one": "{{count}} registration moved to the queue.",
-    "settleDone_other": "{{count}} registrations moved to the queue."
+    "settleDone_other": "{{count}} registrations moved to the queue.",
+    "seatingTitle": "Seating",
+    "settleTeams_one": "{{count}} team will be waitlisted with them.",
+    "settleTeams_other": "{{count}} teams will be waitlisted with them.",
+    "noSeatYet": "holds no place yet",
+    "noArrow": "no registration",
+    "promoteHint": "Promote into a free place — opens a payment window and sends instructions.",
+    "returnHint": "Return to the place they held in the queue — no email is sent.",
+    "money": {
+      "paid": "paid",
+      "waived": "settled without payment",
+      "nothingDue": "nothing due",
+      "owes": "owes {{amount}}",
+      "owesBy": "owes {{amount}} by {{date}}"
+    },
+    "refused": {
+      "discipline_full": "The discipline has filled in the meantime — nobody can be promoted.",
+      "registration_paid_cancel_instead": "The registration has been paid in the meantime — it cannot be returned to the queue, only cancelled.",
+      "registration_not_active": "The registration is cancelled or expired.",
+      "no_substitute_entry": "The fencer is no longer queued in this discipline.",
+      "no_seated_entry": "The fencer no longer holds a place in this discipline.",
+      "seating_already_settled": "Someone else has already settled seating.",
+      "fallback": "“{{action}}” did not go through. Try again."
+    }
   },
   "manualEntry": {
     "title": "Manual entry",
