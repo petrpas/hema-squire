@@ -86,7 +86,8 @@
     "failed": "Export failed.",
     "tablesTitle": "Export tables",
     "tab": {
-      "fencers": "Fencers"
+      "fencers": "Fencers",
+      "summary": "Summary"
     },
     "category": {
       "rental": "Rentals",
@@ -106,7 +107,9 @@
       "rating": "Rating",
       "rank": "Rank",
       "items": "Items",
-      "paid": "Paid"
+      "paid": "Paid",
+      "item": "Item",
+      "unpaid": "Unpaid"
     },
     "line": {
       "queue": "capacity line — substitutes below",
@@ -130,7 +133,12 @@
     },
     "sheetLink": "Open the output spreadsheet",
     "forgetSheet": "Forget the spreadsheet",
-    "noGoogle": "The Sheets export is not available on this server — Google access is missing."
+    "noGoogle": "The Sheets export is not available on this server — Google access is missing.",
+    "summary": {
+      "queue": "{{name}} (queue)",
+      "option": "{{name}} – {{option}}",
+      "missing": "not given"
+    }
   },
   "dedup": {
     "title": "Deduplication",

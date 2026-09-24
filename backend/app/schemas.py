@@ -1555,12 +1555,32 @@ class ExportBandTabOut(ExportTabOut):
     discipline's substitute entries and is 0 on every other tab; neither
     follows the tab's active-only switch."""
 
-    count: int
+    # None on the summary tab, which lists an offer rather than a population
+    count: int | None
     queued: int
 
 
 class ExportTableOut(ExportTabOut):
     rows: list[dict]
+
+
+class ExportSummaryLineOut(BaseModel):
+    """One line of the Export summary (spec export-summary). Structured rather
+    than labelled: the console composes `LSM (fronta)` or `Triko – XL` in the
+    language the reader asked for."""
+
+    kind: str
+    category: str
+    name: str
+    option: str | None
+    missing: bool
+    item_id: int | None
+    paid: int
+    unpaid: int
+
+
+class ExportSummaryOut(BaseModel):
+    lines: list[ExportSummaryLineOut]
 
 
 class ExportSheetConfigOut(BaseModel):

@@ -2,10 +2,18 @@
 
 import io
 
+from app.exportsummary import ITEM, QUEUE, SummaryLine
 from app.hr_sync import get_hr_fetcher
 from app.importer import get_import_parser
 from app.main import app
-from app.sheets_export import DISCIPLINE_COLUMNS, get_sheets_client_factory, typed_grid
+from app.sheets_export import (
+    DISCIPLINE_COLUMNS,
+    SUMMARY_COLUMNS,
+    get_sheets_client_factory,
+    header_for,
+    summary_label,
+    typed_grid,
+)
 from tests.conftest import publish
 from tests.test_import import CSV, FakeParser
 
@@ -121,7 +129,7 @@ def test_export_writes_the_export_tables(client, auth_headers):
     snapshot(client, organizer)
 
     body = export(client, organizer)
-    assert body["worksheets"] == ["Fencers", "LS", "SA"]
+    assert body["worksheets"] == ["Fencers", "LS", "SA", "Summary"]
 
     fencers = sheets.worksheets["Fencers"]
     assert fencers[0] == [
@@ -425,7 +433,7 @@ def test_two_tiers_produce_two_worksheets(client, auth_headers):
     app.dependency_overrides[get_sheets_client_factory] = lambda: lambda t: sheets
     response = client.post("/api/tournaments/tiers/export/sheet", headers=organizer)
     assert response.status_code == 200, response.text
-    assert set(response.json()["worksheets"]) == {"Fencers", "LS-A", "LS-B"}
+    assert set(response.json()["worksheets"]) == {"Fencers", "LS-A", "LS-B", "Summary"}
     assert grid_row(sheets.worksheets["LS-A"], "Top Fencer")
     assert grid_row(sheets.worksheets["LS-B"], "Open Fencer")
     assert all(row[1] != "Open Fencer" for row in sheets.worksheets["LS-A"][1:])
@@ -483,3 +491,58 @@ def test_only_numeric_columns_are_written_as_numbers():
         [1, "Jan", "CZ", "1996", 10234, 1250.5, 17, "Ne"],
         [2, "Eva", "CZ", "", "", "", "n/a", "Ano"],
     ]
+
+
+def test_the_summary_worksheet_counts_and_is_rewritten_whole(client, auth_headers):
+    organizer = auth_headers(language="cs")
+    setup(client, auth_headers, organizer)
+    shirt = client.post(
+        "/api/tournaments/cup/extra-items",
+        json={
+            "name": "Triko",
+            "category": "merch",
+            "price": 300,
+            "max_qty": 5,
+            "option_label": "size",
+            "option_choices": ["L", "XL"],
+        },
+        headers=organizer,
+    ).json()
+    buyer = auth_headers(email="buyer@example.com", name="Buyer One")
+    client.post(
+        "/api/tournaments/cup/register",
+        json={
+            "disciplines": ["LS"],
+            "extras": [{"extra_item_id": shirt["id"], "qty": 2, "option_value": "XL"}],
+        },
+        headers=buyer,
+    )
+    sheets = InMemorySheets()
+    wire(sheets)
+
+    export(client, organizer)
+    summary = sheets.worksheets["Summary"]
+    assert summary[0] == ["Položka", "Zaplaceno", "Nezaplaceno"]
+    assert ["Triko – L", 0, 0] in summary
+    assert ["Triko – XL", 0, 2] in summary  # pieces, as numbers
+
+    # staff wrote into it; the next export states the counts and nothing else
+    summary.append(["poznámka", "", ""])
+    export(client, organizer)
+    assert ["poznámka", "", ""] not in sheets.worksheets["Summary"]
+
+
+def test_an_english_summary_names_the_words_squire_adds_in_english():
+    """The organizer's names stay as written; the queue and the unanswered
+    option are Squire's words and follow the export's language."""
+    queue = SummaryLine(QUEUE, "", "Dlouhý meč", 2, 12)
+    missing = SummaryLine(ITEM, "merch", "Triko", 0, 1, missing=True)
+    sized = SummaryLine(ITEM, "merch", "Triko", 3, 0, option="XL")
+
+    assert [summary_label(line, "en") for line in (queue, missing, sized)] == [
+        "Dlouhý meč (queue)",
+        "Triko – not given",
+        "Triko – XL",
+    ]
+    assert summary_label(queue, "cs") == "Dlouhý meč (fronta)"
+    assert header_for(SUMMARY_COLUMNS, "en") == ["Item", "Paid", "Unpaid"]

@@ -29,6 +29,9 @@ from app.rules import Row
 FENCERS = "fencers"
 DISCIPLINE = "discipline"
 CATEGORY = "category"
+# the band's last tab, whose table is `exportsummary`'s rather than a
+# narrowing of the fencer table
+SUMMARY = "summary"
 
 # goods before programme, as `frontend/src/extraItems.ts` orders them: what a
 # fencer takes home first, what happens at the tournament second
@@ -99,6 +102,9 @@ def tabs(tournament: Tournament) -> list[Tab]:
         Tab(kind=CATEGORY, key=category.value, label=category.value)
         for category in offered_categories(tournament)
     ]
+    # every tournament has one, whatever it offers: disciplines alone are
+    # something to total
+    band.append(Tab(kind=SUMMARY, key="", label=SUMMARY))
     return band
 
 
@@ -152,7 +158,7 @@ def table_rows(rows: list[Row], tab: Tab) -> list[Row]:
     return _paid_first([row for row in live if (row.get("extras") or {}).get(tab.key)])
 
 
-def tab_counts(rows: list[Row], tab: Tab) -> tuple[int, int]:
+def tab_counts(rows: list[Row], tab: Tab) -> tuple[int | None, int]:
     """How many a tab lists, as the band states it beside the tab's name:
     `(count, queued)` (spec export-tables, Every tab states how many it lists).
 
@@ -161,7 +167,12 @@ def tab_counts(rows: list[Row], tab: Tab) -> tuple[int, int]:
     line does — a row not seated in the discipline is holding a substitute
     entry in it — and every other tab has no queue. The active-only switch is
     the reader's own and never reaches a count.
+
+    The summary states no count: its lines are an offer, not a population, and
+    a number beside it would read as comparable with the others.
     """
+    if tab.kind == SUMMARY:
+        return None, 0
     listed = table_rows(rows, tab)
     if tab.kind != DISCIPLINE:
         return len(listed), 0

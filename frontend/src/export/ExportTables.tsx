@@ -1,7 +1,13 @@
 import { type ReactNode, useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { api, type ExportBandTab, type NetChange, type SheetRow } from "../api";
+import {
+  api,
+  type ExportBandTab,
+  type ExportSummaryLine,
+  type NetChange,
+  type SheetRow,
+} from "../api";
 import ExportPanel from "../ExportPanel";
 import { useTabBand } from "../useTabBand";
 import { FENCERS_COLUMNS, ITEM_COLUMNS, ROSTER_COLUMNS, toTsv } from "./columns";
@@ -9,6 +15,8 @@ import FencersTable from "./FencersTable";
 import ItemsTable from "./ItemsTable";
 import { activeOnly, rosterOrder } from "./ordering";
 import RosterTable from "./RosterTable";
+import SummaryTable from "./SummaryTable";
+import { summaryTsv } from "./summary";
 import TableOperations from "./TableOperations";
 import { tabCount, tabId, tabLabel } from "./tabs";
 
@@ -50,6 +58,7 @@ export default function ExportTables({
   const [tabs, setTabs] = useState<ExportBandTab[]>([]);
   const [selected, setSelected] = useState<string>("fencers:");
   const [rows, setRows] = useState<SheetRow[]>([]);
+  const [summary, setSummary] = useState<ExportSummaryLine[]>([]);
   const [active, setActive] = useState(false);
   const [seeded, setSeeded] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -68,6 +77,11 @@ export default function ExportTables({
 
   const reload = useCallback(() => {
     if (tab === null) return;
+    // the summary is not a fencer table: its lines are read on their own
+    if (tab.kind === "summary") {
+      void api.exportSummary(slug).then((read) => setSummary(read.lines));
+      return;
+    }
     void api.exportTable(slug, tab.kind, tab.key).then((table) => setRows(table.rows));
   }, [slug, tab]);
 
@@ -113,6 +127,11 @@ export default function ExportTables({
     const header = (id: string) =>
       english ? i18n.getFixedT("en")(`export.column.${id}`) : t(`export.column.${id}`);
     const locale = english ? i18n.getFixedT("en") : t;
+    if (tab.kind === "summary") {
+      void navigator.clipboard.writeText(summaryTsv(locale, summary));
+      setMessage(t("export.copied", { count: summary.length }));
+      return;
+    }
     const columns =
       tab.kind === "fencers"
         ? FENCERS_COLUMNS(locale)
@@ -152,13 +171,17 @@ export default function ExportTables({
                 }}
               >
                 {tabLabel(t, candidate)}
-                <span className="tab-count">{tabCount(candidate)}</span>
+                {tabCount(candidate) !== null && (
+                  <span className="tab-count">{tabCount(candidate)}</span>
+                )}
               </button>
             ))}
           </nav>
         </div>
 
-        {tab === null ? null : tab.kind === "fencers" ? (
+        {tab === null ? null : tab.kind === "summary" ? (
+          <SummaryTable lines={summary} />
+        ) : tab.kind === "fencers" ? (
           <FencersTable rows={listed} />
         ) : tab.kind === "discipline" ? (
           <RosterTable
@@ -180,8 +203,9 @@ export default function ExportTables({
           {tab !== null && (
             <TableOperations
               title={tabLabel(t, tab)}
-              active={active}
-              onActiveChange={setActive}
+              // the summary states paid and unpaid side by side: narrowing it
+              // would empty one of its columns, so it offers no switch
+              active={tab.kind === "summary" ? undefined : { checked: active, onChange: setActive }}
               seeded={
                 tab.kind === "discipline" ? { checked: seeded, onChange: setSeeded } : undefined
               }

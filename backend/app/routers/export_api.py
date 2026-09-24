@@ -2,10 +2,16 @@ from typing import Annotated
 
 from fastapi import APIRouter, Body, Depends, HTTPException
 
-from app import export_json, exporttables, rules, sheet, sheets_export
+from app import export_json, exportsummary, exporttables, rules, sheet, sheets_export
 from app.auth import require_console_access, require_published
 from app.routers.tournaments import FencerDep, SessionDep, TournamentDep
-from app.schemas import ExportBandTabOut, ExportSheetConfigOut, ExportTableOut
+from app.schemas import (
+    ExportBandTabOut,
+    ExportSheetConfigOut,
+    ExportSummaryLineOut,
+    ExportSummaryOut,
+    ExportTableOut,
+)
 
 router = APIRouter(prefix="/api/tournaments", tags=["export"])
 
@@ -66,7 +72,9 @@ def export_table(
     require_console_access(session, tournament, fencer)
     require_published(tournament)
     tab = exporttables.find_tab(tournament, kind, key)
-    if tab is None:
+    # the summary is a tab but not a fencer table; its lines are read at
+    # `/export/summary`
+    if tab is None or tab.kind == exporttables.SUMMARY:
         raise HTTPException(status_code=404, detail="unknown_export_table")
     base = sheet.base_rows(session, tournament)
     replayed, _ = rules.replay(
@@ -76,6 +84,22 @@ def export_table(
         **tab.__dict__,
         rows=exporttables.table_rows(list(replayed.values()), tab),
     )
+
+
+@router.get("/{slug}/export/summary", response_model=ExportSummaryOut)
+def export_summary(
+    tournament: TournamentDep, session: SessionDep, fencer: FencerDep
+) -> ExportSummaryOut:
+    """The Summary tab: how many of each discipline and item the tournament
+    offers, paid and unpaid, counted over the replayed rows."""
+    require_console_access(session, tournament, fencer)
+    require_published(tournament)
+    base = sheet.base_rows(session, tournament)
+    replayed, _ = rules.replay(
+        base, rules.active_rules(session, tournament), sheet.rating_lookup(session, tournament)
+    )
+    lines = exportsummary.summary_lines(tournament, list(replayed.values()))
+    return ExportSummaryOut(lines=[ExportSummaryLineOut(**line.__dict__) for line in lines])
 
 
 @router.get("/{slug}/export/sheet-config", response_model=ExportSheetConfigOut)

@@ -1025,6 +1025,24 @@ button.secondary:disabled {
   border-radius: 0;
 }
 
+/* The export summary is three columns of a name and two counts: stretched to
+   the phase's width, its counts would stand a screen away from what they
+   count. It is as wide as its content and ends at its last line, scrolling
+   only where the lines outrun the screen. */
+.sheet-scroll.summary-scroll {
+  flex: 0 1 auto;
+  align-self: flex-start;
+  max-width: 100%;
+}
+
+.summary-scroll .sheet-table {
+  width: auto;
+}
+
+.summary-scroll .sheet-table .col-number {
+  min-width: 7rem;
+}
+
 .sheet-empty {
   color: var(--ink-faded);
   padding: 2rem;

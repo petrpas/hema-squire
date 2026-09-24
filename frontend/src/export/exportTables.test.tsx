@@ -267,8 +267,7 @@ describe("the rail card of the open tab", () => {
     renderToStaticMarkup(
       <TableOperations
         title="Sabre Open"
-        active={active}
-        onActiveChange={() => {}}
+        active={{ checked: active, onChange: () => {} }}
         seeded={discipline ? { checked: false, onChange: () => {} } : undefined}
         onCopy={() => {}}
         onRefreshRatings={discipline ? () => {} : undefined}

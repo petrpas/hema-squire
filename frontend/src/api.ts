@@ -595,7 +595,7 @@ export interface Sheet {
  *  offers something in. `key` names what the table is of and is empty for the
  *  fencer table, which is of the whole tournament. */
 export interface ExportTab {
-  kind: "fencers" | "discipline" | "category";
+  kind: "fencers" | "discipline" | "category" | "summary";
   key: string;
   label: string;
   capacity: number | null;
@@ -608,8 +608,26 @@ export interface ExportTab {
  *  discipline's substitute entries and is 0 on every other tab. Neither
  *  follows the tab's active-only switch (spec export-tables). */
 export interface ExportBandTab extends ExportTab {
-  count: number;
+  /** Null on the summary tab, which lists an offer rather than a population. */
+  count: number | null;
   queued: number;
+}
+
+/** One line of the Export summary (spec export-summary): a discipline's seated
+ *  or queued fencers, or the pieces of one item — of one answer to its option
+ *  where it asks one, or of the selections that gave none (`missing`).
+ *  Structured rather than labelled, so the label is composed in the language
+ *  the reader asked for. */
+export interface ExportSummaryLine {
+  kind: "discipline" | "queue" | "item";
+  category: string;
+  name: string;
+  option: string | null;
+  missing: boolean;
+  /** Null on a discipline's lines. Two items may share a name. */
+  item_id: number | null;
+  paid: number;
+  unpaid: number;
 }
 
 export interface ExportTable extends ExportTab {
@@ -1395,6 +1413,8 @@ export const api = {
   exportSheetConfig: (slug: string) =>
     request<ExportSheetConfig>(`/api/tournaments/${slug}/export/sheet-config`),
   exportTabs: (slug: string) => request<ExportBandTab[]>(`/api/tournaments/${slug}/export/tables`),
+  exportSummary: (slug: string) =>
+    request<{ lines: ExportSummaryLine[] }>(`/api/tournaments/${slug}/export/summary`),
   exportTable: (slug: string, kind: string, key: string) =>
     request<ExportTable>(
       `/api/tournaments/${slug}/export/table?kind=${encodeURIComponent(kind)}&key=${encodeURIComponent(key)}`,

@@ -202,10 +202,10 @@ def test_extras_project_per_category_with_quantities(client, auth_headers):
     rows, _ = sheet_rows(client, organizer)
     extras = rows["Jan Novák"]["extras"]
     assert extras["merch"] == [
-        {"name": "t-shirt", "qty": 2, "option": "M"},
-        {"name": "mug", "qty": 1, "option": None},
+        {"item_id": shirt["id"], "name": "t-shirt", "qty": 2, "option": "M"},
+        {"item_id": mug["id"], "name": "mug", "qty": 1, "option": None},
     ]
-    assert extras["rental"] == [{"name": "feder", "qty": 1, "option": None}]
+    assert extras["rental"] == [{"item_id": sword["id"], "name": "feder", "qty": 1, "option": None}]
     # a category the fencer bought nothing in is absent, so a tab's population
     # is the rows holding its key
     assert "seminar" not in extras
@@ -239,6 +239,7 @@ def test_the_band_is_derived_from_the_tournament(client, auth_headers):
         ("discipline", "SA"),
         ("category", "rental"),  # goods before programme
         ("category", "merch"),
+        ("summary", ""),  # last, whatever the tournament offers
     ]
 
 
@@ -432,6 +433,8 @@ def test_every_tab_states_how_many_it_lists(client, auth_headers):
         ("discipline", "LS"): (2, 0),
         ("discipline", "SA"): (0, 0),
         ("category", "merch"): (1, 0),
+        # the summary lists an offer, not a population
+        ("summary", ""): (None, 0),
     }
 
 
@@ -470,3 +473,15 @@ def test_a_discipline_counts_its_queue_apart_from_its_seats():
     assert exporttables.tab_counts(rows, tab) == (2, 1)
     fencers = exporttables.Tab(kind=exporttables.FENCERS, key="", label="fencers")
     assert exporttables.tab_counts(rows, fencers) == (4, 0)
+
+
+def test_the_summary_is_a_tab_but_not_a_fencer_table(client, auth_headers):
+    organizer = organizer_with_tournament(client, auth_headers)
+
+    assert tabs(client, organizer)[-1]["kind"] == "summary"
+    response = client.get(
+        "/api/tournaments/cup/export/table",
+        params={"kind": "summary", "key": ""},
+        headers=organizer,
+    )
+    assert response.status_code == 404

@@ -77,7 +77,14 @@
       "rating": "HRating",
       "rank": "HRank",
       "items": "Items",
-      "paid": "Paid"
+      "paid": "Paid",
+      "item": "Item",
+      "unpaid": "Unpaid"
+    },
+    "summary": {
+      "queue": "{name} (queue)",
+      "option": "{name} – {option}",
+      "missing": "not given"
     }
   }
 }

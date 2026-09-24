@@ -108,7 +108,14 @@
       "rating": "HRating",
       "rank": "HRank",
       "items": "Položky",
-      "paid": "Zaplaceno"
+      "paid": "Zaplaceno",
+      "item": "Položka",
+      "unpaid": "Nezaplaceno"
+    },
+    "summary": {
+      "queue": "{name} (fronta)",
+      "option": "{name} – {option}",
+      "missing": "neuvedeno"
     }
   }
 }

@@ -22,12 +22,13 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Protocol
 
-from app import exporttables
+from app import exportsummary, exporttables
 from app.i18n import catalog
 from app.models import ExtraCategory, Tournament
 from app.rules import Row
 
 FENCERS_SHEET = "Fencers"
+SUMMARY_SHEET = "Summary"
 
 # Worksheet names are addresses, not prose: the merge finds an existing sheet
 # by its name, so renaming one with the export's language would orphan the
@@ -72,10 +73,14 @@ RATING = Column("rating", refreshed=True, numeric=True)
 RANK = Column("rank", refreshed=True, numeric=True)
 ITEMS = Column("items")
 PAID = Column("paid")
+# the summary's columns; its counts are written as the numbers they are
+ITEM = Column("item")
+UNPAID = Column("unpaid")
 
 FENCERS_COLUMNS = [POSITION, NAME, NATIONALITY, CLUB, HR_ID, DISCIPLINES, PAID]
 DISCIPLINE_COLUMNS = [POSITION, NAME, NATIONALITY, CLUB, HR_ID, RATING, RANK, PAID]
 CATEGORY_COLUMNS = [POSITION, NAME, NATIONALITY, CLUB, ITEMS, PAID]
+SUMMARY_COLUMNS = [ITEM, PAID, UNPAID]
 
 
 def header_for(columns: list[Column], locale: str) -> list[str]:
@@ -271,6 +276,37 @@ def _roster(rows: list[Row], values: Callable[[Row], dict[str, str]]):
     ]
 
 
+def summary_label(line: exportsummary.SummaryLine, locale: str) -> str:
+    """A summary line's item cell: `LSM (fronta)`, `Triko – XL`, `Triko –
+    neuvedeno`. The names are the organizer's and stay as written; only the
+    words Squire adds follow the export's language."""
+    if line.kind == exportsummary.QUEUE:
+        return catalog.translate("export.summary.queue", locale, name=line.name)
+    if line.missing:
+        option = catalog.translate("export.summary.missing", locale)
+        return catalog.translate("export.summary.option", locale, name=line.name, option=option)
+    if line.option is not None:
+        return catalog.translate(
+            "export.summary.option", locale, name=line.name, option=line.option
+        )
+    return line.name
+
+
+def summary_grid(tournament: Tournament, rows: list[Row], locale: str) -> list[list[Cell]]:
+    """The Summary worksheet, whole. It is not merged with what the sheet
+    held: its lines have no identity a cell could be kept by, and a count
+    preserved from the last export would be a stale one (spec data-export,
+    Repeat-export preservation semantics)."""
+    header: list[Cell] = [*header_for(SUMMARY_COLUMNS, locale)]
+    return [
+        header,
+        *(
+            [summary_label(line, locale), line.paid, line.unpaid]
+            for line in exportsummary.summary_lines(tournament, rows)
+        ),
+    ]
+
+
 def export_to_sheets(
     tournament: Tournament,
     rows: list[Row],
@@ -289,6 +325,10 @@ def export_to_sheets(
     written: list[str] = []
     fencers = 0
     for tab in exporttables.tabs(tournament):
+        if tab.kind == exporttables.SUMMARY:
+            client.write(SUMMARY_SHEET, summary_grid(tournament, rows, locale))
+            written.append(SUMMARY_SHEET)
+            continue
         table = exporttables.table_rows(rows, tab)
         if tab.kind == exporttables.FENCERS:
             name, columns = FENCERS_SHEET, FENCERS_COLUMNS

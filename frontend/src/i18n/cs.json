@@ -90,7 +90,8 @@
     "failed": "Export se nezdařil.",
     "tablesTitle": "Exportní tabulky",
     "tab": {
-      "fencers": "Šermíři"
+      "fencers": "Šermíři",
+      "summary": "Souhrn"
     },
     "category": {
       "rental": "Zápůjčky",
@@ -110,7 +111,9 @@
       "rating": "Rating",
       "rank": "Pořadí",
       "items": "Položky",
-      "paid": "Zaplaceno"
+      "paid": "Zaplaceno",
+      "item": "Položka",
+      "unpaid": "Nezaplaceno"
     },
     "line": {
       "queue": "hranice kapacity — níže náhradníci",
@@ -134,7 +137,12 @@
     },
     "sheetLink": "Otevřít výstupní tabulku",
     "forgetSheet": "Smazat odkaz",
-    "noGoogle": "Export do Sheets není na tomto serveru k dispozici — chybí přístup ke Google."
+    "noGoogle": "Export do Sheets není na tomto serveru k dispozici — chybí přístup ke Google.",
+    "summary": {
+      "queue": "{{name}} (fronta)",
+      "option": "{{name}} – {{option}}",
+      "missing": "neuvedeno"
+    }
   },
   "dedup": {
     "title": "Deduplikace",

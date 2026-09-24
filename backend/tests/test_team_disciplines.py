@@ -957,8 +957,10 @@ def test_teams_absent_from_sheets_export(client, auth_headers):
         assert response.status_code == 200, response.text
         # exactly the worksheets an individual-only tournament would produce —
         # no "SA" team-discipline worksheet
-        assert response.json()["worksheets"] == ["Fencers", "LS"]
+        assert response.json()["worksheets"] == ["Fencers", "LS", "Summary"]
         assert "SA" not in sheets.worksheets
+        # and the summary has no line for the team discipline
+        assert len(sheets.worksheets["Summary"]) == 2  # header and the one individual line
         fencers_rows = [row[1] for row in sheets.worksheets["Fencers"][1:]]
         assert fencers_rows == ["Jan Novák"]
         assert "Roster Member Not A Fencer" not in fencers_rows

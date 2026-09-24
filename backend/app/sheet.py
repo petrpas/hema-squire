@@ -85,6 +85,9 @@ def _extras_by_category(registration: Registration) -> dict[str, list[dict]]:
     for selection in registration.extra_selections:
         by_category[selection.item.category.value].append(
             {
+                # the item it is a selection of, by identity: the summary counts
+                # per offered item, and two items may share a name
+                "item_id": selection.item.id,
                 "name": selection.item.name,
                 "qty": selection.qty,
                 "option": selection.option_value,
