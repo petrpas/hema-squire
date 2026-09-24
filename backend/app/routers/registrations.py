@@ -607,6 +607,9 @@ def register(
                     discipline=discipline,
                     name=team_in.name,
                     waitlisted=waitlisted,
+                    # entered now: its entry and its waitlist moment are one
+                    # instant, which is how a later demotion is told apart
+                    created_at=registration.registered_at,
                     waitlisted_since=registration.registered_at,
                 )
             )
@@ -1047,32 +1050,7 @@ def admit_substitute(
 
     for placement_ in to_seat:
         placement_.is_substitute = False
-    # Fees are frozen to the original registration date; admission bills the
-    # admitted discipline (plus extras on first admission) and opens a fresh
-    # window. Nothing about payment is assigned: a registration that now owes
-    # more reads that off its credits against the new total, exactly as an
-    # amendment leaves it, and the window is what it has to pay in.
-    pricing.reprice(registration, tournament)
-    # A dormant registration's promotion bills it but opens no window: it never
-    # acquires a due date, whatever happens to it later. Asked of the one
-    # predicate the lifecycle passes ask, so the promotion path cannot come to
-    # disagree with them about what a dormant registration is (design
-    # unify-lifecycle-dormancy D1)
-    if setup.clocks_run(tournament, registration):
-        registration.expires_at = _promotion_expires_at(tournament)
-    # Money the fencer sent while sitting entirely in the queue was held rather
-    # than credited; it is credited now, against the place it pays for, so the
-    # letter below states what is still due after it (spec seating-queue).
-    session.flush()
-    matching.credit_held_for(session, tournament, registration)
-    # A promotion not yet paid for is marked, so a lapse of the window it opens
-    # takes back this placement alone and never a seat already paid for. A
-    # promotion that opens no window cannot lapse and is not marked.
-    if registration.expires_at is not None and not registration.settled:
-        for placement_ in to_seat:
-            placement_.promoted_unpaid = True
-    elif registration.settled:
-        registration.expires_at = None
+    bill_promotion(session, tournament, registration, to_seat)
     if was_paid:
         session.add(
             PaymentEvent(
@@ -1098,6 +1076,44 @@ def admit_substitute(
         ", ".join(placement_.discipline.name for placement_ in to_seat),
     )
     return registration_out(session, registration, tournament)
+
+
+def bill_promotion(
+    session,
+    tournament: Tournament,
+    registration: Registration,
+    seated: Sequence[RegistrationDiscipline | Team],
+) -> None:
+    """What follows a promotion once its placements or its team are seated —
+    the individual one and a team's alike, so the two cannot drift (design
+    team-queue D2).
+
+    Fees are frozen to the original registration date; the promotion bills what
+    it seated and opens a fresh window. Nothing about payment is assigned: a
+    registration that now owes more reads that off its credits against the new
+    total, exactly as an amendment leaves it, and the window is what it has to
+    pay in."""
+    pricing.reprice(registration, tournament)
+    # A dormant registration's promotion bills it but opens no window: it never
+    # acquires a due date, whatever happens to it later. Asked of the one
+    # predicate the lifecycle passes ask, so the promotion path cannot come to
+    # disagree with them about what a dormant registration is (design
+    # unify-lifecycle-dormancy D1)
+    if setup.clocks_run(tournament, registration):
+        registration.expires_at = _promotion_expires_at(tournament)
+    # Money the fencer sent while sitting entirely in the queue was held rather
+    # than credited; it is credited now, against the place it pays for, so the
+    # letter states what is still due after it (spec seating-queue).
+    session.flush()
+    matching.credit_held_for(session, tournament, registration)
+    # A promotion not yet paid for is marked, so a lapse of the window it opens
+    # takes back what it seated alone and never a seat already paid for. A
+    # promotion that opens no window cannot lapse and is not marked.
+    if registration.expires_at is not None and not registration.settled:
+        for item in seated:
+            item.promoted_unpaid = True
+    elif registration.settled:
+        registration.expires_at = None
 
 
 def _promotion_set(
@@ -1179,6 +1195,107 @@ def return_to_queue(
             kind="returned_to_queue",
             detail=f"{registration.audit_label}: "
             + ", ".join(placement_.discipline.slug for placement_ in returned),
+        )
+    )
+    session.commit()
+    return registration_out(session, registration, tournament)
+
+
+def _organizer_team(session, tournament: Tournament, registration_id: int, team_id: int) -> Team:
+    registration = session.get(Registration, registration_id)
+    if registration is None or registration.tournament_id != tournament.id:
+        raise HTTPException(status_code=404, detail="registration_not_found")
+    team = next((t for t in registration.teams if t.id == team_id), None)
+    if team is None:
+        raise HTTPException(status_code=404, detail="team_not_found")
+    return team
+
+
+@router.post(
+    "/registrations/{registration_id}/teams/{team_id}/admit", response_model=RegistrationOut
+)
+def admit_team(
+    registration_id: RowId,
+    team_id: RowId,
+    tournament: TournamentDep,
+    session: SessionDep,
+    fencer: FencerDep,
+    mailer: MailerDep,
+):
+    """Admit a waitlisted team into a free slot: the individual promotion,
+    applied to a team. Its fee is billed to the entering fencer's registration
+    as the difference it adds, a window opens where the registration's clocks
+    run, and the entering fencer is told the team has a place and what is due.
+    An admission not paid for is taken back alone when its window lapses
+    (spec seating-queue, The team waitlist in the Queue phase)."""
+    require_console_access(session, tournament, fencer)
+    require_published(tournament)
+    team = _organizer_team(session, tournament, registration_id, team_id)
+    registration = team.registration
+    if not team.waitlisted:
+        raise HTTPException(status_code=404, detail="no_waitlisted_team")
+    if registration.state in (RegistrationState.CANCELLED, RegistrationState.EXPIRED):
+        raise HTTPException(status_code=409, detail="registration_not_active")
+    if taken_team_slots(session, team.discipline) >= team.discipline.capacity:
+        raise HTTPException(status_code=409, detail="team_discipline_full")
+
+    previous_total = registration.total_amount
+    team.waitlisted = False
+    bill_promotion(session, tournament, registration, [team])
+    session.add(
+        PaymentEvent(
+            tournament_id=tournament.id,
+            registration_id=registration.id,
+            kind="team_promoted",
+            detail=(
+                f"{registration.audit_label}: {team.name} ({team.discipline.slug}), "
+                f"{previous_total} -> {registration.total_amount}"
+            ),
+        )
+    )
+    session.commit()
+    emails.send_team_promoted(mailer, tournament, registration.fencer, registration, team)
+    return registration_out(session, registration, tournament)
+
+
+@router.post(
+    "/registrations/{registration_id}/teams/{team_id}/return-to-waitlist",
+    response_model=RegistrationOut,
+)
+def return_team_to_waitlist(
+    registration_id: RowId,
+    team_id: RowId,
+    tournament: TournamentDep,
+    session: SessionDep,
+    fencer: FencerDep,
+):
+    """The inverse of `admit_team`: a seated team back on the waitlist, at the
+    place its moment gives it, its slot freed and its fee off the bill. Refused
+    on a paid registration, whose route is cancellation, as for a fencer's
+    return to the queue."""
+    require_console_access(session, tournament, fencer)
+    require_published(tournament)
+    team = _organizer_team(session, tournament, registration_id, team_id)
+    registration = team.registration
+    if team.waitlisted:
+        raise HTTPException(status_code=404, detail="no_seated_team")
+    if registration.state is not RegistrationState.RESERVED:
+        raise HTTPException(status_code=409, detail="registration_not_active")
+    if registration.settled:
+        raise HTTPException(status_code=409, detail="registration_paid_cancel_instead")
+
+    team.waitlisted = True
+    team.promoted_unpaid = False
+    pricing.reprice(registration, tournament)
+    # no window keeps running where nothing seated is left owed under it
+    if registration.fully_queued or registration.outstanding_cents <= 0:
+        registration.expires_at = None
+    session.add(
+        PaymentEvent(
+            tournament_id=tournament.id,
+            registration_id=registration.id,
+            kind="team_returned",
+            detail=f"{registration.audit_label}: {team.name} ({team.discipline.slug})",
         )
     )
     session.commit()

@@ -214,6 +214,7 @@ def apply_amendment(
                 option_value=value or None,
             )
         )
+    entered = _now()
     for (discipline, team_in), waitlisted in zip(team_entries or [], team_flags, strict=True):
         if team_in.id is not None and team_in.id in keep_ids:
             team = existing_teams[team_in.id]
@@ -228,7 +229,8 @@ def apply_amendment(
                     name=team_in.name,
                     waitlisted=waitlisted,
                     # a team waitlists in entry order, and this is its entry
-                    waitlisted_since=_now(),
+                    created_at=entered,
+                    waitlisted_since=entered,
                 )
             )
     session.flush()

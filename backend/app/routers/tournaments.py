@@ -2,6 +2,7 @@ import io
 import logging
 from collections.abc import Iterable
 from datetime import UTC, datetime
+from decimal import ROUND_HALF_UP, Decimal
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Response, UploadFile
@@ -20,6 +21,7 @@ from app.auth import (
     require_tournament_owner,
 )
 from app.availability import (
+    live_registration,
     queue_length,
     taken_seats,
     taken_team_slots,
@@ -74,6 +76,7 @@ from app.schemas import (
     OwnerTransferIn,
     QueueDisciplineOut,
     QueueOut,
+    QueueTeamOut,
     RegistrationsKeptByIn,
     RosterMemberOut,
     SettleSeatingOut,
@@ -1153,6 +1156,25 @@ def delete_discipline(
     session.commit()
 
 
+def live_teams(session: Session, discipline: Discipline) -> list[Team]:
+    """A team discipline's teams on live registrations, in waitlist order.
+
+    Entry order, except that a team demoted for non-payment waits from the
+    moment it was demoted, at the end of the waitlist. A team whose entering
+    registration expired or was cancelled no longer exists for the waitlist:
+    it is not listed and takes no place (spec team-disciplines, Team capacity
+    and the team waitlist)."""
+    return list(
+        session.scalars(
+            select(Team)
+            .join(Registration)
+            .where(Team.discipline_id == discipline.id, live_registration())
+            .options(selectinload(Team.members), selectinload(Team.registration))
+            .order_by(Team.waitlisted_since, Team.created_at, Team.id)
+        ).all()
+    )
+
+
 @router.get("/{slug}/teams", response_model=list[ConsoleTeamDisciplineOut])
 def console_teams(tournament: TournamentDep, session: SessionDep, fencer: FencerDep):
     """Read-only, per team discipline: every team with its entering fencer,
@@ -1177,14 +1199,7 @@ def console_teams(tournament: TournamentDep, session: SessionDep, fencer: Fencer
         # nothing is below a minimum that was never recorded
         team_min = discipline.team_min or 0
         team_max = discipline.team_max or 0
-        teams = session.scalars(
-            select(Team)
-            .where(Team.discipline_id == discipline.id)
-            .options(selectinload(Team.members), selectinload(Team.registration))
-            # entry order, except that a team demoted for non-payment waits
-            # from the moment it was demoted, at the end of the waitlist
-            .order_by(Team.waitlisted_since, Team.id)
-        ).all()
+        teams = live_teams(session, discipline)
         waitlist_position = 0
         team_rows = []
         for team in teams:
@@ -1244,9 +1259,26 @@ def console_queue(tournament: TournamentDep, session: SessionDep, fencer: Fencer
         disciplines.append(
             QueueDisciplineOut(
                 slug=discipline.slug,
+                name=discipline.name,
                 capacity=discipline.capacity,
                 taken=taken,
                 free=max(discipline.capacity - taken, 0),
+                queued=queue_length(session, discipline),
+            )
+        )
+    team_disciplines = []
+    for discipline in tournament.disciplines:
+        if discipline.kind != DisciplineKind.TEAM:
+            continue
+        taken = taken_team_slots(session, discipline)
+        team_disciplines.append(
+            QueueDisciplineOut(
+                slug=discipline.slug,
+                name=discipline.name,
+                capacity=discipline.capacity,
+                taken=taken,
+                free=max(discipline.capacity - taken, 0),
+                queued=team_queue_length(session, discipline),
             )
         )
     return QueueOut(
@@ -1255,7 +1287,64 @@ def console_queue(tournament: TournamentDep, session: SessionDep, fencer: Fencer
         pending_demotions=pending.registrations,
         pending_team_waitlistings=pending.teams,
         disciplines=disciplines,
+        team_disciplines=team_disciplines,
     )
+
+
+@router.get("/{slug}/queue/teams/{discipline_slug}", response_model=list[QueueTeamOut])
+def console_queue_teams(
+    discipline_slug: str, tournament: TournamentDep, session: SessionDep, fencer: FencerDep
+):
+    """A team discipline's roster for the Queue phase: seated teams, then the
+    waitlist in its order, each with the money of its entering fencer's
+    registration (design team-queue D1). Teams are not rows of the fencer
+    list, so this is its own projection rather than a sheet table."""
+    require_console_access(session, tournament, fencer)
+    discipline = next(
+        (
+            d
+            for d in tournament.disciplines
+            if d.slug == discipline_slug and d.kind == DisciplineKind.TEAM
+        ),
+        None,
+    )
+    if discipline is None:
+        raise HTTPException(status_code=404, detail="team_discipline_not_found")
+    teams = live_teams(session, discipline)
+    ordered = [team for team in teams if not team.waitlisted] + [
+        team for team in teams if team.waitlisted
+    ]
+    rows = []
+    position = 0
+    for team in ordered:
+        registration = team.registration
+        if team.waitlisted:
+            position += 1
+        balance, currency = registration.balance_cents(tournament)
+        rows.append(
+            QueueTeamOut(
+                team_id=team.id,
+                registration_id=registration.id,
+                name=team.name,
+                entering_fencer=registration.fencer.display_name,
+                members=len(team.members),
+                team_min=discipline.team_min or 0,
+                team_max=discipline.team_max or 0,
+                waitlisted=team.waitlisted,
+                waitlist_position=position if team.waitlisted else None,
+                waitlisted_since=team.waitlisted_since,
+                # entered at registration or by an amendment, or demoted since
+                demoted=team.waitlisted_since not in (registration.registered_at, team.created_at),
+                paid=registration.settled,
+                settled_by_hand=registration.waived,
+                outstanding_amount=str(
+                    (Decimal(balance) / 100).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+                ),
+                outstanding_currency=currency,
+                expires_at=registration.expires_at,
+            )
+        )
+    return rows
 
 
 @router.post("/{slug}/settle-seating", response_model=SettleSeatingOut)

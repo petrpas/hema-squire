@@ -100,6 +100,7 @@ FILES: dict[tuple[str, str], dict] = {
 PATH_PARAMS = {
     "discipline_slug": "LS",
     "registration_id": "1",
+    "team_id": "1",
     "transaction_id": "1",
     "item_id": "1",
     "rule_id": "1",

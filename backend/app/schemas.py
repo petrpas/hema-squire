@@ -1698,9 +1698,38 @@ class QueueDisciplineOut(BaseModel):
     the line in different places (design queue-rosters D1)."""
 
     slug: str
+    name: str = ""
     capacity: int
     taken: int
     free: int
+    # how many wait below the line: substitutes, or waitlisted teams
+    queued: int = 0
+
+
+class QueueTeamOut(BaseModel):
+    """One team as the Queue phase's team roster lists it: who entered it, how
+    many it holds against the bounds, where it stands, and the money of the
+    entering fencer's registration in the shape a fencer row states it, so the
+    two rosters state money alike (design team-queue D1)."""
+
+    team_id: int
+    registration_id: int
+    name: str
+    entering_fencer: str
+    members: int
+    team_min: int
+    team_max: int
+    waitlisted: bool
+    waitlist_position: int | None = None
+    # the moment its waitlist place counts from, and whether it is the moment
+    # of a demotion for non-payment rather than the team's entry
+    waitlisted_since: UtcInstant
+    demoted: bool = False
+    paid: bool
+    settled_by_hand: bool
+    outstanding_amount: str
+    outstanding_currency: Currency
+    expires_at: UtcInstant | None
 
 
 class QueueOut(BaseModel):
@@ -1717,6 +1746,8 @@ class QueueOut(BaseModel):
     pending_demotions: int
     pending_team_waitlistings: int
     disciplines: list[QueueDisciplineOut] = []
+    # each team discipline's slots, counted in teams
+    team_disciplines: list[QueueDisciplineOut] = []
 
 
 class SettleSeatingOut(BaseModel):

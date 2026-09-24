@@ -1055,7 +1055,8 @@
     "memberCount": "{{count}}/{{min}}–{{max}} members",
     "waitlistPosition": "position {{position}}",
     "belowMinimum": "below minimum",
-    "enteredBy": "entered by {{name}}"
+    "enteredBy": "entered by {{name}}",
+    "admittedOnQueue": "admission from the waitlist is on the Queue phase"
   },
   "cancel": {
     "button": "Cancel registration",
@@ -1307,11 +1308,27 @@
       "no_seated_entry": "The fencer no longer holds a place in this discipline.",
       "seating_already_settled": "Someone else has already settled seating.",
       "fallback": "“{{action}}” did not go through. Try again.",
-      "condition_discipline_full": "The registration waits for every discipline of its condition and one of them is full — it cannot be promoted."
+      "condition_discipline_full": "The registration waits for every discipline of its condition and one of them is full — it cannot be promoted.",
+      "team_discipline_full": "The team discipline has filled in the meantime — the team cannot be admitted.",
+      "no_waitlisted_team": "The team is no longer on the waitlist.",
+      "no_seated_team": "The team no longer holds a slot.",
+      "team_not_found": "The team no longer exists."
     },
     "alsoWaitsFor": "also waits for: {{disciplines}}",
     "returnConditionHint": "Return the whole registration to the queue — the fencer attends only with every discipline of their condition. No email is sent.",
-    "paymentHeld": "payment held"
+    "paymentHeld": "payment held",
+    "noTeams": "No team has been entered into this discipline yet.",
+    "teamLine": "team capacity — waitlist below",
+    "enteredAt": "entered {{moment}}",
+    "admitTeam": "admit team",
+    "admitTeamHint": "Admit the team into a free slot — its fee is billed to the registration, a payment window opens and the entrant is sent instructions.",
+    "returnTeam": "return to waitlist",
+    "returnTeamHint": "Return the team to the place it held on the waitlist — no email is sent.",
+    "column": {
+      "team": "Team",
+      "enteredBy": "Entered by",
+      "members": "Members"
+    }
   },
   "manualEntry": {
     "title": "Manual entry",

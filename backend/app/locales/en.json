@@ -45,7 +45,8 @@
     "promoted": {
       "subject": "A place has opened — {tournament}",
       "body": "Hi {name},\n\na place has opened for you in {discipline} at {tournament} — you are no longer a substitute.\n\n{amount} is now due, by {due}.\n\nAccount: {account}\nVariable symbol: {vs}\n\nYou can pay by scanning the attached QR code — it's made out for exactly this amount.\n\n{tournament} team",
-      "noDeadline": "as soon as possible"
+      "noDeadline": "as soon as possible",
+      "team": "{discipline} (team {team})"
     },
     "promotedNoPayment": {
       "subject": "A place has opened — {tournament}",

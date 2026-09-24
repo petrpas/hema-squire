@@ -16,7 +16,17 @@ export const seatedIn = (row: SheetRow, slug: string) => (row.disciplines ?? [])
 /** What a seated row's money reads: paid, settled by hand, or what is owed and
  *  by when — the figures settlement decides by (spec seating-queue, Queue view
  *  for the organizer). */
-export function moneyText(t: TFunction, row: SheetRow, timezone: string | null): string {
+export type MoneyFields = Pick<
+  SheetRow,
+  | "registration_id"
+  | "settled_by_hand"
+  | "paid"
+  | "outstanding_amount"
+  | "outstanding_currency"
+  | "expires_at"
+>;
+
+export function moneyText(t: TFunction, row: MoneyFields, timezone: string | null): string {
   if (row.registration_id === null) return t("queue.noSeatYet");
   if (row.settled_by_hand) return t("queue.money.waived");
   if (row.paid) return t("queue.money.paid");

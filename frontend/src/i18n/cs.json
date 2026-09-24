@@ -1071,7 +1071,8 @@
     "memberCount": "{{count}}/{{min}}–{{max}} členů",
     "waitlistPosition": "v pořadí {{position}}",
     "belowMinimum": "pod minimem",
-    "enteredBy": "přihlásil/a {{name}}"
+    "enteredBy": "přihlásil/a {{name}}",
+    "admittedOnQueue": "přijetí z čekací listiny je ve fázi Fronta"
   },
   "cancel": {
     "button": "Zrušit registraci",
@@ -1338,11 +1339,27 @@
       "no_seated_entry": "Šermíř už v této disciplíně nedrží místo.",
       "seating_already_settled": "Místa už uzavřel někdo jiný.",
       "fallback": "Akce „{{action}}“ neprošla. Zkus to znovu.",
-      "condition_discipline_full": "Registrace čeká na všechny disciplíny své podmínky a některá z nich je plná — posunout nelze."
+      "condition_discipline_full": "Registrace čeká na všechny disciplíny své podmínky a některá z nich je plná — posunout nelze.",
+      "team_discipline_full": "Týmová disciplína je mezitím plná — tým přijmout nelze.",
+      "no_waitlisted_team": "Tým už na čekací listině není.",
+      "no_seated_team": "Tým už nedrží místo.",
+      "team_not_found": "Tým už neexistuje."
     },
     "alsoWaitsFor": "čeká i na: {{disciplines}}",
     "returnConditionHint": "Vrátit do fronty celou registraci — šermíř jede jen se všemi disciplínami své podmínky. Bez e-mailu.",
-    "paymentHeld": "platba držena"
+    "paymentHeld": "platba držena",
+    "noTeams": "Do této disciplíny zatím nikdo nepřihlásil tým.",
+    "teamLine": "kapacita týmů — níže čekací listina",
+    "enteredAt": "přihlášen {{moment}}",
+    "admitTeam": "přijmout tým",
+    "admitTeamHint": "Přijmout tým na volné místo — poplatek se připíše k registraci, otevře se lhůta k zaplacení a přihlašujícímu přijdou pokyny.",
+    "returnTeam": "vrátit na čekací listinu",
+    "returnTeamHint": "Vrátit tým na čekací listinu na místo, které na ní měl — bez e-mailu.",
+    "column": {
+      "team": "Tým",
+      "enteredBy": "Přihlásil/a",
+      "members": "Členové"
+    }
   },
   "manualEntry": {
     "title": "Ruční zadání",

@@ -877,9 +877,34 @@ export interface ConsoleTeamDiscipline {
  *  D1). */
 export interface QueueDiscipline {
   slug: string;
+  name: string;
   capacity: number;
   taken: number;
   free: number;
+  /** How many wait below the line: substitutes, or waitlisted teams. */
+  queued: number;
+}
+
+/** One team as the Queue phase's team roster lists it, with the money of its
+ *  entering fencer's registration in the shape a fencer row states it
+ *  (design team-queue D1). */
+export interface QueueTeam {
+  team_id: number;
+  registration_id: number;
+  name: string;
+  entering_fencer: string;
+  members: number;
+  team_min: number;
+  team_max: number;
+  waitlisted: boolean;
+  waitlist_position: number | null;
+  waitlisted_since: string;
+  demoted: boolean;
+  paid: boolean;
+  settled_by_hand: boolean;
+  outstanding_amount: string;
+  outstanding_currency: Currency;
+  expires_at: string | null;
 }
 
 export interface Queue {
@@ -891,6 +916,8 @@ export interface Queue {
   pending_demotions: number;
   pending_team_waitlistings: number;
   disciplines: QueueDiscipline[];
+  /** Each team discipline's slots, counted in teams. */
+  team_disciplines: QueueDiscipline[];
 }
 
 export interface DiscountBreakdown {
@@ -1551,6 +1578,18 @@ export const api = {
   consoleTeams: (slug: string) =>
     request<ConsoleTeamDiscipline[]>(`/api/tournaments/${slug}/teams`),
   queue: (slug: string) => request<Queue>(`/api/tournaments/${slug}/queue`),
+  queueTeams: (slug: string, disciplineSlug: string) =>
+    request<QueueTeam[]>(`/api/tournaments/${slug}/queue/teams/${disciplineSlug}`),
+  admitTeam: (slug: string, registrationId: number, teamId: number) =>
+    request<RegistrationDetail>(
+      `/api/tournaments/${slug}/registrations/${registrationId}/teams/${teamId}/admit`,
+      { method: "POST" },
+    ),
+  returnTeamToWaitlist: (slug: string, registrationId: number, teamId: number) =>
+    request<RegistrationDetail>(
+      `/api/tournaments/${slug}/registrations/${registrationId}/teams/${teamId}/return-to-waitlist`,
+      { method: "POST" },
+    ),
   /** Promote one queued placement into a free seat: bills it, opens a payment
    *  window and sends instructions. */
   admitSubstitute: (slug: string, registrationId: number, disciplineSlug: string) =>

@@ -703,6 +703,21 @@ def send_promoted(
     )
 
 
+def send_team_promoted(
+    mailer: Mailer, tournament: Tournament, fencer: Fencer, registration: Registration, team
+) -> None:
+    """A waitlisted team admitted into a free slot, told to its entering fencer:
+    the promotion notice, naming the team and its discipline and stating what
+    is now due (spec seating-queue, The team waitlist in the Queue phase)."""
+    label = t(
+        "email.promoted.team",
+        tournament.language,
+        team=team.name,
+        discipline=team.discipline.name,
+    )
+    send_promoted(mailer, tournament, fencer, registration, label)
+
+
 def send_reservation_reinstated(
     mailer: Mailer, tournament: Tournament, fencer: Fencer, registration: Registration
 ) -> None:

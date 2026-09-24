@@ -992,6 +992,7 @@ export default function Console({
           <QueuePhase
             slug={tournament.slug}
             timezone={detail?.timezone ?? null}
+            teams={(detail ?? tournament).feature_teams}
             revision={queueReload}
             onChanged={refresh}
             renderRail={renderRail}

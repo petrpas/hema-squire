@@ -4,12 +4,20 @@ import { createRoot } from "react-dom/client";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { ApiError, api, type ExportBandTab, type Queue, type SheetRow } from "../api";
+import {
+  ApiError,
+  api,
+  type ExportBandTab,
+  type Queue,
+  type QueueTeam,
+  type SheetRow,
+} from "../api";
 import RosterTable from "../export/RosterTable";
 import i18n from "../i18n";
 import QueuePhase from "./QueuePhase";
 import QueueRoster from "./QueueRoster";
 import SeatingCard from "./SeatingCard";
+import TeamRoster from "./TeamRoster";
 
 // The Queue phase (spec `seating-queue`, Queue view for the organizer): the
 // Export roster's rows, order and line, two arrows offered only where the
@@ -193,7 +201,8 @@ const SUMMARY: Queue = {
   seating_settled_at: null,
   pending_demotions: 11,
   pending_team_waitlistings: 4,
-  disciplines: [{ slug: "LS", capacity: 2, taken: 2, free: 0 }],
+  team_disciplines: [],
+  disciplines: [{ slug: "LS", name: "LS", capacity: 2, taken: 2, free: 0, queued: 1 }],
 };
 
 let host: HTMLElement | null = null;
@@ -266,7 +275,7 @@ describe("a refused arrow", () => {
     vi.spyOn(api, "exportTabs").mockResolvedValue(TABS);
     vi.spyOn(api, "queue").mockResolvedValue({
       ...SUMMARY,
-      disciplines: [{ slug: "LS", capacity: 2, taken: 1, free: 1 }],
+      disciplines: [{ slug: "LS", name: "LS", capacity: 2, taken: 1, free: 1, queued: 1 }],
     });
     vi.spyOn(api, "exportTable").mockResolvedValue({
       ...TABS[1],
@@ -281,6 +290,7 @@ describe("a refused arrow", () => {
       <QueuePhase
         slug="cup"
         timezone="Europe/Prague"
+        teams={false}
         revision={0}
         onChanged={onChanged}
         renderRail={(panel) => <aside>{panel}</aside>}
@@ -294,5 +304,66 @@ describe("a refused arrow", () => {
     expect(view.textContent).toContain("Disciplína je mezitím plná");
     expect(view.textContent).not.toContain("discipline_full");
     expect(onChanged).toHaveBeenCalled();
+  });
+});
+
+describe("the team roster", () => {
+  function team(id: number, name: string, fields: Partial<QueueTeam> = {}): QueueTeam {
+    return {
+      team_id: id,
+      registration_id: id,
+      name,
+      entering_fencer: `Entrant ${id}`,
+      members: 2,
+      team_min: 1,
+      team_max: 3,
+      waitlisted: false,
+      waitlist_position: null,
+      waitlisted_since: "2026-03-01T08:00:00+00:00",
+      demoted: false,
+      paid: false,
+      settled_by_hand: false,
+      outstanding_amount: "3000.00",
+      outstanding_currency: "CZK",
+      expires_at: null,
+      ...fields,
+    };
+  }
+
+  function teams(rows: QueueTeam[], free: number): string {
+    return renderToStaticMarkup(
+      <TeamRoster
+        rows={rows}
+        free={free}
+        timezone="Europe/Prague"
+        busy={false}
+        onAdmit={() => {}}
+        onReturn={() => {}}
+      />,
+    );
+  }
+
+  const paidTeam = team(1, "Paid Wolves", { paid: true, outstanding_amount: "0" });
+  const owingTeam = team(2, "Owing Bears");
+  const waitingTeam = team(3, "Waiting Owls", {
+    waitlisted: true,
+    waitlist_position: 1,
+    waitlisted_since: "2026-04-01T22:00:00+00:00",
+    demoted: true,
+  });
+
+  it("draws the line at the seated teams and states each waiting team's moment", () => {
+    const html = teams([paidTeam, owingTeam, waitingTeam], 0);
+    expect(html.indexOf("Owing Bears")).toBeLessThan(html.indexOf("kapacita týmů"));
+    expect(html.indexOf("kapacita týmů")).toBeLessThan(html.indexOf("Waiting Owls"));
+    expect(html).toContain("1. ve frontě od 2. 4. 2026 00:00, přesun pro nezaplacení");
+    expect(html).toContain("dluží 3");
+  });
+
+  it("offers admission only into a free slot and return only of an unpaid team", () => {
+    const full = teams([paidTeam, owingTeam, waitingTeam], 0);
+    expect(full).not.toContain("přijmout tým");
+    expect(full.match(/vrátit na čekací listinu/g)).toHaveLength(1);
+    expect(teams([paidTeam, owingTeam, waitingTeam], 1)).toContain("přijmout tým");
   });
 });

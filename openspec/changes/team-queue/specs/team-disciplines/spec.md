@@ -1,6 +1,7 @@
 ## MODIFIED Requirements
 
-### Requirement: Team capacity and the team waitlist A team discipline's capacity SHALL be consumed by teams on confirmed registrations and by teams on reservations within their validity window. When a team discipline is full, further teams SHALL be recorded as waitlisted, in waitlist order — for a team waitlisted at entry, its entry moment. A waitlist position SHALL count only teams on live registrations.
+### Requirement: Team capacity and the team waitlist
+A team discipline's capacity SHALL be consumed by teams on confirmed registrations and by teams on reservations within their validity window. When a team discipline is full, further teams SHALL be recorded as waitlisted, in waitlist order — for a team waitlisted at entry, its entry moment. A waitlist position SHALL count only teams on live registrations.
 
 A waitlisted team SHALL NOT be charged: its fee SHALL be excluded from the entering fencer's total, exactly as an individual substitute placement is excluded. A team's waitlisted state SHALL be shown to the entering fencer and to the organizer.
 
@@ -22,7 +23,8 @@ The organizer SHALL admit a waitlisted team into a free slot, and return a seate
 - **WHEN** a slot frees in a full team discipline
 - **THEN** the organizer can admit a waitlisted team from the Queue phase
 
-### Requirement: Organizer's read-only teams view The console SHALL present, per team discipline, the teams entered into it: the team name, the entering fencer, the roster in order with each member's name and — where bound — HEMA Ratings identifier, club, and nationality, the member count against the discipline's minimum and maximum, and the team's waitlist position where it is waitlisted. Teams marked below minimum after the composition deadline SHALL be distinguished.
+### Requirement: Organizer's read-only teams view
+The console SHALL present, per team discipline, the teams entered into it: the team name, the entering fencer, the roster in order with each member's name and — where bound — HEMA Ratings identifier, club, and nationality, the member count against the discipline's minimum and maximum, and the team's waitlist position where it is waitlisted. Teams marked below minimum after the composition deadline SHALL be distinguished.
 
 The view SHALL be offered only while the tournament's team disciplines feature is on, as fixed by `tournament-features`. An organizer who has turned the feature off SHALL see no Teams phase; the teams, rosters and waitlist positions it would have shown SHALL be retained untouched and SHALL be shown again when the feature is turned back on. The entering fencer's own roster editor on the tournament detail page SHALL be unaffected by the feature, which governs the organizer's console alone.
 

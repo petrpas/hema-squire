@@ -61,6 +61,19 @@ disciplines after individual ones when `feature_teams` is on; a team tab renders
 `TeamRoster` with its own column set and reuses the arrow cell with team predicates:
 ↑ when waitlisted and `free > 0`; ↓ when seated and the registration is unpaid.
 
+### D4. Found in implementation
+
+- **The shared promotion steps are `registrations.bill_promotion`** — reprice, window,
+  the held money credited, the promotion mark — called by the individual promotion and
+  the team admission alike.
+- **A team's entry is stamped once** (`created_at` and `waitlisted_since` set to the same
+  instant where the team is entered, at registration and by amendment), so a waitlisted
+  team's row can say whether its moment is its entry or a demotion; `/queue` rows carry
+  `demoted` for it.
+- **The `/queue` summary carries each discipline's name and queued count**, which the
+  band's team tabs are labelled and counted by; the team roster is its own table, since a
+  team is not a row of the fencer list and the Export grid draws fencer rows.
+
 ## Risks / Trade-offs
 
 - [An organizer admits a team whose roster is below minimum] → the row shows the count

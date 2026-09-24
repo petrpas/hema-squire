@@ -5,9 +5,10 @@ import PaidStamp from "./PaidStamp";
 import PhaseSummary from "./PhaseSummary";
 
 /** Read-only, per team discipline (spec: "Organizer's read-only teams
- *  view"). Offers no action — no admission, no roster editing on the
- *  entrant's behalf, no cancellation: those controls simply do not exist
- *  here, rather than existing disabled. */
+ *  view"). Offers no action — no roster editing on the entrant's behalf, no
+ *  cancellation: those controls simply do not exist here, rather than existing
+ *  disabled. Admission from the waitlist is the Queue phase's, and a waitlisted
+ *  team's row says so. */
 export default function TeamsPanel({ slug }: { slug: string }) {
   const { t } = useTranslation();
   const [disciplines, setDisciplines] = useState<ConsoleTeamDiscipline[] | null>(null);
@@ -75,6 +76,7 @@ export default function TeamsPanel({ slug }: { slug: string }) {
                       </div>
                       <div className="detail-extra">
                         {t("teams.enteredBy", { name: team.entering_fencer })}
+                        {team.waitlisted && ` · ${t("teams.admittedOnQueue")}`}
                       </div>
                       {team.members.length > 0 && (
                         <ul className="detail-list">
