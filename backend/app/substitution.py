@@ -23,7 +23,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app import amendment, rules
-from app.hr_index import country_code, name_key
+from app.hr_index import HRIndex, country_code, evidence_fields, name_key
 from app.models import Fencer, Registration, RegistrationState, Rule, Tournament
 
 
@@ -185,11 +185,19 @@ class Prepared:
     previous: Identity
     registration: Registration | None
 
-    def payload(self, stated: dict) -> dict:
+    def payload(self, stated: dict, index: HRIndex) -> dict:
         """What the rule records: what the organizer stated, the substitute's
-        record, and the identity being replaced."""
+        record, the profile the substitute is bound to, and the identity being
+        replaced.
+
+        The profile is looked up here and carried, as a match resolution's is,
+        because replay has no index: a rule without it put a bound substitute
+        on the phases that identify a row by its profile with nothing to say but
+        dashes."""
+        hr_id = stated.get("hr_id")
         return {
             **stated,
+            **evidence_fields(index.get(hr_id) if hr_id is not None else None),
             "fencer_id": self.substitute.id,
             "previous": self.previous.as_payload(),
         }

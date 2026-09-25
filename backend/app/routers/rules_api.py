@@ -58,7 +58,7 @@ def create_rule(
         # already entered, a row that has been deleted or absorbed — has to be
         # met before the seat's record exists (spec `fencer-substitution`).
         prepared = _prepare_substitution(session, tournament, index, data.target, payload)
-        payload = prepared.payload(payload)
+        payload = prepared.payload(payload, index)
     rule = rules.create_rule(
         session,
         tournament,

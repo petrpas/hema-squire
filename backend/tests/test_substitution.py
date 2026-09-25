@@ -299,6 +299,23 @@ def test_a_row_with_no_registration_is_substituted_in_the_projection(client, aut
     assert row["match_verdict"] == "confirmed"
 
 
+def test_a_substitute_with_a_profile_is_identified_by_it(client, auth_headers, mailbox):
+    """The phases after matching name a bound row by its profile, and replay
+    has no index to look one up in: a rule that did not carry the profile left
+    the substitute's row with a dash where every identity cell should be."""
+    organizer = auth_headers()
+    setup(client, organizer)
+    register(client, auth_headers)
+    target = rows(client, organizer)[0]["id"]
+
+    substitute(client, organizer, target, name="Lukas Müller", hr_id=8821)
+
+    row = rows(client, organizer)[0]
+    assert row["hr_name"] == "Lukas Mueller"
+    assert row["hr_nationality"] == "DE"
+    assert row["hr_club"] == "Berlin Schwert"
+
+
 def test_a_substitute_without_a_profile_goes_to_matching(client, auth_headers, mailbox):
     """2.9 — a name HEMA Ratings does not carry is accepted as typed."""
     organizer = auth_headers()

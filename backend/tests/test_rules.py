@@ -428,3 +428,28 @@ def test_withdrawing_the_rule_withdraws_the_removing_phase(client, auth_headers)
     sheet = get_sheet(client, organizer)
     assert row_by_id(sheet, "reg:1")["_deleted"] is False
     assert "_removed_in" not in row_by_id(sheet, "reg:1")
+
+
+def test_a_merge_taking_an_absorbed_records_id_takes_its_profile(client, auth_headers):
+    """The evidence register is not among the merged fields: a survivor handed
+    the absorbed record's hr_id without its profile read as a bound row with no
+    name at all on the phases that identify a row by its profile."""
+    organizer = auth_headers()
+    setup(client, organizer)
+    enroll(client, auth_headers, "a@example.com", "Jan Novak")
+    enroll(client, auth_headers, "b@example.com", "Jan Novák")
+    add_rule(client, organizer, "reg:2", "hr_id", 10234, kind="match_resolution")
+
+    post_rule(
+        client,
+        organizer,
+        "dedup_decision",
+        "reg:1",
+        {"absorb": ["reg:2"], "fields": {"hr_id": 10234}},
+        phase="dedup",
+    )
+
+    survivor = row_by_id(get_sheet(client, organizer), "reg:1")
+    assert survivor["hr_id"] == 10234
+    assert survivor["hr_name"] == "Jan Novák"
+    assert survivor["hr_club"] == "Prague HEMA"

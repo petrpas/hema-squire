@@ -201,7 +201,25 @@ def _apply_dedup_decision(rows: dict[str, Row], target: str, payload: dict):
     """
     changes = []
     survivor = rows[target]
-    for field, value in payload.get("fields", {}).items():
+    fields = payload.get("fields", {})
+    # The evidence register is not among the merged fields, so a survivor that
+    # takes its hr_id from an absorbed record takes that record's profile with
+    # it: the id without the profile states a bound row with nothing in it.
+    # Read before the absorbed rows are touched, from whichever of the records
+    # carries the id the merge settled on.
+    hr_id = fields.get("hr_id", survivor.get("hr_id"))
+    if hr_id is not None and hr_id != survivor.get("hr_id"):
+        carrier = next(
+            (
+                rows[absorbed_id]
+                for absorbed_id in payload.get("absorb", [])
+                if absorbed_id in rows and rows[absorbed_id].get("hr_id") == hr_id
+            ),
+            None,
+        )
+        for field in ("hr_name", "hr_nationality", "hr_club"):
+            survivor[field] = carrier.get(field) if carrier is not None else None
+    for field, value in fields.items():
         survivor[field] = value
     if payload.get("note"):
         survivor["merge_note"] = payload["note"]
