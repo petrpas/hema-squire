@@ -166,3 +166,21 @@ def summary_lines(tournament: Tournament, rows: list[Row]) -> list[SummaryLine]:
             if item.category is category:
                 lines += _item_lines(item, by_item.get(item.id, []))
     return lines
+
+
+def summary_groups(lines: list[SummaryLine]) -> list[tuple[str, list[SummaryLine]]]:
+    """The summary's lines as the tables it is shown in: the disciplines with
+    their queues under the key `""`, then one table per category under the
+    category's value, in the order `summary_lines` states them.
+
+    A line names a discipline or an item, never which of the two it is; a
+    single table would leave `Šavle` reading as either. Each group is its own
+    table, headed by what it counts.
+    """
+    groups: list[tuple[str, list[SummaryLine]]] = []
+    for line in lines:
+        if groups and groups[-1][0] == line.category:
+            groups[-1][1].append(line)
+        else:
+            groups.append((line.category, [line]))
+    return groups

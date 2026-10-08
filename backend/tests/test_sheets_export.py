@@ -10,9 +10,8 @@ from app.importer import get_import_parser
 from app.main import app
 from app.sheets_export import (
     DISCIPLINE_COLUMNS,
-    SUMMARY_COLUMNS,
     get_sheets_client_factory,
-    header_for,
+    summary_group_title,
     summary_label,
     typed_grid,
 )
@@ -528,9 +527,16 @@ def test_the_summary_worksheet_counts_and_is_rewritten_whole(client, auth_header
 
     export(client, organizer)
     summary = sheets.worksheets["Summary"]
-    assert summary[0] == ["Položka", "Zaplaceno", "Nezaplaceno"]
-    assert ["Triko – L", 0, 0] in summary
-    assert ["Triko – XL", 0, 2] in summary  # pieces, as numbers
+    # one table per group, each headed by what it counts, a blank row between
+    assert summary == [
+        ["Disciplíny", "Zaplaceno", "Nezaplaceno"],
+        ["Longsword Open", 0, 2],
+        ["Sabre Open", 0, 2],
+        ["", "", ""],
+        ["Merch", "Zaplaceno", "Nezaplaceno"],
+        ["Triko – L", 0, 0],
+        ["Triko – XL", 0, 2],  # pieces, as numbers
+    ]
 
     # staff wrote into it; the next export states the counts and nothing else
     summary.append(["poznámka", "", ""])
@@ -551,4 +557,7 @@ def test_an_english_summary_names_the_words_squire_adds_in_english():
         "Triko – XL",
     ]
     assert summary_label(queue, "cs") == "Dlouhý meč (fronta)"
-    assert header_for(SUMMARY_COLUMNS, "en") == ["Item", "Paid", "Unpaid"]
+    assert [summary_group_title(key, "en") for key in ("", "rental")] == [
+        "Disciplines",
+        "Rentals",
+    ]

@@ -5,9 +5,19 @@ Fix the Export phase's Summary tab: how many of each discipline and extra item t
 
 ## Requirements
 ### Requirement: The summary states what the tournament offers
-The Summary tab SHALL be one table of three columns: **Item**, **Paid**, **Unpaid**.
-It SHALL be as wide as its content rather than the phase's full width, so that
-the counts stand beside what they count.
+The Summary tab SHALL be a stack of tables, one per group: the individual
+disciplines with their queue rows first, then one table per offered category.
+Each table SHALL have three columns, the first headed by what the table counts
+(`Disciplíny` / `Disciplines`, or the category's name as its tab names it), then
+**Paid** and **Unpaid**. A line names a discipline or an item and never says
+which; a single table would leave a reader unable to tell a discipline from a
+rental of the same name.
+
+Every table SHALL have the same fixed width and the same fixed widths for its
+two count columns, so that the counts of every table stand in the same place
+whatever its names. That width SHALL be well short of the phase's full width,
+so that the counts stand beside what they count; a name longer than its column
+SHALL wrap rather than widen it.
 
 Its rows SHALL be derived from what the tournament offers, not from what was
 chosen. The rows come in this order:
@@ -27,9 +37,13 @@ no row, for the reason it has no tab.
 - **WHEN** a tournament offers Longsword and Sabre, a rental of a mask, a T-shirt and an afterparty
 - **THEN** the summary lists Longsword, Sabre, the mask, the T-shirt and the afterparty, in that order
 
-#### Scenario: The table is as wide as its content
+#### Scenario: A table per group
+- **WHEN** a tournament offers Sabre as a discipline and a sabre among its rentals
+- **THEN** the Sabre discipline stands in the table headed Disciplíny and the rental in the table headed Zápůjčky
+
+#### Scenario: The tables align
 - **WHEN** the organizer opens the Summary tab on a wide screen
-- **THEN** the table ends after its Unpaid column, not at the screen's edge
+- **THEN** every table ends at the same place, well short of the screen's edge, and the Paid column of each stands directly under the Paid column of the one above
 
 #### Scenario: Nobody chose it
 - **WHEN** the tournament offers a seminar that nobody has chosen
@@ -138,20 +152,21 @@ settled, or moved in or out of a queue SHALL be reflected on the next read.
 - **THEN** the Triko – XL row counts one fewer
 
 ### Requirement: The summary leaves as the other tables do
-The summary's copy action SHALL put the table on the clipboard as tab-separated
-values with the header row Item, Paid, Unpaid, its counts as digits, and no
-position column. The English tick SHALL render its header and its `(fronta)` and
-`neuvedeno` in English and leave the discipline and item names as the organizer
-wrote them.
+The summary's copy action SHALL put the tables on the clipboard as tab-separated
+values: each table as its header row — what it counts, Paid, Unpaid — followed
+by its lines, its counts as digits, no position column, and one blank line
+between two tables. The English tick SHALL render the headers, the group names
+and the `(fronta)` and `neuvedeno` in English and leave the discipline and item
+names as the organizer wrote them.
 
-The Sheets export SHALL write the same table as the `Summary` worksheet
-(`data-export`).
+The Sheets export SHALL write the same tables, in the same layout, as the
+`Summary` worksheet (`data-export`).
 
 #### Scenario: A copied summary
 - **WHEN** the organizer copies the Summary tab and pastes into a spreadsheet
-- **THEN** each line lands in three cells under Item, Paid and Unpaid, the counts as numbers
+- **THEN** each table lands as a block of three columns under its own header, the blocks a blank row apart, the counts as numbers
 
 #### Scenario: An English copy
 - **WHEN** a Czech-speaking organizer ticks English and copies the summary
-- **THEN** the header reads Item, Paid, Unpaid and the queue row reads Longsword (queue)
+- **THEN** the first table's header reads Disciplines, Paid, Unpaid and the queue row reads Longsword (queue)
 

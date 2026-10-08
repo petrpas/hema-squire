@@ -8,7 +8,7 @@ import { api, type ExportBandTab, type ExportSummaryLine } from "../api";
 import i18n from "../i18n";
 import ExportTables from "./ExportTables";
 import SummaryTable from "./SummaryTable";
-import { summaryLabel, summaryTsv } from "./summary";
+import { summaryGroups, summaryGroupTitle, summaryLabel, summaryTsv } from "./summary";
 import TableOperations from "./TableOperations";
 import { tabCount } from "./tabs";
 
@@ -57,12 +57,30 @@ describe("a summary line's name", () => {
   });
 });
 
+describe("the summary's tables", () => {
+  it("are the disciplines with their queues, then one per category", () => {
+    const groups = summaryGroups([...LINES, line({ category: "rental", name: "Maska" })]);
+    expect(groups.map((group) => [group.category, group.lines.length])).toEqual([
+      ["", 2],
+      ["merch", 2],
+      ["rental", 1],
+    ]);
+    expect(groups.map((group) => summaryGroupTitle(cs, group.category))).toEqual([
+      "Disciplíny",
+      "Merch",
+      "Zápůjčky",
+    ]);
+  });
+});
+
 describe("the summary's copy", () => {
-  it("is a header and one line per row, counts as digits, no position column", () => {
+  it("is each table under its own header, counts as digits, no position column", () => {
     expect(summaryTsv(en, LINES).split("\n")).toEqual([
-      "Item\tPaid\tUnpaid",
+      "Disciplines\tPaid\tUnpaid",
       "LSM\t44\t4",
       "LSM (queue)\t2\t12",
+      "",
+      "Merch\tPaid\tUnpaid",
       "Triko – XL\t3\t1",
       "Triko – not given\t0\t1",
     ]);
@@ -74,6 +92,13 @@ describe("the summary on screen", () => {
     const html = renderToStaticMarkup(<SummaryTable lines={LINES} />);
     expect(html).toContain('<td class="col-number">44</td>');
     expect(html).not.toContain("col-index");
+  });
+
+  it("puts each group in a table of its own, headed by what it counts", () => {
+    const html = renderToStaticMarkup(<SummaryTable lines={LINES} />);
+    expect(html.match(/<table/g)).toHaveLength(2);
+    expect(html).toContain(`<th>${en("export.summary.disciplines")}</th>`);
+    expect(html).toContain("<th>Merch</th>");
   });
 
   it("states no count in the band", () => {

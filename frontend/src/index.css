@@ -1025,22 +1025,35 @@ button.secondary:disabled {
   border-radius: 0;
 }
 
-/* The export summary is three columns of a name and two counts: stretched to
-   the phase's width, its counts would stand a screen away from what they
-   count. It is as wide as its content and ends at its last line, scrolling
-   only where the lines outrun the screen. */
+/* The export summary is a stack of small tables — the disciplines, then each
+   category — of a name and two counts. Stretched to the phase's width, the
+   counts would stand a screen away from what they count; sized to their
+   content, each table would put its counts wherever its longest name ends.
+   So every table has the same fixed width and the same fixed count columns,
+   the name taking what is left and wrapping where it outruns it. */
 .sheet-scroll.summary-scroll {
   flex: 0 1 auto;
-  align-self: flex-start;
-  max-width: 100%;
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  background: none;
+  border: none;
 }
 
-.summary-scroll .sheet-table {
-  width: auto;
+.summary-scroll .summary-table {
+  table-layout: fixed;
+  width: min(36rem, 100%);
+  background: var(--paper-raised);
+  border: var(--border-w) solid var(--hairline);
 }
 
-.summary-scroll .sheet-table .col-number {
-  min-width: 7rem;
+.summary-scroll .summary-col-count {
+  width: 8rem;
+}
+
+.summary-scroll .summary-table td:first-child {
+  overflow-wrap: anywhere;
 }
 
 .sheet-empty {

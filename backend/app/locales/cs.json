@@ -138,13 +138,21 @@
       "rank": "HRank",
       "items": "Položky",
       "paid": "Zaplaceno",
-      "item": "Položka",
       "unpaid": "Nezaplaceno"
     },
     "summary": {
       "queue": "{name} (fronta)",
       "option": "{name} – {option}",
-      "missing": "neuvedeno"
+      "missing": "neuvedeno",
+      "disciplines": "Disciplíny"
+    },
+    "category": {
+      "rental": "Zápůjčky",
+      "merch": "Merch",
+      "other_item": "Ostatní zboží",
+      "seminar": "Semináře",
+      "afterparty": "Afterparty",
+      "other_action": "Ostatní program"
     }
   }
 }

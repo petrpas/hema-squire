@@ -109,7 +109,6 @@
       "rank": "Rank",
       "items": "Items",
       "paid": "Paid",
-      "item": "Item",
       "unpaid": "Unpaid",
       "standing": "Standing",
       "action": "Action"
@@ -140,7 +139,8 @@
     "summary": {
       "queue": "{{name}} (queue)",
       "option": "{{name}} – {{option}}",
-      "missing": "not given"
+      "missing": "not given",
+      "disciplines": "Disciplines"
     }
   },
   "dedup": {

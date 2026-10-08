@@ -73,14 +73,13 @@ RATING = Column("rating", refreshed=True, numeric=True)
 RANK = Column("rank", refreshed=True, numeric=True)
 ITEMS = Column("items")
 PAID = Column("paid")
-# the summary's columns; its counts are written as the numbers they are
-ITEM = Column("item")
+# the summary's second count; its tables are headed by what they count, so
+# the first column has no column of its own
 UNPAID = Column("unpaid")
 
 FENCERS_COLUMNS = [POSITION, NAME, NATIONALITY, CLUB, HR_ID, DISCIPLINES, PAID]
 DISCIPLINE_COLUMNS = [POSITION, NAME, NATIONALITY, CLUB, HR_ID, RATING, RANK, PAID]
 CATEGORY_COLUMNS = [POSITION, NAME, NATIONALITY, CLUB, ITEMS, PAID]
-SUMMARY_COLUMNS = [ITEM, PAID, UNPAID]
 
 
 def header_for(columns: list[Column], locale: str) -> list[str]:
@@ -293,18 +292,28 @@ def summary_label(line: exportsummary.SummaryLine, locale: str) -> str:
 
 
 def summary_grid(tournament: Tournament, rows: list[Row], locale: str) -> list[list[Cell]]:
-    """The Summary worksheet, whole. It is not merged with what the sheet
-    held: its lines have no identity a cell could be kept by, and a count
-    preserved from the last export would be a stale one (spec data-export,
-    Repeat-export preservation semantics)."""
-    header: list[Cell] = [*header_for(SUMMARY_COLUMNS, locale)]
-    return [
-        header,
-        *(
-            [summary_label(line, locale), line.paid, line.unpaid]
-            for line in exportsummary.summary_lines(tournament, rows)
-        ),
-    ]
+    """The Summary worksheet, whole: one table per group the console shows,
+    each headed by what it counts and the two count columns, a blank row
+    between two. It is not merged with what the sheet held: its lines have no
+    identity a cell could be kept by, and a count preserved from the last
+    export would be a stale one (spec data-export, Repeat-export preservation
+    semantics)."""
+    counts: list[Cell] = [*header_for([PAID, UNPAID], locale)]
+    grid: list[list[Cell]] = []
+    lines = exportsummary.summary_lines(tournament, rows)
+    for category, group in exportsummary.summary_groups(lines):
+        if grid:
+            grid.append(["", "", ""])
+        grid.append([summary_group_title(category, locale), *counts])
+        grid += ([summary_label(line, locale), line.paid, line.unpaid] for line in group)
+    return grid
+
+
+def summary_group_title(category: str, locale: str) -> str:
+    """The head of one summary table: the disciplines, or the category."""
+    if not category:
+        return catalog.translate("export.summary.disciplines", locale)
+    return catalog.translate(f"export.category.{category}", locale)
 
 
 def export_to_sheets(
