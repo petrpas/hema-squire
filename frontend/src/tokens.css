@@ -70,8 +70,10 @@
    Two width queries in index.css sit outside this set on purpose, each
    annotated at its own site:
      .setup-split at 1300px — a content threshold (the width at which the
-       console's two side-by-side panels stop fitting), not a device
-       breakpoint. Not a precedent for inventing more.
+       console's two side-by-side panels stop fitting, and the preview moves
+       into the settings bar as its own tab), not a device breakpoint.
+       useSetupSplitFits reads the same number. Not a precedent for
+       inventing more.
    Anything else belongs on one of the three above. */
 
 /* On a touch device every form control grows to 16px.

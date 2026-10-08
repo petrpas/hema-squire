@@ -17,10 +17,17 @@ import { PublishSection } from "./setup/PublishSection";
 import { SettingsSection } from "./setup/SettingsSection";
 import { SetupSaveBar } from "./setup/SetupSaveBar";
 import { SetupTabBar } from "./setup/SetupTabBar";
-import { missingTab, offeredSetupTabs, SaverRegistry, type SetupTab } from "./setup/shared";
+import {
+  missingTab,
+  offeredSetupTabs,
+  SaverRegistry,
+  type SetupBarTab,
+  type SetupTab,
+} from "./setup/shared";
 import { TeamSection } from "./setup/TeamSection";
 import { TimelineSection } from "./setup/TimelineSection";
 import { EMPTY_SUGGESTIONS } from "./suggestions";
+import { useSetupSplitFits } from "./useSetupSplitFits";
 
 export default function SetupPanel({
   detail,
@@ -43,6 +50,16 @@ export default function SetupPanel({
   // selected tab stops being offered — turning extra services off while
   // EXTRA is open must not leave the pane on nothing.
   const [tab, setTab] = useState<SetupTab>("tournament");
+  // Where the preview no longer fits beside the settings it is the bar's last
+  // tab. Selecting it leaves `tab` as it was, which is where the pane returns
+  // when the window widens and the preview tab goes away (setup-preview-tab
+  // D4). Widening also forgets it, so narrowing again never selects the
+  // preview on its own.
+  const splitFits = useSetupSplitFits();
+  const [previewOpen, setPreviewOpen] = useState(false);
+  useEffect(() => {
+    if (splitFits) setPreviewOpen(false);
+  }, [splitFits]);
   const registry = useRef(new SaverRegistry()).current;
   useSyncExternalStore(registry.subscribe, registry.getVersion);
   // Whether a team discipline exists in the DISCIPLINES draft, reported up by
@@ -89,6 +106,18 @@ export default function SetupPanel({
   // items are listed (design D7)
   if (markedTabs.size > 0) markedTabs.add("publish");
 
+  const barTabs: SetupBarTab[] = splitFits ? offeredTabs : [...offeredTabs, "preview"];
+  const previewing = !splitFits && previewOpen;
+
+  function selectTab(next: SetupBarTab) {
+    if (next === "preview") {
+      setPreviewOpen(true);
+      return;
+    }
+    setPreviewOpen(false);
+    setTab(next);
+  }
+
   const dirtyTabs = new Set(
     offeredTabs.filter((setupTab) =>
       registry.forTab(setupTab).some((entry) => entry.saver.pendingCount > 0),
@@ -96,19 +125,19 @@ export default function SetupPanel({
   );
 
   return (
-    <div className="setup-split">
+    <div className={previewing ? "setup-split previewing" : "setup-split"}>
       <div className="setup-panel">
         <div className="setup-panel-header">
           <SetupTabBar
-            tabs={offeredTabs}
-            tab={selected}
+            tabs={barTabs}
+            tab={previewing ? "preview" : selected}
             mode={detail}
-            onSelect={setTab}
+            onSelect={selectTab}
             markedTabs={markedTabs}
             dirtyTabs={dirtyTabs}
           />
         </div>
-        <div className="setup-panel-body">
+        <div className="setup-panel-body" hidden={previewing}>
           <div
             className="setup-tabpanel"
             id="setup-tabpanel-tournament"
@@ -244,6 +273,9 @@ export default function SetupPanel({
               onPublished={onSaved}
             />
           </div>
+          {/* hidden with the rest of the body on the preview tab, but kept
+              mounted: a report of a failed save must still be there when the
+              organizer comes back from looking at the preview */}
           <SetupSaveBar
             tab={selected}
             registry={registry}
@@ -252,7 +284,15 @@ export default function SetupPanel({
           />
         </div>
       </div>
-      <SetupPreview detail={detail} slug={slug} />
+      {/* one preview in one place in the tree whatever the layout, so neither
+          a tab switch nor the window crossing the threshold remounts it and
+          loses its face and its form selections (setup-preview-tab D1) */}
+      <SetupPreview
+        detail={detail}
+        slug={slug}
+        shown={splitFits || previewing}
+        asTabPanel={!splitFits}
+      />
     </div>
   );
 }

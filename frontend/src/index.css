@@ -837,30 +837,37 @@ button.secondary:disabled {
   font-weight: 500;
 }
 
+.setup-panel-body[hidden],
+.setup-preview[hidden] {
+  display: none;
+}
+
 /* 1300px is a content threshold, not a device breakpoint: it is the width at
    which the console's two side-by-side panels stop fitting beside each other.
    It is outside the canonical 480/768/1024 set in tokens.css on purpose, and
-   is not a precedent for inventing another. */
+   is not a precedent for inventing another. useSetupSplitFits reads the same
+   number to add the preview tab, and the two change together.
+
+   Below it the preview does not stack under the settings: it becomes the
+   settings bar's last tab. The pane keeps its fixed header and its own
+   scrolling body, as on a wide screen; while the preview tab is selected the
+   body is hidden, the pane shrinks to its header, and the preview takes the
+   rest of the column with a scroll of its own (setup-preview-tab D1, D5). */
 @media (max-width: 1300px) {
   .setup-split {
     flex-direction: column;
-    overflow-y: auto;
   }
 
-  .setup-panel,
-  .setup-preview {
+  .setup-panel {
     max-width: none;
-    overflow-y: visible;
   }
 
-  .setup-panel-body {
-    overflow-y: visible;
-    overflow-x: visible;
+  .setup-split.previewing .setup-panel {
+    flex: none;
   }
 
   .setup-preview {
     border-left: none;
-    border-top: var(--border-w) solid var(--hairline);
   }
 }
 

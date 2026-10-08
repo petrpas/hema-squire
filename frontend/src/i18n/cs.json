@@ -489,14 +489,15 @@
     "pricingWarning": "Turnaj už má registrace — úprava cen mění dlužnou částku u nezaplacených rezervací.",
     "recalculateMissing": "Doplnit chybějící ceny",
     "tabs": {
-      "tournament": "turnaj",
-      "disciplines": "disciplíny",
-      "extra": "doplňky",
-      "timeline": "termíny",
-      "payments": "platby",
-      "pricing": "ceny",
-      "other": "ostatní",
+      "tournament": "Turnaj",
+      "disciplines": "Disciplíny",
+      "extra": "Doplňky",
+      "timeline": "Termíny",
+      "payments": "Platby",
+      "pricing": "Ceny",
+      "other": "Ostatní",
       "publish": "Zveřejnění",
+      "preview": "Náhled",
       "incomplete": "neúplné nastavení",
       "unsaved": "neuložené změny"
     },
@@ -871,8 +872,8 @@
   "preview": {
     "heading": "náhled: co vidí šermíři",
     "tabs": {
-      "face": "turnaj",
-      "form": "přihláška"
+      "face": "Turnaj",
+      "form": "Přihláška"
     },
     "cannotSubmit": "toto je náhled a nelze jej odeslat"
   },

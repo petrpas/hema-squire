@@ -31,6 +31,12 @@ export const SETUP_TABS: SetupTab[] = [
   "publish",
 ];
 
+/** What the tab bar can select: the settings tabs, and — only where the
+ *  preview no longer fits beside them — the preview itself, last
+ *  (setup-preview-tab D4). Kept out of `SetupTab`: markers, savers and the
+ *  save bar are all about settings, and the preview holds none. */
+export type SetupBarTab = SetupTab | "preview";
+
 /** Which tabs the tournament's mode offers, in the fixed order above — the
  *  mode removes tabs, it never reorders them (spec: setup-navigation).
  *  `EXTRA` follows the extra services feature; `OTHER` keeps its owner-only
@@ -49,7 +55,7 @@ export function offeredSetupTabs(mode: TournamentFlags, isOwner: boolean): Setup
  *  gives, and a tab titled for payments on a tournament that takes none
  *  states something untrue (design D7). Its identifier stays `payments` —
  *  the URL, the marker attribution and `aria-controls` are built from that. */
-export function setupTabTitleKey(tab: SetupTab, mode: TournamentFlags): string {
+export function setupTabTitleKey(tab: SetupBarTab, mode: TournamentFlags): string {
   if (tab === "payments" && !mode.feature_payments) return "setup.tabs.pricing";
   return `setup.tabs.${tab}`;
 }

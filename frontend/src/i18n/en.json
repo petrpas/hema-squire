@@ -475,14 +475,15 @@
     "pricingWarning": "This tournament already has registrations — editing prices changes what unpaid reservations owe.",
     "recalculateMissing": "Recalculate missing",
     "tabs": {
-      "tournament": "tournament",
-      "disciplines": "disciplines",
-      "extra": "extra",
-      "timeline": "timeline",
-      "payments": "payments",
-      "pricing": "pricing",
-      "other": "other",
+      "tournament": "Tournament",
+      "disciplines": "Disciplines",
+      "extra": "Extra",
+      "timeline": "Timeline",
+      "payments": "Payments",
+      "pricing": "Pricing",
+      "other": "Other",
       "publish": "Publish",
+      "preview": "Preview",
       "incomplete": "incomplete configuration",
       "unsaved": "unsaved changes"
     },
@@ -856,8 +857,8 @@
   "preview": {
     "heading": "preview: what fencers see",
     "tabs": {
-      "face": "tournament",
-      "form": "registration form"
+      "face": "Tournament",
+      "form": "Registration form"
     },
     "cannotSubmit": "this is a preview and cannot be submitted"
   },

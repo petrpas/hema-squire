@@ -2,7 +2,7 @@ import type { KeyboardEvent } from "react";
 import { useTranslation } from "react-i18next";
 
 import type { TournamentFlags } from "../api";
-import { type SetupTab, setupTabTitleKey } from "./shared";
+import { type SetupBarTab, type SetupTab, setupTabTitleKey } from "./shared";
 
 export function SetupTabBar({
   tabs,
@@ -12,11 +12,13 @@ export function SetupTabBar({
   markedTabs,
   dirtyTabs,
 }: {
-  tabs: SetupTab[];
-  tab: SetupTab;
+  /** Ends with `preview` where the preview has moved into the bar; it is
+   *  never marked, since no item resolves there and nothing is saved there. */
+  tabs: SetupBarTab[];
+  tab: SetupBarTab;
   /** Titles the payments tab for what it holds; the ids are unaffected. */
   mode: TournamentFlags;
-  onSelect: (tab: SetupTab) => void;
+  onSelect: (tab: SetupBarTab) => void;
   markedTabs: Set<SetupTab>;
   dirtyTabs: Set<SetupTab>;
 }) {
@@ -45,12 +47,12 @@ export function SetupTabBar({
           onKeyDown={(event) => onKeyDown(event, index)}
         >
           {t(setupTabTitleKey(id, mode))}
-          {markedTabs.has(id) && (
+          {id !== "preview" && markedTabs.has(id) && (
             <span className="tab-mark">
               <span className="visually-hidden">{t("setup.tabs.incomplete")}</span>
             </span>
           )}
-          {dirtyTabs.has(id) && (
+          {id !== "preview" && dirtyTabs.has(id) && (
             <span className="tab-dirty-mark">
               <span className="visually-hidden">{t("setup.tabs.unsaved")}</span>
             </span>
