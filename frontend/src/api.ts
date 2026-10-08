@@ -42,6 +42,30 @@ async function upload<T>(path: string, file: File): Promise<T> {
   return response.json();
 }
 
+/** A POST answered by a file rather than JSON: the body goes as JSON, the
+ *  answer comes back as a Blob for the caller to offer as a download. */
+async function requestBlob(path: string, body: unknown): Promise<Blob> {
+  const token = getToken();
+  const response = await fetch(path, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify(body),
+  });
+  if (!response.ok) {
+    let detail: unknown = null;
+    try {
+      detail = (await response.json()).detail;
+    } catch {
+      /* non-JSON error body */
+    }
+    throw new ApiError(response.status, detail);
+  }
+  return response.blob();
+}
+
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const token = getToken();
   const response = await fetch(path, {
@@ -605,7 +629,7 @@ export interface Sheet {
  *  offers something in. `key` names what the table is of and is empty for the
  *  fencer table, which is of the whole tournament. */
 export interface ExportTab {
-  kind: "fencers" | "discipline" | "category" | "summary";
+  kind: "fencers" | "discipline" | "category" | "summary" | "revenue";
   key: string;
   label: string;
   capacity: number | null;
@@ -618,9 +642,60 @@ export interface ExportTab {
  *  discipline's substitute entries and is 0 on every other tab. Neither
  *  follows the tab's active-only switch (spec export-tables). */
 export interface ExportBandTab extends ExportTab {
-  /** Null on the summary tab, which lists an offer rather than a population. */
+  /** Null on the summary and revenue tabs, which list an offer rather than a
+   *  population. */
   count: number | null;
   queued: number;
+}
+
+/** One line of a Revenue block (spec export-revenue), in whole units of the
+ *  tournament's local currency. Structured rather than labelled: `Sleva
+ *  <name>` and `<block> celkem` are composed in the reader's language.
+ *  `price` is negative on a discount, a percentage where `percent` says so,
+ *  and null on a total; `paid` and `to_pay` are negative on a discount. */
+export interface ExportRevenueLine {
+  kind: "item" | "fee" | "discount" | "total" | "grand_total";
+  name: string;
+  price: number | null;
+  percent: boolean;
+  paid_count: number;
+  count: number;
+  paid: number;
+  to_pay: number;
+}
+
+/** One revenue table: the entry fees under the empty key, or a category. Its
+ *  last line is its total. */
+export interface ExportRevenueBlock {
+  key: string;
+  lines: ExportRevenueLine[];
+}
+
+/** One line of the reconciliation, in cents of its lane's currency. `lane`
+ *  is null on a line stating a count alone. */
+export interface ExportReconciliationLine {
+  kind:
+    | "paid_by_items"
+    | "credited_settled"
+    | "difference"
+    | "waived"
+    | "waived_credited"
+    | "deposits"
+    | "queue"
+    | "cancelled"
+    | "deleted"
+    | "unissued"
+    | "journal";
+  lane: "local" | "eur" | null;
+  amount_cents: number | null;
+  count: number | null;
+}
+
+export interface ExportRevenue {
+  local_currency: Currency;
+  blocks: ExportRevenueBlock[];
+  total: ExportRevenueLine;
+  reconciliation: ExportReconciliationLine[];
 }
 
 /** One line of the Export summary (spec export-summary): a discipline's seated
@@ -638,6 +713,19 @@ export interface ExportSummaryLine {
   item_id: number | null;
   paid: number;
   unpaid: number;
+}
+
+export type RosterFormat = "pdf" | "png";
+
+/** A discipline roster to typeset (spec roster-print): the rows the tab
+ *  displays, each as its seven cells No., Fencer, Nat., Club, HRID, Rank and
+ *  Paid, already formatted. `line_after` is how many rows stand above the
+ *  capacity line, null where the tab draws none. */
+export interface RosterPrint {
+  discipline: string;
+  rows: string[][];
+  line_after: number | null;
+  english: boolean;
 }
 
 export interface ExportTable extends ExportTab {
@@ -1452,16 +1540,20 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ key, accept, fields, note }),
     }),
-  exportSheet: (slug: string, english = false) =>
+  exportSheet: (slug: string, english = false, finances = false) =>
     request<{ worksheets: string[]; fencers: number }>(
-      `/api/tournaments/${slug}/export/sheet?english=${english}`,
+      `/api/tournaments/${slug}/export/sheet?english=${english}&finances=${finances}`,
       { method: "POST" },
     ),
   exportSheetConfig: (slug: string) =>
     request<ExportSheetConfig>(`/api/tournaments/${slug}/export/sheet-config`),
   exportTabs: (slug: string) => request<ExportBandTab[]>(`/api/tournaments/${slug}/export/tables`),
+  exportRevenue: (slug: string) =>
+    request<ExportRevenue>(`/api/tournaments/${slug}/export/revenue`),
   exportSummary: (slug: string) =>
     request<{ lines: ExportSummaryLine[] }>(`/api/tournaments/${slug}/export/summary`),
+  exportRoster: (slug: string, format: RosterFormat, body: RosterPrint) =>
+    requestBlob(`/api/tournaments/${slug}/export/roster.${format}`, body),
   exportTable: (slug: string, kind: string, key: string) =>
     request<ExportTable>(
       `/api/tournaments/${slug}/export/table?kind=${encodeURIComponent(kind)}&key=${encodeURIComponent(key)}`,

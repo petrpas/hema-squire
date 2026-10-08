@@ -71,12 +71,16 @@
     "search": "Search for another profile"
   },
   "export": {
-    "title": "Export",
+    "title": "Export all",
     "hints": {
       "runSheets": "Writes a Fencers worksheet, one per discipline and one per item category into the output spreadsheet. Whatever someone corrected there by hand stays.",
       "sheetLink": "Opens the output spreadsheet in a new tab.",
       "forgetSheet": "Forgets the link to the output spreadsheet. The spreadsheet and everything in it stay; the next export asks for a link again — which is how the spreadsheet is changed.",
-      "downloadJson": "The tournament's full backup export as JSON — the whole tournament can be restored from it."
+      "downloadJson": "The tournament's full backup export as JSON — the whole tournament can be restored from it.",
+      "copy": "Copies the table to the clipboard, in the order and with the filter on screen — to paste into a spreadsheet or a message.",
+      "pdf": "Downloads the discipline's roster as a PDF, row for row as the table on screen, with a rule under the last fencer in.",
+      "png": "Downloads the discipline's roster as a PNG image, to post on social media. The rows are the ones on screen.",
+      "fetchRatings": "Fetches current ratings from HEMA Ratings. Refreshes the whole tournament's ratings, not this discipline alone."
     },
     "fetchRatings": "Fetch HR ratings",
     "ratingsDone": "Ratings fetched · {{ratings}} values for {{fencers}} fencers.",
@@ -88,7 +92,8 @@
     "tablesTitle": "Export tables",
     "tab": {
       "fencers": "Fencers",
-      "summary": "Summary"
+      "summary": "Summary",
+      "revenue": "Revenue"
     },
     "category": {
       "rental": "Rentals",
@@ -111,7 +116,13 @@
       "paid": "Paid",
       "unpaid": "Unpaid",
       "standing": "Standing",
-      "action": "Action"
+      "action": "Action",
+      "price": "Price",
+      "count": "Count",
+      "count_paid": "Count paid",
+      "count_all": "Count total",
+      "to_pay": "To pay",
+      "amount": "Amount"
     },
     "line": {
       "queue": "capacity line — substitutes below",
@@ -124,7 +135,8 @@
     "copy": "Copy table",
     "copied": "Copied · {{count}} rows.",
     "english": "Export in English",
-    "refreshesTournament": "Refreshes the whole tournament's ratings, not this discipline alone.",
+    "finances": "Include finances",
+    "financesHint": "Unticked, no Revenue worksheet is written; one from an earlier export is left as it was.",
     "wizard": {
       "title": "Output spreadsheet",
       "create": "Create a new, empty Google spreadsheet.",
@@ -141,7 +153,42 @@
       "option": "{{name}} – {{option}}",
       "missing": "not given",
       "disciplines": "Disciplines"
-    }
+    },
+    "revenue": {
+      "entry": "Entry fees",
+      "total": "{{name}} total",
+      "grand_total": "Total",
+      "discount": "Discount {{name}}",
+      "reconciliation": "Reconciliation",
+      "eur": "{{label}} (EUR)",
+      "paid_by_items": "Paid by items",
+      "credited_settled": "Credited to settled registrations",
+      "difference": "Difference",
+      "waived": "Waived (registrations: {{count}}), worth",
+      "waived_credited": "Credited to waived registrations",
+      "deposits": "Deposits and partial payments",
+      "queue": "Payments from the queue",
+      "cancelled": "Cancelled and expired registrations",
+      "deleted": "Registrations whose row was deleted (registrations: {{count}})",
+      "unissued": "Rows without a registration – unpriced",
+      "journal": "Credited in the journal",
+      "hint": {
+        "paid_by_items": "The Paid column summed over every block above: the prices of settled registrations' items, net of discounts. Computed from the price list, not from the money received.",
+        "credited_settled": "The money the payment journal actually credited to the registrations that are settled and counted in the blocks above.",
+        "difference": "Credited to settled registrations less paid by items, in the main currency only. Negative means less arrived than the items cost (tolerated shortfalls), positive means overpayments. Rounding and prices edited after issue land here too.",
+        "waived": "Registrations whose price the organizer waived. They are in no block above; the amount is what their selections would cost, net of discounts.",
+        "waived_credited": "Money that reached waived registrations all the same, such as a part paid before the rest was waived.",
+        "deposits": "Money on registrations not yet settled: deposits and partial payments. In the blocks above these registrations stand whole under To pay.",
+        "queue": "Money on registrations waiting wholly in the queue (a substitute's payment). The queue owes nothing, so they are in no block.",
+        "cancelled": "Money on cancelled and expired registrations, such as forfeited deposits or payments not yet returned.",
+        "deleted": "Money on registrations whose row was deleted in the console. Deleting a row only hides it; the registration and its payments stay.",
+        "unissued": "Rows of the fencer list no registration has been issued for yet. They have no price, so they are in no block; only their number is stated.",
+        "journal": "Every live payment of the tournament in the journal. It equals the sum of the lines Credited to settled, Credited to waived, Deposits, Queue, Cancelled and Deleted."
+      }
+    },
+    "pdf": "PDF",
+    "png": "PNG",
+    "printFailed": "The roster could not be typeset."
   },
   "dedup": {
     "title": "Deduplication",

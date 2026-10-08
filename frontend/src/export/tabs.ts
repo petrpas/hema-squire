@@ -7,6 +7,7 @@ export function tabLabel(t: (key: string) => string, tab: ExportTab): string {
   if (tab.kind === "fencers") return t("export.tab.fencers");
   if (tab.kind === "category") return t(`export.category.${tab.key}`);
   if (tab.kind === "summary") return t("export.tab.summary");
+  if (tab.kind === "revenue") return t("export.tab.revenue");
   return tab.label;
 }
 
@@ -15,7 +16,8 @@ export function tabLabel(t: (key: string) => string, tab: ExportTab): string {
  *  is, and the summary none. Takes no switch state: the count is of the whole
  *  tab, so two tabs stay comparable at a glance whatever each is filtered to. */
 export function tabCount(tab: Pick<ExportBandTab, "count" | "queued">): string | null {
-  // the summary states no count: its lines are an offer, not a population
+  // the summary and the revenue state no count: their lines are an offer,
+  // not a population
   if (tab.count === null) return null;
   return tab.queued > 0 ? `${tab.count} + ${tab.queued}` : String(tab.count);
 }

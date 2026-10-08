@@ -75,12 +75,16 @@
     "search": "Hledat jiný profil"
   },
   "export": {
-    "title": "Export",
+    "title": "Exportovat vše",
     "hints": {
       "runSheets": "Zapíše do výstupní tabulky list Fencers, list pro každou disciplínu a pro každou kategorii položek. Co v tabulce někdo ručně opravil, zůstane.",
       "sheetLink": "Otevře výstupní tabulku v nové záložce.",
       "forgetSheet": "Zapomene odkaz na výstupní tabulku. Tabulka i všechno v ní zůstane; příští export se zeptá na odkaz znovu — takto se tabulka mění.",
-      "downloadJson": "Úplný záložní export turnaje v JSON — z něj se dá turnaj celý obnovit."
+      "downloadJson": "Úplný záložní export turnaje v JSON — z něj se dá turnaj celý obnovit.",
+      "copy": "Zkopíruje tabulku do schránky, v pořadí a s filtrem, jak je na obrazovce — k vložení do tabulky nebo zprávy.",
+      "pdf": "Stáhne soupisku disciplíny jako PDF, řádek po řádku jako tabulka na obrazovce, s čarou pod posledním přijatým.",
+      "png": "Stáhne soupisku disciplíny jako obrázek PNG, k vyvěšení na sociální sítě. Řádky jsou stejné jako na obrazovce.",
+      "fetchRatings": "Stáhne aktuální ratingy z HEMA Ratings. Obnoví ratingy celého turnaje, ne jen této disciplíny."
     },
     "fetchRatings": "Stáhnout HR ratingy",
     "ratingsDone": "Ratingy staženy · {{ratings}} hodnot pro {{fencers}} šermířů.",
@@ -92,7 +96,8 @@
     "tablesTitle": "Exportní tabulky",
     "tab": {
       "fencers": "Šermíři",
-      "summary": "Souhrn"
+      "summary": "Souhrn",
+      "revenue": "Příjmy"
     },
     "category": {
       "rental": "Zápůjčky",
@@ -115,7 +120,13 @@
       "paid": "Zaplaceno",
       "unpaid": "Nezaplaceno",
       "standing": "Stav",
-      "action": "Akce"
+      "action": "Akce",
+      "price": "Cena",
+      "count": "Počet",
+      "count_paid": "Počet zaplaceno",
+      "count_all": "Počet celkem",
+      "to_pay": "K zaplacení",
+      "amount": "Částka"
     },
     "line": {
       "queue": "hranice kapacity — níže náhradníci",
@@ -128,7 +139,8 @@
     "copy": "Kopírovat tabulku",
     "copied": "Zkopírováno · {{count}} řádků.",
     "english": "Export v angličtině",
-    "refreshesTournament": "Obnoví ratingy celého turnaje, ne jen této disciplíny.",
+    "finances": "Zahrnout finance",
+    "financesHint": "Bez zaškrtnutí se list Revenue nezapíše; list z dřívějšího exportu zůstane, jak byl.",
     "wizard": {
       "title": "Výstupní tabulka",
       "create": "Založ novou prázdnou tabulku v Google Sheets.",
@@ -145,7 +157,42 @@
       "option": "{{name}} – {{option}}",
       "missing": "neuvedeno",
       "disciplines": "Disciplíny"
-    }
+    },
+    "revenue": {
+      "entry": "Startovné",
+      "total": "{{name}} celkem",
+      "grand_total": "Celkem",
+      "discount": "Sleva {{name}}",
+      "reconciliation": "Sesouhlasení",
+      "eur": "{{label}} (EUR)",
+      "paid_by_items": "Zaplaceno podle položek",
+      "credited_settled": "Připsáno na vyrovnané registrace",
+      "difference": "Rozdíl",
+      "waived": "Prominuto (registrací: {{count}}), v hodnotě",
+      "waived_credited": "Připsáno na prominuté registrace",
+      "deposits": "Zálohy a částečné platby",
+      "queue": "Platby registrací ve frontě",
+      "cancelled": "Platby zrušených a propadlých registrací",
+      "deleted": "Platby registrací se smazaným řádkem (registrací: {{count}})",
+      "unissued": "Řádky bez registrace – neoceněno",
+      "journal": "Celkem připsáno v žurnálu",
+      "hint": {
+        "paid_by_items": "Součet sloupce Zaplaceno ve všech blocích výše: ceny položek vyrovnaných registrací po slevách. Počítá se z ceníku, ne z došlých plateb.",
+        "credited_settled": "Peníze, které žurnál plateb skutečně připsal registracím vyrovnaným a započteným v blocích výše.",
+        "difference": "Připsáno na vyrovnané registrace minus zaplaceno podle položek, jen v hlavní měně. Záporný rozdíl znamená, že přišlo méně, než stojí položky (tolerované nedoplatky), kladný přeplatky. Patří sem i zaokrouhlení a ceny změněné po vystavení.",
+        "waived": "Registrace, jejichž cenu organizátor prominul. V blocích výše nejsou; částka udává, kolik by jejich výběr stál po slevách.",
+        "waived_credited": "Peníze, které na prominuté registrace přesto přišly, např. část zaplacená před prominutím zbytku.",
+        "deposits": "Peníze na registracích, které ještě nejsou vyrovnané: zálohy a částečné platby. V blocích výše stojí tyto registrace celé jako K zaplacení.",
+        "queue": "Peníze na registracích, které celé čekají ve frontě (platba náhradníka). Fronta nic nedluží, proto v blocích nejsou.",
+        "cancelled": "Peníze na zrušených a propadlých registracích, např. propadlé zálohy nebo dosud nevrácené platby.",
+        "deleted": "Peníze na registracích, jejichž řádek byl v konzoli smazán. Smazání řádek jen skryje, registrace i její platby zůstávají.",
+        "unissued": "Řádky seznamu šermířů, ke kterým zatím nebyla vystavena registrace. Nemají cenu, proto nejsou v blocích; uvádí se jen jejich počet.",
+        "journal": "Všechny platné platby turnaje v žurnálu. Rovná se součtu řádků Připsáno na vyrovnané, Připsáno na prominuté, Zálohy, Fronta, Zrušené a Smazané."
+      }
+    },
+    "pdf": "PDF",
+    "png": "PNG",
+    "printFailed": "Soupisku se nepodařilo vysázet."
   },
   "dedup": {
     "title": "Deduplikace",

@@ -1056,6 +1056,49 @@ button.secondary:disabled {
   overflow-wrap: anywhere;
 }
 
+/* The revenue stands on the summary's layout with a price, a count and two
+   money columns: every table the same fixed width, every figure under the
+   figure of its kind above it. A total is set off by the strong rule above it,
+   never by weight. */
+.summary-scroll .revenue-table {
+  table-layout: fixed;
+  width: min(54rem, 100%);
+  background: var(--paper-raised);
+  border: var(--border-w) solid var(--hairline);
+}
+
+.summary-scroll .revenue-col-price {
+  width: 8rem;
+}
+
+.summary-scroll .revenue-col-count {
+  width: 7rem;
+}
+
+.summary-scroll .revenue-col-money {
+  width: 9rem;
+}
+
+.summary-scroll .revenue-table td:first-child {
+  overflow-wrap: anywhere;
+}
+
+.summary-scroll .revenue-table .col-number {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.revenue-table .revenue-total td {
+  border-top: 2px solid var(--rule-strong);
+}
+
+/* The reconciliation's explanations open upward: the stack scrolls, and a
+   box hanging below its last lines would be cut off by its edge. */
+.revenue-table .help-hint-box {
+  top: auto;
+  bottom: calc(100% + 0.3rem);
+}
+
 .sheet-empty {
   color: var(--ink-faded);
   padding: 2rem;
@@ -4287,6 +4330,11 @@ button.secondary.tolerance-save:disabled {
   gap: 0.35rem;
   margin-bottom: 0.6rem;
   font-size: 13px;
+}
+
+/* stands in the rail between cards, whose gap already spaces it */
+.rail-check.export-english {
+  margin-bottom: 0;
 }
 
 /* The capacity line: one row of the table with a rule above it, not a break

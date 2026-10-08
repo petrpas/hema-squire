@@ -9,8 +9,9 @@ tab one table. The band SHALL be derived from the tournament rather than fixed:
 a **Fencers** tab first, then one tab per individual discipline in the
 tournament's discipline order, then one tab per extra-item category for which
 the tournament offers at least one item, goods categories before programme
-categories, and last a **Summary** tab, which every tournament has and whose
-table `export-summary` fixes.
+categories, then a **Summary** tab, whose table `export-summary` fixes, and
+last a **Revenue** tab, whose table `export-revenue` fixes. Every tournament
+has both.
 
 A category the tournament offers nothing in SHALL have no tab, and a category
 the tournament does offer SHALL have one whatever it is — a tournament selling
@@ -26,7 +27,7 @@ band in the console is, and the selected tab SHALL be kept visible in it.
 
 #### Scenario: Tabs follow what the tournament offers
 - **WHEN** a tournament offering two individual disciplines, a rental and a merch item is exported
-- **THEN** the band holds Fencers, the two disciplines, Rentals, Merch and Summary, and no afterparty or seminar tab
+- **THEN** the band holds Fencers, the two disciplines, Rentals, Merch, Summary and Revenue, and no afterparty or seminar tab
 
 #### Scenario: A category with no items has no tab
 - **WHEN** the same tournament has no afterparty item
@@ -40,22 +41,23 @@ band in the console is, and the selected tab SHALL be kept visible in it.
 - **WHEN** a tournament offers one individual and one team longsword discipline
 - **THEN** only the individual discipline has a tab
 
-#### Scenario: The summary is the last tab
+#### Scenario: Summary and Revenue close the band
 - **WHEN** a tournament offering one discipline and nothing else is exported
-- **THEN** the band holds Fencers, the discipline and Summary, in that order
+- **THEN** the band holds Fencers, the discipline, Summary and Revenue, in that order
 
 #### Scenario: The band stands beside the title
 - **WHEN** the organizer opens the Export phase on a wide screen
 - **THEN** the band is on the same line as the tables' title, after it
 
 #### Scenario: The band ends at its last tab
-- **WHEN** a tournament with three tabs is exported on a wide screen
-- **THEN** the band's frame ends at the third tab, which is Summary
+- **WHEN** a tournament with four tabs is exported on a wide screen
+- **THEN** the band's frame ends at the fourth tab, which is Revenue
 
 ### Requirement: Every tab states how many it lists
-Every tab but Summary SHALL state, beside its name, how many rows it lists.
-The Summary tab SHALL state no number: its rows are lines of an offer, not a
-population, and a number beside it would read as one comparable with the others.
+Every tab but Summary and Revenue SHALL state, beside its name, how many rows it
+lists. The Summary and Revenue tabs SHALL state no number: their rows are lines
+of an offer, not a population, and a number beside them would read as one
+comparable with the others.
 
 A **discipline** tab SHALL state two numbers: the fencers holding a seated entry
 in the discipline, then the fencers holding a substitute entry in it, joined as
@@ -90,9 +92,9 @@ next read, without the organizer reopening the phase.
 - **WHEN** a tournament knows 41 fencers and 7 of them have borrowed equipment
 - **THEN** the Fencers tab reads 41 and the rental tab reads 7
 
-#### Scenario: The summary states no count
+#### Scenario: The summary and the revenue state no count
 - **WHEN** the organizer opens the Export phase
-- **THEN** the Summary tab carries its name alone
+- **THEN** the Summary and Revenue tabs carry their names alone
 
 #### Scenario: The switch does not change the count
 - **WHEN** 20 of Sabre Open's 24 seated fencers have paid and the organizer switches that tab to active only
@@ -103,7 +105,7 @@ next read, without the organizer reopening the phase.
 - **THEN** the Fencers tab reads 40
 
 ### Requirement: Each tab states its own columns and order
-Every tab but Summary SHALL open with a **position** column, headed `#`, numbering its rows
+Every tab but Summary and Revenue SHALL open with a **position** column, headed `#`, numbering its rows
 from 1 in the order they are displayed — after the tab's filter and in the tab's
 own order. On a discipline tab the numbering SHALL run straight across the
 capacity line, so the first fencer below it states how far past capacity they
@@ -123,7 +125,9 @@ selection in that category.
 
 The **Summary** tab SHALL list the columns and rows `export-summary` fixes. It
 carries no position column, because its order is the offer's and a number
-stating a place in it would state nothing.
+stating a place in it would state nothing. The **Revenue** tab SHALL list the
+columns and rows `export-revenue` fixes, without a position column for the same
+reason.
 
 A row a deletion has taken out of the table SHALL appear in no tab, as it appears
 in no export.
@@ -177,6 +181,10 @@ that is sometimes a word and sometimes a sum can be neither counted nor filtered
 - **WHEN** the organizer opens the Summary tab
 - **THEN** its first column is the item
 
+#### Scenario: The revenue has no position column
+- **WHEN** the organizer opens the Revenue tab
+- **THEN** its first column names what each line prices
+
 #### Scenario: A deleted row is in no tab
 - **WHEN** a row is deleted on the Fencers phase and the organizer opens Export
 - **THEN** it appears on no tab
@@ -190,9 +198,10 @@ that is sometimes a word and sometimes a sum can be neither counted nor filtered
 - **THEN** their paid column reads no on every tab
 
 ### Requirement: Every tab filters to the paid
-Each tab but Summary SHALL offer a switch between all rows and active rows only.
-The Summary tab SHALL NOT offer it: its columns already state the paid and the
-unpaid side by side, and narrowing it would empty one of them. Active SHALL
+Each tab but Summary and Revenue SHALL offer a switch between all rows and active
+rows only. The Summary and Revenue tabs SHALL NOT offer it: their columns already
+state the paid and the unpaid side by side, and narrowing them would empty one
+of them. Active SHALL
 mean the registration is settled — whether Squire collected the money or the
 organizer waived the price by hand — so that the switch answers the same question
 on a tournament whose payments Squire does not handle. A registration credited
@@ -391,21 +400,32 @@ already English, where it would change nothing.
 Above its table, the Export phase SHALL show only the band. The controls acting on
 the open tab SHALL be offered in the phase's operations rail, as every other
 phase offers its operations there:
-- the active-only switch, on every tab but Summary,
+- the active-only switch, on every tab but Summary and Revenue,
 - on a discipline tab, the seeding order tick,
 - the copy action,
-- on a discipline tab, the HR ratings refresh with its statement that it refreshes
-  the whole tournament.
+- on a discipline tab, the HR ratings refresh, and the PDF and PNG actions
+  (`roster-print`).
+
+The copy, the ratings refresh, the PDF and the PNG SHALL stand in one row as
+icons, in that order — the copy a copy icon, the refresh a refresh icon, the
+others their format — each named by its word for assistive technology and
+carrying a hint that opens on hovering or focusing it and says what pressing it
+does, as the actions of the export card do. The ratings refresh's hint SHALL say
+that it refreshes the whole tournament, not the open discipline alone. Neither
+the copy nor the refresh SHALL be a text button.
 
 These controls SHALL be grouped in one card headed by the open tab's name, so
 that the organizer can see which table a switch or a copy acts on without looking
 back at the band. The card SHALL follow the selected tab: moving to another tab
 SHALL keep the switch and the seeding order as they were, and SHALL offer the
-seeding order and the ratings refresh only where that tab is a discipline.
+seeding order, the ratings refresh and the PDF and PNG only where that tab is a
+discipline.
 
-The English tick SHALL sit with the spreadsheet write and the JSON download,
-because it governs what leaves the phase by the clipboard and by the spreadsheet
-alike, not what one tab shows.
+The English tick SHALL stand in the rail above both cards — the open tab's and
+the export card, headed **Export all** (`Exportovat vše`) — because it governs
+what leaves the phase by the copy, the printouts and the spreadsheet alike, not
+what one tab shows. The **Include finances** tick (`export-revenue`) SHALL sit in
+the export card, because it governs what the spreadsheet write carries.
 
 The outcome of a copy or a ratings refresh SHALL be stated in the card that
 offered it.
@@ -416,7 +436,7 @@ offered it.
 
 #### Scenario: The card names the tab it acts on
 - **WHEN** the organizer opens the Merch tab
-- **THEN** the rail holds a card headed Merch with the active-only switch and the copy action, and neither the seeding order nor the ratings refresh
+- **THEN** the rail holds a card headed Merch with the active-only switch and the copy action, and neither the seeding order, the ratings refresh, nor the PDF and PNG actions
 
 #### Scenario: The card follows the tab
 - **WHEN** the organizer switches Merch to active only and opens the Sabre Open tab
@@ -429,6 +449,26 @@ offered it.
 #### Scenario: The summary card offers the copy alone
 - **WHEN** the organizer opens the Summary tab
 - **THEN** the rail holds a card headed Summary with the copy action and no switch, tick or refresh
+
+#### Scenario: The revenue card offers the copy alone
+- **WHEN** the organizer opens the Revenue tab
+- **THEN** the rail holds a card headed Revenue with the copy action and no switch, tick or refresh
+
+#### Scenario: The copy is an icon with a hint
+- **WHEN** the organizer hovers or focuses the copy action on any tab
+- **THEN** it is a copy icon, and a hint opens beside it saying it copies the table to the clipboard
+
+#### Scenario: A discipline's actions in one row
+- **WHEN** the organizer opens the Sabre Open tab
+- **THEN** the copy, the ratings refresh, the PDF and the PNG stand in one row of icons in that order, each with its hint, and the refresh's hint says it refreshes the whole tournament
+
+#### Scenario: The English tick stands above both cards
+- **WHEN** a Czech-speaking organizer opens the Export phase
+- **THEN** the English tick stands in the rail above the open tab's card and the card headed Export all, and is in neither
+
+#### Scenario: The finances tick stays with the spreadsheet write
+- **WHEN** a Czech-speaking organizer opens the Export phase
+- **THEN** the card headed Export all holds Include finances, unticked
 
 #### Scenario: A copy reports where it was asked
 - **WHEN** the organizer copies a tab from the rail card

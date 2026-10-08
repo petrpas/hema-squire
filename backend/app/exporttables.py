@@ -32,6 +32,9 @@ CATEGORY = "category"
 # the band's last tab, whose table is `exportsummary`'s rather than a
 # narrowing of the fencer table
 SUMMARY = "summary"
+# after it, the revenue: `exportrevenue`'s table, again not a narrowing of the
+# fencer table
+REVENUE = "revenue"
 
 # goods before programme, as `frontend/src/extraItems.ts` orders them: what a
 # fencer takes home first, what happens at the tournament second
@@ -105,6 +108,8 @@ def tabs(tournament: Tournament) -> list[Tab]:
     # every tournament has one, whatever it offers: disciplines alone are
     # something to total
     band.append(Tab(kind=SUMMARY, key="", label=SUMMARY))
+    # and a free tournament still has entries to total, at zero
+    band.append(Tab(kind=REVENUE, key="", label=REVENUE))
     return band
 
 
@@ -168,10 +173,11 @@ def tab_counts(rows: list[Row], tab: Tab) -> tuple[int | None, int]:
     entry in it — and every other tab has no queue. The active-only switch is
     the reader's own and never reaches a count.
 
-    The summary states no count: its lines are an offer, not a population, and
-    a number beside it would read as comparable with the others.
+    The summary and the revenue state no count: their lines are an offer, not
+    a population, and a number beside them would read as comparable with the
+    others.
     """
-    if tab.kind == SUMMARY:
+    if tab.kind in (SUMMARY, REVENUE):
         return None, 0
     listed = table_rows(rows, tab)
     if tab.kind != DISCIPLINE:

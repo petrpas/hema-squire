@@ -22,13 +22,16 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Protocol
 
-from app import exportsummary, exporttables
+from app import exportrevenue, exportsummary, exporttables
 from app.i18n import catalog
 from app.models import ExtraCategory, Tournament
 from app.rules import Row
 
 FENCERS_SHEET = "Fencers"
 SUMMARY_SHEET = "Summary"
+# written only when the organizer ticks Include finances (design
+# export-revenue D11)
+REVENUE_SHEET = "Revenue"
 
 # Worksheet names are addresses, not prose: the merge finds an existing sheet
 # by its name, so renaming one with the export's language would orphan the
@@ -76,6 +79,11 @@ PAID = Column("paid")
 # the summary's second count; its tables are headed by what they count, so
 # the first column has no column of its own
 UNPAID = Column("unpaid")
+# the revenue's columns after its name; the count goes out as two numbers
+PRICE = Column("price")
+COUNT_PAID = Column("count_paid")
+COUNT_ALL = Column("count_all")
+TO_PAY = Column("to_pay")
 
 FENCERS_COLUMNS = [POSITION, NAME, NATIONALITY, CLUB, HR_ID, DISCIPLINES, PAID]
 DISCIPLINE_COLUMNS = [POSITION, NAME, NATIONALITY, CLUB, HR_ID, RATING, RANK, PAID]
@@ -316,11 +324,108 @@ def summary_group_title(category: str, locale: str) -> str:
     return catalog.translate(f"export.category.{category}", locale)
 
 
+def _whole(cents: int) -> Cell:
+    """An amount in cents as the number a spreadsheet sums: whole units where
+    there are no cents."""
+    return cents // 100 if cents % 100 == 0 else cents / 100
+
+
+def revenue_block_title(key: str, locale: str) -> str:
+    """The head of one revenue table: the entry fees, or the category."""
+    if key == exportrevenue.ENTRY:
+        return catalog.translate("export.revenue.entry", locale)
+    return catalog.translate(f"export.category.{key}", locale)
+
+
+def revenue_label(line: exportrevenue.RevenueLine, block: str, locale: str) -> str:
+    """A revenue line's name cell. The organizer's names stay as written; the
+    words Squire adds follow the export's language."""
+    if line.kind == exportrevenue.TOTAL:
+        name = revenue_block_title(block, locale)
+        return catalog.translate("export.revenue.total", locale, name=name)
+    if line.kind == exportrevenue.GRAND_TOTAL:
+        return catalog.translate("export.revenue.grand_total", locale)
+    if line.kind == exportrevenue.DISCOUNT:
+        return catalog.translate("export.revenue.discount", locale, name=line.name)
+    if line.kind == exportrevenue.FEE:
+        return revenue_block_title(block, locale)
+    return line.name
+
+
+def reconciliation_label(line: exportrevenue.ReconciliationLine, locale: str) -> str:
+    label = catalog.translate(f"export.revenue.{line.kind}", locale, count=line.count)
+    if line.lane == "eur":
+        return catalog.translate("export.revenue.eur", locale, label=label)
+    return label
+
+
+def _price_cell(line: exportrevenue.RevenueLine) -> Cell:
+    """The price as a number, but a percentage as text: `-10 %` read as a
+    number would be a tenth of a crown."""
+    if line.price is None:
+        return ""
+    if line.percent:
+        return f"{line.price} %"
+    return line.price
+
+
+def revenue_grid(revenue: exportrevenue.Revenue, locale: str) -> list[list[Cell]]:
+    """The Revenue worksheet, whole: one table per block, the count as two
+    numeric cells, the grand total after the last block, then the
+    reconciliation; a blank row between two tables. Written whole every time,
+    as the Summary is (spec data-export, Repeat-export preservation
+    semantics)."""
+    columns: list[Cell] = [*header_for([PRICE, COUNT_PAID, COUNT_ALL, PAID, TO_PAY], locale)]
+    blank: list[Cell] = [""] * (len(columns) + 1)
+    grid: list[list[Cell]] = []
+    for block in revenue.blocks:
+        if grid:
+            grid.append(list(blank))
+        grid.append([revenue_block_title(block.key, locale), *columns])
+        grid += (
+            [
+                revenue_label(line, block.key, locale),
+                _price_cell(line),
+                line.paid_count,
+                line.count,
+                line.paid,
+                line.to_pay,
+            ]
+            for line in block.lines
+        )
+    total = revenue.total
+    grid.append(list(blank))
+    grid.append(
+        [
+            revenue_label(total, "", locale),
+            "",
+            total.paid_count,
+            total.count,
+            total.paid,
+            total.to_pay,
+        ]
+    )
+    grid.append(list(blank))
+    grid.append(
+        [
+            catalog.translate("export.revenue.reconciliation", locale),
+            catalog.translate("export.column.amount", locale),
+        ]
+    )
+    for line in revenue.reconciliation:
+        amount: Cell = (
+            _whole(line.amount_cents) if line.amount_cents is not None else line.count or 0
+        )
+        grid.append([reconciliation_label(line, locale), amount])
+    return grid
+
+
 def export_to_sheets(
     tournament: Tournament,
     rows: list[Row],
     client: SheetsClient,
     locale: str,
+    revenue: exportrevenue.Revenue | None = None,
 ) -> dict:
     """One worksheet per export table, each carrying its table's columns and
     its table's order (spec data-export, Google Sheets export mirrors the
@@ -330,6 +435,11 @@ def export_to_sheets(
     console's band and the spreadsheet are the same set of tables, and a
     tournament selling nothing in a category has neither a tab nor a
     worksheet.
+
+    The one exception is the revenue, which goes only where the organizer
+    ticked Include finances for this export and so handed it in. Without it, a
+    Revenue worksheet an earlier export left is neither written nor cleared:
+    the owner chose to leave it standing (design export-revenue D11).
     """
     written: list[str] = []
     fencers = 0
@@ -337,6 +447,11 @@ def export_to_sheets(
         if tab.kind == exporttables.SUMMARY:
             client.write(SUMMARY_SHEET, summary_grid(tournament, rows, locale))
             written.append(SUMMARY_SHEET)
+            continue
+        if tab.kind == exporttables.REVENUE:
+            if revenue is not None:
+                client.write(REVENUE_SHEET, revenue_grid(revenue, locale))
+                written.append(REVENUE_SHEET)
             continue
         table = exporttables.table_rows(rows, tab)
         if tab.kind == exporttables.FENCERS:

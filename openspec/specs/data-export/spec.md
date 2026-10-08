@@ -75,13 +75,17 @@ The document version SHALL be raised for this addition. Documents produced befor
 The Google Sheets export SHALL write one worksheet per export table: a `Fencers`
 worksheet, one worksheet per individual discipline named for the discipline's
 slug, and one worksheet per extra-item category the tournament offers, named for
-the category, and a `Summary` worksheet. Each worksheet SHALL carry its table's
-columns and its table's order, as `export-tables` and `export-summary` fix them.
+the category, a `Summary` worksheet, and — only where the organizer ticked
+Include finances for that export (`export-revenue`) — a `Revenue` worksheet. An
+export without the tick SHALL leave a `Revenue` worksheet the spreadsheet already
+holds untouched. Each worksheet
+SHALL carry its table's columns and its table's order, as `export-tables`,
+`export-summary` and `export-revenue` fix them.
 Worksheet names SHALL be the same in every locale, since the export finds an
 existing worksheet by its name.
 
-Every worksheet but `Summary` SHALL open, as every tab but Summary does, with a
-position column headed `#`.
+Every worksheet but `Summary` and `Revenue` SHALL open, as every tab but Summary
+and Revenue does, with a position column headed `#`.
 No worksheet SHALL carry a blank column left for numbering by hand. The position SHALL number the
 worksheet's rows 1 to n from the top as the worksheet stands after the export,
 rewritten on every export. Because a re-export keeps existing rows where they
@@ -90,7 +94,8 @@ after the console's order has moved, the two may differ, and the sheet's
 numbering still runs unbroken down the sheet.
 
 The position, the HEMA Ratings identifier, the rating, the rank and the
-summary's paid and unpaid counts SHALL be written to the worksheet as numbers, not as text, whatever locale the
+summary's paid and unpaid counts, and the revenue's prices, counts and amounts,
+SHALL be written to the worksheet as numbers, not as text, whatever locale the
 spreadsheet is set to; a cell of those columns holding no number SHALL be
 written as it stands.
 
@@ -127,7 +132,7 @@ otherwise.
 
 #### Scenario: A worksheet per tab
 - **WHEN** a tournament offering two individual disciplines, a rental item and a merch item is exported to Sheets
-- **THEN** six worksheets are written — Fencers, the two discipline slugs, Rentals, Merch and Summary — each carrying its table's columns
+- **THEN** six worksheets are written — Fencers, the two discipline slugs, Rentals, Merch and Summary — each carrying its table's columns, and with Include finances ticked a seventh, Revenue
 
 #### Scenario: Tiers produce separate worksheets
 - **WHEN** a tournament offering two longsword disciplines is exported to Sheets
@@ -156,10 +161,11 @@ otherwise.
 ### Requirement: Repeat-export preservation semantics
 Re-exporting to an existing sheet SHALL always refresh the position, rating and rank columns of a table's worksheet, and SHALL write its other cells only when blank or unchanged, preserving downstream manual work.
 
-The `Summary` worksheet SHALL be written whole on every export, replacing what it
-held. It is a report of counts, not a list staff work through. It has no row
-identity a merge could keep a cell by, and a preserved count would be a stale one.
-Anything written into it by hand SHALL NOT survive the next export.
+The `Summary` and `Revenue` worksheets SHALL be written whole on every export,
+replacing what they held. Each is a report of figures, not a list staff work
+through. Neither has a row
+identity a merge could keep a cell by, and a preserved figure would be a stale
+one. Anything written into either by hand SHALL NOT survive the next export.
 
 These semantics SHALL survive the change of worksheet shape. Existing cells are
 addressed by their header name, so a column that remains keeps its contents, a
@@ -183,6 +189,10 @@ every time, because it is what the tournament currently holds.
 #### Scenario: The summary is rewritten
 - **WHEN** downstream staff typed a note into the Summary worksheet and the organizer re-exports after two more shirts were ordered
 - **THEN** the Summary worksheet states the new counts and the note is gone
+
+#### Scenario: The revenue is rewritten
+- **WHEN** downstream staff typed a note into the Revenue worksheet and the organizer re-exports with Include finances ticked after a registration was settled
+- **THEN** the Revenue worksheet states the new amounts and the note is gone
 
 #### Scenario: A correction is rewritten, not preserved
 - **WHEN** the organizer corrects a rating and re-exports twice
@@ -355,8 +365,9 @@ nothing to forget.
 Where the tournament has a stored destination, the Export phase's rail SHALL state it as a
 link that opens the spreadsheet. The export control, the link, the control that forgets
 the destination and the JSON download SHALL stand on one row, in that order, each as an
-icon whose word is its accessible name and whose hint says what it does; the English tick
-SHALL stand below that row.
+icon whose word is its accessible name and whose hint says what it does. The card holding
+them SHALL be headed **Export all** (`Exportovat vše`). The English tick SHALL stand above
+this card and the open tab's card, not in either (`export-tables`).
 
 Every control of the card SHALL carry a hint saying what it does, opened by hovering or
 focusing the control itself, and the card SHALL carry no standing paragraph explaining
@@ -379,4 +390,3 @@ success — the spreadsheet is still where it is — with the failure stated sep
 #### Scenario: A failed run still leaves the link
 - **WHEN** an export fails
 - **THEN** the failure is stated and the destination is stated as a link beside it
-

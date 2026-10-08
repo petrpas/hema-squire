@@ -438,3 +438,105 @@ def test_breakdown_empty_for_legacy_tournament():
         tournament, disciplines=[Discipline(fee=30)], extras=[], at=REGISTERED_AT.date()
     )
     assert breakdown == []
+
+
+def _explained(registration, tournament) -> int:
+    """What a registration's breakdown says its local total is."""
+    breakdown = pricing.registration_breakdown(registration, tournament)
+    gross = sum(piece.unit_price * piece.qty for piece in breakdown.pieces)
+    return gross - sum(deduction.deducted for deduction in breakdown.deductions)
+
+
+def _deducted_from(registration, tournament) -> dict[str, int]:
+    taken: dict[str, int] = {}
+    for deduction in pricing.registration_breakdown(registration, tournament).deductions:
+        taken[deduction.category] = taken.get(deduction.category, 0) + deduction.deducted
+    return taken
+
+
+def test_breakdown_explains_a_single_category_discount():
+    tournament = make_tournament(discounts=[count_discount(2, 10)])
+    registration = make_registration(tournament, [30, 30])
+    assert _explained(registration, tournament) == 50
+    assert (
+        _explained(registration, tournament)
+        == pricing.registration_total(registration, tournament).local
+    )
+
+
+def test_breakdown_splits_a_multi_category_fixed_discount_by_its_take():
+    tournament = make_tournament(
+        discounts=[
+            {
+                "name": "bundle",
+                "condition": {"kind": "discipline_count", "count": 1},
+                "effect": {"kind": "fixed", "value": 33},
+                "scope": ["discipline", "rental"],
+            }
+        ]
+    )
+    item = rental_item(tournament, price=5)
+    tournament.extra_items = [item]
+    registration = make_registration(tournament, [30], extras=[(item, 2)])
+
+    assert _deducted_from(registration, tournament) == {"discipline": 30, "rental": 3}
+    assert (
+        _explained(registration, tournament)
+        == pricing.registration_total(registration, tournament).local
+    )
+
+
+def test_breakdown_rounds_percentages_to_the_total_it_explains():
+    # 31 × 0.85 + 3 × 0.85 = 28.9 → 29; per category 4.65 and 0.45, which
+    # rounded each on its own would explain 34 − 5 = 29 only by luck
+    tournament = make_tournament(
+        discounts=[early_percent("2026-06-01", 15, ("discipline", "rental"))]
+    )
+    item = rental_item(tournament, price=3, max_qty=1)
+    tournament.extra_items = [item]
+    registration = make_registration(tournament, [31], extras=[(item, 1)])
+    assert (
+        _explained(registration, tournament)
+        == pricing.registration_total(registration, tournament).local
+    )
+
+    # (60 − 10) × 0.85 = 42.5 → 43: the fixed 10 and the percentage's 7.5
+    # cannot both round half up and still explain 43
+    tournament = make_tournament(discounts=[count_discount(2, 10), early_percent("2026-06-01", 15)])
+    registration = make_registration(tournament, [30, 30])
+    assert _explained(registration, tournament) == 43
+
+
+def test_breakdown_prices_the_early_bird_at_the_day_it_was_made():
+    tournament = make_tournament(
+        early_bird_until=date(2026, 5, 15),
+        weapon_rental_fee=100,
+        weapon_rental_fee_early=80,
+        afterparty_fee=250,
+    )
+    early = make_registration(tournament, [800])
+    early.entries[0].discipline.fee_early = 700
+    early.weapon_rentals = ["LS", "SA"]
+    early.afterparty = True
+    late = make_registration(tournament, [800], registered_at=datetime(2026, 5, 20, 12, 0))
+    late.entries[0].discipline.fee_early = 700
+
+    pieces = pricing.registration_breakdown(early, tournament).pieces
+    assert [(p.category, p.unit_price, p.qty) for p in pieces] == [
+        ("discipline", 700, 1),
+        ("rental", 80, 2),
+        ("afterparty", 250, 1),
+    ]
+    assert _explained(early, tournament) == pricing.registration_total(early, tournament).local
+    assert [p.unit_price for p in pricing.registration_breakdown(late, tournament).pieces] == [800]
+
+
+def test_breakdown_of_a_fully_queued_registration_is_empty():
+    tournament = make_tournament(discounts=[count_discount(1, 5)])
+    item = rental_item(tournament)
+    tournament.extra_items = [item]
+    registration = make_registration(tournament, [30], extras=[(item, 1)])
+    registration.entries[0].is_substitute = True
+    breakdown = pricing.registration_breakdown(registration, tournament)
+    assert breakdown.pieces == []
+    assert breakdown.deductions == []

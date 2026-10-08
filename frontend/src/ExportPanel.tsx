@@ -12,10 +12,10 @@ export function offersEnglishTick(language: string): boolean {
   return !language.startsWith("en");
 }
 
-/** The Export phase's rail card for what leaves the phase: the English tick,
- *  the canonical JSON document and the write to the organizer's spreadsheet.
- *  The tick sits here rather than on a tab's card because it governs the copy
- *  and the spreadsheet write alike, not what one tab shows.
+/** The Export phase's rail card for what leaves the phase whole: the
+ *  canonical JSON document and the write to the organizer's spreadsheet. The
+ *  English tick it follows stands above this card and the tab's, because it
+ *  governs what leaves through either.
  *
  *  The destination lives here too, as the dialog that states how to prepare
  *  one. It used to be a field in Setup two tabs away, which is where an
@@ -25,13 +25,17 @@ export function offersEnglishTick(language: string): boolean {
 export default function ExportPanel({
   slug,
   english,
-  onEnglishChange,
+  finances,
+  onFinancesChange,
 }: {
   slug: string;
   english: boolean;
-  onEnglishChange: (english: boolean) => void;
+  /** The Include finances tick: whether the spreadsheet write carries the
+   *  Revenue worksheet. Off whenever the phase is opened, and never stored. */
+  finances: boolean;
+  onFinancesChange: (finances: boolean) => void;
 }) {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -50,7 +54,7 @@ export default function ExportPanel({
     setError(null);
     setMessage(null);
     try {
-      const result = await api.exportSheet(slug, english);
+      const result = await api.exportSheet(slug, english, finances);
       setMessage(t("export.done", { fencers: result.fencers }));
     } catch {
       setError(t("export.failed"));
@@ -183,16 +187,17 @@ export default function ExportPanel({
           )}
         </HintedAction>
       </div>
-      {offersEnglishTick(i18n.language) && (
-        <label className="rail-check">
-          <input
-            type="checkbox"
-            checked={english}
-            onChange={(event) => onEnglishChange(event.currentTarget.checked)}
-          />
-          <span>{t("export.english")}</span>
-        </label>
-      )}
+      {/* offered in every language: unlike the English tick, it changes what
+          an English-speaking organizer's spreadsheet carries too */}
+      <label className="rail-check">
+        <input
+          type="checkbox"
+          checked={finances}
+          onChange={(event) => onFinancesChange(event.currentTarget.checked)}
+        />
+        <span>{t("export.finances")}</span>
+      </label>
+      <p className="rail-hint">{t("export.financesHint")}</p>
       {message && <p className="rail-hint">{message}</p>}
       {error && <p className="login-error">{error}</p>}
       {wizard && config?.service_account != null && (

@@ -1,7 +1,7 @@
 import datetime
 import decimal
 from collections.abc import Callable
-from typing import Any, Literal
+from typing import Annotated, Any, Literal
 
 from pydantic import (
     BaseModel,
@@ -1646,6 +1646,70 @@ class ExportSummaryLineOut(BaseModel):
 
 class ExportSummaryOut(BaseModel):
     lines: list[ExportSummaryLineOut]
+
+
+class ExportRevenueLineOut(BaseModel):
+    """One line of a Revenue block (spec export-revenue), in whole units of
+    the tournament's local currency. Structured rather than labelled: the
+    console composes `Sleva <name>` and `<block> celkem` in the reader's
+    language. `price` is negative on a discount, and a percentage where
+    `percent` says so; None on a total."""
+
+    kind: str
+    name: str
+    price: int | float | None
+    percent: bool
+    paid_count: int
+    count: int
+    paid: int
+    to_pay: int
+
+
+class ExportRevenueBlockOut(BaseModel):
+    """One table: the entry fees under the empty key, or one category."""
+
+    key: str
+    lines: list[ExportRevenueLineOut]
+
+
+class ExportReconciliationLineOut(BaseModel):
+    """One line of the reconciliation, in cents of its lane's currency
+    (`local` or `eur`); `lane` is None on a line stating a count alone."""
+
+    kind: str
+    lane: str | None
+    amount_cents: int | None
+    count: int | None
+
+
+class ExportRevenueOut(BaseModel):
+    """The Revenue tab. `local_currency` is carried because the export band
+    holds no tournament detail of its own to name the unit from."""
+
+    local_currency: Currency
+    blocks: list[ExportRevenueBlockOut]
+    total: ExportRevenueLineOut
+    reconciliation: list[ExportReconciliationLineOut]
+
+
+# No., Fencer, Nat., Club, HRID, Rank, Paid: one cell each, formatted as the
+# tab shows it (design roster-print D1)
+RosterRowIn = Annotated[
+    list[Annotated[str, Field(max_length=200)]], Field(min_length=7, max_length=7)
+]
+
+
+class ExportRosterIn(BaseModel):
+    """A discipline roster to typeset: the rows the tab displays, in its order
+    and under its switch. The server neither reorders nor filters them, so the
+    printout cannot drift from the tab (design roster-print D1)."""
+
+    discipline: str
+    rows: list[RosterRowIn] = Field(max_length=1000)
+    # how many rows stand above the capacity line, as the tab's line counts
+    # them; None where the tab draws none
+    line_after: int | None = Field(default=None, ge=0)
+    english: bool = False
 
 
 class ExportSheetConfigOut(BaseModel):

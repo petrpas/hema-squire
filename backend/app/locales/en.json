@@ -111,7 +111,13 @@
       "rank": "HRank",
       "items": "Items",
       "paid": "Paid",
-      "unpaid": "Unpaid"
+      "unpaid": "Unpaid",
+      "price": "Price",
+      "count": "Count",
+      "count_paid": "Count paid",
+      "count_all": "Count total",
+      "to_pay": "To pay",
+      "amount": "Amount"
     },
     "summary": {
       "queue": "{name} (queue)",
@@ -126,6 +132,34 @@
       "seminar": "Seminars",
       "afterparty": "Afterparty",
       "other_action": "Other programme"
+    },
+    "revenue": {
+      "entry": "Entry fees",
+      "total": "{name} total",
+      "grand_total": "Total",
+      "discount": "Discount {name}",
+      "reconciliation": "Reconciliation",
+      "eur": "{label} (EUR)",
+      "paid_by_items": "Paid by items",
+      "credited_settled": "Credited to settled registrations",
+      "difference": "Difference",
+      "waived": "Waived (registrations: {count}), worth",
+      "waived_credited": "Credited to waived registrations",
+      "deposits": "Deposits and partial payments",
+      "queue": "Payments from the queue",
+      "cancelled": "Cancelled and expired registrations",
+      "deleted": "Registrations whose row was deleted (registrations: {count})",
+      "unissued": "Rows without a registration – unpriced",
+      "journal": "Credited in the journal"
+    },
+    "roster": {
+      "position": "No.",
+      "name": "Fencer",
+      "nat": "Nat.",
+      "club": "Club",
+      "hr_id": "HRID",
+      "rank": "Rank",
+      "paid": "Paid"
     }
   }
 }

@@ -4,17 +4,22 @@ import { useTranslation } from "react-i18next";
 import {
   api,
   type ExportBandTab,
+  type ExportRevenue,
   type ExportSummaryLine,
   type NetChange,
+  type RosterFormat,
   type SheetRow,
 } from "../api";
-import ExportPanel from "../ExportPanel";
+import ExportPanel, { offersEnglishTick } from "../ExportPanel";
 import { useTabBand } from "../useTabBand";
 import { FENCERS_COLUMNS, ITEM_COLUMNS, ROSTER_COLUMNS, toTsv } from "./columns";
 import FencersTable from "./FencersTable";
 import ItemsTable from "./ItemsTable";
 import { activeOnly, rosterOrder } from "./ordering";
+import RevenueTable from "./RevenueTable";
 import RosterTable from "./RosterTable";
+import { revenueLineCount, revenueTsv } from "./revenue";
+import { rosterPrint, saveBlob } from "./roster";
 import SummaryTable from "./SummaryTable";
 import { summaryTsv } from "./summary";
 import TableOperations from "./TableOperations";
@@ -59,11 +64,18 @@ export default function ExportTables({
   const [selected, setSelected] = useState<string>("fencers:");
   const [rows, setRows] = useState<SheetRow[]>([]);
   const [summary, setSummary] = useState<ExportSummaryLine[]>([]);
+  const [revenue, setRevenue] = useState<ExportRevenue | null>(null);
+  // the Include finances tick: held here rather than with the English tick in
+  // the console, so that leaving Export and coming back finds it off — money
+  // reaches the shared workbook only by a decision made for that export
+  const [finances, setFinances] = useState(false);
   const [active, setActive] = useState(false);
   const [seeded, setSeeded] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [ratingsMessage, setRatingsMessage] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  // the format being typeset, so its button waits without a spinner
+  const [printing, setPrinting] = useState<RosterFormat | null>(null);
 
   const tab = tabs.find((candidate) => tabId(candidate) === selected) ?? null;
   const band = useTabBand(selected);
@@ -80,6 +92,10 @@ export default function ExportTables({
     // the summary is not a fencer table: its lines are read on their own
     if (tab.kind === "summary") {
       void api.exportSummary(slug).then((read) => setSummary(read.lines));
+      return;
+    }
+    if (tab.kind === "revenue") {
+      void api.exportRevenue(slug).then(setRevenue);
       return;
     }
     void api.exportTable(slug, tab.kind, tab.key).then((table) => setRows(table.rows));
@@ -132,6 +148,12 @@ export default function ExportTables({
       setMessage(t("export.copied", { count: summary.length }));
       return;
     }
+    if (tab.kind === "revenue") {
+      if (revenue === null) return;
+      void navigator.clipboard.writeText(revenueTsv(locale, revenue));
+      setMessage(t("export.copied", { count: revenueLineCount(revenue) }));
+      return;
+    }
     const columns =
       tab.kind === "fencers"
         ? FENCERS_COLUMNS(locale)
@@ -145,6 +167,25 @@ export default function ExportTables({
         : listed;
     void navigator.clipboard.writeText(toTsv(columns, ordered, header));
     setMessage(t("export.copied", { count: ordered.length }));
+  }
+
+  async function print(format: RosterFormat) {
+    if (tab === null || tab.kind !== "discipline") return;
+    const locale = english ? i18n.getFixedT("en") : t;
+    setPrinting(format);
+    setMessage(null);
+    try {
+      const blob = await api.exportRoster(
+        slug,
+        format,
+        rosterPrint(locale, listed, tab, seeded, english),
+      );
+      saveBlob(blob, `${slug}-${tab.key}.${format}`);
+    } catch {
+      setMessage(t("export.printFailed"));
+    } finally {
+      setPrinting(null);
+    }
   }
 
   const rated = (row: SheetRow) =>
@@ -181,6 +222,8 @@ export default function ExportTables({
 
         {tab === null ? null : tab.kind === "summary" ? (
           <SummaryTable lines={summary} />
+        ) : tab.kind === "revenue" ? (
+          <RevenueTable revenue={revenue} />
         ) : tab.kind === "fencers" ? (
           <FencersTable rows={listed} />
         ) : tab.kind === "discipline" ? (
@@ -200,23 +243,50 @@ export default function ExportTables({
 
       {renderRail(
         <>
+          {/* above both cards: it governs what leaves through the tab's copy
+              and printouts and through the whole export alike */}
+          {offersEnglishTick(i18n.language) && (
+            <label className="rail-check export-english">
+              <input
+                type="checkbox"
+                checked={english}
+                onChange={(event) => onEnglishChange(event.currentTarget.checked)}
+              />
+              <span>{t("export.english")}</span>
+            </label>
+          )}
           {tab !== null && (
             <TableOperations
               title={tabLabel(t, tab)}
-              // the summary states paid and unpaid side by side: narrowing it
-              // would empty one of its columns, so it offers no switch
-              active={tab.kind === "summary" ? undefined : { checked: active, onChange: setActive }}
+              // the summary and the revenue state paid and unpaid side by side:
+              // narrowing them would empty one of their columns, so they offer
+              // no switch
+              active={
+                tab.kind === "summary" || tab.kind === "revenue"
+                  ? undefined
+                  : { checked: active, onChange: setActive }
+              }
               seeded={
                 tab.kind === "discipline" ? { checked: seeded, onChange: setSeeded } : undefined
               }
               onCopy={copy}
+              print={
+                tab.kind === "discipline"
+                  ? { onPrint: (format) => void print(format), printing }
+                  : undefined
+              }
               onRefreshRatings={tab.kind === "discipline" ? () => void refreshRatings() : undefined}
               refreshing={busy}
               ratingsMessage={ratingsMessage}
               message={message}
             />
           )}
-          <ExportPanel slug={slug} english={english} onEnglishChange={onEnglishChange} />
+          <ExportPanel
+            slug={slug}
+            english={english}
+            finances={finances}
+            onFinancesChange={setFinances}
+          />
         </>,
       )}
     </>

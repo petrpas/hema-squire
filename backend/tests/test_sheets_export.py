@@ -561,3 +561,55 @@ def test_an_english_summary_names_the_words_squire_adds_in_english():
         "Disciplines",
         "Rentals",
     ]
+
+
+def test_finances_reach_the_sheet_only_by_the_tick(client, auth_headers):
+    organizer = auth_headers(language="cs")
+    setup(client, auth_headers, organizer)
+    sheets = InMemorySheets()
+    wire(sheets)
+    # an earlier export with finances left this; staff have since written in it
+    earlier = [["Startovné", "Cena"], ["poznámka", 1]]
+    sheets.worksheets["Revenue"] = earlier
+
+    body = export(client, organizer)
+    assert "Revenue" not in body["worksheets"]
+    assert sheets.worksheets["Revenue"] is earlier
+    assert sheets.worksheets["Revenue"] == [["Startovné", "Cena"], ["poznámka", 1]]
+
+    response = client.post(
+        "/api/tournaments/cup/export/sheet", params={"finances": True}, headers=organizer
+    )
+    assert response.status_code == 200, response.text
+    assert response.json()["worksheets"][-1] == "Revenue"
+    revenue = sheets.worksheets["Revenue"]
+    # rewritten whole: the note is gone, and the figures are numbers
+    assert ["poznámka", 1] not in revenue
+    assert revenue[0] == [
+        "Startovné",
+        "Cena",
+        "Počet zaplaceno",
+        "Počet celkem",
+        "Zaplaceno",
+        "K zaplacení",
+    ]
+    # Jan's one seated entry, unpaid; the imported rows hold no registration
+    assert revenue[1] == ["Longsword Open", 1000, 0, 1, 0, 1000]
+    assert ["Řádky bez registrace – neoceněno", 2] in revenue
+
+
+def test_an_english_revenue_names_squires_words_in_english(client, auth_headers):
+    organizer = auth_headers(language="cs")
+    setup(client, auth_headers, organizer)
+    sheets = InMemorySheets()
+    wire(sheets)
+
+    client.post(
+        "/api/tournaments/cup/export/sheet",
+        params={"finances": True, "english": True},
+        headers=organizer,
+    )
+    labels = [row[0] for row in sheets.worksheets["Revenue"]]
+    assert labels[0] == "Entry fees"
+    assert "Entry fees total" in labels
+    assert "Credited in the journal" in labels

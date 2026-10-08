@@ -37,7 +37,9 @@ async function mount(config: Partial<ExportSheetConfig> = {}) {
   document.body.append(host);
   const root = createRoot(host);
   await act(async () => {
-    root.render(<ExportPanel slug="cup" english={false} onEnglishChange={() => {}} />);
+    root.render(
+      <ExportPanel slug="cup" english={false} finances={false} onFinancesChange={() => {}} />,
+    );
   });
   return host;
 }
@@ -88,7 +90,7 @@ it("exports without asking once a destination is stored", async () => {
 
   await click(buttonNamed(t("export.runSheets")));
 
-  expect(exported).toHaveBeenCalledWith("cup", false);
+  expect(exported).toHaveBeenCalledWith("cup", false, false);
   expect(document.body.textContent).not.toContain(t("export.wizard.share"));
 });
 
@@ -131,7 +133,7 @@ it("stores the pasted destination and runs the export the organizer pressed for"
   await click(buttonNamed(t("export.wizard.confirmExport")));
 
   expect(update).toHaveBeenCalledWith("cup", { output_sheet_url: SHEET });
-  expect(exported).toHaveBeenCalledWith("cup", false);
+  expect(exported).toHaveBeenCalledWith("cup", false, false);
 });
 
 it("stores nothing when the procedure is dismissed", async () => {

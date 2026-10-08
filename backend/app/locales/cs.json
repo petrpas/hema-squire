@@ -138,7 +138,13 @@
       "rank": "HRank",
       "items": "Položky",
       "paid": "Zaplaceno",
-      "unpaid": "Nezaplaceno"
+      "unpaid": "Nezaplaceno",
+      "price": "Cena",
+      "count": "Počet",
+      "count_paid": "Počet zaplaceno",
+      "count_all": "Počet celkem",
+      "to_pay": "K zaplacení",
+      "amount": "Částka"
     },
     "summary": {
       "queue": "{name} (fronta)",
@@ -153,6 +159,34 @@
       "seminar": "Semináře",
       "afterparty": "Afterparty",
       "other_action": "Ostatní program"
+    },
+    "revenue": {
+      "entry": "Startovné",
+      "total": "{name} celkem",
+      "grand_total": "Celkem",
+      "discount": "Sleva {name}",
+      "reconciliation": "Sesouhlasení",
+      "eur": "{label} (EUR)",
+      "paid_by_items": "Zaplaceno podle položek",
+      "credited_settled": "Připsáno na vyrovnané registrace",
+      "difference": "Rozdíl",
+      "waived": "Prominuto (registrací: {count}), v hodnotě",
+      "waived_credited": "Připsáno na prominuté registrace",
+      "deposits": "Zálohy a částečné platby",
+      "queue": "Platby registrací ve frontě",
+      "cancelled": "Platby zrušených a propadlých registrací",
+      "deleted": "Platby registrací se smazaným řádkem (registrací: {count})",
+      "unissued": "Řádky bez registrace – neoceněno",
+      "journal": "Celkem připsáno v žurnálu"
+    },
+    "roster": {
+      "position": "Č.",
+      "name": "Šermíř",
+      "nat": "Nár.",
+      "club": "Klub",
+      "hr_id": "HRID",
+      "rank": "Rank",
+      "paid": "Zaplaceno"
     }
   }
 }

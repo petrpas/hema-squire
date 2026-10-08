@@ -56,12 +56,19 @@ class Totals(NamedTuple):
 
 class DiscountOutcome(NamedTuple):
     """One configured discount's result against a priced selection, within a
-    single currency pass. `deducted` is 0 for a discount that did not apply."""
+    single currency pass. `deducted` is 0 for a discount that did not apply.
+
+    `by_category` is the same deduction split by the category it was taken
+    from, unrounded: a fixed discount's take from each subtotal, a percentage
+    one's `before − after` per category. Recorded in the pass that computes the
+    total, so a per-category reading can never describe a different evaluation
+    (design export-revenue D5)."""
 
     name: str
     effect: dict
     applied: bool
     deducted: int
+    by_category: dict[str, Decimal]
 
 
 class DiscountBreakdown(NamedTuple):
@@ -121,12 +128,13 @@ def _condition_met(condition: dict, *, discipline_count: int, at: datetime.date)
     return False
 
 
-def _apply_fixed(subtotals: dict[str, Decimal], scope: list[str], value: int) -> int:
+def _apply_fixed(subtotals: dict[str, Decimal], scope: list[str], value: int) -> dict[str, Decimal]:
     """Subtract up to `value` from the scoped subtotals, floored at zero,
     consuming categories in canonical order so the result is deterministic.
-    Returns the amount actually deducted, which is `value` unless the scoped
-    subtotals floor it first."""
+    Returns what was taken from each category; their sum is `value` unless the
+    scoped subtotals floor it first."""
     remaining = Decimal(value)
+    takes: dict[str, Decimal] = {}
     for category in _CATEGORY_ORDER:
         if category not in scope or remaining <= 0:
             continue
@@ -134,7 +142,8 @@ def _apply_fixed(subtotals: dict[str, Decimal], scope: list[str], value: int) ->
         if take > 0:
             subtotals[category] -= take
             remaining -= take
-    return value - int(remaining)
+            takes[category] = take
+    return takes
 
 
 def _itemized_selection_breakdown(
@@ -177,6 +186,7 @@ def _itemized_selection_breakdown(
         for d in discounts
     ]
     deducted: list[int] = [0] * len(discounts)
+    by_category: list[dict[str, Decimal]] = [{} for _ in discounts]
 
     for i, discount in enumerate(discounts):
         if not met[i]:
@@ -185,7 +195,8 @@ def _itemized_selection_breakdown(
         if effect.get("kind") == "fixed":
             scope = discount.get("scope") or [DISCIPLINE_CATEGORY]
             value = (effect.get("value_eur") if which == "eur" else effect.get("value")) or 0
-            deducted[i] = _apply_fixed(subtotals, scope, value)
+            by_category[i] = _apply_fixed(subtotals, scope, value)
+            deducted[i] = int(sum(by_category[i].values(), Decimal(0)))
     for i, discount in enumerate(discounts):
         if not met[i]:
             continue
@@ -193,12 +204,14 @@ def _itemized_selection_breakdown(
         if effect.get("kind") == "percent":
             scope = discount.get("scope") or [DISCIPLINE_CATEGORY]
             factor = (Decimal(100) - Decimal(effect.get("value", 0))) / Decimal(100)
-            before = sum((subtotals[c] for c in scope if c in subtotals), Decimal(0))
             for category in scope:
                 if category in subtotals:
+                    before = subtotals[category]
                     subtotals[category] *= factor
-            after = sum((subtotals[c] for c in scope if c in subtotals), Decimal(0))
-            deducted[i] = int((before - after).quantize(Decimal("1"), rounding=ROUND_HALF_UP))
+                    if before != subtotals[category]:
+                        by_category[i][category] = before - subtotals[category]
+            taken = sum(by_category[i].values(), Decimal(0))
+            deducted[i] = int(taken.quantize(Decimal("1"), rounding=ROUND_HALF_UP))
 
     outcomes = [
         DiscountOutcome(
@@ -206,6 +219,7 @@ def _itemized_selection_breakdown(
             effect=discount.get("effect", {}),
             applied=met[i],
             deducted=deducted[i],
+            by_category=by_category[i],
         )
         for i, discount in enumerate(discounts)
     ]
@@ -413,6 +427,105 @@ def registration_discounts(
         at=_priced_on(registration, tournament),
         team_disciplines=team_disciplines,
     )
+
+
+# the categories a legacy-priced tournament bills its flat-fee extras under,
+# so that a reader groups them with the item categories they became
+LEGACY_RENTAL = ExtraCategory.RENTAL.value
+LEGACY_AFTERPARTY = ExtraCategory.AFTERPARTY.value
+
+
+class PricedPiece(NamedTuple):
+    """Pieces of one thing a registration is billed for, at one unit price, in
+    the local currency.
+
+    `subject` is the discipline (an individual entry, or one team entered in a
+    team discipline) or the extra item. It is None on a legacy tournament's
+    flat-fee rental or afterparty, which bills no item; `category` then says
+    which of the two it is."""
+
+    category: str
+    subject: Discipline | ExtraItem | None
+    unit_price: int
+    qty: int
+
+
+class CategoryDeduction(NamedTuple):
+    """What one configured discount took from one category of a registration,
+    in whole local-currency units. `position` is the discount's place in the
+    tournament's configured list, which is what tells two discounts apart."""
+
+    position: int
+    category: str
+    deducted: int
+
+
+class Breakdown(NamedTuple):
+    pieces: list[PricedPiece]
+    deductions: list[CategoryDeduction]
+
+
+def _whole_deductions(outcomes: list[DiscountOutcome], target: int) -> list[CategoryDeduction]:
+    """The per-category deductions in whole units, summing to `target`.
+
+    A percentage leaves fractions in each category it reaches, and the total is
+    rounded once, at the end. Rounding each fraction on its own could leave the
+    lines a unit away from the total they explain, so the units are handed out
+    by largest remainder: every cell is floored, and the units still missing go
+    to the cells whose fractions were largest, earliest first on a tie."""
+    cells = [
+        (index, category, amount)
+        for index, outcome in enumerate(outcomes)
+        if outcome.applied
+        for category, amount in outcome.by_category.items()
+    ]
+    floors = [int(amount) for _, _, amount in cells]
+    missing = target - sum(floors)
+    by_fraction = sorted(
+        range(len(cells)), key=lambda cell: cells[cell][2] - floors[cell], reverse=True
+    )
+    for cell in by_fraction[: max(missing, 0)]:
+        floors[cell] += 1
+    return [
+        CategoryDeduction(index, category, whole)
+        for (index, category, _), whole in zip(cells, floors, strict=True)
+        if whole
+    ]
+
+
+def registration_breakdown(registration: Registration, tournament: Tournament) -> Breakdown:
+    """What a persisted registration's local total is made of: the pieces it is
+    billed for at their unit prices, and what each discount took from each
+    category — evaluated at `_priced_on`, over the selection
+    `registration_total` prices, so that the pieces less the deductions are its
+    local total.
+
+    Local lane only: a line of the revenue values every registration at its
+    local price, whatever lane it settled in (design export-revenue D4).
+
+    Empty where the registration is billed nothing — every placement it holds
+    sits in a queue, so its extras are not billed either."""
+    active, extras, team_disciplines = _registration_selection(registration)
+    if not active and not team_disciplines:
+        return Breakdown([], [])
+    at = _priced_on(registration, tournament)
+    pieces = [
+        PricedPiece(DISCIPLINE_CATEGORY, d, discipline_fee(tournament, d, at), 1)
+        for d in [*active, *team_disciplines]
+    ]
+    if not uses_itemized_pricing(tournament):
+        if registration.weapon_rentals:
+            fee = weapon_rental_fee(tournament, at)
+            pieces.append(PricedPiece(LEGACY_RENTAL, None, fee, len(registration.weapon_rentals)))
+        if registration.afterparty:
+            pieces.append(PricedPiece(LEGACY_AFTERPARTY, None, afterparty_fee(tournament, at), 1))
+        return Breakdown(pieces, [])
+    pieces += [PricedPiece(item.category.value, item, item.price or 0, qty) for item, qty in extras]
+    total, outcomes = _itemized_selection_breakdown(
+        tournament, active, extras, at, "local", team_disciplines
+    )
+    gross = sum(piece.unit_price * piece.qty for piece in pieces)
+    return Breakdown(pieces, _whole_deductions(outcomes, gross - total))
 
 
 def registration_total(registration: Registration, tournament: Tournament) -> Totals:

@@ -1,8 +1,17 @@
+import { IconCopy, IconFileTypePdf, IconFileTypePng, IconRefresh } from "@tabler/icons-react";
 import { useTranslation } from "react-i18next";
+
+import type { RosterFormat } from "../api";
+import HintedAction from "./HintedAction";
+
+const PRINT_ICONS = { pdf: IconFileTypePdf, png: IconFileTypePng } as const;
 
 /** The rail card acting on the open export tab: its active-only switch (on
  *  every tab but the summary), the copy, and — on a discipline — the seeding
- *  order and the ratings refresh.
+ *  order, the PDF and PNG of its roster, and the ratings refresh.
+ *
+ *  The copy, the ratings refresh and the printouts stand in one row of icons,
+ *  each its own hint marker, as the export card's actions do.
  *
  *  Headed by the tab's name, so the organizer sees which table a switch or a
  *  copy acts on without looking back at the band. The outcome of either action
@@ -13,6 +22,7 @@ export default function TableOperations({
   active,
   seeded,
   onCopy,
+  print,
   onRefreshRatings,
   refreshing,
   ratingsMessage,
@@ -26,6 +36,10 @@ export default function TableOperations({
    *  only, and independent of the active-only switch. */
   seeded?: { checked: boolean; onChange: (seeded: boolean) => void };
   onCopy: () => void;
+  /** Offered on a discipline tab only: the roster typeset to a file.
+   *  `printing` is the format being typeset, whose button waits, with no
+   *  spinner. */
+  print?: { onPrint: (format: RosterFormat) => void; printing: RosterFormat | null };
   /** Offered on a discipline tab only, where the ratings being read are. */
   onRefreshRatings?: () => void;
   refreshing: boolean;
@@ -58,23 +72,58 @@ export default function TableOperations({
           <span>{t("export.seedByRating")}</span>
         </label>
       )}
-      <button type="button" className="secondary param-save" onClick={onCopy}>
-        {t("export.copy")}
-      </button>
-      {onRefreshRatings && (
-        <>
-          <button
-            type="button"
-            className="secondary param-save"
-            disabled={refreshing}
-            onClick={onRefreshRatings}
-          >
-            {refreshing ? t("common.loading") : t("export.fetchRatings")}
-          </button>
-          <p className="rail-hint">{t("export.refreshesTournament")}</p>
-          {ratingsMessage && <p className="rail-hint">{ratingsMessage}</p>}
-        </>
-      )}
+      <div className="export-actions">
+        <HintedAction hint={t("export.hints.copy")}>
+          {(hintId) => (
+            <button
+              type="button"
+              className="icon-action"
+              aria-describedby={hintId}
+              onClick={onCopy}
+            >
+              <IconCopy size={18} stroke={1.5} />
+              <span className="visually-hidden">{t("export.copy")}</span>
+            </button>
+          )}
+        </HintedAction>
+        {onRefreshRatings && (
+          <HintedAction hint={t("export.hints.fetchRatings")}>
+            {(hintId) => (
+              <button
+                type="button"
+                className="icon-action"
+                disabled={refreshing}
+                aria-describedby={hintId}
+                onClick={onRefreshRatings}
+              >
+                <IconRefresh size={18} stroke={1.5} />
+                <span className="visually-hidden">{t("export.fetchRatings")}</span>
+              </button>
+            )}
+          </HintedAction>
+        )}
+        {print &&
+          (["pdf", "png"] as const).map((format) => {
+            const Icon = PRINT_ICONS[format];
+            return (
+              <HintedAction key={format} hint={t(`export.hints.${format}`)}>
+                {(hintId) => (
+                  <button
+                    type="button"
+                    className="icon-action"
+                    disabled={print.printing === format}
+                    aria-describedby={hintId}
+                    onClick={() => print.onPrint(format)}
+                  >
+                    <Icon size={18} stroke={1.5} />
+                    <span className="visually-hidden">{t(`export.${format}`)}</span>
+                  </button>
+                )}
+              </HintedAction>
+            );
+          })}
+      </div>
+      {ratingsMessage && onRefreshRatings && <p className="rail-hint">{ratingsMessage}</p>}
       {message && <p className="rail-hint">{message}</p>}
     </section>
   );

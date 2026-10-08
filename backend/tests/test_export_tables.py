@@ -239,7 +239,8 @@ def test_the_band_is_derived_from_the_tournament(client, auth_headers):
         ("discipline", "SA"),
         ("category", "rental"),  # goods before programme
         ("category", "merch"),
-        ("summary", ""),  # last, whatever the tournament offers
+        ("summary", ""),
+        ("revenue", ""),  # last, whatever the tournament offers
     ]
 
 
@@ -433,8 +434,9 @@ def test_every_tab_states_how_many_it_lists(client, auth_headers):
         ("discipline", "LS"): (2, 0),
         ("discipline", "SA"): (0, 0),
         ("category", "merch"): (1, 0),
-        # the summary lists an offer, not a population
+        # the summary and the revenue list an offer, not a population
         ("summary", ""): (None, 0),
+        ("revenue", ""): (None, 0),
     }
 
 
@@ -475,13 +477,14 @@ def test_a_discipline_counts_its_queue_apart_from_its_seats():
     assert exporttables.tab_counts(rows, fencers) == (4, 0)
 
 
-def test_the_summary_is_a_tab_but_not_a_fencer_table(client, auth_headers):
+def test_the_summary_and_the_revenue_are_tabs_but_not_fencer_tables(client, auth_headers):
     organizer = organizer_with_tournament(client, auth_headers)
 
-    assert tabs(client, organizer)[-1]["kind"] == "summary"
-    response = client.get(
-        "/api/tournaments/cup/export/table",
-        params={"kind": "summary", "key": ""},
-        headers=organizer,
-    )
-    assert response.status_code == 404
+    assert [tab["kind"] for tab in tabs(client, organizer)][-2:] == ["summary", "revenue"]
+    for kind in ("summary", "revenue"):
+        response = client.get(
+            "/api/tournaments/cup/export/table",
+            params={"kind": kind, "key": ""},
+            headers=organizer,
+        )
+        assert response.status_code == 404

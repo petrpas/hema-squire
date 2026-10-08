@@ -6,6 +6,7 @@ import type { SheetRow } from "../api";
 import ExportPanel, { offersEnglishTick } from "../ExportPanel";
 import i18n from "../i18n";
 import { FENCERS_COLUMNS, ITEM_COLUMNS, ROSTER_COLUMNS, selectionsOf, toTsv } from "./columns";
+import ExportTables from "./ExportTables";
 import FencersTable from "./FencersTable";
 import ItemsTable from "./ItemsTable";
 import { activeOnly, rosterOrder, seedingOrder } from "./ordering";
@@ -345,16 +346,46 @@ describe("the rail card of the open tab", () => {
 });
 
 describe("the Export card", () => {
-  it("carries the English tick beside what leaves the phase", async () => {
+  it("is headed as exporting everything and offers the JSON download", async () => {
     await i18n.changeLanguage("cs");
     try {
+      const cs = i18n.getFixedT("cs");
       const html = renderToStaticMarkup(
-        <ExportPanel slug="cup" english={false} onEnglishChange={() => {}} />,
+        <ExportPanel slug="cup" english={false} finances={false} onFinancesChange={() => {}} />,
       );
-      expect(html).toContain(i18n.getFixedT("cs")("export.english"));
+      expect(html).toContain(cs("export.title"));
       // The Sheets control waits on the server's configuration, which a static
       // render never fetches; what it writes to is `sheetWizard.test.tsx`.
-      expect(html).toContain(i18n.getFixedT("cs")("export.downloadJson"));
+      expect(html).toContain(cs("export.downloadJson"));
+      // the English tick stands above this card, not in it
+      expect(html).not.toContain(cs("export.english"));
+    } finally {
+      await i18n.changeLanguage("en");
+    }
+  });
+});
+
+describe("the English tick", () => {
+  it("stands in the rail above both cards", async () => {
+    await i18n.changeLanguage("cs");
+    try {
+      const cs = i18n.getFixedT("cs");
+      const html = renderToStaticMarkup(
+        <ExportTables
+          slug="cup"
+          edits={[]}
+          english={false}
+          onEnglishChange={() => {}}
+          onChanged={() => {}}
+          revision={0}
+          renderRail={(panel) => <aside>{panel}</aside>}
+        />,
+      );
+      const rail = new DOMParser().parseFromString(html, "text/html").querySelector("aside");
+      const first = rail?.firstElementChild;
+      expect(first?.tagName).toBe("LABEL");
+      expect(first?.textContent).toBe(cs("export.english"));
+      expect(rail?.querySelector(".rail-card label")?.textContent).not.toBe(cs("export.english"));
     } finally {
       await i18n.changeLanguage("en");
     }
