@@ -564,6 +564,13 @@
       "logoUpload": "Nahrát logo",
       "logoRemove": "Odebrat logo",
       "logoHint": "PNG nebo JPG, do 8 MB",
+      "coverTint": "Barva pruhu",
+      "coverTintFollows": "Podle loga ({{tint}})",
+      "coverTintName": {
+        "blue": "modrá",
+        "green": "zelená",
+        "yellow": "žlutá"
+      },
       "logoTooLarge": "Obrázek je příliš velký (max 8 MB).",
       "logoUnsupportedFormat": "Tento soubor není podporovaný formát obrázku.",
       "logoNotAuthorized": "Nemáš oprávnění nahrát logo tohoto turnaje.",

@@ -1,4 +1,4 @@
-import { logoUrl } from "./api";
+import { type CoverTint, logoUrl } from "./api";
 import { monogram } from "./monogram";
 import { slugHash } from "./slugHash";
 
@@ -9,18 +9,19 @@ export interface CoverSubject {
   display_name: string;
   has_logo: boolean;
   logo_tint: "blue" | "green" | "warm" | null;
+  cover_tint: CoverTint | null;
   short_code: string | null;
 }
 
-type Tint = "blue" | "green" | "yellow";
-
-const SLUG_TINTS: readonly Tint[] = ["blue", "green", "yellow"];
+const SLUG_TINTS: readonly CoverTint[] = ["blue", "green", "yellow"];
 
 /** The cover's tint (spec `fencer-home`, A card's cover tint follows its
- *  logo): the logo's hue band where it has one — the warm band wears the only
- *  warm tint, form-yellow — and otherwise one chosen from the slug, so the
- *  same tournament wears the same cover on its card and on its page. */
-export function coverTint(subject: CoverSubject): Tint {
+ *  logo): the one the organizer chose where they chose one; else the logo's
+ *  hue band where it has one — the warm band wears the only warm tint,
+ *  form-yellow — and otherwise one chosen from the slug, so the same
+ *  tournament wears the same cover on its card and on its page. */
+export function coverTint(subject: CoverSubject): CoverTint {
+  if (subject.cover_tint) return subject.cover_tint;
   if (subject.logo_tint === "warm") return "yellow";
   if (subject.logo_tint !== null) return subject.logo_tint;
   return SLUG_TINTS[slugHash(subject.slug) % SLUG_TINTS.length] ?? "blue";

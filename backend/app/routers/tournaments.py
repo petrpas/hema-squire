@@ -319,6 +319,7 @@ def _fencer_tournament_out(
         subtitle=tournament.subtitle,
         has_logo=tournament.has_logo,
         logo_tint=tournament.logo_tint if tournament.has_logo else None,
+        cover_tint=tournament.cover_tint,
         short_code=tournament.short_code,
         date=tournament.date,
         city=tournament.city,

@@ -38,7 +38,7 @@ from sqlalchemy.sql.elements import ColumnElement
 
 from app import constraints, taxonomy
 from app.db import Base
-from app.logo_tint import LogoBand
+from app.logo_tint import CoverTint, LogoBand
 
 
 class Role(enum.StrEnum):
@@ -273,6 +273,10 @@ class Tournament(Base):
     # cleared with the logo; null for no logo or an achromatic one. Chooses the
     # card's cover tint among the three pastel tokens (spec tournament-admin)
     logo_tint: Mapped[LogoBand | None] = mapped_column(String(10))
+    # the cover tint the organizer chose, which wins over the logo's band and
+    # outlives the logo; null follows the logo, then the slug (spec
+    # tournament-admin, The organizer chooses the cover tint)
+    cover_tint: Mapped[CoverTint | None] = mapped_column(String(10))
     # what the card's plate reads where there is no logo, set by the organizer
     # only where the monogram derived from the name will not do; null follows
     # the name (spec tournament-admin, Tournament short code)

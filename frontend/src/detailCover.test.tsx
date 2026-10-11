@@ -33,6 +33,7 @@ function detail(over: Partial<FencerTournament> = {}): FencerTournament {
     short_code: null,
     has_logo: false,
     logo_tint: null,
+    cover_tint: null,
     date: "2026-11-20",
     city: null,
     address: null,

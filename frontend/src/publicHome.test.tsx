@@ -42,6 +42,7 @@ function tournament(slug: string, over: Partial<OpenTournament> = {}): OpenTourn
     subtitle: null,
     has_logo: false,
     logo_tint: null,
+    cover_tint: null,
     short_code: null,
     date: "2026-09-20",
     city: null,

@@ -5003,3 +5003,22 @@ tr.export-line td {
   justify-content: space-between;
   gap: 1rem;
 }
+
+/* A small square of a cover tint beside its option in Setup, so the choice
+   is made by sight as well as by name. */
+.tint-swatch {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  border: var(--border-w) solid var(--hairline-strong);
+  border-radius: var(--radius-chip);
+  background: var(--file-blue);
+}
+
+.tint-swatch[data-tint="green"] {
+  background: var(--seal-green);
+}
+
+.tint-swatch[data-tint="yellow"] {
+  background: var(--form-yellow);
+}

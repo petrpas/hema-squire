@@ -1,15 +1,23 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { ApiError, api, type SetupSuggestions, type TournamentDetail } from "../api";
+import {
+  ApiError,
+  api,
+  type CoverTint,
+  type SetupSuggestions,
+  type TournamentDetail,
+} from "../api";
 import FieldError, { invalidProps } from "../FieldError";
 import HelpHint from "../HelpHint";
 import SuggestionAnchor from "../SuggestionAnchor";
 import SuggestionList from "../SuggestionList";
 import { plainEntries } from "../suggestions";
+import { coverTint as coverTintOf } from "../TournamentCover";
 import { useFieldValidation } from "../useFieldValidation";
 import { useSuggestions } from "../useSuggestions";
 import { apiErrors, checkString, type FieldError as FieldErrorValue } from "../validation";
+import CoverTintField from "./CoverTintField";
 import LogoControl from "./LogoControl";
 import ShortCodeField, { shortCodeCheck, shortCodePatch, shortCodeShown } from "./ShortCodeField";
 import { type SaverRegistry, useSectionSaver } from "./shared";
@@ -87,6 +95,7 @@ export function IdentitySection({
 }) {
   const { t } = useTranslation();
   const [values, setValues] = useState<Record<string, string>>({});
+  const [coverTint, setCoverTint] = useState<CoverTint | null>(null);
   const [qualificationOpen, setQualificationOpen] = useState(true);
   const [qualificationCriteria, setQualificationCriteria] = useState("");
   const [dirty, setDirty] = useState(false);
@@ -151,6 +160,7 @@ export function IdentitySection({
     }
     setValues(next);
     setShortCode(detail.short_code);
+    setCoverTint(detail.cover_tint);
     setQualificationOpen(detail.qualification_open);
     setQualificationCriteria(detail.qualification_criteria ?? "");
     validation.clearAll();
@@ -191,6 +201,7 @@ export function IdentitySection({
           patch[field.key] = raw === "" ? null : raw;
         }
         patch.short_code = shortCodePatch(shortCode, displayName);
+        patch.cover_tint = coverTint;
         patch.qualification_open = qualificationOpen;
         patch.qualification_criteria = qualificationOpen ? null : qualificationCriteria || null;
         await api.updateTournament(slug, patch);
@@ -284,6 +295,15 @@ export function IdentitySection({
     <section className="rail-card">
       <div className="form-fields">{IDENTITY_RUN_1.map(renderField)}</div>
       <LogoControl slug={slug} hasLogo={detail.has_logo} onSaved={onSaved} />
+      <CoverTintField
+        slug={slug}
+        value={coverTint}
+        followed={coverTintOf({ ...detail, cover_tint: null })}
+        onChange={(value) => {
+          setCoverTint(value);
+          setDirty(true);
+        }}
+      />
       <ShortCodeField
         value={shortCodeValue}
         error={validation.errors.short_code}

@@ -1124,9 +1124,9 @@ It SHALL be changeable at any time, before and after seating settles and after p
 - **THEN** the next matching pass seats that fencer
 
 ### Requirement: A logo's hue band is recorded on upload
-When a logo is uploaded the system SHALL derive and store the logo's hue band, one of `blue`, `green` or `warm`, or none. The band is read from the logo's opaque pixels whose color is saturated and neither near-white nor near-black; each such pixel votes for the band its hue falls in, weighted by its saturation, and the band with the greatest weight wins. Hues from cyan through violet are `blue`, from yellow-green through teal are `green`, and the rest — magenta, pink, red, orange and yellow — are `warm`. Where such pixels make up less than a tenth of the opaque pixels, the logo is achromatic and the band is none.
+When a logo is uploaded the system SHALL derive and store the logo's hue band, one of `blue`, `green` or `warm`, or none. The band is read from the logo's opaque pixels whose color is saturated and neither near-white nor near-black; each such pixel votes for the band its hue falls in, weighted by its saturation, and the band with the greatest weight wins. Hues from cyan through violet are `blue`, from yellow-green through teal are `green`, and the rest — magenta, pink, red, orange and yellow — are `warm`. A light pixel with no color is the logo's ground — a white or grey field, often textured — and SHALL count neither as a vote nor toward the logo's own pixels. Where voting pixels make up less than a tenth of the logo's own pixels (opaque and not ground), the logo is achromatic and the band is none.
 
-Deleting the logo SHALL clear the band. A logo stored before this requirement SHALL have its band derived once from the stored image. The band SHALL be carried on each entry of the public tournament list; it states a property of a public image and nothing about any caller.
+Deleting the logo SHALL clear the band. A logo stored before this requirement, or before the ground was set apart, SHALL have its band derived once from the stored image. The band SHALL be carried on each entry of the public tournament list; it states a property of a public image and nothing about any caller.
 
 #### Scenario: A green crest
 - **WHEN** an organizer uploads a logo that is mostly a saturated green shield on a transparent ground
@@ -1140,9 +1140,30 @@ Deleting the logo SHALL clear the band. A logo stored before this requirement SH
 - **WHEN** the uploaded logo is black lettering on white with no saturated pixels
 - **THEN** no band is stored
 
+#### Scenario: A logo on a grey field
+- **WHEN** the uploaded logo is red and blue figures on a light grey field that covers most of the image
+- **THEN** the band is read from the figures, the grey field counting for nothing
+
 #### Scenario: Logo removed
 - **WHEN** the organizer deletes the logo
 - **THEN** no band is stored
+
+### Requirement: The organizer chooses the cover tint
+Beside the logo in Setup the organizer SHALL be offered the cover tint the tournament's card and detail wear (`fencer-home`), as one choice among: following the logo, the file-blue tint, the seal-green tint and the form-yellow tint. Following the logo is the default, and its option SHALL name the tint it gives now. A chosen tint SHALL win over the logo's band and over the slug, SHALL outlive a change or removal of the logo, and SHALL be saved with the rest of the tournament's identity. Choosing to follow the logo again SHALL clear it.
+
+Only the three tint tokens SHALL be offered: the cover renders no color from anywhere else (`design-system`).
+
+#### Scenario: A tricolour event
+- **WHEN** the organizer of a tournament whose red-white-blue logo reads as warm chooses the file-blue tint and saves
+- **THEN** its card and detail cover wear the file-blue tint
+
+#### Scenario: Back to the logo
+- **WHEN** the organizer chooses to follow the logo again and saves
+- **THEN** the cover wears the tint the logo's band gives, or the slug's where it has none
+
+#### Scenario: Choice kept through a new logo
+- **WHEN** the organizer who chose the seal-green tint uploads a different logo
+- **THEN** the cover still wears the seal-green tint
 
 ### Requirement: Tournament short code
 A tournament MAY carry a short code of one to three visible characters, set by its organizer in the tournament settings under the label "Zkratka" with a help hint stating it is shown where the tournament has no logo. It is optional and not part of mandatory setup.

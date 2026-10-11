@@ -444,6 +444,8 @@ class TournamentUpdate(BaseModel):
     # name; the form sends null for a value equal to that monogram, so a
     # rename keeps updating it
     short_code: TournamentShortCodeStr | None = None
+    # null returns the cover to following the logo
+    cover_tint: Literal["blue", "green", "yellow"] | None = None
     date: datetime.date | None = None
     language: str | None = None
     city: TournamentCityStr | None = None
@@ -646,6 +648,7 @@ class TournamentOut(BaseModel):
     short_code: str | None = None
     has_logo: bool
     logo_tint: Literal["blue", "green", "warm"] | None = None
+    cover_tint: Literal["blue", "green", "yellow"] | None = None
     date: datetime.date
     language: str
     owner_id: int | None
@@ -788,6 +791,7 @@ class FencerTournamentOut(BaseModel):
     short_code: str | None = None
     has_logo: bool
     logo_tint: Literal["blue", "green", "warm"] | None = None
+    cover_tint: Literal["blue", "green", "yellow"] | None = None
     date: datetime.date
     city: str | None
     address: str | None
@@ -1279,6 +1283,7 @@ class OpenTournamentOut(BaseModel):
     # the logo's hue band, choosing the card's cover tint among the three
     # pastel tokens; null without a logo or for an achromatic one
     logo_tint: Literal["blue", "green", "warm"] | None = None
+    cover_tint: Literal["blue", "green", "yellow"] | None = None
     # the organizer's override for the plate's monogram; null derives it
     short_code: str | None = None
     date: datetime.date

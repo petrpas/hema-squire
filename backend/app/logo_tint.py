@@ -12,14 +12,23 @@ from PIL import Image
 
 LogoBand = Literal["blue", "green", "warm"]
 
+# The cover tints an organizer may choose outright, overriding the band; null
+# follows the logo (spec tournament-admin, The organizer chooses the cover
+# tint). Named for the tint rendered, where the band is named for the hue read.
+CoverTint = Literal["blue", "green", "yellow"]
+
 # a pixel votes only when it carries a color: transparent, grey, near-white
 # and near-black pixels are the logo's ground and lettering, not its color
 _MIN_ALPHA = 128
 _MIN_SATURATION = 0.25
 _MIN_VALUE = 0.2
 _MAX_VALUE = 0.97
-# under this share of voting pixels among the opaque ones the logo is
-# achromatic, and the card falls back to the slug
+# a light pixel with no color is the logo's ground — a white or grey field,
+# often textured — and is not counted at all: a logo drawn on a grey card is
+# no less colored for the card around it
+_GROUND_MIN_VALUE = 0.7
+# under this share of voting pixels among the logo's own pixels (opaque, and
+# not ground) the logo is achromatic, and the card falls back to the slug
 _MIN_COLORED_SHARE = 0.1
 _SAMPLE = 32
 
@@ -35,7 +44,8 @@ def _band(hue_degrees: float) -> LogoBand:
 
 def logo_hue_band(image: Image.Image) -> LogoBand | None:
     """The band the logo's saturated pixels vote for, each weighted by its
-    saturation, or None where too few of them carry a color."""
+    saturation, or None where too few of the logo's own pixels carry a
+    color."""
     sample = image.convert("RGBA")
     sample.thumbnail((_SAMPLE, _SAMPLE))
     weights: dict[LogoBand, float] = {"blue": 0.0, "green": 0.0, "warm": 0.0}
@@ -48,8 +58,10 @@ def logo_hue_band(image: Image.Image) -> LogoBand | None:
         red, green, blue, alpha = pixel
         if alpha < _MIN_ALPHA:
             continue
-        opaque += 1
         hue, saturation, value = colorsys.rgb_to_hsv(red / 255, green / 255, blue / 255)
+        if saturation < _MIN_SATURATION and value >= _GROUND_MIN_VALUE:
+            continue
+        opaque += 1
         if saturation < _MIN_SATURATION or not _MIN_VALUE <= value <= _MAX_VALUE:
             continue
         colored += 1

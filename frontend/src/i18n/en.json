@@ -549,6 +549,13 @@
       "logoUpload": "Upload logo",
       "logoRemove": "Remove logo",
       "logoHint": "PNG or JPG, up to 8 MB",
+      "coverTint": "Cover colour",
+      "coverTintFollows": "Follow the logo ({{tint}})",
+      "coverTintName": {
+        "blue": "blue",
+        "green": "green",
+        "yellow": "yellow"
+      },
       "logoTooLarge": "That image is too large (max 8 MB).",
       "logoUnsupportedFormat": "That file is not a supported image format.",
       "logoNotAuthorized": "You are not authorized to upload this tournament's logo.",

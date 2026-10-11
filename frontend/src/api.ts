@@ -137,6 +137,9 @@ export const TOURNAMENT_FEATURES = [
   "feature_extras",
 ] as const satisfies readonly (keyof TournamentFlags)[];
 
+/** The three pastel tints a tournament's cover may wear (spec fencer-home). */
+export type CoverTint = "blue" | "green" | "yellow";
+
 export interface Tournament extends TournamentFlags {
   slug: string;
   display_name: string;
@@ -147,6 +150,9 @@ export interface Tournament extends TournamentFlags {
   /** The logo's hue band, choosing the cover tint; null without a logo or
    *  for an achromatic one. */
   logo_tint: "blue" | "green" | "warm" | null;
+  /** The cover tint the organizer chose, winning over the logo's band; null
+   *  follows the logo. */
+  cover_tint: CoverTint | null;
   date: string;
   language: string;
   owner_id: number | null;
@@ -487,6 +493,7 @@ type FencerTournamentFace = Pick<
   | "short_code"
   | "has_logo"
   | "logo_tint"
+  | "cover_tint"
   | "date"
   | "city"
   | "address"
@@ -797,6 +804,8 @@ export interface OpenTournament {
   /** The logo's hue band, choosing the card's cover tint among the three
    *  pastel tokens; null without a logo or for an achromatic one. */
   logo_tint: "blue" | "green" | "warm" | null;
+  /** The cover tint the organizer chose; null follows the logo. */
+  cover_tint: CoverTint | null;
   /** What the plate reads where there is no logo, when the organizer set it;
    *  null derives the monogram from the name. */
   short_code: string | null;
