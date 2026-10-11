@@ -115,7 +115,7 @@ A revealed hint SHALL be legible in full, above every element it overlaps — in
 - **THEN** the whole hint box is readable above those headers, with no part of it hidden behind them
 
 ### Requirement: Button hierarchy
-Each screen SHALL have at most one primary button (filled `--stamp`, uppercase text, `--paper` text color, 2px radius). Secondary buttons SHALL be outlined (`1px solid var(--ink)`, `--ink` text). Tertiary actions SHALL be underlined text with no frame. All button and in-text link labels SHALL be verbs or verb phrases naming the action, never generic labels like "OK" or "Submit", and in-text links SHALL be `--ink` with underline, never the browser default blue.
+Each screen SHALL have at most one primary button (filled `--stamp`, uppercase text, `--paper` text color, `--radius-pill`). Secondary buttons SHALL be outlined (`1px solid var(--ink)`, `--ink` text) at `--radius-pill`. `--radius-pill` is 2px in the day skin, so the console's buttons are unchanged; in the night skin every button is a pill. Tertiary actions SHALL be underlined text with no frame. All button and in-text link labels SHALL be verbs or verb phrases naming the action, never generic labels like "OK" or "Submit", and in-text links SHALL be `--ink` with underline, never the browser default blue.
 
 #### Scenario: Screen with a primary action
 - **WHEN** a screen is rendered
@@ -124,6 +124,10 @@ Each screen SHALL have at most one primary button (filled `--stamp`, uppercase t
 #### Scenario: Labeling a submit action
 - **WHEN** a registration form's submit button is rendered
 - **THEN** its label is a verb phrase describing the action (e.g. "Register fencer"), not "Submit" or "OK"
+
+#### Scenario: A button on each side
+- **WHEN** the registration form's submit button is shown on a tournament's public detail and a console save button is shown in Setup
+- **THEN** the first is a pill and the second keeps its 2px corners
 
 ### Requirement: Destructive actions
 An action that ends or rewrites something the user already holds — cancelling a registration, amending one that is already reserved or paid — SHALL be presented as a destructive control: outlined in `--stamp` with `--stamp` text, never filled, so it stays distinct from the screen's single primary button and adds no second saturated color.
@@ -270,7 +274,7 @@ The system SHALL have two skins, day and night, that differ only in the values o
 
 A role token introduced for the night skin SHALL also be defined on `:root` with a day value that renders the day skin exactly as it rendered before the token existed, so introducing it changes no organizer screen.
 
-The night skin SHALL apply to every screen rendered under the fencer layout — the tournament list, a tournament's detail and all of its tabs, and the sign-in screen when the fencer layout renders it — and to the Profile page and the not-found screen. Organizer and admin screens (the picker, the console, the admin panel) SHALL stay day. The skin follows the route, not the role: an organizer reading the public list sees night. The skin SHALL NOT follow `prefers-color-scheme` and SHALL offer no toggle.
+The night skin SHALL apply to every screen rendered under the fencer layout — the tournament list, a tournament's detail and all of its tabs, and the sign-in screen when the fencer layout renders it — and to the Profile page and the not-found screen. Organizer and admin screens (the picker, the console, the admin panel) SHALL stay day, with one exception: the console's preview of the public page wears the night skin on its own panel, since what it previews is a night screen (`setup-preview`). The skin follows the route, not the role: an organizer reading the public list sees night. The skin SHALL NOT follow `prefers-color-scheme` and SHALL offer no toggle.
 
 The night root SHALL declare `color-scheme: dark`, so native controls and scrollbars match, and SHALL paint `--paper` at least to the viewport's full height, so no day paper shows on overscroll or below short content.
 
@@ -284,7 +288,7 @@ In the night skin `--ink-faded` SHALL be used only on `--paper`, `--paper-raised
 
 #### Scenario: An organizer screen renders day
 - **WHEN** the tournament picker, a console phase or the admin panel is rendered
-- **THEN** no ancestor of it carries `data-skin="night"`, and it is pixel-identical to its rendering before the night skin existed
+- **THEN** no ancestor of it carries `data-skin="night"`, and it is pixel-identical to its rendering before the night skin existed; the Setup preview panel alone carries the attribute, on itself
 
 #### Scenario: An organizer reads the public list
 - **WHEN** an account that organizes tournaments opens the tournament list
@@ -296,7 +300,7 @@ In the night skin `--ink-faded` SHALL be used only on `--paper`, `--paper-raised
 
 #### Scenario: No component knows the skin
 - **WHEN** the frontend source is searched for code that reads `data-skin` or branches on the active skin
-- **THEN** the only occurrences are the attributes that set it on a layout root and the selector in `tokens.css`
+- **THEN** the only occurrences are the attributes that set it on a layout root or the preview panel, and the selector in `tokens.css`
 
 #### Scenario: Auditing for stray values with two skins
 - **WHEN** the codebase is searched for hex color literals outside `tokens.css`
