@@ -100,7 +100,7 @@ const DETAIL = {
 } as unknown as FencerTournament;
 
 const AVAILABILITY = [
-  { slug: "LS", kind: "individual", capacity: 20, taken: 1, free: 19, queue_length: 0 },
+  { slug: "LS", kind: "individual", capacity: 20, taken: 1, entered: 1, free: 19, queue_length: 0 },
 ] as unknown as Availability[];
 
 function detailApi(over: Partial<FencerTournament> = {}) {

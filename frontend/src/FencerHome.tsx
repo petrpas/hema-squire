@@ -160,7 +160,7 @@ function TournamentCard({
         <div className="chips">
           {tournament.disciplines.map((d) => (
             <span key={d.slug} className="chip">
-              {d.name} {d.taken}/{d.capacity}
+              {d.name} {d.entered}/{d.capacity}
               {d.queue_length > 0 ? ` (+${d.queue_length})` : ""}
             </span>
           ))}

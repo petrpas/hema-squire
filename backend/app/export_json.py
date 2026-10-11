@@ -44,7 +44,7 @@ from app.models import (
 )
 from app.routers.tournaments import _lowest_free_series
 
-SCHEMA_VERSION = 17
+SCHEMA_VERSION = 18
 
 _TOURNAMENT_FIELDS = [
     "slug",
@@ -56,7 +56,6 @@ _TOURNAMENT_FIELDS = [
     "amount_tolerance_percent",
     "refundable_until",
     "bank_account",
-    "unpaid_list_treatment",
     "early_bird_until",
     "weapon_rental_fee",
     "weapon_rental_fee_early",
@@ -511,7 +510,7 @@ def _guard_uncomposable_payment_state(data: dict) -> None:
 
 def restore_tournament(session: Session, data: dict, actor: Fencer) -> Tournament:
     version = data.get("schema_version")
-    if version not in (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, SCHEMA_VERSION):
+    if version not in (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, SCHEMA_VERSION):
         raise HTTPException(status_code=422, detail="unsupported_schema_version")
     if version != SCHEMA_VERSION:
         _guard_uncomposable_payment_state(data)
@@ -536,6 +535,11 @@ def restore_tournament(session: Session, data: dict, actor: Fencer) -> Tournamen
     if version < 8:
         for field, default in _V7_TOURNAMENT_DEFAULTS.items():
             doc.setdefault(field, default)
+    if version < 18:
+        # the unpaid-list treatment left in v18: unpaid entrants are always
+        # shown faded on the public rosters (spec public-entrants), so a
+        # document still carrying the choice restores without it
+        doc.pop("unpaid_list_treatment", None)
     if session.scalar(select(Tournament).where(Tournament.slug == doc["slug"])):
         raise HTTPException(status_code=409, detail="slug_taken")
 

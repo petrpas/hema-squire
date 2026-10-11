@@ -389,7 +389,6 @@ export interface TournamentDetail extends Tournament {
   refundable_until: string | null;
   bank_account: string | null;
   expiry_grace_hours: number;
-  unpaid_list_treatment: string;
   output_sheet_url: string | null;
   early_bird_until: string | null;
   weapon_rental_fee: number;
@@ -757,6 +756,9 @@ export interface OpenDiscipline {
   fee: number | null;
   fee_eur: number | null;
   taken: number;
+  /** What the count states: `taken` less the registrations the organizer
+   *  took out of the table (spec public-entrants). */
+  entered: number;
   capacity: number;
   queue_length: number;
 }
@@ -798,11 +800,63 @@ export interface OpenTournament {
   organized?: boolean;
 }
 
+/** One fencer on a public roster, stating only what the roster states
+ *  (spec public-entrants). `number` is the row's place among the seated, or
+ *  its position in the queue; `paid` is null where nothing is claimed. */
+export interface EntrantRow {
+  number: number;
+  name: string;
+  nationality: string | null;
+  club: string | null;
+  hr_id: number | null;
+  paid: "yes" | "no" | null;
+  faded: boolean;
+  conditional: boolean;
+}
+
+export interface EntrantTeamMember {
+  name: string;
+  nationality: string | null;
+  club: string | null;
+  hr_id: number | null;
+}
+
+export interface EntrantTeam {
+  number: number;
+  name: string;
+  paid: "yes" | "no" | null;
+  faded: boolean;
+  members: EntrantTeamMember[];
+}
+
+interface RosterBase {
+  /** A discipline's slug, or a side event's item id. */
+  slug: string;
+  name: string;
+  /** Whether the capacity line is drawn; `queued` is empty wherever it is not. */
+  line: boolean;
+}
+
+export type Roster =
+  | (RosterBase & { kind: "individual"; seated: EntrantRow[]; queued: EntrantRow[] })
+  /** A seminar or another side event: fencers, never a line or a queue. */
+  | (RosterBase & { kind: "event"; seated: EntrantRow[]; queued: EntrantRow[] })
+  | (RosterBase & { kind: "team"; seated: EntrantTeam[]; queued: EntrantTeam[] });
+
+export interface Entrants {
+  /** When the roster last reached Squire, where Squire does not keep it. */
+  as_of: string | null;
+  rosters: Roster[];
+}
+
 export interface Availability {
   slug: string;
   kind: DisciplineKind;
   capacity: number;
+  /** Seats held, which decide placement and `free`. */
   taken: number;
+  /** Who the public is shown above the line: what a count states. */
+  entered: number;
   free: number;
   queue_length: number;
   /** Roster bounds; present only when kind is "team". */
@@ -1634,6 +1688,7 @@ export const api = {
   heldTournaments: () => request<OpenTournament[]>("/api/tournaments/held"),
   myTournaments: () => request<OpenTournament[]>("/api/tournaments/mine"),
   availability: (slug: string) => request<Availability[]>(`/api/tournaments/${slug}/availability`),
+  entrants: (slug: string) => request<Entrants>(`/api/tournaments/${slug}/entrants`),
   myRegistration: (slug: string) =>
     request<RegistrationDetail>(`/api/tournaments/${slug}/my-registration`),
   registerForTournament: (slug: string, data: RegisterPayload) =>

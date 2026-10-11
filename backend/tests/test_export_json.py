@@ -1093,3 +1093,20 @@ def test_a_v14_document_queues_by_registration_time(client, auth_headers):
     assert restored["SA"]["queued_since"] == restored["registered_at"]
     assert restored["SA"]["promoted_unpaid"] is False
     assert restored["SA"]["conditional"] is False
+
+
+def test_a_v17_document_restores_without_its_unpaid_list_choice(client, auth_headers):
+    """The unpaid-list treatment left in v18: a document still carrying it,
+    even as `hidden`, restores, and the choice is simply not kept — every
+    roster now shows unpaid entrants faded (spec public-entrants)."""
+    organizer = auth_headers()
+    setup(client, organizer)
+    document = client.get("/api/tournaments/cup/export/json", headers=organizer).json()
+    assert "unpaid_list_treatment" not in document["tournament"]
+    document["schema_version"] = 17
+    document["tournament"]["unpaid_list_treatment"] = "hidden"
+
+    new_organizer, restore_client = fresh_deployment(client, auth_headers)
+    restore = restore_client.post("/api/tournaments/restore", json=document, headers=new_organizer)
+
+    assert restore.status_code == 201, restore.text

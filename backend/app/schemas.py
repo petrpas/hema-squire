@@ -76,7 +76,6 @@ from app.models import (
     RequestState,
     Role,
     Tournament,
-    UnpaidListTreatment,
 )
 
 # an option answer is a size, a shirt cut, a meal choice — never prose
@@ -504,7 +503,6 @@ class TournamentUpdate(BaseModel):
     # hours after expiry a VS-matched payment may still reinstate a
     # reservation, subject to capacity; 0 disables automatic reinstatement
     expiry_grace_hours: int | None = Field(default=None, ge=0)
-    unpaid_list_treatment: UnpaidListTreatment | None = None
     output_sheet_url: OutputSheetUrlStr | None = None
     hr_category_map: dict[HrCategoryKeyStr, HrCategoryValueStr] | None = None
     early_bird_until: datetime.date | None = None
@@ -661,7 +659,6 @@ class TournamentOut(BaseModel):
     # offers the poll action on this, and says so when it is false
     fio_token_configured: bool
     expiry_grace_hours: int
-    unpaid_list_treatment: UnpaidListTreatment
     output_sheet_url: str | None
     hr_category_map: dict[str, str]
     early_bird_until: datetime.date | None
@@ -765,9 +762,9 @@ class FencerTournamentOut(BaseModel):
 
     What is deliberately absent: the bank account and whether a feed token is
     on file, the accounting sheet address, the variable-symbol series, the
-    reservation and reminder parameters, the amount tolerance, the unpaid-list
-    treatment, the HR category map, the setup-completeness report, the owner's
-    account id, and the legacy fixed fees. Those are the organizer's own
+    reservation and reminder parameters, the amount tolerance, the HR category
+    map, the setup-completeness report, the owner's account id, and the legacy
+    fixed fees. Those are the organizer's own
     configuration and reach the console through its own authenticated path.
 
     The four feature flags *are* here: they decide what the fencer is shown at
@@ -1132,7 +1129,12 @@ class AvailabilityOut(BaseModel):
     slug: str
     kind: DisciplineKind = DisciplineKind.INDIVIDUAL
     capacity: int
+    # seats held, which decide placement and `free`
     taken: int
+    # who the public is shown above the line: `taken` less the registrations
+    # the organizer took out of the table. The count beside the capacity
+    # (spec public-entrants)
+    entered: int
     free: int
     queue_length: int
     # roster bounds, present only for a team-kind row (design team-disciplines
@@ -1209,6 +1211,8 @@ class OpenDisciplineOut(BaseModel):
     fee: int | None
     fee_eur: int | None = None
     taken: int
+    # what the card's count states; see `AvailabilityOut.entered`
+    entered: int
     capacity: int
     queue_length: int
 
@@ -1819,36 +1823,75 @@ class SettleSeatingOut(BaseModel):
     seating_settled_at: UtcInstant
 
 
-class ParticipantOut(BaseModel):
+class EntrantRowOut(BaseModel):
+    """One fencer on a public roster: only what the roster states (spec
+    public-entrants, A roster carries only what it states). No address, no
+    VS, no amount, and no registration or row id."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    # the row's place among the seated, or its position in the queue
+    number: int
     name: str
-    club: str | None
     nationality: str | None
-    disciplines: list[str]
-    # None where Squire guarantees no payment state for this tournament — the
-    # payments feature is off, or the organizer keeps the registrations. The
-    # distinction is not drawn rather than drawn wrongly: reading a
-    # registration's payment state as its attendance is only meaningful where
-    # money was asked for (design add-external-registration D2)
-    status: Literal["confirmed", "unconfirmed"] | None
+    club: str | None
+    hr_id: int | None
+    # "yes"/"no" where Squire collects the money; "yes" or nothing where it
+    # does not; nothing on a queued row, whose placement is not priced
+    paid: Literal["yes", "no"] | None
+    faded: bool
+    # entered only together with the registration's other conditional
+    # disciplines — the reason it can wait while places are free
+    conditional: bool
 
 
-class ParticipantListOut(BaseModel):
-    """The public list, with what it can and cannot vouch for.
+class EntrantTeamMemberOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
 
-    An envelope rather than a bare array because the list has to be able to
-    state how current it is: a roster Squire maintains is live by
-    construction, and one that arrived by import is as current as the last
-    import, which may be a month ago."""
+    name: str
+    nationality: str | None
+    club: str | None
+    hr_id: int | None
 
-    participants: list[ParticipantOut]
-    # True where the payments feature is on and Squire keeps the
-    # registrations — the only case in which a `status` means anything
-    payment_state_known: bool
-    # the moment the roster last reached Squire, where Squire does not
-    # maintain it. A fact about when, never a judgement about currency: the
-    # system cannot say whether a list is up to date, and saying so would be
-    # wrong the moment the organizer imports again (design D2)
+
+class EntrantTeamOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    number: int
+    name: str
+    paid: Literal["yes", "no"] | None
+    faded: bool
+    members: list[EntrantTeamMemberOut]
+
+
+class RosterOut(BaseModel):
+    """One public roster: a discipline's, or a side event's. A team discipline
+    holds teams, the other two hold fencers."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    # a discipline's slug, or a side event's item id
+    slug: str
+    name: str
+    kind: Literal["individual", "team", "event"]
+    # whether a capacity line is drawn; `queued` is empty wherever it is not
+    line: bool
+    seated: list[EntrantRowOut] | list[EntrantTeamOut]
+    queued: list[EntrantRowOut] | list[EntrantTeamOut]
+
+
+class EntrantsOut(BaseModel):
+    """Every discipline's roster, with what the list can say about its
+    currency.
+
+    `as_of` is the moment the roster last reached Squire, where Squire does
+    not maintain it. A fact about when, never a judgement about currency: the
+    system cannot say whether a list is up to date, and saying so would be
+    wrong the moment the organizer imports again (spec external-registration).
+    """
+
     as_of: UtcInstant | None
+    rosters: list[RosterOut]
 
 
 class RankedFencerOut(BaseModel):

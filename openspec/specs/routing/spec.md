@@ -15,6 +15,9 @@ SHALL always name the screen on display. The scheme SHALL be:
 | `/?tab=announced` \| `open` \| `past` | the tournament list on that filter tab | public |
 | `/?tab=mine` | the tournament list on the Mine tab | required |
 | `/t/:slug` | the tournament's fencer-facing detail page | public |
+| `/t/:slug/entrants` | that page on its Entrants tab, at the first discipline | public |
+| `/t/:slug/entrants/:discipline` | that page on its Entrants tab, at that discipline's roster | public |
+| `/t/:slug/entrants/events/:item` | that page on its Entrants tab, at that side event's roster | public |
 | `/organizer` | the tournament picker | required |
 | `/organizer/:slug/console` | that tournament's console, Load phase | required |
 | `/organizer/:slug/console/:phase` | that tournament's console on that phase | required |
@@ -43,6 +46,14 @@ SHALL present the sign-in screen instead, per `Unauthenticated visits keep their
 #### Scenario: Console short URL keeps working
 - **WHEN** a logged-in organizer opens `/organizer/spring-open-2026/console`
 - **THEN** the console opens on the Load phase and the URL is left as typed
+
+#### Scenario: A roster's address
+- **WHEN** a visitor holding no credential types `/t/spring-open-2026/entrants/sabre-open` into a fresh tab
+- **THEN** that tournament's detail page opens on its Entrants tab at the Sabre Open roster, and the sign-in screen is not shown
+
+#### Scenario: An unknown discipline
+- **WHEN** a visitor opens `/t/spring-open-2026/entrants/no-such-discipline`
+- **THEN** the not-found screen is shown
 
 ### Requirement: Back, forward, and refresh
 Screen-to-screen transitions SHALL push browser history entries, so that Back returns to the
@@ -156,6 +167,7 @@ the visitor they need to sign in.
 #### Scenario: Offline visitor is not signed out
 - **WHEN** the session request fails because the device has no network
 - **THEN** the stored credential is kept and the visitor is not returned to Login
+
 ### Requirement: Unknown URLs end at a not-found screen
 A URL that names no screen SHALL render a not-found screen carrying the page's title, one
 line of prose explaining that the address leads nowhere, and a link home. A tournament slug
@@ -220,3 +232,4 @@ tabs, dialog buttons, form submissions — MAY remain buttons.
 #### Scenario: Links keep their appearance
 - **WHEN** the tournament cards, filter tabs and picker rows render as links
 - **THEN** they look exactly as they did as buttons, with no default-blue text and no default underline
+

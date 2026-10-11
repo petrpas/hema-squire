@@ -56,11 +56,6 @@ class RequestState(enum.StrEnum):
     CANCELLED = "cancelled"
 
 
-class UnpaidListTreatment(enum.StrEnum):
-    HIDDEN = "hidden"
-    GREYED = "greyed"
-
-
 class RegistrationsKeptBy(enum.StrEnum):
     """Who keeps a tournament's list of entrants.
 
@@ -425,9 +420,6 @@ class Tournament(Base):
     # reservation, subject to capacity (matching.py); 0 disables automatic
     # reinstatement and routes every post-expiry payment to organizer action
     expiry_grace_hours: Mapped[int] = mapped_column(default=48)
-    unpaid_list_treatment: Mapped[UnpaidListTreatment] = mapped_column(
-        str_enum(UnpaidListTreatment), default=UnpaidListTreatment.GREYED
-    )
 
     # variable-symbol series: the YY and NN of every VS this tournament issues
     # (design Decision 1). The prefix is documentation only — matching never

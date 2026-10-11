@@ -438,10 +438,6 @@
     "hint.seating_deadline": "Not the registration close: after this date registration stays open but grants only a place in the queue, and money still owed is overdue. Unset, it falls on the registration close.",
     "hint.reservation_validity_days": "How long a fencer has to pay once money is requested, 2 to 7 days. It is a payment window, not a date.",
     "team_composition_deadline": "Team composition deadline",
-    "unpaid_list_treatment": "Unpaid registrations on the public list",
-    "unpaid_list_treatment.greyed": "shown, greyed out",
-    "unpaid_list_treatment.hidden": "hidden until paid",
-    "hint.unpaid_list_treatment": "How a fencer who has not yet paid appears on the public participant list.",
     "weapon_rental_fee_early": "Weapon rental fee, early bird ({{currency}})",
     "afterparty_fee_early": "Afterparty fee, early bird ({{currency}})",
     "registration_opens_time": "Opening time",
@@ -970,7 +966,8 @@
       "tournament": "Tournament",
       "register": "Register",
       "registered": "Registered",
-      "teams": "Teams"
+      "teams": "Teams",
+      "entrants": "Entrants"
     },
     "close": "Close",
     "otherActions": "Other actions",
@@ -1001,6 +998,7 @@
     "sections": {
       "tournament": "Tournament",
       "teams": "Teams",
+      "teamTournament": "Team tournament",
       "programme": "Optional programme",
       "goods": {
         "rental": "Equipment rental",
@@ -1451,5 +1449,13 @@
       "hr_id_must_be_a_whole_number": "a HEMA Ratings id is a whole number.",
       "failed": "the substitution was not accepted."
     }
+  },
+  "entrants": {
+    "asOf": "List as of {{moment}}.",
+    "empty": "Nobody is entered yet.",
+    "conditional": "only with all",
+    "conditionalHint": "Entered only together with all of their conditional disciplines.",
+    "team": "Team",
+    "membersPending": "members not yet named"
   }
 }

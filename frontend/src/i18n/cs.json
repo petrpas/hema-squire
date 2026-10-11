@@ -452,10 +452,6 @@
     "hint.seating_deadline": "Není to konec registrace: po tomto datu zůstává registrace otevřená, ale dává jen místo ve frontě, a dlužné peníze jsou po splatnosti. Bez vyplnění padne na konec registrace.",
     "hint.reservation_validity_days": "Kolik dní má šermíř na zaplacení od chvíle, kdy jsou peníze vyžádány, 2 až 7. Je to splatnost, ne datum.",
     "team_composition_deadline": "Uzávěrka soupisek",
-    "unpaid_list_treatment": "Nezaplacené přihlášky ve veřejném seznamu",
-    "unpaid_list_treatment.greyed": "zobrazit šedě",
-    "unpaid_list_treatment.hidden": "skrýt do zaplacení",
-    "hint.unpaid_list_treatment": "Jak se ve veřejném seznamu účastníků zobrazí šermíř, který zatím nezaplatil.",
     "weapon_rental_fee_early": "Cena zapůjčení, early bird ({{currency}})",
     "afterparty_fee_early": "Cena afterparty, early bird ({{currency}})",
     "registration_opens_time": "Čas otevření",
@@ -985,7 +981,8 @@
       "tournament": "Turnaj",
       "register": "Registrovat se",
       "registered": "Registrace",
-      "teams": "Týmy"
+      "teams": "Týmy",
+      "entrants": "Přihlášení"
     },
     "close": "Zavřít",
     "otherActions": "Další aktivity",
@@ -1016,6 +1013,7 @@
     "sections": {
       "tournament": "Turnaj",
       "teams": "Týmy",
+      "teamTournament": "Týmový turnaj",
       "programme": "Volitelný program",
       "goods": {
         "rental": "Zapůjčení vybavení",
@@ -1484,5 +1482,13 @@
       "hr_id_must_be_a_whole_number": "HEMA Ratings id musí být celé číslo.",
       "failed": "náhrada nebyla přijata."
     }
+  },
+  "entrants": {
+    "asOf": "Seznam podle stavu k {{moment}}.",
+    "empty": "Zatím nikdo není přihlášen.",
+    "conditional": "jen se všemi",
+    "conditionalHint": "Přihlášen jen spolu se všemi svými podmíněnými disciplínami.",
+    "team": "Tým",
+    "membersPending": "členové zatím neuvedeni"
   }
 }

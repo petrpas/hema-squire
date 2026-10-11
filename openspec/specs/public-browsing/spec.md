@@ -4,9 +4,7 @@
 Define what a visitor with no account may read: which fencer-facing endpoints and
 screens answer without a credential, what an anonymous payload leaves out, and how
 an action that needs an account leads to sign-in rather than to a refusal.
-
 ## Requirements
-
 ### Requirement: The tournament list and a tournament's detail are public
 The fencer-facing tournament list — its upcoming scope and its held scope — and a
 published tournament's fencer-facing detail SHALL be readable without a
@@ -191,7 +189,7 @@ feature flags that decide which of those are shown at all.
 
 It SHALL NOT carry the organizer's own configuration: the bank account, whether a bank-feed
 token is on file, the accounting sheet address, the variable-symbol series, reservation and
-reminder parameters, the amount tolerance, the unpaid-list treatment, the HR category map,
+reminder parameters, the amount tolerance, the HR category map,
 the setup-completeness report, or the owner's account identifier. Those belong to the
 console, which reads them through its own authenticated path.
 
@@ -210,3 +208,21 @@ ignore.
 #### Scenario: The console still reads everything
 - **WHEN** a member of a tournament's console team opens its Setup phase
 - **THEN** every organizer-owned field is available to it, unchanged
+
+### Requirement: The entrant rosters are public
+A published, non-cancelled tournament's entrant rosters (`public-entrants`) SHALL be readable without a credential, and SHALL be answered identically for an anonymous visitor and for any account. A roster carries nothing about the caller.
+
+Publication SHALL be the line here as it is for the detail. A draft and a cancelled tournament SHALL yield a not-found answer on the rosters, worded as the public detail words it, and SHALL NOT hand out any entrant. A cancelled tournament's roster is not evidence of who would have fenced in it.
+
+#### Scenario: Rosters without a credential
+- **WHEN** a visitor holding no credential requests a published tournament's entrants
+- **THEN** the rosters are returned, the same as for a signed-in fencer
+
+#### Scenario: A cancelled tournament lists nobody
+- **WHEN** the entrants of a cancelled tournament holding forty registrations are requested
+- **THEN** the answer is not-found and names no entrant
+
+#### Scenario: A draft lists nobody
+- **WHEN** the entrants of a draft are requested
+- **THEN** the answer is not-found
+

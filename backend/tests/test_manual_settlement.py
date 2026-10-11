@@ -293,15 +293,19 @@ def test_an_unknown_registration_is_not_found(client, auth_headers):
 # -------------------------------------------------- what the public list says
 
 
+def public_longsword(client) -> list[tuple[str, str | None, bool]]:
+    rosters = client.get("/api/tournaments/cup/entrants").json()["rosters"]
+    (longsword,) = [roster for roster in rosters if roster["slug"] == "LS"]
+    return [(row["name"], row["paid"], row["faded"]) for row in longsword["seated"]]
+
+
 def test_an_unmarked_list_makes_no_claim(client, auth_headers):
     organizer = auth_headers()
     self_collecting_tournament(client, organizer)
     enroll(client, auth_headers, "a@example.com")
     enroll(client, auth_headers, "b@example.com")
 
-    body = client.get("/api/tournaments/cup/participants").json()
-    assert body["payment_state_known"] is False
-    assert [p["status"] for p in body["participants"]] == [None, None]
+    assert public_longsword(client) == [("a", None, False), ("b", None, False)]
 
 
 def test_a_marked_entrant_is_shown_confirmed(client, auth_headers):
@@ -312,33 +316,12 @@ def test_a_marked_entrant_is_shown_confirmed(client, auth_headers):
 
     settled(client, organizer, registration_id(marked))
 
-    body = client.get("/api/tournaments/cup/participants").json()
-    by_name = {p["name"]: p["status"] for p in body["participants"]}
-    assert by_name["a"] == "confirmed"
-    # and the other carries no mark whatever — an absent tick is an organizer
-    # who has not reached that row, not a claim that anyone failed to pay
-    assert by_name["b"] is None
+    # the other carries no mark whatever — an absent tick is an organizer who
+    # has not reached that row, not a claim that anyone failed to pay
+    assert public_longsword(client) == [("a", "yes", False), ("b", None, False)]
 
 
-def test_the_unpaid_setting_still_does_not_apply(client, auth_headers):
-    organizer = auth_headers()
-    self_collecting_tournament(client, organizer)
-    client.patch(
-        "/api/tournaments/cup",
-        json={"unpaid_list_treatment": "hidden"},
-        headers=organizer,
-    )
-    marked = enroll(client, auth_headers, "a@example.com")
-    enroll(client, auth_headers, "b@example.com")
-    settled(client, organizer, registration_id(marked))
-
-    names = [
-        p["name"] for p in client.get("/api/tournaments/cup/participants").json()["participants"]
-    ]
-    assert names == ["a", "b"], "hidden would have dropped the unmarked one"
-
-
-def test_a_collecting_tournaments_list_is_unchanged(client, auth_headers):
+def test_a_collecting_tournaments_list_states_paid(client, auth_headers):
     organizer = auth_headers()
     collecting_tournament(client, organizer)
     entry = enroll(client, auth_headers, "a@example.com")
@@ -347,9 +330,7 @@ def test_a_collecting_tournaments_list_is_unchanged(client, auth_headers):
     row = session.scalar(select(Registration).where(Registration.vs == entry["vs"]))
     credit_registration(session, row, row.total_amount * 100)
 
-    body = client.get("/api/tournaments/cup/participants").json()
-    assert body["payment_state_known"] is True
-    assert [p["status"] for p in body["participants"]] == ["confirmed"]
+    assert public_longsword(client) == [("a", "yes", False)]
 
 
 # ------------------------------------------- switching afterwards is not handled

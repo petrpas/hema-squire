@@ -441,3 +441,12 @@ def before_manual_entry_registers(monkeypatch):
 
     monkeypatch.setattr(import_api, "accepts_import", lambda tournament: True)
     monkeypatch.setattr(manual_api, "enters_registration", lambda tournament: False)
+
+
+def public_seated(client, slug="cup") -> list[dict]:
+    """Every seated row of a tournament's public rosters, discipline after
+    discipline (spec public-entrants) — for tests asking what the public is
+    told about a registration rather than how the rosters are laid out."""
+    response = client.get(f"/api/tournaments/{slug}/entrants")
+    assert response.status_code == 200, response.text
+    return [row for roster in response.json()["rosters"] for row in roster["seated"]]

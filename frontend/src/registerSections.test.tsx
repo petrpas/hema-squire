@@ -28,7 +28,11 @@ function item(name: string, category: ExtraItem["category"]): ExtraItem {
   };
 }
 
-function headings(extraItems: ExtraItem[], language: string): string[] {
+function headings(
+  extraItems: ExtraItem[],
+  language: string,
+  disciplines: TournamentDetail["disciplines"] = [],
+): string[] {
   void i18n.changeLanguage(language);
   const detail = {
     slug: "na-duel-2026",
@@ -40,7 +44,7 @@ function headings(extraItems: ExtraItem[], language: string): string[] {
     eur_payments_enabled: false,
     registration_instructions: null,
     team_composition_deadline: null,
-    disciplines: [],
+    disciplines,
     discounts: [],
     extra_items: extraItems,
   } as unknown as TournamentDetail;
@@ -72,6 +76,24 @@ describe("register form sections", () => {
     expect(
       headings([item("Páteční seminář", "seminar"), item("Afterparty", "afterparty")], "cs"),
     ).toEqual(["Turnaj", "Volitelný program", "Ostatní"]);
+  });
+
+  it("merges the tournament and teams headings when there is nothing individual", () => {
+    const team = {
+      slug: "LS-T",
+      name: "Týmy LS",
+      kind: "team",
+      capacity: 8,
+      fee: 3000,
+      fee_eur: null,
+      team_min: 3,
+      team_max: 5,
+      schedule_when: null,
+      schedule_where: null,
+    } as unknown as TournamentDetail["disciplines"][number];
+    expect(headings([], "cs", [team])).toEqual(["Týmový turnaj", "Ostatní"]);
+    const individual = { ...team, slug: "LS", kind: "individual" as const };
+    expect(headings([], "cs", [individual, team])).toEqual(["Turnaj", "Týmy", "Ostatní"]);
   });
 
   it("heads the goods in English too", () => {

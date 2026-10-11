@@ -11,7 +11,7 @@ from sqlalchemy import delete, false, func, or_, select
 from sqlalchemy.orm import Session, selectinload
 from sqlalchemy.sql.elements import ColumnElement
 
-from app import bank, money_bounds, scheduler, setup, taxonomy
+from app import bank, entrants, money_bounds, scheduler, setup, taxonomy
 from app.auth import (
     current_fencer,
     optional_fencer,
@@ -112,6 +112,16 @@ def get_tournament(session: SessionDep, slug: str) -> Tournament:
 
 
 TournamentDep = Annotated[Tournament, Depends(get_tournament)]
+
+
+def require_public(tournament: Tournament) -> None:
+    """Publication is the line for every public read (spec public-browsing).
+    A draft or a cancelled tournament answers exactly as an unknown slug does,
+    so the URL discloses nothing about which tournaments exist."""
+    if tournament.published_at is None or tournament.cancelled_at is not None:
+        raise HTTPException(status_code=404, detail="tournament_not_found")
+
+
 FioClientDep = Annotated[bank.FioClient, Depends(bank.get_fio_client)]
 
 
@@ -177,7 +187,9 @@ def create_tournament(data: TournamentCreate, session: SessionDep, fencer: Fence
     return tournament
 
 
-def _open_discipline_out(session: Session, discipline: Discipline) -> OpenDisciplineOut:
+def _open_discipline_out(
+    session: Session, discipline: Discipline, removed: set[int]
+) -> OpenDisciplineOut:
     """Fencer-facing counts for one discipline. A team discipline counts teams,
     an individual one counts fencers (team-disciplines D1/2.6) — the counting
     pairs are mutually exclusive by kind and assert on the wrong kind, so the
@@ -194,6 +206,7 @@ def _open_discipline_out(session: Session, discipline: Discipline) -> OpenDiscip
         fee=discipline.fee,
         fee_eur=discipline.fee_eur,
         taken=taken,
+        entered=entrants.entered(session, discipline, removed),
         capacity=discipline.capacity,
         queue_length=queued,
     )
@@ -267,6 +280,7 @@ def _fencer_tournament_out(
     equivalent to it. `organized` is passed as `None` in that case for the same
     reason: the caller's side of it is what there is none of."""
     reason = setup.registration_availability(tournament, datetime.now(UTC))
+    removed = entrants.removed_registration_ids(session, tournament)
     if reason == setup.ORGANIZER_KEPT:
         # Not `closed`: `closed` means a window has passed, and this tournament
         # never had one here. A client presenting it as closed would tell the
@@ -305,7 +319,7 @@ def _fencer_tournament_out(
         registration_opens_on=opens_on,
         registration_opens_at=opens_at,
         timezone=tournament.timezone,
-        disciplines=[_open_discipline_out(session, d) for d in tournament.disciplines],
+        disciplines=[_open_discipline_out(session, d, removed) for d in tournament.disciplines],
         my_registration_state=(
             _my_registration_state(session, tournament, fencer) if fencer is not None else None
         ),
@@ -545,8 +559,7 @@ def fencer_tournament_detail(tournament: TournamentDep):
     (spec `routing`, Unknown URLs end at a not-found screen). Not the 409 that
     `require_published` raises — that answer is for a console write, whose
     caller is entitled to know why."""
-    if tournament.published_at is None or tournament.cancelled_at is not None:
-        raise HTTPException(status_code=404, detail="tournament_not_found")
+    require_public(tournament)
     return FencerTournamentOut.model_validate(tournament)
 
 

@@ -1,7 +1,14 @@
 import { IconX } from "@tabler/icons-react";
 import { type ReactNode, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useLocation, useNavigate, useOutletContext, useParams } from "react-router-dom";
+import {
+  Link,
+  useLocation,
+  useMatch,
+  useNavigate,
+  useOutletContext,
+  useParams,
+} from "react-router-dom";
 import {
   type Availability,
   api,
@@ -9,6 +16,7 @@ import {
   type FencerTournament as TournamentDetailData,
 } from "./api";
 import ExternalRegistrationNotice from "./ExternalRegistrationNotice";
+import EntrantsTab from "./entrants/EntrantsTab";
 import type { FencerOutletContext } from "./FencerHome";
 import type { HomeTab } from "./FencerShell";
 import { formatMoney, formatMoneyWithEur } from "./money";
@@ -17,7 +25,7 @@ import OpeningNotice from "./OpeningNotice";
 import { amendmentOpen, registrationStatus } from "./openingMoment";
 import PaidStamp from "./PaidStamp";
 import PaymentPanel from "./PaymentPanel";
-import { home } from "./routes";
+import { detail as detailPath, entrants, home } from "./routes";
 import TeamsTab from "./TeamsTab";
 import {
   DisciplinesInfo,
@@ -355,7 +363,11 @@ export default function TournamentDetail() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
-  const { slug = "" } = useParams();
+  const { slug = "", discipline, event } = useParams();
+  // The Entrants tab is the one tab with an address of its own, so a roster
+  // can be linked to (spec fencer-home): the route, not local state, says
+  // whether it is selected
+  const onEntrants = useMatch("/t/:slug/entrants/*") !== null;
   const [detail, setDetail] = useState<TournamentDetailData | null>(null);
   const [notFound, setNotFound] = useState(false);
   const [availability, setAvailability] = useState<Availability[]>([]);
@@ -374,8 +386,9 @@ export default function TournamentDetail() {
   // value: the page is remounted and the navigation carrying the hint lands in
   // the commit after it, so an initializer would read the location it left.
 
-  // keeps the selected tab visible when the three tabs scroll below 768px
-  const band = useTabBand(tab);
+  const shown = onEntrants ? "entrants" : tab;
+  // keeps the selected tab visible when the tabs scroll below 768px
+  const band = useTabBand(shown);
   const [amending, setAmending] = useState(false);
 
   function refresh() {
@@ -461,8 +474,11 @@ export default function TournamentDetail() {
     if (resume === "registration" && secondTabOffered) {
       setTab("registration");
       clearResume();
+      // a sign-in reached from the Entrants address returns to the tab it
+      // was reaching for, which has no address of its own
+      if (onEntrants) navigate(detailPath(slug), { replace: true });
     }
-  }, [resume, secondTabOffered, clearResume]);
+  }, [resume, secondTabOffered, clearResume, onEntrants, navigate, slug]);
 
   /** Leaving the registration tab abandons any amendment in progress — the
    *  page introduces no separate cancel control for it (design D3); this
@@ -470,6 +486,9 @@ export default function TournamentDetail() {
   function selectTab(next: "tournament" | "registration" | "teams") {
     if (next !== "registration") setAmending(false);
     setTab(next);
+    // no other tab is carried in the URL: leaving Entrants returns it to the
+    // tournament's own address, replacing rather than stacking history
+    if (onEntrants) navigate(detailPath(slug), { replace: true });
   }
 
   if (notFound) return <NotFound />;
@@ -483,15 +502,23 @@ export default function TournamentDetail() {
         <nav className="stage-control detail-tabs stage-control-band" ref={band}>
           <button
             type="button"
-            className={tab === "tournament" ? "active" : ""}
+            className={shown === "tournament" ? "active" : ""}
             onClick={() => selectTab("tournament")}
           >
             {t("detail.tabs.tournament")}
           </button>
+          <Link
+            to={entrants(slug)}
+            className={shown === "entrants" ? "active" : ""}
+            // leaving the registration tab abandons an amendment in progress
+            onClick={() => setAmending(false)}
+          >
+            {t("detail.tabs.entrants")}
+          </Link>
           {secondTabOffered && (
             <button
               type="button"
-              className={tab === "registration" ? "active" : ""}
+              className={shown === "registration" ? "active" : ""}
               // With no account there is nothing to register, so the action
               // leads to sign-in and comes back here on this tab, rather than
               // opening a form whose submission could only fail.
@@ -507,7 +534,7 @@ export default function TournamentDetail() {
           {teamsTabOffered && (
             <button
               type="button"
-              className={tab === "teams" ? "active" : ""}
+              className={shown === "teams" ? "active" : ""}
               onClick={() => selectTab("teams")}
             >
               {t("detail.tabs.teams")}
@@ -528,10 +555,17 @@ export default function TournamentDetail() {
         <p>{t("common.loading")}</p>
       ) : (
         <div className="page-card-body">
-          {tab === "tournament" ? (
+          {shown === "entrants" ? (
+            <EntrantsTab
+              slug={slug}
+              discipline={discipline}
+              event={event}
+              timezone={detail.timezone}
+            />
+          ) : shown === "tournament" ? (
             <>
               <InfoHeader detail={detail} />
-              <DisciplinesInfo detail={detail} availability={availability} />
+              <DisciplinesInfo detail={detail} availability={availability} linkCounts />
               <DiscountList detail={detail} />
               <OtherActionsInfo detail={detail} />
               {!readOnly &&
@@ -552,7 +586,7 @@ export default function TournamentDetail() {
                   </section>
                 ))}
             </>
-          ) : tab === "teams" && registration ? (
+          ) : shown === "teams" && registration ? (
             <TeamsTab
               slug={slug}
               teams={registration.teams}

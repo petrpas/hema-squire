@@ -21,7 +21,7 @@ from app.mail import get_mailer
 from app.main import app
 from app.models import Registration
 from app.spayd import spayd_string
-from tests.conftest import AcceptingFio, enable_payments, publish, set_fio_token
+from tests.conftest import AcceptingFio, enable_payments, public_seated, publish, set_fio_token
 
 IBAN = "CZ6508000000192000145399"
 
@@ -140,9 +140,9 @@ def test_happy_path_reserve_qr_match_paid(client, auth_headers, mailbox, fio):
     body = confirmation.get_body(("plain",)).get_content()
     assert str(vs) in body  # VS quoted in the body too
 
-    # public list before payment: greyed unconfirmed (owner default)
-    (entry,) = client.get("/api/tournaments/cup/participants").json()["participants"]
-    assert entry["status"] == "unconfirmed"
+    # public roster before payment: listed, faded, not paid
+    (entry,) = public_seated(client)
+    assert (entry["paid"], entry["faded"]) == ("no", True)
 
     # the fencer pays within tolerance (980 vs 1000 at 5%); Fio poll picks it up
     fio.transactions = [transfer(vs, 980)]
@@ -169,8 +169,8 @@ def test_happy_path_reserve_qr_match_paid(client, auth_headers, mailbox, fio):
 
     # receipt email and public confirmation
     assert len(mailbox.to("jan@example.com")) == 2
-    (entry,) = client.get("/api/tournaments/cup/participants").json()["participants"]
-    assert entry["status"] == "confirmed"
+    (entry,) = public_seated(client)
+    assert (entry["paid"], entry["faded"]) == ("yes", False)
 
     # idempotence: polling the same transaction again changes nothing
     again = client.post("/api/tournaments/cup/payments/fio-poll", headers=organizer).json()
@@ -203,7 +203,7 @@ def test_expiry_path_reminder_expire_free_capacity_flag_late_payment(
     registration = client.get("/api/tournaments/cup/my-registration", headers=fencer).json()
     assert registration["state"] == "expired"
     assert len(mailbox.to("jan@example.com")) == 3
-    assert client.get("/api/tournaments/cup/participants").json()["participants"] == []
+    assert public_seated(client) == []
 
     # the freed slot is available again: the discipline was at capacity 1
     (availability,) = client.get("/api/tournaments/cup/availability").json()

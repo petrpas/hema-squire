@@ -396,7 +396,7 @@ Whether Squire handles payment processing for a tournament SHALL be a stored set
 WHEN it is off, the tournament SHALL:
 
 - require no bank account to be published, whatever it charges, as fixed by `tournament-admin`;
-- offer none of the payment and reservation parameters in Setup — the payment mode, the deposit, the payment window, the reminder day, the seating deadline, the bank account, the unpaid-list treatment and the variable-symbol statement;
+- offer none of the payment and reservation parameters in Setup — the payment mode, the deposit, the payment window, the reminder day, the seating deadline, the bank account and the variable-symbol statement;
 - request no money at registration: no payment window opens, no due date is set, and no variable symbol is put to work;
 - send no payment instructions, QR code, reminder, expiry notice or surcharge mail;
 - expire no reservation for non-payment;
@@ -648,3 +648,4 @@ A registration holding a seated placement beside a queued one is not sitting ent
 #### Scenario: A wrong amount is held for the organizer
 - **WHEN** paying substitutes may take places and a payment on a waiting registration does not match its claim
 - **THEN** it is held with a reason naming the amount, and no later pass seats it by itself
+

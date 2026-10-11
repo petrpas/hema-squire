@@ -10,7 +10,7 @@ from app.db import get_session
 from app.mail import get_mailer
 from app.main import app
 from app.models import PaymentEvent, Registration, RegistrationState
-from tests.conftest import enable_payments, import_statement, publish
+from tests.conftest import enable_payments, import_statement, public_seated, publish
 
 
 class CollectingMailer:
@@ -117,8 +117,7 @@ def test_exact_vs_match_marks_paid_and_notifies(client, auth_headers, mailbox):
 
     registration = client.get("/api/tournaments/cup/my-registration", headers=fencer).json()
     assert registration["state"] == "paid"
-    participants = client.get("/api/tournaments/cup/participants").json()["participants"]
-    assert participants[0]["status"] == "confirmed"
+    assert public_seated(client)[0]["paid"] == "yes"
     assert "Platba přijata" in mailbox.sent[-1]["Subject"]
 
 

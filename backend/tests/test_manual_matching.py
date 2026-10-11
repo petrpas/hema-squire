@@ -6,7 +6,7 @@ from sqlalchemy import select
 from app.mail import get_mailer
 from app.main import app
 from app.models import PaymentCredit
-from tests.conftest import enable_payments, import_statement, publish
+from tests.conftest import enable_payments, import_statement, public_seated, publish
 from tests.test_matching import db_session
 
 
@@ -96,11 +96,8 @@ def test_one_transfer_covers_two_fencers(client, auth_headers, mailbox):
     assert state_of(client, fencer_b) == "paid"
     assert len(mailbox.sent) == 2  # both fencers got payment confirmations
 
-    statuses = {
-        p["name"]: p["status"]
-        for p in client.get("/api/tournaments/cup/participants").json()["participants"]
-    }
-    assert statuses == {"Adéla": "confirmed", "Boris": "confirmed"}
+    statuses = {row["name"]: row["paid"] for row in public_seated(client)}
+    assert statuses == {"Adéla": "yes", "Boris": "yes"}
 
     # persisted as a rule in the payments phase
     listed = client.get(

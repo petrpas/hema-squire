@@ -184,6 +184,7 @@ The "today" that splits upcoming from held SHALL be **one global boundary, the U
 #### Scenario: The split does not follow the deployment
 - **WHEN** the Past tab is listed on a deployment whose process timezone is not UTC
 - **THEN** the same tournaments are listed as on any other deployment
+
 ### Requirement: Mine tab
 The Mine tab SHALL list every published, non-cancelled tournament the account is bound to: one it holds or held a registration for — in any state, including cancelled and substitute — and one it organizes or organized, as tournament owner or console team member. It SHALL span both directions of today: upcoming tournaments and tournaments already held, ordered by date descending so the nearest events lead.
 
@@ -295,11 +296,11 @@ The tournament detail page SHALL carry a header holding the tournament's display
 
 Below 768px that header SHALL be laid out on two rows instead: the display name on its own row with the close control at its right, and the tab control below it as one full-width scrolling band. The close control SHALL remain level with the display name.
 
-The tab control SHALL offer a `Tournament` tab, always present, holding the information screen. It SHALL offer a second tab whenever the account holds a registration for that tournament or registration is available to it: labelled `Registered` when a registration is held — active, substituted, or cancelled — and `Register` when none is held and registration is available. When neither condition holds, the tab control SHALL offer the `Tournament` tab alone, and the reason registration is unavailable SHALL be stated on the information screen as it is today.
+The tab control SHALL offer a `Tournament` tab, always present, holding the information screen, and after it an `Entrants` tab, always present on a published tournament, holding the tournament's rosters (`public-entrants`). It SHALL offer a registration tab after these whenever the account holds a registration for that tournament or registration is available to it: labelled `Registered` when a registration is held — active, substituted, or cancelled — and `Register` when none is held and registration is available. When neither condition holds, the tab control SHALL offer the `Tournament` and `Entrants` tabs alone, and the reason registration is unavailable SHALL be stated on the information screen as it is today.
 
-The tab control SHALL offer a third tab, `Teams`, exactly when the account holds an active registration for that tournament carrying at least one team and the tournament has not yet been held. It SHALL NOT be offered to an account with no registration, with a cancelled or expired registration, or with a registration holding no team, nor on a tournament dated before today, whose rosters are no longer editable. It SHALL stand last in the tab control, after the second tab. WHEN the third tab is offered, the second tab reads `Registered`, since a team is held only through a held registration.
+The tab control SHALL offer a further tab, `Teams`, exactly when the account holds an active registration for that tournament carrying at least one team and the tournament has not yet been held. It SHALL NOT be offered to an account with no registration, with a cancelled or expired registration, or with a registration holding no team, nor on a tournament dated before today, whose rosters are no longer editable. It SHALL stand last in the tab control, after the registration tab. WHEN the `Teams` tab is offered, the registration tab reads `Registered`, since a team is held only through a held registration.
 
-The page SHALL open on the `Tournament` tab from every entry point, including a URL followed directly. The selected tab SHALL NOT be carried in the URL and SHALL NOT push a browser history entry. WHEN a tab in the control ceases to be offered while it is selected, the page SHALL fall back to the `Tournament` tab rather than show a tab that no longer exists.
+The page SHALL open on the `Tournament` tab from every entry point, including a URL followed directly, except the Entrants address (`routing`), which SHALL open on the `Entrants` tab at the discipline it names, or at the first discipline where it names none. The `Entrants` tab and each discipline within it SHALL be links to their own addresses, so that a roster can be linked to and Back returns from it. Leaving the `Entrants` tab for another tab SHALL return the URL to the tournament's own address. No other tab SHALL be carried in the URL, and selecting one SHALL NOT push a browser history entry. WHEN a tab in the control ceases to be offered while it is selected, the page SHALL fall back to the `Tournament` tab rather than show a tab that no longer exists.
 
 Amending an existing registration SHALL open the amendment form on the `Registered` tab, in place of the registration it amends, and SHALL return to that registration when it is submitted or abandoned. No further tab SHALL be introduced for it, and leaving the `Registered` tab — for the `Tournament` tab or the `Teams` tab alike — SHALL abandon an amendment in progress as it does today.
 
@@ -315,7 +316,7 @@ Organizer-authored prose on any tab SHALL wrap rather than overflow its column, 
 
 #### Scenario: Detail opens on the tournament tab
 - **WHEN** a fencer opens a tournament from Fencer Home
-- **THEN** the page shows the tournament name, a tab control resting on `Tournament`, and a close control, with the information screen below
+- **THEN** the page shows the tournament name, a tab control resting on `Tournament` with `Entrants` beside it, and a close control, with the information screen below
 
 #### Scenario: Detail header on a narrow phone
 - **WHEN** a fencer opens a tournament on a 390px-wide viewport
@@ -323,7 +324,7 @@ Organizer-authored prose on any tab SHALL wrap rather than overflow its column, 
 
 #### Scenario: Register tab offered while registration is available
 - **WHEN** a fencer without a registration opens a tournament whose registration is open and has an open slot
-- **THEN** the tab control offers `Tournament` and `Register`, and selecting `Register` shows the registration form in place
+- **THEN** the tab control offers `Tournament`, `Entrants` and `Register`, and selecting `Register` shows the registration form in place
 
 #### Scenario: Tab reads Registered once a registration is held
 - **WHEN** a fencer holding a reservation opens the same tournament
@@ -331,11 +332,11 @@ Organizer-authored prose on any tab SHALL wrap rather than overflow its column, 
 
 #### Scenario: Teams tab offered for a registration holding a team
 - **WHEN** a fencer holding a reservation that includes one team opens the tournament
-- **THEN** the tab control offers `Tournament`, `Registered`, and `Teams` in that order, and selecting `Teams` shows that team's roster editor
+- **THEN** the tab control offers `Tournament`, `Entrants`, `Registered`, and `Teams` in that order, and selecting `Teams` shows that team's roster editor
 
 #### Scenario: Teams tab withheld from an individual registration
 - **WHEN** a fencer holding a registration for individual disciplines only opens the tournament
-- **THEN** the tab control offers `Tournament` and `Registered` alone, with no `Teams` tab
+- **THEN** the tab control offers `Tournament`, `Entrants` and `Registered` alone, with no `Teams` tab
 
 #### Scenario: Teams tab withdrawn when the last team is dropped
 - **WHEN** a fencer standing on the `Teams` tab amends their registration to remove its only team
@@ -343,7 +344,7 @@ Organizer-authored prose on any tab SHALL wrap rather than overflow its column, 
 
 #### Scenario: Single tab when registration is impossible
 - **WHEN** a fencer without a registration opens a tournament whose registration has closed
-- **THEN** only the `Tournament` tab is offered and the information screen states that registration is closed
+- **THEN** only the `Tournament` and `Entrants` tabs are offered and the information screen states that registration is closed
 
 #### Scenario: Past tournament with a registration
 - **WHEN** a fencer opens a past tournament from the Past tab where they held a paid registration
@@ -354,7 +355,7 @@ Organizer-authored prose on any tab SHALL wrap rather than overflow its column, 
 - **THEN** no `Teams` tab is offered, and the team and its members remain readable on the read-only summary
 
 #### Scenario: Returning to the information screen
-- **WHEN** the fencer is on the `Register`, `Registered`, or `Teams` tab
+- **WHEN** the fencer is on the `Entrants`, `Register`, `Registered`, or `Teams` tab
 - **THEN** the `Tournament` tab returns them to the information screen without leaving the page
 
 #### Scenario: Amending stays on the registered tab
@@ -380,6 +381,18 @@ Organizer-authored prose on any tab SHALL wrap rather than overflow its column, 
 #### Scenario: A bare URL in the organizer's description
 - **WHEN** an organizer's description contains a long URL with no spaces and the page renders at 360px
 - **THEN** the URL wraps within the column and the page does not scroll sideways
+
+#### Scenario: The Entrants address opens its tab
+- **WHEN** a visitor follows a link to `/t/spring-open-2026/entrants/sabre-open`
+- **THEN** the detail page opens on the `Entrants` tab showing the Sabre Open roster
+
+#### Scenario: Leaving the Entrants tab
+- **WHEN** a visitor on `/t/spring-open-2026/entrants/sabre-open` selects the `Tournament` tab
+- **THEN** the information screen is shown and the address bar reads `/t/spring-open-2026`
+
+#### Scenario: Other tabs stay unaddressed
+- **WHEN** a fencer selects the `Register` tab
+- **THEN** the address bar is left as it was and no history entry is pushed
 
 ### Requirement: Tournament detail shares the home heading
 The tournament detail page SHALL carry the top bar unchanged — the same title, the same identity block and account menu, in the same order — so that opening a tournament reads as the same page rather than a different one.
@@ -409,7 +422,7 @@ The tournament detail page SHALL open, from the list, on an information screen t
 
 The opening moment SHALL be stated with its time of day whenever the tournament sets one, and with the zone that time is stated in. Where the tournament sets no opening time, the opening SHALL be stated as a date alone exactly as before, with no invented hour and no zone.
 
-Below them the screen SHALL show three grouped sections. The disciplines section SHALL list each discipline by its name — never its slug (`discipline-identity`) — with its entry fee, its registered count as registered/capacity (or substitute-queue length when full), its optional when/where, and its optional ruleset rendered as an inline markdown field (`organizer-prose`), so that a ruleset naming versions in more than one language presents each version as its own link. Several disciplines classified alike SHALL each be listed on their own line under their own name, with their own fee and their own count. A team discipline SHALL be listed in the same section, marked as a team event, with its per-team fee, its roster bounds, and its count stated in teams as entered/capacity (or waitlist length when full); the team-event marker SHALL be set off from the discipline's name by horizontal space rather than sitting flush against it. When the tournament sets a team composition deadline and offers at least one team discipline, the deadline SHALL be stated in this section. The discounts section SHALL follow the disciplines section and SHALL list every discount the tournament configures, in configured order, each with its name, its condition stated as text, and its configured value — a fixed amount in each configured currency, or a percentage. The discounts section SHALL NOT show selection markers, since the information screen carries no selection, and SHALL be omitted entirely when the tournament configures no discounts. The other-actions section SHALL list non-purchasable activities — seminars, afterparties, after-sparrings, and accommodation — each with its optional when/where and remark. The information screen SHALL NOT mention gear lending or merch, and SHALL NOT show prices or quantity selectors for the other-actions section. When registration is available, it SHALL be reached through the page's `Register` tab rather than through a control on the information screen itself.
+Below them the screen SHALL show three grouped sections. The disciplines section SHALL list each discipline by its name — never its slug (`discipline-identity`) — with its entry fee, its registered count as registered/capacity (or substitute-queue length when full), its optional when/where, and its optional ruleset rendered as an inline markdown field (`organizer-prose`), so that a ruleset naming versions in more than one language presents each version as its own link. Several disciplines classified alike SHALL each be listed on their own line under their own name, with their own fee and their own count. A team discipline SHALL be listed in the same section, marked as a team event, with its per-team fee, its roster bounds, and its count stated in teams as entered/capacity (or waitlist length when full); the team-event marker SHALL be set off from the discipline's name by horizontal space rather than sitting flush against it. When the tournament sets a team composition deadline and offers at least one team discipline, the deadline SHALL be stated in this section. Each discipline's count SHALL be a link to that discipline's roster on the `Entrants` tab (`public-entrants`). In the console's Setup preview, where the tournament may be a draft holding no roster, the count SHALL be stated without a link. The discounts section SHALL follow the disciplines section and SHALL list every discount the tournament configures, in configured order, each with its name, its condition stated as text, and its configured value — a fixed amount in each configured currency, or a percentage. The discounts section SHALL NOT show selection markers, since the information screen carries no selection, and SHALL be omitted entirely when the tournament configures no discounts. The other-actions section SHALL list non-purchasable activities — seminars, afterparties, after-sparrings, and accommodation — each with its optional when/where and remark. The information screen SHALL NOT mention gear lending or merch, and SHALL NOT show prices or quantity selectors for the other-actions section. When registration is available, it SHALL be reached through the page's `Register` tab rather than through a control on the information screen itself.
 
 Where a discipline or an action carries any of its optional when/where/ruleset/remark text, that text SHALL be presented as a subordinate line beneath the row, one size down and in faded ink, with its parts separated by the spaced middle dot used elsewhere. The line SHALL NOT be introduced by a leading dash or any other bullet character: its indentation and weight already mark it as subordinate.
 
@@ -472,6 +485,14 @@ Where a discipline or an action carries any of its optional when/where/ruleset/r
 #### Scenario: Open Register from information
 - **WHEN** the fencer views the information screen while registration is available
 - **THEN** the page's `Register` tab is offered and opens the registration form, and the information screen itself carries no register button
+
+#### Scenario: A count leads to its roster
+- **WHEN** a visitor selects the 24/32 count beside Longsword Open
+- **THEN** the `Entrants` tab opens on the Longsword Open roster, at its own address
+
+#### Scenario: The preview's counts are not links
+- **WHEN** an organizer reads the information screen in the Setup preview of a draft
+- **THEN** each discipline's count is stated as text and leads nowhere
 
 ### Requirement: Waiting for registration to open
 When a fencer opens the detail page of a published tournament whose registration has not yet opened, the page SHALL state the opening moment and SHALL open registration in place when that moment passes, without asking the fencer to reload. Registration opening is the busiest moment of a tournament's life, and a page that requires a manual refresh turns that into a burst of reloads at exactly the wrong time.
@@ -801,3 +822,4 @@ Resolution SHALL push no browser history entry and SHALL leave the URL as `/`.
 #### Scenario: No history entry for the default
 - **WHEN** a fencer opens `/`, lands on the resolved tab, and presses Back
 - **THEN** they leave the application rather than stepping through a resolved tab
+

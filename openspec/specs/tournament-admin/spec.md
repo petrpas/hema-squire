@@ -388,7 +388,7 @@ A failed logo upload SHALL tell the organizer which of the distinguishable cause
 - **THEN** the message reflects that cause and does not claim the file is not an image
 
 ### Requirement: Payment and reservation parameters
-Per tournament with the payments feature enabled, the organizer SHALL configure, in Setup: the payment mode, the payment window in days, the reminder day, and the public-list treatment of unpaid registrations. In deposit mode the organizer SHALL additionally configure the deposit amount. The bank account payments are collected into is configured in Setup alongside them, as fixed by `setup-navigation`.
+Per tournament with the payments feature enabled, the organizer SHALL configure, in Setup: the payment mode, the payment window in days, and the reminder day. In deposit mode the organizer SHALL additionally configure the deposit amount. The bank account payments are collected into is configured in Setup alongside them, as fixed by `setup-navigation`.
 
 **None of these parameters SHALL be offered while the payments setting is off**, as fixed by `payments`: a tournament Squire collects no money for has no payment mode to choose, no window to open and no reminder to send. Their stored values SHALL be retained and SHALL be offered again, unchanged, when the feature is turned back on. Every rule below governs a tournament whose payments feature is on.
 
@@ -459,8 +459,8 @@ The reminder day MUST fall before the payment window ends. A reminder day at or 
 - **THEN** it is offered in the console's payments phase and not in Setup
 
 #### Scenario: Unpaid-list treatment has an editor
-- **WHEN** the organizer chooses how unpaid registrations appear on the public participant list
-- **THEN** the choice is offered in Setup and takes effect on the public list
+- **WHEN** the organizer looks through Setup's payment parameters for how unpaid registrations appear publicly
+- **THEN** no such choice is offered: unpaid entrants are always shown faded, as `public-entrants` fixes
 
 #### Scenario: Reminder day at or beyond expiry rejected
 - **WHEN** the organizer sets the reminder day to 5 with a payment window of 5 days
@@ -472,7 +472,7 @@ The reminder day MUST fall before the payment window ends. A reminder day at or 
 
 #### Scenario: No payment parameters while payments are off
 - **WHEN** the organizer of a payments-off tournament looks through every Setup tab
-- **THEN** no payment mode, deposit, payment window, reminder day, unpaid-list treatment or bank account field is offered anywhere
+- **THEN** no payment mode, deposit, payment window, reminder day or bank account field is offered anywhere
 
 #### Scenario: Parameters return unchanged with the feature
 - **WHEN** an organizer turns payments off on a tournament with a 5-day window and a day-3 reminder, and later turns payments back on
@@ -802,6 +802,7 @@ A tournament SHALL be created in automatic mode with none of its features enable
 #### Scenario: Cancelling the settings panel creates nothing
 - **WHEN** an organizer reaches the settings panel and cancels
 - **THEN** no tournament has been created, and the first panel holds the name, date and slug that were typed
+
 ### Requirement: Tournament ownership transfer
 The Tournament Owner SHALL be able to transfer ownership to a team member; on transfer the previous owner SHALL remain on the team. A global Admin SHALL be able to assign or reassign a tournament's owner as a fallback (for example when the owner's account is gone or the tournament has no owner).
 
@@ -1121,3 +1122,4 @@ It SHALL be changeable at any time, before and after seating settles and after p
 #### Scenario: Turned on after seating settled
 - **WHEN** the organizer turns the setting on after seating settled, while a payment from the queue is held and its discipline has a free place
 - **THEN** the next matching pass seats that fencer
+

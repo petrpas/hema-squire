@@ -129,6 +129,7 @@ def test_mixed_selection_bills_the_seat_and_queues_the_rest(client, auth_headers
         "kind": "individual",
         "capacity": 1,
         "taken": 1,
+        "entered": 1,
         "free": 0,
         "queue_length": 1,
         "team_min": None,

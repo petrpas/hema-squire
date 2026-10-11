@@ -25,7 +25,6 @@ const MODES: PaymentMode[] = ["immediate", "deposit", "reservation"];
 function modesAvailable(fioConfigured: boolean): PaymentMode[] {
   return fioConfigured ? MODES : MODES.filter((mode) => mode !== "deposit");
 }
-const UNPAID_TREATMENTS = ["greyed", "hidden"] as const;
 
 /** The date the seating deadline actually falls on, with the fallback that
  *  produced it — unset it resolves to the registration close, which itself
@@ -55,7 +54,6 @@ export function PaymentModeSection({
   const [depositEur, setDepositEur] = useState("");
   const [windowDays, setWindowDays] = useState("");
   const [reminderDay, setReminderDay] = useState("");
-  const [unpaidTreatment, setUnpaidTreatment] = useState("greyed");
   const [queueSeats, setQueueSeats] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -79,7 +77,6 @@ export function PaymentModeSection({
     setDepositEur(detail.deposit_amount_eur === null ? "" : String(detail.deposit_amount_eur));
     setWindowDays(String(detail.reservation_validity_days));
     setReminderDay(String(detail.reminder_day));
-    setUnpaidTreatment(detail.unpaid_list_treatment);
     setQueueSeats(detail.queue_payment_seats);
     validation.clearAll();
     setError(null);
@@ -121,7 +118,6 @@ export function PaymentModeSection({
           payment_mode: mode,
           reservation_validity_days: _int(windowDays),
           reminder_day: _int(reminderDay),
-          unpaid_list_treatment: unpaidTreatment,
         };
         if (offersQueueSeats) patch.queue_payment_seats = queueSeats;
         // outside deposit mode the amounts mean nothing and are left alone
@@ -269,25 +265,6 @@ export function PaymentModeSection({
             the stored value comes back if the tournament returns to Squire's
             keeping (design add-external-registration D6) */}
         {detail.registrations_kept_by === "squire" && numberField("reminder_day")}
-        <label className="form-field">
-          <span>
-            {t("param.unpaid_list_treatment")}
-            <HelpHint text={t("param.hint.unpaid_list_treatment")} />
-          </span>
-          <select
-            value={unpaidTreatment}
-            onChange={(event) => {
-              setUnpaidTreatment(event.target.value);
-              setDirty(true);
-            }}
-          >
-            {UNPAID_TREATMENTS.map((option) => (
-              <option key={option} value={option}>
-                {t(`param.unpaid_list_treatment.${option}`)}
-              </option>
-            ))}
-          </select>
-        </label>
       </div>
       {error && <p className="login-error">{error}</p>}
     </section>

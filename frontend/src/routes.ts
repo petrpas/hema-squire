@@ -16,6 +16,19 @@ export function detail(slug: string): string {
   return `/t/${slug}`;
 }
 
+/** The detail page's Entrants tab, at one discipline's roster or, naming
+ *  none, at the first. The one tab of that page with an address of its own,
+ *  so a roster can be linked to (spec fencer-home, routing). */
+export function entrants(slug: string, discipline?: string): string {
+  return discipline ? `/t/${slug}/entrants/${discipline}` : `/t/${slug}/entrants`;
+}
+
+/** The Entrants tab at one side event's roster. A segment of its own, so an
+ *  event's id can never be read as a discipline's slug. */
+export function entrantsEvent(slug: string, item: string): string {
+  return `/t/${slug}/entrants/events/${item}`;
+}
+
 export function picker(): string {
   return "/organizer";
 }

@@ -263,7 +263,6 @@ WITHHELD_KEYS = {
     "reservation_validity_days",
     "reminder_day",
     "amount_tolerance_percent",
-    "unpaid_list_treatment",
     "hr_category_map",
     "setup_missing",
     "in_app_registrations",

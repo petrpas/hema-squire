@@ -21,6 +21,11 @@ export default function App() {
       <Route element={<FencerLayout />}>
         <Route index element={<FencerHome />} />
         <Route path="t/:slug" element={<TournamentDetail />} />
+        {/* the detail page on its Entrants tab: the same screen, addressed so
+            that a roster can be linked to (spec public-entrants) */}
+        <Route path="t/:slug/entrants" element={<TournamentDetail />} />
+        <Route path="t/:slug/entrants/:discipline" element={<TournamentDetail />} />
+        <Route path="t/:slug/entrants/events/:event" element={<TournamentDetail />} />
       </Route>
       {/* Everything else keeps the gate: Login renders in place at the
           requested URL, so the destination survives signing in. */}

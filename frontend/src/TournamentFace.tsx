@@ -1,6 +1,7 @@
 import { IconX } from "@tabler/icons-react";
-import { Fragment, useEffect, useState } from "react";
+import { Fragment, type ReactNode, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { Link } from "react-router-dom";
 
 import {
   ApiError,
@@ -24,6 +25,7 @@ import { formatMoneyWithEur } from "./money";
 import { parseInteger } from "./numeric";
 import { openingMomentMs } from "./openingMoment";
 import Prose from "./Prose";
+import { entrants } from "./routes";
 
 export const LEGACY_WEAPONS: Record<string, string> = {
   LS: "Longsword",
@@ -204,12 +206,21 @@ export function ScheduleLines({
   return <DotJoined parts={[when, where, remark]} />;
 }
 
+/** A discipline's count, as a link to its roster where the page offers one. */
+function CountLink({ to, children }: { to: string | null; children: ReactNode }) {
+  return to === null ? children : <Link to={to}>{children}</Link>;
+}
+
 export function DisciplinesInfo({
   detail,
   availability,
+  linkCounts = false,
 }: {
   detail: TournamentDetailData;
   availability: Availability[];
+  /** Whether each count leads to its discipline's roster. Off in the Setup
+   *  preview, where a draft holds no roster to lead to (spec fencer-home). */
+  linkCounts?: boolean;
 }) {
   const { t } = useTranslation();
   const bySlug = new Map(availability.map((a) => [a.slug, a]));
@@ -220,7 +231,9 @@ export function DisciplinesInfo({
       <ul className="detail-list">
         {detail.disciplines.map((d) => {
           const a = bySlug.get(d.slug);
-          const taken = a ? a.taken : 0;
+          // the count states who is shown above the line; whether a place is
+          // free is the seats' to say (spec public-entrants)
+          const taken = a ? a.entered : 0;
           const free = a ? a.free : d.capacity;
           // the label stays plain text beside the field: the ruleset is inline
           // markdown and carries its own links, one per language it names
@@ -250,9 +263,11 @@ export function DisciplinesInfo({
                           })
                         : formatMoneyWithEur(d.fee, d.fee_eur, detail),
                     isTeam ? t("detail.rosterBounds", { min: d.team_min, max: d.team_max }) : null,
-                    isTeam
-                      ? t("detail.teamsCount", { taken, capacity: d.capacity })
-                      : t("detail.fencersCount", { taken, capacity: d.capacity }),
+                    <CountLink key="count" to={linkCounts ? entrants(detail.slug, d.slug) : null}>
+                      {isTeam
+                        ? t("detail.teamsCount", { taken, capacity: d.capacity })
+                        : t("detail.fencersCount", { taken, capacity: d.capacity })}
+                    </CountLink>,
                     free <= 0 ? t("detail.queueLength", { count: a?.queue_length ?? 0 }) : null,
                   ]}
                 />
@@ -715,7 +730,11 @@ export function RegistrationForm({
   // gather into the one optional programme, the goods head a section each
   const programmeItems = detail.extra_items.filter(isAction);
   const goods = groupGoods(detail.extra_items);
+  const individualDisciplines = detail.disciplines.filter((d) => d.kind === "individual");
   const teamDisciplines = detail.disciplines.filter((d) => d.kind === "team");
+  // A team-only tournament has nothing to tick under "Turnaj"; its teams
+  // heading takes the tournament's place instead of standing under an empty one.
+  const teamsOnly = individualDisciplines.length === 0 && teamDisciplines.length > 0;
 
   /** Rows whose option is declared but unanswered block submission — every
    *  extra item is a candidate, wherever on the form it renders. */
@@ -811,34 +830,36 @@ export function RegistrationForm({
       {detail.subtitle && <p className="detail-subtitle">{detail.subtitle}</p>}
       <Prose source={detail.registration_instructions} className="registration-instructions" />
 
-      <h3 className="register-section">{t("form.sections.tournament")}</h3>
-      <div className="checklist">
-        {detail.disciplines
-          .filter((d) => d.kind === "individual")
-          .map((d) => {
-            const a = bySlug.get(d.slug);
-            const taken = a ? a.taken : 0;
-            const free = freePlaces(d.slug);
-            return (
-              <ChecklistRow
-                key={d.slug}
-                name={d.name}
-                price={d.fee === null ? "—" : formatMoneyWithEur(d.fee, d.fee_eur, detail)}
-                checked={disciplines.has(d.slug)}
-                onToggle={() => toggleDiscipline(d.slug)}
-              >
-                <ScheduleLines when={d.schedule_when} where={d.schedule_where} />
-                {free <= 0 ? (
-                  <span className="checklist-full">
-                    {t("form.full", { taken, capacity: d.capacity })}
-                  </span>
-                ) : (
-                  <span>{t("form.freePlaces", { free, capacity: d.capacity })}</span>
-                )}
-              </ChecklistRow>
-            );
-          })}
-      </div>
+      {!teamsOnly && (
+        <>
+          <h3 className="register-section">{t("form.sections.tournament")}</h3>
+          <div className="checklist">
+            {individualDisciplines.map((d) => {
+              const a = bySlug.get(d.slug);
+              const taken = a ? a.entered : 0;
+              const free = freePlaces(d.slug);
+              return (
+                <ChecklistRow
+                  key={d.slug}
+                  name={d.name}
+                  price={d.fee === null ? "—" : formatMoneyWithEur(d.fee, d.fee_eur, detail)}
+                  checked={disciplines.has(d.slug)}
+                  onToggle={() => toggleDiscipline(d.slug)}
+                >
+                  <ScheduleLines when={d.schedule_when} where={d.schedule_where} />
+                  {free <= 0 ? (
+                    <span className="checklist-full">
+                      {t("form.full", { taken, capacity: d.capacity })}
+                    </span>
+                  ) : (
+                    <span>{t("form.freePlaces", { free, capacity: d.capacity })}</span>
+                  )}
+                </ChecklistRow>
+              );
+            })}
+          </div>
+        </>
+      )}
       {offersCondition && (
         <>
           <label className="rail-check">
@@ -855,7 +876,9 @@ export function RegistrationForm({
 
       {teamDisciplines.length > 0 && (
         <>
-          <h3 className="register-section">{t("form.sections.teams")}</h3>
+          <h3 className="register-section">
+            {t(teamsOnly ? "form.sections.teamTournament" : "form.sections.teams")}
+          </h3>
           <div className="checklist">
             {teamDisciplines.map((d) => {
               const fee = d.fee === null ? "—" : formatMoneyWithEur(d.fee, d.fee_eur, detail);

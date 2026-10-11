@@ -7,7 +7,7 @@ from app.db import get_session
 from app.mail import get_mailer
 from app.main import app
 from app.models import ExtraCategory, ExtraItem, PaymentEvent, Registration, Tournament
-from tests.conftest import credit_registration, enable_payments, publish
+from tests.conftest import credit_registration, enable_payments, public_seated, publish
 
 
 class CollectingMailer:
@@ -120,7 +120,7 @@ def test_expiry_frees_capacity_and_notifies(client, auth_headers, mailbox):
 
     availability = client.get("/api/tournaments/cup/availability").json()
     assert availability[0]["free"] == 1
-    assert client.get("/api/tournaments/cup/participants").json()["participants"] == []
+    assert public_seated(client) == []
 
     session = db_session()
     kinds = session.scalars(select(PaymentEvent.kind)).all()

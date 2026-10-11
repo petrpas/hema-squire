@@ -12,6 +12,7 @@ from app import (
     accounts,
     amendment,
     emails,
+    entrants,
     ledger,
     matching,
     placement,
@@ -22,7 +23,6 @@ from app import (
 )
 from app.auth import require_console_access, require_published
 from app.availability import (
-    live_registration,
     queue_length,
     queue_position,
     queued_on_entry,
@@ -49,16 +49,14 @@ from app.models import (
     Team,
     TeamMember,
     Tournament,
-    UnpaidListTreatment,
 )
-from app.routers.tournaments import FencerDep, SessionDep, TournamentDep
+from app.routers.tournaments import FencerDep, SessionDep, TournamentDep, require_public
 from app.schemas import (
     AmendmentPlacementOut,
     AvailabilityOut,
     DiscountBreakdownOut,
     DiscountEffect,
-    ParticipantListOut,
-    ParticipantOut,
+    EntrantsOut,
     PaymentInstructionsOut,
     PricePreviewIn,
     PricePreviewOut,
@@ -237,6 +235,7 @@ def registration_out(session, registration: Registration, tournament: Tournament
 
 @router.get("/availability", response_model=list[AvailabilityOut])
 def availability(tournament: TournamentDep, session: SessionDep):
+    removed = entrants.removed_registration_ids(session, tournament)
     result = []
     for discipline in tournament.disciplines:
         if discipline.kind == DisciplineKind.TEAM:
@@ -247,6 +246,7 @@ def availability(tournament: TournamentDep, session: SessionDep):
                     kind=discipline.kind,
                     capacity=discipline.capacity,
                     taken=taken,
+                    entered=entrants.entered(session, discipline, removed),
                     free=max(discipline.capacity - taken, 0),
                     queue_length=team_queue_length(session, discipline),
                     team_min=discipline.team_min,
@@ -261,6 +261,7 @@ def availability(tournament: TournamentDep, session: SessionDep):
                     kind=discipline.kind,
                     capacity=discipline.capacity,
                     taken=taken,
+                    entered=entrants.entered(session, discipline, removed),
                     free=max(discipline.capacity - taken, 0),
                     queue_length=queue_length(session, discipline),
                 )
@@ -268,68 +269,16 @@ def availability(tournament: TournamentDep, session: SessionDep):
     return result
 
 
-@router.get("/participants", response_model=ParticipantListOut)
-def participants(tournament: TournamentDep, session: SessionDep):
-    """The public list of who is entered.
-
-    What it says about payment depends on whether Squire guarantees a payment
-    state at all. Where it collects — payments on, and Squire keeping the
-    registrations — paid registrations are confirmed and unpaid ones are hidden
-    or greyed per the tournament's setting, as before.
-
-    Where it does not, no confirmed/unconfirmed distinction is drawn and the
-    unpaid-list setting does not apply: there are no unpaid reservations in the
-    sense that setting means, because no money was requested. Reading a
-    registration's state as its attendance used to leave a payments-off
-    tournament's list either empty or entirely "unconfirmed", which contradicted
-    `registration`'s own lifecycle rule that such a registration is presented as
-    confirmed (design add-external-registration D2)."""
-    known = (
-        tournament.feature_payments
-        and tournament.registrations_kept_by is RegistrationsKeptBy.SQUIRE
-    )
-    show_unpaid = tournament.unpaid_list_treatment == UnpaidListTreatment.GREYED
-    rows = session.scalars(
-        select(Registration)
-        .where(
-            Registration.tournament_id == tournament.id,
-            live_registration(),
-        )
-        .order_by(Registration.registered_at)
-    ).all()
-
-    result = []
-    for registration in rows:
-        active_slugs = [e.discipline.slug for e in registration.entries if not e.is_substitute]
-        if not active_slugs:
-            continue  # fully-queued substitutes are not participants
-        status = None
-        if known:
-            confirmed = registration.settled
-            if not confirmed and not show_unpaid:
-                continue
-            status = "confirmed" if confirmed else "unconfirmed"
-        elif registration.settled:
-            # Squire guarantees no payment state here, so the only way this is
-            # paid is that the organizer said so by hand — an assertion by a
-            # person who collected the money, and worth showing. The others
-            # carry no mark at all rather than "unconfirmed": an absent mark is
-            # an organizer who has not reached that row, not a claim that
-            # anyone failed to pay (design add-manual-paid-marking D5)
-            status = "confirmed"
-        result.append(
-            ParticipantOut(
-                name=registration.fencer.display_name,
-                club=registration.fencer.club,
-                nationality=registration.fencer.nationality,
-                disciplines=active_slugs,
-                status=status,
-            )
-        )
-    return ParticipantListOut(
-        participants=result,
-        payment_state_known=known,
-        as_of=_roster_as_of(session, tournament),
+@router.get("/entrants", response_model=EntrantsOut)
+def entrant_rosters(tournament: TournamentDep, session: SessionDep) -> EntrantsOut:
+    """The public rosters, one per discipline, answered without a credential
+    and identically for everyone (spec public-entrants, public-browsing)."""
+    require_public(tournament)
+    return EntrantsOut.model_validate(
+        {
+            "as_of": _roster_as_of(session, tournament),
+            "rosters": entrants.rosters(session, tournament),
+        }
     )
 
 
