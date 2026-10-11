@@ -59,6 +59,7 @@ from app.fieldtypes import (
     TournamentDisplayNameStr,
     TournamentQualificationCriteriaStr,
     TournamentRegistrationInstructionsStr,
+    TournamentShortCodeStr,
     TournamentSubtitleStr,
     UtcInstant,
 )
@@ -439,6 +440,10 @@ class TournamentUpdate(BaseModel):
 
     display_name: TournamentDisplayNameStr | None = None
     subtitle: TournamentSubtitleStr | None = None
+    # null clears it, and the card returns to the monogram derived from the
+    # name; the form sends null for a value equal to that monogram, so a
+    # rename keeps updating it
+    short_code: TournamentShortCodeStr | None = None
     date: datetime.date | None = None
     language: str | None = None
     city: TournamentCityStr | None = None
@@ -638,6 +643,7 @@ class TournamentOut(BaseModel):
     slug: str
     display_name: str
     subtitle: str | None
+    short_code: str | None = None
     has_logo: bool
     date: datetime.date
     language: str
@@ -1255,6 +1261,8 @@ class OpenTournamentOut(BaseModel):
     # the logo's hue band, choosing the card's cover tint among the three
     # pastel tokens; null without a logo or for an achromatic one
     logo_tint: Literal["blue", "green", "warm"] | None = None
+    # the organizer's override for the plate's monogram; null derives it
+    short_code: str | None = None
     date: datetime.date
     # the card names the town and nothing more; the address is read on the
     # tournament's own page (spec `fencer-home`)

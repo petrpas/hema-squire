@@ -273,6 +273,10 @@ class Tournament(Base):
     # cleared with the logo; null for no logo or an achromatic one. Chooses the
     # card's cover tint among the three pastel tokens (spec tournament-admin)
     logo_tint: Mapped[LogoBand | None] = mapped_column(String(10))
+    # what the card's plate reads where there is no logo, set by the organizer
+    # only where the monogram derived from the name will not do; null follows
+    # the name (spec tournament-admin, Tournament short code)
+    short_code: Mapped[str | None] = mapped_column(String(3))
     date: Mapped[date]
     # the single Tournament Owner (creator, until transferred); nullable only
     # for pre-role tournaments that had no organizers to backfill from

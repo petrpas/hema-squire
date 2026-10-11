@@ -77,7 +77,9 @@ function Strip({
         {tournament.has_logo ? (
           <img src={logoUrl(tournament.slug)} alt="" />
         ) : (
-          <span aria-hidden="true">{monogram(tournament.display_name)}</span>
+          <span aria-hidden="true">
+            {tournament.short_code ?? monogram(tournament.display_name)}
+          </span>
         )}
       </span>
       <div className="next-opening-name">

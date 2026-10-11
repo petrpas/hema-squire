@@ -141,6 +141,8 @@ export interface Tournament extends TournamentFlags {
   slug: string;
   display_name: string;
   subtitle: string | null;
+  /** The organizer's override for the plate's monogram; null derives it. */
+  short_code: string | null;
   has_logo: boolean;
   date: string;
   language: string;
@@ -784,6 +786,9 @@ export interface OpenTournament {
   /** The logo's hue band, choosing the card's cover tint among the three
    *  pastel tokens; null without a logo or for an achromatic one. */
   logo_tint: "blue" | "green" | "warm" | null;
+  /** What the plate reads where there is no logo, when the organizer set it;
+   *  null derives the monogram from the name. */
+  short_code: string | null;
   date: string;
   /** The town, and only the town: the card has room for the name and nothing
    *  more, and the address is read on the tournament's own page. */

@@ -26,8 +26,15 @@ letters with diacritics are single code points in NFC, so the server normalizes
 to NFC and counts code points.
 
 ### D3. Export
-If the tournament JSON export carries identity fields, `short_code` is added to
-it under the existing version-bump rules; otherwise nothing.
+The tournament JSON export carries neither the subtitle nor the logo, so the
+short code, which is of the same cosmetic kind, is not exported either.
+
+### D4. The Setup field
+The field stands right under the logo control, the thing it stands in for. The
+identity section was already past the size the frontend conventions allow, so
+the logo control moved to `setup/LogoControl.tsx` and the field with its rules
+(`shortCodeShown`, `shortCodeCheck`, `shortCodePatch`) lives in
+`setup/ShortCodeField.tsx`.
 
 ## Risks / Trade-offs
 

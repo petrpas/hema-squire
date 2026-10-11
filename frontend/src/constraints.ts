@@ -62,6 +62,7 @@ export const FIELD_CONSTRAINTS: Record<string, FieldConstraint> = {
   "TournamentCreate.display_name": { "minLength": 1, "maxLength": 200 },
   "TournamentUpdate.display_name": { "minLength": 1, "maxLength": 200 },
   "TournamentUpdate.subtitle": { "maxLength": 400 },
+  "TournamentUpdate.short_code": { "minLength": 1, "maxLength": 3 },
   "TournamentUpdate.city": { "maxLength": 120 },
   "TournamentUpdate.address": { "maxLength": 300 },
   "TournamentUpdate.description": { "maxLength": 5000 },

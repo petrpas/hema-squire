@@ -562,7 +562,9 @@
       "registrationInstructions": "Registration instructions",
       "registrationInstructionsHint": "Shown only on the registration form — the place for payment or registration notes that do not belong on the public page.",
       "markdownHint": "supports markdown: **strong**, *emphasis*, # and ## headings, - lists, 1. numbered lists, [links](url), > quotes, --- rule",
-      "externalRegistrationHint": "Where fencers register when the organizer keeps the registrations. Squire only links to it — it never checks the address or reads anything back from it."
+      "externalRegistrationHint": "Where fencers register when the organizer keeps the registrations. Squire only links to it — it never checks the address or reads anything back from it.",
+      "shortCode": "Short code",
+      "shortCodeHint": "Shown on the tournament card in place of a logo while there is none. Three characters at most. Left as offered, it is derived from the name and follows it."
     },
     "vsSeries": {
       "title": "Variable symbol series",

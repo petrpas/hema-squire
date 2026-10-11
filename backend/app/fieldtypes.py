@@ -99,6 +99,12 @@ def _clean_single_line(value: object) -> object:
     return _clean_string(value, collapse_whitespace=True)
 
 
+def _compose(value: object) -> object:
+    """NFC, so a letter typed as a base and a combining mark counts as the one
+    character it reads as."""
+    return unicodedata.normalize("NFC", value) if isinstance(value, str) else value
+
+
 def _clean_multiline(value: object) -> object:
     return _clean_string(value, collapse_whitespace=False)
 
@@ -230,6 +236,18 @@ TournamentDisplayNameStr = Annotated[
 ]
 TournamentSubtitleStr = Annotated[
     str, SingleLine, Field(max_length=constraints.TOURNAMENT_SUBTITLE_MAX_LENGTH)
+]
+# Counted in NFC code points, so a Czech letter typed as a base and a combining
+# caron is one character, as it reads. Validators before a type run last to
+# first: SingleLine trims, then the composition is applied, then the bound.
+TournamentShortCodeStr = Annotated[
+    str,
+    BeforeValidator(_compose),
+    SingleLine,
+    Field(
+        min_length=constraints.TOURNAMENT_SHORT_CODE_MIN_LENGTH,
+        max_length=constraints.TOURNAMENT_SHORT_CODE_MAX_LENGTH,
+    ),
 ]
 TournamentCityStr = Annotated[
     str, SingleLine, Field(max_length=constraints.TOURNAMENT_CITY_MAX_LENGTH)
@@ -430,5 +448,6 @@ __all__ = [
     "TournamentDisplayNameStr",
     "TournamentQualificationCriteriaStr",
     "TournamentRegistrationInstructionsStr",
+    "TournamentShortCodeStr",
     "TournamentSubtitleStr",
 ]

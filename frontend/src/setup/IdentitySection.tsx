@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { ApiError, api, logoUrl, type SetupSuggestions, type TournamentDetail } from "../api";
+import { ApiError, api, type SetupSuggestions, type TournamentDetail } from "../api";
 import FieldError, { invalidProps } from "../FieldError";
 import HelpHint from "../HelpHint";
 import SuggestionAnchor from "../SuggestionAnchor";
@@ -10,6 +10,8 @@ import { plainEntries } from "../suggestions";
 import { useFieldValidation } from "../useFieldValidation";
 import { useSuggestions } from "../useSuggestions";
 import { apiErrors, checkString, type FieldError as FieldErrorValue } from "../validation";
+import LogoControl from "./LogoControl";
+import ShortCodeField, { shortCodeCheck, shortCodePatch, shortCodeShown } from "./ShortCodeField";
 import { type SaverRegistry, useSectionSaver } from "./shared";
 
 // Identity fields patched as a whole, mirroring ParamPanel's save pattern
@@ -88,10 +90,10 @@ export function IdentitySection({
   const [qualificationOpen, setQualificationOpen] = useState(true);
   const [qualificationCriteria, setQualificationCriteria] = useState("");
   const [dirty, setDirty] = useState(false);
-  const [logoBusy, setLogoBusy] = useState(false);
-  const [logoError, setLogoError] = useState<string | null>(null);
-  // bumped on upload/remove so the <img> re-fetches past the browser cache
-  const [logoVersion, setLogoVersion] = useState(0);
+  // null while the field follows the name; a string once the organizer has
+  // typed or a stored code was loaded (spec tournament-admin, Tournament
+  // short code)
+  const [shortCode, setShortCode] = useState<string | null>(null);
   const validation = useFieldValidation();
   const fieldRefs = useRef<Record<string, HTMLInputElement | HTMLTextAreaElement | null>>({});
 
@@ -122,6 +124,9 @@ export function IdentitySection({
   const recalled = (key: string) =>
     key in RECALLED ? RECALLED[key as keyof typeof RECALLED] : null;
 
+  const displayName = values.display_name ?? detail.display_name;
+  const shortCodeValue = shortCodeShown(shortCode, displayName);
+
   function qualificationCriteriaCheck(): FieldErrorValue | null {
     if (!qualificationOpen && qualificationCriteria.trim() === "") {
       return {
@@ -138,42 +143,6 @@ export function IdentitySection({
     );
   }
 
-  async function uploadLogo(file: File) {
-    setLogoBusy(true);
-    setLogoError(null);
-    try {
-      await api.uploadLogo(slug, file);
-      setLogoVersion((v) => v + 1);
-      onSaved();
-    } catch (err) {
-      if (err instanceof ApiError && err.status === 413) {
-        setLogoError(t("setup.identity.logoTooLarge"));
-      } else if (err instanceof ApiError && (err.status === 415 || err.status === 422)) {
-        setLogoError(t("setup.identity.logoUnsupportedFormat"));
-      } else if (err instanceof ApiError && (err.status === 401 || err.status === 403)) {
-        setLogoError(t("setup.identity.logoNotAuthorized"));
-      } else if (err instanceof ApiError) {
-        setLogoError(t("setup.identity.logoUploadFailed", { status: err.status }));
-      } else {
-        setLogoError(t("setup.identity.logoUploadFailed", { status: "?" }));
-      }
-    } finally {
-      setLogoBusy(false);
-    }
-  }
-
-  async function removeLogo() {
-    setLogoBusy(true);
-    setLogoError(null);
-    try {
-      await api.deleteLogo(slug);
-      setLogoVersion((v) => v + 1);
-      onSaved();
-    } finally {
-      setLogoBusy(false);
-    }
-  }
-
   useEffect(() => {
     const next: Record<string, string> = {};
     for (const field of IDENTITY_FIELDS) {
@@ -181,6 +150,7 @@ export function IdentitySection({
       next[field.key] = value === null || value === undefined ? "" : String(value);
     }
     setValues(next);
+    setShortCode(detail.short_code);
     setQualificationOpen(detail.qualification_open);
     setQualificationCriteria(detail.qualification_criteria ?? "");
     validation.clearAll();
@@ -198,6 +168,7 @@ export function IdentitySection({
               check(values[key] ?? ""),
         ),
         qualificationCriteriaCheck,
+        () => shortCodeCheck(shortCodeValue),
       ]),
     focusFirstInvalid: () => {
       for (const [key, check] of Object.entries(IDENTITY_TEXT_CHECKS)) {
@@ -205,6 +176,10 @@ export function IdentitySection({
           fieldRefs.current[key]?.focus();
           return;
         }
+      }
+      if (shortCodeCheck(shortCodeValue)) {
+        fieldRefs.current.short_code?.focus();
+        return;
       }
       if (qualificationCriteriaCheck()) fieldRefs.current.qualification_criteria?.focus();
     },
@@ -215,6 +190,7 @@ export function IdentitySection({
           const raw = values[field.key] ?? "";
           patch[field.key] = raw === "" ? null : raw;
         }
+        patch.short_code = shortCodePatch(shortCode, displayName);
         patch.qualification_open = qualificationOpen;
         patch.qualification_criteria = qualificationOpen ? null : qualificationCriteria || null;
         await api.updateTournament(slug, patch);
@@ -307,43 +283,20 @@ export function IdentitySection({
   return (
     <section className="rail-card">
       <div className="form-fields">{IDENTITY_RUN_1.map(renderField)}</div>
-      <div className="logo-control">
-        <span className="logo-control-label">{t("setup.identity.logo")}</span>
-        {detail.has_logo && (
-          <img
-            className="logo-preview"
-            src={`${logoUrl(slug)}?v=${logoVersion}`}
-            alt={t("setup.identity.logo")}
-          />
-        )}
-        <div className="logo-control-actions">
-          <label className="logo-upload">
-            {t("setup.identity.logoUpload")}
-            <input
-              type="file"
-              accept="image/*"
-              disabled={logoBusy}
-              onChange={(event) => {
-                const file = event.target.files?.[0];
-                if (file) void uploadLogo(file);
-                event.target.value = "";
-              }}
-            />
-          </label>
-          {detail.has_logo && (
-            <button
-              type="button"
-              className="link-button"
-              disabled={logoBusy}
-              onClick={() => void removeLogo()}
-            >
-              {t("setup.identity.logoRemove")}
-            </button>
-          )}
-        </div>
-        <span className="rail-hint">{t("setup.identity.logoHint")}</span>
-        {logoError && <span className="login-error">{logoError}</span>}
-      </div>
+      <LogoControl slug={slug} hasLogo={detail.has_logo} onSaved={onSaved} />
+      <ShortCodeField
+        value={shortCodeValue}
+        error={validation.errors.short_code}
+        inputRef={(el) => {
+          fieldRefs.current.short_code = el;
+        }}
+        onChange={(value) => {
+          setShortCode(value);
+          setDirty(true);
+          validation.clearIfValid("short_code", () => shortCodeCheck(value));
+        }}
+        onBlur={(value) => validation.touch("short_code", () => shortCodeCheck(value))}
+      />
       <div className="form-fields">{IDENTITY_RUN_2.map(renderField)}</div>
       <div className="form-field qualification-control">
         <span>{t("setup.identity.qualification")}</span>

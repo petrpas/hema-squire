@@ -34,6 +34,7 @@ function tournament(over: Partial<OpenTournament> = {}): OpenTournament {
     subtitle: null,
     has_logo: false,
     logo_tint: null,
+    short_code: null,
     date: "2026-11-20",
     city: "Brno",
     description: null,
@@ -130,6 +131,11 @@ describe("the card's cover", () => {
   it("shows the monogram where there is no logo", () => {
     const page = render(card({ display_name: "Brněnská šavle 2027" }));
     expect(page.querySelector(".home-card-plate")?.textContent).toBe("BŠ");
+  });
+
+  it("prefers the organizer's short code to the monogram", () => {
+    const page = render(card({ display_name: "Pražský dlouhý meč 2027", short_code: "PDM" }));
+    expect(page.querySelector(".home-card-plate")?.textContent).toBe("PDM");
   });
 });
 
