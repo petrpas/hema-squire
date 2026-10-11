@@ -768,6 +768,9 @@ export interface OpenTournament {
   display_name: string;
   subtitle: string | null;
   has_logo: boolean;
+  /** The logo's hue band, choosing the card's cover tint among the three
+   *  pastel tokens; null without a logo or for an achromatic one. */
+  logo_tint: "blue" | "green" | "warm" | null;
   date: string;
   /** The town, and only the town: the card has room for the name and nothing
    *  more, and the address is read on the tournament's own page. */

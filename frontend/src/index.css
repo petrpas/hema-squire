@@ -2584,9 +2584,9 @@ tr.row-deleted td.col-actions {
   border-radius: var(--radius-card);
 }
 
-/* The cover: a pastel band chosen from the slug (data-tint), the plate at
-   its centre, the status block at its top left and the ordinal at its top
-   right. */
+/* The cover: a pastel band (data-tint, from the logo or else the slug), the
+   plate at its centre, the status block at its top left and the ordinal at
+   its top right. */
 .home-card-cover {
   position: relative;
   height: 150px;
@@ -2597,12 +2597,12 @@ tr.row-deleted td.col-actions {
   background: var(--file-blue);
 }
 
-.home-card-cover[data-tint="1"] {
+.home-card-cover[data-tint="green"] {
   --tint-ink: var(--seal-green-ink);
   background: var(--seal-green);
 }
 
-.home-card-cover[data-tint="2"] {
+.home-card-cover[data-tint="yellow"] {
   --tint-ink: var(--form-yellow-ink);
   background: var(--form-yellow);
 }

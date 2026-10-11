@@ -38,6 +38,7 @@ from sqlalchemy.sql.elements import ColumnElement
 
 from app import constraints, taxonomy
 from app.db import Base
+from app.logo_tint import LogoBand
 
 
 class Role(enum.StrEnum):
@@ -268,6 +269,10 @@ class Tournament(Base):
     # always-loaded logo_mime via has_logo.
     logo_bytes: Mapped[bytes | None] = mapped_column(LargeBinary, deferred=True)
     logo_mime: Mapped[str | None] = mapped_column(String(100))
+    # the logo's hue band — blue, green or warm — read once on upload and
+    # cleared with the logo; null for no logo or an achromatic one. Chooses the
+    # card's cover tint among the three pastel tokens (spec tournament-admin)
+    logo_tint: Mapped[LogoBand | None] = mapped_column(String(10))
     date: Mapped[date]
     # the single Tournament Owner (creator, until transferred); nullable only
     # for pre-role tournaments that had no organizers to backfill from

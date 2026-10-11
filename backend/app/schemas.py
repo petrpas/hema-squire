@@ -1235,6 +1235,9 @@ class OpenTournamentOut(BaseModel):
     display_name: str
     subtitle: str | None = None
     has_logo: bool = False
+    # the logo's hue band, choosing the card's cover tint among the three
+    # pastel tokens; null without a logo or for an achromatic one
+    logo_tint: Literal["blue", "green", "warm"] | None = None
     date: datetime.date
     # the card names the town and nothing more; the address is read on the
     # tournament's own page (spec `fencer-home`)

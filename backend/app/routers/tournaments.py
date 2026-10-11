@@ -30,6 +30,7 @@ from app.availability import (
 from app.db import get_session
 from app.errors import FieldValidationError
 from app.fieldtypes import RowId
+from app.logo_tint import logo_hue_band
 from app.mail import Mailer, get_mailer
 from app.models import (
     ACTION_CATEGORIES,
@@ -313,6 +314,7 @@ def _fencer_tournament_out(
         ),
         subtitle=tournament.subtitle,
         has_logo=tournament.has_logo,
+        logo_tint=tournament.logo_tint if tournament.has_logo else None,
         date=tournament.date,
         city=tournament.city,
         description=tournament.description,
@@ -955,6 +957,7 @@ async def upload_logo(
     image.save(buffer, format="PNG", optimize=True)
     tournament.logo_bytes = buffer.getvalue()
     tournament.logo_mime = "image/png"
+    tournament.logo_tint = logo_hue_band(image)
     session.commit()
     session.refresh(tournament)
     out = TournamentOut.model_validate(tournament)
@@ -969,6 +972,7 @@ def delete_logo(tournament: TournamentDep, session: SessionDep, fencer: FencerDe
     require_console_access(session, tournament, fencer)
     tournament.logo_bytes = None
     tournament.logo_mime = None
+    tournament.logo_tint = None
     session.commit()
 
 

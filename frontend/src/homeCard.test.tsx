@@ -33,6 +33,7 @@ function tournament(over: Partial<OpenTournament> = {}): OpenTournament {
     display_name: "Brno Open",
     subtitle: null,
     has_logo: false,
+    logo_tint: null,
     date: "2026-11-20",
     city: "Brno",
     description: null,
@@ -91,8 +92,20 @@ describe("the card's cover", () => {
     const second = render(card({ display_name: "Renamed" }))
       .querySelector(".home-card-cover")
       ?.getAttribute("data-tint");
-    expect(first).toMatch(/^[012]$/);
+    expect(first).toMatch(/^(blue|green|yellow)$/);
     expect(second).toBe(first);
+  });
+
+  it("follows the logo's band over the slug, warm wearing yellow", () => {
+    const slugTint = render(card()).querySelector(".home-card-cover")?.getAttribute("data-tint");
+    const other = slugTint === "green" ? "blue" : "green";
+    const tint = (logo_tint: OpenTournament["logo_tint"]) =>
+      render(card({ has_logo: true, logo_tint }))
+        .querySelector(".home-card-cover")
+        ?.getAttribute("data-tint");
+    expect(tint(other)).toBe(other);
+    expect(tint("warm")).toBe("yellow");
+    expect(tint(null)).toBe(slugTint);
   });
 
   it("states open registration with its closing day, and rings the plate", () => {

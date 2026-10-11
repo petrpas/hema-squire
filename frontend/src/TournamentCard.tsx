@@ -10,6 +10,20 @@ import { consolePath, detail } from "./routes";
 import { BondBlock, StatusBlock } from "./StatusBlock";
 import { slugHash } from "./slugHash";
 
+type Tint = "blue" | "green" | "yellow";
+
+const SLUG_TINTS: readonly Tint[] = ["blue", "green", "yellow"];
+
+/** The cover's tint (spec `fencer-home`, A card's cover tint follows its
+ *  logo): the logo's hue band where it has one — the warm band wears the only
+ *  warm tint, form-yellow — and otherwise one chosen from the slug, so the
+ *  same tournament wears the same cover everywhere. */
+export function coverTint(tournament: OpenTournament): Tint {
+  if (tournament.logo_tint === "warm") return "yellow";
+  if (tournament.logo_tint !== null) return tournament.logo_tint;
+  return SLUG_TINTS[slugHash(tournament.slug) % SLUG_TINTS.length] ?? "blue";
+}
+
 /** The card's place in the list as shown, in the ledger's zero-padded form. */
 function ordinal(position: number): string {
   return String(position).padStart(3, "0");
@@ -56,10 +70,9 @@ export default function TournamentCard({
   return (
     <li className="home-card">
       <Link className="home-card-body" to={detail(tournament.slug)} state={{ tab }}>
-        {/* The tint is chosen from the slug, so the same tournament wears the
-            same cover everywhere; which color each value means is the
-            stylesheet's business, not this file's. */}
-        <div className="home-card-cover" data-tint={slugHash(tournament.slug) % 3}>
+        {/* which color each tint means is the stylesheet's business, not
+            this file's */}
+        <div className="home-card-cover" data-tint={coverTint(tournament)}>
           {bond ? <BondBlock tournament={tournament} /> : <StatusBlock tournament={tournament} />}
           <span className="home-card-ordinal">{ordinal(position)}</span>
           <Plate tournament={tournament} />
