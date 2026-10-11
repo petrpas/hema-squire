@@ -4869,6 +4869,9 @@ tr.export-line td {
    off by a narrow no-break space so it never wraps from its number. */
 .entrants-table a.external-link {
   text-decoration: none;
+  /* the arrow is set after a space, which a narrow column would break at,
+     dropping the arrow of a five-digit identifier onto a line of its own */
+  white-space: nowrap;
 }
 
 .entrants-table a.external-link::after {
