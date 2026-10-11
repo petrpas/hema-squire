@@ -19,12 +19,12 @@ The cards SHALL be laid out in a grid of columns at least 320px wide, filling a 
 - **The cover**, a band whose ground is one of the three pastel tints (file-blue, seal-green, form-yellow), chosen as `A card's cover tint follows its logo` states: by the logo's hue band where it has one, and otherwise deterministically from the tournament's slug by the same hash that tilts the Paid stamp, so the same tournament always wears the same tint. The choice SHALL be carried as a data attribute and resolved in CSS, so no color lives in a component.
 - **The plate**, centred in the cover at `--radius-plate`: the tournament's logo on `--plate` when one is set, filling the plate and cropped on its longer side; otherwise its monogram (see `A tournament without a logo shows its monogram`) on `--paper` in the tint's `-ink` color. The plate SHALL be ringed in `--stamp` while registration is open, and in `--hairline-strong` otherwise. The ring is drawn by an outline, not a border or a shadow.
 - **The ordinal**, at the cover's top right in `--font-data` 12px `--ink-faded`: the card's position in the list as shown, zero-padded (`001`).
-- **The status block**, at the cover's top left, never reaching the plate: three short lines at `--radius-chip` stating registration's state. Open: `registrace` / `otevřena` / `do {closing date}`, on `--stamp-tint` in `--stamp-on-tint`, led by a small `--stamp` dot. Opens on a date: `registrace` / `od {date}` / `v {time}` when an hour is set. Held elsewhere: `registrace` / `jinde`. Closed: `registrace` / `uzavřena`. The last three stand on `--paper` in `--ink`, `--ink-soft` and `--ink-faded` respectively. A line whose value is absent SHALL be omitted. On the Mine and Past tabs the block SHALL state the account's own bond instead, as those tabs require.
+- **The status block**, at the cover's top left, never reaching the plate: three short lines at `--radius-chip` stating registration's state. Open: `registrace` / `otevřena` / `do {closing date}`, on `--stamp-tint` in `--stamp-on-tint`, led by a small `--stamp` dot. Opens on a date: `registrace` / `od {date}` / `v {time}` when an hour is set. Closed: `registrace` / `uzavřena`. The last two stand on `--paper` in `--ink` and `--ink-faded` respectively. A tournament whose registrations its organizer keeps SHALL carry no status block at all. A line whose value is absent SHALL be omitted. On the Mine and Past tabs the block SHALL state the account's own bond instead, as those tabs require.
 - **The body**: the tournament's name in `--font-display` at `--weight-display`; the subtitle beneath it when one is set, in `--ink-soft`; the date and the city together on their own line in `--font-data`; the organizer names as plain `--ink-soft` text, with no links in them; then one row per offered discipline, its name at the left and its figure at the right over a capacity meter (`design-system`); and at the foot, below a hairline and aligned across a row of cards, the count of seated fencers and of their clubs at the right in `--font-data` 12px `--ink-faded`.
 
 The date and city line SHALL separate its parts with the spaced middle dot and SHALL wrap rather than overflow on a narrow screen. The card layout SHALL render correctly whether or not a logo, subtitle, city, or organizer is present.
 
-The card's whole body SHALL be one link to the tournament's detail, and the card SHALL carry no Register or Manage registration action of its own: registration's state is stated by the status block and acted on from the detail page. A card SHALL carry no link inside its body link; the organizer names are text for that reason. **A tournament in manual mode SHALL state in its status block that its registration is held elsewhere** (`tournament-mode`, `external-registration`); the way out itself SHALL be offered on the tournament detail page the card opens, where the registration form would otherwise be. The card SHALL NOT state that such a tournament's registration is closed, which would be untrue of a window that never existed here. Each tab SHALL show its own empty-state message when it lists nothing.
+The card's whole body SHALL be one link to the tournament's detail, and the card SHALL carry no Register or Manage registration action of its own: registration's state is stated by the status block, where it has one, and acted on from the detail page. A card SHALL carry no link inside its body link; the organizer names are text for that reason. **A tournament in manual mode SHALL state nothing about its registration on its card** (`tournament-mode`, `external-registration`); the way out SHALL be offered on the tournament detail page the card opens, where the registration form would otherwise be. The card SHALL NOT state that such a tournament's registration is closed, which would be untrue of a window that never existed here. Each tab SHALL show its own empty-state message when it lists nothing.
 
 Hovering a card, where the pointer can hover, SHALL change only its border to `--hairline-strong` and its ground to `--paper-shade`, within the transition limits of `design-system`; no transform is applied.
 
@@ -98,11 +98,11 @@ Below 480px a card SHALL become a compact row: no cover band; the plate at 56px 
 
 #### Scenario: An organizer-kept tournament points outward
 - **WHEN** a visitor opens the tournament list while a published upcoming tournament whose registrations the organizer keeps is listed
-- **THEN** its status block reads `registrace` / `jinde`, the card offers no Register action, does not describe registration as closed, and opens the detail where the way out is offered
+- **THEN** its card carries no status block, offers no Register action, does not describe registration as closed, and opens the detail where the way out is offered
 
 #### Scenario: An organizer-kept tournament with no address recorded
 - **WHEN** such a tournament records no external registration address
-- **THEN** the status block states that registration is held elsewhere and the card offers no action
+- **THEN** the card carries no status block and offers no action
 
 #### Scenario: Existing registration changes the action
 - **WHEN** the fencer already has an active (reserved or paid) registration for a listed upcoming tournament
@@ -962,7 +962,7 @@ The tournament detail SHALL read as the same object as its card on the list. Its
 - **THEN** its corners are 2px as before
 
 ### Requirement: Tournament detail opens on its cover
-The detail's information block SHALL open with the same cover its card wears: a band in the tint the card would choose (`A card's cover tint follows its logo`), the plate at its centre — the logo on `--plate` cropped to fill it, or the short code or monogram — ringed in `--stamp` while registration is open and in `--hairline-strong` otherwise, and at its top left the status block stating registration's state as the card states it. The status is the one the page itself computes against the server's clock, so the block changes in place when registration opens. The title, subtitle and facts follow beneath the cover.
+The detail's information block SHALL open with the same cover its card wears: a band in the tint the card would choose (`A card's cover tint follows its logo`), the plate at its centre — the logo on `--plate` cropped to fill it, or the short code or monogram — ringed in `--stamp` while registration is open and in `--hairline-strong` otherwise, and at its top left the status block stating registration's state as the card states it — none where the organizer keeps the registrations, as on the card. The status is the one the page itself computes against the server's clock, so the block changes in place when registration opens. The title, subtitle and facts follow beneath the cover.
 
 #### Scenario: An open tournament with a logo
 - **WHEN** the detail of a tournament whose registration is open and whose logo is green is opened
@@ -971,6 +971,10 @@ The detail's information block SHALL open with the same cover its card wears: a 
 #### Scenario: Registration opens while the page is open
 - **WHEN** the opening moment passes with the detail open
 - **THEN** the status block reads open and the plate's ring turns `--stamp`, without a reload
+
+#### Scenario: An organizer-kept tournament's detail
+- **WHEN** the detail of a tournament whose registrations its organizer keeps is opened
+- **THEN** its cover carries no status block, and the way out to the organizer's registration stands where the form would be
 
 ### Requirement: Detail disciplines carry capacity meters
 Each individual or team discipline listed on the detail SHALL carry, beneath its row, the static capacity meter the card carries (`design-system`, A capacity meter is a static figure), drawn from the same entered and capacity figures the row's count states. The row's count remains the text the meter draws, and remains a link to the roster where it was one. A full discipline's meter fills in `--stamp`.
