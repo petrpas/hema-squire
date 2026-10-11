@@ -541,13 +541,6 @@ export default function TournamentDetail() {
             </button>
           )}
         </nav>
-        {/* only for an account that may manage it; a link, so middle-click
-            opens the console in a new tab (spec fencer-home) */}
-        {detail?.organized === true && (
-          <Link className="button-quiet" to={consolePath(slug)}>
-            {t("home.manage")}
-          </Link>
-        )}
         <button
           type="button"
           className="row-action"
@@ -571,7 +564,20 @@ export default function TournamentDetail() {
             />
           ) : shown === "tournament" ? (
             <>
-              <InfoHeader detail={detail} now={opening.now} />
+              <InfoHeader
+                detail={detail}
+                now={opening.now}
+                coverAction={
+                  // only for an account that may manage it; a link, so
+                  // middle-click opens the console in a new tab (spec
+                  // fencer-home)
+                  detail.organized === true ? (
+                    <Link className="button-quiet cover-action" to={consolePath(slug)}>
+                      {t("home.manage")}
+                    </Link>
+                  ) : undefined
+                }
+              />
               <DisciplinesInfo detail={detail} availability={availability} linkCounts />
               <DiscountList detail={detail} />
               <OtherActionsInfo detail={detail} />

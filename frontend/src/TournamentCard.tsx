@@ -94,7 +94,10 @@ export default function TournamentCard({
           (spec `fencer-home`, Managing a tournament from its card). A link,
           so middle-click opens the console in a new tab. */}
       {tournament.organized === true && (
-        <Link className="button-quiet home-card-manage" to={consolePath(tournament.slug)}>
+        <Link
+          className="button-quiet cover-action home-card-manage"
+          to={consolePath(tournament.slug)}
+        >
           {t("home.manage")}
         </Link>
       )}

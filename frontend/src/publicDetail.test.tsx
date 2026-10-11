@@ -186,7 +186,7 @@ describe("a tournament's detail is public", () => {
     detailApi({ organized: true });
     const page = mount("/t/spring-open");
     await settle();
-    const manage = page.querySelector<HTMLAnchorElement>(".detail-header a.button-quiet");
+    const manage = page.querySelector<HTMLAnchorElement>(".detail-cover a.button-quiet");
     expect(manage?.textContent).toBe(i18n.t("home.manage"));
     expect(manage?.getAttribute("href")).toBe("/organizer/spring-open/console");
     host?.remove();
@@ -194,7 +194,7 @@ describe("a tournament's detail is public", () => {
     detailApi();
     const other = mount("/t/spring-open");
     await settle();
-    expect(other.querySelector(".detail-header a.button-quiet")).toBeNull();
+    expect(other.querySelector(".detail-cover a.button-quiet")).toBeNull();
   });
 
   it("keeps the shared top bar", async () => {

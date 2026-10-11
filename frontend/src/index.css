@@ -2899,11 +2899,21 @@ tr.row-deleted td.col-actions {
   padding: 0;
 }
 
-/* the card's Spravovat, at its trailing edge below the foot; it opens the
-   console, a different destination from the card's own */
+/* Spravovat in the cover's bottom right corner, on the card and on the
+   detail (spec fencer-home). On the card it is the body link's sibling, laid
+   over the cover rather than nested in a link, and opens the console, a
+   different destination from the card's own. The cover's ground behind it
+   keeps it readable, so it is drawn on the card's raised ground. */
+.cover-action {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  background: var(--paper-raised);
+}
+
 .home-card-manage {
-  align-self: flex-end;
-  margin: 0 1rem 0.8rem;
+  bottom: auto;
+  top: calc(150px - 12px - 28px);
 }
 
 /* A quiet secondary button: a small outlined pill in soft ink, never filled,
@@ -3009,6 +3019,13 @@ tr.row-deleted td.col-actions {
   .home-card-foot {
     grid-column: 1 / -1;
     margin: 1rem 0 0;
+  }
+
+  /* no cover band on a phone: below the foot, at the trailing edge */
+  .home-card .home-card-manage {
+    position: static;
+    align-self: flex-end;
+    margin: 0 1rem 0.8rem;
   }
 }
 
@@ -3663,11 +3680,6 @@ label.checkbox-chip,
   .detail-header > h1 {
     order: 1;
     flex: 1;
-  }
-
-  /* Spravovat stays on the name's row, between it and the close control */
-  .detail-header > .button-quiet {
-    order: 2;
   }
 
   .detail-header > .row-action {

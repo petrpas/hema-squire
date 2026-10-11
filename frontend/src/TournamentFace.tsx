@@ -116,8 +116,12 @@ export function zoneAbbreviation(detail: TournamentDetailData): string {
 export function InfoHeader({
   detail,
   now,
+  coverAction,
 }: {
   detail: TournamentDetailData;
+  /** What stands in the cover's bottom right corner — the organizer's
+   *  Spravovat on the public detail, nothing in the Setup preview. */
+  coverAction?: ReactNode;
   /** The server's clock as the page measures it, so the status block turns
    *  as registration opens; the Setup preview, with no clock, reads the
    *  device's. */
@@ -148,6 +152,7 @@ export function InfoHeader({
           className="detail-plate"
           ring={status === "open" ? "open" : "rest"}
         />
+        {coverAction}
       </div>
       <div className="detail-info-heading">
         <h1>{detail.display_name}</h1>
