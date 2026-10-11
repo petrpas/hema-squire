@@ -83,9 +83,9 @@
    is active (spec design-system, Skins).
 
    Measured contrast (WCAG 2.x) on --paper / --paper-raised / --paper-shade:
-     --ink 15.3 / 14.1 / 12.9     --ink-soft 9.2 / 8.5 / 7.7
-     --ink-faded 5.8 / 5.3 / 4.8  --stamp 5.7 / 5.3 / 4.8
-   --stamp-on-tint on --stamp-tint 6.0; each pastel -ink on its tint 7.5-8.7.
+     --ink 15.7 / 14.5 / 13.2     --ink-soft 9.3 / 8.6 / 7.8
+     --ink-faded 6.0 / 5.5 / 5.0  --stamp 5.7 / 5.2 / 4.8
+   --stamp-on-tint on --stamp-tint 7.8; each pastel -ink on its tint 8.9-9.0.
    --ink-faded goes on those three grounds only. --hairline-strong is 1.8:1
    on --paper-raised: decoration, never the sole carrier of a meaning.
 
@@ -96,27 +96,27 @@
 [data-skin="night"] {
   color-scheme: dark;
 
-  --paper: #121110;
-  --paper-raised: #1b1a17;
-  --paper-shade: #24221e;
+  --paper: #0e1116;
+  --paper-raised: #171a1f;
+  --paper-shade: #1f2228;
 
-  --ink: #ede7d9;
-  --ink-soft: #bdb4a2;
-  --ink-faded: #968d7d;
+  --ink: #e7eaee;
+  --ink-soft: #b3b6ba;
+  --ink-faded: #8e9195;
 
-  --hairline: #2e2b26;
+  --hairline: #282b31;
   --rule-strong: var(--ink);
 
-  --stamp: #e8644d; /* text on a filled stamp is --paper */
-  --stamp-hover: #f07a63;
-  --stamp-tint: #3a1f1a;
+  --stamp: #f25855; /* text on a filled stamp is --paper */
+  --stamp-hover: #fd736d;
+  --stamp-tint: #3d1b18;
 
-  --seal-green: #1f2a22;
-  --seal-green-ink: #9cc7a4;
-  --file-blue: #1e2730;
-  --file-blue-ink: #a3b9cc;
-  --form-yellow: #2c2618;
-  --form-yellow-ink: #dcc38a;
+  --seal-green: #182c1f;
+  --seal-green-ink: #a1d6b2;
+  --file-blue: #192837;
+  --file-blue-ink: #a3ccf7;
+  --form-yellow: #2e2511;
+  --form-yellow-ink: #dec48f;
 
   --focus: 2px solid var(--stamp);
 
@@ -128,10 +128,10 @@
   --weight-display: 700;
   --body-size: 15px;
   --title-size: clamp(22px, 2.4vw, 30px);
-  --hairline-strong: #4a453c;
-  --stamp-on-tint: #f0866f;
-  --plate: #ede7d9;
-  --qr-paper: #ede7d9;
+  --hairline-strong: #42464c;
+  --stamp-on-tint: #fda19a;
+  --plate: #e7eaee;
+  --qr-paper: #e7eaee;
 
   background: var(--paper);
   color: var(--ink);
@@ -139,14 +139,14 @@
 }
 
 [data-skin="night"] ::backdrop {
-  --scrim: rgba(10, 9, 8, 0.6);
+  --scrim: rgba(7, 9, 12, 0.6);
 }
 
 /* Rubber-band overscroll shows the canvas behind body, not the night root —
    for a night page, not for the console that holds a night preview. */
 html:has([data-skin="night"]:not(.setup-preview)),
 html:has([data-skin="night"]:not(.setup-preview)) body {
-  background: #121110;
+  background: #0e1116;
 }
 
 /* ===== Breakpoints =====
