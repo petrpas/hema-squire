@@ -419,8 +419,26 @@ def base_rows(
     # A source row that has been issued a registration is already present
     # above, as that registration, and must not be drawn a second time as the
     # row it came from
-    _add_source_rows(rows, _imported_rows(session, tournament, index))
-    _add_source_rows(rows, _manual_rows(session, tournament, index))
+    # A source row whose registration was cancelled stays out as well. The
+    # registration stood in the row's place under the row's own id, and the
+    # cancelled one is not drawn above, so without this the row would return
+    # as unissued and the next intake pass would recreate the person just
+    # cancelled (spec imported-registrations, A cancelled issued registration
+    # keeps its row out)
+    withdrawn = set(
+        session.scalars(
+            select(Registration.source_row_id).where(
+                Registration.tournament_id == tournament.id,
+                Registration.state == RegistrationState.CANCELLED,
+                Registration.source_row_id.is_not(None),
+            )
+        )
+    )
+    for source in (
+        _imported_rows(session, tournament, index),
+        _manual_rows(session, tournament, index),
+    ):
+        _add_source_rows(rows, {k: v for k, v in source.items() if k not in withdrawn})
     numbers = rownumbers.numbers_for(session, tournament)
     for row_id, row in rows.items():
         # None rather than a positional fallback: a visible gap beats a number

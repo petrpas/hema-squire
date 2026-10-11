@@ -5,7 +5,6 @@ Define the public rosters on a tournament's page: one per discipline and per lis
 side event, what each lists and in what order, what its Paid cell may claim, where the
 queue is shown, what a count beside a capacity states, and what the answer behind them
 may carry.
-
 ## Requirements
 ### Requirement: A published tournament's entrants are listed per discipline
 A published, non-cancelled tournament SHALL present one roster for each discipline it
@@ -176,11 +175,13 @@ discipline, less the registrations whose row the organizer has taken out of the 
 deleting it or merging it into another. 28/32 then means twenty-eight entrants listed and
 places still to be had, and a reader counting the roster arrives at the same number.
 
-This governs what the count states and nothing else. A removed row's registration
-SHALL keep its seat until that is settled separately: placement, the free places that
-decide whether a new entry is seated or queued, and the queue SHALL count it as before.
-Where the two differ, the count MAY show a place free while a new entry is queued; that
-gap is accepted until removal is given a meaning for the seat.
+This governs what the count states and nothing else. A live registration's row can no
+longer be deleted (`etl-console`, Reversible row deletion); a person is cancelled instead,
+which frees the seat. A row deleted while holding a live registration before that rule
+stood SHALL keep its seat until the organizer restores it and cancels the registration:
+placement, the free places that decide whether a new entry is seated or queued, and the
+queue SHALL count it as before. For such a row the count MAY show a place free while a new
+entry is queued.
 
 #### Scenario: A removed row is not counted
 - **WHEN** a discipline of capacity 32 holds 30 live seated registrations and the organizer has deleted the rows of two of them

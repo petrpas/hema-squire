@@ -1382,6 +1382,13 @@ export const api = {
    *  Where Squire handles the payments this is the waiver and the reason is
    *  required; where it does not, the reason is optional and the mark is the
    *  organizer's word that they collected the money themselves. */
+  /** The organizer's cancellation: the fencer's own, plus a mail telling them
+   *  so (spec registration, An organizer may cancel a registration). */
+  cancelRegistrationAsOrganizer: (slug: string, registrationId: number, note: string | null) =>
+    request<RegistrationDetail>(`/api/tournaments/${slug}/registrations/${registrationId}/cancel`, {
+      method: "POST",
+      body: JSON.stringify(note ? { note } : {}),
+    }),
   markSettled: (slug: string, registrationId: number, settled: boolean, reason?: string | null) =>
     request<RegistrationDetail>(
       `/api/tournaments/${slug}/registrations/${registrationId}/settled?settled=${settled}` +

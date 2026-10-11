@@ -95,6 +95,13 @@
     },
     "queued": {
       "bodyClaim": "Hi {name},\n\nyour registration at {tournament} is waiting in the substitute queue:\n\n{summary}\n\n{claim}\n\n{tournament} team"
+    },
+    "cancelledByOrganizer": {
+      "subject": "Registration cancelled — {tournament}",
+      "body": "Hi {name},\n\nthe organizer of {tournament} has cancelled your registration. Cancelled:\n\n{summary}",
+      "note": "A note from the organizer: {note}",
+      "refund": "A payment had already arrived for this registration. Whether and how it is returned is the organizer's to settle, and they will be in touch.",
+      "signature": "{tournament} team"
     }
   },
   "export": {

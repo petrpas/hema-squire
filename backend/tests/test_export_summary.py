@@ -9,6 +9,7 @@ from app.models import (
     ExtraItem,
     Tournament,
 )
+from tests.conftest import let_lapse
 from tests.test_export_tables import add_item, organizer_with_tournament, sheet_rows
 
 
@@ -211,6 +212,7 @@ def test_the_summary_is_read_over_the_tournaments_rows(client, auth_headers):
 
     # a deletion reaches the summary on the next read
     rows, _ = sheet_rows(client, organizer)
+    let_lapse(rows["Buyer One"]["id"])
     client.post(
         "/api/tournaments/cup/rules",
         json={

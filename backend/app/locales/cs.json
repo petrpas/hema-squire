@@ -122,6 +122,13 @@
     },
     "claim": {
       "block": "Pokud chceš místo obsadit hned, jak se uvolní, můžeš zaplatit {amount}.\n\nÚčet: {account}\nVariabilní symbol: {vs}\n\nPlatba ti místa zajistí, jen pokud budou ve chvíli, kdy dorazí, volná ve všech disciplínách, na které čekáš. Jinak ji podržíme, dokud se neuvolní, nebo dokud organizátor nerozhodne jinak. QR kód v příloze je vystavený přesně na tuto částku."
+    },
+    "cancelledByOrganizer": {
+      "subject": "Registrace zrušena — {tournament}",
+      "body": "Ahoj {name},\n\norganizátor turnaje {tournament} zrušil tvou registraci. Zrušeno je:\n\n{summary}",
+      "note": "Poznámka organizátora: {note}",
+      "refund": "Za registraci už přišla platba. O jejím vrácení rozhoduje organizátor a ozve se ti.",
+      "signature": "Tým {tournament}"
     }
   },
   "export": {

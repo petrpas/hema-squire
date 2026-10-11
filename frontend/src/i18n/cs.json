@@ -23,7 +23,8 @@
     "removeRule": "Vrátit tuto úpravu",
     "removeSubstitution": "Vrátit náhradu — odejde s ní i párování a opravy ratingu provedené po ní",
     "moveUp": "Posunout výš",
-    "substitute": "Nahradit šermíře"
+    "substitute": "Nahradit šermíře",
+    "cancelRegistration": "Zrušit registraci"
   },
   "import": {
     "title": "Import tabulky",
@@ -380,7 +381,20 @@
       "edit": "Upravit {{column}}: {{value}}",
       "editEmpty": "Upravit {{column}} – zatím prázdné"
     },
-    "titlePayments": "Správa plateb"
+    "titlePayments": "Správa plateb",
+    "cancelRegistration": {
+      "title": "Zrušit registraci",
+      "meaning": "Registrace se zruší a uvolní místo; z fronty nikoho automaticky neposune. Zrušení nejde vzít zpět.",
+      "mail": "Šermíř dostane e-mail o zrušení. Registrace zapsané ručně a registrace bez adresy ho nedostanou.",
+      "refund": "Za registraci už přišly peníze. Zapíše se nárok na vrácení; vrátit je musíš mimo Squire.",
+      "note": "Poznámka pro šermíře",
+      "notePlaceholder": "nepovinné, přijde v e-mailu",
+      "confirm": "Zrušit registraci",
+      "error": {
+        "failed": "Registraci se nepodařilo zrušit.",
+        "registration_not_live": "Registrace už není živá — byla zrušena nebo propadla."
+      }
+    }
   },
   "row": {
     "absorbed": "Sloučeno do tohoto řádku"

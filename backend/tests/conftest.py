@@ -450,3 +450,23 @@ def public_seated(client, slug="cup") -> list[dict]:
     response = client.get(f"/api/tournaments/{slug}/entrants")
     assert response.status_code == 200, response.text
     return [row for roster in response.json()["rosters"] for row in roster["seated"]]
+
+
+def let_lapse(row_id: str) -> None:
+    """Let the registration behind a fencer-list row expire, so its row may be
+    deleted. Since `organizer-cancels-registration` a live registration's row
+    is cancelled rather than deleted (spec etl-console, Reversible row
+    deletion); a test about what a deletion does to the table stands its row
+    on an expired registration, which is still listed and still deletable."""
+    from app.models import Registration, RegistrationState
+
+    session = next(app.dependency_overrides[get_session]())
+    if row_id.startswith("reg:"):
+        registration = session.get(Registration, int(row_id.removeprefix("reg:")))
+    else:
+        registration = session.scalar(
+            select(Registration).where(Registration.source_row_id == row_id)
+        )
+    assert registration is not None, row_id
+    registration.state = RegistrationState.EXPIRED
+    session.commit()

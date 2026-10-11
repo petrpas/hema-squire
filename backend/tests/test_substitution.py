@@ -12,7 +12,7 @@ from sqlalchemy import select
 from app.mail import get_mailer
 from app.main import app
 from app.models import Fencer, Registration
-from tests.conftest import enable_payments, publish
+from tests.conftest import enable_payments, let_lapse, publish
 
 
 class CollectingMailer:
@@ -335,6 +335,7 @@ def test_a_deleted_row_cannot_be_handed_on(client, auth_headers, mailbox):
     setup(client, organizer)
     register(client, auth_headers)
     target = rows(client, organizer)[0]["id"]
+    let_lapse(target)
     client.post(
         "/api/tournaments/cup/rules",
         json={"phase": "fencers", "kind": "row_delete", "target": target, "payload": {}},

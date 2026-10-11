@@ -23,7 +23,8 @@
     "removeRule": "Undo this change",
     "removeSubstitution": "Undo the substitution — the matching and rating corrections made after it go with it",
     "moveUp": "Move up",
-    "substitute": "Replace fencer"
+    "substitute": "Replace fencer",
+    "cancelRegistration": "Cancel registration"
   },
   "import": {
     "title": "Table import",
@@ -366,7 +367,20 @@
       "edit": "Edit {{column}}: {{value}}",
       "editEmpty": "Edit {{column}} – still empty"
     },
-    "titlePayments": "Payment management"
+    "titlePayments": "Payment management",
+    "cancelRegistration": {
+      "title": "Cancel registration",
+      "meaning": "The registration is cancelled and its place freed; nobody is promoted from the queue automatically. This cannot be undone.",
+      "mail": "The fencer is mailed about it. Registrations entered by hand and registrations with no address are not.",
+      "refund": "Money has already arrived for this registration. A refund is noted; you return it outside Squire.",
+      "note": "Note to the fencer",
+      "notePlaceholder": "optional, included in the mail",
+      "confirm": "Cancel registration",
+      "error": {
+        "failed": "The registration could not be cancelled.",
+        "registration_not_live": "The registration is no longer live — it was cancelled or has expired."
+      }
+    }
   },
   "row": {
     "absorbed": "Merged into this row"

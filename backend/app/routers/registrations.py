@@ -57,6 +57,7 @@ from app.schemas import (
     DiscountBreakdownOut,
     DiscountEffect,
     EntrantsOut,
+    OrganizerCancelIn,
     PaymentInstructionsOut,
     PricePreviewIn,
     PricePreviewOut,
@@ -807,11 +808,16 @@ def _plain(amount: Decimal) -> int | float:
     return int(amount) if amount == amount.to_integral_value() else float(amount)
 
 
-@router.post("/my-registration/cancel", response_model=RegistrationOut)
-def cancel_registration(tournament: TournamentDep, session: SessionDep, fencer: FencerDep):
-    registration = get_my_registration(session, tournament, fencer)
+def cancel(registration: Registration, tournament: Tournament, cancelled_at: datetime) -> None:
+    """Cancel a registration: whoever asks, this is all a cancellation does.
+
+    The fencer's own and the organizer's are one act reached by two people
+    (spec registration, An organizer may cancel a registration): the state
+    leaves every count that reads live registrations, so the seat and any
+    queue place are freed and no clock runs on, and money already credited is
+    noted for a refund the organizer settles outside Squire. Nobody is
+    promoted; a freed seat waits for the organizer."""
     was_paid = registration.settled
-    cancelled_at = _now()
     registration.cancelled_at = cancelled_at
     registration.state = RegistrationState.CANCELLED
     if was_paid:
@@ -823,7 +829,48 @@ def cancel_registration(tournament: TournamentDep, session: SessionDep, fencer: 
         registration.refund_state = (
             RefundState.PENDING if refundable else RefundState.NOT_APPLICABLE
         )
+
+
+@router.post("/my-registration/cancel", response_model=RegistrationOut)
+def cancel_registration(tournament: TournamentDep, session: SessionDep, fencer: FencerDep):
+    registration = get_my_registration(session, tournament, fencer)
+    cancel(registration, tournament, _now())
     session.commit()
+    return registration_out(session, registration, tournament)
+
+
+@router.post("/registrations/{registration_id}/cancel", response_model=RegistrationOut)
+def cancel_as_organizer(
+    registration_id: RowId,
+    data: OrganizerCancelIn,
+    tournament: TournamentDep,
+    session: SessionDep,
+    fencer: FencerDep,
+    mailer: MailerDep,
+):
+    """The organizer's cancellation: the fencer's own, plus a mail telling
+    them so (spec registration, An organizer may cancel a registration).
+
+    Irreversible, and offered in deletion's place on a live registration's
+    row — a deletion would only have hidden the row and left the seat held and
+    the clocks running (spec etl-console, Reversible row deletion). The mail
+    goes after the commit, so a failed send cannot undo what was decided."""
+    require_console_access(session, tournament, fencer)
+    require_published(tournament)
+    registration = session.scalar(
+        select(Registration).where(
+            Registration.tournament_id == tournament.id,
+            Registration.id == registration_id,
+        )
+    )
+    if registration is None:
+        raise HTTPException(status_code=404, detail="registration_not_found")
+    if registration.state is not RegistrationState.RESERVED:
+        raise HTTPException(status_code=409, detail="registration_not_live")
+    cancel(registration, tournament, _now())
+    session.commit()
+    note = (data.note or "").strip() or None
+    emails.send_cancelled_by_organizer(mailer, tournament, registration, note)
     return registration_out(session, registration, tournament)
 
 

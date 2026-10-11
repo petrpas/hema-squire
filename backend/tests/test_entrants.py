@@ -147,25 +147,34 @@ def test_unpaid_entrants_are_shown_faded_after_the_paid(client, auth_headers):
     ]
 
 
-def test_the_organizers_correction_and_deletion_reach_the_roster(client, auth_headers):
+def test_the_organizers_correction_and_cancellation_reach_the_roster(client, auth_headers):
     organizer = auth_headers()
     setup_tournament(client, organizer)
     register(client, auth_headers(email="a@example.com", name="Jan Novak"))
-    register(client, auth_headers(email="b@example.com", name="Duplicate"))
+    duplicate = register(client, auth_headers(email="b@example.com", name="Duplicate"))
     rows = {
         row["name"]: row["id"]
         for row in client.get("/api/tournaments/cup/sheet", headers=organizer).json()["rows"]
     }
-    for kind, target, payload in (
-        ("field_edit", rows["Jan Novak"], {"field": "name", "value": "Jan Novák"}),
-        ("row_delete", rows["Duplicate"], {}),
-    ):
-        response = client.post(
-            "/api/tournaments/cup/rules",
-            json={"phase": "parsing", "kind": kind, "target": target, "payload": payload},
-            headers=organizer,
-        )
-        assert response.status_code == 201, response.text
+    response = client.post(
+        "/api/tournaments/cup/rules",
+        json={
+            "phase": "parsing",
+            "kind": "field_edit",
+            "target": rows["Jan Novak"],
+            "payload": {"field": "name", "value": "Jan Novák"},
+        },
+        headers=organizer,
+    )
+    assert response.status_code == 201, response.text
+    registration = db_session().scalar(
+        select(Registration).where(Registration.vs == duplicate["vs"])
+    )
+    assert registration is not None
+    cancelled = client.post(
+        f"/api/tournaments/cup/registrations/{registration.id}/cancel", json={}, headers=organizer
+    )
+    assert cancelled.status_code == 200, cancelled.text
 
     assert [row["name"] for row in rosters(client)["LS"]["seated"]] == ["Jan Novák"]
 
@@ -396,8 +405,12 @@ def test_a_team_is_listed_with_its_members_and_the_waitlist_below(client, auth_h
 
 
 def test_a_removed_row_is_not_counted_but_keeps_its_seat(client, auth_headers):
-    """The count beside the capacity is who the public is shown; the seat the
-    removed registration holds is a separate matter (spec public-entrants)."""
+    """The count beside the capacity is who the public is shown; the seat a
+    row deleted before `organizer-cancels-registration` holds is a separate
+    matter (spec public-entrants). Such a deletion can no longer be made, so
+    the rule is written as it stood then."""
+    from app.models import Rule
+
     organizer = auth_headers()
     setup_tournament(client, organizer)
     register(client, auth_headers(email="a@example.com", name="Adéla"))
@@ -406,12 +419,18 @@ def test_a_removed_row_is_not_counted_but_keeps_its_seat(client, auth_headers):
         row["name"]: row["id"]
         for row in client.get("/api/tournaments/cup/sheet", headers=organizer).json()["rows"]
     }
-    response = client.post(
-        "/api/tournaments/cup/rules",
-        json={"phase": "parsing", "kind": "row_delete", "target": rows["Boris"], "payload": {}},
-        headers=organizer,
+    session = db_session()
+    session.add(
+        Rule(
+            tournament_id=tournament_row(session).id,
+            phase="fencers",
+            kind="row_delete",
+            target=rows["Boris"],
+            payload={},
+            created_by=1,
+        )
     )
-    assert response.status_code == 201, response.text
+    session.commit()
 
     (longsword,) = [
         a for a in client.get("/api/tournaments/cup/availability").json() if a["slug"] == "LS"

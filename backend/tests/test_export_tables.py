@@ -5,7 +5,7 @@ correct)."""
 from app import exporttables
 from app.hr_sync import get_hr_fetcher
 from app.main import app
-from tests.conftest import publish
+from tests.conftest import let_lapse, publish
 from tests.test_sheets_export import FakeHRFetcher, fighter_page
 
 LONGSWORD = "Mixed & Men's Steel Longsword"
@@ -275,6 +275,7 @@ def test_a_deleted_row_is_in_no_table(client, auth_headers):
     register_bound_fencer(client, auth_headers, disciplines=["LS"])
     rows, _ = sheet_rows(client, organizer)
     target = rows["Jan Novák"]["id"]
+    let_lapse(target)
     client.post(
         "/api/tournaments/cup/rules",
         json={"phase": "export", "kind": "row_delete", "target": target, "payload": {}},
@@ -444,6 +445,7 @@ def test_a_deleted_row_counts_nowhere(client, auth_headers):
     organizer = organizer_with_tournament(client, auth_headers)
     register_bound_fencer(client, auth_headers, disciplines=["LS"])
     rows, _ = sheet_rows(client, organizer)
+    let_lapse(rows["Jan Novák"]["id"])
     client.post(
         "/api/tournaments/cup/rules",
         json={

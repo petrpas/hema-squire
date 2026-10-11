@@ -924,6 +924,11 @@ class RosterMemberOut(BaseModel):
     nationality: str | None
 
 
+class OrganizerCancelIn(BaseModel):
+    # a short word to the fencer, carried into the mail that tells them
+    note: str | None = Field(default=None, max_length=500)
+
+
 class RosterUpdateIn(BaseModel):
     members: list[RosterMemberIn] = []
 

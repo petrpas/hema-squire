@@ -615,6 +615,15 @@ def create_rule(
 ) -> Rule:
     if kind not in HANDLERS:
         raise HTTPException(status_code=422, detail="unknown_rule_kind")
+    if kind == "row_delete":
+        # A deletion tidies what the table holds; a live registration is a
+        # person holding a seat. Hiding its row left the seat held and its
+        # clocks and payments running where nobody looked, so such a row is
+        # cancelled instead (spec etl-console, Reversible row deletion). Asked
+        # here, where every rule passes, so no route can go around it
+        registration = amendment.registration_for_row(session, tournament, target)
+        if registration is not None and amendment.is_live(registration):
+            raise HTTPException(status_code=409, detail="row_has_registration")
     if kind in ("field_edit", "match_resolution", AMENDMENT) and not (
         isinstance(payload, dict) and "field" in payload and "value" in payload
     ):

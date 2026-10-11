@@ -1085,3 +1085,41 @@ def send_substitution(mailer: Mailer, tournament: Tournament, prepared: Prepared
             ),
         )
     )
+
+
+def send_cancelled_by_organizer(
+    mailer: Mailer, tournament: Tournament, registration: Registration, note: str | None
+) -> None:
+    """A registration the organizer cancelled, told to the person who held it
+    (spec registration, An organizer may cancel a registration).
+
+    Sent under the rule every organizer action on a seat follows, the one
+    `send_substitution` keeps: a seat the organizer entered by hand is sent
+    nothing, the organizer being the one in contact, and a seat with no address
+    has nowhere to be sent. Money already paid is not promised back: the
+    refund is the organizer's to settle, and the mail says so and no more."""
+    if _entered_by_hand(registration):
+        return
+    to = recipient(registration, registration.fencer)
+    if not to:
+        return
+    lang = tournament.language
+    # any money in either lane, a deposit included: whatever arrived is the
+    # organizer's to return or keep
+    paid = registration.credited_in("local") > 0 or registration.credited_in("eur") > 0
+    body = t(
+        "email.cancelledByOrganizer.body",
+        lang,
+        name=registration.fencer.display_name,
+        tournament=tournament.display_name,
+        summary=_summary_lines(registration, tournament, lang),
+    )
+    if note:
+        body += "\n\n" + t("email.cancelledByOrganizer.note", lang, note=note)
+    if paid:
+        body += "\n\n" + t("email.cancelledByOrganizer.refund", lang)
+    body += "\n\n" + t(
+        "email.cancelledByOrganizer.signature", lang, tournament=tournament.display_name
+    )
+    subject = t("email.cancelledByOrganizer.subject", lang, tournament=tournament.display_name)
+    mailer.send(build_message(to, settings.email_sender, subject, body))

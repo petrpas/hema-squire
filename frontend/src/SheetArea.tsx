@@ -1,4 +1,10 @@
-import { IconArrowBackUp, IconCoins, IconTrash, IconUserShare } from "@tabler/icons-react";
+import {
+  IconArrowBackUp,
+  IconCoins,
+  IconTrash,
+  IconUserShare,
+  IconUserX,
+} from "@tabler/icons-react";
 import { useTranslation } from "react-i18next";
 
 import type { SheetRow, TournamentDetail } from "./api";
@@ -65,6 +71,7 @@ export default function SheetArea({
   onDelete,
   onSubstitute,
   onRestore,
+  onCancel,
   onRatify,
   onSearch,
   onToggleSettled,
@@ -115,6 +122,9 @@ export default function SheetArea({
   onRecordPayment?: (row: SheetRow) => void;
   settling?: boolean;
   onRestore: (row: SheetRow) => void;
+  /** Opens the organizer's cancellation for a row holding a live
+   *  registration, offered where a deletion would otherwise stand. */
+  onCancel: (row: SheetRow) => void;
   onRatify: (row: SheetRow) => void;
   onSearch: (row: SheetRow) => void;
 }) {
@@ -305,7 +315,21 @@ export default function SheetArea({
                             </button>
                           )}
                           {rowAction(row, phase) === null ? null : rowAction(row, phase) ===
-                            "restore" ? (
+                            "cancel" ? (
+                            // a person holding a seat: cancelled, not tidied
+                            // away (spec etl-console, Reversible row deletion)
+                            <button
+                              type="button"
+                              className="row-action"
+                              title={t("actions.cancelRegistration")}
+                              onClick={() => onCancel(row)}
+                            >
+                              <IconUserX size={16} stroke={1.5} />
+                              <span className="visually-hidden">
+                                {t("actions.cancelRegistration")}
+                              </span>
+                            </button>
+                          ) : rowAction(row, phase) === "restore" ? (
                             <button
                               type="button"
                               className="row-action"

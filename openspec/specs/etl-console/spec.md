@@ -85,6 +85,7 @@ A phase the mode does not offer SHALL NOT be reachable by its URL either. Addres
 #### Scenario: Export is a band of tables
 - **WHEN** the organizer opens Export
 - **THEN** a band of tables derived from the tournament is shown in place of the single fencer table, and the fencer list is one of its tabs
+
 ### Requirement: Console addressed by tournament and phase
 The console SHALL be addressed by the URL `/organizer/:slug/console/:phase`, where `:slug`
 identifies the tournament and `:phase` names the open phase tab; `/organizer/:slug/console`
@@ -468,6 +469,8 @@ A phase panel SHALL carry only parameters of the operation that phase runs. **Co
 ### Requirement: Reversible row deletion
 Deleting a row SHALL be a manual, reversible operation: the row is excluded from active views and exports but remains restorable. Both deletion and restoration SHALL persist as rules.
 
+**A row standing for a live registration SHALL NOT be deleted.** Deletion settles what the table holds, and a live registration is not a record to tidy away but a person holding a seat. Taking only the row away left that seat held and its clocks and payments running, unseen. Such a row SHALL offer **Zrušit registraci** in deletion's place (`registration`, An organizer may cancel a registration), and a deletion asked of it SHALL be refused with a reason naming the registration. A row whose registration has expired, an imported or hand-entered row not yet issued, and a row of import noise remain deletable and restorable as before. A row deleted while holding a live registration before this rule stood SHALL stay deleted and restorable; restored, it offers cancellation like any other.
+
 A deleted row SHALL be listed on the phase whose deletion removed it and on every phase before that one in the fixed phase order, marked as deleted; the phases after it SHALL NOT list the row at all. The deletion is a decision taken at one step, and the steps that follow stand after it.
 
 **Rows SHALL be removed and restored on Import and on the fencer list alone.** Those two are where the roster is settled; every phase after them reads it. A delete offered at the end of a row about money reads as an action on the money, and one at the end of a row about an HR profile reads as unbinding the profile — neither is what it does, and both are reachable one tab to the left where the row is plainly a row. A phase that offers no removal SHALL offer no restoration either, and SHALL attribute no deletion to itself.
@@ -511,6 +514,18 @@ Whether a row is listed SHALL NOT change what the sheet holds: a hidden row rema
 #### Scenario: An absorbed row is not listed again
 - **WHEN** deduplication merges an imported row into an in-app registration and the organizer opens Fencers
 - **THEN** the absorbed row is not listed there, and the Import view still shows it marked as absorbed
+
+#### Scenario: A live registration is cancelled, not deleted
+- **WHEN** the organizer opens the actions of a fencer-list row standing for a reserved registration
+- **THEN** Zrušit registraci is offered and deletion is not
+
+#### Scenario: The server refuses the deletion
+- **WHEN** a deletion is asked of a live registration's row by any route
+- **THEN** it is refused with a reason naming the registration, and no rule is written
+
+#### Scenario: An expired registration's row may still be tidied
+- **WHEN** the organizer deletes the row of a reservation that has expired
+- **THEN** the row is deleted and remains restorable
 
 ### Requirement: Registration moment in the fencer table
 The console's fencer table SHALL state each row's registration moment as a day
@@ -1170,3 +1185,4 @@ The mark SHALL be a statement about the row and SHALL NOT strike it through, gre
 #### Scenario: The row says whose seat it was
 - **WHEN** the organizer reads the fencer list after a substitution
 - **THEN** the substituted row is marked, the mark names the replaced fencer, and the row is otherwise shown as any live row is
+

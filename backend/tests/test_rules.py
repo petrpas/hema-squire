@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta
 
-from tests.conftest import publish
+from tests.conftest import let_lapse, publish
 
 
 def setup(client, organizer):
@@ -32,6 +32,10 @@ def enroll(client, auth_headers, email, name):
 
 
 def add_rule(client, organizer, target, field, value, phase="parsing", kind="field_edit"):
+    if kind == "row_delete":
+        # a live registration's row is cancelled, not deleted; these tests are
+        # about the rule, so the row stands on an expired registration
+        let_lapse(target)
     response = client.post(
         "/api/tournaments/cup/rules",
         json={

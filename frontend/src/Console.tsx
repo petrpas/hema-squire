@@ -16,6 +16,7 @@ import {
   type TournamentFlags,
 } from "./api";
 import BalanceCell from "./BalanceCell";
+import CancelRegistrationDialog from "./CancelRegistrationDialog";
 import DedupPanel from "./dedup/DedupPanel";
 import DedupView from "./dedup/DedupView";
 import ExportTables from "./export/ExportTables";
@@ -390,10 +391,22 @@ export function canSubstitute(row: SheetRow, phase: Phase): boolean {
   return phase === "fencers" && !row._deleted && row._merged_into === undefined;
 }
 
-export function rowAction(row: SheetRow, phase: Phase): "delete" | "restore" | null {
+/** Whether a row stands for a registration that still holds a place: one
+ *  whose row is cancelled rather than deleted (spec etl-console, Reversible
+ *  row deletion). An expired one holds nothing and is tidied like any row. */
+export function holdsLiveRegistration(row: SheetRow): boolean {
+  return (
+    typeof row.registration_id === "number" && (row.state === "reserved" || row.state === "paid")
+  );
+}
+
+export function rowAction(row: SheetRow, phase: Phase): "delete" | "restore" | "cancel" | null {
   if (!phaseRemovesRows(phase)) return null;
   if (row._merged_into !== undefined) return null;
-  return row._deleted ? "restore" : "delete";
+  if (row._deleted) return "restore";
+  // a person holding a seat is cancelled, never tidied away: a deletion only
+  // hid the row and left the seat held and the clocks running
+  return holdsLiveRegistration(row) ? "cancel" : "delete";
 }
 
 /** The manual-edits log belonging to a phase. Import's holds corrections to how
@@ -754,6 +767,7 @@ export default function Console({
   const [english, setEnglish] = useState(false);
   const [recording, setRecording] = useState<SheetRow | null>(null);
   const [substituting, setSubstituting] = useState<SheetRow | null>(null);
+  const [cancelling, setCancelling] = useState<SheetRow | null>(null);
   const collects = (detail ?? tournament).feature_payments;
 
   // Which of the phase's three tabs is open, and which of the two money tables
@@ -1098,6 +1112,7 @@ export default function Console({
                handed on where it is given up */
                   onSubstitute={phase === "fencers" ? setSubstituting : undefined}
                   onRestore={(row) => void addRule("row_restore", row.id, {})}
+                  onCancel={setCancelling}
                   /* the mark is offered on every tournament: as the boned-out
                phase's own column, and as the waiver on the state cell where
                Squire collects */
@@ -1109,6 +1124,22 @@ export default function Console({
                   onSearch={setMatchRow}
                 />
               </PaymentTabsProvider>
+            )}
+            {cancelling && typeof cancelling.registration_id === "number" && (
+              <CancelRegistrationDialog
+                name={cancelling.name}
+                paid={cancelling.paid}
+                onConfirm={async (note) => {
+                  // narrowed above; read again here because the closure
+                  // outlives the render that narrowed it
+                  const id = cancelling.registration_id;
+                  if (typeof id !== "number") return;
+                  await api.cancelRegistrationAsOrganizer(tournament.slug, id, note);
+                  setCancelling(null);
+                  refresh();
+                }}
+                onClose={() => setCancelling(null)}
+              />
             )}
             {substituting && detail && (
               <SubstituteDialog

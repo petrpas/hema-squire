@@ -234,8 +234,22 @@ describe("an absorbed row in the Import view", () => {
 });
 
 describe("what a row offers to have done to it", () => {
-  it("offers to delete a live row", () => {
-    expect(rowAction(row("reg:1"), "fencers")).toBe("delete");
+  it("offers to delete a row holding no live registration", () => {
+    expect(rowAction(row("imp:c1aa"), "fencers")).toBe("delete");
+  });
+
+  it("offers to cancel, not delete, a row holding a live registration", () => {
+    // a deletion would only hide the row and leave the seat held (spec
+    // etl-console, Reversible row deletion)
+    for (const state of ["reserved", "paid"]) {
+      expect(rowAction(row("reg:1", { registration_id: 1, state }), "fencers")).toBe("cancel");
+    }
+  });
+
+  it("still offers to tidy away an expired registration's row", () => {
+    expect(rowAction(row("reg:1", { registration_id: 1, state: "expired" }), "fencers")).toBe(
+      "delete",
+    );
   });
 
   it("offers to bring back a deleted one", () => {

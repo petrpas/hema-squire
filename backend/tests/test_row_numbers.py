@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from app import rownumbers
 from app.models import SheetRowNumber, Tournament
-from tests.conftest import publish
+from tests.conftest import let_lapse, publish
 
 # an automatic tournament's imported and hand-entered rows, made before
 # `manual-entry-registers`: the state these tests exercise is left as it is
@@ -111,6 +111,7 @@ def test_registration_takes_a_number_and_keeps_it(client, auth_headers, engine):
     assert [numbers[row_id] for row_id in ids] == [1, 2, 3]
 
     # deleting an earlier row is a rule; it frees no number and moves none
+    let_lapse(ids[0])
     response = client.post(
         "/api/tournaments/cup/rules",
         json={"phase": "fencers", "kind": "row_delete", "target": ids[0], "payload": {}},
