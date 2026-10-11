@@ -10,6 +10,17 @@ function shortDay(isoDate: string): string {
 
 type Tone = "open" | "pending" | "elsewhere" | "closed";
 
+/** What the block reads: a list entry carries it as is, and a detail builds
+ *  it from the status it computes against its own clock. */
+export type StatusSubject = Pick<
+  OpenTournament,
+  | "registration_status"
+  | "registration_closes_on"
+  | "registration_opens_on"
+  | "registration_opens_at"
+  | "timezone"
+>;
+
 function Block({ tone, lines }: { tone: Tone; lines: (string | null)[] }) {
   const [first, ...rest] = lines.filter((line): line is string => line !== null);
   return (
@@ -30,7 +41,7 @@ function Block({ tone, lines }: { tone: Tone; lines: (string | null)[] }) {
  *  lines are omitted, never rendered empty. The status itself is the server's,
  *  computed against the same resolved moment the detail page reads, so the
  *  card, the tabs and the page cannot disagree at the boundary. */
-export function StatusBlock({ tournament }: { tournament: OpenTournament }) {
+export function StatusBlock({ tournament }: { tournament: StatusSubject }) {
   const { t } = useTranslation();
   const head = t("home.block.registration");
   switch (tournament.registration_status) {

@@ -51,6 +51,9 @@ export default function SetupPreview({
     <div
       ref={pane}
       className="setup-preview"
+      // what it previews is a night page, so it is drawn in that skin, an
+      // island in the day console (spec setup-preview)
+      data-skin="night"
       hidden={!shown}
       onScroll={(event) => {
         scrollTop.current = event.currentTarget.scrollTop;
@@ -62,7 +65,7 @@ export default function SetupPreview({
       })}
     >
       <p className="setup-preview-heading">{t("preview.heading")}</p>
-      <nav className="stage-control preview-tabs">
+      <nav className="stage-control preview-tabs stage-control-pill">
         <button
           type="button"
           className={tab === "face" ? "active" : ""}

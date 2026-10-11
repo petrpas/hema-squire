@@ -144,6 +144,9 @@ export interface Tournament extends TournamentFlags {
   /** The organizer's override for the plate's monogram; null derives it. */
   short_code: string | null;
   has_logo: boolean;
+  /** The logo's hue band, choosing the cover tint; null without a logo or
+   *  for an achromatic one. */
+  logo_tint: "blue" | "green" | "warm" | null;
   date: string;
   language: string;
   owner_id: number | null;
@@ -475,7 +478,9 @@ export type FencerTournament = Pick<
   | "slug"
   | "display_name"
   | "subtitle"
+  | "short_code"
   | "has_logo"
+  | "logo_tint"
   | "date"
   | "city"
   | "address"

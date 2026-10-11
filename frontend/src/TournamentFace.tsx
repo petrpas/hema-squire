@@ -13,19 +13,21 @@ import {
   type DiscountBreakdown,
   type DiscountCondition,
   type ExtraItem,
-  logoUrl,
   type RegistrationDetail,
   type FencerTournament as TournamentDetailData,
 } from "./api";
+import { MeterTrack } from "./CapacityMeter";
 import { FIELD_CONSTRAINTS } from "./constraints";
 import DotJoined from "./DotJoined";
 import { groupGoods, isAction } from "./extraItems";
 import InlineProse from "./InlineProse";
 import { formatMoneyWithEur } from "./money";
 import { parseInteger } from "./numeric";
-import { openingMomentMs } from "./openingMoment";
+import { openingMomentMs, registrationClosesOn, registrationStatus } from "./openingMoment";
 import Prose from "./Prose";
 import { entrants } from "./routes";
+import { StatusBlock } from "./StatusBlock";
+import { CoverPlate, coverTint } from "./TournamentCover";
 
 export const LEGACY_WEAPONS: Record<string, string> = {
   LS: "Longsword",
@@ -111,15 +113,42 @@ export function zoneAbbreviation(detail: TournamentDetailData): string {
   }
 }
 
-export function InfoHeader({ detail }: { detail: TournamentDetailData }) {
+export function InfoHeader({
+  detail,
+  now,
+}: {
+  detail: TournamentDetailData;
+  /** The server's clock as the page measures it, so the status block turns
+   *  as registration opens; the Setup preview, with no clock, reads the
+   *  device's. */
+  now?: number;
+}) {
   const { t } = useTranslation();
+  const status = registrationStatus(detail, now);
   // the tournament states itself as consecutive lines, in this order: title,
   // subtitle, date · place · qualification, the registration window, the
   // titular organizers, the description. A line whose every part is absent is
   // not rendered — DotJoined returns null rather than an empty rule.
   return (
-    <section className="rail-card detail-info-header">
-      {detail.has_logo && <img className="detail-logo" src={logoUrl(detail.slug)} alt="" />}
+    <section className="rail-card detail-info">
+      {/* the card's cover, opened: the same tint, plate, ring and status
+          block the tournament wears on the list (spec fencer-home) */}
+      <div className="home-card-cover detail-cover" data-tint={coverTint(detail)}>
+        <StatusBlock
+          tournament={{
+            registration_status: status,
+            registration_closes_on: registrationClosesOn(detail),
+            registration_opens_on: detail.registration_opens,
+            registration_opens_at: detail.registration_opens_at,
+            timezone: detail.timezone,
+          }}
+        />
+        <CoverPlate
+          subject={detail}
+          className="detail-plate"
+          ring={status === "open" ? "open" : "rest"}
+        />
+      </div>
       <div className="detail-info-heading">
         <h1>{detail.display_name}</h1>
         {detail.subtitle && <p className="detail-subtitle">{detail.subtitle}</p>}
@@ -277,6 +306,11 @@ export function DisciplinesInfo({
                   <DotJoined className="" parts={[d.schedule_when, d.schedule_where, ruleset]} />
                 </div>
               )}
+              {/* the count above is the statement; the track only draws it
+                  (spec design-system, A capacity meter is a static figure) */}
+              <span className="detail-meter" data-full={free <= 0 || undefined}>
+                <MeterTrack entered={taken} capacity={d.capacity} />
+              </span>
             </li>
           );
         })}

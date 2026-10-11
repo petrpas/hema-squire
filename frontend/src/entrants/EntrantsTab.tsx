@@ -70,7 +70,7 @@ export default function EntrantsTab({
           {t("entrants.asOf", { moment: registeredMoment(entrants.as_of, timezone) })}
         </p>
       )}
-      <nav className="stage-control stage-control-band entrants-band" ref={band}>
+      <nav className="stage-control stage-control-band stage-control-pill entrants-band" ref={band}>
         {entrants.rosters.map((candidate) => (
           <Link
             key={rosterPath(slug, candidate)}

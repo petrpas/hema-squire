@@ -90,7 +90,9 @@
    on --paper-raised: decoration, never the sole carrier of a meaning.
 
    The root re-declares color, size and ground because body's are computed
-   from the day values and inherited as computed, not as var(). */
+   from the day values and inherited as computed, not as var(). Full height
+   is the layout roots' own (.app, .login-page): the Setup preview panel
+   carries the skin too and must stay the size of its panel. */
 [data-skin="night"] {
   color-scheme: dark;
 
@@ -131,7 +133,6 @@
   --plate: #ede7d9;
   --qr-paper: #ede7d9;
 
-  min-height: 100dvh;
   background: var(--paper);
   color: var(--ink);
   font-size: var(--body-size);
@@ -141,9 +142,10 @@
   --scrim: rgba(10, 9, 8, 0.6);
 }
 
-/* Rubber-band overscroll shows the canvas behind body, not the night root. */
-html:has([data-skin="night"]),
-html:has([data-skin="night"]) body {
+/* Rubber-band overscroll shows the canvas behind body, not the night root —
+   for a night page, not for the console that holds a night preview. */
+html:has([data-skin="night"]:not(.setup-preview)),
+html:has([data-skin="night"]:not(.setup-preview)) body {
   background: #121110;
 }
 

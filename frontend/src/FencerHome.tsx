@@ -78,7 +78,7 @@ function TabBand({
   const { t } = useTranslation();
   const band = useTabBand(tab ?? "");
   return (
-    <nav className="stage-control stage-control-band home-tabs" ref={band}>
+    <nav className="stage-control stage-control-band stage-control-pill home-tabs" ref={band}>
       {(signedIn ? HOME_TABS : PUBLIC_HOME_TABS).map((name) => {
         const count = counts[name];
         return (

@@ -645,6 +645,7 @@ class TournamentOut(BaseModel):
     subtitle: str | None
     short_code: str | None = None
     has_logo: bool
+    logo_tint: Literal["blue", "green", "warm"] | None = None
     date: datetime.date
     language: str
     owner_id: int | None
@@ -782,7 +783,11 @@ class FencerTournamentOut(BaseModel):
     slug: str
     display_name: str
     subtitle: str | None
+    # what the detail's cover plate reads where there is no logo, and the
+    # tint its band wears — the same pair the list entry carries
+    short_code: str | None = None
     has_logo: bool
+    logo_tint: Literal["blue", "green", "warm"] | None = None
     date: datetime.date
     city: str | None
     address: str | None

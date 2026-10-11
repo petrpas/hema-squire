@@ -70,7 +70,7 @@ button.secondary {
   border: var(--border-w) solid var(--ink);
   background: transparent;
   color: var(--ink);
-  border-radius: var(--radius);
+  border-radius: var(--radius-pill);
   padding: 0.45rem 0.9rem;
   text-transform: uppercase;
   font-size: 12px;
@@ -96,7 +96,7 @@ button.secondary:disabled {
   border: none;
   background: var(--stamp);
   color: var(--paper);
-  border-radius: var(--radius);
+  border-radius: var(--radius-pill);
   padding: 0.5rem 1rem;
   text-transform: uppercase;
   font-size: 12px;
@@ -123,7 +123,7 @@ button.secondary:disabled {
   border: var(--border-w) solid var(--stamp);
   background: transparent;
   color: var(--stamp);
-  border-radius: var(--radius);
+  border-radius: var(--radius-pill);
   padding: 0.45rem 0.9rem;
   text-transform: uppercase;
   font-size: 12px;
@@ -324,7 +324,7 @@ button.secondary:disabled {
   background: var(--stamp);
   color: var(--paper);
   padding: 0.65rem;
-  border-radius: var(--radius);
+  border-radius: var(--radius-pill);
   text-transform: uppercase;
   font-size: 12px;
   letter-spacing: 0.08em;
@@ -1806,7 +1806,7 @@ fieldset.form-field > legend {
 
 .rail-card {
   border: var(--border-w) solid var(--hairline);
-  border-radius: var(--radius);
+  border-radius: var(--radius-card);
   padding: 0.9rem;
   background: var(--paper-raised);
 }
@@ -2610,7 +2610,8 @@ tr.row-deleted td.col-actions {
 /* The ring is an outline, not a border or a shadow: --stamp while
    registration is open, a quiet rule otherwise. */
 .home-card-plate,
-.next-opening-plate {
+.next-opening-plate,
+.detail-plate {
   flex: none;
   display: inline-flex;
   align-items: center;
@@ -2628,23 +2629,30 @@ tr.row-deleted td.col-actions {
   height: 84px;
   border-radius: var(--radius-plate);
   font-size: 26px;
+}
+
+.home-card-plate[data-ring],
+.detail-plate[data-ring] {
   outline: 2px solid var(--hairline-strong);
   outline-offset: 4px;
 }
 
-.home-card-plate[data-ring="open"] {
+.home-card-plate[data-ring="open"],
+.detail-plate[data-ring="open"] {
   outline-color: var(--stamp);
 }
 
 .home-card-plate[data-logo],
-.next-opening-plate[data-logo] {
+.next-opening-plate[data-logo],
+.detail-plate[data-logo] {
   background: var(--plate);
 }
 
 /* the logo fills the plate, cropped on its longer side: a logo shrunk to fit
    inside a square reads as a speck */
 .home-card-plate img,
-.next-opening-plate img {
+.next-opening-plate img,
+.detail-plate img {
   width: 100%;
   height: 100%;
   object-fit: cover;
@@ -2798,8 +2806,14 @@ tr.row-deleted td.col-actions {
   color: var(--stamp-on-tint);
 }
 
-.meter[data-full] .meter-fill {
+.meter[data-full] .meter-fill,
+.detail-meter[data-full] .meter-fill {
   background: var(--stamp);
+}
+
+.detail-meter {
+  display: block;
+  margin-top: 0.35rem;
 }
 
 /* the foot, aligned across a row of cards whatever their heights */
@@ -2914,7 +2928,7 @@ tr.row-deleted td.col-actions {
     padding: 1rem 1rem 0;
   }
 
-  .home-card-cover {
+  .home-card .home-card-cover {
     display: contents;
   }
 
@@ -2922,7 +2936,7 @@ tr.row-deleted td.col-actions {
     display: none;
   }
 
-  .home-card-plate {
+  .home-card .home-card-plate {
     grid-column: 1;
     grid-row: 1 / span 2;
     width: 56px;
@@ -2942,7 +2956,7 @@ tr.row-deleted td.col-actions {
     font-size: 20px;
   }
 
-  .status-block {
+  .home-card .status-block {
     position: static;
     grid-column: 2;
     grid-row: 2;
@@ -2954,11 +2968,11 @@ tr.row-deleted td.col-actions {
     font-size: 13px;
   }
 
-  .status-block[data-tone="open"] {
+  .home-card .status-block[data-tone="open"] {
     background: none;
   }
 
-  .status-block > span + span::before {
+  .home-card .status-block > span + span::before {
     content: " ";
   }
 
@@ -2978,6 +2992,27 @@ tr.row-deleted td.col-actions {
     grid-column: 1 / -1;
     margin: 1rem 0 0;
   }
+}
+
+/* ===== a tournament's detail opens on its card's cover (spec fencer-home) =====
+   The information block is a rail-card; the cover bleeds to its edges and
+   the card's own rounding clips it. */
+.detail-info {
+  overflow: hidden;
+  /* clipping makes a flex item willing to shrink below its content; in the
+     column it stands in, it must keep its full height */
+  flex: none;
+}
+
+.detail-cover {
+  margin: -0.9rem -0.9rem 0.9rem;
+}
+
+.detail-plate {
+  width: 96px;
+  height: 96px;
+  border-radius: var(--radius-plate);
+  font-size: 30px;
 }
 
 /* ===== the next registration opening (spec fencer-home) ===== */
@@ -3177,12 +3212,11 @@ tr.row-deleted td.col-actions {
   max-width: 1240px;
 }
 
-/* centred above the list, and no wider than its labels need: one segmented
-   control, its tabs pills inside a pill, the active one inverted. Written on
-   the skin's geometry tokens, so in the day skin it is the ruled strip it
-   always was in all but its dividers. */
-.stage-control.home-tabs {
-  align-self: center;
+/* A segmented control of pills inside a pill, the active one inverted: the
+   tabs of the list and of a tournament's detail, and of the Setup preview
+   (spec fencer-home). Written on the skin's geometry tokens, so in the day
+   skin it is the ruled strip it always was in all but its dividers. */
+.stage-control.stage-control-pill {
   max-width: 100%;
   gap: 4px;
   padding: 4px;
@@ -3191,29 +3225,37 @@ tr.row-deleted td.col-actions {
   background: var(--paper-raised);
 }
 
-.stage-control.home-tabs a {
+.stage-control.stage-control-pill a,
+.stage-control.stage-control-pill button {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   min-height: 40px;
   border: none;
   border-radius: var(--radius-pill);
 }
 
-.stage-control.home-tabs .tab-count {
+.stage-control.stage-control-pill .tab-count {
   font-size: 12px;
   color: var(--ink-faded);
 }
 
 /* the band clips (it scrolls on a phone), so a tab's focus ring is drawn
    inside the tab rather than outside it */
-.stage-control.home-tabs a:focus-visible {
+.stage-control.stage-control-pill a:focus-visible,
+.stage-control.stage-control-pill button:focus-visible {
   outline-offset: -2px;
 }
 
 /* on the inverted tab the count takes the tab's own ink: a soft ink on an
    ink ground would not read */
-.stage-control.home-tabs a.active .tab-count {
+.stage-control.stage-control-pill .active .tab-count {
   color: inherit;
+}
+
+/* the list's tabs: centred above it, and no wider than their labels need */
+.home-tabs {
+  align-self: center;
 }
 
 @media (max-width: 480px) {
@@ -3223,7 +3265,6 @@ tr.row-deleted td.col-actions {
 
   .stage-control.home-tabs a {
     flex: 1 1 0;
-    justify-content: center;
     padding-left: 0.5rem;
     padding-right: 0.5rem;
   }
@@ -3493,21 +3534,6 @@ label.checkbox-chip,
 
 /* --- tournament-layout-tweaks: logo, subtitle, responsive meta, split detail --- */
 
-.detail-logo {
-  flex: none;
-  object-fit: contain;
-  border: var(--border-w) solid var(--hairline);
-  border-radius: var(--radius);
-  background: var(--paper-raised);
-}
-
-.detail-logo {
-  width: 128px;
-  height: 128px;
-  border: none;
-  background: transparent;
-}
-
 .detail-subtitle {
   color: var(--ink-soft);
   font-size: 14px;
@@ -3553,7 +3579,8 @@ label.checkbox-chip,
 /* the tournament's name is a document title (spec design-system, Display
    headings read the display tokens) */
 .detail-header h1,
-.detail-info-heading h1 {
+.detail-info-heading h1,
+.tiskopis-number + h1 {
   font-family: var(--font-display);
   font-weight: var(--weight-display);
 }
@@ -3710,12 +3737,6 @@ label.checkbox-chip,
 
 .home-card-meta .meta-cell {
   white-space: nowrap;
-}
-
-.detail-info-header {
-  display: flex;
-  gap: 1rem;
-  align-items: flex-start;
 }
 
 /* a registration's lines: what it is at the left, what it costs in a shared

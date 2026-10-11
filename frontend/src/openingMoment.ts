@@ -93,9 +93,17 @@ export function registrationStatus(
   if (detail.registrations_kept_by === "organizer") return "elsewhere";
   const opensAt = openingMomentMs(detail.registration_opens_at);
   if (opensAt !== null && now < opensAt) return "opens_on";
-  const closes = detail.registration_closes ?? detail.date;
-  if (localDay(now, detail.timezone) > closes) return "closed";
+  if (localDay(now, detail.timezone) > registrationClosesOn(detail)) return "closed";
   return "open";
+}
+
+/** The last day registration is open: the closing date set, else the
+ *  tournament's own date — the fallback `setup.registration_closes_on` states
+ *  on the backend. */
+export function registrationClosesOn(
+  detail: Pick<FencerTournament, "registration_closes" | "date">,
+): string {
+  return detail.registration_closes ?? detail.date;
 }
 
 /** `now` as a calendar day in the tournament's own zone — the same day the

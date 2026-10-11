@@ -499,7 +499,7 @@ export default function TournamentDetail() {
           with this one (spec: "Tournament detail shares the home heading") */}
       <div className="detail-header">
         <h1>{detail?.display_name}</h1>
-        <nav className="stage-control detail-tabs stage-control-band" ref={band}>
+        <nav className="stage-control detail-tabs stage-control-band stage-control-pill" ref={band}>
           <button
             type="button"
             className={shown === "tournament" ? "active" : ""}
@@ -564,7 +564,7 @@ export default function TournamentDetail() {
             />
           ) : shown === "tournament" ? (
             <>
-              <InfoHeader detail={detail} />
+              <InfoHeader detail={detail} now={opening.now} />
               <DisciplinesInfo detail={detail} availability={availability} linkCounts />
               <DiscountList detail={detail} />
               <OtherActionsInfo detail={detail} />

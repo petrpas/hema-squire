@@ -1,9 +1,9 @@
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
-import { logoUrl, type OpenTournament } from "./api";
-import { monogram } from "./monogram";
+import type { OpenTournament } from "./api";
 import { formatCountdown, openingHourIn, openingMomentMs } from "./openingMoment";
 import { detail } from "./routes";
+import { CoverPlate } from "./TournamentCover";
 import { useOpeningMoment } from "./useOpeningMoment";
 
 /** How far ahead an opening is worth announcing on the list. Past this the
@@ -73,15 +73,7 @@ function Strip({
   return (
     <section className="next-opening">
       {/* unringed: no ring stands beside a live figure (spec design-system) */}
-      <span className="next-opening-plate" data-logo={tournament.has_logo || undefined}>
-        {tournament.has_logo ? (
-          <img src={logoUrl(tournament.slug)} alt="" />
-        ) : (
-          <span aria-hidden="true">
-            {tournament.short_code ?? monogram(tournament.display_name)}
-          </span>
-        )}
-      </span>
+      <CoverPlate subject={tournament} className="next-opening-plate" />
       <div className="next-opening-name">
         <span className="next-opening-label">{t("home.nextOpening.label")}</span>
         <span>{tournament.display_name}</span>

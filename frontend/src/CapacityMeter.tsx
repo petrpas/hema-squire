@@ -10,7 +10,6 @@ export default function CapacityMeter({ discipline }: { discipline: OpenDiscipli
   const { t } = useTranslation();
   const { entered, capacity, queue_length } = discipline;
   const full = capacity > 0 && entered >= capacity;
-  const ratio = capacity > 0 ? Math.min(1, entered / capacity) : 0;
   return (
     <li className="meter" data-full={full || undefined}>
       <span className="meter-name">{discipline.name}</span>
@@ -21,9 +20,19 @@ export default function CapacityMeter({ discipline }: { discipline: OpenDiscipli
             : t("home.meter.full")
           : `${entered}/${capacity}`}
       </span>
-      <span className="meter-track" aria-hidden="true">
-        <span className="meter-fill" style={{ width: `${ratio * 100}%` }} />
-      </span>
+      <MeterTrack entered={entered} capacity={capacity} />
     </li>
+  );
+}
+
+/** The track alone: 4px, the measured ratio filled, hidden from assistive
+ *  technology because the text beside it is the statement. Full fills in
+ *  `--stamp` through the `data-full` its container carries. */
+export function MeterTrack({ entered, capacity }: { entered: number; capacity: number }) {
+  const ratio = capacity > 0 ? Math.min(1, entered / capacity) : 0;
+  return (
+    <span className="meter-track" aria-hidden="true">
+      <span className="meter-fill" style={{ width: `${ratio * 100}%` }} />
+    </span>
   );
 }

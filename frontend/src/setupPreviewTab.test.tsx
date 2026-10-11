@@ -277,3 +277,13 @@ describe("on a wide viewport", () => {
     expect(body().hidden).toBe(false);
   });
 });
+
+describe("the preview's skin", () => {
+  it("is night on its own panel while the console around it stays day", async () => {
+    stubViewport(false);
+    await mount();
+
+    expect(preview().getAttribute("data-skin")).toBe("night");
+    expect(body().closest("[data-skin]")).toBeNull();
+  });
+});

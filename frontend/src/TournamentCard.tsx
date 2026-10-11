@@ -1,52 +1,18 @@
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
-import { logoUrl, type OpenTournament } from "./api";
+import type { OpenTournament } from "./api";
 import CapacityMeter from "./CapacityMeter";
 import DotJoined from "./DotJoined";
 import FamiliarFaces from "./FamiliarFaces";
 import type { HomeTab } from "./FencerShell";
-import { monogram } from "./monogram";
 import PaidStamp from "./PaidStamp";
 import { consolePath, detail } from "./routes";
 import { BondBlock, StatusBlock } from "./StatusBlock";
-import { slugHash } from "./slugHash";
-
-type Tint = "blue" | "green" | "yellow";
-
-const SLUG_TINTS: readonly Tint[] = ["blue", "green", "yellow"];
-
-/** The cover's tint (spec `fencer-home`, A card's cover tint follows its
- *  logo): the logo's hue band where it has one — the warm band wears the only
- *  warm tint, form-yellow — and otherwise one chosen from the slug, so the
- *  same tournament wears the same cover everywhere. */
-export function coverTint(tournament: OpenTournament): Tint {
-  if (tournament.logo_tint === "warm") return "yellow";
-  if (tournament.logo_tint !== null) return tournament.logo_tint;
-  return SLUG_TINTS[slugHash(tournament.slug) % SLUG_TINTS.length] ?? "blue";
-}
+import { CoverPlate, coverTint } from "./TournamentCover";
 
 /** The card's place in the list as shown, in the ledger's zero-padded form. */
 function ordinal(position: number): string {
   return String(position).padStart(3, "0");
-}
-
-/** The logo where one is set, the monogram otherwise. Ringed while
- *  registration is open; the ring is the plate's outline, drawn in CSS from
- *  `data-ring`. */
-function Plate({ tournament }: { tournament: OpenTournament }) {
-  return (
-    <span
-      className="home-card-plate"
-      data-logo={tournament.has_logo || undefined}
-      data-ring={tournament.registration_status === "open" ? "open" : "rest"}
-    >
-      {tournament.has_logo ? (
-        <img src={logoUrl(tournament.slug)} alt="" />
-      ) : (
-        <span aria-hidden="true">{tournament.short_code ?? monogram(tournament.display_name)}</span>
-      )}
-    </span>
-  );
 }
 
 /** One entry of the list (spec `fencer-home`, Fencer Home landing).
@@ -76,7 +42,11 @@ export default function TournamentCard({
         <div className="home-card-cover" data-tint={coverTint(tournament)}>
           {bond ? <BondBlock tournament={tournament} /> : <StatusBlock tournament={tournament} />}
           <span className="home-card-ordinal">{ordinal(position)}</span>
-          <Plate tournament={tournament} />
+          <CoverPlate
+            subject={tournament}
+            className="home-card-plate"
+            ring={tournament.registration_status === "open" ? "open" : "rest"}
+          />
           {bond && tournament.my_registration_state === "paid" && (
             <span className="home-card-stamp">
               <PaidStamp id={tournament.slug} label={t("registration.state.paid")} />
