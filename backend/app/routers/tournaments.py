@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session, selectinload
 from sqlalchemy.sql.elements import ColumnElement
 
 from app import bank, entrants, list_counts, money_bounds, scheduler, setup, taxonomy
+from app import familiar as familiar_mod
 from app.auth import (
     current_fencer,
     optional_fencer,
@@ -67,6 +68,8 @@ from app.schemas import (
     DisciplineOut,
     ExtraItemIn,
     ExtraItemOut,
+    FamiliarOut,
+    FamiliarPersonOut,
     FencerTournamentOut,
     FioTokenIn,
     FioTokenOut,
@@ -273,6 +276,7 @@ def _fencer_tournament_out(
     organized: bool | None,
     removed: set[int],
     counts: tuple[int, int],
+    familiar: familiar_mod.Familiar | None = None,
 ) -> OpenTournamentOut:
     """One entry of a fencer-facing list. The three scopes (upcoming, held,
     own) share this body so their payloads cannot drift apart — a trimmed DTO
@@ -336,6 +340,19 @@ def _fencer_tournament_out(
             _my_registration_state(session, tournament, fencer) if fencer is not None else None
         ),
         organized=organized,
+        familiar=(
+            FamiliarOut(
+                basis=familiar.basis,
+                country=familiar.country,
+                total=familiar.total,
+                ranked=familiar.ranked,
+                people=[
+                    FamiliarPersonOut(initials=p.initials, label=p.label) for p in familiar.people
+                ],
+            )
+            if familiar is not None
+            else None
+        ),
     )
 
 
@@ -348,7 +365,13 @@ def _fencer_list(
     """A fencer-facing list's entries, with the aggregates every entry states
     computed for the whole list at once rather than per entry."""
     removed = {t.id: entrants.removed_registration_ids(session, t) for t in tournaments}
-    counts = list_counts.entrant_counts(session, tournaments, removed)
+    seated = list_counts.seated_entrants(session, tournaments, removed)
+    counts = list_counts.entrant_counts(seated)
+    familiar = (
+        familiar_mod.familiar_entrants(session, tournaments, seated, fencer)
+        if fencer is not None
+        else {}
+    )
     return [
         _fencer_tournament_out(
             session,
@@ -357,6 +380,7 @@ def _fencer_list(
             organized=organized(tournament),
             removed=removed[tournament.id],
             counts=counts[tournament.id],
+            familiar=familiar.get(tournament.id),
         )
         for tournament in tournaments
     ]

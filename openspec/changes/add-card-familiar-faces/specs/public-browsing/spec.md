@@ -6,10 +6,10 @@ A list entry answered for a signed-in caller SHALL carry `familiar` when the sel
 The selection is made per tournament, among its seated entrants — not queued, not cancelled, not taken off the public table — excluding the caller:
 
 1. **Club.** The caller's club is the club of the hemaratings profile bound to the account, falling back to the account's own club where no profile is bound or the profile names none. Entrants whose club equals it after normalization (case and diacritics folded, whitespace collapsed and trimmed) match. `basis` is `club`.
-2. **Country**, only when step 1 matched nobody: entrants whose nationality equals the caller's, the caller's taken from the bound profile and falling back to the account's own. `basis` is `country`. A caller with no nationality stops here.
+2. **Country**, only when step 1 matched nobody: entrants whose nationality names the same country as the caller's, both read as ISO 3166 alpha-2 codes whatever vocabulary they were written in, the caller's taken from the bound profile and falling back to the account's own. `country` carries that code. `basis` is `country`. A caller with no nationality stops here.
 3. Nobody matched: `familiar` is absent.
 
-Matches SHALL be ordered by their hemaratings rating in the tournament's disciplines, highest first, where the tournament's latest rating snapshot holds one, then by name. At most three are returned as `people`, each with `initials` (first letter of the first name and of the surname) and `label` (first name and surname initial, `Kateřina V.`); `total` states how many matched in all.
+Matches SHALL be ordered by their hemaratings rating in the tournament's disciplines, highest first, where the tournament's latest rating snapshot holds one, then by name. At most three are returned as `people`, each with `initials` (first letter of the first name and of the surname) and `label` (first name and surname initial, `Kateřina V.`); `total` states how many matched in all, and `ranked` whether the order is by rating — true only where the tournament has a rating snapshot.
 
 The selection SHALL be computed for all entries of a response together, not with queries per entry. It exposes nothing the public rosters do not already state.
 

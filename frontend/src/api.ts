@@ -763,6 +763,19 @@ export interface OpenDiscipline {
   queue_length: number;
 }
 
+/** Who a signed-in caller might know among a tournament's seated (spec
+ *  public-browsing): clubmates, or failing any, compatriots. */
+export interface Familiar {
+  basis: "club" | "country";
+  /** The ISO alpha-2 matched on; null for the club basis. */
+  country: string | null;
+  total: number;
+  /** Whether the people are ordered by rating; the note claims no ranking
+   *  otherwise. */
+  ranked: boolean;
+  people: { initials: string; label: string }[];
+}
+
 export interface OpenTournament {
   slug: string;
   display_name: string;
@@ -808,6 +821,9 @@ export interface OpenTournament {
    *  member. Independent of my_registration_state — an entry may carry both —
    *  and absent for the same reason as it, with no account to ask about. */
   organized?: boolean;
+  /** Absent without an account behind the request, and where nobody
+   *  matches. */
+  familiar?: Familiar;
 }
 
 /** One fencer on a public roster, stating only what the roster states

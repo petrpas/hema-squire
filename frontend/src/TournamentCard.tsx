@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { logoUrl, type OpenTournament } from "./api";
 import CapacityMeter from "./CapacityMeter";
 import DotJoined from "./DotJoined";
+import FamiliarFaces from "./FamiliarFaces";
 import type { HomeTab } from "./FencerShell";
 import { monogram } from "./monogram";
 import PaidStamp from "./PaidStamp";
@@ -108,6 +109,7 @@ export default function TournamentCard({
           </ul>
         )}
         <div className="home-card-foot">
+          {tournament.familiar !== undefined && <FamiliarFaces familiar={tournament.familiar} />}
           {tournament.entrant_count > 0 && (
             <span className="home-card-counts">
               {t("home.counts.fencers", { count: tournament.entrant_count })}

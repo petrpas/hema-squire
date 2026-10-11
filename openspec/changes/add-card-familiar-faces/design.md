@@ -57,7 +57,11 @@ appears for someone the roster does not list.
 
 Additive field; deploy backend before or after frontend. Rollback is a revert.
 
+### D5. Countries compared as codes
+Nationalities are stored in mixed vocabularies ("Czech Republic", "CZ"); both
+sides go through `hr_index.country_code` and the note states the code.
+
 ## Open Questions
 
-- Should the country note avoid "nejvýš hodnocení" when no snapshot exists and
-  the order is by name? Proposed: say `{total} z {country}` in that case.
+None. (Decided 2026-10-11: without a snapshot the country note states the
+count, `4 z CZ`, and claims no ranking; the payload carries `ranked`.)

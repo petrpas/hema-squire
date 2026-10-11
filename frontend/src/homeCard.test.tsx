@@ -144,6 +144,40 @@ describe("the card's foot", () => {
   });
 });
 
+describe("familiar faces", () => {
+  const people = [
+    { initials: "KV", label: "Kateřina V." },
+    { initials: "JN", label: "Jana N." },
+  ];
+
+  it("names each face and counts clubmates", () => {
+    const page = render(
+      card({ familiar: { basis: "club", country: null, total: 5, ranked: false, people } }),
+    );
+    const faces = page.querySelectorAll(".familiar-face");
+    expect([...faces].map((face) => face.getAttribute("aria-label"))).toEqual([
+      "Kateřina V.",
+      "Jana N.",
+    ]);
+    expect(page.querySelector(".familiar-note")?.textContent).toBe("5 z tvého klubu");
+  });
+
+  it("claims a ranking only where the order follows one", () => {
+    const note = (ranked: boolean) =>
+      render(
+        card({ familiar: { basis: "country", country: "CZ", total: 4, ranked, people } }),
+      ).querySelector(".familiar-note")?.textContent;
+    expect(note(true)).toBe("nejvýš hodnocení z CZ");
+    expect(note(false)).toBe("4 z CZ");
+  });
+
+  it("leaves the foot to the counts without an account", () => {
+    const page = render(card({ entrant_count: 3, club_count: 2 }));
+    expect(page.querySelector(".familiar")).toBeNull();
+    expect(page.querySelector(".home-card-counts")?.textContent).toBe("3 šermíři · 2 kluby");
+  });
+});
+
 describe("the capacity meter", () => {
   it("states the figure as text and hides the track", () => {
     const page = render(

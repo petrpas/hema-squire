@@ -2807,6 +2807,7 @@ tr.row-deleted td.col-actions {
   margin-top: auto;
   min-height: 1rem;
   display: flex;
+  align-items: center;
   justify-content: flex-end;
   gap: 1rem;
   margin-left: 1rem;
@@ -2817,6 +2818,69 @@ tr.row-deleted td.col-actions {
   font-variant-numeric: tabular-nums;
   font-size: 12px;
   color: var(--ink-faded);
+}
+
+.home-card-counts {
+  margin-left: auto;
+  white-space: nowrap;
+}
+
+/* familiar faces: up to three round initials overlapping, each ringed in the
+   card's own ground so the overlap reads as separate faces, then the note */
+.familiar {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  min-width: 0;
+  font-family: var(--font-ui);
+  font-size: 13px;
+  color: var(--ink-soft);
+}
+
+.familiar-faces {
+  display: flex;
+  flex: none;
+}
+
+.familiar-face {
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-pill);
+  outline: 2px solid var(--paper-raised);
+  font-size: 11px;
+  font-weight: 500;
+  background: var(--file-blue);
+  color: var(--file-blue-ink);
+}
+
+.familiar-face + .familiar-face {
+  margin-left: -8px;
+}
+
+/* the first face is the first person in the server's order: it lies on top */
+.familiar-face {
+  position: relative;
+}
+
+.familiar-face:nth-child(1) {
+  z-index: 3;
+}
+
+.familiar-face:nth-child(2) {
+  z-index: 2;
+}
+
+.familiar-face[data-tint="green"] {
+  background: var(--seal-green);
+  color: var(--seal-green-ink);
+}
+
+.familiar-face[data-tint="yellow"] {
+  background: var(--form-yellow);
+  color: var(--form-yellow-ink);
 }
 
 /* a list with no seated fencer yet states no count, and draws no rule for it */

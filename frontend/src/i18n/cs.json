@@ -1004,6 +1004,11 @@
       "label": "příští otevření registrace",
       "show": "Ukázat turnaj",
       "at": "{{date}} v {{time}}"
+    },
+    "familiar": {
+      "club": "{{count}} z tvého klubu",
+      "countryRanked": "nejvýš hodnocení z {{country}}",
+      "country": "{{count}} z {{country}}"
     }
   },
   "detail": {

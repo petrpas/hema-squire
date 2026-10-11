@@ -1230,6 +1230,23 @@ RegistrationStatus = Literal["open", "opens_on", "closed", "elsewhere"]
 MyRegistrationState = Literal["none", "reserved", "paid", "substitute", "cancelled"]
 
 
+class FamiliarPersonOut(BaseModel):
+    initials: str
+    # first name and surname initial; the face's accessible name and title
+    label: str
+
+
+class FamiliarOut(BaseModel):
+    basis: Literal["club", "country"]
+    # the ISO alpha-2 the country basis matched on; null for the club basis
+    country: str | None = None
+    total: int
+    # whether the people are ordered by rating — only where the tournament has
+    # a rating snapshot; the note claims no ranking otherwise
+    ranked: bool
+    people: list[FamiliarPersonOut]
+
+
 class OpenTournamentOut(BaseModel):
     slug: str
     display_name: str
@@ -1281,6 +1298,10 @@ class OpenTournamentOut(BaseModel):
     # entry may carry both.
     my_registration_state: MyRegistrationState | None = None
     organized: bool | None = None
+    # who the caller might know among the seated (spec public-browsing, A
+    # signed-in caller is shown familiar entrants); absent like the bonds when
+    # there is no caller, and absent where nobody matches
+    familiar: FamiliarOut | None = None
 
     @model_serializer(mode="wrap")
     def _omit_absent_bond(
@@ -1302,6 +1323,8 @@ class OpenTournamentOut(BaseModel):
             data.pop("my_registration_state", None)
         if self.organized is None:
             data.pop("organized", None)
+        if self.familiar is None:
+            data.pop("familiar", None)
         return data
 
     @field_validator("organizers", mode="before")

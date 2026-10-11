@@ -983,6 +983,11 @@
       "label": "next registration opening",
       "show": "Show tournament",
       "at": "{{date}} at {{time}}"
+    },
+    "familiar": {
+      "club": "{{count}} from your club",
+      "countryRanked": "top-rated from {{country}}",
+      "country": "{{count}} from {{country}}"
     }
   },
   "detail": {
