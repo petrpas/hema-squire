@@ -5,7 +5,7 @@ from tests.conftest import publish
 def make_tournament(client, headers, slug="na-duel-2026"):
     response = client.post(
         "/api/tournaments",
-        json={"slug": slug, "display_name": "Na Duel!", "date": "2026-10-03"},
+        json={"slug": slug, "display_name": "Na Duel!", "date": "2026-12-03"},
         headers=headers,
     )
     assert response.status_code == 201, response.text

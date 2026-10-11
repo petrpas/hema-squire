@@ -66,6 +66,7 @@ BODIES: dict[tuple[str, str], object] = {
         "disciplines": ["LS"],
     },
     ("POST", "/api/tournaments/{slug}/payments/link"): {"transaction_id": 1, "vs": [1]},
+    ("POST", "/api/tournaments/{slug}/export/roster.{fmt}"): {"discipline": "LS", "rows": []},
     ("POST", "/api/tournaments/{slug}/rules"): {
         "phase": "arrival",
         "kind": "note",
@@ -106,6 +107,7 @@ PATH_PARAMS = {
     "rule_id": "1",
     "payment_id": "1",
     "fencer_id": "1",
+    "fmt": "pdf",
 }
 
 

@@ -275,7 +275,7 @@ def test_stored_payment_settings_survive_the_feature_being_turned_off(
             "reservation_validity_days": 5,
             "reminder_day": 3,
             "registration_closes": "2026-11-01",
-            "seating_deadline": "2026-10-01",
+            "seating_deadline": "2026-11-01",
         },
         headers=organizer,
     )
