@@ -350,7 +350,18 @@ export function IdentitySection({
           </label>
         )}
       </div>
-      <div className="form-fields">{IDENTITY_RUN_3.map(renderField)}</div>
+      <div className="form-fields">
+        {/* The external address leads a fencer somewhere only where the
+            organizer keeps the registrations; on a tournament Squire keeps it
+            is shown to no one, so it is not offered. Its stored value still
+            rides in the patch unchanged, and returns with the field when a
+            draft is switched to manual (spec setup-navigation). */}
+        {IDENTITY_RUN_3.filter(
+          (field) =>
+            field.key !== "external_registration_url" ||
+            detail.registrations_kept_by === "organizer",
+        ).map(renderField)}
+      </div>
     </section>
   );
 }

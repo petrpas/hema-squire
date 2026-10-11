@@ -466,7 +466,7 @@ The line SHALL be drawn at **who acts on a setting**, not at who might read it. 
 
 A hidden section SHALL follow the treatment `setup-navigation` already fixes for a section the tournament's mode does not offer: its stored values SHALL be retained unchanged, and it SHALL become available again if the tournament's registrations return to Squire's keeping.
 
-The external registration address SHALL be offered on such a tournament and SHALL be marked as a mandatory item, since it is what publication now depends on.
+The external registration address SHALL be offered on such a tournament and SHALL be marked as a mandatory item, since it is what publication now depends on. Conversely it SHALL NOT be offered on a tournament whose registrations Squire keeps, where it is shown to no fencer; its stored value SHALL be retained as for any hidden section.
 
 #### Scenario: The reminder day is not offered
 - **WHEN** the organizer opens Setup on a tournament whose registrations they keep
@@ -479,6 +479,10 @@ The external registration address SHALL be offered on such a tournament and SHAL
 #### Scenario: Hidden values survive the switch back
 - **WHEN** a tournament carrying a reminder day is switched to organizer-kept and later back to Squire-kept
 - **THEN** the reminder day holds the value it held before, with nothing to re-enter
+
+#### Scenario: The external address is not offered where Squire keeps the registrations
+- **WHEN** the organizer opens Setup on a tournament whose registrations Squire keeps, carrying a stored external registration address
+- **THEN** the address is not offered, and saving Setup leaves the stored address as it was
 
 #### Scenario: The external address is offered and marked
 - **WHEN** the organizer opens Setup on an organizer-kept tournament with no external registration address

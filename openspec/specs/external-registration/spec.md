@@ -19,7 +19,7 @@ Squire SHALL NOT fetch the address, SHALL NOT check that it resolves, and SHALL 
 
 The address SHALL be a single value rather than a list or a labelled set of links. Where an organizer needs to say more about how their registration works, the tournament description already carries prose with links, as fixed by `organizer-prose`.
 
-The address SHALL be offered on every tournament and SHALL be mandatory only where the organizer keeps the registrations, as fixed by `tournament-admin`.
+The address SHALL be offered in Setup only where the organizer keeps the registrations, and SHALL be mandatory there, as fixed by `tournament-admin`. Where Squire keeps them the address leads no one anywhere, so Setup SHALL NOT offer it; a value already stored SHALL be retained unchanged and offered again if the tournament's registrations pass to the organizer (`setup-navigation`).
 
 #### Scenario: Address recorded
 - **WHEN** the organizer records an external registration address on a tournament
