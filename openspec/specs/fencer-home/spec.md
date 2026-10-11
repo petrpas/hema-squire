@@ -962,7 +962,7 @@ The tournament detail SHALL read as the same object as its card on the list. Its
 - **THEN** its corners are 2px as before
 
 ### Requirement: Tournament detail opens on its cover
-The detail's information block SHALL open with the same cover its card wears: a band in the tint the card would choose (`A card's cover tint follows its logo`), the plate at its centre — the logo on `--plate` cropped to fill it, or the short code or monogram — ringed in `--stamp` while registration is open and in `--hairline-strong` otherwise, and at its top left the status block stating registration's state as the card states it — none where the organizer keeps the registrations, as on the card. The status is the one the page itself computes against the server's clock, so the block changes in place when registration opens. The title, subtitle and facts follow beneath the cover.
+The detail's information block SHALL open with the same cover its card wears: a band in the tint the card would choose (`A card's cover tint follows its logo`), the plate at its centre — the whole logo on `--plate`, the plate taking the logo's own proportions at a fixed height so nothing of it is cut away, or the short code or monogram on a square plate — ringed in `--stamp` while registration is open and in `--hairline-strong` otherwise, and at its top left the status block stating registration's state as the card states it — none where the organizer keeps the registrations, as on the card. The status is the one the page itself computes against the server's clock, so the block changes in place when registration opens. The title, subtitle and facts follow beneath the cover. On a phone, where the plate and the status block do not fit side by side, the status block stands beneath the plate within the cover. The card on the list keeps its square plate, the logo cropped to fill it.
 
 #### Scenario: An open tournament with a logo
 - **WHEN** the detail of a tournament whose registration is open and whose logo is green is opened
@@ -975,6 +975,10 @@ The detail's information block SHALL open with the same cover its card wears: a 
 #### Scenario: An organizer-kept tournament's detail
 - **WHEN** the detail of a tournament whose registrations its organizer keeps is opened
 - **THEN** its cover carries no status block, and the way out to the organizer's registration stands where the form would be
+
+#### Scenario: A wide logo on the detail
+- **WHEN** the detail of a tournament whose logo is three times as wide as it is tall is opened
+- **THEN** the whole logo is shown on a plate of the same proportions, and its card on the list shows it cropped to a square
 
 ### Requirement: Detail disciplines carry capacity meters
 Each individual or team discipline listed on the detail SHALL carry, beneath its row, the static capacity meter the card carries (`design-system`, A capacity meter is a static figure), drawn from the same entered and capacity figures the row's count states. The row's count remains the text the meter draws, and remains a link to the roster where it was one. A full discipline's meter fills in `--stamp`.
