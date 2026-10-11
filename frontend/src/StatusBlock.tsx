@@ -8,7 +8,7 @@ function shortDay(isoDate: string): string {
   return new Date(isoDate).toLocaleDateString("cs", { day: "numeric", month: "numeric" });
 }
 
-type Tone = "open" | "pending" | "elsewhere" | "closed";
+type Tone = "open" | "pending" | "closed";
 
 /** What the block reads: a list entry carries it as is, and a detail builds
  *  it from the status it computes against its own clock. */
@@ -76,9 +76,10 @@ export function StatusBlock({ tournament }: { tournament: StatusSubject }) {
       );
     }
     case "elsewhere":
-      // where registration is, never that it is closed: this tournament never
-      // had a window here (design add-registrations-kept-by D4)
-      return <Block tone="elsewhere" lines={[head, t("home.block.elsewhere")]} />;
+      // nothing: the organizer keeps the registrations, and the way out is
+      // the detail's to offer — never "closed", which a window that never
+      // existed here could not be (spec fencer-home)
+      return null;
     default:
       return <Block tone="closed" lines={[head, t("home.block.closed")]} />;
   }

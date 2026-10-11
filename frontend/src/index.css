@@ -2712,10 +2712,6 @@ tr.row-deleted td.col-actions {
   background: var(--stamp);
 }
 
-.status-block[data-tone="elsewhere"] {
-  color: var(--ink-soft);
-}
-
 .status-block[data-tone="closed"] {
   color: var(--ink-faded);
 }

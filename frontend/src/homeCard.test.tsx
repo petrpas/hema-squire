@@ -122,9 +122,9 @@ describe("the card's cover", () => {
     expect(lines).toHaveLength(2);
   });
 
-  it("says a kept-elsewhere registration is elsewhere, never closed", () => {
+  it("states nothing for a registration the organizer keeps, and never closed", () => {
     const page = render(card({ registration_status: "elsewhere", registration_closes_on: null }));
-    expect(page.querySelector(".status-block")?.textContent).toBe("registracejinde");
+    expect(page.querySelector(".status-block")).toBeNull();
     expect(page.querySelector(".home-card-plate")?.getAttribute("data-ring")).toBe("rest");
   });
 

@@ -967,7 +967,6 @@
       "until": "until {{date}}",
       "from": "from {{date}}",
       "at": "at {{time}}",
-      "elsewhere": "elsewhere",
       "closed": "closed"
     },
     "meter": {

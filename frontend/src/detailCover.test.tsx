@@ -112,6 +112,13 @@ describe("the detail's cover", () => {
     expect(page.querySelector(".status-block")?.textContent).toContain("od 5. 10.");
   });
 
+  it("carries no status block where the organizer keeps the registrations", () => {
+    const page = render(
+      <InfoHeader detail={detail({ registrations_kept_by: "organizer" })} now={NOW} />,
+    );
+    expect(page.querySelector(".status-block")).toBeNull();
+  });
+
   it("shows the short code where there is no logo", () => {
     const page = render(<InfoHeader detail={detail({ short_code: "SPO" })} now={NOW} />);
     expect(page.querySelector(".detail-plate")?.textContent).toBe("SPO");

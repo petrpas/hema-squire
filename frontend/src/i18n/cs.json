@@ -982,7 +982,6 @@
       "until": "do {{date}}",
       "from": "od {{date}}",
       "at": "v {{time}}",
-      "elsewhere": "jinde",
       "closed": "uzavřena"
     },
     "meter": {
