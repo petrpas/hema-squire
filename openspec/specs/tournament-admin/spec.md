@@ -19,7 +19,7 @@ A discipline's identity â€” its kind, material, weapon, gender, name, and slug â
 
 The discipline row SHALL present the name and the slug as text rather than as controls, and SHALL offer as editable controls only the capacity, the unit prices, and the row's own optional fields. A discipline whose identity is not frozen (`discipline-identity`) SHALL offer a control that reopens the dialog on it. A discipline whose identity is frozen SHALL offer no such control, and the console SHALL determine which case applies from the discipline's reported frozen state rather than by attempting an edit. Editing a discipline's slug SHALL be counted among the tab's unsaved changes and SHALL be written to the discipline it was made on, notwithstanding that the slug is what identifies the discipline to the server.
 
-Subtitle, logo, description, qualification, disciplines (including their slug, classification, kind, roster bounds, schedule and ruleset fields) and titular organizers SHALL be editable in the console Setup phase, disciplines and organizers as row tables with add and remove. The communication language SHALL NOT be editable in Setup: it is assigned when the tournament is created and thereafter governs fencer emails without being offered as a settings field. The Setup section carrying the tournament's own identity fields SHALL NOT be given a section heading of its own, and SHALL present those fields in this order: display name, subtitle, logo, date, city, address, description, qualification statement, registration opens, registration closes, registration instructions.
+Subtitle, logo, description, qualification, disciplines (including their slug, classification, kind, roster bounds, schedule and ruleset fields) and titular organizers SHALL be editable in the console Setup phase, disciplines and organizers as row tables with add and remove. The communication language SHALL NOT be editable in Setup: it is assigned when the tournament is created and thereafter governs fencer emails without being offered as a settings field. The Setup section carrying the tournament's own identity fields SHALL NOT be given a section heading of its own, and SHALL present those fields in this order: display name, subtitle, logo, short code, date, city, address, description, qualification statement, registration opens, registration closes, registration instructions.
 
 #### Scenario: Organizer configures disciplines
 - **WHEN** the organizer adds an open longsword and a women's sabre through the discipline dialog, giving each a capacity and a unit price in its row
@@ -103,7 +103,7 @@ Subtitle, logo, description, qualification, disciplines (including their slug, c
 
 #### Scenario: Identity fields in the stated order
 - **WHEN** the organizer opens the `TOURNAMENT` tab
-- **THEN** the identity fields read top to bottom as display name, subtitle, logo, date, city, address, description, qualification statement, registration opens, registration closes, registration instructions
+- **THEN** the identity fields read top to bottom as display name, subtitle, logo, short code, date, city, address, description, qualification statement, registration opens, registration closes, registration instructions
 
 #### Scenario: Communication language not offered
 - **WHEN** the organizer looks through every Setup tab
@@ -1143,4 +1143,25 @@ Deleting the logo SHALL clear the band. A logo stored before this requirement SH
 #### Scenario: Logo removed
 - **WHEN** the organizer deletes the logo
 - **THEN** no band is stored
+
+### Requirement: Tournament short code
+A tournament MAY carry a short code of one to three visible characters, set by its organizer in the tournament settings under the label "Zkratka" with a help hint stating it is shown where the tournament has no logo. It is optional and not part of mandatory setup.
+
+The field SHALL be prefilled with the monogram derived from the tournament's display name, and SHALL be stored only when the organizer enters a value that differs from it; a stored value SHALL be trimmed. Clearing the field SHALL remove the stored value and return the tournament to the derived monogram, which follows later renames. A value longer than three characters, or empty after trimming while being stored, SHALL be rejected with a field error that states the limit.
+
+#### Scenario: Untouched field stores nothing
+- **WHEN** an organizer saves settings without changing the prefilled short code
+- **THEN** no short code is stored, and renaming the tournament later changes what its plate reads
+
+#### Scenario: Organizer sets a code
+- **WHEN** the organizer enters `PDM` and saves
+- **THEN** the short code `PDM` is stored
+
+#### Scenario: Too long
+- **WHEN** the organizer enters `PRAHA`
+- **THEN** the field shows an error stating the three-character limit and nothing is saved
+
+#### Scenario: Clearing restores derivation
+- **WHEN** the organizer clears a stored short code and saves
+- **THEN** no short code is stored and the plate shows the derived monogram again
 
