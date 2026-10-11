@@ -778,7 +778,9 @@ Cancellation SHALL be offered as usual. Its confirmation SHALL ask for confirmat
 - **THEN** the team is listed with its roster and the roster editor is offered as usual
 
 ### Requirement: Managing a tournament from its card
-A card in any tab SHALL carry a **Spravovat** control when, and only when, the account reading it may manage that tournament — as its Tournament Owner or as a member of its console team. The control SHALL open that tournament's console. It SHALL be the only difference between what an organizer sees on the list and what anyone else sees.
+A card in any tab, and the tournament's detail, SHALL carry a **Spravovat** control when, and only when, the account reading it may manage that tournament — as its Tournament Owner or as a member of its console team. The control SHALL open that tournament's console. It SHALL be the only difference between what an organizer sees on the list or the detail and what anyone else sees.
+
+The control SHALL be a quiet secondary button: a small pill outlined in `--hairline-strong` with `--ink-soft` text, never filled, so it stays apart from the screen's one primary action. On the card it stands at the card's trailing edge below the foot; on the detail it stands in the header row beside the tabs.
 
 The control SHALL be a link carrying the console's URL, so middle-click and modifier-click open it in a new browser tab, and SHALL be reachable without opening the card: activating it SHALL open the console and SHALL NOT also open the fencer-facing detail the card links to.
 
@@ -811,6 +813,14 @@ It SHALL appear on a past tournament's card as it does on an upcoming one — a 
 #### Scenario: Anonymous visitor sees no control
 - **WHEN** a visitor with no account opens the list
 - **THEN** no card carries a Spravovat control
+
+#### Scenario: The control on the detail
+- **WHEN** a Tournament Owner opens their tournament's detail
+- **THEN** the header carries a Spravovat button leading to the console, and a plain fencer opening the same detail sees none
+
+#### Scenario: A quiet button, not a link
+- **WHEN** an organizer's card or detail shows the control
+- **THEN** it is drawn as a small outlined pill, not as underlined text and not filled
 
 ### Requirement: The default filter tab follows what there is to show
 WHEN the URL names no tab, the tab shown SHALL be resolved from what the visitor has to
