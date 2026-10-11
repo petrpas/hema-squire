@@ -825,6 +825,19 @@ class FencerTournamentOut(BaseModel):
     feature_payments: bool
     feature_teams: bool
     feature_extras: bool
+    # whether the caller may manage this tournament, owner or console team;
+    # absent, like the list's bond fields, when there is no caller (spec
+    # public-browsing, The public detail carries the caller's manage bond)
+    organized: bool | None = None
+
+    @model_serializer(mode="wrap")
+    def _omit_absent_bond(
+        self, handler: Callable[[FencerTournamentOut], dict[str, Any]]
+    ) -> dict[str, Any]:
+        data = handler(self)
+        if self.organized is None:
+            data.pop("organized", None)
+        return data
 
     @field_validator("organizers", mode="before")
     @classmethod

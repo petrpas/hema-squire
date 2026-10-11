@@ -433,3 +433,13 @@ def test_the_index_hands_out_no_draft_and_no_bank_account(client, auth_headers):
     assert [t["slug"] for t in client.get("/api/tournaments", headers=organizer).json()] == [
         "draft"
     ]
+
+
+def test_the_detail_states_the_manage_bond_to_a_caller_only(client, auth_headers):
+    owner = auth_headers()
+    make_published(client, owner, "cup")
+    fencer = auth_headers(email="f@example.com", name="F", role=Role.FENCER)
+
+    assert client.get("/api/tournaments/cup/public", headers=owner).json()["organized"] is True
+    assert client.get("/api/tournaments/cup/public", headers=fencer).json()["organized"] is False
+    assert "organized" not in client.get("/api/tournaments/cup/public").json()

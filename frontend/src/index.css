@@ -2899,18 +2899,40 @@ tr.row-deleted td.col-actions {
   padding: 0;
 }
 
-/* a tertiary text action at the card's trailing edge; it opens the console,
-   which is a different destination from the card's own */
+/* the card's Spravovat, at its trailing edge below the foot; it opens the
+   console, a different destination from the card's own */
 .home-card-manage {
   align-self: flex-end;
-  margin: 0 1rem 0.7rem;
-  font-size: 12px;
-  color: var(--ink-faded);
+  margin: 0 1rem 0.8rem;
+}
+
+/* A quiet secondary button: a small outlined pill in soft ink, never filled,
+   so it stays apart from a screen's one primary action. Spravovat on a card
+   and on a tournament's detail (spec fencer-home). */
+.button-quiet {
+  display: inline-flex;
+  align-items: center;
+  flex: none;
+  min-height: 28px;
+  padding: 0 0.8rem;
+  border: var(--border-w) solid var(--hairline-strong);
+  border-radius: var(--radius-pill);
+  color: var(--ink-soft);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  text-decoration: none;
+  white-space: nowrap;
+  transition:
+    background-color 120ms,
+    border-color 120ms;
 }
 
 @media (hover: hover) {
-  .home-card-manage:hover {
-    color: var(--ink);
+  .button-quiet:hover {
+    background: var(--paper-shade);
+    border-color: var(--ink-soft);
   }
 }
 
@@ -3641,6 +3663,11 @@ label.checkbox-chip,
   .detail-header > h1 {
     order: 1;
     flex: 1;
+  }
+
+  /* Spravovat stays on the name's row, between it and the close control */
+  .detail-header > .button-quiet {
+    order: 2;
   }
 
   .detail-header > .row-action {

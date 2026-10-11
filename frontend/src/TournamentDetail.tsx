@@ -25,7 +25,7 @@ import OpeningNotice from "./OpeningNotice";
 import { amendmentOpen, registrationStatus } from "./openingMoment";
 import PaidStamp from "./PaidStamp";
 import PaymentPanel from "./PaymentPanel";
-import { detail as detailPath, entrants, home } from "./routes";
+import { consolePath, detail as detailPath, entrants, home } from "./routes";
 import TeamsTab from "./TeamsTab";
 import {
   DisciplinesInfo,
@@ -541,6 +541,13 @@ export default function TournamentDetail() {
             </button>
           )}
         </nav>
+        {/* only for an account that may manage it; a link, so middle-click
+            opens the console in a new tab (spec fencer-home) */}
+        {detail?.organized === true && (
+          <Link className="button-quiet" to={consolePath(slug)}>
+            {t("home.manage")}
+          </Link>
+        )}
         <button
           type="button"
           className="row-action"

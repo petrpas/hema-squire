@@ -473,7 +473,13 @@ export interface TournamentDetail extends Tournament {
  *  `TournamentDetail`, which means the console can still hand it its own
  *  fuller object — a superset satisfies it — while the fencer's page cannot
  *  reach for a field that no longer arrives. */
-export type FencerTournament = Pick<
+export type FencerTournament = FencerTournamentFace & {
+  /** Whether the caller may manage this tournament; absent without an
+   *  account behind the request (spec public-browsing). */
+  organized?: boolean;
+};
+
+type FencerTournamentFace = Pick<
   TournamentDetail,
   | "slug"
   | "display_name"

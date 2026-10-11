@@ -182,6 +182,21 @@ describe("a tournament's detail is public", () => {
     expect(page.querySelector(".detail-address")).toBeNull();
   });
 
+  it("offers Spravovat to an account that may manage it, and to nobody else", async () => {
+    detailApi({ organized: true });
+    const page = mount("/t/spring-open");
+    await settle();
+    const manage = page.querySelector<HTMLAnchorElement>(".detail-header a.button-quiet");
+    expect(manage?.textContent).toBe(i18n.t("home.manage"));
+    expect(manage?.getAttribute("href")).toBe("/organizer/spring-open/console");
+    host?.remove();
+
+    detailApi();
+    const other = mount("/t/spring-open");
+    await settle();
+    expect(other.querySelector(".detail-header a.button-quiet")).toBeNull();
+  });
+
   it("keeps the shared top bar", async () => {
     detailApi();
     const page = mount("/t/spring-open");

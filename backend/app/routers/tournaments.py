@@ -606,7 +606,9 @@ def tournament_detail(tournament: TournamentDep, session: SessionDep, fencer: Fe
 
 
 @router.get("/{slug}/public", response_model=FencerTournamentOut)
-def fencer_tournament_detail(tournament: TournamentDep):
+def fencer_tournament_detail(
+    tournament: TournamentDep, session: SessionDep, fencer: OptionalFencerDep
+):
     """A tournament as a fencer reads it — no credential required, and no
     organizer configuration in the answer (spec `public-browsing`).
 
@@ -616,7 +618,14 @@ def fencer_tournament_detail(tournament: TournamentDep):
     `require_published` raises — that answer is for a console write, whose
     caller is entitled to know why."""
     require_public(tournament)
-    return FencerTournamentOut.model_validate(tournament)
+    out = FencerTournamentOut.model_validate(tournament)
+    # the one bond the detail states, for its Spravovat control; absent with
+    # no caller (spec public-browsing)
+    if fencer is not None:
+        out.organized = _organized_by(
+            tournament, fencer, _organized_tournament_ids(session, fencer)
+        )
+    return out
 
 
 def _apply_currency_invariants(tournament: Tournament) -> None:
