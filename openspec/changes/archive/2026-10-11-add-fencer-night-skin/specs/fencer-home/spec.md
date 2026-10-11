@@ -97,6 +97,14 @@ Below 480px a card SHALL become a compact row: no cover band; the plate at 56px 
 - **WHEN** a visitor opens the tournament list while a published upcoming tournament whose registrations the organizer keeps is listed
 - **THEN** its status block reads `registrace` / `jinde`, the card offers no Register action, does not describe registration as closed, and opens the detail where the way out is offered
 
+#### Scenario: An organizer-kept tournament with no address recorded
+- **WHEN** such a tournament records no external registration address
+- **THEN** the status block states that registration is held elsewhere and the card offers no action
+
+#### Scenario: Existing registration changes the action
+- **WHEN** the fencer already has an active (reserved or paid) registration for a listed upcoming tournament
+- **THEN** the card in the Open or Announced tab still offers no action of its own and opens the detail, where the registration is managed, and the Mine tab's card states the registration's state in its block
+
 #### Scenario: Hovering a card
 - **WHEN** a visitor with a mouse hovers a card
 - **THEN** only its border and its ground change; nothing moves, and no shadow appears
