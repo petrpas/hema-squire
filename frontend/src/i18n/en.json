@@ -876,7 +876,6 @@
   },
   "admin": {
     "title": "Admin panel",
-    "back": "Back",
     "error": "Could not load admin data.",
     "accounts": {
       "title": "Accounts",

@@ -1,14 +1,14 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import AccountMenu from "./AccountMenu";
 import { type Account, ApiError, api, type HRProfile, type Plea } from "./api";
 import FieldError, { invalidProps } from "./FieldError";
 import HRSearchPicker from "./HRSearch";
 import HRSearchStep from "./HRSearchStep";
 import i18n from "./i18n";
+import MenuPage from "./MenuPage";
 import PleaSection from "./PleaSection";
-import { useAuth } from "./RequireAuth";
+import useEscape from "./useEscape";
 import { useFieldValidation } from "./useFieldValidation";
 import { useWideViewport } from "./useWideViewport";
 import { apiErrors, checkString } from "./validation";
@@ -201,6 +201,9 @@ function HRMatchSection({
   // below 768px the picker is opened as its own screen rather than sitting
   // expanded in the section
   const [searching, setSearching] = useState(false);
+  // Escape leaves the step before it leaves the page: the page's own close
+  // stands aside while the step, a modal layer, is open
+  useEscape(pending === null && !wide && searching ? () => setSearching(false) : null);
 
   function select(profile: HRProfile) {
     setPending(profile);
@@ -285,7 +288,6 @@ function HRMatchSection({
 
 export default function ProfilePage() {
   const { t } = useTranslation();
-  const { onLogout } = useAuth();
   const [account, setAccount] = useState<Account | null>(null);
   const [error, setError] = useState(false);
 
@@ -297,28 +299,22 @@ export default function ProfilePage() {
   // list's menu, and the skin follows the route, not the role (spec
   // profile-page).
   return (
-    <div className="login-page" data-skin="night">
-      <div className="page-menu-corner">
-        <AccountMenu account={account} onLogout={onLogout} />
-      </div>
-      <div className="login-card wide-card">
-        <h1>{t("profile.title")}</h1>
-        {error ? (
-          <p className="login-error">{t("profile.loadFailed")}</p>
-        ) : account === null ? (
-          <p>{t("common.loading")}</p>
-        ) : (
-          <div className="page-card-body">
-            <AccountSection account={account} onUpdated={setAccount} />
-            <RoleSection account={account} />
-            {account.hr_id !== null ? (
-              <HRBoundSection account={account} />
-            ) : (
-              <HRMatchSection account={account} onBound={setAccount} />
-            )}
-          </div>
-        )}
-      </div>
-    </div>
+    <MenuPage title={t("profile.title")} account={account} night>
+      {error ? (
+        <p className="login-error">{t("profile.loadFailed")}</p>
+      ) : account === null ? (
+        <p>{t("common.loading")}</p>
+      ) : (
+        <div className="page-card-body">
+          <AccountSection account={account} onUpdated={setAccount} />
+          <RoleSection account={account} />
+          {account.hr_id !== null ? (
+            <HRBoundSection account={account} />
+          ) : (
+            <HRMatchSection account={account} onBound={setAccount} />
+          )}
+        </div>
+      )}
+    </MenuPage>
   );
 }

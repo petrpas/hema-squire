@@ -4965,3 +4965,39 @@ tr.export-line td {
 .entrant-member {
   padding-left: 1.6rem;
 }
+
+/* ===== pages reached from the account menu ===== */
+
+/* The card's page under the top bar. .app is a 100dvh column, so this takes
+   what the bar leaves, and the card is capped to it: the card's own body is
+   the scroller (.page-card-body), and a page that scrolled as well would put
+   a second scrollbar beside the first. */
+.page-under-bar {
+  flex: 1;
+  min-height: 0;
+}
+
+.page-under-bar > .wide-card {
+  max-height: 100%;
+}
+
+/* On a phone the card is the screen below the bar, not the whole screen as a
+   wide card otherwise is there. */
+@media (max-width: 768px) {
+  .page-under-bar {
+    padding: 0;
+    align-items: stretch;
+  }
+
+  .page-under-bar > .wide-card {
+    height: auto;
+  }
+}
+
+/* The card's title and its close control on one row */
+.page-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}

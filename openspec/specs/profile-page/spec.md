@@ -75,7 +75,7 @@ At 768px and above the flow SHALL remain within the section, unchanged.
 ### Requirement: Account menu
 Every logged-in page SHALL show an account menu ("⋯") in the top-right corner containing: My Profile; Admin Panel (only for Admin and Owner); My tournaments, leading to the tournament picker and shown only where the account holds at least one tournament it may open a console on; Create tournament, shown only where the account may create one; and Logout. Account actions SHALL be consolidated in this menu.
 
-The menu SHALL NOT carry an entry back to the fencer's own screens. The application's name in the top bar is that way back, present on every page and reachable without opening a menu.
+The menu SHALL NOT carry an entry back to the fencer's own screens. The application's name in the top bar is that way back, present on the fencer's screens and on the pages the menu leads to, and reachable without opening a menu.
 
 Each entry SHALL be named for what it leads to rather than for whom it is meant: an entry that names an audience tells an account holding both roles nothing about which of its two lists it is about to open.
 
@@ -94,6 +94,31 @@ Each entry SHALL be named for what it leads to rather than for whom it is meant:
 #### Scenario: Admin entry hidden for fencers
 - **WHEN** an account below Admin (and not Owner) opens the account menu
 - **THEN** no Admin Panel entry is shown
+
+### Requirement: Leaving a page reached from the account menu
+The Profile page and the admin panel SHALL carry the same top bar as the fencer's screens (`fencer-home`, Fencer identity header): the application's name at the left, leading to the tournament list, the list's title at the centre, and the visitor with the account menu at the right. Each page's skin stays its own (`design-system`, Skins): the Profile page night, the admin panel day.
+
+Each SHALL also carry a close control at the right of its card's heading, returning to the screen the page was opened from, or to the tournament list where the page was reached by its address and there is no screen of this application to return to. Escape SHALL do the same, except while a field has focus — the key then belongs to the field, and leaving would drop what was being typed — and except while something stands over the page, such as a dialog or the full-screen HR search step, which Escape closes first.
+
+#### Scenario: Closing the profile opened from a console
+- **WHEN** an organizer opens My Profile from the account menu in a console and selects the close control
+- **THEN** the console returns
+
+#### Scenario: Escape leaves the profile
+- **WHEN** a fencer on the Profile page presses Escape with no field focused and nothing open over the page
+- **THEN** the page closes as by its close control
+
+#### Scenario: Escape in a field stays
+- **WHEN** the fencer presses Escape while editing their name
+- **THEN** the Profile page stays, with the edit in place
+
+#### Scenario: Escape closes the HR step first
+- **WHEN** the full-screen HR search step is open over the Profile page and the fencer presses Escape
+- **THEN** the step closes and the Profile page remains
+
+#### Scenario: Reached by its address
+- **WHEN** a fencer opens the Profile page directly by its address and selects the close control
+- **THEN** the tournament list opens
 
 ### Requirement: Bootstrap owner account
 The deployment bootstrap SHALL create the account petr.pascenko@gmail.com (Petr Paščenko) with the Organizer role and the configured password, and the dev environment SHALL set the owner email configuration to petr.pascenko@gmail.com, making the account the deployment Owner with Organizer and inherent Fencer capabilities. Seeding SHALL be idempotent.

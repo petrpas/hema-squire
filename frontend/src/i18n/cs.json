@@ -891,7 +891,6 @@
   },
   "admin": {
     "title": "Admin panel",
-    "back": "Zpět",
     "error": "Data admin panelu se nepodařilo načíst.",
     "accounts": {
       "title": "Účty",

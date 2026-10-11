@@ -1,11 +1,9 @@
 import { IconCheck, IconX } from "@tabler/icons-react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useNavigate } from "react-router-dom";
 
-import AccountMenu from "./AccountMenu";
 import { type Account, type AdminAccount, api, type PleaQueueItem, type Role } from "./api";
-import { useAuth } from "./RequireAuth";
+import MenuPage from "./MenuPage";
 
 const ROLES: Role[] = ["fencer", "organizer", "admin"];
 
@@ -166,8 +164,6 @@ function PleaQueueSection({ pleas, onChanged }: { pleas: PleaQueueItem[]; onChan
 
 export default function AdminPanel() {
   const { t } = useTranslation();
-  const navigate = useNavigate();
-  const { onLogout } = useAuth();
   const [accounts, setAccounts] = useState<AdminAccount[] | null>(null);
   const [pleas, setPleas] = useState<PleaQueueItem[] | null>(null);
   const [error, setError] = useState(false);
@@ -184,26 +180,17 @@ export default function AdminPanel() {
   }, []);
 
   return (
-    <div className="login-page">
-      <div className="page-menu-corner">
-        <AccountMenu account={account} onLogout={onLogout} />
-      </div>
-      <div className="login-card wide-card">
-        <h1>{t("admin.title")}</h1>
-        {error ? (
-          <p className="login-error">{t("admin.error")}</p>
-        ) : accounts === null || pleas === null ? (
-          <p>{t("common.loading")}</p>
-        ) : (
-          <div className="page-card-body">
-            <PleaQueueSection pleas={pleas} onChanged={refresh} />
-            <AccountsSection accounts={accounts} onChanged={refresh} />
-          </div>
-        )}
-        <button type="button" className="link-button" onClick={() => navigate(-1)}>
-          {t("admin.back")}
-        </button>
-      </div>
-    </div>
+    <MenuPage title={t("admin.title")} account={account}>
+      {error ? (
+        <p className="login-error">{t("admin.error")}</p>
+      ) : accounts === null || pleas === null ? (
+        <p>{t("common.loading")}</p>
+      ) : (
+        <div className="page-card-body">
+          <PleaQueueSection pleas={pleas} onChanged={refresh} />
+          <AccountsSection accounts={accounts} onChanged={refresh} />
+        </div>
+      )}
+    </MenuPage>
   );
 }
