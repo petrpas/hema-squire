@@ -7,7 +7,7 @@ import App from "./App";
 import { type Account, api, setToken } from "./api";
 import i18n from "./i18n";
 
-// The Profile page and the admin panel carry the top bar and a close control,
+// The Profile page, the admin panel and the tournament picker carry the top bar and a close control,
 // and Escape leaves them as the control does (spec profile-page, "Leaving a
 // page reached from the account menu").
 
@@ -70,6 +70,7 @@ beforeEach(async () => {
   vi.spyOn(api, "myTournaments").mockResolvedValue([]);
   vi.spyOn(api, "adminAccounts").mockResolvedValue([]);
   vi.spyOn(api, "adminPleas").mockResolvedValue([]);
+  vi.spyOn(api, "tournaments").mockResolvedValue([]);
   await i18n.changeLanguage("cs");
 });
 
@@ -121,6 +122,20 @@ describe("leaving the admin panel", () => {
     await settle();
     expect(page.querySelector(".topbar")).not.toBeNull();
     pressEscape();
+    await settle();
+    expect(path).toBe("/nowhere");
+  });
+});
+
+describe("leaving the tournament picker", () => {
+  it("carries the top bar and closes back to where it was opened from", async () => {
+    const page = mount(["/nowhere", "/organizer"]);
+    await settle();
+    expect(page.querySelector(".topbar .logo-button")).not.toBeNull();
+    const close = page.querySelector<HTMLButtonElement>(
+      '.page-card-head button[aria-label="Zavřít"]',
+    );
+    act(() => close?.click());
     await settle();
     expect(path).toBe("/nowhere");
   });

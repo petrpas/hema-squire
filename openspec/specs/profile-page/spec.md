@@ -96,7 +96,7 @@ Each entry SHALL be named for what it leads to rather than for whom it is meant:
 - **THEN** no Admin Panel entry is shown
 
 ### Requirement: Leaving a page reached from the account menu
-The Profile page and the admin panel SHALL carry the same top bar as the fencer's screens (`fencer-home`, Fencer identity header): the application's name at the left, leading to the tournament list, the list's title at the centre, and the visitor with the account menu at the right. Each page's skin stays its own (`design-system`, Skins): the Profile page night, the admin panel day.
+The Profile page, the admin panel and the tournament picker (My tournaments) SHALL carry the same top bar as the fencer's screens (`fencer-home`, Fencer identity header): the application's name at the left, leading to the tournament list, the list's title at the centre, and the visitor with the account menu at the right. Each page's skin stays its own (`design-system`, Skins): the Profile page night, the admin panel and the picker day.
 
 Each SHALL also carry a close control at the right of its card's heading, returning to the screen the page was opened from, or to the tournament list where the page was reached by its address and there is no screen of this application to return to. Escape SHALL do the same, except while a field has focus — the key then belongs to the field, and leaving would drop what was being typed — and except while something stands over the page, such as a dialog or the full-screen HR search step, which Escape closes first.
 
