@@ -757,13 +757,17 @@ Creating a tournament SHALL be offered from the account menu (`tournament-admin`
 - **THEN** the draft is listed there, marked as a draft, and its console opens from that row
 
 ### Requirement: A payments-off registration presents no money to settle
-WHEN the tournament's payments feature is off, the detail page SHALL present the fencer's registration as confirmed rather than as reserved awaiting payment, and SHALL state no expiry date and no outstanding balance. The selected disciplines, teams and extra services SHALL still be listed with their amounts and total, aligned as `Registration management` fixes, because what the tournament costs is information the fencer needs.
+WHEN the tournament's payments feature is off, the detail page SHALL present the fencer's registration as confirmed rather than as reserved awaiting payment — unless it holds no seat and no team, in which case it is presented as substitute, as on every tournament — and SHALL state no expiry date and no outstanding balance. The selected disciplines, teams and extra services SHALL still be listed with their amounts and total, aligned as `Registration management` fixes, because what the tournament costs is information the fencer needs.
 
 Cancellation SHALL be offered as usual. Its confirmation SHALL ask for confirmation alone, with no mention of refunds, because Squire has taken nothing to refund. Amendment, the roster editor and the queue positions SHALL be unaffected by the payments feature.
 
 #### Scenario: Registration reads as confirmed
 - **WHEN** a fencer opens a registration on a payments-off tournament
 - **THEN** it is presented as confirmed, with no expiry date, no outstanding balance and no payment prompt
+
+#### Scenario: A queued registration does not read as confirmed
+- **WHEN** a fencer's registration on a payments-off tournament holds no seat and no team, every placement waiting in the queue
+- **THEN** it is presented as substitute, with its queue positions, and not as confirmed
 
 #### Scenario: Amounts still shown
 - **WHEN** that registration holds two disciplines and an extra service

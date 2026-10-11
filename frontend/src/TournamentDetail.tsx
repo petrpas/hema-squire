@@ -37,7 +37,7 @@ import {
 import { useOpeningMoment } from "./useOpeningMoment";
 import { useTabBand } from "./useTabBand";
 
-function RegistrationStateTag({
+export function RegistrationStateTag({
   registration,
   detail,
 }: {
@@ -45,11 +45,22 @@ function RegistrationStateTag({
   detail: TournamentDetailData;
 }) {
   const { t } = useTranslation();
+  // A reservation holding no seat and no team is waiting in the queue, which
+  // is what the fencer's list of tournaments calls it too. It has to be
+  // settled first: on a payments-off tournament it would otherwise read as
+  // confirmed while holding a place nowhere.
+  const queued =
+    registration.state === "reserved" &&
+    registration.entries.every((e) => e.is_substitute) &&
+    registration.teams.every((team) => team.waitlisted);
   // A reservation on a payments-off tournament is not awaiting anything: no
   // money was asked for and no window is running, so it reads as confirmed
   // rather than as reserved (spec: fencer-home).
-  const state =
-    registration.state === "reserved" && !detail.feature_payments ? "paid" : registration.state;
+  const state = queued
+    ? "substitute"
+    : registration.state === "reserved" && !detail.feature_payments
+      ? "paid"
+      : registration.state;
   const label = t(`registration.state.${state}`);
   // the stamp's id only fixes its tilt, and a registration on an
   // organizer-kept tournament carries no symbol to fix it by — its own
