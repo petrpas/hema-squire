@@ -1084,3 +1084,21 @@ def test_no_team_discipline_regression(client, auth_headers):
     export = client.get("/api/tournaments/cup/export/json", headers=organizer).json()
     assert export["registrations"][0]["teams"] == []
     assert export["disciplines"][0]["kind"] == "individual"
+
+
+def test_own_state_judges_a_team_only_registration_by_its_team(client, auth_headers):
+    """A seated team is a place held: its registration reads reserved, not
+    substitute, in the fencer's list — and a waitlisted one reads substitute."""
+    organizer = auth_headers()
+    setup_team_tournament(client, organizer, capacity=1)
+    first = auth_headers(email="f1@example.com", name="F1")
+    second = auth_headers(email="f2@example.com", name="F2")
+    register_team(client, first, name="Wolves")
+    register_team(client, second, name="Bears")
+
+    def own_state(headers):
+        listed = client.get("/api/tournaments/open", headers=headers).json()
+        return next(t for t in listed if t["slug"] == "cup")["my_registration_state"]
+
+    assert own_state(first) == "reserved"
+    assert own_state(second) == "substitute"

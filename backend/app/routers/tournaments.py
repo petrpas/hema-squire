@@ -250,8 +250,9 @@ def _my_registration_state(
     session: Session, tournament: Tournament, fencer: Fencer
 ) -> MyRegistrationState:
     """The caller's own standing on one tournament, as the fencer-facing lists
-    report it. A reservation holding nothing but substitute entries reads as
-    `substitute`; a cancelled or scheduler-expired one reads as `cancelled`."""
+    report it. A reservation waiting entirely in the queue — every entry a
+    substitute and every team waitlisted — reads as `substitute`; a cancelled
+    or scheduler-expired one reads as `cancelled`."""
     registration = session.scalar(
         select(Registration).where(
             Registration.tournament_id == tournament.id,
@@ -263,8 +264,7 @@ def _my_registration_state(
     if registration.state is RegistrationState.RESERVED:
         if registration.settled:
             return "paid"
-        active = any(not e.is_substitute for e in registration.entries)
-        return "reserved" if active else "substitute"
+        return "substitute" if registration.waiting_in_queue else "reserved"
     return "cancelled"
 
 
