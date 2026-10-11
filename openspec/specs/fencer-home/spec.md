@@ -16,7 +16,7 @@ The cards SHALL be laid out in a grid of columns at least 320px wide, filling a 
 
 **A card** SHALL be a container on `--paper-raised` with a 1px `--hairline` border at `--radius-card`, made of a cover and a body, and SHALL present:
 
-- **The cover**, a band whose ground is one of the three pastel tints (file-blue, seal-green, form-yellow), chosen deterministically from the tournament's slug by the same hash that tilts the Paid stamp, so the same tournament always wears the same tint. The choice SHALL be carried as a data attribute and resolved in CSS, so no color lives in a component.
+- **The cover**, a band whose ground is one of the three pastel tints (file-blue, seal-green, form-yellow), chosen as `A card's cover tint follows its logo` states: by the logo's hue band where it has one, and otherwise deterministically from the tournament's slug by the same hash that tilts the Paid stamp, so the same tournament always wears the same tint. The choice SHALL be carried as a data attribute and resolved in CSS, so no color lives in a component.
 - **The plate**, centred in the cover at `--radius-plate`: the tournament's logo on `--plate` when one is set, filling the plate and cropped on its longer side; otherwise its monogram (see `A tournament without a logo shows its monogram`) on `--paper` in the tint's `-ink` color. The plate SHALL be ringed in `--stamp` while registration is open, and in `--hairline-strong` otherwise. The ring is drawn by an outline, not a border or a shadow.
 - **The ordinal**, at the cover's top right in `--font-data` 12px `--ink-faded`: the card's position in the list as shown, zero-padded (`001`).
 - **The status block**, at the cover's top left, never reaching the plate: three short lines at `--radius-chip` stating registration's state. Open: `registrace` / `otevřena` / `do {closing date}`, on `--stamp-tint` in `--stamp-on-tint`, led by a small `--stamp` dot. Opens on a date: `registrace` / `od {date}` / `v {time}` when an hour is set. Held elsewhere: `registrace` / `jinde`. Closed: `registrace` / `uzavřena`. The last three stand on `--paper` in `--ink`, `--ink-soft` and `--ink-faded` respectively. A line whose value is absent SHALL be omitted. On the Mine and Past tabs the block SHALL state the account's own bond instead, as those tabs require.
@@ -900,4 +900,19 @@ Below 480px the countdown SHALL stand under the name.
 #### Scenario: The moment passes on screen
 - **WHEN** the visitor keeps the list open as that opening moment passes
 - **THEN** the countdown stops without showing a negative figure, the strip no longer names that tournament, and no ring, bar or fill was drawn beside the figure
+
+### Requirement: A card's cover tint follows its logo
+Where a listed tournament's logo has a hue band, its card's cover SHALL wear the pastel tint of that band: `blue` the file-blue tint, `green` the seal-green tint, `warm` the form-yellow tint. Where the tournament has no logo, or its logo has no band, the cover SHALL wear the tint chosen from the slug, as before. No color taken from the logo itself SHALL be rendered: the band only chooses among the three tint tokens.
+
+#### Scenario: Green logo, green cover
+- **WHEN** a tournament whose logo band is `green` is listed
+- **THEN** its cover wears the seal-green tint, whatever its slug would choose
+
+#### Scenario: Achromatic logo
+- **WHEN** a tournament's logo has no band
+- **THEN** its cover wears the tint its slug chooses, the same on every render
+
+#### Scenario: Logo replaced
+- **WHEN** the organizer replaces a blue logo with a red one
+- **THEN** the card's cover changes from the file-blue tint to the form-yellow tint
 

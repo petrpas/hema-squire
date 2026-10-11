@@ -15,4 +15,4 @@
 
 ## 3. Specs on archive
 
-- [ ] 3.1 When syncing, adjust the `fencer-home` landing text ("chosen deterministically from the tournament's slug") to point at `A card's cover tint follows its logo`
+- [x] 3.1 When syncing, adjust the `fencer-home` landing text ("chosen deterministically from the tournament's slug") to point at `A card's cover tint follows its logo`
