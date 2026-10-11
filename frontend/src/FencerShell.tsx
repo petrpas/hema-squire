@@ -48,7 +48,9 @@ export default function FencerShell({
   const { t } = useTranslation();
 
   return (
-    <div className="app">
+    // The fencer side's skin (spec design-system, Skins): set here, on the
+    // root, and read by tokens.css alone.
+    <div className="app" data-skin="night">
       {/* The two sides are equal flex tracks and the title is what is left
           between them, which is what puts it at the true centre rather than at
           the centre of whatever the sides did not take. Below 768px the bar
@@ -77,7 +79,7 @@ export default function FencerShell({
                on one, so the menu is absent rather than rendered empty, and
                sign-in stands where the name would (spec `public-browsing`). */
             <div className="signin-block">
-              <button type="button" className="tertiary" onClick={onSignIn}>
+              <button type="button" className="button-pill" onClick={onSignIn}>
                 {t("menu.signIn")}
               </button>
             </div>

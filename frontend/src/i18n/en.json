@@ -958,14 +958,32 @@
       "hrid": "HRID: {{id}}",
       "noHemaratings": "no hemaratings"
     },
-    "status": {
-      "open": "Registration open",
-      "opensOn": "Registration opens {{date}}",
-      "closed": "Registration closed",
-      "opensAt": "Registration opens {{date}} at {{time}}",
-      "elsewhere": "registration is held elsewhere"
+    "manage": "Manage",
+    "block": {
+      "registration": "registration",
+      "open": "open",
+      "until": "until {{date}}",
+      "from": "from {{date}}",
+      "at": "at {{time}}",
+      "elsewhere": "elsewhere",
+      "closed": "closed"
     },
-    "manage": "Manage"
+    "meter": {
+      "full": "full",
+      "fullWaiting_one": "full · +{{count}} waiting",
+      "fullWaiting_other": "full · +{{count}} waiting"
+    },
+    "counts": {
+      "fencers_one": "{{count}} fencer",
+      "fencers_other": "{{count}} fencers",
+      "clubs_one": "{{count}} club",
+      "clubs_other": "{{count}} clubs"
+    },
+    "nextOpening": {
+      "label": "next registration opening",
+      "show": "Show tournament",
+      "at": "{{date}} at {{time}}"
+    }
   },
   "detail": {
     "disciplines": "Disciplines",

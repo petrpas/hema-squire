@@ -293,8 +293,11 @@ export default function ProfilePage() {
     api.account().then(setAccount, () => setError(true));
   }, []);
 
+  // Night, for every account that opens it: a fencer arrives from the night
+  // list's menu, and the skin follows the route, not the role (spec
+  // profile-page).
   return (
-    <div className="login-page">
+    <div className="login-page" data-skin="night">
       <div className="page-menu-corner">
         <AccountMenu account={account} onLogout={onLogout} />
       </div>

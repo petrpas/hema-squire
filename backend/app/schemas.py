@@ -1258,6 +1258,13 @@ class OpenTournamentOut(BaseModel):
     registration_opens_at: datetime.datetime | None = None
     # the zone the opening hour is stated in, so a consumer can name it
     timezone: str = DEFAULT_TIMEZONE
+    # the last day registration is open, as the detail states it; absent where
+    # the tournament keeps no window here (`elsewhere`)
+    registration_closes_on: datetime.date | None = None
+    # public aggregates over the seated individual placements: distinct
+    # fencers, and distinct clubs among them (spec public-browsing)
+    entrant_count: int = 0
+    club_count: int = 0
     # this response's own instant, for the same reason as on TournamentOut
     server_time: datetime.datetime = Field(
         default_factory=lambda: datetime.datetime.now(datetime.UTC)

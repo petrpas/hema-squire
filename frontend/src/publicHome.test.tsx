@@ -53,6 +53,9 @@ function tournament(slug: string, over: Partial<OpenTournament> = {}): OpenTourn
     registration_opens_at: null,
     timezone: "Europe/Prague",
     server_time: "2026-09-12T10:00:00Z",
+    registration_closes_on: null,
+    entrant_count: 0,
+    club_count: 0,
     disciplines: [],
     ...over,
   } as OpenTournament;

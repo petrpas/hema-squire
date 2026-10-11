@@ -43,7 +43,7 @@ export interface OpeningMoment {
  *  Inside the last day it also ticks once a second, which is what re-renders
  *  the countdown figure. Outside it nothing ticks until the window opens. */
 export function useOpeningMoment(
-  detail: FencerTournament | null,
+  detail: Pick<FencerTournament, "server_time" | "registration_opens_at"> | null,
   onOpen: () => void,
 ): OpeningMoment {
   // measured once per payload: a re-render must not re-measure against a

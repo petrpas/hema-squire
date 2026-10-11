@@ -353,10 +353,17 @@ def registration_availability(tournament: Tournament, now: datetime.datetime) ->
     opens_at = registration_opens_at(tournament)
     if opens_at is not None and now < opens_at:
         return NOT_YET_OPEN
-    closes = tournament.registration_closes or tournament.date
-    if local_date(tournament, now) > closes:
+    if local_date(tournament, now) > registration_closes_on(tournament):
         return CLOSED
     return None
+
+
+def registration_closes_on(tournament: Tournament) -> datetime.date:
+    """The last day registration is open, in the tournament's zone: the closing
+    date the organizer set, else the tournament's own date. The one place the
+    fallback is spelled; the gate, the seating deadline and the public list all
+    read it here."""
+    return tournament.registration_closes or tournament.date
 
 
 def seating_deadline_for(tournament: Tournament) -> datetime.date:
@@ -367,7 +374,7 @@ def seating_deadline_for(tournament: Tournament) -> datetime.date:
     here alone; no caller spells it out a second time."""
     if tournament.seating_deadline is not None:
         return tournament.seating_deadline
-    return tournament.registration_closes or tournament.date
+    return registration_closes_on(tournament)
 
 
 def seating_has_settled(tournament: Tournament, now: datetime.datetime) -> bool:

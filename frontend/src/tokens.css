@@ -45,6 +45,106 @@
   --radius: 2px; /* app-wide maximum; table cells get 0 */
   --border-w: 1px;
   --focus: 2px solid var(--stamp);
+
+  /* Skin roles. Each has a day value that renders exactly as before it
+     existed; only the night block below gives it another (spec
+     design-system, Skins). --radius itself is not a skin role: fields, tags
+     and table cells keep 2px in both skins. */
+  --radius-card: 2px;
+  --radius-pill: 2px;
+  --radius-plate: 2px;
+  --radius-chip: 2px;
+  --font-display: var(--font-doc); /* document titles */
+  --weight-display: 500;
+  --body-size: 14px;
+  --title-size: 19px; /* the top bar's page title */
+  --hairline-strong: var(--ink); /* a rule meant to be seen: rings, pill borders */
+  --stamp-on-tint: var(--stamp); /* stamp-colored text on --stamp-tint */
+  --plate: var(--paper-raised); /* the ground a tournament logo sits on */
+  /* The ground around the payment QR. The code itself is an opaque PNG, dark
+     on light with its own quiet zone, and must stay so in both skins:
+     inverted codes fail in some banking applications. */
+  --qr-paper: var(--paper-raised);
+}
+
+/* The dim behind a modal: --ink at 0.35. Declared on ::backdrop too, which
+   older engines do not let inherit from its dialog, so var(--scrim) resolves
+   there either way. */
+:root,
+::backdrop {
+  --scrim: rgba(43, 42, 38, 0.35);
+}
+
+/* ===== Night skin =====
+   The fencer-facing screens (the list, a tournament's detail and its tabs, the
+   sign-in screen they render, the profile and the not-found screen) carry
+   data-skin="night" on their layout root. This block is the whole of the
+   skin: the same roles as :root, other values. No component reads which skin
+   is active (spec design-system, Skins).
+
+   Measured contrast (WCAG 2.x) on --paper / --paper-raised / --paper-shade:
+     --ink 15.3 / 14.1 / 12.9     --ink-soft 9.2 / 8.5 / 7.7
+     --ink-faded 5.8 / 5.3 / 4.8  --stamp 5.7 / 5.3 / 4.8
+   --stamp-on-tint on --stamp-tint 6.0; each pastel -ink on its tint 7.5-8.7.
+   --ink-faded goes on those three grounds only. --hairline-strong is 1.8:1
+   on --paper-raised: decoration, never the sole carrier of a meaning.
+
+   The root re-declares color, size and ground because body's are computed
+   from the day values and inherited as computed, not as var(). */
+[data-skin="night"] {
+  color-scheme: dark;
+
+  --paper: #121110;
+  --paper-raised: #1b1a17;
+  --paper-shade: #24221e;
+
+  --ink: #ede7d9;
+  --ink-soft: #bdb4a2;
+  --ink-faded: #968d7d;
+
+  --hairline: #2e2b26;
+  --rule-strong: var(--ink);
+
+  --stamp: #e8644d; /* text on a filled stamp is --paper */
+  --stamp-hover: #f07a63;
+  --stamp-tint: #3a1f1a;
+
+  --seal-green: #1f2a22;
+  --seal-green-ink: #9cc7a4;
+  --file-blue: #1e2730;
+  --file-blue-ink: #a3b9cc;
+  --form-yellow: #2c2618;
+  --form-yellow-ink: #dcc38a;
+
+  --focus: 2px solid var(--stamp);
+
+  --radius-card: 16px;
+  --radius-pill: 999px;
+  --radius-plate: 14px;
+  --radius-chip: 10px;
+  --font-display: "IBM Plex Sans Condensed", var(--font-ui);
+  --weight-display: 700;
+  --body-size: 15px;
+  --title-size: clamp(22px, 2.4vw, 30px);
+  --hairline-strong: #4a453c;
+  --stamp-on-tint: #f0866f;
+  --plate: #ede7d9;
+  --qr-paper: #ede7d9;
+
+  min-height: 100dvh;
+  background: var(--paper);
+  color: var(--ink);
+  font-size: var(--body-size);
+}
+
+[data-skin="night"] ::backdrop {
+  --scrim: rgba(10, 9, 8, 0.6);
+}
+
+/* Rubber-band overscroll shows the canvas behind body, not the night root. */
+html:has([data-skin="night"]),
+html:has([data-skin="night"]) body {
+  background: #121110;
 }
 
 /* ===== Breakpoints =====

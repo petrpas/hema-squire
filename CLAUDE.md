@@ -8,16 +8,23 @@ This list takes precedence over everything else. The implementation NEVER uses:
 
 - gradients, shadows (`box-shadow`, `text-shadow`), blur, glow
 - zebra stripes in tables
-- `border-radius` > 2px (no pills, no rounded cards)
+- `border-radius` > 2px, EXCEPT through the skin geometry tokens
+  (`--radius-card`, `--radius-pill`, `--radius-plate`, `--radius-chip`), which
+  are 2px in the day skin and larger only under `[data-skin="night"]`
 - pure white `#FFF` or pure black `#000`
 - default blue links or the browser's default blue focus outline
 - emoji or filled icons
 - skeleton shimmer, spinners, animated progress bars
 - toasts with entrance animations; confirmations are static and leave via
   fade-out
-- weight 600+, Title Case, exclamation marks in system copy
+- weight 600+, EXCEPT `--weight-display` on display headings, which is 500 in
+  the day skin and 700 only under `[data-skin="night"]`
+- Title Case, exclamation marks in system copy
 - more than one saturated color (`--stamp` is the only one)
 - any hex value outside `tokens.css`
+
+Everything else on this list binds both skins. The night skin is defined in
+`openspec/specs/design-system` (Requirement: Skins) and nowhere else.
 
 # Frontend conventions
 

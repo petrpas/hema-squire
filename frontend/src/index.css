@@ -5,7 +5,7 @@
 
 body {
   font-family: var(--font-ui);
-  font-size: 14px;
+  font-size: var(--body-size);
   line-height: 1.5;
   color: var(--ink);
   background: var(--paper);
@@ -250,8 +250,8 @@ button.secondary:disabled {
 }
 
 .login-card h1 {
-  font-family: var(--font-doc);
-  font-weight: 500;
+  font-family: var(--font-display);
+  font-weight: var(--weight-display);
   font-size: 20px;
 }
 
@@ -457,9 +457,9 @@ button.secondary:disabled {
 /* What this page is, between the application's name and the visitor. Takes
    only the width it needs and wraps rather than forcing the bar wider. */
 .topbar-title {
-  font-family: var(--font-doc);
-  font-weight: 500;
-  font-size: 19px;
+  font-family: var(--font-display);
+  font-weight: var(--weight-display);
+  font-size: var(--title-size);
   color: var(--ink);
   text-align: center;
   flex: 0 1 auto;
@@ -510,8 +510,8 @@ button.secondary:disabled {
 }
 
 .logo {
-  font-family: var(--font-doc);
-  font-weight: 500;
+  font-family: var(--font-display);
+  font-weight: var(--weight-display);
   font-size: 19px;
   color: var(--ink);
 }
@@ -618,8 +618,8 @@ button.secondary:disabled {
 }
 
 .tournament-name {
-  font-family: var(--font-doc);
-  font-weight: 500;
+  font-family: var(--font-display);
+  font-weight: var(--weight-display);
   font-size: 16px;
 }
 
@@ -1016,8 +1016,8 @@ button.secondary:disabled {
 }
 
 .sheet-header h1 {
-  font-family: var(--font-doc);
-  font-weight: 500;
+  font-family: var(--font-display);
+  font-weight: var(--weight-display);
   font-size: 20px;
 }
 
@@ -2127,7 +2127,7 @@ tr.row-deleted td.col-actions {
 }
 
 .modal-backdrop::backdrop {
-  background: rgba(43, 42, 38, 0.35);
+  background: var(--scrim);
 }
 
 .modal {
@@ -2180,8 +2180,8 @@ tr.row-deleted td.col-actions {
 }
 
 .modal h2 {
-  font-family: var(--font-doc);
-  font-weight: 500;
+  font-family: var(--font-display);
+  font-weight: var(--weight-display);
   font-size: 17px;
 }
 
@@ -2435,7 +2435,7 @@ tr.row-deleted td.col-actions {
   align-items: center;
   justify-content: center;
   border: var(--border-w) solid var(--ink);
-  border-radius: var(--radius);
+  border-radius: var(--radius-pill);
   background: var(--paper-raised);
   color: var(--ink);
   transition: background-color 120ms;
@@ -2531,11 +2531,17 @@ tr.row-deleted td.col-actions {
 
 /* ===== fencer home + tournament detail ===== */
 
+/* ===== fencer home: the card grid =====
+   spec fencer-home, Fencer Home landing. Every value is a role token, so the
+   skin decides what the card looks like and nothing here knows which one is
+   on. */
+
 .home-list {
   list-style: none;
   padding: 0;
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 20px;
 }
 
 /* The card is a container, not one link: an organizer's Manage control is a
@@ -2543,31 +2549,287 @@ tr.row-deleted td.col-actions {
    invalid markup (design Decision 6). The body below is the link to the
    tournament, so the whole surface still opens it. */
 .home-card {
+  position: relative;
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
-  width: 100%;
-  text-align: left;
-  padding: 1rem 1em;
-  border-bottom: var(--border-w) solid var(--hairline);
-  border-radius: 0;
-  transition: background-color 120ms;
+  min-width: 0;
+  background: var(--paper-raised);
+  border: var(--border-w) solid var(--hairline);
+  border-radius: var(--radius-card);
+  overflow: hidden;
+  transition:
+    background-color 120ms,
+    border-color 120ms;
+}
+
+@media (hover: hover) {
+  .home-card:hover {
+    background: var(--paper-shade);
+    border-color: var(--hairline-strong);
+  }
 }
 
 .home-card-body {
+  flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 0.7rem;
-  background: none;
-  font: inherit;
   color: inherit;
   text-decoration: none;
+}
+
+/* the card clips its corners, which would clip a focus ring drawn outside the
+   link; drawn inside instead, at the card's own radius */
+.home-card-body:focus-visible {
+  outline-offset: -2px;
+  border-radius: var(--radius-card);
+}
+
+/* The cover: a pastel band chosen from the slug (data-tint), the plate at
+   its centre, the status block at its top left and the ordinal at its top
+   right. */
+.home-card-cover {
+  position: relative;
+  height: 150px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  --tint-ink: var(--file-blue-ink);
+  background: var(--file-blue);
+}
+
+.home-card-cover[data-tint="1"] {
+  --tint-ink: var(--seal-green-ink);
+  background: var(--seal-green);
+}
+
+.home-card-cover[data-tint="2"] {
+  --tint-ink: var(--form-yellow-ink);
+  background: var(--form-yellow);
+}
+
+/* The ring is an outline, not a border or a shadow: --stamp while
+   registration is open, a quiet rule otherwise. */
+.home-card-plate,
+.next-opening-plate {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background: var(--paper);
+  color: var(--tint-ink, var(--ink));
+  font-family: var(--font-display);
+  font-weight: var(--weight-display);
+  line-height: 1;
+}
+
+.home-card-plate {
+  width: 84px;
+  height: 84px;
+  border-radius: var(--radius-plate);
+  font-size: 26px;
+  outline: 2px solid var(--hairline-strong);
+  outline-offset: 4px;
+}
+
+.home-card-plate[data-ring="open"] {
+  outline-color: var(--stamp);
+}
+
+.home-card-plate[data-logo],
+.next-opening-plate[data-logo] {
+  background: var(--plate);
+}
+
+/* the logo fills the plate, cropped on its longer side: a logo shrunk to fit
+   inside a square reads as a speck */
+.home-card-plate img,
+.next-opening-plate img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.home-card-ordinal {
+  position: absolute;
+  top: 12px;
+  right: 14px;
+  font-family: var(--font-data);
+  font-variant-numeric: tabular-nums;
+  font-size: 12px;
+  color: var(--ink-faded);
+}
+
+.home-card-stamp {
+  position: absolute;
+  left: 12px;
+  bottom: 12px;
+}
+
+/* Registration's state in three short lines, never reaching the plate. */
+.status-block {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  max-width: calc(50% - 72px);
+  display: flex;
+  flex-direction: column;
+  padding: 8px 11px;
+  border-radius: var(--radius-chip);
+  font-size: 12px;
+  line-height: 1.3;
+  background: var(--paper);
+  color: var(--ink);
+}
+
+.status-block-data {
+  font-family: var(--font-data);
+  font-variant-numeric: tabular-nums;
+}
+
+.status-block[data-tone="open"] {
+  background: var(--stamp-tint);
+  color: var(--stamp-on-tint);
+}
+
+/* a mark beside the words, not an icon */
+.status-block[data-tone="open"] .status-block-head::before {
+  content: "";
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin-right: 6px;
+  vertical-align: 1px;
+  border-radius: var(--radius-pill);
+  background: var(--stamp);
+}
+
+.status-block[data-tone="elsewhere"] {
+  color: var(--ink-soft);
+}
+
+.status-block[data-tone="closed"] {
+  color: var(--ink-faded);
+}
+
+.home-card-main {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  padding: 1rem;
+  min-width: 0;
+}
+
+.home-card-main h2 {
+  font-family: var(--font-display);
+  font-weight: var(--weight-display);
+  font-size: 26px;
+  line-height: 1.05;
+  overflow-wrap: anywhere;
+}
+
+.home-card-subtitle {
+  color: var(--ink-soft);
+  font-size: 14px;
+}
+
+.home-card-when {
+  font-family: var(--font-data);
+  font-size: 13px;
+  color: var(--ink);
+}
+
+.home-card-organizers {
+  font-size: 13px;
+  color: var(--ink-soft);
+}
+
+/* A club name or a venue can arrive as one unbroken string longer than a
+   narrow column — organizers write what they write. Break inside the word
+   rather than let it push the card sideways. */
+.home-card-when,
+.home-card-organizers {
+  overflow-wrap: anywhere;
+}
+
+/* ===== capacity meter: a static figure (spec design-system) ===== */
+
+.meters {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  padding: 0 1rem 1rem;
+}
+
+.meter {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.3rem 1rem;
+  font-size: 13px;
+}
+
+.meter-name {
+  overflow-wrap: anywhere;
+}
+
+.meter-figure {
+  font-family: var(--font-data);
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-soft);
+  text-align: right;
+}
+
+/* no transition and no animation, ever: the width is the measurement */
+.meter-track {
+  grid-column: 1 / -1;
+  display: block;
+  height: 4px;
+  background: var(--paper-shade);
+}
+
+.meter-fill {
+  display: block;
+  height: 100%;
+  background: var(--ink-soft);
+}
+
+.meter[data-full] .meter-figure {
+  color: var(--stamp-on-tint);
+}
+
+.meter[data-full] .meter-fill {
+  background: var(--stamp);
+}
+
+/* the foot, aligned across a row of cards whatever their heights */
+.home-card-foot {
+  margin-top: auto;
+  min-height: 1rem;
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+  margin-left: 1rem;
+  margin-right: 1rem;
+  padding: 0.7rem 0;
+  border-top: var(--border-w) solid var(--hairline);
+  font-family: var(--font-data);
+  font-variant-numeric: tabular-nums;
+  font-size: 12px;
+  color: var(--ink-faded);
+}
+
+/* a list with no seated fencer yet states no count, and draws no rule for it */
+.home-card-foot:empty {
+  border-top: none;
+  padding: 0;
 }
 
 /* a tertiary text action at the card's trailing edge; it opens the console,
    which is a different destination from the card's own */
 .home-card-manage {
   align-self: flex-end;
+  margin: 0 1rem 0.7rem;
   font-size: 12px;
   color: var(--ink-faded);
 }
@@ -2578,45 +2840,167 @@ tr.row-deleted td.col-actions {
   }
 }
 
+/* Below 480px a card is a compact row: no cover band, the plate at the left,
+   the status as one line of text in its colors, the meters below. */
+@media (max-width: 480px) {
+  .home-card-body {
+    display: grid;
+    grid-template-columns: 56px minmax(0, 1fr);
+    column-gap: 0.9rem;
+    padding: 1rem 1rem 0;
+  }
+
+  .home-card-cover {
+    display: contents;
+  }
+
+  .home-card-ordinal {
+    display: none;
+  }
+
+  .home-card-plate {
+    grid-column: 1;
+    grid-row: 1 / span 2;
+    width: 56px;
+    height: 56px;
+    font-size: 20px;
+    align-self: start;
+    margin-top: 4px;
+  }
+
+  .home-card-main {
+    grid-column: 2;
+    grid-row: 1;
+    padding: 0;
+  }
+
+  .home-card-main h2 {
+    font-size: 20px;
+  }
+
+  .status-block {
+    position: static;
+    grid-column: 2;
+    grid-row: 2;
+    max-width: none;
+    display: block;
+    padding: 0.2rem 0 0;
+    background: none;
+    border-radius: 0;
+    font-size: 13px;
+  }
+
+  .status-block[data-tone="open"] {
+    background: none;
+  }
+
+  .status-block > span + span::before {
+    content: " ";
+  }
+
+  .home-card-stamp {
+    left: auto;
+    right: 12px;
+    top: 12px;
+    bottom: auto;
+  }
+
+  .meters {
+    grid-column: 1 / -1;
+    padding: 0.9rem 0 0;
+  }
+
+  .home-card-foot {
+    grid-column: 1 / -1;
+    margin: 1rem 0 0;
+  }
+}
+
+/* ===== the next registration opening (spec fencer-home) ===== */
+
+.next-opening {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.9rem 1rem;
+  background: var(--paper-raised);
+  border: var(--border-w) solid var(--hairline);
+  border-radius: var(--radius-card);
+}
+
+.next-opening-plate {
+  width: 48px;
+  height: 48px;
+  border-radius: var(--radius-plate);
+  font-size: 18px;
+}
+
+.next-opening-name {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  overflow-wrap: anywhere;
+}
+
+.next-opening-label {
+  font-size: 12px;
+  color: var(--ink-faded);
+}
+
+/* a live figure: tabular, fixed width, no motion (spec design-system) */
+.next-opening-figure {
+  font-family: var(--font-data);
+  font-variant-numeric: tabular-nums;
+  font-size: 26px;
+  min-width: 7ch;
+  text-align: right;
+  white-space: nowrap;
+}
+
+/* a secondary control on the pill geometry */
+.button-pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 40px;
+  padding: 0 1.1rem;
+  border: var(--border-w) solid var(--hairline-strong);
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--ink);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 500;
+  text-decoration: none;
+  white-space: nowrap;
+  transition:
+    background-color 120ms,
+    border-color 120ms;
+}
+
 @media (hover: hover) {
-  .home-card:hover {
+  .button-pill:hover {
     background: var(--paper-shade);
   }
 }
 
-.home-card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 1rem;
-  /* Without this the 16px --font-doc heading is squeezed beside the logo on a
-     narrow card and sets two or three characters to the line. No media query:
-     it wraps when it has to and not before. */
-  flex-wrap: wrap;
-}
+@media (max-width: 480px) {
+  .next-opening {
+    flex-wrap: wrap;
+  }
 
-.home-card-header h2 {
-  font-family: var(--font-doc);
-  font-weight: 500;
-  font-size: 16px;
-}
+  .next-opening-figure {
+    order: 3;
+    flex-basis: 100%;
+    text-align: left;
+    font-size: 22px;
+  }
 
-.status-open {
-  display: inline-block;
-  font-size: 11px;
-  padding: 2px 8px;
-  border-radius: var(--radius);
-  background: var(--seal-green);
-  color: var(--seal-green-ink);
-}
-
-.status-closed {
-  display: inline-block;
-  font-size: 11px;
-  padding: 2px 8px;
-  border-radius: var(--radius);
-  border: var(--border-w) solid var(--hairline);
-  color: var(--ink-faded);
+  .next-opening .button-pill {
+    order: 4;
+  }
 }
 
 .detail-list {
@@ -2676,8 +3060,8 @@ tr.row-deleted td.col-actions {
 }
 
 .identity-name {
-  font-family: var(--font-doc);
-  font-weight: 500;
+  font-family: var(--font-display);
+  font-weight: var(--weight-display);
   font-size: 15px;
 }
 
@@ -2696,15 +3080,6 @@ tr.row-deleted td.col-actions {
   .identity-hrid:hover {
     text-decoration: underline;
   }
-}
-
-.organizer-chip {
-  display: inline-block;
-  font-size: 11px;
-  padding: 2px 8px;
-  border-radius: var(--radius);
-  background: var(--file-blue);
-  color: var(--file-blue-ink);
 }
 
 .home-workspace {
@@ -2735,13 +3110,59 @@ tr.row-deleted td.col-actions {
   flex-direction: column;
   gap: 1.25rem;
   width: 100%;
-  max-width: 44rem;
+  max-width: 1240px;
 }
 
-/* centred above the list, and no wider than its labels need */
-.home-tabs {
+/* centred above the list, and no wider than its labels need: one segmented
+   control, its tabs pills inside a pill, the active one inverted. Written on
+   the skin's geometry tokens, so in the day skin it is the ruled strip it
+   always was in all but its dividers. */
+.stage-control.home-tabs {
   align-self: center;
   max-width: 100%;
+  gap: 4px;
+  padding: 4px;
+  border: var(--border-w) solid var(--hairline);
+  border-radius: var(--radius-pill);
+  background: var(--paper-raised);
+}
+
+.stage-control.home-tabs a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 40px;
+  border: none;
+  border-radius: var(--radius-pill);
+}
+
+.stage-control.home-tabs .tab-count {
+  font-size: 12px;
+  color: var(--ink-faded);
+}
+
+/* the band clips (it scrolls on a phone), so a tab's focus ring is drawn
+   inside the tab rather than outside it */
+.stage-control.home-tabs a:focus-visible {
+  outline-offset: -2px;
+}
+
+/* on the inverted tab the count takes the tab's own ink: a soft ink on an
+   ink ground would not read */
+.stage-control.home-tabs a.active .tab-count {
+  color: inherit;
+}
+
+@media (max-width: 480px) {
+  .stage-control.home-tabs {
+    align-self: stretch;
+  }
+
+  .stage-control.home-tabs a {
+    flex: 1 1 0;
+    justify-content: center;
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+  }
 }
 
 .home-workspace > .home-list,
@@ -2855,7 +3276,7 @@ label.checkbox-chip,
   width: 10rem;
   height: 10rem;
   align-self: flex-start;
-  background: var(--paper-raised);
+  background: var(--qr-paper);
 }
 
 /* The code and the actions that make it usable on the device displaying it:
@@ -3008,28 +3429,12 @@ label.checkbox-chip,
 
 /* --- tournament-layout-tweaks: logo, subtitle, responsive meta, split detail --- */
 
-.home-card-logo,
 .detail-logo {
   flex: none;
   object-fit: contain;
   border: var(--border-w) solid var(--hairline);
   border-radius: var(--radius);
   background: var(--paper-raised);
-}
-
-.home-card-logo {
-  width: 88px;
-  height: 88px;
-}
-
-/* 88px is a third of a 360px card. Shrunk rather than dropped: it still says
-   which tournament this is at a glance, which is most of what a list card is
-   for. */
-@media (max-width: 480px) {
-  .home-card-logo {
-    width: 56px;
-    height: 56px;
-  }
 }
 
 .detail-logo {
@@ -3039,21 +3444,8 @@ label.checkbox-chip,
   background: transparent;
 }
 
-.home-card-heading {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
-}
-
-.home-card-subtitle,
 .detail-subtitle {
   color: var(--ink-soft);
-  font-size: 13px;
-}
-
-.detail-subtitle {
   font-size: 14px;
 }
 
@@ -3092,6 +3484,14 @@ label.checkbox-chip,
 .detail-header h1 {
   flex: 1;
   min-width: 0;
+}
+
+/* the tournament's name is a document title (spec design-system, Display
+   headings read the display tokens) */
+.detail-header h1,
+.detail-info-heading h1 {
+  font-family: var(--font-display);
+  font-weight: var(--weight-display);
 }
 
 .detail-tabs {
@@ -3232,27 +3632,6 @@ label.checkbox-chip,
 .prose hr {
   border: none;
   border-top: var(--border-w) solid var(--hairline);
-}
-
-/* a card's own lines: date and place carry the weight, organizers follow in
-   faded ink. Both wrap rather than overflow on a narrow screen. */
-.home-card-when {
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--ink);
-}
-
-.home-card-organizers {
-  font-size: 12px;
-  color: var(--ink-faded);
-}
-
-/* A club name or a venue can arrive as one unbroken string longer than a
-   360px column — organizers write what they write. Break inside the word
-   rather than let it push the card sideways. */
-.home-card-when,
-.home-card-organizers {
-  overflow-wrap: anywhere;
 }
 
 /* the detail's own meta line: date · place · qualification, then the
@@ -3596,8 +3975,8 @@ label.checklist-row > input[type="checkbox"] {
 }
 
 .hr-step-head h2 {
-  font-family: var(--font-doc);
-  font-weight: 500;
+  font-family: var(--font-display);
+  font-weight: var(--weight-display);
   font-size: 17px;
 }
 
@@ -3637,8 +4016,8 @@ label.checklist-row > input[type="checkbox"] {
 }
 
 .hr-confirm-name {
-  font-family: var(--font-doc);
-  font-weight: 500;
+  font-family: var(--font-display);
+  font-weight: var(--weight-display);
   font-size: 15px;
 }
 

@@ -1,6 +1,6 @@
 import io
 import logging
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
 from datetime import UTC, datetime
 from decimal import ROUND_HALF_UP, Decimal
 from typing import Annotated
@@ -11,7 +11,7 @@ from sqlalchemy import delete, false, func, or_, select
 from sqlalchemy.orm import Session, selectinload
 from sqlalchemy.sql.elements import ColumnElement
 
-from app import bank, entrants, money_bounds, scheduler, setup, taxonomy
+from app import bank, entrants, list_counts, money_bounds, scheduler, setup, taxonomy
 from app.auth import (
     current_fencer,
     optional_fencer,
@@ -265,7 +265,13 @@ def _my_registration_state(
 
 
 def _fencer_tournament_out(
-    session: Session, tournament: Tournament, fencer: Fencer | None, *, organized: bool | None
+    session: Session,
+    tournament: Tournament,
+    fencer: Fencer | None,
+    *,
+    organized: bool | None,
+    removed: set[int],
+    counts: tuple[int, int],
 ) -> OpenTournamentOut:
     """One entry of a fencer-facing list. The three scopes (upcoming, held,
     own) share this body so their payloads cannot drift apart — a trimmed DTO
@@ -280,7 +286,6 @@ def _fencer_tournament_out(
     equivalent to it. `organized` is passed as `None` in that case for the same
     reason: the caller's side of it is what there is none of."""
     reason = setup.registration_availability(tournament, datetime.now(UTC))
-    removed = entrants.removed_registration_ids(session, tournament)
     if reason == setup.ORGANIZER_KEPT:
         # Not `closed`: `closed` means a window has passed, and this tournament
         # never had one here. A client presenting it as closed would tell the
@@ -319,12 +324,40 @@ def _fencer_tournament_out(
         registration_opens_on=opens_on,
         registration_opens_at=opens_at,
         timezone=tournament.timezone,
+        registration_closes_on=(
+            setup.registration_closes_on(tournament) if status_ != "elsewhere" else None
+        ),
+        entrant_count=counts[0],
+        club_count=counts[1],
         disciplines=[_open_discipline_out(session, d, removed) for d in tournament.disciplines],
         my_registration_state=(
             _my_registration_state(session, tournament, fencer) if fencer is not None else None
         ),
         organized=organized,
     )
+
+
+def _fencer_list(
+    session: Session,
+    tournaments: list[Tournament],
+    fencer: Fencer | None,
+    organized: Callable[[Tournament], bool | None],
+) -> list[OpenTournamentOut]:
+    """A fencer-facing list's entries, with the aggregates every entry states
+    computed for the whole list at once rather than per entry."""
+    removed = {t.id: entrants.removed_registration_ids(session, t) for t in tournaments}
+    counts = list_counts.entrant_counts(session, tournaments, removed)
+    return [
+        _fencer_tournament_out(
+            session,
+            tournament,
+            fencer,
+            organized=organized(tournament),
+            removed=removed[tournament.id],
+            counts=counts[tournament.id],
+        )
+        for tournament in tournaments
+    ]
 
 
 def _published_tournaments(session: Session, *, upcoming: bool | None) -> list[Tournament]:
@@ -383,15 +416,12 @@ def open_tournaments(session: SessionDep, fencer: OptionalFencerDep):
     Public: answered without a credential, with the same tournaments in the
     same order, minus the caller's bonds (spec `public-browsing`)."""
     organizer_ids = _organized_tournament_ids(session, fencer) if fencer is not None else set()
-    return [
-        _fencer_tournament_out(
-            session,
-            tournament,
-            fencer,
-            organized=_organized_by(tournament, fencer, organizer_ids),
-        )
-        for tournament in _published_tournaments(session, upcoming=True)
-    ]
+    return _fencer_list(
+        session,
+        _published_tournaments(session, upcoming=True),
+        fencer,
+        lambda tournament: _organized_by(tournament, fencer, organizer_ids),
+    )
 
 
 @router.get("/held", response_model=list[OpenTournamentOut])
@@ -401,15 +431,12 @@ def held_tournaments(session: SessionDep, fencer: OptionalFencerDep):
     involved — the Past tab is a public archive, not a personal history, and
     since `public-browsing` it is public in the literal sense too."""
     organizer_ids = _organized_tournament_ids(session, fencer) if fencer is not None else set()
-    return [
-        _fencer_tournament_out(
-            session,
-            tournament,
-            fencer,
-            organized=_organized_by(tournament, fencer, organizer_ids),
-        )
-        for tournament in _published_tournaments(session, upcoming=False)
-    ]
+    return _fencer_list(
+        session,
+        _published_tournaments(session, upcoming=False),
+        fencer,
+        lambda tournament: _organized_by(tournament, fencer, organizer_ids),
+    )
 
 
 @router.get("/mine", response_model=list[OpenTournamentOut])
@@ -425,13 +452,15 @@ def my_tournaments(session: SessionDep, fencer: FencerDep):
         ).all()
     )
 
-    result = []
-    for tournament in _published_tournaments(session, upcoming=None):
-        organized = tournament.owner_id == fencer.id or tournament.id in organizer_ids
-        if not organized and tournament.id not in registered_ids:
-            continue
-        result.append(_fencer_tournament_out(session, tournament, fencer, organized=organized))
-    return result
+    def organized(tournament: Tournament) -> bool:
+        return tournament.owner_id == fencer.id or tournament.id in organizer_ids
+
+    mine = [
+        tournament
+        for tournament in _published_tournaments(session, upcoming=None)
+        if organized(tournament) or tournament.id in registered_ids
+    ]
+    return _fencer_list(session, mine, fencer, organized)
 
 
 # how many values one Setup field offers at once. Bounded so an organizer with a
@@ -680,7 +709,7 @@ def update_tournament(
         # the seating deadline is a soft boundary *inside* the hard close: one
         # set later than registration_closes could never be reached, and the
         # two are easy to conflate (design Risks), so the message names both
-        closes = tournament.registration_closes or tournament.date
+        closes = setup.registration_closes_on(tournament)
         if tournament.seating_deadline > closes:
             raise HTTPException(
                 status_code=422,

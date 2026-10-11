@@ -56,7 +56,7 @@ export default function FencerLayout() {
   const openedFromTab = (location.state as { tab?: HomeTab } | null)?.tab ?? null;
   const named = namedTab(searchParams.get("tab") ?? openedFromTab);
   const [account, setAccount] = useState<Account | null>(null);
-  const { announced, open } = useUpcoming();
+  const { announced, open, refresh: refreshUpcoming } = useUpcoming();
   const [mine, setMine] = useState<OpenTournament[] | null>(null);
   // A visitor who reached for something needing an account. The sign-in screen
   // renders over the current URL and the reason is stated on it, so they come
@@ -113,23 +113,27 @@ export default function FencerLayout() {
   // `/?tab=mine` in the address bar, so signing in lands on the list asked for.
   const gated = named === "mine" && !signedIn;
   if (gated || prompt !== null) {
+    // The same skin as the shell this stands in for, so signing in from the
+    // list does not flash day paper.
     return (
-      <Login
-        notice={gated ? "menu.signInForMine" : prompt?.reason}
-        onLogin={() => {
-          setResume(prompt?.resume ?? null);
-          setPrompt(null);
-          credentialChanged();
-        }}
-        /* Declining leaves the visitor where they were: the screen behind is
+      <div data-skin="night">
+        <Login
+          notice={gated ? "menu.signInForMine" : prompt?.reason}
+          onLogin={() => {
+            setResume(prompt?.resume ?? null);
+            setPrompt(null);
+            credentialChanged();
+          }}
+          /* Declining leaves the visitor where they were: the screen behind is
            still at this URL, so a prompt is simply dropped. Mine has nothing
            behind it — it is the URL — so that one falls back to the list's
            default tab. */
-        onCancel={() => {
-          if (prompt !== null) setPrompt(null);
-          else navigate(home(), { replace: true });
-        }}
-      />
+          onCancel={() => {
+            if (prompt !== null) setPrompt(null);
+            else navigate(home(), { replace: true });
+          }}
+        />
+      </div>
     );
   }
 
@@ -156,6 +160,7 @@ export default function FencerLayout() {
             announced,
             open,
             mine,
+            refreshUpcoming,
             onSignIn,
             resume,
             clearResume: () => setResume(null),

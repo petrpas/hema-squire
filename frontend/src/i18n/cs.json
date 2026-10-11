@@ -973,14 +973,38 @@
       "hrid": "HRID: {{id}}",
       "noHemaratings": "bez hemaratings"
     },
-    "status": {
-      "open": "Registrace otevřena",
-      "opensOn": "Registrace od {{date}}",
-      "closed": "Registrace uzavřena",
-      "opensAt": "Registrace od {{date}} v {{time}}",
-      "elsewhere": "registrace jinde"
+    "manage": "Spravovat",
+    "block": {
+      "registration": "registrace",
+      "open": "otevřena",
+      "until": "do {{date}}",
+      "from": "od {{date}}",
+      "at": "v {{time}}",
+      "elsewhere": "jinde",
+      "closed": "uzavřena"
     },
-    "manage": "Spravovat"
+    "meter": {
+      "full": "plno",
+      "fullWaiting_one": "plno · +{{count}} čeká",
+      "fullWaiting_few": "plno · +{{count}} čekají",
+      "fullWaiting_many": "plno · +{{count}} čeká",
+      "fullWaiting_other": "plno · +{{count}} čeká"
+    },
+    "counts": {
+      "fencers_one": "{{count}} šermíř",
+      "fencers_few": "{{count}} šermíři",
+      "fencers_many": "{{count}} šermíře",
+      "fencers_other": "{{count}} šermířů",
+      "clubs_one": "{{count}} klub",
+      "clubs_few": "{{count}} kluby",
+      "clubs_many": "{{count}} klubu",
+      "clubs_other": "{{count}} klubů"
+    },
+    "nextOpening": {
+      "label": "příští otevření registrace",
+      "show": "Ukázat turnaj",
+      "at": "{{date}} v {{time}}"
+    }
   },
   "detail": {
     "disciplines": "Disciplíny",

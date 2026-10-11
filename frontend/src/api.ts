@@ -785,6 +785,13 @@ export interface OpenTournament {
   registration_opens_at: string | null;
   /** The zone the opening hour is stated in. */
   timezone: string;
+  /** The last day registration is open, resolved as the detail resolves it;
+   *  null where the tournament keeps no window here (`elsewhere`). */
+  registration_closes_on: string | null;
+  /** Distinct seated fencers across the individual disciplines, and distinct
+   *  clubs among them (spec public-browsing). */
+  entrant_count: number;
+  club_count: number;
   /** This response's own instant (see TournamentDetail.server_time). */
   server_time: string;
   disciplines: OpenDiscipline[];
