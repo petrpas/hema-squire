@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useOutletContext } from "react-router-dom";
-import { api, type OpenTournament } from "./api";
+import { api, type GuestIdentity, type OpenTournament } from "./api";
 import { HOME_TABS, type HomeTab, PUBLIC_HOME_TABS } from "./FencerShell";
+import type { LoginMode } from "./Login";
 import NextOpening from "./NextOpening";
 import { home } from "./routes";
 import TournamentCard from "./TournamentCard";
@@ -31,7 +32,17 @@ export interface FencerOutletContext {
   refreshUpcoming: () => void;
   /** Offer sign-in, optionally stating why (a locale key) and naming the
    *  detail tab the visitor was reaching for. */
-  onSignIn: (reason?: string, resume?: ResumeTab) => void;
+  onSignIn: (reason?: string, resume?: ResumeTab, mode?: LoginMode) => void;
+  /** Who a visitor registering without an account is, once the guest form is
+   *  completed: held here, in memory only, until the checklist is submitted
+   *  (spec `guest-registration`, design D1). */
+  guest: GuestIdentity | null;
+  /** Reopen the guest form to change the held identity. */
+  changeGuest: () => void;
+  clearGuest: () => void;
+  /** Ask the detail page to open on a tab once it exists — what a verified
+   *  signup raised by Register lands with. */
+  resumeAt: (tab: ResumeTab) => void;
   /** The tab a signed-out visitor was reaching for when they were sent to
    *  sign in, held by the layout because the screen that asked for it
    *  unmounted while the sign-in form stood in its place. The detail reads it

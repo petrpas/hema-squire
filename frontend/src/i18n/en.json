@@ -24,7 +24,8 @@
     "removeSubstitution": "Undo the substitution — the matching and rating corrections made after it go with it",
     "moveUp": "Move up",
     "substitute": "Replace fencer",
-    "cancelRegistration": "Cancel registration"
+    "cancelRegistration": "Cancel registration",
+    "resendLink": "Send the manage link again"
   },
   "import": {
     "title": "Table import",
@@ -229,7 +230,10 @@
     "failed": "Sign-in failed. Please try again.",
     "createAccount": "Create account",
     "back": "Back",
-    "submitting": "Signing in…"
+    "submitting": "Signing in…",
+    "notVerified": "This address has not been verified yet. Follow the link in the e-mail to finish creating the account.",
+    "resendVerification": "Send the link again",
+    "verificationResent": "A new link has been sent; the previous one no longer works."
   },
   "signup": {
     "subtitle": "Create your account",
@@ -256,7 +260,9 @@
       "invalid": "Please check the form and try again.",
       "failed": "Sign-up failed. Please try again."
     },
-    "submitting": "Creating account…"
+    "submitting": "Creating account…",
+    "hint": "We send a link to your e-mail; the account is created once you follow it.",
+    "sent": "A link has been sent to {{email}}. Follow it to finish creating the account."
   },
   "languages": {
     "cs": "Čeština",
@@ -380,6 +386,13 @@
         "failed": "The registration could not be cancelled.",
         "registration_not_live": "The registration is no longer live — it was cancelled or has expired."
       }
+    },
+    "resendLink": {
+      "title": "Send the link again",
+      "meaning": "The fencer registered without an account. The link to the registration is sent again to the same address.",
+      "confirm": "Send",
+      "sent": "The link has been sent.",
+      "failed": "The link could not be sent."
     }
   },
   "row": {
@@ -1039,7 +1052,7 @@
     "opensIn": "opens in {{countdown}}",
     "registrationElsewhere": "Registration for this tournament is held by its organizer, outside Squire.",
     "registrationElsewhereAction": "Go to the registration",
-    "signInToRegister": "Registering for a tournament needs an account."
+    "signInToRegister": "Sign in, create an account, or register without one."
   },
   "form": {
     "title": "Registration",
@@ -1510,5 +1523,24 @@
     "conditionalHint": "Entered only together with all of their conditional disciplines.",
     "team": "Team",
     "membersPending": "members not yet named"
+  },
+  "guest": {
+    "entry": "Register without signing up",
+    "title": "Registering without an account",
+    "subtitle": "The same details, without a password. You manage your registration through the link in your e-mail.",
+    "formTitle": "Fencer details",
+    "formNumber": "form no. 1b",
+    "submit": "Continue to registration",
+    "submitting": "Checking…",
+    "registeringAs": "Registering without an account as {{name}} ({{email}}).",
+    "change": "Change",
+    "linkDead": "This link is no longer valid. A registration that changed hands or became an account is managed elsewhere; the organizer can help.",
+    "errors": {
+      "hasAccount": "This address belongs to an account. Sign in to register.",
+      "alreadyRegistered": "This person is already registered from this address. The registration's link is in the e-mail sent there; the organizer can help if it is lost."
+    }
+  },
+  "verify": {
+    "invalid": "This link is no longer valid. Sign in, or create the account again."
   }
 }

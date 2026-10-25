@@ -376,6 +376,9 @@ def base_rows(
             # id, so `reg:<id>` is only sometimes the shape (see above). Read by
             # the settled mark, which addresses the registration itself
             "registration_id": registration.id,
+            # a guest's registration, managed through a mailed link: the
+            # console offers to send that link again (spec guest-registration)
+            "guest": registration.manage_key_generation is not None,
             "vs": registration.vs,
             "paid": registration.settled,
             # settled with nothing passing through Squire, and why. Carried as

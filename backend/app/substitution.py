@@ -22,7 +22,7 @@ from fastapi import HTTPException
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app import amendment, rules
+from app import amendment, managekey, rules
 from app.hr_index import HRIndex, country_code, evidence_fields, name_key
 from app.models import Fencer, Registration, RegistrationState, Rule, Tournament
 
@@ -246,9 +246,26 @@ def commit(session: Session, prepared: Prepared) -> None:
     registration = prepared.registration
     if registration is None:
         return
+    reached = registration.contact_email or registration.fencer.email
     registration.fencer_id = prepared.substitute.id
     registration.contact_email = prepared.contact
+    _follow_the_address(registration, prepared.substitute, reached)
     session.flush()
+
+
+def _follow_the_address(registration: Registration, holder: Fencer, reached: str | None) -> None:
+    """Keep a guest registration's manage link with whoever its messages now
+    reach (spec `guest-registration`, A manage key changes when the
+    registration changes hands).
+
+    Done before the substitute's message is composed, so the link it carries
+    is the new one. A seat that lands on an account stops being a guest's: its
+    holder manages it by signing in, and a link would only grant the same to
+    whoever the mail is forwarded to."""
+    if holder.password_hash is not None:
+        registration.manage_key_generation = None
+    elif (registration.contact_email or holder.email) != reached:
+        managekey.rotate(registration)
 
 
 def withdraw(session: Session, tournament: Tournament, rule: Rule) -> None:
@@ -271,8 +288,10 @@ def withdraw(session: Session, tournament: Tournament, rule: Rule) -> None:
     holder = session.get(Fencer, previous.fencer_id)
     if holder is None:
         return
+    reached = registration.contact_email or registration.fencer.email
     registration.fencer_id = holder.id
     # The seat needs an address of its own only where the account holding it
     # carries a different one, which is the state it was in before.
     registration.contact_email = None if holder.email == previous.email else previous.email
+    _follow_the_address(registration, holder, reached)
     session.flush()

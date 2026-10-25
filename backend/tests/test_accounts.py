@@ -1,5 +1,7 @@
 import pytest
 
+from tests.conftest import follow_signup
+
 
 def signup(client, **overrides):
     payload = {
@@ -8,7 +10,7 @@ def signup(client, **overrides):
         "display_name": "Fencer",
         **overrides,
     }
-    return client.post("/api/auth/signup", json=payload)
+    return follow_signup(client, payload)
 
 
 def headers_from(response):
@@ -43,7 +45,7 @@ def test_hr_nationalities_lists_distinct_sorted_values(client):
 
 def test_signup_with_hr_binding_prefills_profile(client):
     response = signup(client, display_name=None, hr_id=10234)
-    assert response.status_code == 201
+    assert response.status_code == 200
 
     account = client.get("/api/account", headers=headers_from(response)).json()
     assert account["display_name"] == "Jan Novák"  # HR canonical name
@@ -60,16 +62,16 @@ def test_signup_may_adjust_club(client):
 
 
 def test_claiming_an_already_claimed_hr_id_succeeds(client):
-    assert signup(client, hr_id=10234).status_code == 201
+    assert signup(client, hr_id=10234).status_code == 200
     second = signup(client, email="other@example.com", hr_id=10234)
-    assert second.status_code == 201
+    assert second.status_code == 200
     account = client.get("/api/account", headers=headers_from(second)).json()
     assert account["hr_id"] == 10234
 
 
 def test_signup_without_hr_profile_and_bind_later(client):
     response = signup(client)
-    assert response.status_code == 201
+    assert response.status_code == 200
     headers = headers_from(response)
     assert client.get("/api/account", headers=headers).json()["hr_id"] is None
 
@@ -130,7 +132,7 @@ def test_display_name_required_without_hr(client):
 
 def test_signup_stores_chosen_language(client):
     response = signup(client, language="en")
-    assert response.status_code == 201
+    assert response.status_code == 200
     account = client.get("/api/account", headers=headers_from(response)).json()
     assert account["language"] == "en"
 

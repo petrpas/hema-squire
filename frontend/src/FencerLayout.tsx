@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Outlet, useLocation, useNavigate, useSearchParams } from "react-router-dom";
-import { type Account, api, type OpenTournament } from "./api";
+import { Outlet, useLocation, useMatch, useNavigate, useSearchParams } from "react-router-dom";
+import { type Account, api, type GuestIdentity, type OpenTournament } from "./api";
 import { type FencerOutletContext, type ResumeTab, useUpcoming } from "./FencerHome";
 import FencerShell, { HOME_TABS, type HomeTab } from "./FencerShell";
 import i18n from "./i18n";
-import Login from "./Login";
-import { home } from "./routes";
+import Login, { type LoginMode } from "./Login";
+import { home, resumingRegistration } from "./routes";
 import { credentialChanged, useCredential, useSignOut } from "./session";
 
 function namedTab(value: string | null): HomeTab | null {
@@ -61,7 +61,20 @@ export default function FencerLayout() {
   // A visitor who reached for something needing an account. The sign-in screen
   // renders over the current URL and the reason is stated on it, so they come
   // back to the page they were reading (spec `public-browsing`).
-  const [prompt, setPrompt] = useState<{ reason?: string; resume?: ResumeTab } | null>(null);
+  const [prompt, setPrompt] = useState<{
+    reason?: string;
+    resume?: ResumeTab;
+    mode?: LoginMode;
+  } | null>(null);
+  // Who a visitor registering without an account is. Held here for the same
+  // reason as `resume`: the detail page is behind the guest form while it is
+  // filled in. Memory only — a refresh loses it and the short form is filled
+  // in again, which is accepted (design D1).
+  const [guest, setGuest] = useState<GuestIdentity | null>(null);
+  // A guest's manage screen shows the shell anonymous whoever holds a
+  // credential in this browser: the link is not an account, and the page it
+  // opens says nothing about one (spec `guest-registration`, The manage screen)
+  const managing = useMatch("/t/:slug/manage") !== null;
   // Outlives the sign-in screen, which is the point: the screen that asked for
   // it is unmounted while the form stands in its place, so it cannot keep the
   // intent itself, and navigation state lands a commit too late to be read as
@@ -119,6 +132,24 @@ export default function FencerLayout() {
       <div data-skin="night">
         <Login
           notice={gated ? "menu.signInForMine" : prompt?.reason}
+          initialMode={gated ? "login" : prompt?.mode}
+          returnTo={
+            prompt?.resume === "registration"
+              ? resumingRegistration(location.pathname)
+              : `${location.pathname}${location.search}`
+          }
+          // only where Register raised the screen: Mine and the shell's own
+          // sign-in guard what needs an account
+          onGuest={
+            !gated && prompt?.resume === "registration"
+              ? (identity) => {
+                  setGuest(identity);
+                  setResume("registration");
+                  setPrompt(null);
+                }
+              : undefined
+          }
+          guest={guest ?? undefined}
           onLogin={() => {
             setResume(prompt?.resume ?? null);
             setPrompt(null);
@@ -140,14 +171,14 @@ export default function FencerLayout() {
   /** `reason` is a locale key naming why an account is needed, stated on the
    *  sign-in screen. Absent where the visitor asked to sign in outright and
    *  there is nothing to explain. */
-  function onSignIn(reason?: string, wanted?: ResumeTab) {
-    setPrompt({ reason, resume: wanted });
+  function onSignIn(reason?: string, wanted?: ResumeTab, mode?: LoginMode) {
+    setPrompt({ reason, resume: wanted, mode });
   }
 
   return (
     <FencerShell
-      account={account}
-      signedIn={signedIn}
+      account={managing ? null : account}
+      signedIn={signedIn && !managing}
       onLogout={onLogout}
       onSignIn={() => onSignIn()}
     >
@@ -164,6 +195,15 @@ export default function FencerLayout() {
             onSignIn,
             resume,
             clearResume: () => setResume(null),
+            guest,
+            changeGuest: () =>
+              setPrompt({
+                reason: "detail.signInToRegister",
+                resume: "registration",
+                mode: "guest",
+              }),
+            clearGuest: () => setGuest(null),
+            resumeAt: setResume,
           } satisfies FencerOutletContext
         }
       />

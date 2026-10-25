@@ -129,6 +129,16 @@
       "note": "Poznámka organizátora: {note}",
       "refund": "Za registraci už přišla platba. O jejím vrácení rozhoduje organizátor a ozve se ti.",
       "signature": "Tým {tournament}"
+    },
+    "manageLink": "Přihlášku si můžeš prohlédnout, upravit nebo zrušit tady:\n{link}\nOdkaz je jen pro tebe — kdo ho dostane, může s přihláškou zacházet jako ty.",
+    "verifySignup": {
+      "subject": "Dokonči založení účtu v HEMA Squire",
+      "body": "Ahoj {name},\n\núčet založíš otevřením tohoto odkazu:\n{link}\n\nOdkaz platí 48 hodin a jen jednou. Pokud jsi účet nezakládal(a), tento e-mail ignoruj.\n\nHEMA Squire"
+    },
+    "manageLinkResent": {
+      "subject": "Odkaz na tvou přihlášku — {tournament}",
+      "body": "Ahoj {name},\n\npořadatel turnaje {tournament} ti znovu posílá odkaz na tvou přihlášku.",
+      "signature": "Tým {tournament}"
     }
   },
   "export": {

@@ -259,11 +259,15 @@ button.secondary:disabled {
   color: var(--ink-faded);
   font-size: 12px;
   margin-top: -0.6rem;
+  /* the anchor of its help marker's box, as `.rail-card h2` is for a heading:
+     a centred hint spans the line it trails, so the box is the card's width */
+  position: relative;
 }
 
-/* Why sign-in was reached, when a public screen sent the visitor here. One
-   static line under the subtitle — stated, not delivered as an error, so it
-   takes neither the error colour nor an entrance. */
+/* A statement the auth card makes about where the visitor stands — the link
+   sent, the address not yet verified. Stated, not delivered as an error, so it
+   takes neither the error colour nor an entrance. Why sign-in was reached is
+   not one of these: it sits behind the subtitle's help marker. */
 .login-notice {
   color: var(--ink);
   font-size: 12px;
@@ -1953,6 +1957,10 @@ select option {
    not breathe as rows are deleted and restored. */
 .col-actions-pair {
   width: 4.8rem;
+}
+
+.col-actions-triple {
+  width: 7.2rem;
 }
 
 .row-actions {

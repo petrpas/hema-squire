@@ -44,6 +44,7 @@ import { usePaymentTables } from "./payments/usePaymentTables";
 import QueuePhase from "./queue/QueuePhase";
 import RentalsCell from "./RentalsCell";
 import { useAuth } from "./RequireAuth";
+import ResendManageLinkDialog from "./ResendManageLinkDialog";
 import * as routes from "./routes";
 import SetupPanel from "./SetupPanel";
 import SheetArea from "./SheetArea";
@@ -767,6 +768,7 @@ export default function Console({
   const [english, setEnglish] = useState(false);
   const [recording, setRecording] = useState<SheetRow | null>(null);
   const [substituting, setSubstituting] = useState<SheetRow | null>(null);
+  const [resending, setResending] = useState<SheetRow | null>(null);
   const [cancelling, setCancelling] = useState<SheetRow | null>(null);
   const collects = (detail ?? tournament).feature_payments;
 
@@ -1111,6 +1113,13 @@ export default function Console({
                   /* the roster is settled on the fencer list, and a seat is
                handed on where it is given up */
                   onSubstitute={phase === "fencers" ? setSubstituting : undefined}
+                  /* only where Squire keeps the registrations: a manual
+               tournament has no guests, and no column to widen for them */
+                  onResendLink={
+                    phase === "fencers" && detail?.registrations_kept_by === "squire"
+                      ? setResending
+                      : undefined
+                  }
                   onRestore={(row) => void addRule("row_restore", row.id, {})}
                   onCancel={setCancelling}
                   /* the mark is offered on every tournament: as the boned-out
@@ -1139,6 +1148,19 @@ export default function Console({
                   refresh();
                 }}
                 onClose={() => setCancelling(null)}
+              />
+            )}
+            {resending && typeof resending.registration_id === "number" && (
+              <ResendManageLinkDialog
+                name={resending.name}
+                onConfirm={async () => {
+                  // narrowed above; read again because the closure outlives
+                  // the render that narrowed it
+                  const id = resending.registration_id;
+                  if (typeof id !== "number") return;
+                  await api.resendManageLink(tournament.slug, id);
+                }}
+                onClose={() => setResending(null)}
               />
             )}
             {substituting && detail && (

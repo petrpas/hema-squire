@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ApiError, api, type PaymentInstructions } from "./api";
+import { useManageKey } from "./manageKey";
 import { formatMoney } from "./money";
 import PaymentSlipBlock, { type SlipField } from "./PaymentSlipBlock";
 
@@ -91,10 +92,11 @@ export default function PaymentPanel({ slug }: { slug: string }) {
   const { t } = useTranslation();
   const [state, setState] = useState<PaymentPanelState>({ kind: "loading" });
   const [tab, setTab] = useState<PaymentTab>("local");
+  const manageKey = useManageKey();
 
   useEffect(() => {
     setState({ kind: "loading" });
-    api.paymentInstructions(slug).then(
+    api.paymentInstructions(slug, manageKey).then(
       (payment) => setState({ kind: "ready", payment }),
       (err) => {
         const detail = err instanceof ApiError ? err.detail : null;
@@ -113,7 +115,7 @@ export default function PaymentPanel({ slug }: { slug: string }) {
         }
       },
     );
-  }, [slug]);
+  }, [slug, manageKey]);
 
   if (state.kind === "loading") return null;
 

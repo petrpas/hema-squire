@@ -73,13 +73,18 @@ def my_account(session: SessionDep, fencer: FencerDep):
     return account_out(session, fencer)
 
 
-def audit_change(session: Session, fencer: Fencer, field: str, new_value: str | None) -> None:
+def audit_change(session: Session, fencer: Fencer, field: str, new_value: str | int | None) -> None:
+    """Set one profile field and record the change. `hr_id` is the one integer
+    field; the trail stores every value as text."""
     old_value = getattr(fencer, field)
     if old_value == new_value:
         return
     session.add(
         FencerProfileAudit(
-            fencer_id=fencer.id, field=field, old_value=old_value, new_value=new_value
+            fencer_id=fencer.id,
+            field=field,
+            old_value=None if old_value is None else str(old_value),
+            new_value=None if new_value is None else str(new_value),
         )
     )
     setattr(fencer, field, new_value)
@@ -107,7 +112,7 @@ def bind_profile(session: Session, fencer: Fencer, profile: HRProfile) -> None:
     Claims are non-exclusive (design D2): another account may already hold
     this hr_id; that is surfaced as a warning in HR search, not enforced here.
     """
-    audit_change(session, fencer, "hr_id", profile.hr_id)  # type: ignore[arg-type]
+    audit_change(session, fencer, "hr_id", profile.hr_id)
     audit_change(session, fencer, "display_name", profile.name)
     audit_change(session, fencer, "nationality", profile.nationality)
     if not fencer.club:

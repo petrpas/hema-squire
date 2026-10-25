@@ -241,6 +241,39 @@ class Fencer(Base):
     registrations: Mapped[list[Registration]] = relationship(back_populates="fencer")
 
 
+class PendingSignup(Base):
+    """A signup whose address has not been verified yet (spec `fencer-accounts`,
+    "An account exists only once its address is verified").
+
+    Its own table rather than an unverified `Fencer`, so that a `Fencer` is only
+    ever a verified account or a record without credentials: an unverified one
+    would be a third kind every query touching fencers — familiar faces,
+    matching, the admin list — would have to remember to exclude (design
+    guest-registration D9). Every account that existed before verification was
+    introduced is therefore verified by construction.
+
+    One row per address: a second signup on a pending address replaces the
+    first, so a mistyped address, or somebody else's, cannot hold it against its
+    owner for as long as the first link lives."""
+
+    __tablename__ = "pending_signups"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    email: Mapped[str] = mapped_column(String(320), unique=True)
+    password_hash: Mapped[str] = mapped_column(String(200))
+    display_name: Mapped[str] = mapped_column(String(200))
+    hr_id: Mapped[int | None]
+    nationality: Mapped[str | None] = mapped_column(String(100))
+    club: Mapped[str | None] = mapped_column(String(200))
+    language: Mapped[str] = mapped_column(String(10), default="en")
+    # where the signup was started from, a relative path validated on the way in
+    return_to: Mapped[str | None] = mapped_column(String(500))
+    # SHA-256 of the mailed key; the key itself is never stored
+    key_hash: Mapped[str] = mapped_column(String(64), unique=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
 class FencerProfileAudit(Base):
     """Audit trail of fencer profile changes (spec: profile changes are audited)."""
 
@@ -739,6 +772,14 @@ class Registration(Base):
     # message Squire sends about this registration goes here where it is set;
     # `emails.recipient` is the one place that decides.
     contact_email: Mapped[str | None] = mapped_column(String(320))
+    # Whether this is a guest registration, and which manage key is current
+    # (spec `guest-registration`). `None`: entered by an account, issued or
+    # entered by hand — there is no manage link and no message carries one. A
+    # number: the generation the link's key is derived from (design D4). The
+    # key is an HMAC over the registration's id and this number, so it can be
+    # mailed again by any later message without being stored, and incrementing
+    # the number kills every link mailed so far.
+    manage_key_generation: Mapped[int | None]
     reminded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     cancelled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     refundable: Mapped[bool | None]

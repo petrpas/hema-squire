@@ -29,6 +29,35 @@ export function entrantsEvent(slug: string, item: string): string {
   return `/t/${slug}/entrants/events/${item}`;
 }
 
+/** A guest registration's management, its key in the fragment: the browser
+ *  sends a fragment to no server and passes it on in no referrer (spec
+ *  `guest-registration`, routing). */
+export function manage(slug: string, key: string): string {
+  return `/t/${slug}/manage#${key}`;
+}
+
+/** Finishing a signup, its key in the fragment for the same reason. */
+export function verify(key: string): string {
+  return `/verify#${key}`;
+}
+
+/** A signup's return path that resumes on the registration tab: what a
+ *  verification link carries when the signup was raised by Register, so
+ *  following it on another device still lands on the form (design D10). */
+export function resumingRegistration(path: string): string {
+  return `${path}${REGISTER_MARK}`;
+}
+
+/** The return path a verified signup lands on, and whether it was raised by
+ *  Register. */
+export function readReturn(returnTo: string): { path: string; registration: boolean } {
+  return returnTo.endsWith(REGISTER_MARK)
+    ? { path: returnTo.slice(0, -REGISTER_MARK.length), registration: true }
+    : { path: returnTo, registration: false };
+}
+
+const REGISTER_MARK = "#register";
+
 export function picker(): string {
   return "/organizer";
 }

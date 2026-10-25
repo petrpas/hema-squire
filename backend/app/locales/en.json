@@ -102,6 +102,16 @@
       "note": "A note from the organizer: {note}",
       "refund": "A payment had already arrived for this registration. Whether and how it is returned is the organizer's to settle, and they will be in touch.",
       "signature": "{tournament} team"
+    },
+    "manageLink": "You can view, change or cancel your registration here:\n{link}\nThe link is yours alone — whoever has it can manage the registration as you can.",
+    "verifySignup": {
+      "subject": "Finish creating your HEMA Squire account",
+      "body": "Hi {name},\n\nopen this link to create your account:\n{link}\n\nThe link works once and for 48 hours. If you did not sign up, ignore this e-mail.\n\nHEMA Squire"
+    },
+    "manageLinkResent": {
+      "subject": "The link to your registration — {tournament}",
+      "body": "Hi {name},\n\nthe organizer of {tournament} is sending you the link to your registration again.",
+      "signature": "{tournament} team"
     }
   },
   "export": {

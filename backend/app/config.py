@@ -27,6 +27,12 @@ class Settings(BaseSettings):
     smtp_port: int = 587
     smtp_user: str = ""
     smtp_password: str = ""
+    # The origin the fencer-facing app is served from, without a trailing
+    # slash. Messages carry links into it — a guest's manage link, a signup's
+    # verification link — and the backend cannot learn it from a request the
+    # scheduler never received. Required once mail is real (app.main); the
+    # default is the Vite dev server, where the outbox is read by hand.
+    public_base_url: str = "http://localhost:5173"
     # login/signup throttling (app.ratelimit); off only in the test suite, where
     # many requests legitimately come from one address inside one minute
     rate_limit_enabled: bool = True

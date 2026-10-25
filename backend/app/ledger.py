@@ -47,6 +47,13 @@ def actor_label(fencer: Fencer) -> str:
     return f"{fencer.display_name} <{fencer.email}>"
 
 
+def guest_actor_label(registration: Registration) -> str:
+    """How a guest acting through a manage link is named in the journals: by
+    the registration the link opens, since the record behind it may hold no
+    address and is no account (spec guest-registration, design D5)."""
+    return f"guest:{registration.id}"
+
+
 def live_credit_for(
     session: Session,
     registration: Registration,

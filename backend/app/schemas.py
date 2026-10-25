@@ -90,6 +90,8 @@ class SignupIn(BaseModel):
     hr_id: RowId | None = None
     club: ClubStr | None = None
     language: str = "en"
+    # the screen the signup was started from, where verification lands
+    return_to: str | None = Field(default=None, max_length=500)
 
     @field_validator("language")
     @classmethod
@@ -97,6 +99,43 @@ class SignupIn(BaseModel):
         if value not in catalog.available():
             raise ValueError("unsupported_language")
         return value
+
+    @field_validator("return_to")
+    @classmethod
+    def _relative_path(cls, value: str | None) -> str | None:
+        # a path of this application and nothing else: `//host` and `/\host`
+        # are read by browsers as another origin, which would make the
+        # verification link an open redirect
+        if value is None:
+            return None
+        if not value.startswith("/") or value.startswith(("//", "/\\")):
+            raise ValueError("return_to_not_relative")
+        return value
+
+
+class SignupPendingOut(BaseModel):
+    """A signup that waits for its address to be verified; nothing exists yet
+    that could be signed into."""
+
+    email: str
+
+
+class VerifyIn(BaseModel):
+    key: str = Field(max_length=200)
+
+
+class VerifiedOut(BaseModel):
+    token: str
+    return_to: str | None
+
+
+class ResendVerificationIn(BaseModel):
+    email: EmailStr
+    password: str
+
+
+class GuestCheckIn(BaseModel):
+    email: EmailStr
 
 
 class AccountOut(BaseModel):
@@ -1117,6 +1156,12 @@ class DiscountBreakdownOut(BaseModel):
 
 
 class RegistrationOut(BaseModel):
+    # The language a guest chose in the guest form, so the manage screen opens
+    # in it on any device (spec guest-registration, The manage screen). Stated
+    # only to a request presenting the registration's manage key: an account
+    # holder's page takes the account's own language, and nobody else is told
+    # anything about the record behind a registration.
+    language: str | None = None
     # the four states a reader knows, composed from the stored lifecycle and
     # the settled derivation. Not `RegistrationState`, which is the lifecycle
     # alone and no longer carries `paid` (`Registration.wire_state`)
@@ -1992,3 +2037,33 @@ class TransactionRosterOut(BaseModel):
     transaction_id: int
     query: str
     fencers: list[RankedFencerOut]
+
+
+class GuestIdentityIn(BaseModel):
+    """Who a guest is: the account form's fields without a password (spec
+    guest-registration). A confirmed HEMA Ratings profile supplies the name, as
+    it does at signup."""
+
+    email: EmailStr
+    display_name: DisplayNameStr | None = None
+    hr_id: RowId | None = None
+    club: ClubStr | None = None
+    language: str = "en"
+
+    @field_validator("language")
+    @classmethod
+    def _known_language(cls, value: str) -> str:
+        if value not in catalog.available():
+            raise ValueError("unsupported_language")
+        return value
+
+
+class GuestRegisterIn(RegisterIn):
+    guest: GuestIdentityIn
+
+
+class GuestRegistrationOut(BaseModel):
+    registration: RegistrationOut
+    # the key the browser is taken to at once, so the guest holds the link even
+    # where the address they gave was mistyped
+    manage_key: str

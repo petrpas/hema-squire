@@ -268,6 +268,54 @@ def publish(client, headers, slug):
     return response.json()
 
 
+class _VerificationCatcher:
+    def __init__(self):
+        self.sent = []
+
+    def send(self, message):
+        self.sent.append(message)
+
+
+def verification_key(message) -> str:
+    """The key a verification mail carries, read from its link's fragment."""
+    body = message.get_body(preferencelist=("plain",)).get_content()
+    return body.split("/verify#", 1)[1].split()[0]
+
+
+def follow_signup(client, body: dict):
+    """Sign up and, where the signup is accepted, follow the mailed link.
+
+    A signup creates nothing until its address is verified (spec
+    fencer-accounts), so every test that needs an account goes through both
+    steps. The verification mail is caught here rather than in the test's own
+    mailbox, which counts what fencers are sent about registrations, and the
+    test's mailer is put back afterwards.
+
+    Returns the verification's response, or the signup's where it was refused."""
+    from app.mail import get_mailer
+
+    catcher = _VerificationCatcher()
+    previous = app.dependency_overrides.get(get_mailer)
+    app.dependency_overrides[get_mailer] = lambda: catcher
+    try:
+        response = client.post("/api/auth/signup", json=body)
+    finally:
+        if previous is None:
+            app.dependency_overrides.pop(get_mailer, None)
+        else:
+            app.dependency_overrides[get_mailer] = previous
+    if response.status_code != 202:
+        return response
+    return client.post("/api/auth/verify", json={"key": verification_key(catcher.sent[-1])})
+
+
+def signup_verified(client, body: dict) -> str:
+    """A verified account's session token."""
+    response = follow_signup(client, body)
+    assert response.status_code == 200, response.text
+    return response.json()["token"]
+
+
 @pytest.fixture
 def auth_headers(client, engine):
     """Signup helper. Accounts default to the Organizer role because most
@@ -279,14 +327,13 @@ def auth_headers(client, engine):
         body = {"email": email, "password": "correct-horse", "display_name": name}
         if language is not None:
             body["language"] = language
-        response = client.post("/api/auth/signup", json=body)
-        assert response.status_code == 201, response.text
+        token = signup_verified(client, body)
         if role != Role.FENCER:
             with Session(engine) as session:
                 fencer = session.scalars(select(Fencer).where(Fencer.email == email)).one()
                 fencer.role = role
                 session.commit()
-        return {"Authorization": f"Bearer {response.json()['token']}"}
+        return {"Authorization": f"Bearer {token}"}
 
     return make
 

@@ -1,5 +1,5 @@
 from app.models import Role
-from tests.conftest import publish
+from tests.conftest import publish, signup_verified
 
 
 def make_tournament(client, headers, slug="na-duel-2026"):
@@ -13,11 +13,9 @@ def make_tournament(client, headers, slug="na-duel-2026"):
 
 
 def test_signup_login_roundtrip(client):
-    signup = client.post(
-        "/api/auth/signup",
-        json={"email": "a@example.com", "password": "secret-123", "display_name": "A"},
+    signup_verified(
+        client, {"email": "a@example.com", "password": "secret-123", "display_name": "A"}
     )
-    assert signup.status_code == 201
     login = client.post(
         "/api/auth/login", json={"email": "a@example.com", "password": "secret-123"}
     )

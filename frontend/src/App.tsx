@@ -9,6 +9,7 @@ import ProfilePage from "./ProfilePage";
 import RequireAuth from "./RequireAuth";
 import TournamentDetail from "./TournamentDetail";
 import TournamentPicker from "./TournamentPicker";
+import VerifyScreen from "./VerifyScreen";
 
 export default function App() {
   return (
@@ -26,6 +27,11 @@ export default function App() {
         <Route path="t/:slug/entrants" element={<TournamentDetail />} />
         <Route path="t/:slug/entrants/:discipline" element={<TournamentDetail />} />
         <Route path="t/:slug/entrants/events/:event" element={<TournamentDetail />} />
+        {/* a guest registration's management, its key in the fragment: the
+            detail page on its registration tab (spec guest-registration) */}
+        <Route path="t/:slug/manage" element={<TournamentDetail />} />
+        {/* finishing a signup; public, since the account does not exist yet */}
+        <Route path="verify" element={<VerifyScreen />} />
       </Route>
       {/* Everything else keeps the gate: Login renders in place at the
           requested URL, so the destination survives signing in. */}

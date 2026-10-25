@@ -1,121 +1,13 @@
 // @vitest-environment jsdom
 import { act } from "react";
-import { createRoot } from "react-dom/client";
-import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import App from "./App";
-import {
-  type Account,
-  ApiError,
-  type Availability,
-  api,
-  type FencerTournament,
-  getToken,
-  setToken,
-} from "./api";
+import { type Account, ApiError, api, getToken, setToken } from "./api";
 import i18n from "./i18n";
+import { detailApi, mount, mounted, registerTab, settle } from "./publicDetailFixture";
 
 // A tournament's detail reads without an account, and the Register action it
 // offers leads to sign-in rather than to a form that could only fail (change
 // `public-tournament-list`).
-
-(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
-
-let host: HTMLElement | null = null;
-
-function mount(at: string) {
-  host = document.createElement("div");
-  document.body.append(host);
-  const root = createRoot(host);
-  act(() =>
-    root.render(
-      <MemoryRouter initialEntries={[at]}>
-        <App />
-      </MemoryRouter>,
-    ),
-  );
-  return host;
-}
-
-async function settle() {
-  await act(async () => {
-    for (let i = 0; i < 6; i++) await Promise.resolve();
-  });
-}
-
-const DETAIL = {
-  slug: "spring-open",
-  display_name: "Spring Open",
-  subtitle: null,
-  has_logo: false,
-  date: "2099-05-01",
-  city: null,
-  address: null,
-  description: null,
-  qualification_open: true,
-  qualification_criteria: null,
-  registration_instructions: null,
-  organizers: [],
-  disciplines: [
-    {
-      slug: "LS",
-      name: "Longsword",
-      ordinal: 1,
-      weapon: "LS",
-      gender: "open",
-      material: "steel",
-      kind: "individual",
-      team_min: null,
-      team_max: null,
-      capacity: 20,
-      fee: 800,
-      fee_early: null,
-      fee_eur: null,
-      fee_early_eur: null,
-      schedule_when: null,
-      schedule_where: null,
-      ruleset: null,
-      identity_frozen: false,
-    },
-  ],
-  extra_items: [],
-  discounts: [],
-  local_currency: "CZK",
-  eur_payments_enabled: false,
-  currency_mode: "local",
-  registration_opens: null,
-  registration_opens_time: null,
-  registration_closes: null,
-  amendments_close: null,
-  team_composition_deadline: null,
-  timezone: "Europe/Prague",
-  registration_opens_at: null,
-  server_time: "2026-09-12T10:00:00Z",
-  registrations_kept_by: "squire",
-  external_registration_url: null,
-  feature_schedule: false,
-  feature_payments: false,
-  feature_teams: false,
-  feature_extras: false,
-} as unknown as FencerTournament;
-
-const AVAILABILITY = [
-  { slug: "LS", kind: "individual", capacity: 20, taken: 1, entered: 1, free: 19, queue_length: 0 },
-] as unknown as Availability[];
-
-function detailApi(over: Partial<FencerTournament> = {}) {
-  vi.spyOn(api, "tournament").mockResolvedValue({ ...DETAIL, ...over });
-  vi.spyOn(api, "availability").mockResolvedValue(AVAILABILITY);
-  vi.spyOn(api, "openTournaments").mockResolvedValue([]);
-  vi.spyOn(api, "heldTournaments").mockResolvedValue([]);
-  vi.spyOn(api, "myTournaments").mockRejectedValue(new ApiError(401, "x"));
-}
-
-function registerTab(page: HTMLElement): HTMLButtonElement | undefined {
-  return [...page.querySelectorAll<HTMLButtonElement>(".detail-tabs button")].find(
-    (b) => b.textContent === i18n.t("detail.tabs.register"),
-  );
-}
 
 /** The sign-in screen's way back out, which renders in English whatever the
  *  visitor was reading a moment ago. */
@@ -130,8 +22,8 @@ beforeEach(async () => {
 });
 
 afterEach(() => {
-  host?.remove();
-  host = null;
+  mounted.host?.remove();
+  mounted.host = null;
   setToken(null);
 });
 
@@ -189,7 +81,7 @@ describe("a tournament's detail is public", () => {
     const manage = page.querySelector<HTMLAnchorElement>(".detail-cover a.button-quiet");
     expect(manage?.textContent).toBe(i18n.t("home.manage"));
     expect(manage?.getAttribute("href")).toBe("/organizer/spring-open/console");
-    host?.remove();
+    mounted.host?.remove();
 
     detailApi();
     const other = mount("/t/spring-open");
@@ -222,8 +114,12 @@ describe("registering while signed out", () => {
 
     expect(page.querySelector("form#login-form")).not.toBeNull();
     // the sign-in screen renders in English, so the reason does too
-    expect(page.querySelector(".login-notice")?.textContent).toBe(
-      "Registering for a tournament needs an account.",
+    // and it no longer says that registering needs an account
+    expect(page.querySelector(".login-subtitle .help-hint-box")?.textContent).toBe(
+      "Sign in, create an account, or register without one.",
+    );
+    expect(page.querySelector("form#login-form .login-guest")?.textContent).toBe(
+      "Register without signing up",
     );
   });
 

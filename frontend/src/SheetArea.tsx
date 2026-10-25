@@ -1,6 +1,7 @@
 import {
   IconArrowBackUp,
   IconCoins,
+  IconMailForward,
   IconTrash,
   IconUserShare,
   IconUserX,
@@ -70,6 +71,7 @@ export default function SheetArea({
   onValidate,
   onDelete,
   onSubstitute,
+  onResendLink,
   onRestore,
   onCancel,
   onRatify,
@@ -104,6 +106,9 @@ export default function SheetArea({
   /** Hands the row's seat to somebody else. Absent on every phase but the
    *  fencer list, where the roster is settled. */
   onSubstitute?: (row: SheetRow) => void;
+  /** Sends a guest registration's manage link again. Offered where
+   *  `onSubstitute` is, on the fencer list, and only on a guest's row. */
+  onResendLink?: (row: SheetRow) => void;
   /** Marks a registration settled, or unmarks it. Offered on the Payments
    *  phase of every tournament: on the boned-out one it is the phase's whole
    *  content, and on a collecting one it is the waiver.
@@ -142,10 +147,17 @@ export default function SheetArea({
   // How many actions the phase offers, asked of the phase and not of the rows
   // it happens to list, so the column keeps its width as rows are deleted and
   // restored — the same reason `phaseRemovesRows` is a phase question.
+  const actionCount =
+    (actionable ? 1 : 0) +
+    (onRecordPayment ? 1 : 0) +
+    (onSubstitute ? 1 : 0) +
+    (onResendLink ? 1 : 0);
   const actionsClass =
-    (actionable ? 1 : 0) + (onRecordPayment ? 1 : 0) + (onSubstitute ? 1 : 0) > 1
-      ? "col-actions col-actions-pair"
-      : "col-actions";
+    actionCount > 2
+      ? "col-actions col-actions-triple"
+      : actionCount > 1
+        ? "col-actions col-actions-pair"
+        : "col-actions";
   // read from the rows this phase lists, so a count and the table beneath it
   // are two statements about the same thing
   const summary = phaseSummary(phase, visibleRows);
@@ -312,6 +324,17 @@ export default function SheetArea({
                             >
                               <IconUserShare size={16} stroke={1.5} />
                               <span className="visually-hidden">{t("actions.substitute")}</span>
+                            </button>
+                          )}
+                          {onResendLink && row.guest === true && (
+                            <button
+                              type="button"
+                              className="row-action"
+                              title={t("actions.resendLink")}
+                              onClick={() => onResendLink(row)}
+                            >
+                              <IconMailForward size={16} stroke={1.5} />
+                              <span className="visually-hidden">{t("actions.resendLink")}</span>
                             </button>
                           )}
                           {rowAction(row, phase) === null ? null : rowAction(row, phase) ===

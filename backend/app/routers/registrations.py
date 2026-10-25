@@ -4,7 +4,7 @@ from datetime import UTC, datetime, timedelta
 from decimal import ROUND_HALF_UP, Decimal
 from typing import Annotated, Protocol
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, Header, HTTPException, Response
 from sqlalchemy import delete, func, select, update
 from sqlalchemy.exc import IntegrityError
 
@@ -14,6 +14,7 @@ from app import (
     emails,
     entrants,
     ledger,
+    managekey,
     matching,
     placement,
     pricing,
@@ -37,6 +38,7 @@ from app.models import (
     Discipline,
     DisciplineKind,
     ExtraItem,
+    Fencer,
     ImportBatch,
     PaymentEvent,
     PaymentMode,
@@ -50,7 +52,13 @@ from app.models import (
     TeamMember,
     Tournament,
 )
-from app.routers.tournaments import FencerDep, SessionDep, TournamentDep, require_public
+from app.routers.tournaments import (
+    FencerDep,
+    OptionalFencerDep,
+    SessionDep,
+    TournamentDep,
+    require_public,
+)
 from app.schemas import (
     AmendmentPlacementOut,
     AvailabilityOut,
@@ -425,6 +433,39 @@ def register(
     fencer: FencerDep,
     mailer: MailerDep,
 ):
+    registration = create_registration(session, tournament, fencer, data)
+    send_confirmation(session, mailer, tournament, fencer, registration)
+    return registration_out(session, registration, tournament)
+
+
+def send_confirmation(
+    session, mailer: Mailer, tournament: Tournament, fencer: Fencer, registration: Registration
+) -> None:
+    emails.send_registration_confirmation(
+        mailer,
+        tournament,
+        fencer,
+        registration,
+        waits_for=condition_waits_for(session, registration),
+    )
+
+
+def create_registration(
+    session,
+    tournament: Tournament,
+    fencer: Fencer,
+    data: RegisterIn,
+    *,
+    contact_email: str | None = None,
+    guest: bool = False,
+) -> Registration:
+    """Place, price and number a submitted registration, and commit it.
+
+    The one core behind both ways in — an account's submission and a guest's
+    (spec registration, In-app registration) — so the two cannot drift: a guest
+    registration differs only in the fencer behind it, the contact address its
+    identity resolution may have asked for, and the manage key it is given.
+    Mailing is the caller's."""
     now = _now()
     reason = setup.registration_availability(tournament, now)
     if reason is not None:
@@ -505,7 +546,11 @@ def register(
                 ledger.reverse(
                     session,
                     entry,
-                    by=ledger.actor_label(fencer),
+                    by=(
+                        ledger.guest_actor_label(registration)
+                        if guest
+                        else ledger.actor_label(fencer)
+                    ),
                     reason="registration cycle restarted",
                 )
         else:
@@ -577,15 +622,16 @@ def register(
     # which it keeps for good (spec etl-console, Fixed fencer number). A
     # re-registration reuses the cancelled row's id, so it keeps its number too.
     rownumbers.allocate(session, tournament, [f"reg:{registration.id}"])
+    if guest:
+        # Written on every guest cycle, so a re-registration states its own: an
+        # address-less record's seat is reached through the address it was
+        # entered with now. A cancelled guest registration keeps its key, so a
+        # new cycle on it keeps the link already mailed.
+        registration.contact_email = contact_email
+        if registration.manage_key_generation is None:
+            registration.manage_key_generation = 1
     session.commit()
-    emails.send_registration_confirmation(
-        mailer,
-        tournament,
-        fencer,
-        registration,
-        waits_for=condition_waits_for(session, registration),
-    )
-    return registration_out(session, registration, tournament)
+    return registration
 
 
 def _initial_expires_at(tournament: Tournament, registration: Registration) -> datetime | None:
@@ -635,9 +681,70 @@ def get_my_registration(session, tournament: Tournament, fencer) -> Registration
     return registration
 
 
+def _managed(
+    tournament: Tournament,
+    session,
+    fencer: Fencer | None,
+    manage_key: str | None,
+    *,
+    cancelled_too: bool,
+) -> Registration:
+    """The registration a request manages: the one its manage key names, or the
+    signed-in account's own (spec guest-registration, A guest registration is
+    managed through a link; design D5).
+
+    The key is asked first and alone: a request presenting one manages that
+    registration and nothing else, whoever is signed in. Every refusal of a key
+    is the same `manage_key_invalid`, so it does not tell which registrations
+    exist. A cancelled registration is read through its link, as the detail
+    page shows an account holder theirs, and acted on through neither."""
+    if manage_key is not None:
+        registration = managekey.resolve(session, manage_key)
+        if registration is None or registration.tournament_id != tournament.id:
+            raise HTTPException(status_code=404, detail="manage_key_invalid")
+        if registration.state is RegistrationState.CANCELLED and not cancelled_too:
+            raise HTTPException(status_code=404, detail="not_registered")
+        return registration
+    if fencer is None:
+        raise HTTPException(status_code=401, detail="not_authenticated")
+    return get_my_registration(session, tournament, fencer)
+
+
+ManageKeyHeader = Annotated[str | None, Header(alias="X-Manage-Key", max_length=200)]
+
+
+def managed_registration(
+    tournament: TournamentDep,
+    session: SessionDep,
+    fencer: OptionalFencerDep,
+    manage_key: ManageKeyHeader = None,
+) -> Registration:
+    return _managed(tournament, session, fencer, manage_key, cancelled_too=False)
+
+
+def managed_registration_to_read(
+    tournament: TournamentDep,
+    session: SessionDep,
+    fencer: OptionalFencerDep,
+    manage_key: ManageKeyHeader = None,
+) -> Registration:
+    return _managed(tournament, session, fencer, manage_key, cancelled_too=True)
+
+
+ManagedRegistration = Annotated[Registration, Depends(managed_registration)]
+
+
 @router.get("/my-registration", response_model=RegistrationOut)
-def my_registration(tournament: TournamentDep, session: SessionDep, fencer: FencerDep):
-    return registration_out(session, get_my_registration(session, tournament, fencer), tournament)
+def my_registration(
+    tournament: TournamentDep,
+    session: SessionDep,
+    registration: Annotated[Registration, Depends(managed_registration_to_read)],
+    manage_key: ManageKeyHeader = None,
+):
+    out = registration_out(session, registration, tournament)
+    if manage_key is not None:
+        out["language"] = registration.fencer.language
+    return out
 
 
 @router.post("/my-registration/amend", response_model=RegistrationOut)
@@ -645,7 +752,7 @@ def amend_registration(
     data: RegisterIn,
     tournament: TournamentDep,
     session: SessionDep,
-    fencer: FencerDep,
+    registration: ManagedRegistration,
     mailer: MailerDep,
 ):
     now = _now()
@@ -653,7 +760,6 @@ def amend_registration(
     if reason is not None:
         raise _unavailable(tournament, reason, now)
 
-    registration = get_my_registration(session, tournament, fencer)
     if registration.state is not RegistrationState.RESERVED:
         # expired or cancelled registrations return through re-registration
         # instead, a different operation with a different VS (Decision 3).
@@ -694,7 +800,7 @@ def preview_amendment(
     data: RegisterIn,
     tournament: TournamentDep,
     session: SessionDep,
-    fencer: FencerDep,
+    registration: ManagedRegistration,
 ):
     """Where the amendment in `data` would place the registration, so the form
     can say before submitting that it moves the registration into the queue
@@ -704,7 +810,6 @@ def preview_amendment(
     stand against it. Teams are read as the amendment leaves a kept team —
     where it stands — since only an individual placement answers to the
     condition."""
-    registration = get_my_registration(session, tournament, fencer)
     selected, _extras = _resolve_selection(tournament, data)
     own = {e.discipline.slug for e in registration.entries if not e.is_substitute}
     full = {
@@ -734,10 +839,11 @@ def preview_amendment(
 
 
 @router.get("/my-registration/payment", response_model=PaymentInstructionsOut)
-def my_registration_payment(tournament: TournamentDep, session: SessionDep, fencer: FencerDep):
+def my_registration_payment(
+    tournament: TournamentDep, session: SessionDep, registration: ManagedRegistration
+):
     """Same content as the confirmation email (design D3): owner-only, and
     only for a reservation that actually owes money right now."""
-    registration = get_my_registration(session, tournament, fencer)
     if not tournament.feature_payments:
         # nothing is being asked for: no account to quote, no VS in use and no
         # expiry to state, and a partial set would tell the fencer to do
@@ -832,8 +938,9 @@ def cancel(registration: Registration, tournament: Tournament, cancelled_at: dat
 
 
 @router.post("/my-registration/cancel", response_model=RegistrationOut)
-def cancel_registration(tournament: TournamentDep, session: SessionDep, fencer: FencerDep):
-    registration = get_my_registration(session, tournament, fencer)
+def cancel_registration(
+    tournament: TournamentDep, session: SessionDep, registration: ManagedRegistration
+):
     cancel(registration, tournament, _now())
     session.commit()
     return registration_out(session, registration, tournament)
@@ -872,6 +979,35 @@ def cancel_as_organizer(
     note = (data.note or "").strip() or None
     emails.send_cancelled_by_organizer(mailer, tournament, registration, note)
     return registration_out(session, registration, tournament)
+
+
+@router.post("/registrations/{registration_id}/manage-link", status_code=204)
+def resend_manage_link(
+    registration_id: RowId,
+    tournament: TournamentDep,
+    session: SessionDep,
+    fencer: FencerDep,
+    mailer: MailerDep,
+) -> Response:
+    """Send a guest their registration's manage link again (spec
+    guest-registration, A guest registration is managed through a link).
+
+    The organizer's, never the guest's: a self-service resend would be a
+    form anybody could aim at any address. Refused on a registration that is
+    not a guest's, which has no link to send."""
+    require_console_access(session, tournament, fencer)
+    registration = session.scalar(
+        select(Registration).where(
+            Registration.tournament_id == tournament.id,
+            Registration.id == registration_id,
+        )
+    )
+    if registration is None:
+        raise HTTPException(status_code=404, detail="registration_not_found")
+    if registration.manage_key_generation is None:
+        raise HTTPException(status_code=409, detail="not_a_guest_registration")
+    emails.send_manage_link(mailer, tournament, registration)
+    return Response(status_code=204)
 
 
 MARK_SETTLED = "settled_by_hand"
@@ -1298,7 +1434,26 @@ def return_team_to_waitlist(
     return registration_out(session, registration, tournament)
 
 
-def _team_for_roster_edit(session, tournament: Tournament, fencer, team_id: int) -> Team:
+def roster_editor(
+    tournament: TournamentDep,
+    session: SessionDep,
+    fencer: OptionalFencerDep,
+    manage_key: ManageKeyHeader = None,
+) -> Registration | Fencer:
+    """Who is editing a roster: the registration a manage key opens, or the
+    signed-in account. Not `ManagedRegistration`, which refuses a cancelled
+    registration before the roster can say why it is not editable: a roster is
+    refused on a cancelled registration as not active, whoever asks."""
+    if manage_key is not None:
+        return _managed(tournament, session, None, manage_key, cancelled_too=True)
+    if fencer is None:
+        raise HTTPException(status_code=401, detail="not_authenticated")
+    return fencer
+
+
+def _team_for_roster_edit(
+    session, tournament: Tournament, editor: Registration | Fencer, team_id: int
+) -> Team:
     """The entering fencer's own team, on a registration that may still be
     edited — never gated by amendment_availability (design team-disciplines
     D6): refused only on a cancelled or expired registration."""
@@ -1306,7 +1461,12 @@ def _team_for_roster_edit(session, tournament: Tournament, fencer, team_id: int)
     if team is None or team.tournament_id != tournament.id:
         raise HTTPException(status_code=404, detail="team_not_found")
     registration = team.registration
-    if registration.fencer_id != fencer.id:
+    owns = (
+        registration.id == editor.id
+        if isinstance(editor, Registration)
+        else registration.fencer_id == editor.id
+    )
+    if not owns:
         raise HTTPException(status_code=404, detail="team_not_found")
     if registration.state in (RegistrationState.CANCELLED, RegistrationState.EXPIRED):
         raise HTTPException(status_code=409, detail="registration_not_active")
@@ -1319,7 +1479,7 @@ def update_roster(
     data: RosterUpdateIn,
     tournament: TournamentDep,
     session: SessionDep,
-    fencer: FencerDep,
+    editor: Annotated[Registration | Fencer, Depends(roster_editor)],
 ):
     """Whole-roster replace: add, remove, rename, rebind, and reorder are all
     expressed as a new member list, persisted as `ordinal` (spec: "The roster
@@ -1328,7 +1488,7 @@ def update_roster(
     import pricing, emails, or availability, and does not consult
     `setup.amendment_availability`, so a roster save succeeds even after the
     amendment window has closed (design team-disciplines 4.4/4.5)."""
-    team = _team_for_roster_edit(session, tournament, fencer, team_id)
+    team = _team_for_roster_edit(session, tournament, editor, team_id)
     # a team discipline always carries a maximum (`DisciplineIn` enforces it on
     # write); no maximum recorded is no maximum to exceed
     team_max = team.discipline.team_max

@@ -2,6 +2,7 @@ import { IconArrowUp, IconSearch, IconX } from "@tabler/icons-react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { api, type RosterMember, type TeamEntry } from "./api";
+import { useManageKey } from "./manageKey";
 import RosterMemberDialog from "./RosterMemberDialog";
 import { rosterChanged, summarizeSaves } from "./roster";
 
@@ -157,6 +158,7 @@ export default function TeamsTab({
   );
   const [busy, setBusy] = useState(false);
   const [failedTeams, setFailedTeams] = useState<string[] | null>(null);
+  const manageKey = useManageKey();
 
   // a team can appear or disappear from under the tab through an amendment;
   // seed a draft for any newcomer and drop drafts for teams no longer held
@@ -196,6 +198,7 @@ export default function TeamsTab({
             club: member.club,
             nationality: member.nationality,
           })),
+          manageKey,
         ),
       ),
     );

@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { Outlet, useNavigate, useOutletContext } from "react-router-dom";
+import { Outlet, useLocation, useNavigate, useOutletContext } from "react-router-dom";
 import { ApiError, api } from "./api";
 import i18n from "./i18n";
 import Login from "./Login";
@@ -19,6 +19,7 @@ export default function RequireAuth() {
   const authed = useCredential() !== null;
   const onLogout = useSignOut();
   const navigate = useNavigate();
+  const location = useLocation();
 
   useEffect(() => {
     if (!authed) return;
@@ -48,7 +49,14 @@ export default function RequireAuth() {
   if (!authed) {
     /* Nothing of this destination is readable without an account, so
        declining leads to the public list rather than back to a blank gate. */
-    return <Login onLogin={credentialChanged} onCancel={() => navigate(home())} />;
+    return (
+      <Login
+        onLogin={credentialChanged}
+        onCancel={() => navigate(home())}
+        // a signup started here lands back on the gated URL once verified
+        returnTo={`${location.pathname}${location.search}`}
+      />
+    );
   }
 
   return <Outlet context={{ onLogout } satisfies AuthContext} />;

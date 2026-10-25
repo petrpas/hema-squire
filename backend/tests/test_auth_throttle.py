@@ -86,5 +86,5 @@ def test_signup_is_capped_more_tightly(throttled):
             )
             statuses.append(response.status_code)
 
-    assert statuses[:3] == [201] * 3
+    assert statuses[:3] == [202] * 3
     assert statuses[3] == 429

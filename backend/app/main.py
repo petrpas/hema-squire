@@ -23,6 +23,7 @@ from app.routers import (
     admin,
     auth,
     export_api,
+    guests,
     hr_api,
     import_api,
     manual_api,
@@ -49,6 +50,21 @@ def _refuse_dev_secret_key() -> None:
         raise RuntimeError(
             "HEMA_SQUIRE_SECRET_KEY is still the published development default. "
             "Set it (openssl rand -hex 32), or set HEMA_SQUIRE_DEBUG=1 for local work."
+        )
+
+
+def _refuse_real_mail_without_origin() -> None:
+    """Refuse to send real mail whose links would point at the dev server.
+
+    Every guest message carries a manage link and every signup a verification
+    link (spec guest-registration, fencer-accounts). With SMTP configured and
+    the origin left at its default, each would be a link nobody outside the
+    developer's machine can open — silently, since the mail itself is sent.
+    """
+    if settings.smtp_host and settings.public_base_url.startswith("http://localhost"):
+        raise RuntimeError(
+            "HEMA_SQUIRE_SMTP_HOST is set but HEMA_SQUIRE_PUBLIC_BASE_URL is not. "
+            "Set it to the origin the app is served from (https://…), since mail carries links."
         )
 
 
@@ -112,6 +128,7 @@ def _sweep_interrupted_operations() -> None:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     _refuse_dev_secret_key()
+    _refuse_real_mail_without_origin()
     _warn_when_owner_unmatched()
     if settings.operations_sweep_enabled:
         _sweep_interrupted_operations()
@@ -162,6 +179,7 @@ def create_app() -> FastAPI:
     app.include_router(admin.router)
     app.include_router(tournaments.router)
     app.include_router(registrations.router)
+    app.include_router(guests.router)
     app.include_router(payments.router)
     app.include_router(rules_api.router)
     app.include_router(import_api.router)

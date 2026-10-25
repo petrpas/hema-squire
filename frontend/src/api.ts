@@ -112,6 +112,25 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   return response.json();
 }
 
+/** A guest registration's manage key, where the request manages one; absent
+ *  or null, the `my-registration` calls answer for the signed-in account. */
+export type ManageKey = string | null;
+
+/** The header a manage key travels in. Never a query parameter: a key in a
+ *  request line would land in every access log (spec routing). */
+function managing(key: ManageKey | undefined): Record<string, string> {
+  return key ? { "X-Manage-Key": key } : {};
+}
+
+/** Who a guest is: the account form's fields without a password (spec
+ *  `guest-registration`). Held by the page until the checklist is submitted. */
+export interface GuestIdentity {
+  email: string;
+  display_name: string;
+  hr_id?: number;
+  language: string;
+}
+
 /** The four features that make up a tournament's mode. Easy mode is the
  *  absence of all four, advanced mode at least one — there is no separately
  *  stored mode value, so the name a tournament is given and the sections its
@@ -586,6 +605,9 @@ export interface SheetRow {
    *  registration's and a cell edit would show a change the billing never
    *  made. */
   registration_id: number | null;
+  /** A guest's registration, managed through a mailed link the organizer can
+   *  send again. Absent on a row with no registration. */
+  guest?: boolean;
   vs: number | null;
   paid: boolean;
   /** Settled with nothing passing through Squire, and why. The outstanding
@@ -998,6 +1020,9 @@ export interface TeamEntry {
 }
 
 export interface RegistrationDetail {
+  /** The language the guest chose, stated only to a read through a manage
+   *  key; the manage screen opens in it. Absent otherwise. */
+  language?: string | null;
   state: RegistrationRowState;
   /** Absent where the registration was never given one: a tournament whose
    *  organizer keeps the roster mints no symbols. */
@@ -1408,16 +1433,36 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ email, password }),
     }),
+  /** Records a pending signup and mails its verification link; nothing exists
+   *  to sign into until the link is followed (spec `fencer-accounts`). */
   signup: (data: {
     email: string;
     password: string;
     display_name: string;
     hr_id?: number;
     language: string;
+    return_to?: string;
   }) =>
-    request<{ token: string }>("/api/auth/signup", {
+    request<{ email: string }>("/api/auth/signup", {
       method: "POST",
       body: JSON.stringify(data),
+    }),
+  verify: (key: string) =>
+    request<{ token: string; return_to: string | null }>("/api/auth/verify", {
+      method: "POST",
+      body: JSON.stringify({ key }),
+    }),
+  resendVerification: (email: string, password: string) =>
+    request<void>("/api/auth/resend-verification", {
+      method: "POST",
+      body: JSON.stringify({ email, password }),
+    }),
+  /** Whether an address may register without an account: refused with
+   *  `email_has_account` where it belongs to one. */
+  guestCheck: (email: string) =>
+    request<void>("/api/auth/guest-check", {
+      method: "POST",
+      body: JSON.stringify({ email }),
     }),
   tournaments: () => request<Tournament[]>("/api/tournaments"),
   /** The fencer's view: public, and carrying no organizer configuration. */
@@ -1472,6 +1517,11 @@ export const api = {
    *  organizer's word that they collected the money themselves. */
   /** The organizer's cancellation: the fencer's own, plus a mail telling them
    *  so (spec registration, An organizer may cancel a registration). */
+  /** Mails a guest their registration's current manage link again. */
+  resendManageLink: (slug: string, registrationId: number) =>
+    request<void>(`/api/tournaments/${slug}/registrations/${registrationId}/manage-link`, {
+      method: "POST",
+    }),
   cancelRegistrationAsOrganizer: (slug: string, registrationId: number, note: string | null) =>
     request<RegistrationDetail>(`/api/tournaments/${slug}/registrations/${registrationId}/cancel`, {
       method: "POST",
@@ -1767,38 +1817,53 @@ export const api = {
   myTournaments: () => request<OpenTournament[]>("/api/tournaments/mine"),
   availability: (slug: string) => request<Availability[]>(`/api/tournaments/${slug}/availability`),
   entrants: (slug: string) => request<Entrants>(`/api/tournaments/${slug}/entrants`),
-  myRegistration: (slug: string) =>
-    request<RegistrationDetail>(`/api/tournaments/${slug}/my-registration`),
+  myRegistration: (slug: string, key?: ManageKey) =>
+    request<RegistrationDetail>(`/api/tournaments/${slug}/my-registration`, {
+      headers: managing(key),
+    }),
   registerForTournament: (slug: string, data: RegisterPayload) =>
     request<RegistrationDetail>(`/api/tournaments/${slug}/register`, {
       method: "POST",
       body: JSON.stringify(data),
     }),
-  cancelRegistration: (slug: string) =>
+  /** A guest's identity and selection together: the registration is created
+   *  now or not at all (spec `guest-registration`). */
+  guestRegister: (slug: string, data: RegisterPayload & { guest: GuestIdentity }) =>
+    request<{ registration: RegistrationDetail; manage_key: string }>(
+      `/api/tournaments/${slug}/guest-register`,
+      { method: "POST", body: JSON.stringify(data) },
+    ),
+  cancelRegistration: (slug: string, key?: ManageKey) =>
     request<RegistrationDetail>(`/api/tournaments/${slug}/my-registration/cancel`, {
       method: "POST",
+      headers: managing(key),
     }),
-  previewAmendment: (slug: string, data: RegisterPayload) =>
+  previewAmendment: (slug: string, data: RegisterPayload, key?: ManageKey) =>
     request<AmendmentPlacement>(`/api/tournaments/${slug}/my-registration/amend/preview`, {
       method: "POST",
       body: JSON.stringify(data),
+      headers: managing(key),
     }),
-  amendRegistration: (slug: string, data: RegisterPayload) =>
+  amendRegistration: (slug: string, data: RegisterPayload, key?: ManageKey) =>
     request<RegistrationDetail>(`/api/tournaments/${slug}/my-registration/amend`, {
       method: "POST",
       body: JSON.stringify(data),
+      headers: managing(key),
     }),
   pricePreview: (slug: string, data: PricePreviewPayload) =>
     request<PricePreview>(`/api/tournaments/${slug}/price-preview`, {
       method: "POST",
       body: JSON.stringify(data),
     }),
-  paymentInstructions: (slug: string) =>
-    request<PaymentInstructions>(`/api/tournaments/${slug}/my-registration/payment`),
-  updateRoster: (slug: string, teamId: number, members: RosterMemberInput[]) =>
+  paymentInstructions: (slug: string, key?: ManageKey) =>
+    request<PaymentInstructions>(`/api/tournaments/${slug}/my-registration/payment`, {
+      headers: managing(key),
+    }),
+  updateRoster: (slug: string, teamId: number, members: RosterMemberInput[], key?: ManageKey) =>
     request<TeamEntry>(`/api/tournaments/${slug}/my-registration/teams/${teamId}/roster`, {
       method: "PUT",
       body: JSON.stringify({ members }),
+      headers: managing(key),
     }),
   consoleTeams: (slug: string) =>
     request<ConsoleTeamDiscipline[]>(`/api/tournaments/${slug}/teams`),

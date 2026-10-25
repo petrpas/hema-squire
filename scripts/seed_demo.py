@@ -21,6 +21,7 @@ deployment Owner via HEMA_SQUIRE_OWNER_EMAIL.
 """
 
 import json
+import re
 import sys
 import time
 import urllib.error
@@ -106,31 +107,56 @@ def call(method, path, token=None, body=None, files=None):
             raise
 
 
+def _verification_key(email: str) -> str:
+    """The key of the newest verification mail to `email` in the dev outbox.
+
+    Signup creates nothing until its link is followed (spec fencer-accounts),
+    so the seed follows it the way a person would: from the mail."""
+    from email import policy
+    from email.parser import BytesParser
+
+    from app.config import settings
+
+    for path in sorted(Path(settings.email_outbox_dir).glob("*.eml"), reverse=True):
+        message = BytesParser(policy=policy.default).parsebytes(path.read_bytes())
+        if message["To"] != email:
+            continue
+        body = message.get_body(("plain",))
+        found = re.search(r"/verify#(\S+)", body.get_content() if body else "")
+        if found:
+            return found.group(1)
+    raise RuntimeError(f"no verification mail to {email} in {settings.email_outbox_dir}")
+
+
+def sign_up(email: str, password: str, name: str) -> str:
+    """A verified account's token: signup, then its mailed link."""
+    call("POST", "/api/auth/signup", body={
+        "email": email, "password": password, "display_name": name,
+    })
+    return call("POST", "/api/auth/verify", body={"key": _verification_key(email)})["token"]
+
+
 def main() -> None:
     from app.models import Role
 
-    slugs = [t["slug"] for t in call("GET", "/api/tournaments")]
+    email, password, name = ORGANIZER
+    try:
+        token = call("POST", "/api/auth/login", body={
+            "email": email, "password": password,
+        })["token"]
+    except urllib.error.HTTPError:
+        token = sign_up(email, password, name)
+    _grant_role(email, Role.ORGANIZER)  # creation requires the global Organizer role
+
+    slugs = [t["slug"] for t in call("GET", "/api/tournaments", token)]
     if SLUG in slugs:
         print(f"'{SLUG}' already exists — nothing to seed.")
         print(f"organizer login: {ORGANIZER[0]} / {ORGANIZER[1]}")
         return
 
-    email, password, name = ORGANIZER
-    try:
-        token = call("POST", "/api/auth/signup", body={
-            "email": email, "password": password, "display_name": name,
-        })["token"]
-    except urllib.error.HTTPError:
-        token = call("POST", "/api/auth/login", body={
-            "email": email, "password": password,
-        })["token"]
-    _grant_role(email, Role.ORGANIZER)  # creation requires the global Organizer role
-
     admin_email, admin_password, admin_name = ADMIN_DEMO
     try:
-        call("POST", "/api/auth/signup", body={
-            "email": admin_email, "password": admin_password, "display_name": admin_name,
-        })
+        sign_up(admin_email, admin_password, admin_name)
     except urllib.error.HTTPError:
         pass  # already seeded
     _grant_role(admin_email, Role.ADMIN)
@@ -214,13 +240,11 @@ def main() -> None:
     ]
     jan_token = None
     for fencer_email, fencer_name, disciplines, extras in fencers:
-        account = call("POST", "/api/auth/signup", body={
-            "email": fencer_email, "password": password, "display_name": fencer_name,
-        })
+        fencer_token = sign_up(fencer_email, password, fencer_name)
         if jan_token is None:
-            jan_token = account["token"]
+            jan_token = fencer_token
         registration = call("POST", f"/api/tournaments/{SLUG}/register",
-                            account["token"],
+                            fencer_token,
                             {"disciplines": disciplines, "extras": extras})
         print(f"registered {fencer_name}: VS {registration['vs']} "
               f"· {registration['total_amount']} CZK")

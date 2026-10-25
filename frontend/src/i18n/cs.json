@@ -24,7 +24,8 @@
     "removeSubstitution": "Vrátit náhradu — odejde s ní i párování a opravy ratingu provedené po ní",
     "moveUp": "Posunout výš",
     "substitute": "Nahradit šermíře",
-    "cancelRegistration": "Zrušit registraci"
+    "cancelRegistration": "Zrušit registraci",
+    "resendLink": "Poslat odkaz na správu znovu"
   },
   "import": {
     "title": "Import tabulky",
@@ -235,7 +236,10 @@
     "failed": "Přihlášení se nezdařilo. Zkus to prosím znovu.",
     "createAccount": "Vytvořit účet",
     "back": "Zpět",
-    "submitting": "Přihlašuji…"
+    "submitting": "Přihlašuji…",
+    "notVerified": "Tato adresa ještě není ověřená. Účet dokončíte otevřením odkazu z e-mailu.",
+    "resendVerification": "Poslat odkaz znovu",
+    "verificationResent": "Poslali jsme nový odkaz; předchozí už neplatí."
   },
   "signup": {
     "subtitle": "Vytvoř si účet",
@@ -262,7 +266,9 @@
       "invalid": "Zkontroluj prosím formulář a zkus to znovu.",
       "failed": "Registrace se nezdařila. Zkus to prosím znovu."
     },
-    "submitting": "Zakládám účet…"
+    "submitting": "Zakládám účet…",
+    "hint": "Na e-mail pošleme odkaz; účet vznikne, až ho otevřete.",
+    "sent": "Na {{email}} jsme poslali odkaz. Otevřením odkazu založení účtu dokončíte."
   },
   "languages": {
     "cs": "Čeština",
@@ -394,6 +400,13 @@
         "failed": "Registraci se nepodařilo zrušit.",
         "registration_not_live": "Registrace už není živá — byla zrušena nebo propadla."
       }
+    },
+    "resendLink": {
+      "title": "Poslat odkaz znovu",
+      "meaning": "Šermíř se registroval bez účtu. Odkaz na registraci se znovu pošle na stejnou adresu.",
+      "confirm": "Poslat",
+      "sent": "Odkaz byl odeslán.",
+      "failed": "Odkaz se nepodařilo odeslat."
     }
   },
   "row": {
@@ -1060,7 +1073,7 @@
     "opensIn": "otevře se za {{countdown}}",
     "registrationElsewhere": "Registraci na tento turnaj vede pořadatel mimo Squire.",
     "registrationElsewhereAction": "Přejít na registraci",
-    "signInToRegister": "Pro přihlášení na turnaj je potřeba účet."
+    "signInToRegister": "Přihlaste se, založte si účet, nebo se registrujte bez něj."
   },
   "form": {
     "title": "Registrace",
@@ -1549,5 +1562,24 @@
     "conditionalHint": "Přihlášen jen spolu se všemi svými podmíněnými disciplínami.",
     "team": "Tým",
     "membersPending": "členové zatím neuvedeni"
+  },
+  "guest": {
+    "entry": "Registrovat bez účtu",
+    "title": "Registrace bez účtu",
+    "subtitle": "Stejné údaje, jen bez hesla. Přihlášku pak upravíte přes odkaz v e-mailu.",
+    "formTitle": "Údaje o šermíři",
+    "formNumber": "tiskopis č. 1b",
+    "submit": "Pokračovat k registraci",
+    "submitting": "Ověřuji…",
+    "registeringAs": "Registrujete se bez účtu jako {{name}} ({{email}}).",
+    "change": "Změnit",
+    "linkDead": "Tento odkaz už neplatí. Registrace, která přešla na někoho jiného nebo k účtu, se spravuje jinde; pomoci může pořadatel.",
+    "errors": {
+      "hasAccount": "Tato adresa patří k účtu. Pro registraci se přihlaste.",
+      "alreadyRegistered": "Tato osoba je z této adresy už registrovaná. Odkaz na registraci je v e-mailu, který na ni přišel; pokud se ztratil, pomůže pořadatel."
+    }
+  },
+  "verify": {
+    "invalid": "Tento odkaz už neplatí. Přihlaste se, nebo účet založte znovu."
   }
 }

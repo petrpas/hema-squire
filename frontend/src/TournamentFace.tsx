@@ -13,6 +13,7 @@ import {
   type DiscountBreakdown,
   type DiscountCondition,
   type ExtraItem,
+  type GuestIdentity,
   type RegistrationDetail,
   type FencerTournament as TournamentDetailData,
 } from "./api";
@@ -20,7 +21,9 @@ import { MeterTrack } from "./CapacityMeter";
 import { FIELD_CONSTRAINTS } from "./constraints";
 import DotJoined from "./DotJoined";
 import { groupGoods, isAction } from "./extraItems";
+import GuestIdentityLine from "./GuestIdentityLine";
 import InlineProse from "./InlineProse";
+import { useManageKey } from "./manageKey";
 import { formatMoneyWithEur } from "./money";
 import { parseInteger } from "./numeric";
 import { openingMomentMs, registrationClosesOn, registrationStatus } from "./openingMoment";
@@ -545,6 +548,19 @@ export type FormMode =
       onNotYetOpen: () => void;
     }
   | {
+      /** A visitor registering without an account: the identity the guest
+       *  form gave travels with the selection, and the registration is created
+       *  at submission or not at all (spec `guest-registration`). */
+      kind: "guest";
+      identity: GuestIdentity;
+      /** Back to the guest form, to change the name or the address. */
+      onChange: () => void;
+      /** Sign-in, offered where the address turns out to have an account. */
+      onSignIn: () => void;
+      onRegistered: (manageKey: string) => void;
+      onNotYetOpen: () => void;
+    }
+  | {
       kind: "amend";
       initial: RegistrationDetail;
       onRegistered: (registration: RegistrationDetail) => void;
@@ -602,6 +618,10 @@ export function RegistrationForm({
   const [discounts, setDiscounts] = useState<DiscountBreakdown[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // the refusal of a guest whose address has an account, which offers sign-in
+  // beside the statement rather than only stating it
+  const [hasAccount, setHasAccount] = useState(false);
+  const manageKey = useManageKey();
   // the participation condition, offered as one tick over every individual
   // discipline selected, unticked by default (spec registration)
   const [together, setTogether] = useState(
@@ -731,15 +751,19 @@ export function RegistrationForm({
     }
     let live = true;
     api
-      .previewAmendment(detail.slug, {
-        disciplines: selected,
-        condition: conditionKey === "" ? [] : conditionKey.split(","),
-        teams: teams.map((team) => ({
-          ...(team.id ? { id: team.id } : {}),
-          slug: team.slug,
-          name: team.name,
-        })),
-      })
+      .previewAmendment(
+        detail.slug,
+        {
+          disciplines: selected,
+          condition: conditionKey === "" ? [] : conditionKey.split(","),
+          teams: teams.map((team) => ({
+            ...(team.id ? { id: team.id } : {}),
+            slug: team.slug,
+            name: team.name,
+          })),
+        },
+        manageKey,
+      )
       .then(
         (placement) => {
           if (!live) return;
@@ -758,7 +782,7 @@ export function RegistrationForm({
     return () => {
       live = false;
     };
-  }, [amending, detail.slug, disciplinesKey, conditionKey, teams, t]);
+  }, [amending, detail.slug, disciplinesKey, conditionKey, teams, t, manageKey]);
 
   function toggleDiscipline(slug: string) {
     setDisciplines((prev) => {
@@ -826,6 +850,7 @@ export function RegistrationForm({
     }
     setBusy(true);
     setError(null);
+    setHasAccount(false);
     try {
       const payload = {
         disciplines: [...disciplines],
@@ -844,9 +869,18 @@ export function RegistrationForm({
           name: team.name,
         })),
       };
-      const registration = amending
-        ? await api.amendRegistration(detail.slug, payload)
-        : await api.registerForTournament(detail.slug, payload);
+      if (mode.kind === "guest") {
+        const { manage_key } = await api.guestRegister(detail.slug, {
+          ...payload,
+          guest: mode.identity,
+        });
+        mode.onRegistered(manage_key);
+        return;
+      }
+      const registration =
+        mode.kind === "amend"
+          ? await api.amendRegistration(detail.slug, payload, manageKey)
+          : await api.registerForTournament(detail.slug, payload);
       mode.onRegistered(registration);
     } catch (err) {
       // the gate is the authority, and it may still refuse: registration had
@@ -856,7 +890,20 @@ export function RegistrationForm({
         setError(t("form.condition.refused"));
         return;
       }
-      if (err instanceof ApiError && err.status === 403 && mode.kind === "register") {
+      if (err instanceof ApiError && err.detail === "email_has_account") {
+        setError(t("guest.errors.hasAccount"));
+        setHasAccount(true);
+        return;
+      }
+      if (err instanceof ApiError && err.detail === "already_registered" && mode.kind === "guest") {
+        setError(t("guest.errors.alreadyRegistered"));
+        return;
+      }
+      if (
+        err instanceof ApiError &&
+        err.status === 403 &&
+        (mode.kind === "register" || mode.kind === "guest")
+      ) {
         const refusal = err.detail as { reason?: string } | null;
         if (refusal?.reason === "not_yet_open") {
           mode.onNotYetOpen();
@@ -876,6 +923,9 @@ export function RegistrationForm({
       <h1>{detail.display_name}</h1>
       {detail.subtitle && <p className="detail-subtitle">{detail.subtitle}</p>}
       <Prose source={detail.registration_instructions} className="registration-instructions" />
+      {mode.kind === "guest" && (
+        <GuestIdentityLine identity={mode.identity} onChange={mode.onChange} />
+      )}
 
       {!teamsOnly && (
         <>
@@ -1018,7 +1068,19 @@ export function RegistrationForm({
       </div>
 
       {amendStatement && <p className="rail-hint">{amendStatement}</p>}
-      {error && <p className="login-error">{error}</p>}
+      {error && (
+        <p className="login-error">
+          {error}
+          {hasAccount && mode.kind === "guest" && (
+            <>
+              {" "}
+              <button type="button" className="link-button" onClick={mode.onSignIn}>
+                {t("login.submit")}
+              </button>
+            </>
+          )}
+        </p>
+      )}
 
       {mode.kind === "preview" ? (
         <p className="rail-hint">{t("preview.cannotSubmit")}</p>
