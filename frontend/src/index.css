@@ -1353,6 +1353,15 @@ fieldset.form-field > legend {
   letter-spacing: normal;
 }
 
+/* A select's open list is drawn by the platform, which on some systems
+   ignores color-scheme and paints it light whatever the skin. The options
+   inherit --ink, light in the night skin, so they carry the page's own ground
+   rather than none. */
+select option {
+  background: var(--paper-raised);
+  color: var(--ink);
+}
+
 /* two controls that are one field: the registration-opens date and the hour it
    opens at. The time qualifies the date rather than standing beside it as
    another date, so they share one label and sit on one line (spec:
@@ -4019,6 +4028,12 @@ label.checklist-row > input[type="checkbox"] {
   margin-top: 0.3rem;
   font-size: 12px;
   color: var(--ink-faded);
+}
+
+/* a row with no schedule, remark or controls has no detail: its empty block
+   would add its margin to the row and nothing else */
+.checklist-detail:empty {
+  display: none;
 }
 
 .checklist-controls {

@@ -487,6 +487,9 @@ export function ItemControls({
   onOption: (value: string) => void;
 }) {
   const { t } = useTranslation();
+  // an item with neither a quantity nor an option has nothing to reveal, and
+  // an empty block would still grow the row by its margin when ticked
+  if (item.max_qty <= 1 && !item.option_label) return null;
   return (
     <span className="checklist-controls">
       {item.max_qty > 1 && (
