@@ -8,7 +8,7 @@ import type { HomeTab } from "./FencerShell";
 import PaidStamp from "./PaidStamp";
 import { consolePath, detail } from "./routes";
 import { BondBlock, StatusBlock } from "./StatusBlock";
-import { CoverPlate, coverTint } from "./TournamentCover";
+import { CoverPhoto, CoverPlate, coverPhoto, coverTint } from "./TournamentCover";
 
 /** The card's place in the list as shown, in the ledger's zero-padded form. */
 function ordinal(position: number): string {
@@ -39,7 +39,12 @@ export default function TournamentCard({
       <Link className="home-card-body" to={detail(tournament.slug)} state={{ tab }}>
         {/* which color each tint means is the stylesheet's business, not
             this file's */}
-        <div className="home-card-cover" data-tint={coverTint(tournament)}>
+        <div
+          className="home-card-cover"
+          data-tint={coverTint(tournament)}
+          data-photo={coverPhoto(tournament) || undefined}
+        >
+          <CoverPhoto subject={tournament} />
           {bond ? <BondBlock tournament={tournament} /> : <StatusBlock tournament={tournament} />}
           <span className="home-card-ordinal">{ordinal(position)}</span>
           <CoverPlate

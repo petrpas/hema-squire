@@ -66,6 +66,29 @@ async function requestBlob(path: string, body: unknown): Promise<Blob> {
   return response.blob();
 }
 
+/** An image sent as a form upload — the logo or the cover photo — answered
+ *  by the tournament as it now stands. */
+async function uploadImage(path: string, file: File): Promise<TournamentDetail> {
+  const body = new FormData();
+  body.append("file", file);
+  const token = getToken();
+  const response = await fetch(path, {
+    method: "POST",
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    body,
+  });
+  if (!response.ok) {
+    let detail: unknown = null;
+    try {
+      detail = (await response.json()).detail;
+    } catch {
+      /* non-JSON error body */
+    }
+    throw new ApiError(response.status, detail);
+  }
+  return response.json();
+}
+
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const token = getToken();
   const response = await fetch(path, {
@@ -137,8 +160,14 @@ export const TOURNAMENT_FEATURES = [
   "feature_extras",
 ] as const satisfies readonly (keyof TournamentFlags)[];
 
-/** The three pastel tints a tournament's cover may wear (spec fencer-home). */
-export type CoverTint = "blue" | "green" | "yellow";
+/** The four pastel tints a tournament's cover may wear (spec fencer-home);
+ *  red only where the organizer chose it. */
+export type CoverTint = "blue" | "green" | "yellow" | "red";
+
+/** What the organizer may choose the cover to stand on: a tint, or the
+ *  tournament's cover photo while one is stored (spec tournament-admin, The
+ *  organizer chooses the cover ground). */
+export type CoverGround = CoverTint | "photo";
 
 export interface Tournament extends TournamentFlags {
   slug: string;
@@ -150,9 +179,10 @@ export interface Tournament extends TournamentFlags {
   /** The logo's hue band, choosing the cover tint; null without a logo or
    *  for an achromatic one. */
   logo_tint: "blue" | "green" | "warm" | null;
-  /** The cover tint the organizer chose, winning over the logo's band; null
+  /** The cover ground the organizer chose, winning over the logo's band; null
    *  follows the logo. */
-  cover_tint: CoverTint | null;
+  cover_tint: CoverGround | null;
+  has_cover_photo: boolean;
   date: string;
   language: string;
   owner_id: number | null;
@@ -165,6 +195,11 @@ export interface Tournament extends TournamentFlags {
 /** Public URL of a tournament logo (unauthenticated, so it works in <img>). */
 export function logoUrl(slug: string): string {
   return `/api/tournaments/${slug}/logo`;
+}
+
+/** Public URL of a tournament's cover photo, readable as its logo is. */
+export function coverPhotoUrl(slug: string): string {
+  return `/api/tournaments/${slug}/cover-photo`;
 }
 
 /** A tournament's local currency; amounts are whole units of it. */
@@ -494,6 +529,7 @@ type FencerTournamentFace = Pick<
   | "has_logo"
   | "logo_tint"
   | "cover_tint"
+  | "has_cover_photo"
   | "date"
   | "city"
   | "address"
@@ -804,8 +840,9 @@ export interface OpenTournament {
   /** The logo's hue band, choosing the card's cover tint among the three
    *  pastel tokens; null without a logo or for an achromatic one. */
   logo_tint: "blue" | "green" | "warm" | null;
-  /** The cover tint the organizer chose; null follows the logo. */
-  cover_tint: CoverTint | null;
+  /** The cover ground the organizer chose; null follows the logo. */
+  cover_tint: CoverGround | null;
+  has_cover_photo: boolean;
   /** What the plate reads where there is no logo, when the organizer set it;
    *  null derives the monogram from the name. */
   short_code: string | null;
@@ -1473,27 +1510,10 @@ export const api = {
     }),
   deleteExtraItem: (slug: string, id: number) =>
     request<void>(`/api/tournaments/${slug}/extra-items/${id}`, { method: "DELETE" }),
-  uploadLogo: async (slug: string, file: File): Promise<TournamentDetail> => {
-    const body = new FormData();
-    body.append("file", file);
-    const token = getToken();
-    const response = await fetch(logoUrl(slug), {
-      method: "POST",
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
-      body,
-    });
-    if (!response.ok) {
-      let detail: unknown = null;
-      try {
-        detail = (await response.json()).detail;
-      } catch {
-        /* non-JSON error body */
-      }
-      throw new ApiError(response.status, detail);
-    }
-    return response.json();
-  },
+  uploadLogo: (slug: string, file: File) => uploadImage(logoUrl(slug), file),
   deleteLogo: (slug: string) => request<void>(logoUrl(slug), { method: "DELETE" }),
+  uploadCoverPhoto: (slug: string, file: File) => uploadImage(coverPhotoUrl(slug), file),
+  deleteCoverPhoto: (slug: string) => request<void>(coverPhotoUrl(slug), { method: "DELETE" }),
   sheet: (slug: string) => request<Sheet>(`/api/tournaments/${slug}/sheet`),
   /** Creates a rule. `amendment` comes back only for a discipline amendment:
    *  what the correction did to the registration's total, and whether the

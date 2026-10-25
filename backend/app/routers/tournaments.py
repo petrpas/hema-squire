@@ -6,7 +6,7 @@ from decimal import ROUND_HALF_UP, Decimal
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Response, UploadFile
-from PIL import Image, UnidentifiedImageError
+from PIL import Image, ImageOps, UnidentifiedImageError
 from sqlalchemy import delete, false, func, or_, select
 from sqlalchemy.orm import Session, selectinload
 from sqlalchemy.sql.elements import ColumnElement
@@ -320,6 +320,7 @@ def _fencer_tournament_out(
         has_logo=tournament.has_logo,
         logo_tint=tournament.logo_tint if tournament.has_logo else None,
         cover_tint=tournament.cover_tint,
+        has_cover_photo=tournament.has_cover_photo,
         short_code=tournament.short_code,
         date=tournament.date,
         city=tournament.city,
@@ -718,6 +719,10 @@ def update_tournament(
             tournament.vs_year = new_year
             tournament.vs_series = _lowest_free_series(session, new_year)
 
+    # the cover may wear a photo only while one is stored (spec
+    # tournament-admin, The organizer chooses the cover ground)
+    if updates.get("cover_tint") == "photo" and not tournament.has_cover_photo:
+        raise HTTPException(status_code=422, detail="cover_photo_missing")
     for field, value in updates.items():
         setattr(tournament, field, value)
     # reopening clears any previously recorded criteria (design D7)
@@ -1018,6 +1023,66 @@ def get_logo(tournament: TournamentDep):
     if tournament.logo_mime is None or tournament.logo_bytes is None:
         raise HTTPException(status_code=404, detail="no_logo")
     return Response(content=tournament.logo_bytes, media_type=tournament.logo_mime)
+
+
+# cover photo bounds: the logo's cap, then a JPEG bounded on its longer side —
+# a photograph at this size is several times smaller as JPEG than as PNG
+# (design cover-photo-and-red-tint D2)
+COVER_PHOTO_MAX_DIMENSION = 1600
+COVER_PHOTO_JPEG_QUALITY = 82
+
+
+@router.post("/{slug}/cover-photo", response_model=TournamentOut)
+async def upload_cover_photo(
+    tournament: TournamentDep, file: UploadFile, session: SessionDep, fencer: FencerDep
+):
+    require_console_access(session, tournament, fencer)
+    raw = await file.read()
+    if len(raw) > LOGO_MAX_UPLOAD_BYTES:
+        raise HTTPException(status_code=413, detail="cover_photo_too_large")
+    try:
+        image = Image.open(io.BytesIO(raw))
+        image.load()
+    except (UnidentifiedImageError, OSError, Image.DecompressionBombError) as exc:
+        logger.warning("cover photo upload could not be decoded as an image", exc_info=exc)
+        raise HTTPException(status_code=422, detail="cover_photo_not_an_image") from exc
+    # upright as the camera meant it, then bare: a new image carries no EXIF,
+    # and the JPEG is saved without any, so no location is published (spec
+    # tournament-admin, The cover photo is stored bounded and bare)
+    upright = ImageOps.exif_transpose(image) or image
+    bare = upright.convert("RGB")
+    bare.thumbnail((COVER_PHOTO_MAX_DIMENSION, COVER_PHOTO_MAX_DIMENSION))
+    buffer = io.BytesIO()
+    bare.save(buffer, format="JPEG", quality=COVER_PHOTO_JPEG_QUALITY, optimize=True)
+    tournament.cover_photo_bytes = buffer.getvalue()
+    tournament.cover_photo_mime = "image/jpeg"
+    session.commit()
+    session.refresh(tournament)
+    out = TournamentOut.model_validate(tournament)
+    out.setup_missing = setup.setup_missing(tournament)
+    out.in_app_registrations = _in_app_registrations(session, tournament)
+    _apply_disciplines_frozen(session, tournament, out)
+    return out
+
+
+@router.delete("/{slug}/cover-photo", status_code=204)
+def delete_cover_photo(tournament: TournamentDep, session: SessionDep, fencer: FencerDep):
+    require_console_access(session, tournament, fencer)
+    tournament.cover_photo_bytes = None
+    tournament.cover_photo_mime = None
+    # the cover never points at a missing picture: it follows the logo again
+    if tournament.cover_tint == "photo":
+        tournament.cover_tint = None
+    session.commit()
+
+
+@router.get("/{slug}/cover-photo")
+def get_cover_photo(tournament: TournamentDep):
+    # public for the same reason the logo is: plain <img src> cannot send the
+    # auth header, and the photo was uploaded to be shown
+    if tournament.cover_photo_mime is None or tournament.cover_photo_bytes is None:
+        raise HTTPException(status_code=404, detail="no_cover_photo")
+    return Response(content=tournament.cover_photo_bytes, media_type=tournament.cover_photo_mime)
 
 
 def generate_slug(

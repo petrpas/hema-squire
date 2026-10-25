@@ -38,7 +38,7 @@ from sqlalchemy.sql.elements import ColumnElement
 
 from app import constraints, taxonomy
 from app.db import Base
-from app.logo_tint import CoverTint, LogoBand
+from app.logo_tint import CoverGround, LogoBand
 
 
 class Role(enum.StrEnum):
@@ -273,10 +273,16 @@ class Tournament(Base):
     # cleared with the logo; null for no logo or an achromatic one. Chooses the
     # card's cover tint among the three pastel tokens (spec tournament-admin)
     logo_tint: Mapped[LogoBand | None] = mapped_column(String(10))
-    # the cover tint the organizer chose, which wins over the logo's band and
-    # outlives the logo; null follows the logo, then the slug (spec
-    # tournament-admin, The organizer chooses the cover tint)
-    cover_tint: Mapped[CoverTint | None] = mapped_column(String(10))
+    # the cover ground the organizer chose — a tint, or "photo" while a cover
+    # photo is stored — which wins over the logo's band and outlives the logo;
+    # null follows the logo, then the slug (spec tournament-admin, The
+    # organizer chooses the cover ground)
+    cover_tint: Mapped[CoverGround | None] = mapped_column(String(10))
+    # the cover photo, stored inline and deferred as the logo is: re-encoded
+    # on upload to a bounded JPEG carrying no metadata (spec tournament-admin,
+    # The cover photo is stored bounded and bare). Independent of the logo.
+    cover_photo_bytes: Mapped[bytes | None] = mapped_column(LargeBinary, deferred=True)
+    cover_photo_mime: Mapped[str | None] = mapped_column(String(100))
     # what the card's plate reads where there is no logo, set by the organizer
     # only where the monogram derived from the name will not do; null follows
     # the name (spec tournament-admin, Tournament short code)
@@ -493,6 +499,11 @@ class Tournament(Base):
     def has_logo(self) -> bool:
         # reads the always-loaded mime, never the deferred blob
         return self.logo_mime is not None
+
+    @property
+    def has_cover_photo(self) -> bool:
+        # as has_logo: the mime, never the deferred blob
+        return self.cover_photo_mime is not None
 
     @property
     def vs_prefix(self) -> int:

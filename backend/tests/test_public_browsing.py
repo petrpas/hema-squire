@@ -222,6 +222,7 @@ FENCER_DETAIL_KEYS = {
     "has_logo",
     "logo_tint",
     "cover_tint",
+    "has_cover_photo",
     "short_code",
     "date",
     "city",

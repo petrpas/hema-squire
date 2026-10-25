@@ -34,6 +34,7 @@ function detail(over: Partial<FencerTournament> = {}): FencerTournament {
     has_logo: false,
     logo_tint: null,
     cover_tint: null,
+    has_cover_photo: false,
     date: "2026-11-20",
     city: null,
     address: null,
@@ -97,6 +98,14 @@ describe("the detail's cover", () => {
     expect(page.querySelector(".detail-cover")?.getAttribute("data-tint")).toBe("green");
     expect(page.querySelector(".detail-plate")?.getAttribute("data-ring")).toBe("open");
     expect(page.querySelector(".status-block")?.textContent).toBe("registraceotevřenado 15. 11.");
+  });
+
+  it("shows the photo its card shows", () => {
+    const page = render(
+      <InfoHeader detail={detail({ cover_tint: "photo", has_cover_photo: true })} now={NOW} />,
+    );
+    expect(page.querySelector(".detail-cover img.cover-photo")).not.toBeNull();
+    expect(page.querySelector(".detail-cover .detail-plate")).not.toBeNull();
   });
 
   it("states a coming opening and leaves the ring at rest", () => {

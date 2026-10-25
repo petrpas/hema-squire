@@ -89,6 +89,9 @@ BODIES: dict[tuple[str, str], object] = {
 # this test is what keeps that ordering true.
 FILES: dict[tuple[str, str], dict] = {
     ("POST", "/api/tournaments/{slug}/logo"): {"file": ("logo.png", b"not-an-image", "image/png")},
+    ("POST", "/api/tournaments/{slug}/cover-photo"): {
+        "file": ("photo.jpg", b"not-an-image", "image/jpeg")
+    },
     ("POST", "/api/tournaments/{slug}/import"): {"file": ("roster.csv", b"name\tclub", "text/csv")},
     ("POST", "/api/tournaments/{slug}/payments/import-statement"): {
         "file": ("statement.csv", b"date;amount", "text/csv")

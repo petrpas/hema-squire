@@ -16,7 +16,7 @@ The cards SHALL be laid out in a grid of columns at least 320px wide, filling a 
 
 **A card** SHALL be a container on `--paper-raised` with a 1px `--hairline` border at `--radius-card`, made of a cover and a body, and SHALL present:
 
-- **The cover**, a band whose ground is one of the three pastel tints (file-blue, seal-green, form-yellow), chosen as `A card's cover tint follows its logo` states: by the organizer's choice where they made one, else by the logo's hue band where it has one, and otherwise deterministically from the tournament's slug by the same hash that tilts the Paid stamp, so the same tournament always wears the same tint. The choice SHALL be carried as a data attribute and resolved in CSS, so no color lives in a component.
+- **The cover**, a band whose ground is either the organizer's cover photo (`A cover may wear a photo`) or one of the four pastel tints (file-blue, seal-green, form-yellow, ledger-red), chosen as `A card's cover tint follows its logo` states: by the organizer's choice where they made one, else by the logo's hue band where it has one, and otherwise deterministically from the tournament's slug by the same hash that tilts the Paid stamp, so the same tournament always wears the same tint. The tint SHALL be carried as a data attribute and resolved in CSS, so no color lives in a component.
 - **The plate**, centred in the cover at `--radius-plate`: the tournament's logo on `--plate` when one is set, filling the plate and cropped on its longer side; otherwise its monogram (see `A tournament without a logo shows its monogram`) on `--paper` in the tint's `-ink` color. The plate SHALL be ringed in `--stamp` while registration is open, and in `--hairline-strong` otherwise. The ring is drawn by an outline, not a border or a shadow.
 - **The ordinal**, at the cover's top right in `--font-data` 12px `--ink-faded`: the card's position in the list as shown, zero-padded (`001`).
 - **The status block**, at the cover's top left, never reaching the plate: three short lines at `--radius-chip` stating registration's state. Open: `registrace` / `otevřena` / `do {closing date}`, on `--stamp-tint` in `--stamp-on-tint`, led by a small `--stamp` dot. Opens on a date: `registrace` / `od {date}` / `v {time}` when an hour is set. Closed: `registrace` / `uzavřena`. The last two stand on `--paper` in `--ink` and `--ink-faded` respectively. A tournament whose registrations its organizer keeps SHALL carry no status block at all. A line whose value is absent SHALL be omitted. On the Mine and Past tabs the block SHALL state the account's own bond instead, as those tabs require.
@@ -59,6 +59,10 @@ Below 480px a card SHALL become a compact row: no cover band; the plate at 56px 
 #### Scenario: The same tint every time
 - **WHEN** the same tournament's card is rendered on two page loads, and in two different tabs
 - **THEN** its cover wears the same tint each time
+
+#### Scenario: A card with a cover photo
+- **WHEN** a listed tournament's organizer chose a cover photo
+- **THEN** its card's cover band shows the photo, cropped to fill the band, with the plate at its centre and the status block at its top left as on a tinted cover
 
 #### Scenario: Ordinal follows the list as shown
 - **WHEN** the Open tab lists three tournaments
@@ -784,7 +788,7 @@ Cancellation SHALL be offered as usual. Its confirmation SHALL ask for confirmat
 ### Requirement: Managing a tournament from its card
 A card in any tab, and the tournament's detail, SHALL carry a **Spravovat** control when, and only when, the account reading it may manage that tournament — as its Tournament Owner or as a member of its console team. The control SHALL open that tournament's console. It SHALL be the only difference between what an organizer sees on the list or the detail and what anyone else sees.
 
-The control SHALL be a quiet secondary button: a small pill outlined in `--hairline-strong` with `--ink-soft` text, never filled, so it stays apart from the screen's one primary action. It SHALL stand in the bottom right corner of the cover band, on the card and on the detail alike. On a phone, where the card has no cover band, it SHALL stand at the card's trailing edge below the foot.
+The control SHALL be a quiet secondary button: a small pill outlined in `--hairline-strong` with `--ink-soft` text, never filled, so it stays apart from the screen's one primary action. It SHALL stand in the bottom right corner of the cover band, on the card and on the detail alike. On a cover photo it SHALL stand on a `--paper-raised` ground so it stays legible over any picture; that ground is the paper it would otherwise stand on, not a fill, and the outline and text are unchanged. On a phone, where the card has no cover band, it SHALL stand at the card's trailing edge below the foot.
 
 The control SHALL be a link carrying the console's URL, so middle-click and modifier-click open it in a new browser tab, and SHALL be reachable without opening the card: activating it SHALL open the console and SHALL NOT also open the fencer-facing detail the card links to.
 
@@ -920,7 +924,9 @@ Below 480px the countdown SHALL stand under the name.
 - **THEN** the countdown stops without showing a negative figure, the strip no longer names that tournament, and no ring, bar or fill was drawn beside the figure
 
 ### Requirement: A card's cover tint follows its logo
-Where the organizer chose a cover tint (`tournament-admin`, The organizer chooses the cover tint), the cover SHALL wear it, whatever the logo or the slug would give. Otherwise, where a listed tournament's logo has a hue band, its card's cover SHALL wear the pastel tint of that band: `blue` the file-blue tint, `green` the seal-green tint, `warm` the form-yellow tint. Where the tournament has no logo, or its logo has no band, the cover SHALL wear the tint chosen from the slug, as before. No color taken from the logo itself SHALL be rendered: the band only chooses among the three tint tokens.
+Where the organizer chose a cover tint (`tournament-admin`, The organizer chooses the cover ground), the cover SHALL wear it, whatever the logo or the slug would give. Otherwise, where a listed tournament's logo has a hue band, its card's cover SHALL wear the pastel tint of that band: `blue` the file-blue tint, `green` the seal-green tint, `warm` the form-yellow tint. Where the tournament has no logo, or its logo has no band, the cover SHALL wear the tint chosen from the slug among file-blue, seal-green and form-yellow, as before. The ledger-red tint SHALL be worn only where the organizer chose it: neither the band nor the slug chooses it, so no cover changes for its arrival. No color taken from the logo itself SHALL be rendered: the band only chooses among the tint tokens.
+
+Where the cover wears a photo, the tint the rules above would give SHALL still color the plate's monogram, which reads in the tint's `-ink`.
 
 #### Scenario: Green logo, green cover
 - **WHEN** a tournament whose logo band is `green` is listed
@@ -933,6 +939,14 @@ Where the organizer chose a cover tint (`tournament-admin`, The organizer choose
 #### Scenario: Logo replaced
 - **WHEN** the organizer replaces a blue logo with a red one
 - **THEN** the card's cover changes from the file-blue tint to the form-yellow tint
+
+#### Scenario: Red only by choice
+- **WHEN** a tournament whose organizer chose no tint is listed, whatever its logo band and its slug
+- **THEN** its cover does not wear the ledger-red tint
+
+#### Scenario: Red chosen
+- **WHEN** the organizer chose the ledger-red tint
+- **THEN** the card's cover wears the ledger-red tint
 
 ### Requirement: A card names familiar faces to a signed-in visitor
 Where a list entry carries `familiar`, the card's footer SHALL show at its left up to three round 28px faces bearing the people's initials, overlapping by 8px, each on a pastel tint chosen by its position and separated from its neighbour by a 2px `--paper-raised` ring, followed by a 13px `--ink-soft` note: `{total} z tvého klubu` / `{total} from your club` for basis club, for basis country `nejvýš hodnocení z {country}` / `top-rated from {country}` where the people are ordered by rating, and `{total} z {country}` / `{total} from {country}` where they are ordered by name — the note never claims a ranking the order does not follow. Each face SHALL carry its label as its accessible name and title. Where `familiar` is absent the footer's left side SHALL be empty and the counts at its right unchanged.
@@ -980,7 +994,7 @@ The tournament detail SHALL read as the same object as its card on the list. Its
 - **THEN** its corners are 2px as before
 
 ### Requirement: Tournament detail opens on its cover
-The detail's information block SHALL open with the same cover its card wears: a band in the tint the card would choose (`A card's cover tint follows its logo`), the plate at its centre — the whole logo on `--plate`, the plate taking the logo's own proportions at a fixed height so nothing of it is cut away, or the short code or monogram on a square plate — ringed in `--stamp` while registration is open and in `--hairline-strong` otherwise, and at its top left the status block stating registration's state as the card states it — none where the organizer keeps the registrations, as on the card. The status is the one the page itself computes against the server's clock, so the block changes in place when registration opens. The title, subtitle and facts follow beneath the cover. On a phone, where the plate and the status block do not fit side by side, the status block stands beneath the plate within the cover. The card on the list keeps its square plate, the logo cropped to fill it.
+The detail's information block SHALL open with the same cover its card wears: a band in the tint the card would choose (`A card's cover tint follows its logo`), or showing the same cover photo where the card shows one (`A cover may wear a photo`), the plate at its centre — the whole logo on `--plate`, the plate taking the logo's own proportions at a fixed height so nothing of it is cut away, or the short code or monogram on a square plate — ringed in `--stamp` while registration is open and in `--hairline-strong` otherwise, and at its top left the status block stating registration's state as the card states it — none where the organizer keeps the registrations, as on the card. The status is the one the page itself computes against the server's clock, so the block changes in place when registration opens. The title, subtitle and facts follow beneath the cover. On a phone, where the plate and the status block do not fit side by side, the status block stands beneath the plate within the cover. The card on the list keeps its square plate, the logo cropped to fill it.
 
 #### Scenario: An open tournament with a logo
 - **WHEN** the detail of a tournament whose registration is open and whose logo is green is opened
@@ -994,6 +1008,10 @@ The detail's information block SHALL open with the same cover its card wears: a 
 - **WHEN** the detail of a tournament whose registrations its organizer keeps is opened
 - **THEN** its cover carries no status block, and the way out to the organizer's registration stands where the form would be
 
+#### Scenario: A detail with a cover photo
+- **WHEN** the detail of a tournament whose organizer chose a cover photo is opened
+- **THEN** its cover band shows the same photo its card shows, cropped to fill the band, with the plate and the status block standing on it
+
 #### Scenario: A wide logo on the detail
 - **WHEN** the detail of a tournament whose logo is three times as wide as it is tall is opened
 - **THEN** the whole logo is shown on a plate of the same proportions, and its card on the list shows it cropped to a square
@@ -1004,4 +1022,27 @@ Each individual or team discipline listed on the detail SHALL carry, beneath its
 #### Scenario: A discipline part full
 - **WHEN** the detail lists a discipline with 3 of 4 places entered
 - **THEN** its row states the count as before and beneath it a hidden-from-assistive-technology track is three quarters filled
+
+### Requirement: A cover may wear a photo
+Where the organizer chose a cover photo (`tournament-admin`, The organizer chooses the cover ground) and one is stored, the card's cover band and the detail's cover band SHALL show it as their ground in place of a tint, scaled to cover the whole band and cropped around its centre, never stretched. The photo SHALL be served from the tournament's own address beside its logo, and the list entry and the detail SHALL carry whether the cover wears one.
+
+Nothing SHALL be laid over the photo to tame it: no scrim, gradient, blur or shadow (`design-system`, Global prohibitions). Instead every part of the cover that stood on the bare tint SHALL stand on paper: the ordinal on a `--paper` chip at `--radius-chip`, the Spravovat control on `--paper-raised`, and the Paid stamp on `--paper-raised`. The plate and the status block already stand on their own grounds and SHALL be unchanged.
+
+The compact phone row, which has no cover band, SHALL show no photo. The photo SHALL be shown as stored in both skins.
+
+#### Scenario: Parts stay legible on a photo
+- **WHEN** a card whose cover wears a dark, busy photograph is listed with its ordinal and, for its organizer, a Spravovat control
+- **THEN** the ordinal stands on a paper chip and the Spravovat control on paper, and no veil or gradient covers the photo
+
+#### Scenario: A paid past tournament with a photo
+- **WHEN** the Past tab lists a tournament with a cover photo for which the account's registration was paid
+- **THEN** the Paid stamp stands on paper at the cover's bottom left
+
+#### Scenario: A phone shows no photo
+- **WHEN** the list is opened on a 390px-wide viewport and a tournament wears a cover photo
+- **THEN** its compact row shows the plate with no band and no photo
+
+#### Scenario: Photo removed
+- **WHEN** the organizer removes the cover photo
+- **THEN** the card and the detail wear the tint the logo or the slug gives
 

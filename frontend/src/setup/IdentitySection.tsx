@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 import {
   ApiError,
   api,
-  type CoverTint,
+  type CoverGround,
   type SetupSuggestions,
   type TournamentDetail,
 } from "../api";
@@ -17,7 +17,7 @@ import { coverTint as coverTintOf } from "../TournamentCover";
 import { useFieldValidation } from "../useFieldValidation";
 import { useSuggestions } from "../useSuggestions";
 import { apiErrors, checkString, type FieldError as FieldErrorValue } from "../validation";
-import CoverTintField from "./CoverTintField";
+import CoverGroundField from "./CoverGroundField";
 import LogoControl from "./LogoControl";
 import ShortCodeField, { shortCodeCheck, shortCodePatch, shortCodeShown } from "./ShortCodeField";
 import { type SaverRegistry, useSectionSaver } from "./shared";
@@ -95,7 +95,11 @@ export function IdentitySection({
 }) {
   const { t } = useTranslation();
   const [values, setValues] = useState<Record<string, string>>({});
-  const [coverTint, setCoverTint] = useState<CoverTint | null>(null);
+  const [coverTint, setCoverTint] = useState<CoverGround | null>(null);
+  // the photo is sent the moment it is chosen, but the choice to wear it
+  // saves with the section; held here so an upload need not reload the
+  // section and drop what else is being edited
+  const [hasCoverPhoto, setHasCoverPhoto] = useState(false);
   const [qualificationOpen, setQualificationOpen] = useState(true);
   const [qualificationCriteria, setQualificationCriteria] = useState("");
   const [dirty, setDirty] = useState(false);
@@ -161,6 +165,7 @@ export function IdentitySection({
     setValues(next);
     setShortCode(detail.short_code);
     setCoverTint(detail.cover_tint);
+    setHasCoverPhoto(detail.has_cover_photo);
     setQualificationOpen(detail.qualification_open);
     setQualificationCriteria(detail.qualification_criteria ?? "");
     validation.clearAll();
@@ -295,13 +300,27 @@ export function IdentitySection({
     <section className="rail-card">
       <div className="form-fields">{IDENTITY_RUN_1.map(renderField)}</div>
       <LogoControl slug={slug} hasLogo={detail.has_logo} onSaved={onSaved} />
-      <CoverTintField
+      <CoverGroundField
         slug={slug}
         value={coverTint}
         followed={coverTintOf({ ...detail, cover_tint: null })}
+        hasPhoto={hasCoverPhoto}
         onChange={(value) => {
           setCoverTint(value);
           setDirty(true);
+        }}
+        onPhotoStored={() => {
+          setHasCoverPhoto(true);
+          setCoverTint("photo");
+          setDirty(true);
+        }}
+        onPhotoRemoved={() => {
+          setHasCoverPhoto(false);
+          // the server returned a cover that wore the photo to following the
+          // logo; an unsaved choice of the photo goes back to what is stored
+          if (coverTint === "photo") {
+            setCoverTint(detail.cover_tint === "photo" ? null : detail.cover_tint);
+          }
         }}
       />
       <ShortCodeField

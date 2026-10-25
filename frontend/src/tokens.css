@@ -25,6 +25,11 @@
   --file-blue-ink: #3c4c58;
   --form-yellow: #eae0c8; /* "pending" state */
   --form-yellow-ink: #6b5a2e;
+  /* a cover tint only, worn where the organizer chose it; rose-brown, kept
+     apart from --stamp-tint's pink because the open status block stands on
+     that at the top left of a cover */
+  --ledger-red: #ddc0b4;
+  --ledger-red-ink: #6e3b30;
 
   /* Typography */
   --font-ui: "IBM Plex Sans", system-ui, sans-serif;
@@ -117,6 +122,8 @@
   --file-blue-ink: #a3ccf7;
   --form-yellow: #2e2511;
   --form-yellow-ink: #dec48f;
+  --ledger-red: #2a1712;
+  --ledger-red-ink: #e8b4a6;
 
   --focus: 2px solid var(--stamp);
 

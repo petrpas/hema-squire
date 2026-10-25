@@ -27,7 +27,7 @@ import { openingMomentMs, registrationClosesOn, registrationStatus } from "./ope
 import Prose from "./Prose";
 import { entrants } from "./routes";
 import { StatusBlock } from "./StatusBlock";
-import { CoverPlate, coverTint } from "./TournamentCover";
+import { CoverPhoto, CoverPlate, coverPhoto, coverTint } from "./TournamentCover";
 
 export const LEGACY_WEAPONS: Record<string, string> = {
   LS: "Longsword",
@@ -137,7 +137,12 @@ export function InfoHeader({
     <section className="rail-card detail-info">
       {/* the card's cover, opened: the same tint, plate, ring and status
           block the tournament wears on the list (spec fencer-home) */}
-      <div className="home-card-cover detail-cover" data-tint={coverTint(detail)}>
+      <div
+        className="home-card-cover detail-cover"
+        data-tint={coverTint(detail)}
+        data-photo={coverPhoto(detail) || undefined}
+      >
+        <CoverPhoto subject={detail} />
         <StatusBlock
           tournament={{
             registration_status: status,

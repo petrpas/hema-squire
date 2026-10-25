@@ -35,6 +35,7 @@ function tournament(over: Partial<OpenTournament> = {}): OpenTournament {
     has_logo: false,
     logo_tint: null,
     cover_tint: null,
+    has_cover_photo: false,
     short_code: null,
     date: "2026-11-20",
     city: "Brno",
@@ -115,6 +116,35 @@ describe("the card's cover", () => {
       .querySelector(".home-card-cover")
       ?.getAttribute("data-tint");
     expect(tint).toBe("blue");
+  });
+
+  it("wears red only where the organizer chose it", () => {
+    const tint = (over: Partial<OpenTournament>) =>
+      render(card(over)).querySelector(".home-card-cover")?.getAttribute("data-tint");
+    for (const logo_tint of ["warm", "blue", "green", null] as const) {
+      expect(tint({ has_logo: logo_tint !== null, logo_tint })).not.toBe("red");
+    }
+    for (const slug of ["a", "b", "c", "d", "e", "f"]) expect(tint({ slug })).not.toBe("red");
+    expect(tint({ cover_tint: "red" })).toBe("red");
+  });
+
+  it("stands on the photo where the organizer chose one, the plate and status kept", () => {
+    const page = render(card({ cover_tint: "photo", has_cover_photo: true, slug: "cup" }));
+    const cover = page.querySelector(".home-card-cover");
+    expect(cover?.hasAttribute("data-photo")).toBe(true);
+    expect(cover?.querySelector("img.cover-photo")?.getAttribute("src")).toBe(
+      "/api/tournaments/cup/cover-photo",
+    );
+    expect(cover?.querySelector(".home-card-plate")).not.toBeNull();
+    expect(cover?.querySelector(".status-block")).not.toBeNull();
+  });
+
+  it("wears a tint, not a missing photo, where none is stored", () => {
+    const cover = render(card({ cover_tint: "photo", has_cover_photo: false })).querySelector(
+      ".home-card-cover",
+    );
+    expect(cover?.hasAttribute("data-photo")).toBe(false);
+    expect(cover?.querySelector("img.cover-photo")).toBeNull();
   });
 
   it("states open registration with its closing day, and rings the plate", () => {

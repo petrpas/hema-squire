@@ -14,8 +14,12 @@ LogoBand = Literal["blue", "green", "warm"]
 
 # The cover tints an organizer may choose outright, overriding the band; null
 # follows the logo (spec tournament-admin, The organizer chooses the cover
-# tint). Named for the tint rendered, where the band is named for the hue read.
-CoverTint = Literal["blue", "green", "yellow"]
+# ground). Named for the tint rendered, where the band is named for the hue
+# read. Red is only ever chosen: no band and no slug gives it.
+CoverTint = Literal["blue", "green", "yellow", "red"]
+# what the cover's band stands on: one of the tints, or the organizer's cover
+# photo, which may be chosen only while one is stored
+CoverGround = Literal[CoverTint, "photo"]
 
 # a pixel votes only when it carries a color: transparent, grey, near-white
 # and near-black pixels are the logo's ground and lettering, not its color
