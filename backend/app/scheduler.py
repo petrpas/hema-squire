@@ -27,6 +27,7 @@ from app.models import (
     Team,
     Tournament,
 )
+from app.outgoing import QueuedMailer, deliver_pending
 from app.setup import clocks_run, local_date, seating_deadline_for, seating_has_settled
 
 logger = logging.getLogger(__name__)
@@ -554,6 +555,11 @@ def process_composition_reminders(session: Session, tournament: Tournament, mail
         # it on write); no minimum recorded means no team is below one
         if len(team.members) >= (team.discipline.team_min or 0):
             continue
+        # a registration Squire never writes to — entered by hand, or issued
+        # from an imported list — is neither reminded nor stamped, so the stamp
+        # keeps meaning a message was sent (spec team-disciplines)
+        if emails.dormant_by_origin(team.registration):
+            continue
         by_fencer.setdefault(team.registration.fencer_id, []).append(team)
 
     sent = 0
@@ -638,15 +644,25 @@ def tournaments_to_tick(session: Session) -> list[Tournament]:
 
 
 def run_tick() -> None:
-    """One scheduler pass over all current tournaments, with real dependencies."""
-    mailer = get_mailer()
+    """One scheduler pass over all current tournaments, with real dependencies.
+
+    Messages are queued into the session with the stamps that say they were
+    sent, so a tournament that raises is rolled back whole — stamps and
+    messages together — before the next one, whose commit would otherwise
+    carry the failed one's partial state (spec outgoing-mail, A failed
+    scheduler pass leaves no partial state). Whatever is still waiting,
+    including earlier passes' failures, is delivered at the end."""
+    transport = get_mailer()
     fio_client = bank.get_fio_client()
     with SessionLocal() as session:
+        mailer = QueuedMailer(session)
         for tournament in tournaments_to_tick(session):
             try:
                 run_tournament_tick(session, tournament, mailer, fio_client)
             except Exception:
+                session.rollback()
                 logger.exception("scheduler tick failed for %s", tournament.slug)
+        deliver_pending(session, transport)
 
 
 async def scheduler_loop() -> None:

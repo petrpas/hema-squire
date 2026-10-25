@@ -32,7 +32,6 @@ from app.db import get_session
 from app.errors import FieldValidationError
 from app.fieldtypes import RowId
 from app.logo_tint import logo_hue_band
-from app.mail import Mailer, get_mailer
 from app.models import (
     ACTION_CATEGORIES,
     BankTransaction,
@@ -60,6 +59,7 @@ from app.models import (
     Tournament,
     TournamentOrganizer,
 )
+from app.outgoing import QueuedMailerDep
 from app.schemas import (
     AdminOwnerAssignIn,
     ConsoleTeamDisciplineOut,
@@ -1498,7 +1498,7 @@ def settle_seating(
     tournament: TournamentDep,
     session: SessionDep,
     fencer: FencerDep,
-    mailer: Annotated[Mailer, Depends(get_mailer)],
+    mailer: QueuedMailerDep,
 ):
     """Close seating early, once the roster looks the way the organizer wants
     it. The same pass the deadline runs, through the same stamp, so a manual

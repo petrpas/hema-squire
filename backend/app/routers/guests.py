@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 
 from app import guests, managekey
 from app.hr_index import HRIndex, get_hr_index
-from app.mail import Mailer, get_mailer
+from app.outgoing import QueuedMailerDep
 from app.ratelimit import limiter
 from app.routers.registrations import create_registration, registration_out, send_confirmation
 from app.routers.tournaments import SessionDep, TournamentDep
@@ -23,7 +23,7 @@ def guest_register(
     tournament: TournamentDep,
     session: SessionDep,
     hr: Annotated[HRIndex, Depends(get_hr_index)],
-    mailer: Annotated[Mailer, Depends(get_mailer)],
+    mailer: QueuedMailerDep,
 ):
     """A guest's identity and selection, submitted together: the registration
     is created now or not at all, and nothing exists for a visitor who filled

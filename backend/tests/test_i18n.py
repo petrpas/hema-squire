@@ -34,3 +34,17 @@ def test_partial_locale_falls_back_per_key(tmp_path):
     cat = Catalog(directory=tmp_path)
     assert cat.translate("x", "en") == "en-x"
     assert cat.translate("y", "en") == "cz-y"
+
+
+def test_every_email_key_exists_in_every_bundled_locale():
+    """A tournament's communication language is a promise about every message
+    it sends; a key missing from one locale arrives in another language with
+    nothing reporting it (spec localization, Fully localized from the start)."""
+    messages = catalog._messages
+    email_keys = {
+        locale: {key for key in keys if key.startswith("email.")}
+        for locale, keys in messages.items()
+    }
+    every = set().union(*email_keys.values())
+    missing = {locale: sorted(every - keys) for locale, keys in email_keys.items() if every - keys}
+    assert missing == {}

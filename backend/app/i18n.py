@@ -6,6 +6,7 @@ locale (Czech); a key missing there too is returned verbatim.
 """
 
 import json
+from datetime import date
 from pathlib import Path
 
 DEFAULT_LOCALE = "cs"
@@ -65,3 +66,20 @@ def format_money(amount: object, currency: str, locale: str | None = None) -> st
     if (locale or DEFAULT_LOCALE) in _DECIMAL_COMMA_LOCALES:
         text = text.replace(".", ",")
     return f"{text} {unit}"
+
+
+def format_date(day: date, locale: str | None = None) -> str:
+    """A day as the locale writes it, for every date a message states (spec
+    outgoing-mail, Dates in messages follow the communication language).
+
+    The pattern and the month names are locale text, so a language added later
+    brings its own convention without code: Czech `25. 10. 2026`, English
+    `25 October 2026`."""
+    return t(
+        "email.date.format",
+        locale,
+        d=day.day,
+        m=day.month,
+        y=day.year,
+        monthName=t(f"email.date.month.{day.month}", locale),
+    )

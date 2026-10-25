@@ -7,8 +7,9 @@ from app import amendment, emails, ledger, matching, rules, sheet, substitution
 from app.auth import require_console_access, require_published
 from app.fieldtypes import RowId
 from app.hr_index import HRIndex, get_hr_index
-from app.mail import Mailer, get_mailer
+from app.mail import Mailer
 from app.models import RegistrationsKeptBy, Rule, RuleJournalEntry
+from app.outgoing import QueuedMailerDep
 from app.routers.tournaments import FencerDep, SessionDep, TournamentDep
 from app.schemas import (
     AmendmentOut,
@@ -22,7 +23,7 @@ from app.schemas import (
 router = APIRouter(prefix="/api/tournaments/{slug}", tags=["rules"])
 
 HRIndexDep = Annotated[HRIndex, Depends(get_hr_index)]
-MailerDep = Annotated[Mailer, Depends(get_mailer)]
+MailerDep = QueuedMailerDep
 
 
 @router.get("/rules", response_model=list[RuleOut])

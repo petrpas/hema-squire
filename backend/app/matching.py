@@ -24,7 +24,7 @@ from pydantic import BaseModel
 from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
-from app import bank, emails, ledger, nameresolve, pricing
+from app import bank, emails, ledger, nameresolve, pricing, setup
 from app import rules as rules_engine
 from app.availability import taken_seats
 from app.mail import Mailer
@@ -346,11 +346,25 @@ def _settle(
             f"{origin}: {amount_cents} cents {currency_code}, {remaining} cents still outstanding",
             registration,
         )
+        if reinstated:
+            # the window the registration had has closed — that is what
+            # expired it — so a reinstatement still owing opens a fresh one,
+            # or the next expiry pass would take the seat back within minutes
+            # (spec payments, Payments arriving after expiry). Before the
+            # deposit threshold, which may close it again at once.
+            registration.expires_at = setup.payment_window(tournament, datetime.now(UTC))
         _apply_deposit_threshold(session, tournament, transaction, registration, which, origin)
         session.flush()
-        emails.send_partial_payment_received(
-            mailer, tournament, registration.fencer, registration, which
-        )
+        if reinstated:
+            # one message: the reservation is back and money is still due —
+            # never the bare partial notice, which does not say it came back
+            emails.send_reservation_reinstated(
+                mailer, tournament, registration.fencer, registration, which, amount_cents
+            )
+        else:
+            emails.send_partial_payment_received(
+                mailer, tournament, registration.fencer, registration, which
+            )
         return "partial"
 
     # Nothing is assigned here. The registration reads as paid because the
@@ -378,7 +392,9 @@ def _settle(
         )
     session.flush()
     if reinstated:
-        emails.send_reservation_reinstated(mailer, tournament, registration.fencer, registration)
+        emails.send_reservation_reinstated(
+            mailer, tournament, registration.fencer, registration, which, amount_cents
+        )
     else:
         emails.send_payment_received(mailer, tournament, registration.fencer, registration)
     return "overpaid" if overpaid else "paid"
@@ -750,6 +766,8 @@ def _seat_by_payment(
         registration.fencer,
         registration,
         ", ".join(entry.discipline.name for entry in waiting),
+        which,
+        transaction.amount_cents,
     )
     return None
 
@@ -1100,6 +1118,45 @@ def credit_manual_payment(
         which,
         f"recorded payment {payment.id}",
         payment.amount_cents,
+    )
+
+
+def reinstate_by_organizer(
+    session: Session,
+    tournament: Tournament,
+    mailer: Mailer,
+    transaction: BankTransaction,
+    registration: Registration,
+    which: MatchCurrency,
+) -> MatchOutcome:
+    """The organizer's reinstatement of an expired registration on a flagged
+    payment: the same effect as reinstatement within grace, by the same
+    settle step (spec payments, Payments arriving after expiry).
+
+    It used to credit the money and announce a confirmed place whatever the
+    amount; a person choosing to reinstate is not a reason to read a 500 Kč
+    payment against an 1800 Kč total as paid. The settle test decides, a
+    shortfall opens a fresh window, and the fencer is told which it was."""
+    registration.state = RegistrationState.RESERVED
+    _credit(
+        session,
+        tournament,
+        registration,
+        transaction,
+        transaction.amount_cents,
+        CreditOrigin.REINSTATE,
+    )
+    transaction.matched_registration_id = registration.id
+    return _settle(
+        session,
+        tournament,
+        mailer,
+        transaction,
+        registration,
+        which,
+        f"VS {registration.vs}",
+        transaction.amount_cents,
+        reinstated=True,
     )
 
 

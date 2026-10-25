@@ -8,7 +8,6 @@ from app import emails
 from app.auth import current_fencer, is_deployment_owner, set_password, verify_password
 from app.db import get_session
 from app.hr_index import HRIndex, HRProfile, get_hr_index
-from app.mail import Mailer, get_mailer
 from app.models import (
     Fencer,
     FencerProfileAudit,
@@ -17,6 +16,7 @@ from app.models import (
     Tournament,
     TournamentOrganizer,
 )
+from app.outgoing import QueuedMailerDep
 from app.ratelimit import limiter
 from app.schemas import (
     AccountOut,
@@ -124,7 +124,7 @@ def change_password(
     data: PasswordChangeIn,
     session: SessionDep,
     fencer: FencerDep,
-    mailer: Annotated[Mailer, Depends(get_mailer)],
+    mailer: QueuedMailerDep,
 ):
     """Change the password from the Profile page (spec profile-page, Password
     section): the current one is proof, every other session ends, and a notice

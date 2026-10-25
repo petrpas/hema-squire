@@ -133,7 +133,7 @@ def test_happy_path_reserve_qr_match_paid(client, auth_headers, mailbox, fio):
     # confirmation email carries the SPAYD QR for exactly this payment
     (confirmation,) = mailbox.to("jan@example.com")
     (attachment,) = list(confirmation.iter_attachments())
-    assert attachment.get_filename() == "platba-qr.png"
+    assert attachment.get_filename() == "platba-celkem.png"
     assert attachment.get_content().startswith(b"\x89PNG")
     expected_spayd = spayd_string(IBAN, amount, vs, f"VS{vs} Cup", "CZK")
     assert f"AM:{amount}.00" in expected_spayd and f"X-VS:{vs}" in expected_spayd

@@ -302,6 +302,36 @@ class PasswordReset(Base):
     fencer: Mapped[Fencer] = relationship()
 
 
+class OutgoingMail(Base):
+    """A message waiting for the transport, or the record that it went (spec
+    `outgoing-mail`, design fix-email-findings D8).
+
+    Written in the transaction of the action that caused it, so a message
+    exists exactly when its cause took effect, and delivered after the commit
+    by `mail.deliver_pending`. No foreign keys: a message outlives anything it
+    is about.
+
+    `raw` is nulled once the row is sent or given up on. Verification,
+    password-reset and guest messages carry keys the database otherwise holds
+    only as hashes; a key sits here in clear only while its message waits."""
+
+    __tablename__ = "outgoing_mail"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    recipient: Mapped[str] = mapped_column(String(320))
+    subject: Mapped[str] = mapped_column(String(500))
+    raw: Mapped[bytes | None] = mapped_column(LargeBinary)
+    attempts: Mapped[int] = mapped_column(default=0)
+    last_error: Mapped[str | None] = mapped_column(String(1000))
+    # a delivery in progress; a claim older than the lease is taken over
+    claimed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    failed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+    __table_args__ = (Index("ix_outgoing_mail_pending", "sent_at", "failed_at"),)
+
+
 class FencerProfileAudit(Base):
     """Audit trail of fencer profile changes (spec: profile changes are audited)."""
 

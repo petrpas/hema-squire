@@ -11,8 +11,8 @@ from app import emails
 from app.auth import create_token, hash_password, set_password, verify_password
 from app.db import get_session
 from app.hr_index import HRIndex, get_hr_index
-from app.mail import Mailer, get_mailer
 from app.models import Fencer, PasswordReset, PendingSignup, Registration
+from app.outgoing import QueuedMailerDep
 from app.ratelimit import limiter
 from app.routers.accounts import audit_change
 from app.schemas import (
@@ -33,7 +33,7 @@ from app.schemas import (
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
 SessionDep = Annotated[Session, Depends(get_session)]
-MailerDep = Annotated[Mailer, Depends(get_mailer)]
+MailerDep = QueuedMailerDep
 
 # how long a verification link works (spec fencer-accounts, An account exists
 # only once its address is verified)

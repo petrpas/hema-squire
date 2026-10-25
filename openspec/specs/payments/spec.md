@@ -198,6 +198,10 @@ The grace period SHALL be 48 hours and SHALL NOT be an organizer parameter, as f
 
 A payment that does not qualify — outside the grace period, or into a discipline that has filled — SHALL remain flagged, with a reason distinguishing the two cases, and the organizer SHALL have two explicit actions on the flagged transaction: reinstate the registration, offered only where capacity allows and applying the same effect as automatic reinstatement; and mark the payment for refund, recording the amount against the fencer for manual settlement. Both actions SHALL be audited and SHALL leave the transaction resolved rather than flagged.
 
+**The organizer's reinstatement SHALL follow its credit with the same amount comparison as automatic reinstatement**, against the same tolerance. It SHALL NOT treat the registration as paid because a person chose to reinstate it.
+
+**A reinstatement whose credit leaves more than tolerance outstanding** — automatic or by the organizer — SHALL leave the registration reserved and owing. It SHALL open a fresh payment window of the tournament's configured length from the moment of reinstatement, since the window it had has already closed. The fencer SHALL be sent one message that says the reservation was reinstated, states the amount received and the amount still due, and carries the payment instructions with a QR code for the remainder. That message SHALL NOT state that participation is confirmed.
+
 A payment whose VS resolves to a **cancelled** registration SHALL always be routed to the refund path and SHALL never reinstate the registration, regardless of when it arrived.
 
 The fencer SHALL be notified of the outcome in both directions: that the reservation was reinstated and the payment accepted, or that the payment arrived after the reservation had expired and the organizer will be in contact. A fencer whose payment arrives late SHALL NOT be left with the expiry notice as the last word from the system.
@@ -215,8 +219,16 @@ The fencer SHALL be notified of the outcome in both directions: that the reserva
 - **THEN** the reservation is not reinstated, the transaction is flagged with a capacity reason, and no waiting substitute loses their place
 
 #### Scenario: Organizer reinstates a late payment
-- **WHEN** the organizer applies the reinstate action to a flagged post-expiry payment whose discipline has a free place
+- **WHEN** the organizer applies the reinstate action to a flagged post-expiry payment that covers the total, and whose discipline has a free place
 - **THEN** the registration becomes reserved and then paid, the action is audited, and the transaction is no longer flagged
+
+#### Scenario: Organizer reinstates a payment that falls short
+- **WHEN** the organizer reinstates a registration totalling 1800 Kč on a flagged payment of 500 Kč
+- **THEN** the registration is reserved and owes 1300 Kč under a fresh payment window, and the fencer is told it was reinstated, that 500 Kč was received and 1300 Kč is still due, with a QR code for 1300 Kč and no statement that participation is confirmed
+
+#### Scenario: Automatic reinstatement on a partial payment
+- **WHEN** a payment of 500 Kč arrives within grace on an expired registration totalling 1800 Kč with a seat free
+- **THEN** the reservation is reinstated under a fresh payment window, and the fencer receives the single reinstatement message stating 500 Kč received and 1300 Kč still due, not the plain partial-payment message
 
 #### Scenario: Organizer marks a late payment for refund
 - **WHEN** the organizer applies the mark-for-refund action to a flagged post-expiry payment
@@ -302,7 +314,9 @@ Where the sum does not match within tolerance, the transaction SHALL be presente
 - **THEN** the system does not settle those five automatically and presents all six as a candidate
 
 ### Requirement: Reminders and expiry notices
-The system SHALL send an automatic reminder email, including the payment QR, to an unpaid reservation, a notification when a reservation expires, and a notification when a registration is moved to the substitute queue for non-payment, as `registration` fixes under **Demotion is announced**. Reminder emails SHALL carry the same payment content as the original confirmation, including the EUR amount and EUR QR when the tournament has EUR payments enabled on a non-EUR local currency. Each of these events SHALL be audited.
+The system SHALL send an automatic reminder email, including the payment QR, to an unpaid reservation, a notification when a reservation expires, and a notification when a registration is moved to the substitute queue for non-payment, as `registration` fixes under **Demotion is announced**. Reminder emails SHALL carry the same payment content as the original confirmation, including the EUR amount and EUR QR when the tournament has EUR payments enabled on a non-EUR local currency, with one exception. **Once a registration holds credit, its reminder SHALL state the outstanding balance, and each QR code SHALL encode the outstanding balance of its own currency** rather than the total, so that following the reminder never overpays. Each of these events SHALL be audited.
+
+What a reminder states about when money is due SHALL follow the payment mode as the confirmation does (`registration`, Confirmation email with QR payment). It SHALL name the date the payment window closes where one is running, and the seating deadline where the seat is held without one. It SHALL NOT state an expiry or a release of the place where neither will happen.
 
 The reminder SHALL be sent once, the configured number of days before the obligation the reservation is under falls due — before the payment window closes where one is running, and before the seating deadline where the seat is held without a payment window. A reservation that owes nothing SHALL NOT be reminded.
 
@@ -322,15 +336,15 @@ A registration sitting entirely in the substitute queue owes nothing and SHALL N
 
 #### Scenario: Reminder before the seating deadline
 - **WHEN** a reservation-mode registration holds a seat with no payment window and the seating deadline is the configured number of days away
-- **THEN** a reminder is sent once, naming the amount and the seating deadline
+- **THEN** a reminder is sent once, naming the amount and the seating deadline, and stating that an unpaid seat is moved to the substitute queue that day rather than that it expires
 
 #### Scenario: Queued registration not reminded
 - **WHEN** a registration sits entirely in the substitute queue as the seating deadline approaches
 - **THEN** no reminder is sent, because nothing is owed
 
 #### Scenario: Deposit paid, balance outstanding
-- **WHEN** a deposit-mode registration has paid its deposit and the seating deadline approaches with a balance outstanding
-- **THEN** a reminder is sent naming the outstanding balance and the seating deadline
+- **WHEN** a deposit-mode registration totalling 1800 Kč has paid its 500 Kč deposit and the seating deadline approaches
+- **THEN** a reminder is sent naming the outstanding 1300 Kč and the seating deadline, and its QR code encodes 1300 Kč
 
 #### Scenario: Demotion notified
 - **WHEN** a registration is moved to the substitute queue at seating settlement for owing money

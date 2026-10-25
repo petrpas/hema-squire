@@ -188,6 +188,11 @@ def test_admission_sends_payment_email(client, auth_headers, mailbox):
 # came within one confirmation of mailing a roster from a season ago.
 
 
+# what a sender takes beyond the registration: a reinstatement states the
+# payment that caused it, in its lane
+EXTRA: dict[str, tuple[str, int]] = {"send_reservation_reinstated": ("local", 100000)}
+
+
 SENDERS_TAKING_A_REGISTRATION = [
     "send_registration_confirmation",
     "send_payment_reminder",
@@ -234,7 +239,13 @@ def test_no_sender_will_mail_a_fencer_holding_no_address(client, auth_headers, m
     session, registration = _addressless_registration(client, auth_headers, mailbox)
 
     with pytest.raises(NoRecipientError):
-        getattr(emails, name)(mailbox, registration.tournament, registration.fencer, registration)
+        getattr(emails, name)(
+            mailbox,
+            registration.tournament,
+            registration.fencer,
+            registration,
+            *EXTRA.get(name, ()),
+        )
 
     assert mailbox.sent == []
 
@@ -314,7 +325,9 @@ def test_a_contact_address_takes_the_message(client, auth_headers, mailbox, name
     session.commit()
     mailbox.sent.clear()
 
-    getattr(emails, name)(mailbox, registration.tournament, registration.fencer, registration)
+    getattr(emails, name)(
+        mailbox, registration.tournament, registration.fencer, registration, *EXTRA.get(name, ())
+    )
 
     assert [message["To"] for message in mailbox.sent] == ["klub@example.com"]
 

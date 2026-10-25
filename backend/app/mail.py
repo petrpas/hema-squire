@@ -75,6 +75,7 @@ def build_message(
     body: str,
     qr: bytes | None = None,
     qr_eur: bytes | None = None,
+    named_qrs: list[tuple[str, bytes]] | None = None,
 ) -> EmailMessage:
     if not to:
         raise NoRecipientError(f"no recipient for a message subject {subject!r}")
@@ -91,6 +92,10 @@ def build_message(
         message.add_attachment(
             qr_eur, maintype="image", subtype="png", filename="platba-qr-eur.png"
         )
+    # codes named for what they pay — a deposit beside the total, each in both
+    # currencies — so a payer picks one deliberately (spec registration)
+    for filename, png in named_qrs or []:
+        message.add_attachment(png, maintype="image", subtype="png", filename=filename)
     return message
 
 

@@ -259,6 +259,11 @@ def test_the_amendment_window_binds_through_the_link(client, auth_headers, mailb
     assert opens(client, key) == 200
 
 
+# what a sender takes beyond the registration: a reinstatement states the
+# payment that caused it, in its lane
+EXTRA: dict[str, tuple[str, int]] = {"send_reservation_reinstated": ("local", 100000)}
+
+
 SENDERS = [
     "send_registration_confirmation",
     "send_payment_reminder",
@@ -286,7 +291,13 @@ def test_every_guest_send_carries_the_link_and_no_account_send_does(
     mailbox.sent.clear()
 
     for registration in (guest, account):
-        getattr(emails, name)(mailbox, registration.tournament, registration.fencer, registration)
+        getattr(emails, name)(
+            mailbox,
+            registration.tournament,
+            registration.fencer,
+            registration,
+            *EXTRA.get(name, ()),
+        )
 
     assert [m["To"] for m in mailbox.sent] == ["jana@example.com", "b@example.com"]
     assert link_in(mailbox.sent[0]) == key

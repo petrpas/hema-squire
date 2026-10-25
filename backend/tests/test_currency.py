@@ -615,7 +615,7 @@ def test_confirmation_email_carries_both_amounts_and_two_qrs(client, auth_header
     assert "70 €" in body
     assert "eurech" in body  # the EUR note pointing at the second QR
     attachments = [part.get_filename() for part in message.iter_attachments()]
-    assert attachments == ["platba-qr.png", "platba-qr-eur.png"]
+    assert attachments == ["platba-celkem.png", "platba-celkem-eur.png"]
 
 
 def test_confirmation_email_has_one_qr_without_eur(client, auth_headers, mailbox):
@@ -628,7 +628,7 @@ def test_confirmation_email_has_one_qr_without_eur(client, auth_headers, mailbox
     assert "1750 Kč" in body
     assert "€" not in body
     attachments = [part.get_filename() for part in message.iter_attachments()]
-    assert attachments == ["platba-qr.png"]
+    assert attachments == ["platba-celkem.png"]
 
 
 def test_eur_transaction_matches_the_stored_eur_total(client, auth_headers, mailbox):

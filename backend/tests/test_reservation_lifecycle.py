@@ -485,10 +485,8 @@ def test_organizer_reinstate_resolves_transaction_and_audits(client, auth_header
 
 
 def test_organizer_reinstate_dates_the_registration_to_the_transaction(client, auth_headers, fio):
-    """Reinstatement settles inline rather than through `matching._settle`, so
-    it converts the day itself — and it must reach the same answer: the day
-    the money arrived, not the day the organizer decided (design
-    paid-at-is-value-date D5)."""
+    """Reinstatement dates the registration by the money: the day it arrived,
+    not the day the organizer decided (design paid-at-is-value-date D5)."""
     organizer = auth_headers()
     setup_tournament(client, organizer, capacity=10)
     fencer = auth_headers(email="f1@example.com", name="F1")
@@ -664,3 +662,82 @@ def test_expiry_grace_hours_zero_disables_automatic_reinstatement(client, auth_h
     poll = client.post("/api/tournaments/cup/payments/fio-poll", headers=organizer).json()
     assert poll["flagged"] == 1 and poll["matched"] == 0
     assert unmatched_transaction(client, organizer)["status_reason"] == "expired_outside_grace"
+
+
+# --- Reinstatement that falls short (spec payments, Payments arriving after expiry)
+
+
+def _body(message) -> str:
+    return message.get_body(preferencelist=("plain",)).get_content()
+
+
+def test_organizer_reinstate_on_a_short_payment_leaves_it_owing(client, auth_headers, fio, mailbox):
+    organizer = auth_headers()
+    setup_tournament(client, organizer, capacity=10)
+    fencer = auth_headers(email="f1@example.com", name="F1")
+    initial = register(client, fencer).json()
+    expire(initial["vs"], hours_ago=72)
+    fio.transactions = [transfer(initial["vs"], 400)]
+    client.post("/api/tournaments/cup/payments/fio-poll", headers=organizer)
+    flagged = unmatched_transaction(client, organizer)
+    mailbox.sent.clear()
+
+    before = datetime.now(UTC)
+    response = client.post(
+        f"/api/tournaments/cup/payments/transactions/{flagged['id']}/reinstate",
+        headers=organizer,
+    )
+    assert response.status_code == 200, response.text
+
+    registration = registration_by_vs(initial["vs"])
+    assert registration.state == RegistrationState.RESERVED
+    assert not registration.settled
+    assert registration.outstanding_cents == 60000
+    assert registration.expires_at is not None
+    assert registration.expires_at.replace(tzinfo=UTC) > before  # a fresh window
+
+    (message,) = mailbox.to("f1@example.com")
+    text = _body(message)
+    assert "400 Kč" in text
+    assert "Zbývá doplatit: 600 Kč" in text
+    assert "potvrzena" not in text
+    assert [part.get_filename() for part in message.iter_attachments()] == ["platba-doplatek.png"]
+
+
+def test_grace_reinstatement_on_a_short_payment_sends_one_reinstatement_mail(
+    client, auth_headers, fio, mailbox
+):
+    organizer = auth_headers()
+    setup_tournament(client, organizer, capacity=10)
+    fencer = auth_headers(email="f1@example.com", name="F1")
+    initial = register(client, fencer).json()
+    expire(initial["vs"], hours_ago=12)  # within grace
+    mailbox.sent.clear()
+
+    fio.transactions = [transfer(initial["vs"], 400)]
+    client.post("/api/tournaments/cup/payments/fio-poll", headers=organizer)
+
+    registration = registration_by_vs(initial["vs"])
+    assert registration.state == RegistrationState.RESERVED
+    assert registration.expires_at is not None
+    assert registration.expires_at.replace(tzinfo=UTC) > datetime.now(UTC)
+    (message,) = mailbox.to("f1@example.com")
+    assert "Rezervace obnovena, zbývá doplatit" in message["Subject"]
+    assert "Zbývá doplatit: 600 Kč" in _body(message)
+
+
+def test_a_full_reinstatement_states_the_amount_received(client, auth_headers, fio, mailbox):
+    organizer = auth_headers()
+    setup_tournament(client, organizer, capacity=10)
+    fencer = auth_headers(email="f1@example.com", name="F1")
+    initial = register(client, fencer).json()
+    expire(initial["vs"], hours_ago=12)
+    mailbox.sent.clear()
+
+    fio.transactions = [transfer(initial["vs"], 1000)]
+    client.post("/api/tournaments/cup/payments/fio-poll", headers=organizer)
+
+    (message,) = mailbox.to("f1@example.com")
+    assert "Rezervace obnovena, platba přijata" in message["Subject"]
+    assert "platba 1000 Kč" in _body(message)
+    assert "potvrzena" in _body(message)

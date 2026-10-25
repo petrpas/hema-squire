@@ -5,7 +5,7 @@
   "email": {
     "amendment": {
       "subject": "Registration amendment for {tournament} — payment instructions",
-      "body": "Hi {name},\n\nwe've updated your registration for {tournament}:\n\n{summary}\n\nTotal due: {total}\nAccount: {account}\nVariable symbol: {vs}\nReservation valid until: {expires}\n\nYou can pay by scanning the attached QR code in your banking app.{eur_note}\n\nIf payment does not arrive before the reservation expires, the place is released automatically.\n\n{tournament} team",
+      "body": "Hi {name},\n\nwe've updated your registration for {tournament}:\n\n{summary}\n\n{amounts}\nAccount: {account}\nVariable symbol: {vs}\n\nYou can pay by scanning the attached QR code in your banking app.{eur_note}\n\n{consequence}\n\n{tournament} team",
       "queuedSubject": "Registration amendment — {tournament}",
       "queuedBody": "Hi {name},\n\nwe've updated your registration for {tournament}, which is waiting in the substitute queue:\n\n{summary}\n\nYou owe nothing yet. Once a place frees up and the organizer admits you, we'll send payment instructions.\n\n{tournament} team"
     },
@@ -84,7 +84,16 @@
     },
     "confirmation": {
       "condition": "Attending only with a place in all of: {disciplines}.",
-      "conditionWaits": "Still full: {disciplines} — so you wait in the queue for every discipline."
+      "conditionWaits": "Still full: {disciplines} — so you wait in the queue for every discipline.",
+      "subject": "Registration for {tournament} — payment instructions",
+      "body": "Hi {name},\n\nwe've received your registration for {tournament}:\n\n{summary}\n\n{amounts}\nAccount: {account}\nVariable symbol: {vs}\n\nYou can pay by scanning the attached QR code in your banking app. For a payment from abroad, please put VS{vs} in the message for the recipient.{eur_note}\n\n{consequence}\n\n{tournament} team",
+      "substitute": "substitute",
+      "teamWaitlisted": "team on the waitlist",
+      "rentals": "Weapon rental",
+      "afterparty": "Afterparty",
+      "aftersparring": "After-sparring",
+      "option": "choice",
+      "eur_note": "\n\nYou can also pay in euros — use the attached QR code marked EUR."
     },
     "seatedByPayment": {
       "subject": "You have a place — {tournament}",
@@ -94,7 +103,9 @@
       "block": "If you want to take a place as soon as one frees, you can pay {amount}.\n\nAccount: {account}\nVariable symbol: {vs}\n\nThe payment takes your places only if every discipline you are waiting for has a free place when it arrives. Otherwise we hold it until they free, or until the organizer decides otherwise. The attached QR code is made out for exactly this amount."
     },
     "queued": {
-      "bodyClaim": "Hi {name},\n\nyour registration at {tournament} is waiting in the substitute queue:\n\n{summary}\n\n{claim}\n\n{tournament} team"
+      "bodyClaim": "Hi {name},\n\nyour registration at {tournament} is waiting in the substitute queue:\n\n{summary}\n\n{claim}\n\n{tournament} team",
+      "subject": "Placed in the substitute queue — {tournament}",
+      "body": "Hi {name},\n\nyour registration for {tournament} is waiting in the substitute queue:\n\n{summary}\n\nYou owe nothing yet. Once a place frees up and the organizer admits you, we'll send payment instructions.\n\n{tournament} team"
     },
     "cancelledByOrganizer": {
       "subject": "Registration cancelled — {tournament}",
@@ -120,6 +131,57 @@
       "subject": "The link to your registration — {tournament}",
       "body": "Hi {name},\n\nthe organizer of {tournament} is sending you the link to your registration again.",
       "signature": "{tournament} team"
+    },
+    "date": {
+      "format": "{d} {monthName} {y}",
+      "month": {
+        "1": "January",
+        "2": "February",
+        "3": "March",
+        "4": "April",
+        "5": "May",
+        "6": "June",
+        "7": "July",
+        "8": "August",
+        "9": "September",
+        "10": "October",
+        "11": "November",
+        "12": "December"
+      }
+    },
+    "tournamentLink": "Tournament page: {link}",
+    "due": {
+      "total": "Total due: {total}\nDue by: {due}",
+      "balance": "Still to pay: {outstanding}\nDue by: {due}",
+      "deposit": {
+        "lines": "Deposit: {deposit}, due by {window}\nTotal: {total}, balance due by {seating}",
+        "consequence": "The deposit holds your place. If it does not arrive by {window}, the place is released. Pay the rest by {seating}; a place still unpaid then is moved to the substitute queue. The attached QR codes are for the deposit and for the full amount — either will do."
+      },
+      "releases": "If payment does not arrive by {due}, the place is released automatically.",
+      "queues": "If payment does not arrive by {due}, the place is moved to the substitute queue on that day.",
+      "qrDeposit": "payment-deposit",
+      "qrTotal": "payment-total",
+      "qrBalance": "payment-balance"
+    },
+    "common": {
+      "greeting": "Hi {name},",
+      "signature": "{tournament} team"
+    },
+    "reminder": {
+      "subject": "Payment reminder — {tournament}",
+      "body": "Hi {name},\n\njust a reminder that your registration for {tournament} is still waiting for payment:\n\n{amounts}\nAccount: {account}\nVariable symbol: {vs}\n\nYou can pay by scanning the attached QR code.{eur_note}\n\n{consequence}\n\n{tournament} team"
+    },
+    "expired": {
+      "subject": "Reservation expired — {tournament}",
+      "body": "Hi {name},\n\nyour reservation for {tournament} (VS {vs}) has expired without a payment arriving, and the place has been released.\n\nIf you would still like to take part, you can register again while places are free.\n\n{tournament} team"
+    },
+    "paid": {
+      "subject": "Payment received — {tournament}",
+      "body": "Hi {name},\n\nwe've received your payment of {total} (VS {vs}), and your place at {tournament} is confirmed. See you at the tournament.\n\n{tournament} team"
+    },
+    "reinstatedPartial": {
+      "subject": "Reservation reinstated, balance still due — {tournament}",
+      "body": "Hi {name},\n\nyour payment of {received} (VS {vs}) arrived after your reservation had expired, but the place was still free — we've reinstated your reservation for {tournament} and accepted the payment.\n\n{amounts}\nAccount: {account}\nVariable symbol: {vs}\n\nYou can pay by scanning the attached QR code.\n\n{consequence}\n\n{tournament} team"
     }
   },
   "export": {

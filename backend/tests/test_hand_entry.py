@@ -269,7 +269,9 @@ def test_no_letter_of_any_kind_reaches_a_hand_entry():
             mailer, tournament, fencer, registration, despite_dormancy=True
         ),
         lambda: emails.send_promoted(mailer, tournament, fencer, registration, "Longsword"),
-        lambda: emails.send_reservation_reinstated(mailer, tournament, fencer, registration),
+        lambda: emails.send_reservation_reinstated(
+            mailer, tournament, fencer, registration, "local", 100000
+        ),
         lambda: emails.send_payment_after_expiry(mailer, tournament, fencer, registration),
         lambda: emails.send_demoted(mailer, tournament, fencer, registration, [], []),
         lambda: emails.send_payment_while_queued(mailer, tournament, fencer, registration),

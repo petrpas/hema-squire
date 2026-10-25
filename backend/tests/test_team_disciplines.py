@@ -1102,3 +1102,63 @@ def test_own_state_judges_a_team_only_registration_by_its_team(client, auth_head
 
     assert own_state(first) == "reserved"
     assert own_state(second) == "substitute"
+
+
+@pytest.mark.parametrize("source_row_id", [None, "import-row-7"], ids=["hand_entry", "imported"])
+def test_composition_reminder_skips_a_registration_squire_does_not_write_to(
+    client, auth_headers, source_row_id
+):
+    """A hand entry and an imported registration are sent nothing, and the team
+    is not stamped as reminded (spec team-disciplines)."""
+    organizer = auth_headers()
+    soon = (today_local() + timedelta(days=3)).isoformat()
+    setup_team_tournament(client, organizer, capacity=5, deadline=soon)
+    fencer = auth_headers(email="short@example.com", name="Short")
+    team_id = register_team(client, fencer, name="Short Team").json()["teams"][0]["id"]
+    client.put(
+        f"/api/tournaments/cup/my-registration/teams/{team_id}/roster",
+        json={"members": [{"name": "A"}]},
+        headers=fencer,
+    )
+    session = db_session()
+    team = session.get(Team, team_id)
+    assert team is not None
+    team.registration.clocks_dormant = True
+    team.registration.source_row_id = source_row_id
+    session.commit()
+
+    mailer = mailbox_fixture()
+    try:
+        from app import scheduler
+
+        tournament = session.scalar(select(Tournament).where(Tournament.slug == "cup"))
+        assert scheduler.process_composition_reminders(session, tournament, mailer) == 0
+        assert mailer.sent == []
+        session.refresh(team)
+        assert team.composition_reminded_at is None
+    finally:
+        app.dependency_overrides.pop(get_mailer, None)
+
+
+def test_composition_reminder_links_the_tournament_page(client, auth_headers):
+    organizer = auth_headers()
+    soon = (today_local() + timedelta(days=3)).isoformat()
+    setup_team_tournament(client, organizer, capacity=5, deadline=soon)
+    fencer = auth_headers(email="short@example.com", name="Short")
+    team_id = register_team(client, fencer, name="Short Team").json()["teams"][0]["id"]
+    client.put(
+        f"/api/tournaments/cup/my-registration/teams/{team_id}/roster",
+        json={"members": [{"name": "A"}]},
+        headers=fencer,
+    )
+    mailer = mailbox_fixture()
+    try:
+        from app import scheduler
+
+        session = db_session()
+        tournament = session.scalar(select(Tournament).where(Tournament.slug == "cup"))
+        scheduler.process_composition_reminders(session, tournament, mailer)
+        (message,) = mailer.sent
+        assert "/t/cup" in message.get_body(("plain",)).get_content()
+    finally:
+        app.dependency_overrides.pop(get_mailer, None)

@@ -33,7 +33,7 @@ from app.availability import (
     team_waitlist_flags,
 )
 from app.fieldtypes import RowId
-from app.mail import Mailer, get_mailer
+from app.mail import Mailer
 from app.models import (
     Discipline,
     DisciplineKind,
@@ -52,6 +52,7 @@ from app.models import (
     TeamMember,
     Tournament,
 )
+from app.outgoing import QueuedMailerDep
 from app.routers.tournaments import (
     FencerDep,
     OptionalFencerDep,
@@ -78,7 +79,7 @@ from app.taxonomy import WEAPONS
 
 router = APIRouter(prefix="/api/tournaments/{slug}", tags=["registrations"])
 
-MailerDep = Annotated[Mailer, Depends(get_mailer)]
+MailerDep = QueuedMailerDep
 
 # marks where the legacy sequential range began; no longer allocated from,
 # kept only so the gap between it and the structured range (design proposal

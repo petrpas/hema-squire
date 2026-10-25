@@ -10,6 +10,8 @@ All user-facing text — UI, emails, generated documents, and validation message
 
 Validation messages are the one surface where silent fallback is not acceptable: a user is being told to fix something, in a language they may not read. Every validation code SHALL therefore have a message in every bundled locale, verified by a parity test that fails on a missing key rather than letting the default locale stand in. Validation messages SHALL interpolate their limits as parameters rather than writing them into the text, so a changed bound never requires a locale edit.
 
+**Email text is held to the same parity.** A tournament's communication language is a promise about every message it sends. A key missing from one locale is a message, or a line inside one, that arrives in a language the fencer may not read, and nothing in the running system reports it. Every `email.*` key SHALL therefore exist in every bundled backend locale, verified by the same kind of parity test. The Czech fallback remains for a locale added later without its email text, and SHALL NOT stand in for a bundled one.
+
 #### Scenario: Adding English later
 - **WHEN** an English locale is added
 - **THEN** the application offers English fully from locale resources, with Czech fallback for untranslated keys
@@ -21,6 +23,14 @@ Validation messages are the one surface where silent fallback is not acceptable:
 #### Scenario: A limit stated in a message
 - **WHEN** a validation message states a maximum length or a permitted range
 - **THEN** the figure arrives as an interpolated parameter and no locale file contains it as literal text
+
+#### Scenario: An email key missing from a bundled locale
+- **WHEN** an `email.*` key exists in the Czech backend locale but not in the English one
+- **THEN** the locale parity test fails, naming the missing key and locale
+
+#### Scenario: An English tournament's confirmation
+- **WHEN** a fencer registers on a tournament whose communication language is English
+- **THEN** the confirmation's subject, body, summary markers, greeting and signature are all English
 
 ### Requirement: Communication language vs UI language
 Emails to fencers SHALL use the tournament's communication language. The console and fencer-facing UI language SHALL follow the user's preference.

@@ -9,7 +9,6 @@ from sqlalchemy.orm import Session
 from app import (
     bank,
     dedup,
-    emails,
     importer,
     issuing,
     ledger,
@@ -24,7 +23,6 @@ from app import (
 )
 from app.auth import require_console_access, require_published
 from app.fieldtypes import RowId
-from app.mail import Mailer, get_mailer
 from app.models import (
     BankTransaction,
     CreditOrigin,
@@ -40,6 +38,7 @@ from app.models import (
     RegistrationState,
     Tournament,
 )
+from app.outgoing import QueuedMailerDep
 
 # one rounding rule for money leaving the API, not a second copy of it here
 from app.routers.registrations import _cents_to_amount, next_vs
@@ -64,7 +63,7 @@ from app.schemas import (
 router = APIRouter(prefix="/api/tournaments/{slug}/payments", tags=["payments"])
 
 FioClientDep = Annotated[bank.FioClient, Depends(bank.get_fio_client)]
-MailerDep = Annotated[Mailer, Depends(get_mailer)]
+MailerDep = QueuedMailerDep
 # None where no model is configured; an unrecognised statement then has nothing
 # to be read with, and the endpoint says so rather than ingesting nothing
 StatementParserDep = Annotated[bank.StatementParser | None, Depends(bank.get_statement_parser)]
@@ -480,6 +479,9 @@ def _transaction_out(session, tournament, transaction: BankTransaction) -> Trans
             registration is not None
             and registration.state == RegistrationState.EXPIRED
             and matching.seats_free(session, registration)
+            # reinstating settles the payment against the total, which money in
+            # a currency the tournament does not price cannot be (reinstate)
+            and matching.match_currency(transaction, tournament) is not None
         )
         # what settled the registration, where a person did. The organizer is
         # deciding whether this is further money or the same money twice, and
@@ -653,8 +655,9 @@ def reinstate_transaction(
 ):
     """Applies the same effect as automatic grace reinstatement, but as an
     explicit organizer action outside the grace window (or when it was
-    refused for capacity): the accepted amount is credited unconditionally,
-    since the organizer has already reviewed and decided to accept it."""
+    refused for capacity). The amount is credited and then judged like any
+    other: a payment short of the total leaves the registration owing under a
+    fresh window, and the fencer is told so rather than told it is paid."""
     require_console_access(session, tournament, fencer)
     require_published(tournament)
     bank.require_payments_enabled(tournament)
@@ -665,25 +668,15 @@ def reinstate_transaction(
     if not matching.seats_free(session, registration):
         raise HTTPException(status_code=409, detail="capacity_unavailable")
 
+    which = matching.match_currency(transaction, tournament)
+    if which is None:
+        # money in a currency the tournament does not price in has nothing to
+        # be compared against, so there is nothing a reinstatement would accept
+        raise HTTPException(status_code=409, detail="currency_not_accepted")
+
     # the reservation comes back to life; whether it then reads as paid is the
-    # credit below and the derivation over it, not a state assigned here
-    registration.state = RegistrationState.RESERVED
-    currency = matching.transaction_currency(transaction, tournament)
-    if matching.match_currency(transaction, tournament) is not None and currency is not None:
-        ledger.credit(
-            session,
-            tournament,
-            registration,
-            amount_cents=transaction.amount_cents,
-            currency=currency,
-            # the transaction's own day, like any other credit; the day the
-            # registration became paid is derived from it
-            value_date=transaction.date,
-            source_kind=CreditSource.BANK_TRANSACTION,
-            source_id=transaction.id,
-            origin=CreditOrigin.REINSTATE,
-        )
-    transaction.matched_registration_id = registration.id
+    # settle step over the credit, the same one reinstatement within grace takes
+    matching.reinstate_by_organizer(session, tournament, mailer, transaction, registration, which)
     transaction.status = "matched"
     transaction.status_reason = "reinstated_by_organizer"
     session.add(
@@ -696,7 +689,6 @@ def reinstate_transaction(
         )
     )
     session.commit()
-    emails.send_reservation_reinstated(mailer, tournament, registration.fencer, registration)
     return transaction
 
 

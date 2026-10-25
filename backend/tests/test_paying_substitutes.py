@@ -329,3 +329,20 @@ def test_waitlisted_teams_are_not_part_of_the_claim(client, auth_headers, mailbo
     waiting = registration(vs)
     assert waiting.teams[0].waitlisted
     assert waiting.claim_total == 1000
+
+
+def test_the_seated_by_payment_mail_states_the_amount_paid(client, auth_headers, mailbox):
+    """Within tolerance the payment seats the registration while differing
+    from its total; the letter states what arrived."""
+    organizer = auth_headers()
+    cup(client, organizer, {"LS": 1})
+    holder, _ = register(client, auth_headers, "Holder")
+    _, vs = register(client, auth_headers, "Waiting")
+    client.post("/api/tournaments/cup/my-registration/cancel", headers=holder)
+    mailbox.sent.clear()
+
+    pay(client, organizer, vs, amount="980,00")
+
+    (message,) = mailbox.sent
+    text = message.get_body(preferencelist=("plain",)).get_content()
+    assert "Přijali jsme 980 Kč" in text
