@@ -374,7 +374,8 @@ def test_taxonomy_codes(client):
     assert taxonomy["LS"] == "Longsword Open"
     assert taxonomy["SAW"] == "Sabre Women"
     assert taxonomy["Plastic LSM"] == "Longsword Men (Plastic)"
-    assert len(taxonomy) == 30
+    assert taxonomy["SMW"] == "Smallsword Women"
+    assert len(taxonomy) == 66
 
 
 def test_added_organizer_gains_access(client, auth_headers):
