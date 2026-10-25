@@ -7,6 +7,7 @@ import FencerLayout from "./FencerLayout";
 import NotFound from "./NotFound";
 import ProfilePage from "./ProfilePage";
 import RequireAuth from "./RequireAuth";
+import ResetPassword from "./ResetPassword";
 import TournamentDetail from "./TournamentDetail";
 import TournamentPicker from "./TournamentPicker";
 import VerifyScreen from "./VerifyScreen";
@@ -32,6 +33,8 @@ export default function App() {
         <Route path="t/:slug/manage" element={<TournamentDetail />} />
         {/* finishing a signup; public, since the account does not exist yet */}
         <Route path="verify" element={<VerifyScreen />} />
+        {/* following a reset link; public, since the visitor cannot sign in */}
+        <Route path="reset" element={<ResetPassword />} />
       </Route>
       {/* Everything else keeps the gate: Login renders in place at the
           requested URL, so the destination survives signing in. */}

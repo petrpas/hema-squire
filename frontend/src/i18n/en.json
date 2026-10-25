@@ -957,7 +957,6 @@
     },
     "hr": {
       "title": "HEMA Ratings",
-      "viewProfile": "View profile on hemaratings.com",
       "unboundHint": "This account isn't linked to a HEMA Ratings profile yet.",
       "nationality": "Nationality",
       "anyNationality": "Any nationality",
@@ -966,6 +965,17 @@
       "confirmBind": "Confirm and link this profile",
       "bindFailed": "Binding failed.",
       "stepBack": "Back to profile"
+    },
+    "password": {
+      "title": "Change the password",
+      "open": "Change the password",
+      "current": "Current password",
+      "new": "New password",
+      "submit": "Save the new password",
+      "submitting": "Changing…",
+      "wrong": "The current password is not right.",
+      "changed": "Password changed. Other sessions were signed out.",
+      "failed": "The password could not be changed."
     }
   },
   "home": {
@@ -1542,5 +1552,23 @@
   },
   "verify": {
     "invalid": "This link is no longer valid. Sign in, or create the account again."
+  },
+  "forgot": {
+    "entry": "Forgot password",
+    "subtitle": "Reset your password",
+    "submit": "Send the link",
+    "submitting": "Sending…",
+    "sent": "We sent a link to {{email}}. It works for one hour; until then your current password still works.",
+    "noAccount": "No account uses this address.",
+    "failed": "The link could not be sent. Please try again."
+  },
+  "reset": {
+    "subtitle": "New password",
+    "newPassword": "New password",
+    "submit": "Save the password",
+    "submitting": "Saving…",
+    "invalid": "This link is no longer valid.",
+    "requestNew": "Ask for a new link",
+    "failed": "The password could not be saved. Please try again."
   }
 }

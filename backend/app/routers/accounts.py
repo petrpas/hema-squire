@@ -1,12 +1,14 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
-from app.auth import current_fencer, is_deployment_owner
+from app import emails
+from app.auth import current_fencer, is_deployment_owner, set_password, verify_password
 from app.db import get_session
 from app.hr_index import HRIndex, HRProfile, get_hr_index
+from app.mail import Mailer, get_mailer
 from app.models import (
     Fencer,
     FencerProfileAudit,
@@ -15,7 +17,16 @@ from app.models import (
     Tournament,
     TournamentOrganizer,
 )
-from app.schemas import AccountOut, AccountUpdate, HRBindIn, PleaIn, PleaOut
+from app.ratelimit import limiter
+from app.schemas import (
+    AccountOut,
+    AccountUpdate,
+    HRBindIn,
+    PasswordChangeIn,
+    PleaIn,
+    PleaOut,
+    TokenOut,
+)
 
 router = APIRouter(tags=["accounts"])
 
@@ -104,6 +115,33 @@ def update_account(data: AccountUpdate, session: SessionDep, fencer: FencerDep):
     session.commit()
     session.refresh(fencer)
     return account_out(session, fencer)
+
+
+@router.post("/api/account/password", response_model=TokenOut)
+@limiter.limit("5/minute")
+def change_password(
+    request: Request,
+    data: PasswordChangeIn,
+    session: SessionDep,
+    fencer: FencerDep,
+    mailer: Annotated[Mailer, Depends(get_mailer)],
+):
+    """Change the password from the Profile page (spec profile-page, Password
+    section): the current one is proof, every other session ends, and a notice
+    goes to the account's address — anyone at a browser already signed in could
+    otherwise change it unseen. Rate-limited as sign-in is, since a session
+    alone would let it be used to guess the current password.
+
+    A wrong current password is 403, not 401: the session is fine, and a 401
+    would send the browser to sign in again."""
+    if fencer.password_hash is None or not verify_password(
+        data.current_password, fencer.password_hash
+    ):
+        raise HTTPException(status_code=403, detail="wrong_password")
+    token = set_password(session, fencer, data.new_password)
+    session.commit()
+    emails.send_password_changed(mailer, fencer)
+    return TokenOut(token=token)
 
 
 def bind_profile(session: Session, fencer: Fencer, profile: HRProfile) -> None:

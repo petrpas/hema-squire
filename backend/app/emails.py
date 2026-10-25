@@ -201,6 +201,39 @@ def send_signup_verification(mailer: Mailer, pending: PendingSignup, key: str) -
     )
 
 
+def send_password_reset(mailer: Mailer, fencer: Fencer, key: str) -> None:
+    """The link that sets a new password (spec `password-reset`). To the
+    account's own address, never a registration's `recipient()`: it is the
+    account being recovered, not a registration being written about. In the
+    account's language, as no tournament's communication language applies."""
+    lang = fencer.language
+    link = f"{settings.public_base_url}/reset#{key}"
+    mailer.send(
+        build_message(
+            fencer.email,
+            settings.email_sender,
+            t("email.passwordReset.subject", lang),
+            t("email.passwordReset.body", lang, name=fencer.display_name, link=link),
+        )
+    )
+
+
+def send_password_changed(mailer: Mailer, fencer: Fencer) -> None:
+    """The notice after a password change on the Profile page (spec
+    `profile-page`, Password change). Anyone at a browser already signed in
+    can make that change; the address is how the owner learns of it. No link:
+    the way back is Forgot password on the sign-in screen, which it names."""
+    lang = fencer.language
+    mailer.send(
+        build_message(
+            fencer.email,
+            settings.email_sender,
+            t("email.passwordChanged.subject", lang),
+            t("email.passwordChanged.body", lang, name=fencer.display_name),
+        )
+    )
+
+
 def _payment_mail_suppressed(
     tournament: Tournament,
     registration: Registration | None = None,

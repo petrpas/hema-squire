@@ -21,6 +21,8 @@ export interface FieldConstraint {
 
 export const FIELD_CONSTRAINTS: Record<string, FieldConstraint> = {
   "SignupIn.password": { "minLength": 8 },
+  "PasswordResetConfirmIn.password": { "minLength": 8 },
+  "PasswordChangeIn.new_password": { "minLength": 8 },
   "SignupIn.display_name": { "minLength": 1, "maxLength": 200 },
   "SignupIn.club": { "maxLength": 200 },
   "AccountUpdate.display_name": { "minLength": 1, "maxLength": 200 },

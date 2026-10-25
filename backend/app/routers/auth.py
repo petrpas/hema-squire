@@ -8,16 +8,20 @@ from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
 from app import emails
-from app.auth import create_token, hash_password, verify_password
+from app.auth import create_token, hash_password, set_password, verify_password
 from app.db import get_session
 from app.hr_index import HRIndex, get_hr_index
 from app.mail import Mailer, get_mailer
-from app.models import Fencer, PendingSignup, Registration
+from app.models import Fencer, PasswordReset, PendingSignup, Registration
 from app.ratelimit import limiter
 from app.routers.accounts import audit_change
 from app.schemas import (
     GuestCheckIn,
     LoginIn,
+    PasswordResetConfirmIn,
+    PasswordResetIn,
+    PasswordResetKeyIn,
+    PasswordResetOut,
     ResendVerificationIn,
     SignupIn,
     SignupPendingOut,
@@ -34,6 +38,8 @@ MailerDep = Annotated[Mailer, Depends(get_mailer)]
 # how long a verification link works (spec fencer-accounts, An account exists
 # only once its address is verified)
 VERIFICATION_TTL = timedelta(hours=48)
+# how long a password-reset link works (spec password-reset)
+PASSWORD_RESET_TTL = timedelta(hours=1)
 
 
 def _now() -> datetime:
@@ -219,3 +225,72 @@ def login(request: Request, data: LoginIn, session: SessionDep):
     if pending is not None and verify_password(data.password, pending.password_hash):
         raise HTTPException(status_code=403, detail="email_not_verified")
     raise HTTPException(status_code=401, detail="invalid_credentials")
+
+
+def _live_reset(session: Session, key: str) -> PasswordReset:
+    """The reset a mailed key names, while it still works. A key never issued,
+    one replaced by a newer request, one used and one expired are refused alike:
+    to the screen they are all a link that no longer works (spec
+    password-reset, The reset link sets a new password once)."""
+    reset = session.scalar(select(PasswordReset).where(PasswordReset.key_hash == _key_hash(key)))
+    if reset is None or _aware(reset.expires_at) <= _now():
+        raise HTTPException(status_code=410, detail="reset_invalid")
+    return reset
+
+
+@router.post("/password-reset", response_model=PasswordResetOut, status_code=202)
+@limiter.limit("3/minute")
+def request_password_reset(
+    request: Request, data: PasswordResetIn, session: SessionDep, mailer: MailerDep
+):
+    """Mail a reset link to an account's address. Nothing about the account
+    changes until the link is followed.
+
+    An address with no account is told so rather than answered as if a link
+    had gone out (owner decision 2026-10-25): signup's refusal already reveals
+    which addresses have accounts, so a uniform answer would hide nothing and
+    leave a person waiting for a mail that will not come. That includes a
+    record without credentials and a signup still pending — neither is an
+    account, and verified signup is what makes either one."""
+    fencer = account_holding(session, data.email)
+    if fencer is None:
+        raise HTTPException(status_code=404, detail="no_account")
+    # one row per account, the latest request winning: every earlier link dies
+    reset = session.scalar(select(PasswordReset).where(PasswordReset.fencer_id == fencer.id))
+    if reset is None:
+        reset = PasswordReset(fencer_id=fencer.id)
+        session.add(reset)
+    key = secrets.token_urlsafe(32)
+    reset.key_hash = _key_hash(key)
+    reset.created_at = _now()
+    reset.expires_at = reset.created_at + PASSWORD_RESET_TTL
+    session.commit()
+    emails.send_password_reset(mailer, fencer, key)
+    return PasswordResetOut(email=data.email)
+
+
+@router.post("/password-reset/inspect", response_model=PasswordResetOut)
+@limiter.limit("10/minute")
+def inspect_password_reset(request: Request, data: PasswordResetKeyIn, session: SessionDep):
+    """The address a live link resets, consuming nothing (design password-reset
+    D6). The reset screen states a dead link before anyone types a password,
+    and fills the identifier a password manager files the new password under."""
+    reset = _live_reset(session, data.key)
+    email = reset.fencer.email
+    if email is None:
+        # a row is only ever made for an account, and an account holds an address
+        raise HTTPException(status_code=410, detail="reset_invalid")
+    return PasswordResetOut(email=email)
+
+
+@router.post("/password-reset/confirm", response_model=TokenOut)
+@limiter.limit("10/minute")
+def confirm_password_reset(request: Request, data: PasswordResetConfirmIn, session: SessionDep):
+    """Set the new password, end every other session and sign this browser in.
+    A password too short is refused by validation before the key is looked at,
+    so the link stays usable."""
+    reset = _live_reset(session, data.key)
+    token = set_password(session, reset.fencer, data.password)
+    session.delete(reset)
+    session.commit()
+    return TokenOut(token=token)

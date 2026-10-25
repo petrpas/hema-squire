@@ -129,6 +129,30 @@ class VerifiedOut(BaseModel):
     return_to: str | None
 
 
+class PasswordResetIn(BaseModel):
+    email: EmailStr
+
+
+class PasswordResetOut(BaseModel):
+    """The account a reset link was mailed to, or that a live link names."""
+
+    email: str
+
+
+class PasswordResetKeyIn(BaseModel):
+    key: str = Field(max_length=200)
+
+
+class PasswordResetConfirmIn(BaseModel):
+    key: str = Field(max_length=200)
+    password: str = Field(min_length=constraints.PASSWORD_MIN_LENGTH)
+
+
+class PasswordChangeIn(BaseModel):
+    current_password: str
+    new_password: str = Field(min_length=constraints.PASSWORD_MIN_LENGTH)
+
+
 class ResendVerificationIn(BaseModel):
     email: EmailStr
     password: str

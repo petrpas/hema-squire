@@ -2532,13 +2532,6 @@ tr.row-deleted td.col-actions {
   cursor: default;
 }
 
-.hr-profile-link {
-  display: inline-block;
-  text-decoration: underline;
-  width: fit-content;
-  color: var(--ink);
-}
-
 /* ===== fencer home + tournament detail ===== */
 
 /* ===== fencer home: the card grid =====

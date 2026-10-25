@@ -1457,6 +1457,32 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ email, password }),
     }),
+  /** Mails a reset link to an account's address; refused with `no_account`
+   *  where the address has none (spec `password-reset`). */
+  requestPasswordReset: (email: string) =>
+    request<{ email: string }>("/api/auth/password-reset", {
+      method: "POST",
+      body: JSON.stringify({ email }),
+    }),
+  /** The address a live reset link resets, consuming nothing; `410` for a
+   *  link that no longer works. */
+  inspectPasswordReset: (key: string) =>
+    request<{ email: string }>("/api/auth/password-reset/inspect", {
+      method: "POST",
+      body: JSON.stringify({ key }),
+    }),
+  confirmPasswordReset: (key: string, password: string) =>
+    request<{ token: string }>("/api/auth/password-reset/confirm", {
+      method: "POST",
+      body: JSON.stringify({ key, password }),
+    }),
+  /** Ends every other session; the token returned replaces this browser's.
+   *  A wrong current password is `403 wrong_password`. */
+  changePassword: (currentPassword: string, newPassword: string) =>
+    request<{ token: string }>("/api/account/password", {
+      method: "POST",
+      body: JSON.stringify({ current_password: currentPassword, new_password: newPassword }),
+    }),
   /** Whether an address may register without an account: refused with
    *  `email_has_account` where it belongs to one. */
   guestCheck: (email: string) =>

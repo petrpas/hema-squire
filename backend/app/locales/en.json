@@ -108,6 +108,14 @@
       "subject": "Finish creating your HEMA Squire account",
       "body": "Hi {name},\n\nopen this link to create your account:\n{link}\n\nThe link works once and for 48 hours. If you did not sign up, ignore this e-mail.\n\nHEMA Squire"
     },
+    "passwordReset": {
+      "subject": "Reset your HEMA Squire password",
+      "body": "Hi {name},\n\nopen this link to set a new password:\n{link}\n\nThe link works once and for one hour. Until you use it, your current password keeps working. If you did not ask for this, ignore this e-mail.\n\nHEMA Squire"
+    },
+    "passwordChanged": {
+      "subject": "Your HEMA Squire password was changed",
+      "body": "Hi {name},\n\nthe password of your HEMA Squire account was just changed, and every other signed-in device was signed out.\n\nIf you did not do this, set a new password through \"Forgot password\" on the sign-in screen.\n\nHEMA Squire"
+    },
     "manageLinkResent": {
       "subject": "The link to your registration — {tournament}",
       "body": "Hi {name},\n\nthe organizer of {tournament} is sending you the link to your registration again.",

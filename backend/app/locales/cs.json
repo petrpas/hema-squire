@@ -135,6 +135,14 @@
       "subject": "Dokonči založení účtu v HEMA Squire",
       "body": "Ahoj {name},\n\núčet založíš otevřením tohoto odkazu:\n{link}\n\nOdkaz platí 48 hodin a jen jednou. Pokud jsi účet nezakládal(a), tento e-mail ignoruj.\n\nHEMA Squire"
     },
+    "passwordReset": {
+      "subject": "Obnovení hesla v HEMA Squire",
+      "body": "Ahoj {name},\n\nnové heslo nastavíš otevřením tohoto odkazu:\n{link}\n\nOdkaz platí hodinu a jen jednou. Dokud ho nepoužiješ, platí tvoje současné heslo. Pokud jsi o obnovení nežádal(a), tento e-mail ignoruj.\n\nHEMA Squire"
+    },
+    "passwordChanged": {
+      "subject": "Heslo k HEMA Squire bylo změněno",
+      "body": "Ahoj {name},\n\nheslo k tvému účtu v HEMA Squire bylo právě změněno a všechna ostatní přihlášená zařízení byla odhlášena.\n\nPokud jsi to nebyl(a) ty, nastav si nové heslo přes „Zapomenuté heslo“ na přihlašovací obrazovce.\n\nHEMA Squire"
+    },
     "manageLinkResent": {
       "subject": "Odkaz na tvou přihlášku — {tournament}",
       "body": "Ahoj {name},\n\npořadatel turnaje {tournament} ti znovu posílá odkaz na tvou přihlášku.",

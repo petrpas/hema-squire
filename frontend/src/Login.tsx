@@ -1,12 +1,13 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ApiError, api, type GuestIdentity, setToken } from "./api";
+import ForgotPassword from "./ForgotPassword";
 import HelpHint from "./HelpHint";
 import SignupForm from "./SignupForm";
 import useEscape from "./useEscape";
 import { useWideViewport } from "./useWideViewport";
 
-export type LoginMode = "login" | "signup" | "guest";
+export type LoginMode = "login" | "signup" | "guest" | "forgot";
 
 export default function Login({
   onLogin,
@@ -57,6 +58,18 @@ export default function Login({
   // Only while sign-in itself is showing: the signup form hears Escape on its
   // own and returns here, and both listening would skip this screen entirely.
   useEscape(mode === "login" ? (onCancel ?? null) : null);
+
+  if (mode === "forgot") {
+    return (
+      <div className="login-page">
+        <ForgotPassword
+          initialEmail={email}
+          onBack={() => setMode("login")}
+          onCreateAccount={() => setMode("signup")}
+        />
+      </div>
+    );
+  }
 
   if (mode === "signup" || (mode === "guest" && onGuest)) {
     return (
@@ -150,6 +163,15 @@ export default function Login({
             required
           />
         </label>
+        {/* beside the field it is about; carries the typed address along, so
+            it is not asked for twice */}
+        <button
+          type="button"
+          className="link-button login-forgot"
+          onClick={() => setMode("forgot")}
+        >
+          {t("forgot.entry")}
+        </button>
         {pending !== null && (
           <p className="login-notice login-pending">
             {pending === "sent" ? t("login.verificationResent") : t("login.notVerified")}{" "}

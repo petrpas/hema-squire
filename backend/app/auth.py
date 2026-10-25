@@ -21,7 +21,7 @@ from sqlalchemy.orm import Session
 
 from app.config import settings
 from app.db import get_session
-from app.models import Fencer, Role, Tournament, TournamentOrganizer
+from app.models import Fencer, FencerProfileAudit, Role, Tournament, TournamentOrganizer
 
 _bearer = HTTPBearer(auto_error=False)
 
@@ -42,11 +42,49 @@ def verify_password(password: str, stored: str) -> bool:
 
 
 def create_token(fencer: Fencer) -> str:
+    now = datetime.now(UTC)
     payload = {
         "sub": str(fencer.id),
-        "exp": datetime.now(UTC) + timedelta(hours=settings.token_ttl_hours),
+        # whole seconds, as the session watermark is kept (`set_password`)
+        "iat": int(now.timestamp()),
+        "exp": now + timedelta(hours=settings.token_ttl_hours),
     }
     return jwt.encode(payload, settings.secret_key, algorithm="HS256")
+
+
+def _session_still_valid(fencer: Fencer, payload: dict[str, object]) -> bool:
+    """Whether a token was issued at or after the account's session watermark
+    (spec `password-reset`, "Changing the password ends every other session").
+
+    A token without `iat` was issued before this rule existed. It stands while
+    the account has no watermark — introducing the rule signs nobody out — and
+    falls with every other old session once the password is changed."""
+    valid_from = fencer.sessions_valid_from
+    if valid_from is None:
+        return True
+    issued_at = payload.get("iat")
+    if not isinstance(issued_at, int):
+        return False
+    # SQLite hands timestamps back naive; they were written in UTC
+    if valid_from.tzinfo is None:
+        valid_from = valid_from.replace(tzinfo=UTC)
+    return issued_at >= int(valid_from.timestamp())
+
+
+def set_password(session: Session, fencer: Fencer, password: str) -> str:
+    """Change an account's password and end every other session; return the
+    session token of the browser that made the change (design password-reset
+    D3). The one function both a reset and a Profile change go through, so
+    neither can forget the watermark.
+
+    Audited without the password: the trail records that it changed, never the
+    hash — the hash is the credential the trail would otherwise hand out."""
+    fencer.password_hash = hash_password(password)
+    # truncated to the second, so the token issued below — stamped in whole
+    # seconds within the same instant — is never earlier than it
+    fencer.sessions_valid_from = datetime.now(UTC).replace(microsecond=0)
+    session.add(FencerProfileAudit(fencer_id=fencer.id, field="password"))
+    return create_token(fencer)
 
 
 def _presented_fencer(credentials: HTTPAuthorizationCredentials, session: Session) -> Fencer:
@@ -59,6 +97,10 @@ def _presented_fencer(credentials: HTTPAuthorizationCredentials, session: Sessio
     fencer = session.get(Fencer, int(payload["sub"]))
     if fencer is None:
         raise HTTPException(status_code=401, detail="unknown_account")
+    # the same refusal as a token that has expired: the client signs in again
+    # at the URL it is on, which is all an ended session should ask of it
+    if not _session_still_valid(fencer, payload):
+        raise HTTPException(status_code=401, detail="invalid_token")
     return fencer
 
 

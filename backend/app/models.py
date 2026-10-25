@@ -237,6 +237,13 @@ class Fencer(Base):
     language: Mapped[str] = mapped_column(String(10), default="en")
     role: Mapped[Role] = mapped_column(str_enum(Role), default=Role.FENCER)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    # Sessions issued before this moment are refused (spec `password-reset`,
+    # "Changing the password ends every other session"). A session token is a
+    # signed JWT the server keeps no record of, so ending one early needs a
+    # watermark on the account rather than a row per session. `None`: the
+    # password was never changed that way, and every unexpired session stands —
+    # which is also what introducing the column did to every existing one.
+    sessions_valid_from: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     registrations: Mapped[list[Registration]] = relationship(back_populates="fencer")
 
@@ -272,6 +279,27 @@ class PendingSignup(Base):
     key_hash: Mapped[str] = mapped_column(String(64), unique=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
+class PasswordReset(Base):
+    """A mailed password-reset link that has not been followed yet (spec
+    `password-reset`, design D1).
+
+    One row per account, so a newer request replaces the key and the earlier
+    link stops working. The key is mailed once and never again, so only its
+    hash is kept — unlike a guest's manage key, which later messages must be
+    able to carry and is therefore derived (`app.managekey`)."""
+
+    __tablename__ = "password_resets"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    fencer_id: Mapped[int] = mapped_column(ForeignKey("fencers.id"), unique=True)
+    # SHA-256 of the mailed key; the key itself is never stored
+    key_hash: Mapped[str] = mapped_column(String(64), unique=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+    fencer: Mapped[Fencer] = relationship()
 
 
 class FencerProfileAudit(Base):

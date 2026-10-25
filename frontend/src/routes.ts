@@ -41,6 +41,13 @@ export function verify(key: string): string {
   return `/verify#${key}`;
 }
 
+/** A password-reset link, its key in the fragment, which the browser does not
+ *  send (spec `password-reset`). The backend builds the same address for the
+ *  mail; this is for the screen's own tests and any link to it. */
+export function resetPassword(key: string): string {
+  return `/reset#${key}`;
+}
+
 /** A signup's return path that resumes on the registration tab: what a
  *  verification link carries when the signup was raised by Register, so
  *  following it on another device still lands on the form (design D10). */

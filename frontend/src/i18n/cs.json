@@ -972,7 +972,6 @@
     },
     "hr": {
       "title": "HEMA Ratings",
-      "viewProfile": "Zobrazit profil na hemaratings.com",
       "unboundHint": "Účet ještě není spojen s profilem na HEMA Ratings.",
       "nationality": "Národnost",
       "anyNationality": "Jakákoli národnost",
@@ -981,6 +980,17 @@
       "confirmBind": "Potvrdit a spojit tento profil",
       "bindFailed": "Spojení se nezdařilo.",
       "stepBack": "Zpět na profil"
+    },
+    "password": {
+      "title": "Změna hesla",
+      "open": "Změnit heslo",
+      "current": "Současné heslo",
+      "new": "Nové heslo",
+      "submit": "Uložit nové heslo",
+      "submitting": "Měním…",
+      "wrong": "Současné heslo nesouhlasí.",
+      "changed": "Heslo je změněné. Ostatní přihlášení byla ukončena.",
+      "failed": "Heslo se nepodařilo změnit."
     }
   },
   "home": {
@@ -1581,5 +1591,23 @@
   },
   "verify": {
     "invalid": "Tento odkaz už neplatí. Přihlaste se, nebo účet založte znovu."
+  },
+  "forgot": {
+    "entry": "Zapomenuté heslo",
+    "subtitle": "Obnovení hesla",
+    "submit": "Poslat odkaz",
+    "submitting": "Posílám…",
+    "sent": "Odkaz jsme poslali na {{email}}. Platí jednu hodinu; do té doby platí i vaše současné heslo.",
+    "noAccount": "Na této adrese účet není.",
+    "failed": "Odkaz se nepodařilo poslat. Zkuste to prosím znovu."
+  },
+  "reset": {
+    "subtitle": "Nové heslo",
+    "newPassword": "Nové heslo",
+    "submit": "Uložit heslo",
+    "submitting": "Ukládám…",
+    "invalid": "Tento odkaz už neplatí.",
+    "requestNew": "Požádat o nový odkaz",
+    "failed": "Heslo se nepodařilo uložit. Zkuste to prosím znovu."
   }
 }
