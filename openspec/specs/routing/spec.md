@@ -18,6 +18,8 @@ SHALL always name the screen on display. The scheme SHALL be:
 | `/t/:slug/entrants` | that page on its Entrants tab, at the first discipline | public |
 | `/t/:slug/entrants/:discipline` | that page on its Entrants tab, at that discipline's roster | public |
 | `/t/:slug/entrants/events/:item` | that page on its Entrants tab, at that side event's roster | public |
+| `/t/:slug/manage#<key>` | that page on its registration tab, managing the guest registration the key names | the key |
+| `/verify#<key>` | finishing a signup: the account is created and the fencer signed in | the key |
 | `/organizer` | the tournament picker | required |
 | `/organizer/:slug/console` | that tournament's console, Load phase | required |
 | `/organizer/:slug/console/:phase` | that tournament's console on that phase | required |
@@ -30,6 +32,11 @@ in-memory state.
 
 A row marked public SHALL render for a visitor holding no credential. A row marked required
 SHALL present the sign-in screen instead, per `Unauthenticated visits keep their destination`.
+A row marked with the key SHALL render for a visitor holding no credential. Its key SHALL be
+carried in the fragment, which the browser does not send to the server and does not pass on
+in a referrer, and SHALL be presented to the API by the page. A key that is not accepted
+SHALL produce the row's own statement that the link is no longer valid, never the sign-in
+screen and never the not-found screen.
 
 #### Scenario: Address bar follows navigation
 - **WHEN** an organizer moves from the tournament list to the picker and opens a tournament's console
@@ -54,6 +61,14 @@ SHALL present the sign-in screen instead, per `Unauthenticated visits keep their
 #### Scenario: An unknown discipline
 - **WHEN** a visitor opens `/t/spring-open-2026/entrants/no-such-discipline`
 - **THEN** the not-found screen is shown
+
+#### Scenario: A manage link survives a refresh
+- **WHEN** a guest on `/t/spring-open-2026/manage#<key>` refreshes the page
+- **THEN** the same registration is shown again, and the key never appeared in a request line the server received
+
+#### Scenario: A verification link opened on another device
+- **WHEN** a fencer who signed up on a laptop opens the verification link on a phone
+- **THEN** the account is created and the phone is signed in, landing where the signup was started from
 
 ### Requirement: Back, forward, and refresh
 Screen-to-screen transitions SHALL push browser history entries, so that Back returns to the
