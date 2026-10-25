@@ -75,9 +75,13 @@ from app.schemas import (
     RosterUpdateIn,
     TeamEntryOut,
 )
-from app.taxonomy import WEAPONS
 
 router = APIRouter(prefix="/api/tournaments/{slug}", tags=["registrations"])
+
+# the weapons a legacy rental may name: the taxonomy as it stood when legacy
+# rentals were closed, frozen so that widening the taxonomy does not widen
+# what an old-style payload accepts (design widen-hr-weapon-coverage D5)
+LEGACY_RENTAL_WEAPONS = frozenset({"LS", "SA", "RA", "RD", "SB"})
 
 MailerDep = QueuedMailerDep
 
@@ -315,7 +319,7 @@ def _resolve_selection(tournament: Tournament, data) -> tuple[list, list[tuple]]
     if wrong_kind:
         # a team discipline is entered through `teams`, not `disciplines`
         raise HTTPException(status_code=422, detail={"team_discipline_not_individual": wrong_kind})
-    invalid_rentals = [w for w in data.weapon_rentals if w not in WEAPONS]
+    invalid_rentals = [w for w in data.weapon_rentals if w not in LEGACY_RENTAL_WEAPONS]
     if invalid_rentals:
         raise HTTPException(status_code=422, detail={"unknown_weapons": invalid_rentals})
 

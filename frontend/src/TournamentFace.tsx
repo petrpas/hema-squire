@@ -38,7 +38,18 @@ export const LEGACY_WEAPONS: Record<string, string> = {
   RA: "Single Rapier",
   RD: "Rapier & Dagger",
   SB: "Sword & Buckler",
+  SS: "Single Sidesword",
+  ST: "Singlestick",
+  KN: "Knife",
+  ME: "Messer",
+  SM: "Smallsword",
+  SD: "Sidesword & Dagger",
 };
+
+/** Taxonomy weapons HEMA Ratings rates only in unofficial categories, which a
+ * fighter page does not list — so no discipline of theirs carries a rating
+ * (design widen-hr-weapon-coverage D3a). */
+export const UNRATED_WEAPONS: ReadonlySet<string> = new Set(["KN", "ME", "SM", "SD"]);
 
 const TAXONOMY_GENDERS: Record<string, string> = { "": "Open", W: "Women", M: "Men" };
 const TAXONOMY_MATERIALS: Record<string, string> = { "": "Steel", Plastic: "Plastic" };

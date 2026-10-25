@@ -16,6 +16,12 @@ WEAPONS = {
     "RA": "Single Rapier",
     "RD": "Rapier & Dagger",
     "SB": "Sword & Buckler",
+    "SS": "Single Sidesword",
+    "ST": "Singlestick",
+    "KN": "Knife",
+    "ME": "Messer",
+    "SM": "Smallsword",
+    "SD": "Sidesword & Dagger",
 }
 
 GENDERS = {"": "Open", "W": "Women", "M": "Men"}
@@ -54,11 +60,16 @@ def taxonomy_code(weapon: str, gender: str, material: str) -> str:
 
 
 def parse_code(code: str) -> tuple[str, str, str]:
-    """The inverse of `taxonomy_code`, defined over the 30 generated codes
-    (used for the migration backfill and for reading pre-migration export
-    documents). Returns (weapon, gender, material)."""
+    """The inverse of `taxonomy_code`, defined over the generated codes (used
+    for the migration backfill and for reading pre-migration export
+    documents). Returns (weapon, gender, material). A taxonomy weapon code is
+    always two characters, so a taxonomy code is read by position and `SM`
+    stays smallsword rather than "S" for men; a code outside the taxonomy
+    keeps the trailing-W/M reading it always had."""
     material = "Plastic" if code.startswith("Plastic ") else ""
     rest = code.removeprefix("Plastic ").strip()
+    if rest[:2] in WEAPONS and rest[2:] in GENDERS:
+        return rest[:2], rest[2:], material
     gender = ""
     if rest and rest[-1] in ("W", "M"):
         gender = rest[-1]

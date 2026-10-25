@@ -25,6 +25,7 @@ from app.models import (
     HRSnapshotRating,
     Tournament,
 )
+from app.taxonomy import taxonomy_code
 
 FIGHTERS_URL = "https://hemaratings.com/fighters/"
 FIGHTER_DETAILS_URL = "https://hemaratings.com/fighters/details/{hr_id}/"
@@ -34,26 +35,53 @@ FIGHTER_DETAILS_URL = "https://hemaratings.com/fighters/details/{hr_id}/"
 MIN_PLAUSIBLE_FIGHTERS = 1000
 MIN_FRACTION_OF_PREVIOUS = 0.8
 
-# v1's proven mapping: our discipline code -> substring of the HR category
-# header. Steel-open codes share the "Mixed & Men's" categories; plastic codes
-# have no HR category. Overridable per tournament via hr_category_map.
-DEFAULT_CATEGORY_KEYWORDS: dict[str, str] = {
-    "LS": "Mixed & Men's Steel Longsword",
-    "LSM": "Mixed & Men's Steel Longsword",
-    "LSW": "Women's Steel Longsword",
-    "SA": "Mixed & Men's Steel Sabre",
-    "SAM": "Mixed & Men's Steel Sabre",
-    "SAW": "Women's Steel Sabre",
-    "SB": "Mixed & Men's Steel Sword and Buckler",
-    "SBM": "Mixed & Men's Steel Sword and Buckler",
-    "SBW": "Women's Steel Sword and Buckler",
-    "RD": "Mixed & Men's Steel Rapier & Dagger",
-    "RDM": "Mixed & Men's Steel Rapier & Dagger",
-    "RDW": "Women's Steel Rapier & Dagger",
-    "RA": "Mixed & Men's Steel Single Rapier",
-    "RAM": "Mixed & Men's Steel Single Rapier",
-    "RAW": "Women's Steel Single Rapier",
+# Each officially rated weapon's HR categories as the fighter page's ratings
+# table prints them (verified 2026-10-25, design widen-hr-weapon-coverage D3):
+# (Mixed & Men's, Underrepresented Genders & Women's). HSQ Women reads the URG
+# category; HSQ has no URG gender of its own. Knife, Messer, Smallsword and
+# Sidesword & Dagger are rated only in unofficial categories, which a fighter
+# page does not list, so they have none; plastic has none either.
+_OFFICIAL_CATEGORIES: dict[str, tuple[str, str]] = {
+    "LS": (
+        "Mixed & Men's Steel Longsword",
+        "Underrepresented Genders & Women's Steel Longsword",
+    ),
+    "SA": ("Mixed & Men's Steel Sabre", "Underrepresented Genders & Women's Steel Sabre"),
+    "RA": (
+        "Mixed & Men's Steel Single Rapier",
+        "Underrepresented Genders and Women's Steel Single Rapier",
+    ),
+    "RD": (
+        "Mixed & Men's Steel Rapier and Dagger",
+        "Underrepresented Genders and Women's Steel Rapier and Dagger",
+    ),
+    "SB": (
+        "Mixed & Men's Steel Sword and Buckler",
+        "Underrepresented Genders & Women's Steel Sword and Buckler",
+    ),
+    "SS": (
+        "Mixed & Men's Steel Single Sidesword",
+        "Underrepresented Genders & Women's Steel Single Sidesword",
+    ),
+    "ST": ("Mixed & Men's  Singlestick", "Underrepresented Genders & Women's  Singlestick"),
 }
+
+# taxonomy code -> HR category name, matched whole after `_normalize_category`.
+# Overridable per tournament via hr_category_map.
+DEFAULT_CATEGORY_KEYWORDS: dict[str, str] = {
+    taxonomy_code(weapon, gender, ""): women if gender == "W" else mixed_mens
+    for weapon, (mixed_mens, women) in _OFFICIAL_CATEGORIES.items()
+    for gender in ("", "M", "W")
+}
+
+
+def _normalize_category(name: str) -> str:
+    """A category name in the form two spellings of one category share: the
+    fighter page's leading list dash dropped, `&` read as `and`, whitespace
+    collapsed, case folded (design widen-hr-weapon-coverage D4)."""
+    name = name.strip().removeprefix("- ")
+    name = re.sub(r"\s*&\s*", " and ", name)
+    return " ".join(name.split()).casefold()
 
 
 class HRFetcher(Protocol):
@@ -271,7 +299,8 @@ def take_snapshot(
             keyword = category_keyword(tournament, code)
             if keyword is None:
                 continue
-            match = next((c for c in categories if keyword.lower() in c[0].lower()), None)
+            wanted = _normalize_category(keyword)
+            match = next((c for c in categories if _normalize_category(c[0]) == wanted), None)
             if match is not None:
                 collected.append(
                     HRSnapshotRating(

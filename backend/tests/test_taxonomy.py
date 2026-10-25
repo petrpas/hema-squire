@@ -1,4 +1,4 @@
-"""Taxonomy code derivation: round-trip over the 30 generated codes, and name
+"""Taxonomy code derivation: round-trip over every generated code, and name
 generation for taxonomy vs. custom weapons (design discipline-identity D4/D5,
 task 9.1)."""
 
@@ -9,6 +9,18 @@ def test_taxonomy_code_and_parse_code_round_trip_every_generated_code():
     for code in taxonomy.DISCIPLINES:
         weapon, gender, material = taxonomy.parse_code(code)
         assert taxonomy.taxonomy_code(weapon, gender, material) == code
+
+
+def test_parse_code_reads_a_weapon_code_ending_in_a_gender_letter_by_position():
+    assert taxonomy.parse_code("SM") == ("SM", "", "")
+    assert taxonomy.parse_code("SMW") == ("SM", "W", "")
+    assert taxonomy.parse_code("Plastic SMM") == ("SM", "M", "Plastic")
+
+
+def test_parse_code_keeps_the_suffix_reading_for_a_code_outside_the_taxonomy():
+    # a pre-split export may carry a typed weapon as its code
+    assert taxonomy.parse_code("Messer") == ("Messer", "", "")
+    assert taxonomy.parse_code("MesserW") == ("Messer", "W", "")
 
 
 def test_taxonomy_name_returns_none_for_a_weapon_outside_the_taxonomy():

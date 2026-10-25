@@ -213,7 +213,7 @@ def test_snapshot_respects_category_mapping_and_override(client, auth_headers):
     fetcher.pages[10234] = fighter_page(
         [
             ("Mixed & Men's Steel Longsword", 1400.0, 20),
-            ("Women's Steel Sabre", 1200.0, 8),
+            ("Underrepresented Genders & Women's Steel Sabre", 1200.0, 8),
             ("Historical Experimental Sabre", 999.0, 1),
         ]
     )
@@ -336,3 +336,96 @@ def test_custom_weapon_contributes_nothing_without_failing_snapshot(client, auth
     assert outcome["status"] == "ok"
     assert outcome["ratings"] == 0
     assert outcome["fencers"] == 1
+
+
+def rated_codes(client, auth_headers, disciplines, rows, override=None) -> dict[str, float | None]:
+    """Snapshot one fencer entered in every given discipline against a page
+    listing `rows`; the rating stored per taxonomy code."""
+    organizer = make_organizer(client, auth_headers)
+    for slug, fields in disciplines.items():
+        client.post(
+            "/api/tournaments/cup/disciplines",
+            json={"slug": slug, "name": slug, "capacity": 10, "fee": 1000, **fields},
+            headers=organizer,
+        )
+    if override is not None:
+        client.patch("/api/tournaments/cup", json={"hr_category_map": override}, headers=organizer)
+    publish(client, organizer, "cup")
+    fencer = auth_headers(email="jan@example.com", name="Jan N")
+    client.post("/api/account/hr-binding", json={"hr_id": 10234}, headers=fencer)
+    client.post(
+        "/api/tournaments/cup/register", json={"disciplines": list(disciplines)}, headers=fencer
+    )
+    fetcher = FakeHRFetcher()
+    fetcher.pages[10234] = fighter_page(rows)
+    wire_fetcher(fetcher)
+
+    outcome = client.post("/api/tournaments/cup/ratings/snapshot", headers=organizer).json()
+    assert outcome["status"] == "ok"
+    session = next(app.dependency_overrides[get_session]())
+    from sqlalchemy import select
+
+    from app.models import HRRatingSnapshot
+
+    snapshot = session.scalars(
+        select(HRRatingSnapshot).order_by(HRRatingSnapshot.id.desc()).limit(1)
+    ).first()
+    assert snapshot is not None
+    return {r.discipline_code: r.rating for r in snapshot.ratings}
+
+
+# category rows as the fighter page prints them: a bare weapon heading, then
+# each category under it with a leading dash (verified 2026-10-25)
+LIVE_ROWS = [
+    ("Longsword", 0.0, 0),
+    ("- Women's Steel Longsword", 1100.0, 30),
+    ("- Underrepresented Genders & Women's Steel Longsword", 1300.0, 25),
+    ("Rapier and Dagger", 0.0, 0),
+    ("- Mixed & Men's Steel Rapier and Dagger", 1250.0, 40),
+    ("Sidesword", 0.0, 0),
+    ("- Mixed & Men's Steel Single Sidesword", 1150.0, 12),
+    ("Singlestick", 0.0, 0),
+    ("- Underrepresented Genders & Women's  Singlestick", 1050.0, 7),
+]
+
+
+def test_default_mapping_reads_official_categories_as_the_page_prints_them(client, auth_headers):
+    ratings = rated_codes(
+        client,
+        auth_headers,
+        {
+            "LSW": {"weapon": "LS", "gender": "W"},
+            "RD": {"weapon": "RD"},
+            "SS": {"weapon": "SS"},
+            "STW": {"weapon": "ST", "gender": "W"},
+        },
+        LIVE_ROWS,
+    )
+    # HSQ Women reads the URG category even when Women's is listed beside it
+    assert ratings == {"LSW": 1300.0, "RD": 1250.0, "SS": 1150.0, "STW": 1050.0}
+
+
+def test_side_weapon_and_plastic_carry_no_default_category(client, auth_headers):
+    ratings = rated_codes(
+        client,
+        auth_headers,
+        {"ME": {"weapon": "ME"}, "PLS": {"weapon": "LS", "material": "Plastic"}},
+        [*LIVE_ROWS, ("- Mixed & Men's Steel Longsword", 1400.0, 20)],
+    )
+    assert ratings == {}
+
+
+def test_category_matches_whole_name_not_a_fragment(client, auth_headers):
+    ratings = rated_codes(
+        client,
+        auth_headers,
+        {"LSW": {"weapon": "LS", "gender": "W"}, "SA": {"weapon": "SA"}},
+        [
+            ("- Underrepresented Genders & Women's Steel Longsword", 1300.0, 25),
+            ("- Mixed & Men's Steel Sabre", 1200.0, 9),
+        ],
+        # Women's is a fragment of the URG name and must not reach it; a
+        # lower-case override still matches its whole category
+        override={"LSW": "Women's Steel Longsword", "SA": "mixed and men's steel sabre"},
+    )
+    assert ratings == {"SA": 1200.0}
