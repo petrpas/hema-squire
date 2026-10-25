@@ -99,9 +99,34 @@ count as refusal.
 Reminder and notification email SHALL be delivered via SMTP in production. The file outbox remains
 the development default; the production mailer is selected by the presence of SMTP configuration.
 
+Because an account exists only once its address is verified through a mailed link, a production
+deployment SHALL NOT run code that verifies signups without working mail delivery.
+
+Every link a message carries SHALL point at the deployment's public origin, set by configuration.
+The application SHALL refuse to start with SMTP configured and the origin left at its development
+default.
+
+The sender domain SHALL be authenticated for the provider that sends on its behalf — SPF, DKIM and
+a DMARC policy — so that receiving servers accept the mail rather than filing it as spam.
+
+A message whose delivery fails SHALL remain queued and be retried, so that an SMTP outage delays
+mail rather than losing it.
+
 #### Scenario: Payment reminder in production
 - **WHEN** the scheduler determines a reminder is due on a production deployment
 - **THEN** the message is handed to the configured SMTP endpoint, not serialized to a directory
+
+#### Scenario: Signup verification in production
+- **WHEN** a visitor creates an account on the production deployment with an address at a major mail provider
+- **THEN** the verification message arrives in the inbox, not spam, and its link opens the deployment's own domain over HTTPS
+
+#### Scenario: Origin left at its default
+- **WHEN** the application starts with SMTP configured and the public origin unset
+- **THEN** it refuses to start, naming the missing setting
+
+#### Scenario: SMTP outage
+- **WHEN** the SMTP endpoint is unreachable while a fencer registers
+- **THEN** the registration succeeds, the confirmation stays queued with the error recorded, and it is delivered by a scheduler pass after the endpoint recovers
 
 ### Requirement: Closed network perimeter
 The production host SHALL accept inbound traffic only on SSH and HTTP/HTTPS, enforced by a firewall

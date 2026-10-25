@@ -148,6 +148,14 @@
       the host invalidates every token ever issued — the part of a restore the replica does not
       carry. Task 5.1's drill is blocked on it too, since the drill is only a drill if it uses
       material that survives the host
+      **Reopened for mail (2026-10-25):** the SMTP group can no longer stay empty past the next
+      deploy (Decision 6, task 4.4). Fill `HEMA_SQUIRE_SMTP_HOST`, `_SMTP_PORT=587`, `_SMTP_USER`,
+      `_SMTP_PASSWORD` from 3.5, keep `HEMA_SQUIRE_EMAIL_SENDER=noreply@hemasquire.eu`, and add
+      `HEMA_SQUIRE_PUBLIC_BASE_URL=https://hemasquire.eu` — the app refuses to start with SMTP set
+      and the origin at its localhost default. The SMTP password joins the password-manager copy
+- [ ] 2.8 `deploy/.env.example`: add `HEMA_SQUIRE_PUBLIC_BASE_URL=https://hemasquire.eu` to the
+      email group, with a comment that every mail link is built from it and that the app refuses
+      to start with SMTP set and the origin unset
 
 ## 3. Provider setup (console clicking, ~30 minutes)
 
@@ -216,6 +224,16 @@
       passes IPv6 at all is still untested, and its rules carry explicit source
       CIDRs. See deployment_state.md, "Docker does answer on IPv6".
 
+- [ ] 3.5 Mail provider and sender domain. **Due before the next deploy (4.4).**
+      Pick an EU transactional SMTP provider that offers STARTTLS on 587 (Brevo, Mailjet,
+      Scaleway TEM, or SES in an EU region); create SMTP credentials scoped to sending only.
+      Verify `hemasquire.eu` with it and publish in DNS: the provider's SPF include (one SPF
+      record for the domain — merge rather than add a second), its DKIM record(s), and
+      `_dmarc.hemasquire.eu` as `v=DMARC1; p=none; rua=mailto:<owner address>` to start.
+      Confirm each record from outside with `dig TXT` against two public resolvers before
+      trusting the provider's green tick. Tighten DMARC to `quarantine` once a few weeks of
+      reports show only the provider sending
+
 ## 4. First deploy
 
 - [x] 4.1 Clone the repo to `/opt/hema-squire`, place `.env`, `mkdir -p deploy/secrets` (with the
@@ -274,6 +292,19 @@
       **Outstanding, both blocked on deliberate deferrals rather than on defects:** the SMTP
       reminder email (no credentials filled; `OutboxMailer` is in use, so nothing leaves the host),
       and the replica being live (3.1). Both need this task reopened when their deferral ends
+      **Mail criteria, revised 2026-10-25** (signup now depends on them): an account created on
+      the domain with a Gmail and a Seznam address receives its verification mail in the inbox,
+      not spam; its link opens `https://hemasquire.eu/verify#…` and signs in; the row in
+      `outgoing_mail` has `sent_at` set and `raw` null; a message sent to mail-tester.com scores
+      9/10 or better with SPF, DKIM and DMARC passing; and a registration on a test tournament
+      delivers its confirmation with the QR attachments and the tournament link
+
+- [ ] 4.4 **Do not deploy `main` from `3af13b1` on until 3.5 and the mail half of 2.7 are done.**
+      From that commit an account exists only once its address is verified by mail; deployed with
+      the SMTP group empty, every signup waits for a message that is written to `/data/outbox`
+      and never sent, and the verification link in it points at localhost. The deploy that ends
+      this is also the one that runs the `outgoing_mail` migration; verify with 4.3's mail criteria
+      immediately after it
 
 ## 5. Restore drill and monitoring (definition of done)
 

@@ -8,7 +8,7 @@ Getting there surfaced five gaps in the code itself, each of which is a producti
 - `settings.secret_key` defaults to a string published in this repository and signs every JWT. A deployment that forgets to set it hands token forgery — any user, including the Owner — to anyone who can read GitHub.
 - `/api/auth/login` costs ~100 ms of scrypt per call by design, making it simultaneously the cheapest CPU-exhaustion target and a credential-stuffing surface, with no throttle.
 - The multitenant boundary (per-tournament console access) is designed correctly in `auth.py` but enforced only by the discipline of each router; no test sweeps the console surface with a foreign tournament and asserts refusal.
-- `get_mailer()` always returns `OutboxMailer` — in production, payment reminders and expiry notices are serialized into a directory nobody reads. Email delivery does not exist.
+- `get_mailer()` always returns `OutboxMailer` — in production, payment reminders and expiry notices are serialized into a directory nobody reads. Email delivery does not exist. Since `guest-registration` (2026-10-25) this is no longer a missing feature but a missing precondition: an account exists only once its address is verified through a mailed link, so a deployment that cannot deliver mail cannot create accounts at all.
 
 ## What Changes
 
@@ -17,7 +17,7 @@ Getting there surfaced five gaps in the code itself, each of which is a producti
 - **Startup guard** refusing to boot with the dev `secret_key` outside explicit debug mode.
 - **Login/signup throttling** in the app layer (Caddy stays a stock build), keyed on the client address the proxy establishes rather than on the proxy's own — otherwise the limit is one global bucket and a single scanner locks out a tournament.
 - **Tenant-isolation test** sweeping console endpoints with a foreign tournament.
-- **SMTP mailer** selected by configuration, `OutboxMailer` remaining the dev default.
+- **SMTP mailer** selected by configuration, `OutboxMailer` remaining the dev default; the production environment also states the public origin mail links point at, and the sender domain is authenticated (SPF, DKIM, DMARC) so the mail is accepted.
 
 Not in scope: photo storage (object storage, its own change when it comes), the Discord importer channel, any Postgres migration, CI-driven deployment (deploys are `deploy.sh` over SSH; a pipeline can wrap it later without changing the shape).
 

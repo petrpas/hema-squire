@@ -98,6 +98,31 @@ variables and gets `SmtpMailer`. Selection is by configuration presence, not a m
 `HEMA_SQUIRE_SMTP_HOST` is set, mail is real. Any EU transactional SMTP endpoint works; the app
 knows nothing but host, port, credentials and STARTTLS.
 
+Three things were added once mail started carrying links and gating signup (`guest-registration`,
+`fix-email-findings`, both 2026-10-25):
+
+- **The public origin is configuration.** A verification link, a password-reset link, a guest's
+  manage link and the tournament link in every registration message are built from
+  `HEMA_SQUIRE_PUBLIC_BASE_URL`, because the scheduler sends mail no request ever asked for and so
+  cannot learn the origin from one. Production sets `https://hemasquire.eu`. With SMTP configured
+  and the origin left at its `http://localhost` default the app refuses to start
+  (`app.main._refuse_real_mail_without_origin`), the same posture as the dev signing key: mail
+  whose links lead nowhere would otherwise go out silently.
+- **The sender domain is authenticated.** `noreply@hemasquire.eu` is sent through the provider's
+  servers, not the domain's own, so receivers accept it only if DNS says they may: an SPF record
+  naming the provider, the provider's DKIM key, and a DMARC policy (`p=none` with a report
+  address to start, tightened once reports are clean). Without them the first message a fencer
+  waits for — the verification link — lands in spam, which is indistinguishable from not arriving.
+- **Delivery is queued, so failure is visible.** Every message is written to `outgoing_mail` in the
+  transaction of its cause and delivered after the commit; a failed send keeps its error on the
+  row and is retried by every scheduler pass for 48 hours. An SMTP outage therefore costs delay,
+  not mail, and the first place to look when a message did not arrive is that table
+  (`attempts`, `last_error`, `sent_at`), not the provider's dashboard.
+
+The SMTP deferral recorded under 2.7 could not outlive that: it ends, at the latest, with the
+first deploy of code that verifies signups (`3af13b1` and later). Until mail is configured that
+code must not reach production (task 4.4).
+
 ## Decision 7: The restore is only rehearsed if it uses off-host material
 
 Continuous replication covers the database, but a new host also needs `deploy/.env` — signing key,
