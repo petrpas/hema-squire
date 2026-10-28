@@ -234,7 +234,21 @@
       `_dmarc.hemasquire.eu` as `v=DMARC1; p=none; rua=mailto:<owner address>` to start.
       Confirm each record from outside with `dig TXT` against two public resolvers before
       trusting the provider's green tick. Tighten DMARC to `quarantine` once a few weeks of
-      reports show only the provider sending
+      reports show only the provider sending.
+      **In progress 2026-10-28 — Brevo.** The domain's DNS is at Czechia.com (`ns1.regzone.*`);
+      their editor wants a trailing dot on every CNAME target. Published and confirmed on all three
+      authoritative servers and on 8.8.8.8 at serial `2026102802`: the `brevo-code` TXT at the apex,
+      CNAMEs `brevo1._domainkey`/`brevo2._domainkey` → `b1`/`b2.hemasquire-eu.dkim.brevo.com.` (the
+      chain ends in an RSA key), and `_dmarc` as `v=DMARC1; p=none; rua=mailto:rua@dmarc.brevo.com`.
+      Two departures from the text above. Brevo asks for no SPF record: it sends with its own
+      Return-Path, so SPF never aligns and DMARC passes on DKIM alone. And `rua=` points at Brevo
+      rather than the owner's address: a report address outside `hemasquire.eu` is honoured only if
+      its domain publishes an authorization record for this one, which Gmail does not, and the
+      domain itself has no MX. Brevo's address carries that authorization. Revisit when tightening
+      to `quarantine` — that step needs reports someone reads (a DMARC digest service gives an
+      address that works). The three branding CNAMEs (`mail`, `r.mail`, `img.mail`) were left out:
+      they exist for tracked links, and click tracking is to be off for mail that carries a
+      verification link
 
 ## 4. First deploy
 
