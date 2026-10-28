@@ -154,7 +154,11 @@
       `HEMA_SQUIRE_PUBLIC_BASE_URL=https://hemasquire.eu` — the app refuses to start with SMTP set
       and the origin at its localhost default. The SMTP password joins the password-manager copy.
       `HEMA_SQUIRE_PUBLIC_BASE_URL=https://hemasquire.eu` appended on the server 2026-10-28; it
-      takes effect when the next `up -d` recreates the container. The SMTP group is still empty
+      takes effect when the next `up -d` recreates the container. The SMTP group was filled the
+      same day (Brevo, `smtp-relay.brevo.com:587`); the key was typed on the server through a
+      hidden `read`, so like the signing key it has never crossed the build machine. Until that
+      deploy the running `c54a7ba` container keeps its old environment — recreating it on that
+      commit would send real mail with links built before the public origin existed
 - [x] 2.8 `deploy/.env.example`: add `HEMA_SQUIRE_PUBLIC_BASE_URL=https://hemasquire.eu` to the
       email group, with a comment that every mail link is built from it and that the app refuses
       to start with SMTP set and the origin unset
