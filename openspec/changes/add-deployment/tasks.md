@@ -152,7 +152,9 @@
       deploy (Decision 6, task 4.4). Fill `HEMA_SQUIRE_SMTP_HOST`, `_SMTP_PORT=587`, `_SMTP_USER`,
       `_SMTP_PASSWORD` from 3.5, keep `HEMA_SQUIRE_EMAIL_SENDER=noreply@hemasquire.eu`, and add
       `HEMA_SQUIRE_PUBLIC_BASE_URL=https://hemasquire.eu` — the app refuses to start with SMTP set
-      and the origin at its localhost default. The SMTP password joins the password-manager copy
+      and the origin at its localhost default. The SMTP password joins the password-manager copy.
+      `HEMA_SQUIRE_PUBLIC_BASE_URL=https://hemasquire.eu` appended on the server 2026-10-28; it
+      takes effect when the next `up -d` recreates the container. The SMTP group is still empty
 - [x] 2.8 `deploy/.env.example`: add `HEMA_SQUIRE_PUBLIC_BASE_URL=https://hemasquire.eu` to the
       email group, with a comment that every mail link is built from it and that the app refuses
       to start with SMTP set and the origin unset
