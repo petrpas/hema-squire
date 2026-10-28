@@ -153,7 +153,7 @@
       `_SMTP_PASSWORD` from 3.5, keep `HEMA_SQUIRE_EMAIL_SENDER=noreply@hemasquire.eu`, and add
       `HEMA_SQUIRE_PUBLIC_BASE_URL=https://hemasquire.eu` — the app refuses to start with SMTP set
       and the origin at its localhost default. The SMTP password joins the password-manager copy
-- [ ] 2.8 `deploy/.env.example`: add `HEMA_SQUIRE_PUBLIC_BASE_URL=https://hemasquire.eu` to the
+- [x] 2.8 `deploy/.env.example`: add `HEMA_SQUIRE_PUBLIC_BASE_URL=https://hemasquire.eu` to the
       email group, with a comment that every mail link is built from it and that the app refuses
       to start with SMTP set and the origin unset
 
