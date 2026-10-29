@@ -134,3 +134,40 @@ def test_global_admin_has_no_console_access(client, auth_headers):
     create_tournament(client, owner)
     admin = auth_headers(email="admin@example.com", role=Role.ADMIN)
     assert edit_location(client, admin).status_code == 403
+
+
+# --- the communication language (spec localization) ---
+
+
+def test_a_new_tournament_takes_its_creators_language(client, auth_headers):
+    created = client.post(
+        "/api/tournaments",
+        json={"slug": "cup", "display_name": "Cup", "date": "2026-12-05"},
+        headers=auth_headers(language="en"),
+    )
+    assert created.status_code == 201, created.text
+    assert created.json()["language"] == "en"
+
+
+def test_only_the_owner_changes_the_communication_language(client, auth_headers):
+    owner = auth_headers()
+    create_tournament(client, owner)
+    helper = auth_headers(email="helper@example.com", name="Helper", role=Role.FENCER)
+    client.post("/api/tournaments/cup/team", json={"email": "helper@example.com"}, headers=owner)
+
+    refused = client.patch("/api/tournaments/cup", json={"language": "en"}, headers=helper)
+    assert refused.status_code == 403
+    # restating the stored value changes nothing and is not refused
+    same = client.patch("/api/tournaments/cup", json={"language": "cs"}, headers=helper)
+    assert same.status_code == 200
+
+    applied = client.patch("/api/tournaments/cup", json={"language": "en"}, headers=owner)
+    assert applied.status_code == 200
+    assert applied.json()["language"] == "en"
+
+
+def test_the_communication_language_is_one_squire_can_write_mail_in(client, auth_headers):
+    owner = auth_headers()
+    create_tournament(client, owner)
+    refused = client.patch("/api/tournaments/cup", json={"language": "xx"}, headers=owner)
+    assert refused.status_code == 422

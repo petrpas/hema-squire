@@ -730,6 +730,12 @@
       "transferNotMember": "Vlastníkem se může stát jen stávající člen týmu.",
       "transferFailed": "Předání vlastnictví se nezdařilo."
     },
+    "language": {
+      "title": "Jazyk komunikace",
+      "label": "Jazyk",
+      "hint": "Jazyk e-mailů pro šermíře, jejichž vlastní jazyk Squire nezná. Ostatním píše v jazyce, který si zvolili. Už odeslané e-maily se nemění.",
+      "failed": "Jazyk se nepodařilo změnit."
+    },
     "danger": {
       "title": "Nebezpečná zóna",
       "deleteHint": "Turnaj zatím nemá registrace — lze ho trvale smazat.",

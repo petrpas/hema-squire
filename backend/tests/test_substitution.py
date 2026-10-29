@@ -598,3 +598,36 @@ def test_the_log_names_both_fencers(client, auth_headers, mailbox):
     assert entry["before"] == "Jan Novák"
     assert entry["after"] == "Petr Náhradník"
     assert sheet["rows"][0]["_substituted_for"] == "Jan Novák"
+
+
+def test_a_substitute_takes_the_tournaments_language(client, auth_headers, mailbox):
+    """Nobody chose a language for a substitute, so the record takes the
+    tournament's rather than the column default (spec `localization`)."""
+    organizer = auth_headers(language="cs")
+    setup(client, organizer)
+    register(client, auth_headers)
+
+    substitute(client, organizer, rows(client, organizer)[0]["id"])
+
+    record = db().scalar(select(Fencer).where(Fencer.display_name == "Petr Náhradník"))
+    assert record is not None
+    assert record.language == "cs"
+
+
+def test_each_party_to_a_substitution_reads_their_own_language(client, auth_headers, mailbox):
+    """The replaced fencer reads Czech, the account taking the seat English;
+    each message is in its reader's language (spec `localization`, Two
+    recipients, two languages)."""
+    from app.models import Role
+
+    organizer = auth_headers()
+    setup(client, organizer)
+    register(client, auth_headers)
+    auth_headers(email="petr@example.com", name="Petr Náhradník", role=Role.FENCER, language="en")
+    mailbox.sent.clear()
+
+    substitute(client, organizer, rows(client, organizer)[0]["id"])
+
+    by_address = {message["To"]: message for message in mailbox.sent}
+    assert by_address["petr@example.com"]["Subject"] == "You are taking a place — Cup"
+    assert by_address["jan@example.com"]["Subject"].startswith("Tvé místo")

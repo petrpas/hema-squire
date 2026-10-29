@@ -320,13 +320,18 @@ def signup_verified(client, body: dict) -> str:
 def auth_headers(client, engine):
     """Signup helper. Accounts default to the Organizer role because most
     tests bootstrap a tournament with them; pass role=Role.FENCER for a
-    plain fencer. `language` is the account's UI language, which signup
-    otherwise leaves at its default."""
+    plain fencer. `language` is the account's UI language; it defaults to
+    Czech rather than to signup's English because the suite's mail is asserted
+    in Czech, and mail follows its recipient's language — as a tournament
+    follows its creator's (spec `localization`)."""
 
-    def make(email="organizer@example.com", name="Organizer", role=Role.ORGANIZER, language=None):
-        body = {"email": email, "password": "correct-horse", "display_name": name}
-        if language is not None:
-            body["language"] = language
+    def make(email="organizer@example.com", name="Organizer", role=Role.ORGANIZER, language="cs"):
+        body = {
+            "email": email,
+            "password": "correct-horse",
+            "display_name": name,
+            "language": language,
+        }
         token = signup_verified(client, body)
         if role != Role.FENCER:
             with Session(engine) as session:

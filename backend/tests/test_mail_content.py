@@ -44,10 +44,10 @@ def body(message) -> str:
     return message.get_body(preferencelist=("plain",)).get_content()
 
 
-def tournament(client, organizer, *, language="cs", fee=1000, **settings):
+def tournament(client, organizer, *, fee=1000, **settings):
     client.post(
         "/api/tournaments",
-        json={"slug": "cup", "display_name": "Cup", "date": "2099-12-05", "language": language},
+        json={"slug": "cup", "display_name": "Cup", "date": "2099-12-05"},
         headers=organizer,
     )
     enable_payments(client, organizer, "cup")
@@ -318,9 +318,11 @@ def test_an_immediate_confirmation_states_the_window_and_the_release(
     assert codes(mailbox.sent[-1]) == {"platba-celkem.png": "1800 CZK"}
 
 
-def test_an_english_tournaments_confirmation_is_english_throughout(client, auth_headers, mailbox):
-    tournament(client, auth_headers(), language="en")
-    register(client, auth_headers(email="jan@example.com", name="Jan"))
+def test_an_english_readers_confirmation_is_english_throughout(client, auth_headers, mailbox):
+    """A Czech tournament writes to an English-reading fencer in English
+    (spec `localization`, An English reader's confirmation)."""
+    tournament(client, auth_headers())
+    register(client, auth_headers(email="jan@example.com", name="Jan", language="en"))
 
     message = mailbox.sent[-1]
     assert message["Subject"] == "Registration for Cup — payment instructions"

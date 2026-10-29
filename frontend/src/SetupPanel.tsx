@@ -10,6 +10,7 @@ import { DisciplinesSection } from "./setup/DisciplinesSection";
 import { DiscountsSection } from "./setup/DiscountsSection";
 import { ExtraItemsSection } from "./setup/ExtraItemsSection";
 import { IdentitySection, VsSeriesSection } from "./setup/IdentitySection";
+import { LanguageSection } from "./setup/LanguageSection";
 import { LegacyFeesSection } from "./setup/LegacyFeesSection";
 import { OrganizersSection } from "./setup/OrganizersSection";
 import { PaymentModeSection } from "./setup/PaymentModeSection";
@@ -249,6 +250,7 @@ export default function SetupPanel({
               hidden={selected !== "other"}
             >
               <SettingsSection detail={detail} onApplied={onSaved} />
+              <LanguageSection slug={slug} detail={detail} onApplied={onSaved} />
               <TeamSection slug={slug} />
               <DangerZoneSection
                 slug={slug}

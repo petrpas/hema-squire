@@ -141,7 +141,8 @@ def test_verification_takes_over_a_roster_issued_record(client, auth_headers, ma
         select(Registration.id).where(Registration.fencer_id == record_id)
     )
 
-    assert sign_up(client, display_name="Eva Malá-Nová", language="cs").status_code == 202
+    # the issued record took the tournament's Czech; the signup states English
+    assert sign_up(client, display_name="Eva Malá-Nová", language="en").status_code == 202
     verified = client.post("/api/auth/verify", json={"key": verification_key(mailbox.sent[-1])})
     assert verified.status_code == 200
 
@@ -151,7 +152,7 @@ def test_verification_takes_over_a_roster_issued_record(client, auth_headers, ma
     taken = fencers[0]
     assert taken.password_hash is not None
     assert taken.display_name == "Eva Malá-Nová"
-    assert taken.language == "cs"
+    assert taken.language == "en"
     assert taken.hr_id == 10234  # a bound record keeps its binding
     assert session.get(Registration, registration_id).fencer_id == record_id
     audited = {e.field for e in session.scalars(select(FencerProfileAudit)).all()}

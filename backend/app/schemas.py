@@ -484,7 +484,7 @@ class TournamentCreate(BaseModel):
     slug: str = Field(pattern=constraints.TOURNAMENT_SLUG_PATTERN)
     display_name: TournamentDisplayNameStr
     date: datetime.date
-    language: str = "cs"
+    # no language: a new tournament takes its creator's (spec `localization`)
 
 
 class TournamentUpdate(BaseModel):
@@ -588,6 +588,15 @@ class TournamentUpdate(BaseModel):
     vs_series: int | None = Field(
         default=None, ge=constraints.VS_SERIES_MIN, le=constraints.VS_SERIES_MAX
     )
+
+    # the language mail falls back to, held to the locales Squire can write
+    # mail in, as the account language is
+    @field_validator("language")
+    @classmethod
+    def _known_language(cls, value: str | None) -> str | None:
+        if value is not None and value not in catalog.available():
+            raise ValueError("unsupported_language")
+        return value
 
     # a rate is a Setup convenience the organizer reads back, not a computed
     # figure; two decimal places is what an organizer actually types

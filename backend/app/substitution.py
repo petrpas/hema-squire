@@ -141,11 +141,15 @@ def resolve_substitute(
             # the replaced fencer's own record, or a stranger's: either way the
             # address cannot be written onto a second record — `fencers.email`
             # is unique — and belongs to the seat instead
-            return _fresh_record(session, identity, email=None), email
-    return _fresh_record(session, identity, email=email), None
+            return _fresh_record(session, tournament, identity, email=None), email
+    return _fresh_record(session, tournament, identity, email=email), None
 
 
-def _fresh_record(session: Session, identity: Identity, *, email: str | None) -> Fencer:
+def _fresh_record(
+    session: Session, tournament: Tournament, identity: Identity, *, email: str | None
+) -> Fencer:
+    # nobody chose a language for a substitute, so the record takes the
+    # tournament's, as hand entry does (spec `localization`)
     fencer = Fencer(
         email=email,
         password_hash=None,
@@ -153,6 +157,7 @@ def _fresh_record(session: Session, identity: Identity, *, email: str | None) ->
         hr_id=identity.hr_id,
         nationality=identity.nationality,
         club=identity.club,
+        language=tournament.language,
     )
     session.add(fencer)
     session.flush()
@@ -184,6 +189,9 @@ class Prepared:
     contact: str | None
     previous: Identity
     registration: Registration | None
+    # the record being replaced, read before the seat moves off it: the
+    # departing holder's message is written in its language
+    replaced: Fencer | None = None
 
     def payload(self, stated: dict, index: HRIndex) -> dict:
         """What the rule records: what the organizer stated, the substitute's
@@ -232,7 +240,11 @@ def prepare(
     if replaced is not None and substitute.id == replaced.id:
         raise HTTPException(status_code=409, detail="substitute_is_the_fencer_on_the_row")
     return Prepared(
-        substitute=substitute, contact=contact, previous=previous, registration=registration
+        substitute=substitute,
+        contact=contact,
+        previous=previous,
+        registration=registration,
+        replaced=replaced,
     )
 
 

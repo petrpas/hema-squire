@@ -181,6 +181,9 @@ def create_tournament(data: TournamentCreate, session: SessionDep, fencer: Fence
     # access, so no team row is added
     tournament = Tournament(
         **data.model_dump(),
+        # mail falls back to the creator's language until the owner changes it
+        # on Setup's OTHER tab (spec `localization`)
+        language=fencer.language,
         owner=fencer,
         vs_year=vs_year,
         vs_series=_lowest_free_series(session, vs_year),
@@ -692,6 +695,10 @@ def update_tournament(
 ):
     require_console_access(session, tournament, fencer)
     updates = data.model_dump(exclude_unset=True)
+    if updates.get("language", tournament.language) != tournament.language:
+        # offered only on OTHER, which only the owner is shown (design
+        # mail-language-follows-recipient D5)
+        require_tournament_owner(tournament, fencer)
     requested_series = updates.pop("vs_series", None)
     has_registrations = _has_registrations(session, tournament)
     # the series is frozen from the first registration on: no explicit change,

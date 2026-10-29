@@ -32,6 +32,7 @@ from sqlalchemy.orm import Session
 
 from app import pricing, rownumbers, sheet
 from app.hr_index import name_key
+from app.i18n import catalog
 from app.models import (
     Discipline,
     DisciplineKind,
@@ -140,7 +141,17 @@ def _address(row: dict) -> str:
     return (row.get("email") or "").strip().lower()
 
 
-def _resolve_fencer(session: Session, row: dict, claimed: set[str]) -> Fencer:
+def _language(tournament: Tournament, row: dict) -> str:
+    """The row's own language where Squire has it, else the tournament's: a
+    record nobody chose a language for reads the tournament's mail (spec
+    `localization`)."""
+    stated = (row.get("language") or "").strip()
+    return stated if stated in catalog.available() else tournament.language
+
+
+def _resolve_fencer(
+    session: Session, tournament: Tournament, row: dict, claimed: set[str]
+) -> Fencer:
     """The fencer this row is about, created if no record exists yet.
 
     An existing record is reused and never overwritten: it may belong to someone
@@ -188,7 +199,7 @@ def _resolve_fencer(session: Session, row: dict, claimed: set[str]) -> Fencer:
         hr_id=_hr_id_to_carry(row),
         nationality=row.get("nationality"),
         club=row.get("club"),
-        language=row.get("language") or "en",
+        language=_language(tournament, row),
     )
     session.add(fencer)
     return fencer
@@ -212,7 +223,7 @@ def _issue_one(
         # a registration with no entries would total zero, read as settled, and
         # quietly absorb a payment (design Decision 6)
         return NO_DISCIPLINE
-    fencer = _resolve_fencer(session, row, claimed)
+    fencer = _resolve_fencer(session, tournament, row, claimed)
     session.flush()
     if fencer.id is not None:
         existing = session.scalar(

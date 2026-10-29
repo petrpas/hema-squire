@@ -1481,3 +1481,18 @@ def test_issuing_keeps_what_the_parser_doubted(client, auth_headers, mailbox):
     after = {r["name"]: r["problems"] for r in sheet_rows(client, organizer)}
     assert after["Jan?"] == "doubtful"
     assert after["Eva"] is None
+
+
+@pytest.mark.parametrize(
+    ("stated", "carried"),
+    [(None, "en"), ("", "en"), ("xx", "en"), ("cs", "cs")],
+)
+def test_an_issued_record_carries_its_rows_language_or_the_tournaments(client, stated, carried):
+    """A row's own language is kept where Squire has it; a row stating none, or
+    one no bundled locale provides, takes the tournament's (spec `localization`)."""
+    from app import issuing
+    from app.models import Tournament
+
+    row = {"name": "Jana Nová", "language": stated}
+    fencer = issuing._resolve_fencer(db_session(), Tournament(language="en"), row, set())
+    assert fencer.language == carried

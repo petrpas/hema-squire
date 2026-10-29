@@ -227,7 +227,7 @@ def test_legacy_tournament_still_prices_team_fee_from_discipline_row():
 def setup_team_tournament(client, organizer, *, team_min=3, team_max=4, capacity=1, deadline=None):
     client.post(
         "/api/tournaments",
-        json={"slug": "cup", "display_name": "Cup", "date": "2026-12-05", "language": "cs"},
+        json={"slug": "cup", "display_name": "Cup", "date": "2026-12-05"},
         headers=organizer,
     )
     patch = {"city": "Brno", "organizers": [{"name": "Cup Org", "link": None}]}
@@ -333,7 +333,7 @@ def test_full_individual_discipline_unaffected_by_teams(client, auth_headers):
     organizer = auth_headers()
     client.post(
         "/api/tournaments",
-        json={"slug": "cup", "display_name": "Cup", "date": "2026-12-05", "language": "cs"},
+        json={"slug": "cup", "display_name": "Cup", "date": "2026-12-05"},
         headers=organizer,
     )
     client.patch(
@@ -903,7 +903,7 @@ def test_teams_absent_from_sheets_export(client, auth_headers):
     organizer = auth_headers()
     client.post(
         "/api/tournaments",
-        json={"slug": "cup", "display_name": "Cup", "date": "2026-12-05", "language": "cs"},
+        json={"slug": "cup", "display_name": "Cup", "date": "2026-12-05"},
         headers=organizer,
     )
     client.post(
@@ -1052,7 +1052,7 @@ def test_no_team_discipline_regression(client, auth_headers):
     organizer = auth_headers()
     client.post(
         "/api/tournaments",
-        json={"slug": "cup", "display_name": "Cup", "date": "2026-12-05", "language": "cs"},
+        json={"slug": "cup", "display_name": "Cup", "date": "2026-12-05"},
         headers=organizer,
     )
     client.patch(

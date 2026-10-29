@@ -1,5 +1,6 @@
-"""Composition of fencer-facing emails, localized to the tournament's
-communication language."""
+"""Composition of fencer-facing emails, each localized to its recipient's
+language where Squire has it and to the tournament's communication language
+otherwise (spec `localization`)."""
 
 from __future__ import annotations
 
@@ -10,7 +11,7 @@ from typing import TYPE_CHECKING, Literal
 
 from app import accounts, managekey, pricing, setup, spayd
 from app.config import settings
-from app.i18n import format_date, format_money, t
+from app.i18n import catalog, format_date, format_money, t
 from app.mail import Mailer, build_message
 from app.models import (
     Currency,
@@ -100,10 +101,8 @@ def _amount_text(
     return f"{primary} ({format_money(eur_amount, 'EUR', lang)})"
 
 
-def _total_text(tournament: Tournament, registration: Registration) -> str:
-    return _amount_text(
-        tournament, tournament.language, registration.total_amount, registration.total_eur
-    )
+def _total_text(tournament: Tournament, registration: Registration, lang: str) -> str:
+    return _amount_text(tournament, lang, registration.total_amount, registration.total_eur)
 
 
 def _day(tournament: Tournament, moment: datetime.date | datetime.datetime, lang: str) -> str:
@@ -147,6 +146,19 @@ def recipient(registration: Registration, fencer: Fencer) -> str | None:
     return registration.contact_email or fencer.email
 
 
+def mail_language(tournament: Tournament, fencer: Fencer) -> str:
+    """The language a message about this tournament is written in: the
+    language on the record it is addressed to where a bundled locale provides
+    it, the tournament's communication language otherwise (spec `localization`,
+    Communication language vs UI language).
+
+    Asked once per send and handed to everything the send composes, so no line
+    of one message is in another language than the rest of it."""
+    if fencer.language in catalog.available():
+        return fencer.language
+    return tournament.language
+
+
 def tournament_link(tournament: Tournament) -> str:
     """The tournament's public page, spelled as the frontend's `routes.detail`
     spells it. Carries no key and grants nothing by itself."""
@@ -167,6 +179,7 @@ def manage_link(registration: Registration) -> str | None:
 
 def _letter(
     registration: Registration,
+    lang: str,
     to: str | None,
     subject: str,
     body: str,
@@ -180,7 +193,6 @@ def _letter(
     is a guest's, the manage link — whichever message it is and whatever caused
     it. The same reasoning as `recipient`: a fifteenth send will be added
     without reading this file, and it must not be the one without its links."""
-    lang = registration.tournament.language
     body += "\n\n" + t("email.tournamentLink", lang, link=tournament_link(registration.tournament))
     link = manage_link(registration)
     if link is not None:
@@ -196,8 +208,8 @@ def send_manage_link(mailer: Mailer, tournament: Tournament, registration: Regis
     current key, not a fresh one: the link already mailed stays good, so a
     guest who finds the first mail after all is not left holding a dead one.
     The link itself is the letter's own footer."""
-    lang = tournament.language
     fencer = registration.fencer
+    lang = mail_language(tournament, fencer)
     body = t(
         "email.manageLinkResent.body",
         lang,
@@ -208,6 +220,7 @@ def send_manage_link(mailer: Mailer, tournament: Tournament, registration: Regis
     mailer.send(
         _letter(
             registration,
+            lang,
             recipient(registration, fencer),
             t("email.manageLinkResent.subject", lang, tournament=tournament.display_name),
             body,
@@ -336,10 +349,11 @@ def _send_confirmation_without_payment(
     code and no expiry date. It confirms the registration rather than
     requesting money; how the event is settled is the organizer's own
     statement, made in the registration instructions."""
-    lang = tournament.language
+    lang = mail_language(tournament, fencer)
     mailer.send(
         _letter(
             registration,
+            lang,
             recipient(registration, fencer),
             t(f"{key}.subject", lang, tournament=tournament.display_name),
             t(
@@ -348,7 +362,7 @@ def _send_confirmation_without_payment(
                 name=fencer.display_name,
                 tournament=tournament.display_name,
                 summary=_summary_lines(registration, tournament, lang),
-                total=_total_text(tournament, registration),
+                total=_total_text(tournament, registration, lang),
             ),
         )
     )
@@ -366,7 +380,7 @@ def send_registration_confirmation(
     condition that have no free place, which the summary states."""
     if dormant_by_origin(registration):
         return
-    lang = tournament.language
+    lang = mail_language(tournament, fencer)
     queued = registration.fully_queued
 
     if not queued and not tournament.feature_payments:
@@ -393,6 +407,7 @@ def send_registration_confirmation(
             mailer.send(
                 _letter(
                     registration,
+                    lang,
                     recipient(registration, fencer),
                     subject,
                     body,
@@ -408,7 +423,7 @@ def send_registration_confirmation(
             tournament=tournament.display_name,
             summary=summary,
         )
-        mailer.send(_letter(registration, recipient(registration, fencer), subject, body))
+        mailer.send(_letter(registration, lang, recipient(registration, fencer), subject, body))
         return
 
     subject = t("email.confirmation.subject", lang, tournament=tournament.display_name)
@@ -425,7 +440,9 @@ def send_registration_confirmation(
         account=_account_text(tournament),
         vs=registration.vs,
     )
-    mailer.send(_letter(registration, recipient(registration, fencer), subject, body, qrs=qrs))
+    mailer.send(
+        _letter(registration, lang, recipient(registration, fencer), subject, body, qrs=qrs)
+    )
 
 
 def payment_message(tournament: Tournament, registration: Registration) -> str:
@@ -593,7 +610,7 @@ def _payment_block(
             outstanding_eur,
         )
         return lines, consequence, qrs
-    lines = t("email.due.total", lang, total=_total_text(tournament, registration), due=due)
+    lines = t("email.due.total", lang, total=_total_text(tournament, registration, lang), due=due)
     qrs = _qr_pair(
         tournament,
         registration,
@@ -610,7 +627,7 @@ def send_payment_reminder(
 ) -> None:
     if _payment_mail_suppressed(tournament, registration):
         return
-    lang = tournament.language
+    lang = mail_language(tournament, fencer)
     subject = t("email.reminder.subject", lang, tournament=tournament.display_name)
     amounts, consequence, qrs = _payment_block(tournament, registration, lang)
     body = t(
@@ -624,7 +641,9 @@ def send_payment_reminder(
         account=_account_text(tournament),
         vs=registration.vs,
     )
-    mailer.send(_letter(registration, recipient(registration, fencer), subject, body, qrs=qrs))
+    mailer.send(
+        _letter(registration, lang, recipient(registration, fencer), subject, body, qrs=qrs)
+    )
 
 
 def send_reservation_expired(
@@ -641,7 +660,7 @@ def send_reservation_expired(
     contact, and never implies the money is lost or promises a seat."""
     if _payment_mail_suppressed(tournament, registration):
         return
-    lang = tournament.language
+    lang = mail_language(tournament, fencer)
     if holding_payment:
         subject = t("email.expiredHoldingPayment.subject", lang, tournament=tournament.display_name)
         body = t(
@@ -660,7 +679,7 @@ def send_reservation_expired(
             tournament=tournament.display_name,
             vs=registration.vs,
         )
-    mailer.send(_letter(registration, recipient(registration, fencer), subject, body))
+    mailer.send(_letter(registration, lang, recipient(registration, fencer), subject, body))
 
 
 def send_payment_received(
@@ -668,17 +687,17 @@ def send_payment_received(
 ) -> None:
     if _payment_mail_suppressed(tournament, registration):
         return
-    lang = tournament.language
+    lang = mail_language(tournament, fencer)
     subject = t("email.paid.subject", lang, tournament=tournament.display_name)
     body = t(
         "email.paid.body",
         lang,
         name=fencer.display_name,
         tournament=tournament.display_name,
-        total=_total_text(tournament, registration),
+        total=_total_text(tournament, registration, lang),
         vs=registration.vs,
     )
-    mailer.send(_letter(registration, recipient(registration, fencer), subject, body))
+    mailer.send(_letter(registration, lang, recipient(registration, fencer), subject, body))
 
 
 def send_partial_payment_received(
@@ -694,7 +713,7 @@ def send_partial_payment_received(
     Decision 3)."""
     if _payment_mail_suppressed(tournament, registration):
         return
-    lang = tournament.language
+    lang = mail_language(tournament, fencer)
     outstanding = Decimal(registration.outstanding_in(which)) / 100
     currency = tournament.local_currency if which == "local" else Currency.EUR
     outstanding = outstanding.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
@@ -708,7 +727,7 @@ def send_partial_payment_received(
         outstanding=format_money(outstanding, currency, lang),
         vs=registration.vs,
     )
-    mailer.send(_letter(registration, recipient(registration, fencer), subject, body))
+    mailer.send(_letter(registration, lang, recipient(registration, fencer), subject, body))
 
 
 def send_amendment_confirmation(
@@ -719,7 +738,7 @@ def send_amendment_confirmation(
     reserved amendment leaves `vs` and `expires_at` untouched (Decision 3)."""
     if dormant_by_origin(registration):
         return
-    lang = tournament.language
+    lang = mail_language(tournament, fencer)
     queued = all(entry.is_substitute for entry in registration.entries) and all(
         team.waitlisted for team in registration.teams
     )
@@ -739,7 +758,7 @@ def send_amendment_confirmation(
             tournament=tournament.display_name,
             summary=_summary_lines(registration, tournament, lang),
         )
-        mailer.send(_letter(registration, recipient(registration, fencer), subject, body))
+        mailer.send(_letter(registration, lang, recipient(registration, fencer), subject, body))
         return
 
     subject = t("email.amendment.subject", lang, tournament=tournament.display_name)
@@ -756,7 +775,9 @@ def send_amendment_confirmation(
         account=_account_text(tournament),
         vs=registration.vs,
     )
-    mailer.send(_letter(registration, recipient(registration, fencer), subject, body, qrs=qrs))
+    mailer.send(
+        _letter(registration, lang, recipient(registration, fencer), subject, body, qrs=qrs)
+    )
 
 
 def send_surcharge_due(
@@ -777,7 +798,7 @@ def send_surcharge_due(
     act on and nothing else will tell them. Returns whether a message was sent."""
     if _payment_mail_suppressed(tournament, registration, despite_dormancy=despite_dormancy):
         return False
-    lang = tournament.language
+    lang = mail_language(tournament, fencer)
     outstanding_local = (Decimal(registration.outstanding_cents) / 100).quantize(
         Decimal("0.01"), rounding=ROUND_HALF_UP
     )
@@ -803,6 +824,7 @@ def send_surcharge_due(
     mailer.send(
         _letter(
             registration,
+            lang,
             recipient(registration, fencer),
             subject,
             body,
@@ -840,11 +862,12 @@ def send_promoted(
     registration entered by hand; imported-registrations)."""
     if dormant_by_origin(registration):
         return
-    lang = tournament.language
+    lang = mail_language(tournament, fencer)
     if not tournament.feature_payments:
         mailer.send(
             _letter(
                 registration,
+                lang,
                 recipient(registration, fencer),
                 t("email.promotedNoPayment.subject", lang, tournament=tournament.display_name),
                 t(
@@ -853,7 +876,7 @@ def send_promoted(
                     name=fencer.display_name,
                     tournament=tournament.display_name,
                     discipline=discipline_name,
-                    total=_total_text(tournament, registration),
+                    total=_total_text(tournament, registration, lang),
                 ),
             )
         )
@@ -866,6 +889,7 @@ def send_promoted(
         mailer.send(
             _letter(
                 registration,
+                lang,
                 recipient(registration, fencer),
                 t("email.promotedPaid.subject", lang, tournament=tournament.display_name),
                 t(
@@ -905,6 +929,7 @@ def send_promoted(
     mailer.send(
         _letter(
             registration,
+            lang,
             recipient(registration, fencer),
             t("email.promoted.subject", lang, tournament=tournament.display_name),
             body,
@@ -920,9 +945,10 @@ def send_team_promoted(
     """A waitlisted team admitted into a free slot, told to its entering fencer:
     the promotion notice, naming the team and its discipline and stating what
     is now due (spec seating-queue, The team waitlist in the Queue phase)."""
+    # composed ahead of the send, so in the language the send will resolve
     label = t(
         "email.promoted.team",
-        tournament.language,
+        mail_language(tournament, fencer),
         team=team.name,
         discipline=team.discipline.name,
     )
@@ -948,7 +974,7 @@ def send_reservation_reinstated(
     which it is not. Both state the amount received, never the total."""
     if _payment_mail_suppressed(tournament, registration):
         return
-    lang = tournament.language
+    lang = mail_language(tournament, fencer)
     currency = tournament.local_currency if which == "local" else Currency.EUR
     received = format_money(_units(received_cents), currency, lang)
     if registration.settled:
@@ -961,7 +987,7 @@ def send_reservation_reinstated(
             total=received,
             vs=registration.vs,
         )
-        mailer.send(_letter(registration, recipient(registration, fencer), subject, body))
+        mailer.send(_letter(registration, lang, recipient(registration, fencer), subject, body))
         return
 
     # what is still due, by when and with which consequence, is the same block
@@ -980,7 +1006,9 @@ def send_reservation_reinstated(
         account=_account_text(tournament),
         vs=registration.vs,
     )
-    mailer.send(_letter(registration, recipient(registration, fencer), subject, body, qrs=qrs))
+    mailer.send(
+        _letter(registration, lang, recipient(registration, fencer), subject, body, qrs=qrs)
+    )
 
 
 def send_payment_after_expiry(
@@ -991,7 +1019,7 @@ def send_payment_after_expiry(
     will follow up; it must not promise a seat that may no longer exist."""
     if _payment_mail_suppressed(tournament, registration):
         return
-    lang = tournament.language
+    lang = mail_language(tournament, fencer)
     subject = t("email.afterExpiry.subject", lang, tournament=tournament.display_name)
     body = t(
         "email.afterExpiry.body",
@@ -1000,7 +1028,7 @@ def send_payment_after_expiry(
         tournament=tournament.display_name,
         vs=registration.vs,
     )
-    mailer.send(_letter(registration, recipient(registration, fencer), subject, body))
+    mailer.send(_letter(registration, lang, recipient(registration, fencer), subject, body))
 
 
 def _credit_text(tournament: Tournament, registration: Registration, lang: str) -> str | None:
@@ -1040,7 +1068,7 @@ def send_demoted(
     message was sent, so the caller can record the notice beside the demotion."""
     if _payment_mail_suppressed(tournament, registration):
         return False
-    lang = tournament.language
+    lang = mail_language(tournament, fencer)
     lines = [
         "  " + t("email.demoted.entry", lang, discipline=name, position=position)
         for name, position in moved
@@ -1078,6 +1106,7 @@ def send_demoted(
     mailer.send(
         _letter(
             registration,
+            lang,
             recipient(registration, fencer),
             t("email.demoted.subject", lang, tournament=tournament.display_name),
             body,
@@ -1108,7 +1137,7 @@ def send_payment_while_queued(
     resolves (spec payments)."""
     if _payment_mail_suppressed(tournament, registration):
         return
-    lang = tournament.language
+    lang = mail_language(tournament, fencer)
     body_key = {
         "queued_no_place": "email.paymentWhileQueued.bodyNoPlace",
         "queued_amount_mismatch": "email.paymentWhileQueued.bodyAmountMismatch",
@@ -1116,6 +1145,7 @@ def send_payment_while_queued(
     mailer.send(
         _letter(
             registration,
+            lang,
             recipient(registration, fencer),
             t("email.paymentWhileQueued.subject", lang, tournament=tournament.display_name),
             t(
@@ -1145,10 +1175,11 @@ def send_seated_by_payment(
     and the total diverge."""
     if _payment_mail_suppressed(tournament, registration):
         return
-    lang = tournament.language
+    lang = mail_language(tournament, fencer)
     mailer.send(
         _letter(
             registration,
+            lang,
             recipient(registration, fencer),
             t("email.seatedByPayment.subject", lang, tournament=tournament.display_name),
             t(
@@ -1220,7 +1251,7 @@ def send_composition_reminder(
     to reach the reminder window at all. Sends nothing and touches no pricing, VS, or
     capacity path — scheduler.process_composition_reminders stamps
     `composition_reminded_at` per team so a later tick does not resend it."""
-    lang = tournament.language
+    lang = mail_language(tournament, fencer)
     lines = [
         f"  {team.name} — {team.discipline.name}: "
         + t(
@@ -1240,7 +1271,7 @@ def send_composition_reminder(
         teams="\n".join(lines),
         deadline=_day(tournament, deadline, lang),
     )
-    mailer.send(_letter(registration, recipient(registration, fencer), subject, body))
+    mailer.send(_letter(registration, lang, recipient(registration, fencer), subject, body))
 
 
 def send_substitution(mailer: Mailer, tournament: Tournament, prepared: Prepared) -> None:
@@ -1262,9 +1293,10 @@ def send_substitution(mailer: Mailer, tournament: Tournament, prepared: Prepared
         # a hand-entered seat is sent nothing of any kind; the organizer who
         # entered it is the one in contact (spec registration)
         return
-    lang = tournament.language
     substitute, previous = prepared.substitute, prepared.previous
     arrival_to = recipient(registration, substitute)
+    # two people, each written to in their own language (spec `localization`)
+    lang = mail_language(tournament, substitute)
 
     if arrival_to:
         outstanding_local = (Decimal(registration.outstanding_cents) / 100).quantize(
@@ -1303,6 +1335,7 @@ def send_substitution(mailer: Mailer, tournament: Tournament, prepared: Prepared
         mailer.send(
             _letter(
                 registration,
+                lang,
                 arrival_to,
                 t(f"{key}.subject", lang, tournament=tournament.display_name),
                 t(f"{key}.body", lang, **fields),
@@ -1316,6 +1349,8 @@ def send_substitution(mailer: Mailer, tournament: Tournament, prepared: Prepared
     # been taken by themselves.
     if not previous.email or previous.email == arrival_to:
         return
+    replaced = prepared.replaced
+    lang = mail_language(tournament, replaced) if replaced is not None else tournament.language
     mailer.send(
         build_message(
             previous.email,
@@ -1352,7 +1387,7 @@ def send_cancelled_by_organizer(
     to = recipient(registration, registration.fencer)
     if not to:
         return
-    lang = tournament.language
+    lang = mail_language(tournament, registration.fencer)
     # any money in either lane, a deposit included: whatever arrived is the
     # organizer's to return or keep
     paid = registration.credited_in("local") > 0 or registration.credited_in("eur") > 0
@@ -1371,4 +1406,4 @@ def send_cancelled_by_organizer(
         "email.cancelledByOrganizer.signature", lang, tournament=tournament.display_name
     )
     subject = t("email.cancelledByOrganizer.subject", lang, tournament=tournament.display_name)
-    mailer.send(_letter(registration, to, subject, body))
+    mailer.send(_letter(registration, lang, to, subject, body))
