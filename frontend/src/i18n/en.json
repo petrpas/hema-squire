@@ -440,6 +440,7 @@
     "amount_tolerance_percent": "Amount tolerance (%)",
     "refundable_until": "Refundable until",
     "bank_account": "Account (IBAN)",
+    "bank_account_holder": "Account holder",
     "expiry_grace_hours": "Grace period after expiry (hours)",
     "amendments_close": "Amendments close",
     "output_sheet_url": "Output Google Sheet URL",
@@ -542,6 +543,7 @@
       "discount_prices": "Some fixed discount has no EUR amount",
       "legacy_fixed_fees_block_eur": "This tournament uses the legacy fixed weapon-rental/afterparty fees, which have no EUR counterpart — switch to itemized extra services to enable EUR",
       "bank_account": "The bank account payments are collected into is missing",
+      "bank_account_holder": "The account holder a EUR payment code must name is missing",
       "deposit_amount": "The deposit is missing on a tournament that takes one",
       "external_registration_url": "The address where registration is held is missing",
       "payment_feed": "The deposit mode needs a bank feed token, so a deposit is noticed as it arrives"
@@ -609,6 +611,7 @@
       "cities": "towns used before",
       "addresses": "venues used before",
       "bankAccounts": "previously used accounts",
+      "bankAccountHolders": "previously named account holders",
       "organizers": "previously named organizers"
     },
     "disciplines": {
@@ -733,7 +736,9 @@
     "bankAccount": {
       "title": "Bank account",
       "label": "Account",
-      "hint": "Enter either an IBAN, for example \"CZ6508000000192000145399\", or the Czech domestic form, for example \"19-2000145399/0800\". Registrations cannot be paid until an account is recorded here — required as soon as the tournament charges anything."
+      "hint": "Enter either an IBAN, for example \"CZ6508000000192000145399\", or the Czech domestic form, for example \"19-2000145399/0800\". Registrations cannot be paid until an account is recorded here — required as soon as the tournament charges anything.",
+      "holderLabel": "Account holder",
+      "holderHint": "The person or club the account belongs to, as the bank knows it. A EUR payment code must name the account's holder, and a foreign bank refuses a code without it. Required when the tournament takes euros."
     },
     "feedToken": {
       "set": "set feed token",
@@ -871,6 +876,7 @@
       },
       "setting": {
         "bank_account": "bank account",
+        "bank_account_holder": "account holder",
         "payment_mode": "payment mode",
         "deposit_amount": "deposit"
       },

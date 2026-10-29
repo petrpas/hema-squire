@@ -280,6 +280,7 @@ def test_v3_currency_and_option_fields_round_trip(client, auth_headers):
         "/api/tournaments/cup",
         json={
             "eur_payments_enabled": True,
+            "bank_account_holder": "TJ Šerm Praha",
             "eur_rate": "25.5",
             "registration_instructions": "Plať do 10 dnů.",
         },
@@ -313,6 +314,7 @@ def test_v3_currency_and_option_fields_round_trip(client, auth_headers):
     assert document["tournament"]["local_currency"] == "CZK"
     assert document["tournament"]["eur_payments_enabled"] is True
     assert document["tournament"]["eur_rate"] == "25.50"
+    assert document["tournament"]["bank_account_holder"] == "TJ Šerm Praha"
     assert document["extra_items"][0]["option_choices"] == ["S", "M"]
     assert document["extra_items"][0]["price_eur"] == 12
     assert document["registrations"][0]["extras"][0]["option_value"] == "M"

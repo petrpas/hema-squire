@@ -190,7 +190,7 @@ def test_vs_in_message_matches_sepa_style(client, auth_headers, mailbox):
     )
     client.patch(
         "/api/tournaments/cup",
-        json={"eur_payments_enabled": True},
+        json={"eur_payments_enabled": True, "bank_account_holder": "TJ Šerm Praha"},
         headers=organizer,
     )
     fencer, vs = enroll(client, auth_headers)
@@ -238,6 +238,24 @@ def test_second_payment_for_paid_registration_flagged(client, auth_headers, mail
     assert queue[0]["status_reason"] == "registration_paid"
 
 
+def test_epc_remittance_text_matches_by_its_labelled_vs(client, auth_headers, mailbox):
+    """A transfer made from the EUR code arrives with the code's remittance
+    text in its message, and matches on the VS that text leads with."""
+    organizer = auth_headers()
+    setup_with_eur(client, organizer)
+    fencer, vs = enroll(client, auth_headers)
+    epc = client.get("/api/tournaments/cup/my-registration/payment", headers=fencer).json()[
+        "eur_spayd"
+    ]
+    remittance = epc.split("\n")[10]
+    assert remittance.startswith(f"VS{vs}")
+
+    result = import_rows(
+        client, organizer, [f"1;01.08.2026;40,00;EUR;;;;{remittance};MUELLER;DE99"]
+    )
+    assert result["matched"] == 1
+
+
 def setup_with_eur(client, organizer, fee=1000, fee_eur=40):
     setup(client, organizer)
     # the tournament is already published: give the discipline its EUR price
@@ -250,7 +268,7 @@ def setup_with_eur(client, organizer, fee=1000, fee_eur=40):
     )
     client.patch(
         "/api/tournaments/cup",
-        json={"eur_payments_enabled": True},
+        json={"eur_payments_enabled": True, "bank_account_holder": "TJ Šerm Praha"},
         headers=organizer,
     )
 
@@ -641,7 +659,7 @@ def test_reevaluated_flagged_transaction_not_credited_twice(client, auth_headers
     )
     client.patch(
         "/api/tournaments/cup",
-        json={"eur_payments_enabled": True},
+        json={"eur_payments_enabled": True, "bank_account_holder": "TJ Šerm Praha"},
         headers=organizer,
     )
     # total_eur is fixed at registration time (never recomputed on read); an

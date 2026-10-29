@@ -93,7 +93,8 @@
       "afterparty": "Afterparty",
       "aftersparring": "After-sparring",
       "option": "choice",
-      "eur_note": "\n\nYou can also pay in euros — use the attached QR code marked EUR."
+      "eur_note": "\n\nYou can also pay in euros — use the attached QR code marked EUR.",
+      "eur_note_text": "\n\nYou can also pay in euros — send the EUR amount to the IBAN above, with the variable symbol in the message for the recipient."
     },
     "seatedByPayment": {
       "subject": "You have a place — {tournament}",

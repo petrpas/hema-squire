@@ -542,6 +542,19 @@ def _distinct_recent(values: Iterable[str | None], cap: int = SUGGESTION_CAP) ->
     return result
 
 
+def _holder_by_account(tournaments: list[Tournament]) -> dict[str, str]:
+    """Each recalled account's holder, as its most recent tournament recording
+    one stated it — what choosing that account fills into an empty holder
+    field (design eur-payment-qr-epc D3)."""
+    result: dict[str, str] = {}
+    for tournament in tournaments:
+        account = (tournament.bank_account or "").strip()
+        holder = (tournament.bank_account_holder or "").strip()
+        if account and holder and account not in result:
+            result[account] = holder
+    return result
+
+
 def _distinct_organizers(
     tournaments: list[Tournament], cap: int = SUGGESTION_CAP
 ) -> list[OrganizerOut]:
@@ -589,6 +602,8 @@ def setup_suggestions(session: SessionDep, fencer: FencerDep):
         cities=_distinct_recent(t.city for t in tournaments),
         addresses=_distinct_recent(t.address for t in tournaments),
         bank_accounts=_distinct_recent(t.bank_account for t in tournaments),
+        bank_account_holders=_distinct_recent(t.bank_account_holder for t in tournaments),
+        holder_by_account=_holder_by_account(tournaments),
         organizers=_distinct_organizers(tournaments),
     )
 

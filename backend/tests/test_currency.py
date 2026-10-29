@@ -519,6 +519,7 @@ def publish_with_eur(client, headers, *, eur=True, fee=1750, fee_eur=70):
         "city": "Brno",
         "organizers": [{"name": "Org", "link": None}],
         "bank_account": "CZ6508000000192000145399",
+        "bank_account_holder": "TJ Šerm Praha",
     }
     if eur:
         patch |= {"eur_payments_enabled": True}
@@ -570,8 +571,10 @@ def test_payment_instructions_carry_the_eur_pair(client, auth_headers):
     assert data["currency"] == "CZK"
     assert data["eur_amount"] == 70
     assert "CC:CZK" in data["spayd"]
-    assert "CC:EUR" in data["eur_spayd"]
-    assert "AM:70.00" in data["eur_spayd"]
+    # the EUR code is an EPC code, which the foreign banks it is for read
+    eur_lines = data["eur_spayd"].split("\n")
+    assert eur_lines[:4] == ["BCD", "002", "1", "SCT"]
+    assert eur_lines[5:8] == ["TJ Šerm Praha", "CZ6508000000192000145399", "EUR70"]
     assert data["eur_qr_png_base64"]
 
 

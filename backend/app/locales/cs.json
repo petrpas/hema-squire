@@ -17,6 +17,7 @@
       "aftersparring": "After-sparring",
       "option": "volba",
       "eur_note": "\n\nPlatit můžeš i v eurech — použij přiložený QR kód označený EUR.",
+      "eur_note_text": "\n\nPlatit můžeš i v eurech — pošli částku v EUR na IBAN uvedený výše a variabilní symbol uveď ve zprávě pro příjemce.",
       "condition": "Pojedu jen, pokud dostanu místo ve všech: {disciplines}.",
       "conditionWaits": "Zatím je plno v: {disciplines} — čekáš proto ve frontě ve všech disciplínách."
     },

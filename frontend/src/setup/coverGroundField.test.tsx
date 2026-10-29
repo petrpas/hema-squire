@@ -20,6 +20,8 @@ const suggestions = {
   cities: [],
   addresses: [],
   bank_accounts: [],
+  bank_account_holders: [],
+  holder_by_account: {},
   organizers: [],
 } as SetupSuggestions;
 

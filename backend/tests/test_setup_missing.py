@@ -16,6 +16,7 @@ def make_tournament(**kwargs) -> Tournament:
         vs_year=2026,
         vs_series=1,
         bank_account="CZ6508000000192000145399",
+        bank_account_holder="TJ Šerm Praha",
         # the account is mandatory only on a tournament Squire collects money
         # for (design tournament-modes D5), so these cases enable payments
         feature_payments=True,
@@ -198,3 +199,29 @@ def test_eur_only_price_requires_bank_account():
     tournament.disciplines[0].fee = 0
     tournament.disciplines[0].fee_eur = 32
     assert setup_missing(tournament) == ["bank_account"]
+
+
+def test_eur_taking_tournament_without_holder_blocks():
+    # every EUR code is an EPC code, which must name its beneficiary
+    tournament = make_tournament(eur_payments_enabled=True, bank_account_holder=None)
+    tournament.disciplines[0].fee_eur = 32
+    assert setup_missing(tournament) == ["bank_account_holder"]
+    tournament.bank_account_holder = "TJ Šerm Praha"
+    assert setup_missing(tournament) == []
+
+
+def test_eur_only_tournament_without_holder_blocks():
+    tournament = make_tournament(local_currency=Currency.EUR, bank_account_holder="  ")
+    assert setup_missing(tournament) == ["bank_account_holder"]
+
+
+def test_czk_only_tournament_needs_no_holder():
+    assert setup_missing(make_tournament(bank_account_holder=None)) == []
+
+
+def test_payments_off_tournament_needs_no_holder():
+    tournament = make_tournament(
+        eur_payments_enabled=True, feature_payments=False, bank_account_holder=None
+    )
+    tournament.disciplines[0].fee_eur = 32
+    assert setup_missing(tournament) == []

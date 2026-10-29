@@ -879,7 +879,7 @@ def my_registration_payment(
     if claim:
         session.commit()  # a claim computed on this read is stored with it
         local_due, eur_due = emails.claim_due(registration)
-        primary, eur = emails.payment_spayd(
+        primary, eur = emails.payment_codes(
             tournament, registration, local_amount=local_due, eur_amount=eur_due
         )
         return PaymentInstructionsOut(
@@ -891,13 +891,13 @@ def my_registration_payment(
             message=message,
             expires_at=None,
             spayd=primary,
-            qr_png_base64=base64.b64encode(spayd.qr_png(primary)).decode(),
+            qr_png_base64=_qr_base64(primary),
             eur_amount=None if eur_due is None else _plain(eur_due),
             eur_spayd=eur,
-            eur_qr_png_base64=(base64.b64encode(spayd.qr_png(eur)).decode() if eur else None),
+            eur_qr_png_base64=_qr_base64(eur),
             claim=True,
         )
-    primary, eur = emails.payment_spayd(tournament, registration)
+    primary, eur = emails.payment_codes(tournament, registration)
     return PaymentInstructionsOut(
         amount=registration.total_amount,
         currency=tournament.local_currency,
@@ -907,11 +907,15 @@ def my_registration_payment(
         message=message,
         expires_at=registration.expires_at,
         spayd=primary,
-        qr_png_base64=base64.b64encode(spayd.qr_png(primary)).decode(),
+        qr_png_base64=_qr_base64(primary),
         eur_amount=registration.total_eur,
         eur_spayd=eur,
-        eur_qr_png_base64=(base64.b64encode(spayd.qr_png(eur)).decode() if eur else None),
+        eur_qr_png_base64=_qr_base64(eur),
     )
+
+
+def _qr_base64(code: str | None) -> str | None:
+    return base64.b64encode(spayd.qr_png(code)).decode() if code else None
 
 
 def _plain(amount: Decimal) -> int | float:

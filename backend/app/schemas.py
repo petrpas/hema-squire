@@ -18,6 +18,7 @@ from app import accounts, constraints, setup
 from app.constraints import DEFAULT_TIMEZONE
 from app.errors import FieldValueError, reject_explicit_nulls
 from app.fieldtypes import (
+    BankAccountHolderStr,
     BankAccountStr,
     ClubStr,
     DisciplineNameStr,
@@ -476,6 +477,9 @@ class SetupSuggestionsOut(BaseModel):
     cities: list[str] = []
     addresses: list[str] = []
     bank_accounts: list[str] = []
+    bank_account_holders: list[str] = []
+    # choosing a recalled account fills its holder into an empty holder field
+    holder_by_account: dict[str, str] = {}
     # name and link travel together: choosing a remembered club fills both
     organizers: list[OrganizerOut] = []
 
@@ -570,6 +574,7 @@ class TournamentUpdate(BaseModel):
     amount_tolerance_percent: int | None = Field(default=None, ge=0, le=constraints.PERCENT_MAX)
     refundable_until: datetime.date | None = None
     bank_account: BankAccountStr | None = None
+    bank_account_holder: BankAccountHolderStr | None = None
     # hours after expiry a VS-matched payment may still reinstate a
     # reservation, subject to capacity; 0 disables automatic reinstatement
     expiry_grace_hours: int | None = Field(default=None, ge=0)
@@ -738,6 +743,7 @@ class TournamentOut(BaseModel):
     amount_tolerance_percent: int
     refundable_until: datetime.date | None
     bank_account: str | None
+    bank_account_holder: str | None
     # whether a Fio API token is on file — never the token itself. The console
     # offers the poll action on this, and says so when it is false
     fio_token_configured: bool
@@ -1304,8 +1310,11 @@ class PaymentInstructionsOut(BaseModel):
     vs: int
     message: str
     expires_at: UtcInstant | None
-    spayd: str
-    qr_png_base64: str
+    # `spayd`/`eur_spayd` carry whichever payment string was drawn — EPC for
+    # EUR, SPAYD otherwise (design eur-payment-qr-epc D5). A EUR code is None
+    # where no account holder is recorded; the details still stand in text
+    spayd: str | None
+    qr_png_base64: str | None
     # the EUR pair is absent, not empty, when the tournament takes no EUR
     eur_amount: int | float | None = None
     eur_spayd: str | None = None

@@ -342,7 +342,12 @@ def test_price_preview_fixed_discount_reported_in_both_currencies(client, auth_h
     # block EUR mode (design Decision 9); clear them before enabling it
     client.patch(
         "/api/tournaments/cup",
-        json={"weapon_rental_fee": 0, "afterparty_fee": 0, "eur_payments_enabled": True},
+        json={
+            "weapon_rental_fee": 0,
+            "afterparty_fee": 0,
+            "eur_payments_enabled": True,
+            "bank_account_holder": "TJ Šerm Praha",
+        },
         headers=organizer,
     )
     client.patch(
@@ -398,7 +403,12 @@ def test_price_preview_percentage_discount_carries_no_eur_value(client, auth_hea
     )
     client.patch(
         "/api/tournaments/cup",
-        json={"weapon_rental_fee": 0, "afterparty_fee": 0, "eur_payments_enabled": True},
+        json={
+            "weapon_rental_fee": 0,
+            "afterparty_fee": 0,
+            "eur_payments_enabled": True,
+            "bank_account_holder": "TJ Šerm Praha",
+        },
         headers=organizer,
     )
     client.patch(

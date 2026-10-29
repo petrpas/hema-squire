@@ -526,6 +526,9 @@ class Tournament(Base):
     amount_tolerance_percent: Mapped[int] = mapped_column(default=5)
     refundable_until: Mapped[date | None]
     bank_account: Mapped[str | None] = mapped_column(String(50))
+    # the account's holder as the bank knows it: the beneficiary name an EPC
+    # (EUR) payment code must carry, and without which no EUR code is drawn
+    bank_account_holder: Mapped[str | None] = mapped_column(String(70))
     # how long after expiry a VS-matched payment may still reinstate a
     # reservation, subject to capacity (matching.py); 0 disables automatic
     # reinstatement and routes every post-expiry payment to organizer action
@@ -609,6 +612,13 @@ class Tournament(Base):
         matching path consults. Does not depend on eur_rate, which is a Setup
         convenience only and plays no part in whether EUR applies."""
         return self.eur_payments_enabled and self.local_currency != Currency.EUR
+
+    @property
+    def takes_eur(self) -> bool:
+        """Whether any payment is asked for in EUR — as the only currency or as
+        the second. Where it is, the account holder is mandatory, since every
+        EUR code is an EPC code and that format requires a beneficiary name."""
+        return self.local_currency == Currency.EUR or self.shows_eur
 
     owner: Mapped[Fencer | None] = relationship(foreign_keys=[owner_id])
     disciplines: Mapped[list[Discipline]] = relationship(

@@ -83,9 +83,12 @@ def _summary_lines(
 
 def _eur_note(tournament: Tournament, lang: str) -> str:
     """The sentence pointing at the second, EUR-denominated QR; empty for a
-    tournament that takes only its local currency."""
+    tournament that takes only its local currency. Without a holder no EUR
+    code is drawn, and the sentence points at the details in text instead."""
     if not tournament.shows_eur:
         return ""
+    if not (tournament.bank_account_holder or "").strip():
+        return t("email.confirmation.eur_note_text", lang)
     return t("email.confirmation.eur_note", lang)
 
 
@@ -449,15 +452,36 @@ def payment_message(tournament: Tournament, registration: Registration) -> str:
     return f"VS{registration.vs} {tournament.display_name}"
 
 
-def payment_spayd(
+def payment_code(
+    currency: str,
+    iban: str,
+    holder: str | None,
+    amount: int | Decimal,
+    vs: int,
+    message: str,
+) -> str | None:
+    """The payment string a payer in this currency can scan: an EPC code for
+    EUR, SPAYD otherwise (design eur-payment-qr-epc D1). None for EUR without
+    a holder — the format requires a beneficiary name, and a code a bank
+    refuses is worse than the details stated in text."""
+    if currency == Currency.EUR:
+        if holder is None or not holder.strip():
+            return None
+        return spayd.epc_string(iban, holder, amount, message)
+    return spayd.spayd_string(iban, amount, vs, message, currency=currency)
+
+
+def payment_codes(
     tournament: Tournament,
     registration: Registration,
     *,
     local_amount: int | Decimal | None = None,
     eur_amount: int | Decimal | None = None,
-) -> tuple[str, str | None]:
-    """The local-currency SPAYD string and, for a tournament that also takes
-    EUR, a second one denominated in EUR against the same IBAN (design D4).
+) -> tuple[str | None, str | None]:
+    """The local-currency payment string and, for a tournament that also takes
+    EUR, a second one denominated in EUR against the same IBAN (design D4),
+    each in its currency's format. Either is None where its currency is EUR
+    and no holder is recorded.
 
     The two override amounts are independent — the same VS, but for whatever
     is outstanding in each currency (a surcharge due) rather than each
@@ -469,27 +493,15 @@ def payment_spayd(
         # `no_bank_account`/no QR; a symbol is allocated with the registration
         # wherever Squire collects. Stated here so neither can arrive as a
         # `None` inside a payment string a fencer would scan.
-        raise ValueError("a SPAYD string needs both a bank account and a symbol")
+        raise ValueError("a payment string needs both a bank account and a symbol")
+    holder = tournament.bank_account_holder
     local_due = registration.total_amount if local_amount is None else local_amount
     message = payment_message(tournament, registration)
-    primary = spayd.spayd_string(
-        account,
-        local_due,
-        vs,
-        message,
-        currency=str(tournament.local_currency),
-    )
+    primary = payment_code(str(tournament.local_currency), account, holder, local_due, vs, message)
     eur_due = registration.total_eur if eur_amount is None else eur_amount
     if eur_due is None:
         return primary, None
-    eur = spayd.spayd_string(
-        account,
-        eur_due,
-        vs,
-        message,
-        currency="EUR",
-    )
-    return primary, eur
+    return primary, payment_code(Currency.EUR, account, holder, eur_due, vs, message)
 
 
 def payment_qrs(
@@ -504,10 +516,10 @@ def payment_qrs(
     # not making (spec payments)
     if not tournament.feature_payments or not tournament.bank_account:
         return None, None
-    primary, eur = payment_spayd(
+    primary, eur = payment_codes(
         tournament, registration, local_amount=local_amount, eur_amount=eur_amount
     )
-    return spayd.qr_png(primary), (spayd.qr_png(eur) if eur else None)
+    return (spayd.qr_png(primary) if primary else None), (spayd.qr_png(eur) if eur else None)
 
 
 def _units(cents: int) -> int | Decimal:

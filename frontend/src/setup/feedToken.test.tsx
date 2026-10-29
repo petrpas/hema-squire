@@ -5,6 +5,7 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
 import { ApiError, api, type SetupSuggestions, type TournamentDetail } from "../api";
 import i18n from "../i18n";
+import { EMPTY_SUGGESTIONS } from "../suggestions";
 import { BankAccountSection } from "./BankAccountSection";
 import FeedTokenDialog from "./FeedTokenDialog";
 import { SaverRegistry } from "./shared";
@@ -69,7 +70,7 @@ function detail(overrides: Partial<TournamentDetail> = {}): TournamentDetail {
   } as TournamentDetail;
 }
 
-const suggestions = { bank_accounts: [] } as unknown as SetupSuggestions;
+const suggestions: SetupSuggestions = EMPTY_SUGGESTIONS;
 
 function renderSection(overrides: Partial<TournamentDetail> = {}, onSaved = vi.fn()) {
   return mount(

@@ -81,6 +81,7 @@ export const MISSING_TAB: Record<string, SetupTab> = {
   // resolved by LegacyFeesSection's clear action
   legacy_fixed_fees_block_eur: "payments",
   bank_account: "payments",
+  bank_account_holder: "payments",
 };
 
 // The feature whose absence takes a missing item's editor out of Setup. The

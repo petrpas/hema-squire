@@ -43,6 +43,7 @@ export function featuresInUse(detail: TournamentDetail): FeatureUsage {
     extras: detail.extra_items.length,
     payments: [
       detail.bank_account ? "bank_account" : null,
+      detail.bank_account_holder ? "bank_account_holder" : null,
       detail.payment_mode !== "immediate" ? "payment_mode" : null,
       detail.deposit_amount ? "deposit_amount" : null,
     ].filter((key): key is string => key !== null),

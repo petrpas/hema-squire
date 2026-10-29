@@ -234,7 +234,9 @@ def test_enabling_eur_with_unpriced_extra_item_on_published_tournament_rejected(
     publish(client, organizer, slug)
 
     response = client.patch(
-        f"/api/tournaments/{slug}", json={"eur_payments_enabled": True}, headers=organizer
+        f"/api/tournaments/{slug}",
+        json={"eur_payments_enabled": True, "bank_account_holder": "TJ Šerm Praha"},
+        headers=organizer,
     )
     assert response.status_code == 422
     assert response.json()["detail"] == {

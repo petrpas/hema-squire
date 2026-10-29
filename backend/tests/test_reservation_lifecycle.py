@@ -603,7 +603,7 @@ def test_foreign_currency_credit_unchanged_by_later_rate_edit(client, auth_heade
     )
     client.patch(
         "/api/tournaments/cup",
-        json={"eur_payments_enabled": True},
+        json={"eur_payments_enabled": True, "bank_account_holder": "TJ Šerm Praha"},
         headers=organizer,
     )
     fencer = auth_headers(email="f1@example.com", name="F1")

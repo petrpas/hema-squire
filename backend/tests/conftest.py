@@ -245,8 +245,8 @@ def publish(client, headers, slug):
     this after completing its mandatory setup.
 
     Fills in the mandatory items a caller is indifferent to and retries: the
-    place, the organizer list and the bank account. Most tests set none of the
-    three — a priced tournament cannot publish without an account
+    place, the organizer list, the bank account and — where EUR is taken — its
+    holder. Most tests set none of these — a priced tournament cannot publish without an account
     (fix-payment-instructions-visibility), and since data work waits for
     publication (gate-data-work-behind-publication) every import, payments and
     matching test now comes through here. What is not filled in is what a test
@@ -256,6 +256,7 @@ def publish(client, headers, slug):
         "city": "Brno",
         "organizers": [{"name": "Org", "link": None}],
         "bank_account": "CZ6508000000192000145399",
+        "bank_account_holder": "TJ Šerm Praha",
     }
     response = client.post(f"/api/tournaments/{slug}/publish", headers=headers)
     if response.status_code == 422:

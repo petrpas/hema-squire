@@ -127,6 +127,8 @@ TOURNAMENT_DESCRIPTION_MAX_LENGTH = MARKDOWN
 TOURNAMENT_QUALIFICATION_CRITERIA_MAX_LENGTH = MARKDOWN
 TOURNAMENT_REGISTRATION_INSTRUCTIONS_MAX_LENGTH = MARKDOWN
 TOURNAMENT_BANK_ACCOUNT_MAX_LENGTH = 50  # matches the String(50) column
+# the EPC QR code's beneficiary-name limit; matches the String(70) column
+TOURNAMENT_BANK_ACCOUNT_HOLDER_MAX_LENGTH = 70
 # the tournament's own local zone, as an IANA identifier. The ceiling matches
 # the String(64) column; validity is decided by the zone database, not by the
 # length (setup.resolve_timezone). The default is the launch market's zone,

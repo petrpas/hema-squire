@@ -11,6 +11,7 @@ import { plainEntries } from "../suggestions";
 import { useFieldValidation } from "../useFieldValidation";
 import { useSuggestions } from "../useSuggestions";
 import { apiErrors, checkString, type FieldError as FieldErrorValue } from "../validation";
+import BankAccountHolderField, { holderCheck } from "./BankAccountHolderField";
 import FeedTokenDialog from "./FeedTokenDialog";
 import { type SaverRegistry, useSectionSaver } from "./shared";
 
@@ -33,9 +34,12 @@ export function BankAccountSection({
   const { t } = useTranslation();
   const [value, setValue] = useState("");
   const [dirty, setDirty] = useState(false);
+  const [holder, setHolder] = useState("");
+  const [holderDirty, setHolderDirty] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const validation = useFieldValidation();
   const fieldRef = useRef<HTMLInputElement | null>(null);
+  const holderRef = useRef<HTMLInputElement | null>(null);
   const [tokenOpen, setTokenOpen] = useState(false);
   // set when a token was stored without the bank answering. Not an error — the
   // token is on file — so it is stated once, beside the action, and cleared
@@ -48,9 +52,11 @@ export function BankAccountSection({
 
   useEffect(() => {
     setValue(detail.bank_account ?? "");
+    setHolder(detail.bank_account_holder ?? "");
     validation.clearAll();
     setError(null);
     setDirty(false);
+    setHolderDirty(false);
     setUnchecked(false);
   }, [detail, validation.clearAll]);
 
@@ -61,12 +67,19 @@ export function BankAccountSection({
   // The accounts this organizer has used before. A chosen one is validated
   // exactly as a typed one is — these are stored canonical IBANs, so a
   // suggestion that no longer passes says so rather than saving quietly.
+  // The account brings the holder recorded with it, into an empty field only:
+  // a holder already typed is the organizer's, not the history's.
   const accountSuggestions = useSuggestions(
     plainEntries(suggestions.bank_accounts),
     value,
     (entry) => {
       setValue(entry.value);
       setDirty(true);
+      const recalledHolder = suggestions.holder_by_account[entry.value];
+      if (holder.trim() === "" && recalledHolder !== undefined) {
+        setHolder(recalledHolder);
+        setHolderDirty(true);
+      }
       validation.clearIfValid("bank_account", () =>
         checkString("bank_account", "TournamentUpdate.bank_account", entry.value),
       );
@@ -74,16 +87,23 @@ export function BankAccountSection({
   );
 
   useSectionSaver(registry, "payments", "bankAccount", {
-    pendingCount: dirty ? 1 : 0,
+    pendingCount: (dirty ? 1 : 0) + (holderDirty ? 1 : 0),
     touchesPrice: false,
-    validate: () => validation.validateAll([check]),
+    validate: () => validation.validateAll([check, () => holderCheck(holder)]),
     focusFirstInvalid: () => {
       if (check()) fieldRef.current?.focus();
+      else if (holderCheck(holder)) holderRef.current?.focus();
     },
     flush: async () => {
       try {
-        await api.updateTournament(slug, { bank_account: value === "" ? null : value });
+        // one save for the pair, so an account and the holder it came with
+        // land together and a published tournament is judged on both at once
+        await api.updateTournament(slug, {
+          bank_account: value === "" ? null : value,
+          bank_account_holder: holder.trim() === "" ? null : holder,
+        });
         setDirty(false);
+        setHolderDirty(false);
         return [{ change: "bankAccount", section: "bankAccount", error: null }];
       } catch (err) {
         const fieldErrors = apiErrors(err);
@@ -156,6 +176,18 @@ export function BankAccountSection({
           </SuggestionAnchor>
           <FieldError field="bank_account" error={validation.errors.bank_account} />
         </div>
+        <BankAccountHolderField
+          value={holder}
+          error={validation.errors.bank_account_holder}
+          recalled={suggestions.bank_account_holders}
+          inputRef={holderRef}
+          onChange={(next) => {
+            setHolder(next);
+            setHolderDirty(true);
+            validation.clearIfValid("bank_account_holder", () => holderCheck(next));
+          }}
+          onBlur={() => validation.touch("bank_account_holder", () => holderCheck(holder))}
+        />
         {fio && (
           <p className="rail-hint">
             {detail.fio_token_configured

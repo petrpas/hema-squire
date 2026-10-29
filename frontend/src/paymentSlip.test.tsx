@@ -24,13 +24,18 @@ const PNG =
 let host: HTMLElement | null = null;
 let root: ReturnType<typeof createRoot> | null = null;
 
-function mount() {
+function mount(qrBase64: string | null = PNG) {
   host = document.createElement("div");
   document.body.append(host);
   root = createRoot(host);
   act(() =>
     root!.render(
-      <PaymentSlipBlock fields={fields} qrBase64={PNG} qrAlt="QR" qrFilename="qr-20260042.png" />,
+      <PaymentSlipBlock
+        fields={fields}
+        qrBase64={qrBase64}
+        qrAlt="QR"
+        qrFilename="qr-20260042.png"
+      />,
     ),
   );
   return host;
@@ -169,5 +174,17 @@ describe("the QR image can be taken into a banking app", () => {
 
     // no surprise download after the fencer backed out
     expect(click).not.toHaveBeenCalled();
+  });
+});
+
+describe("a slip with no code drawn", () => {
+  // a EUR slip on a tournament with no account holder: no code a foreign bank
+  // would refuse, and the details still stand (spec payments)
+  it("states the details and offers no QR action", () => {
+    const page = mount(null);
+    expect(page.querySelector("img")).toBeNull();
+    expect(buttonSaying(page, "Uložit QR kód")).toBeUndefined();
+    expect(page.textContent).toContain("20260042");
+    expect(page.textContent).toContain("1 200 Kč");
   });
 });

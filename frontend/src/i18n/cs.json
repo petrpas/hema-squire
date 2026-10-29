@@ -454,6 +454,7 @@
     "amount_tolerance_percent": "Tolerance částky (%)",
     "refundable_until": "Vratné do",
     "bank_account": "Účet (IBAN)",
+    "bank_account_holder": "Majitel účtu",
     "expiry_grace_hours": "Tolerance po vypršení (hodiny)",
     "amendments_close": "Úpravy registrace do",
     "output_sheet_url": "URL výstupní Google tabulky",
@@ -557,6 +558,7 @@
       "discount_prices": "Chybí eurová částka u některé pevné slevy",
       "legacy_fixed_fees_block_eur": "Turnaj používá staré pevné poplatky za zapůjčení zbraně nebo afterparty, které nemají eurový protějšek — přejdi na položkové doplňkové služby, aby šlo zapnout eura",
       "bank_account": "Chybí bankovní účet, na který se vybírají platby",
+      "bank_account_holder": "Chybí majitel účtu, kterého musí uvést QR kód pro platbu v eurech",
       "deposit_amount": "Chybí záloha na turnaji, který zálohu vybírá",
       "external_registration_url": "Chybí adresa, kde běží registrace",
       "payment_feed": "Zálohový režim potřebuje token bankovního feedu, aby se záloha poznala hned po připsání"
@@ -624,6 +626,7 @@
       "cities": "dříve použitá města",
       "addresses": "dříve použité adresy",
       "bankAccounts": "dříve použité účty",
+      "bankAccountHolders": "dříve uvedení majitelé účtu",
       "organizers": "dříve uvedení pořadatelé"
     },
     "disciplines": {
@@ -748,7 +751,9 @@
     "bankAccount": {
       "title": "Bankovní účet",
       "label": "Účet",
-      "hint": "Zadej číslo účtu nebo IBAN. Nepovinné, pokud je turnaj bezplatný."
+      "hint": "Zadej číslo účtu nebo IBAN. Nepovinné, pokud je turnaj bezplatný.",
+      "holderLabel": "Majitel účtu",
+      "holderHint": "Jméno osoby nebo spolku, jak ho zná banka. QR kód pro platbu v eurech musí majitele účtu uvést a zahraniční banka kód bez něj odmítne. Povinné, pokud turnaj přijímá eura."
     },
     "feedToken": {
       "set": "zadat token pro výpisy",
@@ -886,6 +891,7 @@
       },
       "setting": {
         "bank_account": "bankovní účet",
+        "bank_account_holder": "majitel účtu",
         "payment_mode": "způsob platby",
         "deposit_amount": "záloha"
       },

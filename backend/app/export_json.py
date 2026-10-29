@@ -44,7 +44,7 @@ from app.models import (
 )
 from app.routers.tournaments import _lowest_free_series
 
-SCHEMA_VERSION = 18
+SCHEMA_VERSION = 19
 
 _TOURNAMENT_FIELDS = [
     "slug",
@@ -82,6 +82,8 @@ _TOURNAMENT_FIELDS = [
     "team_composition_deadline",
     # v17: whether paying substitutes take free places (off before it existed)
     "queue_payment_seats",
+    # v19: the account's holder, which a EUR code names (absent before: none)
+    "bank_account_holder",
 ]
 
 # v6 addition, defaulted when restoring an older file so a v1-v5 export lands
@@ -510,7 +512,7 @@ def _guard_uncomposable_payment_state(data: dict) -> None:
 
 def restore_tournament(session: Session, data: dict, actor: Fencer) -> Tournament:
     version = data.get("schema_version")
-    if version not in (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, SCHEMA_VERSION):
+    if version not in (*range(1, SCHEMA_VERSION), SCHEMA_VERSION):
         raise HTTPException(status_code=422, detail="unsupported_schema_version")
     if version != SCHEMA_VERSION:
         _guard_uncomposable_payment_state(data)

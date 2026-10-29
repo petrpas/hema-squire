@@ -50,6 +50,10 @@ MISSING_TEAM_BOUNDS = "team_bounds"
 # the account payments are collected into, mandatory only once the
 # tournament can produce a nonzero total (design Decision 2)
 MISSING_BANK_ACCOUNT = "bank_account"
+# the account's holder, mandatory where such a tournament takes EUR: every EUR
+# code is an EPC code, which must name its beneficiary (design
+# eur-payment-qr-epc D4)
+MISSING_BANK_ACCOUNT_HOLDER = "bank_account_holder"
 # where a tournament the organizer keeps sends its fencers. Publishing one with
 # no address leaves a fencer nowhere to go, which is the failure the branch
 # exists to prevent (design add-external-registration D3)
@@ -185,12 +189,11 @@ def setup_missing(tournament: Tournament) -> list[str]:
     # the tournament offers rather than about collecting for it — a hidden team
     # discipline is still checked for roster bounds, an unpriced hidden extra
     # item is still reported (design D4)
-    if (
-        tournament.feature_payments
-        and charges_money(tournament)
-        and not (tournament.bank_account or "").strip()
-    ):
-        missing.append(MISSING_BANK_ACCOUNT)
+    if tournament.feature_payments and charges_money(tournament):
+        if not (tournament.bank_account or "").strip():
+            missing.append(MISSING_BANK_ACCOUNT)
+        if tournament.takes_eur and not (tournament.bank_account_holder or "").strip():
+            missing.append(MISSING_BANK_ACCOUNT_HOLDER)
     return missing
 
 

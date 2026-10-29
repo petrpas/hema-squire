@@ -139,9 +139,10 @@ export default function PaymentPanel({ slug }: { slug: string }) {
   const payment = state.payment;
   // the same registration, payable in EUR against the same account — only
   // offered as a second tab when the organizer enabled it (currency mode
-  // local_eur)
+  // local_eur). Its code may be absent — no account holder recorded — and the
+  // EUR details are still offered in text
   const eur =
-    payment.eur_amount !== null && payment.eur_qr_png_base64 !== null
+    payment.eur_amount !== null
       ? { amount: payment.eur_amount, qrBase64: payment.eur_qr_png_base64 }
       : null;
 

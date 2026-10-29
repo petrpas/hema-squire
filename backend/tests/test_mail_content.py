@@ -172,14 +172,19 @@ def readable_qr(monkeypatch):
 
 
 def codes(message) -> dict[str, str]:
-    """Attachment filename → the SPAYD amount and currency it encodes."""
+    """Attachment filename → the amount and currency it encodes, read from a
+    SPAYD string or, for EUR, an EPC code."""
     found = {}
     for part in message.iter_attachments():
         text = part.get_content().decode()
-        fields = dict(field.split(":", 1) for field in text.split("*")[2:])
-        amount = Decimal(fields["AM"])
+        if text.startswith("BCD\n"):
+            figure = text.split("\n")[7]
+            amount, currency = Decimal(figure[3:]), figure[:3]
+        else:
+            fields = dict(field.split(":", 1) for field in text.split("*")[2:])
+            amount, currency = Decimal(fields["AM"]), fields["CC"]
         stated = int(amount) if amount == amount.to_integral_value() else amount
-        found[part.get_filename()] = f"{stated} {fields['CC']}"
+        found[part.get_filename()] = f"{stated} {currency}"
     return found
 
 
@@ -333,3 +338,89 @@ def test_an_english_readers_confirmation_is_english_throughout(client, auth_head
     assert "Cup team" in text
     for czech in ("Ahoj", "Celkem", "Účet", "Splatné", "Tým"):
         assert czech not in text
+
+
+# --- the format a code takes follows its currency ------------------------------
+
+
+def eur_tournament(client, organizer, **settings):
+    client.post(
+        "/api/tournaments",
+        json={"slug": "cup", "display_name": "Cup", "date": "2099-12-05"},
+        headers=organizer,
+    )
+    enable_payments(client, organizer, "cup")
+    response = client.patch(
+        "/api/tournaments/cup",
+        json={"bank_account": IBAN, "reservation_validity_days": 7, **settings},
+        headers=organizer,
+    )
+    assert response.status_code == 200, response.text
+    fee = 60 if settings.get("local_currency") == "EUR" else 1500
+    discipline = {"slug": "LS", "weapon": "LS", "capacity": 10, "fee": fee}
+    if settings.get("eur_payments_enabled"):
+        discipline["fee_eur"] = 60
+    response = client.post("/api/tournaments/cup/disciplines", json=discipline, headers=organizer)
+    assert response.status_code == 201, response.text
+    publish(client, organizer, "cup")
+
+
+def raw_codes(message) -> dict[str, str]:
+    return {part.get_filename(): part.get_content().decode() for part in message.iter_attachments()}
+
+
+def test_a_czk_and_eur_confirmation_carries_spayd_and_epc(
+    client, auth_headers, mailbox, readable_qr
+):
+    eur_tournament(client, auth_headers(), eur_payments_enabled=True)
+    fencer = auth_headers(email="jan@example.com", name="Jan")
+    register(client, fencer)
+
+    drawn = raw_codes(mailbox.sent[-1])
+    assert drawn.keys() == {"platba-celkem.png", "platba-celkem-eur.png"}
+    assert drawn["platba-celkem.png"].startswith("SPD*1.0*")
+    assert "CC:CZK" in drawn["platba-celkem.png"]
+    assert drawn["platba-celkem-eur.png"].startswith("BCD\n002\n1\nSCT\n")
+    assert "\nEUR60\n" in drawn["platba-celkem-eur.png"]
+
+    # the page draws the same two strings the mail attached
+    data = client.get("/api/tournaments/cup/my-registration/payment", headers=fencer).json()
+    assert data["spayd"] == drawn["platba-celkem.png"]
+    assert data["eur_spayd"] == drawn["platba-celkem-eur.png"]
+
+
+def test_a_eur_only_tournament_draws_an_epc_code(client, auth_headers, mailbox, readable_qr):
+    eur_tournament(client, auth_headers(), local_currency="EUR")
+    register(client, auth_headers(email="jan@example.com", name="Jan"))
+
+    drawn = raw_codes(mailbox.sent[-1])
+    assert list(drawn) == ["platba-celkem.png"]
+    assert drawn["platba-celkem.png"].startswith("BCD\n002\n")
+    assert "\nEUR60\n" in drawn["platba-celkem.png"]
+
+
+def test_without_a_holder_only_the_eur_code_is_dropped(client, auth_headers, mailbox, readable_qr):
+    """A tournament published before the holder was recorded: the EUR details
+    stand in text, and no code a foreign bank would refuse is attached."""
+    eur_tournament(client, auth_headers(), eur_payments_enabled=True)
+    session = db_session()
+    published = session.scalar(select(Tournament))
+    assert published is not None
+    published.bank_account_holder = None
+    session.commit()
+    fencer = auth_headers(email="jan@example.com", name="Jan")
+    vs = register(client, fencer)["vs"]
+
+    message = mailbox.sent[-1]
+    assert list(raw_codes(message)) == ["platba-celkem.png"]
+    text = body(message)
+    assert "60 €" in text
+    assert IBAN in text.replace(" ", "")
+    assert str(vs) in text
+    assert "QR kód označený EUR" not in text
+    assert "pošli částku v EUR na IBAN" in text
+
+    data = client.get("/api/tournaments/cup/my-registration/payment", headers=fencer).json()
+    assert data["eur_amount"] == 60
+    assert data["eur_spayd"] is None
+    assert data["eur_qr_png_base64"] is None

@@ -111,6 +111,8 @@ def test_first_tournament_offers_nothing(client, auth_headers):
         "cities": [],
         "addresses": [],
         "bank_accounts": [],
+        "bank_account_holders": [],
+        "holder_by_account": {},
         "organizers": [],
     }
 
@@ -132,6 +134,33 @@ def test_second_tournament_recalls_the_first(client, auth_headers):
     assert body["addresses"] == ["[Sokolovna](https://sokolovna.example)"]
     assert body["bank_accounts"] == ["CZ6508000000192000145399"]
     assert body["organizers"] == [{"name": "SHBU", "link": "https://shbu.example"}]
+
+
+def test_a_recalled_account_carries_its_most_recent_holder(client, auth_headers):
+    """spec: A recalled account brings its holder. The pairing comes from the
+    most recent tournament that recorded a holder for that account."""
+    headers = auth_headers()
+    account = "CZ6508000000192000145399"
+    make_tournament(
+        client,
+        headers,
+        "stary",
+        date="2025-05-01",
+        bank_account=account,
+        bank_account_holder="Jan Novák",
+    )
+    make_tournament(
+        client,
+        headers,
+        "novy",
+        date="2026-05-01",
+        bank_account=account,
+        bank_account_holder="TJ Šerm Praha",
+    )
+    make_tournament(client, headers, "bez", date="2026-09-01", bank_account=account)
+    body = client.get(SUGGESTIONS, headers=headers).json()
+    assert body["bank_account_holders"] == ["TJ Šerm Praha", "Jan Novák"]
+    assert body["holder_by_account"] == {account: "TJ Šerm Praha"}
 
 
 def test_the_address_recalls_independently_of_the_city(client, auth_headers):
@@ -293,10 +322,17 @@ def test_reading_suggestions_modifies_nothing(client, auth_headers, engine):
 
 @pytest.mark.parametrize("field", ["display_name", "subtitle", "description"])
 def test_no_other_field_is_suggested(client, auth_headers, field):
-    """spec: A field outside the four. The payload names exactly four lists;
-    a fifth field would have to be added here deliberately."""
+    """spec: A field outside the five. The payload names exactly these lists;
+    another field would have to be added here deliberately."""
     headers = auth_headers()
     make_tournament(client, headers, "turnaj", city="Zlín")
     body = client.get(SUGGESTIONS, headers=headers).json()
-    assert set(body) == {"cities", "addresses", "bank_accounts", "organizers"}
+    assert set(body) == {
+        "cities",
+        "addresses",
+        "bank_accounts",
+        "bank_account_holders",
+        "holder_by_account",
+        "organizers",
+    }
     assert field not in body

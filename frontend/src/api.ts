@@ -421,6 +421,10 @@ export interface SetupSuggestions {
   cities: string[];
   addresses: string[];
   bank_accounts: string[];
+  bank_account_holders: string[];
+  /** Each recalled account's holder, filled into an empty holder field when
+   *  that account is chosen. */
+  holder_by_account: Record<string, string>;
   // name and link travel together: choosing a remembered club fills both
   organizers: Organizer[];
 }
@@ -453,6 +457,8 @@ export interface TournamentDetail extends Tournament {
   amount_tolerance_percent: number;
   refundable_until: string | null;
   bank_account: string | null;
+  /** The account's holder as the bank knows it; a EUR payment code names it. */
+  bank_account_holder: string | null;
   expiry_grace_hours: number;
   output_sheet_url: string | null;
   early_bird_until: string | null;
@@ -1416,8 +1422,10 @@ export interface PaymentInstructions {
   vs: number;
   message: string;
   expires_at: string | null;
-  spayd: string;
-  qr_png_base64: string;
+  /** Either code is null where its currency is EUR and the tournament has
+   *  recorded no account holder; the transfer details still stand. */
+  spayd: string | null;
+  qr_png_base64: string | null;
   /** The EUR trio is absent unless the tournament takes EUR as a second option. */
   eur_amount: number | null;
   eur_spayd: string | null;

@@ -100,7 +100,10 @@ function SaveQr({ base64, filename }: { base64: string; filename: string }) {
  *
  *  Written once and given a field list rather than fixed slots, because the
  *  two currency branches genuinely differ — the EUR one carries no domestic
- *  account number and quotes a message where the local one quotes a VS. */
+ *  account number and quotes a message where the local one quotes a VS.
+ *
+ *  `qrBase64` is null where no code could be drawn — a EUR code on a
+ *  tournament with no account holder recorded — and the details stand alone. */
 export default function PaymentSlipBlock({
   fields,
   qrBase64,
@@ -108,7 +111,7 @@ export default function PaymentSlipBlock({
   qrFilename,
 }: {
   fields: SlipField[];
-  qrBase64: string;
+  qrBase64: string | null;
   qrAlt: string;
   qrFilename: string;
 }) {
@@ -116,12 +119,14 @@ export default function PaymentSlipBlock({
     <div className="payment-block">
       {/* the code and the button that saves it are one thing, stacked: the
           action belongs under what it acts on, not beside it */}
-      <div className="payment-qr-block">
-        <img className="payment-qr" src={`data:image/png;base64,${qrBase64}`} alt={qrAlt} />
-        <div className="payment-slip-actions">
-          <SaveQr base64={qrBase64} filename={qrFilename} />
+      {qrBase64 !== null && (
+        <div className="payment-qr-block">
+          <img className="payment-qr" src={`data:image/png;base64,${qrBase64}`} alt={qrAlt} />
+          <div className="payment-slip-actions">
+            <SaveQr base64={qrBase64} filename={qrFilename} />
+          </div>
         </div>
-      </div>
+      )}
       <div className="param-fields">
         {fields.map((field) => (
           <CopyableField key={field.key} field={field} />

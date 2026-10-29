@@ -51,6 +51,7 @@ const DRAFT_SETTINGS = {
   feature_extras: false,
   payment_mode: "immediate",
   bank_account: null,
+  bank_account_holder: null,
   deposit_amount: null,
   disciplines: [],
   extra_items: [],

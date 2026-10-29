@@ -263,6 +263,9 @@ BankAccountStr = Annotated[
         pattern=constraints.BANK_ACCOUNT_PATTERN,
     ),
 ]
+BankAccountHolderStr = Annotated[
+    str, SingleLine, Field(max_length=constraints.TOURNAMENT_BANK_ACCOUNT_HOLDER_MAX_LENGTH)
+]
 FioTokenStr = Annotated[
     str, SingleLine, Field(max_length=constraints.TOURNAMENT_FIO_TOKEN_MAX_LENGTH)
 ]
