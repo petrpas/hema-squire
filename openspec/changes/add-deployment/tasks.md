@@ -346,7 +346,12 @@
       **Through Scaleway TEM, 2026-10-29:** Gmail received the verification mail in the inbox and
       its link signed in; mail-tester 10/10; every `outgoing_mail` row has `sent_at` set and `raw`
       null, the two that met the `535` included. Seznam skipped at the owner's call — not verified.
-      Still open: the registration confirmation with QR attachments
+      A registration on a test tournament delivered its confirmation with both QR attachments;
+      the CZK code pays from a Czech banking app, the EUR code is refused. Two findings, both
+      outside this change: the EUR code is a SPAYD string with `CC:EUR`, a Czech format the
+      foreign payers it exists for will mostly not read (EPC/SEPA QR needs a beneficiary name the
+      tournament does not store); and the confirmation came in Czech to an English-preferring
+      account, because the create dialog sends no language and every tournament is `cs`
 
 - [ ] 4.4 **Do not deploy `main` from `3af13b1` on until 3.5 and the mail half of 2.7 are done.**
       From that commit an account exists only once its address is verified by mail; deployed with
