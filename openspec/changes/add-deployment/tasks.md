@@ -132,7 +132,7 @@
       on that one machine and nowhere else, so it joins `deploy/.env` in the password manager —
       by the same argument as Decision 7: material that survives only on the host you might be
       replacing is not backed up. Without it the way in is the Hetzner web console
-- [ ] 2.7 Copy `.env.example` → `.env` on the server (`chmod 600`) and fill: `HEMA_SQUIRE_SECRET_KEY`
+- [x] 2.7 Copy `.env.example` → `.env` on the server (`chmod 600`) and fill: `HEMA_SQUIRE_SECRET_KEY`
       (`openssl rand -hex 32`), `HEMA_SQUIRE_OWNER_EMAIL`, SMTP credentials, R2/B2 endpoint,
       bucket, region and scoped keys, `SITE_ADDRESS=hemasquire.eu`. Store the filled file in the
       password manager at the same time — a new host cannot boot without it.
@@ -159,6 +159,10 @@
       hidden `read`, so like the signing key it has never crossed the build machine. Until that
       deploy the running `c54a7ba` container keeps its old environment — recreating it on that
       commit would send real mail with links built before the public origin existed
+      **Closed 2026-10-29.** The SMTP group now holds Scaleway TEM's credentials (3.5), and the
+      filled `.env` is in the password manager — the half that made this task a backup. The
+      `.env.bak-brevo` taken before the switch is deleted from the server, so no Brevo key
+      survives there, and the Brevo account is closed
 - [x] 2.8 `deploy/.env.example`: add `HEMA_SQUIRE_PUBLIC_BASE_URL=https://hemasquire.eu` to the
       email group, with a comment that every mail link is built from it and that the app refuses
       to start with SMTP set and the origin unset
@@ -353,12 +357,15 @@
       tournament does not store); and the confirmation came in Czech to an English-preferring
       account, because the create dialog sends no language and every tournament is `cs`
 
-- [ ] 4.4 **Do not deploy `main` from `3af13b1` on until 3.5 and the mail half of 2.7 are done.**
+- [x] 4.4 **Do not deploy `main` from `3af13b1` on until 3.5 and the mail half of 2.7 are done.**
       From that commit an account exists only once its address is verified by mail; deployed with
       the SMTP group empty, every signup waits for a message that is written to `/data/outbox`
       and never sent, and the verification link in it points at localhost. The deploy that ends
       this is also the one that runs the `outgoing_mail` migration; verify with 4.3's mail criteria
       immediately after it
+      Deployed 2026-10-28 with the SMTP group and the public origin filled; the `outgoing_mail`
+      migration ran with it. Verified by 4.3's mail checks, rerun after the switch to TEM. The test
+      accounts made for those checks are deleted
 
 ## 5. Restore drill and monitoring (definition of done)
 
