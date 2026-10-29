@@ -267,7 +267,17 @@
       confirmed with `dig`; then the four SMTP variables are swapped on the server and `app` alone
       is recreated; 4.3's mail checks are rerun; only then are the Brevo records and account
       removed. `rua=` is dropped from `_dmarc` with them, since it names Brevo's collector; it
-      returns with a report-reading service when the policy is tightened to `quarantine`
+      returns with a report-reading service when the policy is tightened to `quarantine`.
+      Cut over 2026-10-29. TEM's SPF, DKIM (selector = the Project ID, a 2048-bit RSA key that
+      decodes whole, so the registrar's editor did not truncate it) and blackhole MX confirmed on
+      all three authoritative servers and on 1.1.1.1/8.8.8.8, and `_dmarc` is `v=DMARC1; p=none;`
+      at serial `2026102904`. The Brevo records had been removed before the server was switched,
+      so for a while Brevo would have sent unsigned; nothing was sent in that window. The first
+      sends after the switch failed `535 5.7.8 Permission denied` — the SMTP username is the
+      Project ID and the password the IAM key's secret, and a key without a Transactional Email
+      policy on that project answers the same way as a wrong one. The durable outbox held both
+      messages for retry rather than dropping them. Once login succeeded, mail-tester scored
+      **10/10**
 
 ## 4. First deploy
 
