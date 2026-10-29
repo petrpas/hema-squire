@@ -92,7 +92,8 @@ dropped, duplicated, or split by this navigation:
   the reminder day), the bank account payments are collected into, the currency and
   exchange-rate section, the VS series statement, the discount list, and — only while
   the tournament still carries them — the legacy fixed fees.
-- `OTHER` — the tournament mode, console team access, and the danger zone.
+- `OTHER` — the tournament mode, the communication language, console team access, and
+  the danger zone.
 - `PUBLISH` — the publication state, the items blocking publication, and the publish
   action, as fixed by `tournament-publication`.
 
@@ -173,7 +174,7 @@ account with console access.
 
 #### Scenario: Mode section always on OTHER
 - **WHEN** the tournament owner opens `OTHER` on a tournament with no feature enabled
-- **THEN** the tournament mode section is present alongside the console team and the danger zone
+- **THEN** the tournament mode section is present alongside the communication language, the console team and the danger zone
 
 #### Scenario: Bank account has one editor
 - **WHEN** the organizer looks for the bank account in the console's payments-phase panels
@@ -193,11 +194,15 @@ account with console access.
 
 #### Scenario: The export address is not in Setup
 - **WHEN** the organizer of a published tournament visits every Setup tab
-- **THEN** none of them offers the export sheet address, and `OTHER` carries the mode section, console team access and the danger zone
+- **THEN** none of them offers the export sheet address, and `OTHER` carries the mode section, the communication language, console team access and the danger zone
 
 #### Scenario: The exception is narrow
 - **WHEN** the organizer looks in a console phase panel for any tournament parameter other than the export sheet address
 - **THEN** it is not offered there, and its one editor is in Setup
+
+#### Scenario: The communication language has its own control
+- **WHEN** the tournament owner changes the communication language on `OTHER`
+- **THEN** it is applied by that section's own control, without a save control on the tab, and the settings section's statement of the mode, payments and features is unchanged
 
 ### Requirement: The timeline carries the opening time and the tournament timezone
 The opening time of day SHALL sit on `TIMELINE` beside the registration-opens date it belongs to, in every mode, as one field pair rather than as two independent rows: it is read as a qualifier of that date, not as a date of its own, and SHALL therefore never take its own place in the chronological sequence the timeline presents.
