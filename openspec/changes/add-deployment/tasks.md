@@ -253,6 +253,21 @@
       address that works). The three branding CNAMEs (`mail`, `r.mail`, `img.mail`) were left out:
       they exist for tracked links, and click tracking is to be off for mail that carries a
       verification link
+      **Brevo abandoned 2026-10-29 for Scaleway TEM.** The first real send passed DKIM and DMARC
+      and landed in Proton's inbox, but Brevo rewrote the plain-text body as HTML with two 1×1
+      open-tracking images and added a one-click `List-Unsubscribe`; mail-tester scored 7.6, every
+      deduction Brevo's. Open tracking cannot be turned off below Brevo's Enterprise tier, and an
+      unsubscribe click would suppress a fencer's registration and payment mail at the provider,
+      outside anything Squire can see. TEM states that mail is never used for tracking and offers
+      no open or click events at all. Nothing in the app changes: `smtp.tem.scaleway.com:587`
+      with STARTTLS is what `SmtpMailer` already speaks. Cutover keeps mail flowing throughout:
+      TEM's records are published beside Brevo's — SPF `v=spf1 include:_spf.tem.scaleway.com -all`
+      (the domain's only SPF record), TEM's DKIM TXT, and Scaleway's blackhole MX at priority 10
+      (accepted knowing that a reply to `noreply@` is then lost rather than bounced) — and
+      confirmed with `dig`; then the four SMTP variables are swapped on the server and `app` alone
+      is recreated; 4.3's mail checks are rerun; only then are the Brevo records and account
+      removed. `rua=` is dropped from `_dmarc` with them, since it names Brevo's collector; it
+      returns with a report-reading service when the policy is tightened to `quarantine`
 
 ## 4. First deploy
 
