@@ -276,8 +276,8 @@
       sends after the switch failed `535 5.7.8 Permission denied` — the SMTP username is the
       Project ID and the password the IAM key's secret, and a key without a Transactional Email
       policy on that project answers the same way as a wrong one. The durable outbox held both
-      messages for retry rather than dropping them. Once login succeeded, mail-tester scored
-      **10/10**
+      messages for retry rather than dropping them, and sent both on their fifth attempt at
+      20:11 once login succeeded (`sent_at` set, `raw` null). mail-tester then scored **10/10**
 
 ## 4. First deploy
 
@@ -343,6 +343,10 @@
       `outgoing_mail` has `sent_at` set and `raw` null; a message sent to mail-tester.com scores
       9/10 or better with SPF, DKIM and DMARC passing; and a registration on a test tournament
       delivers its confirmation with the QR attachments and the tournament link
+      **Through Scaleway TEM, 2026-10-29:** Gmail received the verification mail in the inbox and
+      its link signed in; mail-tester 10/10; every `outgoing_mail` row has `sent_at` set and `raw`
+      null, the two that met the `535` included. Seznam skipped at the owner's call — not verified.
+      Still open: the registration confirmation with QR attachments
 
 - [ ] 4.4 **Do not deploy `main` from `3af13b1` on until 3.5 and the mail half of 2.7 are done.**
       From that commit an account exists only once its address is verified by mail; deployed with
