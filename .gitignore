@@ -261,3 +261,4 @@ hemasquire_deploy*
 *.gpg
 # ...but this one is a deliberate part of the repo
 !v1_spec/hema-squire-openspec.zip
+/.remote.env
