@@ -411,6 +411,13 @@
       daemon's `replica sync` log lines carry both (`txid.replica`, `txid.db`). Also observed: with
       an endpoint whose name does not resolve, 0.5.16 does log `sync error` at ERROR, so "logs
       nothing" holds for the case first measured and not for every unreachable endpoint. Nothing
-      reads those logs, so the need for this check stands
+      reads those logs, so the need for this check stands.
+      `deploy/check-replica.sh` implements it: `litestream status` gives the database's position,
+      `litestream ltx -level all` the replica's half a minute later, so a concurrent write cannot
+      read as lag. Success pings healthchecks.io, a detected failure pings `/fail`, and silence
+      alarms by itself. Exercised with stubs for ok, behind, empty, unlistable, stopped daemon and
+      missing URL. Known limit: the local position advances only when the daemon writes LTX, so a
+      daemon alive but no longer reading the WAL would pass. The stated outcome stays open until
+      the cron runs on the server and the uptime and CPU alerts exist
 - [ ] 5.3 Add a calendar rule, not a technical control: no deploys during a tournament's opening
       window

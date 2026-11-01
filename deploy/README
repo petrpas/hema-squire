@@ -12,6 +12,8 @@ Files
   deploy.sh           git pull && docker compose up -d --build, over SSH;
                       brings up litestream only when .env names a replica
   restore.sh          restore from the replica (drill and real recovery)
+  check-replica.sh    daily cron on the host: replica position against the
+                      database, reported to a dead-man's switch
   .env.example        every variable; the filled copy also lives in a password
                       manager, because a new host needs it to come up
   secrets/            service-account JSON for the Sheets export; may be empty
