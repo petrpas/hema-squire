@@ -939,11 +939,11 @@ A tournament SHALL additionally have an optional team composition deadline, cons
 - **THEN** the registration is accepted
 
 ### Requirement: Setup completeness
-Mandatory setup SHALL comprise: display name, date, city, at least one titular organizer, at least one discipline with a unit price, the bank account payments are collected into whenever the tournament charges anything at all **and its payments feature is on**, the account holder whenever such a tournament also takes EUR — as its only currency or as its second — and — whenever the tournament prices in EUR as a second currency — every rendered EUR price field: each discipline's EUR price, each extra item's EUR price, and the EUR amount of each fixed discount. Every team discipline SHALL additionally have valid roster bounds, and a team discipline missing them SHALL be reported as a missing item. The team composition deadline SHALL NOT be part of mandatory setup: a tournament may offer team disciplines without one. A tournament still pricing through the legacy fixed weapon-rental/afterparty parameters SHALL be reported as blocked from enabling EUR, naming those parameters and directing the organizer to itemized extra services. The recorded exchange ratio is a Setup convenience only and is never part of completeness.
+Mandatory setup SHALL comprise: display name, date, city, at least one titular organizer, a unit price on every discipline it has, the bank account payments are collected into whenever the tournament charges anything at all **and its payments feature is on**, the account holder whenever such a tournament also takes EUR — as its only currency or as its second — and — whenever the tournament prices in EUR as a second currency — every rendered EUR price field: each discipline's EUR price, each extra item's EUR price, and the EUR amount of each fixed discount. A discipline SHALL NOT itself be mandatory: an event with none is complete on the same terms, as fixed by `discipline-less-events`. The deposit amount and the bank feed the `deposit` payment mode needs SHALL NOT be mandatory on an event, whose registrations ask no deposit. Every team discipline SHALL additionally have valid roster bounds, and a team discipline missing them SHALL be reported as a missing item. The team composition deadline SHALL NOT be part of mandatory setup: a tournament may offer team disciplines without one. A tournament still pricing through the legacy fixed weapon-rental/afterparty parameters SHALL be reported as blocked from enabling EUR, naming those parameters and directing the organizer to itemized extra services. The recorded exchange ratio is a Setup convenience only and is never part of completeness.
 
 The bank account is mandatory **on a tournament Squire collects money for** because a published tournament accepts registrations, and a registration that cannot be paid holds a place against a deadline the fencer has no way to meet. Completeness is the only guarantee the registration path relies on, so the account SHALL be guaranteed by the same rule as every other mandatory item rather than checked again when a fencer asks how to pay.
 
-Mandatory setup SHALL branch on the tournament's mode, as fixed by `tournament-mode`. **A tournament in manual mode SHALL additionally require the address of its external registration**, because publishing a tournament that accepts no registration and names no other way in leaves a fencer with nowhere to go. It SHALL NOT be required to record a bank account, whatever it charges, since Squire collects nothing for it. Its registration-opens and registration-closes dates SHALL NOT be treated as mandatory and SHALL NOT be enforced as a gate: they describe when the organizer's own registration runs, and the gate they would guard refuses every submission already. Every other mandatory item SHALL apply unchanged, because an organizer-kept tournament is no less a tournament — it has a place, organizers, disciplines and prices like any other.
+Mandatory setup SHALL branch on the tournament's mode, as fixed by `tournament-mode`. **A tournament in manual mode SHALL additionally require the address of its external registration**, because publishing a tournament that accepts no registration and names no other way in leaves a fencer with nowhere to go. It SHALL NOT be required to record a bank account, whatever it charges, since Squire collects nothing for it. Its registration-opens and registration-closes dates SHALL NOT be treated as mandatory and SHALL NOT be enforced as a gate: they describe when the organizer's own registration runs, and the gate they would guard refuses every submission already. Every other mandatory item SHALL apply unchanged, because an organizer-kept tournament is no less a tournament — it has a place, organizers and prices like any other, and disciplines exactly when any other record would.
 
 **A tournament whose payments feature is off SHALL NOT be required to record a bank account, whatever it charges**, and SHALL NOT have one reported as missing. Squire requests no money for such a tournament, sends no payment instructions and reconciles no transactions, as fixed by `payments`; the prices it carries state what the event costs and are settled outside the system. Every other mandatory item SHALL be unaffected by the payments feature, because the rest of completeness is about what the tournament offers rather than about collecting for it.
 
@@ -1030,6 +1030,22 @@ A tournament published before the bank account became mandatory SHALL remain pub
 #### Scenario: A CZK-only tournament does not
 - **WHEN** a CZK-only tournament with payments on records a bank account and no holder
 - **THEN** no holder is reported missing
+
+#### Scenario: An event with no disciplines is publishable
+- **WHEN** the organizer opens `PUBLISH` on a record with a name, date, city and titular organizer, and no disciplines or items
+- **THEN** nothing is reported missing and publication is available
+
+#### Scenario: A discipline without a price still blocks
+- **WHEN** a record has one discipline with no unit price
+- **THEN** the missing price is reported as blocking publication
+
+#### Scenario: A priced item needs the account
+- **WHEN** an event with payments on carries a priced item and no bank account
+- **THEN** the bank account is reported as missing
+
+#### Scenario: Deposit items are not asked of an event
+- **WHEN** an event stores the `deposit` payment mode with no deposit amount and no bank feed
+- **THEN** neither is reported as missing
 
 ### Requirement: The account holder is recorded beside the bank account
 A tournament SHALL record the name of the bank account's holder — the person or organization the account belongs to, as the bank knows it — as plain text of at most 70 characters, the limit of the EPC code's beneficiary name. It SHALL be entered on `PAYMENTS` directly below the bank account, in the same section and under the same save, and SHALL carry a help hint stating that a EUR payment code must name the account's holder and that a foreign bank refuses a code without it. It SHALL be offered wherever the bank account is offered and hidden wherever the bank account is hidden.
