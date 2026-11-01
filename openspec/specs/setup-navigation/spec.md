@@ -90,8 +90,9 @@ dropped, duplicated, or split by this navigation:
   deadline.
 - `PAYMENTS` — how fencers pay (the payment mode, the deposit, the payment window and
   the reminder day), the bank account payments are collected into, the currency and
-  exchange-rate section, the VS series statement, the discount list, and — only while
-  the tournament still carries them — the legacy fixed fees.
+  exchange-rate section, the VS series statement, the discount list, the discount
+  codes directly below it — on an automatic tournament — and, only while the
+  tournament still carries them, the legacy fixed fees.
 - `OTHER` — the tournament mode, the communication language, console team access, and
   the danger zone.
 - `PUBLISH` — the publication state, the items blocking publication, and the publish
@@ -104,8 +105,8 @@ denominated in.
 **A section whose feature is off SHALL NOT be shown**, as fixed by `tournament-features`,
 and its stored values SHALL be retained rather than cleared. On `PAYMENTS` this SHALL
 divide the tab: while payments are off, the tab — then titled `PRICING` — SHALL hold the
-currency and exchange-rate section, the discount list, and any legacy fixed fees the
-tournament still carries, and SHALL NOT hold the payment mode, the deposit, the payment
+currency and exchange-rate section, the discount list, the discount codes, and any
+legacy fixed fees the tournament still carries, and SHALL NOT hold the payment mode, the deposit, the payment
 window, the reminder day, the bank account or the VS series statement. On `TIMELINE` the
 seating deadline SHALL be offered only while payments are on, since nothing settles
 against it when no money is owed. The mode section on `OTHER` SHALL be shown in every
@@ -203,6 +204,14 @@ account with console access.
 #### Scenario: The communication language has its own control
 - **WHEN** the tournament owner changes the communication language on `OTHER`
 - **THEN** it is applied by that section's own control, without a save control on the tab, and the settings section's statement of the mode, payments and features is unchanged
+
+#### Scenario: Codes below the discount list
+- **WHEN** the organizer of an automatic tournament opens `PAYMENTS` or `PRICING`
+- **THEN** the discount codes stand directly below the discount list, each row showing its uses
+
+#### Scenario: Manual tournament offers no codes
+- **WHEN** the organizer of a manual tournament opens the tab
+- **THEN** no discount codes section is shown
 
 ### Requirement: The timeline carries the opening time and the tournament timezone
 The opening time of day SHALL sit on `TIMELINE` beside the registration-opens date it belongs to, in every mode, as one field pair rather than as two independent rows: it is read as a qualifier of that date, not as a date of its own, and SHALL therefore never take its own place in the chronological sequence the timeline presents.

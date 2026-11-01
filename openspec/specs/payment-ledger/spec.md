@@ -9,9 +9,7 @@ never deleted. What a registration has been credited, what it owes, whether it
 is settled and the day it became paid are each derived from these rows and
 stored nowhere, so a reversal is reflected by the next reading with no figure
 anywhere to adjust — and a balance can say what it is made of.
-
 ## Requirements
-
 ### Requirement: Every credit is a journal entry
 Every amount credited to a registration SHALL be recorded as one entry in a credit journal, and SHALL exist nowhere else. An entry SHALL state the registration it credits, the amount, the currency the money arrived in, the day it arrived, the source that carried it — an ingested bank transaction or a payment the organizer recorded — and what decided to credit it: an automatic match on the variable symbol, a payment link, a reinstatement, or a refund hold.
 
@@ -130,13 +128,13 @@ The two currency lanes SHALL be summed separately and SHALL NOT be combined, as 
 - **THEN** the count is obtained in a single query, with each registration's credited sum resolved within it
 
 ### Requirement: Settled is derived and cannot be assigned
-Whether a registration is settled SHALL be derived, at every reading, from a live waiver or from a lane that **holds credit** whose outstanding balance falls within the tournament's tolerance. It SHALL NOT be a stored value, and no code path SHALL be able to declare a registration settled other than by waiving it or by crediting it.
+Whether a registration is settled SHALL be derived, at every reading, from a live waiver, from a lane that **holds credit** whose outstanding balance falls within the tournament's tolerance, or from a discount code having brought a lane's total to zero (`discount-codes`). It SHALL NOT be a stored value, and no code path SHALL be able to declare a registration settled other than by waiving it, by crediting it, or by pricing it to zero with a code. That a code covered a total MAY be recorded by the pricing that found it, on every repricing and by nothing else; it is a fact about the price, not a statement that the registration is paid.
 
-**A registration that has been credited nothing SHALL NOT read as settled, whatever it is owed.** Owing nothing and having paid are different statements and SHALL NOT be collapsed. A registration priced at zero — one sitting entirely in the substitute queue, whose queued placements are not priced, or one on a tournament that charges nothing — owes nothing and has been credited nothing; it SHALL read as reserved. Reading it as paid would put a fencer waiting in a queue onto the roster as having paid.
+**A registration that has been credited nothing SHALL NOT read as settled, whatever it is owed**, save where a discount code brought its total to zero: somebody decided that price, as a waiver decides, and without this the seat would expire for want of a payment nobody is asked to make. Otherwise owing nothing and having paid are different statements and SHALL NOT be collapsed. A registration priced at zero — one sitting entirely in the substitute queue, whose queued placements are not priced, or one on a tournament that charges nothing — owes nothing and has been credited nothing; it SHALL read as reserved, and that SHALL hold of a registration carrying a code that deducted nothing. Reading it as paid would put a fencer waiting in a queue onto the roster as having paid.
 
 A registration holding credit whose total later falls to zero or below SHALL continue to read as settled, its balance stating the overpayment. What settles a registration is that money arrived against it, not that a total happens to be covered.
 
-**A registration sitting entirely in the substitute queue SHALL NOT read as settled, whatever it has been credited**, unless it has been waived. Every one of its placements is a place it is waiting for, and the queue holds no money (`seating-queue`): credit it holds there — a deposit forfeited at settlement, a partial payment on a registration demoted by a lapsed window — is recorded against it, counts when it is promoted, and SHALL NOT make it read as paid. A registration sitting entirely in the queue is one with at least one placement, every individual placement of which is a substitute placement and every team of which is waitlisted.
+**A registration sitting entirely in the substitute queue SHALL NOT read as settled, whatever it has been credited or a code has covered**, unless it has been waived. Every one of its placements is a place it is waiting for, and the queue holds no money (`seating-queue`): credit it holds there — a deposit forfeited at settlement, a partial payment on a registration demoted by a lapsed window — is recorded against it, counts when it is promoted, and SHALL NOT make it read as paid. A registration sitting entirely in the queue is one with at least one placement, every individual placement of which is a substitute placement and every team of which is waitlisted.
 
 The stored lifecycle SHALL hold what a person or a clock decided — that a registration is reserved, has expired, or was cancelled — and SHALL NOT hold whether it is paid. Where the lifecycle and the derivation meet, the lifecycle SHALL win: a registration credited after it expired reads as expired, and a cancelled one reads as cancelled, however much money stands against it.
 
@@ -182,6 +180,18 @@ The state a reader is shown SHALL continue to be one of reserved, paid, expired 
 - **WHEN** a paid registration is amended until its total is zero while its credit stands
 - **THEN** it still reads as paid and its balance states the overpayment
 
+#### Scenario: A code brings the total to zero
+- **WHEN** a seated registration owing 1500 is priced to zero by a −100 % code
+- **THEN** it reads as paid with no credit and no waiver, and no money appears in any journal
+
+#### Scenario: A code on a free selection
+- **WHEN** a registration carrying a code is priced at zero because everything it selected is free
+- **THEN** the code deducted nothing and the registration reads as reserved
+
+#### Scenario: A code-covered registration in the queue
+- **WHEN** a registration holding a −100 % code sits entirely in the substitute queue
+- **THEN** it reads as reserved, and reads as paid once admitted
+
 ### Requirement: The paid date is the day of the credit that completed the balance
 A registration that reads as paid SHALL state the day it became paid, derived by accumulating its live credits in the order they were appended until the outstanding balance in the lane the money came in first falls within tolerance. That credit's arrival day SHALL be the paid date. Where a waiver settles the registration, the paid date SHALL be the day the waiver was granted.
 
@@ -223,3 +233,4 @@ The action SHALL state what it will do before it is confirmed, because the rever
 #### Scenario: A transaction covering several fencers
 - **WHEN** the organizer reverses a transaction whose credits covered three registrations
 - **THEN** all three of its credits stop counting, and each registration's state follows from what remains
+

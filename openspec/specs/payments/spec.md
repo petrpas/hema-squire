@@ -459,7 +459,7 @@ Turning payments off SHALL retain every stored payment value: the bank account, 
 
 #### Scenario: No payments phase
 - **WHEN** the organizer opens the console for a tournament whose payments Squire does not handle
-- **THEN** the Payments phase is offered holding whether each registration is settled and nothing else, and no transaction can be reconciled against the tournament
+- **THEN** the Payments phase is offered holding whether each registration is settled and, while the tournament has discount codes, who holds them, and nothing else, and no transaction can be reconciled against the tournament
 
 #### Scenario: Prices survive
 - **WHEN** an organizer turns payments off on a tournament pricing in CZK with two discounts
@@ -687,4 +687,11 @@ A registration holding a seated placement beside a queued one is not sitting ent
 #### Scenario: A wrong amount is held for the organizer
 - **WHEN** paying substitutes may take places and a payment on a waiting registration does not match its claim
 - **THEN** it is held with a reason naming the amount, and no later pass seats it by itself
+
+### Requirement: The deposit asked never exceeds what is owed
+In `deposit` mode, the deposit a fencer is asked for SHALL be the lesser of the configured deposit and the registration's total, per currency, wherever it is stated: in mail, in the payment instructions and in the QR code. A registration that pays its whole total SHALL settle as any other, the deposit threshold having no further part in it.
+
+#### Scenario: A code below the deposit
+- **WHEN** a code brings a registration's total to 300 Kč on a tournament with a 500 Kč deposit
+- **THEN** the fencer is asked for 300 Kč, and the QR code states 300 Kč
 

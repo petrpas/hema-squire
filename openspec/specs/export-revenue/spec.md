@@ -2,7 +2,6 @@
 
 ## Purpose
 Fix the Export phase's Revenue tab: what each discipline, extra item and discount has brought in and has still to bring — which blocks and lines it holds, how a line is priced and counted, where a discount stands, the block and grand totals, the reconciliation of the paid figure against the payment journal, and how the table leaves the screen and, only by the Include finances tick, reaches the spreadsheet.
-
 ## Requirements
 ### Requirement: The revenue is a table per block
 The Revenue tab SHALL be a stack of tables, one per block, in this order:
@@ -97,9 +96,9 @@ on no line.
 - **THEN** neither the Sabre Open line nor the rental line counts them
 
 ### Requirement: A discount stands in the block it deducted from
-A discount the tournament configures SHALL appear as a line, named `Sleva`
+A discount the tournament configures, or a discount code, SHALL appear as a line, named `Sleva`
 (`Discount`) followed by its name, in the block of every category it deducted
-from on at least one counted registration. Its line SHALL state:
+from on at least one counted registration. Each code SHALL be a line of its own, under its name and never its code text. Its line SHALL state:
 - as **Price**, the configured effect with a minus: the fixed amount in the local
   currency (`−400 Kč`) or the percentage (`−10 %`);
 - as **Count**, the counted registrations it deducted from in this block, as
@@ -125,6 +124,14 @@ A discount that applied to no counted registration SHALL have no line.
 #### Scenario: A discount nobody got
 - **WHEN** an early-registration discount applied to no one
 - **THEN** no block has a line for it
+
+#### Scenario: A code stands as a line
+- **WHEN** a −200 Kč code named "Trenéři" applied to three registrations, two of them settled
+- **THEN** Startovné holds a line `Sleva Trenéři` at −200 Kč with a count of 2 / 3, and the block still sums to what the category is billed
+
+#### Scenario: A legacy-priced tournament
+- **WHEN** a code deducts on a tournament on the legacy path
+- **THEN** its line stands in the blocks it took from, and the block sums as on any other tournament
 
 ### Requirement: Every block has a total, and the table a grand total
 Each block but the reconciliation SHALL end with a total line, named as the block
@@ -265,3 +272,4 @@ a credit.
 #### Scenario: An English copy
 - **WHEN** a Czech-speaking organizer ticks English and copies the revenue
 - **THEN** the first block is headed Entry fees and its total line reads Entry fees total
+
