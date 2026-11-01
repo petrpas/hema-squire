@@ -262,13 +262,29 @@ export interface TeamMember {
 
 export interface AdminAccount {
   id: number;
-  email: string;
+  /** null for a record an organizer enrolled without an address */
+  email: string | null;
   display_name: string;
   role: Role;
   hr_id: number | null;
+  created_at: string;
   is_deployment_owner: boolean;
   has_pending_plea: boolean;
   hr_shared: boolean;
+}
+
+export type AdminTournamentState = "draft" | "published" | "cancelled";
+
+/** One row of the admin panel's tournaments tab; `credited` is the live credit
+ *  per currency, in cents, which the delete confirmation states. */
+export interface AdminTournament {
+  slug: string;
+  display_name: string;
+  date: string;
+  state: AdminTournamentState;
+  owner: { id: number; display_name: string; email: string | null } | null;
+  registration_count: number;
+  credited: { currency: Currency; amount_cents: number }[];
 }
 
 export interface PleaQueueItem {
@@ -1842,6 +1858,13 @@ export const api = {
   adminHrUnbind: (fencerId: number) =>
     request<AdminAccount>(`/api/admin/accounts/${fencerId}/hr-unbind`, { method: "POST" }),
   adminPleas: () => request<PleaQueueItem[]>("/api/admin/pleas"),
+  adminTournaments: () => request<AdminTournament[]>("/api/admin/tournaments"),
+  /** `confirm` is required once the tournament has registrations; the
+   *  server refuses with `has_registrations` without it. */
+  adminDeleteTournament: (slug: string, confirm: boolean) =>
+    request<void>(`/api/admin/tournaments/${slug}${confirm ? "?confirm=true" : ""}`, {
+      method: "DELETE",
+    }),
   adminGrantPlea: (id: number) =>
     request<{ id: number; state: string }>(`/api/admin/pleas/${id}/grant`, { method: "POST" }),
   adminDenyPlea: (id: number) =>

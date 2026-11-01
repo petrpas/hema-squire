@@ -195,7 +195,7 @@ def clear_imports(session: Session, tournament: Tournament) -> dict:
         # Children first and explicitly: SQLite has no ON DELETE CASCADE here
         # and the relationships do not delete-orphan, so a plain delete would
         # try to null a NOT NULL foreign key. Same order and reason as
-        # `routers.tournaments._cascade_delete`.
+        # `tournament_delete.delete_tournament`.
         ids = [r.id for r in issued]
         team_ids = select(Team.id).where(Team.registration_id.in_(ids))
         session.execute(delete(TeamMember).where(TeamMember.team_id.in_(team_ids)))

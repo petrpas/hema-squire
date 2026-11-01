@@ -70,6 +70,7 @@ beforeEach(async () => {
   vi.spyOn(api, "myTournaments").mockResolvedValue([]);
   vi.spyOn(api, "adminAccounts").mockResolvedValue([]);
   vi.spyOn(api, "adminPleas").mockResolvedValue([]);
+  vi.spyOn(api, "adminTournaments").mockResolvedValue([]);
   vi.spyOn(api, "tournaments").mockResolvedValue([]);
   await i18n.changeLanguage("cs");
 });

@@ -972,9 +972,35 @@ class AdminAccountOut(BaseModel):
     display_name: str
     role: Role
     hr_id: int | None
+    created_at: UtcInstant
     is_deployment_owner: bool = False
     has_pending_plea: bool = False
     hr_shared: bool = False
+
+
+class AdminTournamentOwnerOut(BaseModel):
+    id: int
+    display_name: str
+    email: EmailStr | None
+
+
+class AdminCreditedOut(BaseModel):
+    currency: Currency
+    amount_cents: int
+
+
+class AdminTournamentOut(BaseModel):
+    """One row of the admin panel's tournaments tab (spec user-roles, Admin
+    panel). `credited` is the live credit per currency, so the delete
+    confirmation can state the money without asking again."""
+
+    slug: str
+    display_name: str
+    date: datetime.date
+    state: Literal["draft", "published", "cancelled"]
+    owner: AdminTournamentOwnerOut | None
+    registration_count: int
+    credited: list[AdminCreditedOut]
 
 
 class RoleUpdateIn(BaseModel):

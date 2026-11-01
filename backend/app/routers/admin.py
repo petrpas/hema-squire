@@ -1,21 +1,33 @@
-"""Minimal admin panel API: account list, role management, plea queue, and
-audited HR unbinding. Every endpoint requires the Admin role or higher
+"""Admin panel API: account list, role management, plea queue, audited HR
+unbinding, and the tournament list with its delete. Every endpoint requires the Admin role or higher
 (the deployment Owner outranks Admin — see app.auth.has_role)."""
 
 from datetime import UTC, datetime
-from typing import Annotated
+from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from app import tournament_delete
 from app.auth import current_fencer, is_deployment_owner, require_role
 from app.db import get_session
 from app.fieldtypes import RowId
-from app.models import Fencer, OrganizerRequest, RequestState, Role
+from app.models import (
+    Fencer,
+    OrganizerRequest,
+    PaymentCredit,
+    Registration,
+    RequestState,
+    Role,
+    Tournament,
+)
 from app.routers.accounts import audit_change
 from app.schemas import (
     AdminAccountOut,
+    AdminCreditedOut,
+    AdminTournamentOut,
+    AdminTournamentOwnerOut,
     PleaDecisionOut,
     PleaQueueOut,
     RoleUpdateIn,
@@ -155,3 +167,89 @@ def deny_plea(plea_id: RowId, session: SessionDep, fencer: FencerDep):
     plea.decided_by = fencer.id
     session.commit()
     return PleaDecisionOut(id=plea.id, state=plea.state)
+
+
+def _tournament_state(tournament: Tournament) -> Literal["draft", "published", "cancelled"]:
+    # cancelled wins: a tournament is cancelled after it was published
+    if tournament.cancelled_at is not None:
+        return "cancelled"
+    return "draft" if tournament.published_at is None else "published"
+
+
+@router.get("/tournaments", response_model=list[AdminTournamentOut])
+def list_tournaments(session: SessionDep, fencer: FencerDep) -> list[AdminTournamentOut]:
+    """Every tournament, drafts and cancelled ones included (spec user-roles,
+    Admin panel). Counts and credited sums come from one grouped query each
+    rather than a query per row (design D4)."""
+    require_role(fencer, Role.ADMIN)
+    tournaments = session.scalars(select(Tournament).order_by(Tournament.date.desc())).all()
+    counts: dict[int, int] = dict(
+        session.execute(
+            select(Registration.tournament_id, func.count(Registration.id)).group_by(
+                Registration.tournament_id
+            )
+        )
+        .tuples()
+        .all()
+    )
+    credited: dict[int, list[AdminCreditedOut]] = {}
+    for tournament_id, currency, amount in session.execute(
+        select(
+            PaymentCredit.tournament_id,
+            PaymentCredit.currency,
+            func.sum(PaymentCredit.amount_cents),
+        )
+        .where(PaymentCredit.reversed_at.is_(None))
+        .group_by(PaymentCredit.tournament_id, PaymentCredit.currency)
+        .order_by(PaymentCredit.currency)
+    ).tuples():
+        credited.setdefault(tournament_id, []).append(
+            AdminCreditedOut(currency=currency, amount_cents=amount)
+        )
+    owner_ids = {t.owner_id for t in tournaments if t.owner_id is not None}
+    owners = {
+        owner.id: owner for owner in session.scalars(select(Fencer).where(Fencer.id.in_(owner_ids)))
+    }
+    rows: list[AdminTournamentOut] = []
+    for tournament in tournaments:
+        owner = owners.get(tournament.owner_id) if tournament.owner_id is not None else None
+        rows.append(
+            AdminTournamentOut(
+                slug=tournament.slug,
+                display_name=tournament.display_name,
+                date=tournament.date,
+                state=_tournament_state(tournament),
+                owner=(
+                    AdminTournamentOwnerOut(
+                        id=owner.id, display_name=owner.display_name, email=owner.email
+                    )
+                    if owner is not None
+                    else None
+                ),
+                registration_count=counts.get(tournament.id, 0),
+                credited=credited.get(tournament.id, []),
+            )
+        )
+    return rows
+
+
+@router.delete("/tournaments/{slug}", status_code=204)
+def delete_tournament(
+    slug: str, session: SessionDep, fencer: FencerDep, confirm: bool = False
+) -> None:
+    """An Admin's hard delete, in any state and without team membership (spec
+    tournament-admin, Tournament deletion and cancellation). Registrations,
+    and the money recorded against them, go too — but only on `confirm`, read
+    against the count at this moment, so a registration that arrived after the
+    list was loaded still stops an unconfirmed delete. Sends no mail."""
+    require_role(fencer, Role.ADMIN)
+    tournament = session.scalar(select(Tournament).where(Tournament.slug == slug))
+    if tournament is None:
+        raise HTTPException(status_code=404, detail="tournament_not_found")
+    has_registrations = session.scalar(
+        select(Registration.id).where(Registration.tournament_id == tournament.id).limit(1)
+    )
+    if has_registrations is not None and not confirm:
+        raise HTTPException(status_code=409, detail="has_registrations")
+    tournament_delete.delete_tournament(session, tournament)
+    session.commit()

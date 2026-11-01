@@ -934,7 +934,7 @@
     "title": "Admin panel",
     "error": "Data admin panelu se nepodařilo načíst.",
     "accounts": {
-      "title": "Účty",
+      "title": "Lidé",
       "email": "E-mail",
       "displayName": "Jméno",
       "role": "Role",
@@ -949,13 +949,55 @@
         "fencer": "Šermíř",
         "organizer": "Organizátor",
         "admin": "Admin"
-      }
+      },
+      "search": "Hledat jméno, e-mail nebo HRID",
+      "created": "Vytvořeno"
     },
     "pleas": {
       "title": "Žádosti o roli organizátora",
       "empty": "Žádné čekající žádosti.",
       "grant": "Schválit",
       "deny": "Zamítnout"
+    },
+    "tabs": {
+      "label": "Sekce admin panelu",
+      "tasks": "Úkoly",
+      "people": "Lidé",
+      "tournaments": "Turnaje"
+    },
+    "noMatch": "Hledání nic nenašlo.",
+    "sharedHr": {
+      "title": "Sdílené HR profily",
+      "empty": "Žádný HR profil nemá víc účtů.",
+      "hrId": "HRID {{hrId}}"
+    },
+    "tournaments": {
+      "title": "Turnaje",
+      "search": "Hledat turnaj, slug nebo vlastníka",
+      "empty": "Zatím žádné turnaje.",
+      "name": "Turnaj",
+      "date": "Datum",
+      "owner": "Vlastník",
+      "state": "Stav",
+      "registrations": "Registrace",
+      "states": {
+        "draft": "Koncept",
+        "published": "Zveřejněný",
+        "cancelled": "Zrušený"
+      },
+      "delete": {
+        "action": "Smazat turnaj",
+        "title": "Smazat turnaj s registracemi",
+        "registrations_one": "Smaže se {{count}} registrace i se svou platební historií.",
+        "registrations_few": "Smažou se {{count}} registrace i s jejich platební historií.",
+        "registrations_many": "Smaže se {{count}} registrací i s jejich platební historií.",
+        "registrations_other": "Smaže se {{count}} registrací i s jejich platební historií.",
+        "credited": "Připsáno na ně bylo {{amount}}.",
+        "nothingCredited": "Nebylo na ně nic připsáno.",
+        "cancelInstead": "Skutečnou akci má organizátor zrušit, ne smazat. Smazání nejde vrátit a nikomu nepřijde e-mail.",
+        "confirm": "Smazat turnaj",
+        "failed": "Turnaj se nepodařilo smazat. Zkuste to znovu."
+      }
     }
   },
   "menu": {

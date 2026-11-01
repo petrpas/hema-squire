@@ -919,7 +919,7 @@
     "title": "Admin panel",
     "error": "Could not load admin data.",
     "accounts": {
-      "title": "Accounts",
+      "title": "People",
       "email": "E-mail",
       "displayName": "Name",
       "role": "Role",
@@ -934,13 +934,53 @@
         "fencer": "Fencer",
         "organizer": "Organizer",
         "admin": "Admin"
-      }
+      },
+      "search": "Search name, email or HRID",
+      "created": "Created"
     },
     "pleas": {
       "title": "Organizer role requests",
       "empty": "No pending requests.",
       "grant": "Grant",
       "deny": "Deny"
+    },
+    "tabs": {
+      "label": "Admin panel sections",
+      "tasks": "Tasks",
+      "people": "People",
+      "tournaments": "Tournaments"
+    },
+    "noMatch": "The search found nothing.",
+    "sharedHr": {
+      "title": "Shared HR profiles",
+      "empty": "No HR profile is held by more than one account.",
+      "hrId": "HRID {{hrId}}"
+    },
+    "tournaments": {
+      "title": "Tournaments",
+      "search": "Search tournament, slug or owner",
+      "empty": "No tournaments yet.",
+      "name": "Tournament",
+      "date": "Date",
+      "owner": "Owner",
+      "state": "State",
+      "registrations": "Registrations",
+      "states": {
+        "draft": "Draft",
+        "published": "Published",
+        "cancelled": "Cancelled"
+      },
+      "delete": {
+        "action": "Delete tournament",
+        "title": "Delete a tournament with registrations",
+        "registrations_one": "{{count}} registration is deleted along with its payment history.",
+        "registrations_other": "{{count}} registrations are deleted along with their payment history.",
+        "credited": "{{amount}} was credited to them.",
+        "nothingCredited": "Nothing was credited to them.",
+        "cancelInstead": "A real event is cancelled by its organizer, not deleted. Deleting cannot be undone and nobody is mailed.",
+        "confirm": "Delete tournament",
+        "failed": "The tournament could not be deleted. Try again."
+      }
     }
   },
   "menu": {

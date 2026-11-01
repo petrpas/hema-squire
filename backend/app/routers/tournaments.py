@@ -7,11 +7,20 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Response, UploadFile
 from PIL import Image, ImageOps, UnidentifiedImageError
-from sqlalchemy import delete, false, func, or_, select
+from sqlalchemy import false, func, or_, select
 from sqlalchemy.orm import Session, selectinload
 from sqlalchemy.sql.elements import ColumnElement
 
-from app import bank, entrants, list_counts, money_bounds, scheduler, setup, taxonomy
+from app import (
+    bank,
+    entrants,
+    list_counts,
+    money_bounds,
+    scheduler,
+    setup,
+    taxonomy,
+    tournament_delete,
+)
 from app import familiar as familiar_mod
 from app.auth import (
     current_fencer,
@@ -34,27 +43,16 @@ from app.fieldtypes import RowId
 from app.logo_tint import logo_hue_band
 from app.models import (
     ACTION_CATEGORIES,
-    BankTransaction,
     Currency,
     Discipline,
     DisciplineKind,
     ExtraItem,
     Fencer,
-    HRRatingSnapshot,
-    HRSnapshotRating,
-    ImportBatch,
-    ImportDecision,
-    ImportedRow,
-    ManualRow,
-    PaymentEvent,
     PaymentMode,
     Registration,
     RegistrationDiscipline,
     RegistrationState,
     Role,
-    Rule,
-    RuleJournalEntry,
-    SheetRowNumber,
     Team,
     Tournament,
     TournamentOrganizer,
@@ -1759,31 +1757,6 @@ def publish_tournament(tournament: TournamentDep, session: SessionDep, fencer: F
     return out
 
 
-def _cascade_delete(session: Session, tournament: Tournament) -> None:
-    """Remove every child row of a tournament with zero registrations.
-    SQLite has no ON DELETE CASCADE here, so children are deleted explicitly,
-    in dependency order, before the tournament itself."""
-    tid = tournament.id
-    snapshot_ids = select(HRRatingSnapshot.id).where(HRRatingSnapshot.tournament_id == tid)
-    session.execute(delete(HRSnapshotRating).where(HRSnapshotRating.snapshot_id.in_(snapshot_ids)))
-    session.execute(delete(HRRatingSnapshot).where(HRRatingSnapshot.tournament_id == tid))
-    batch_ids = select(ImportBatch.id).where(ImportBatch.tournament_id == tid)
-    session.execute(delete(ImportedRow).where(ImportedRow.batch_id.in_(batch_ids)))
-    session.execute(delete(ImportDecision).where(ImportDecision.tournament_id == tid))
-    session.execute(delete(ImportBatch).where(ImportBatch.tournament_id == tid))
-    session.execute(delete(PaymentEvent).where(PaymentEvent.tournament_id == tid))
-    session.execute(delete(BankTransaction).where(BankTransaction.tournament_id == tid))
-    session.execute(delete(RuleJournalEntry).where(RuleJournalEntry.tournament_id == tid))
-    session.execute(delete(Rule).where(Rule.tournament_id == tid))
-    session.execute(delete(ManualRow).where(ManualRow.tournament_id == tid))
-    # the numbers those rows held; a tournament being deleted keeps none of them
-    session.execute(delete(SheetRowNumber).where(SheetRowNumber.tournament_id == tid))
-    session.execute(delete(TournamentOrganizer).where(TournamentOrganizer.tournament_id == tid))
-    session.execute(delete(ExtraItem).where(ExtraItem.tournament_id == tid))
-    session.execute(delete(Discipline).where(Discipline.tournament_id == tid))
-    session.delete(tournament)
-
-
 @router.delete("/{slug}", status_code=204)
 def delete_tournament(tournament: TournamentDep, session: SessionDep, fencer: FencerDep):
     """Hard delete only while empty (design D5); once registrations exist the
@@ -1794,5 +1767,5 @@ def delete_tournament(tournament: TournamentDep, session: SessionDep, fencer: Fe
     )
     if has_registrations:
         raise HTTPException(status_code=409, detail="has_registrations")
-    _cascade_delete(session, tournament)
+    tournament_delete.delete_tournament(session, tournament)
     session.commit()

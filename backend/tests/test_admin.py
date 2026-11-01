@@ -3,9 +3,14 @@
 denied below Admin (tasks 4.1-4.4)."""
 
 import pytest
+from sqlalchemy import func, select
 
+from app import ledger
 from app.config import settings
-from app.models import Role
+from app.models import Fencer, OutgoingMail, Registration, Role, Tournament
+from tests.conftest import credit_registration
+from tests.test_matching import db_session
+from tests.test_tournament_delete import make_published_cup
 
 # --- panel access (Requirement: Admin panel) ---
 
@@ -307,3 +312,100 @@ def test_admin_listing_flags_shared_hr_claims(client, auth_headers):
 
     accounts = {a["email"]: a for a in client.get("/api/admin/accounts", headers=admin).json()}
     assert accounts["a@example.com"]["hr_shared"] is False
+
+
+# --- tournaments tab and the admin delete (spec tournament-admin, Tournament
+# deletion and cancellation) ---
+
+
+def _tournament_with_registration(client, auth_headers, slug="cup"):
+    """A published, payments-on tournament owned by somebody other than the
+    admin, with one registration; returns that registration's row."""
+    owner = auth_headers(email=f"owner-{slug}@example.com", name="Owner")
+    make_published_cup(client, owner, slug)
+    response = client.post(
+        f"/api/tournaments/{slug}/register",
+        json={"disciplines": ["LS"]},
+        headers=auth_headers(email=f"fencer-{slug}@example.com", name="Fencer", role=Role.FENCER),
+    )
+    assert response.status_code == 201, response.text
+    session = db_session()
+    registration = session.scalar(
+        select(Registration).where(Registration.vs == response.json()["vs"])
+    )
+    assert registration is not None
+    return session, registration
+
+
+def test_tournament_endpoints_refused_below_admin(client, auth_headers):
+    organizer = auth_headers(email="o@example.com", role=Role.ORGANIZER)
+    client.post(
+        "/api/tournaments",
+        json={"slug": "cup", "display_name": "Cup", "date": "2026-12-05"},
+        headers=organizer,
+    )
+    assert client.get("/api/admin/tournaments", headers=organizer).status_code == 403
+    assert client.delete("/api/admin/tournaments/cup", headers=organizer).status_code == 403
+
+
+def test_admin_deletes_empty_draft_without_confirmation(client, auth_headers):
+    owner = auth_headers(email="o@example.com")
+    client.post(
+        "/api/tournaments",
+        json={"slug": "cup", "display_name": "Cup", "date": "2026-12-05"},
+        headers=owner,
+    )
+    admin = auth_headers(email="admin@example.com", role=Role.ADMIN)
+    assert client.delete("/api/admin/tournaments/cup", headers=admin).status_code == 204
+    assert client.get("/api/admin/tournaments", headers=admin).json() == []
+
+
+def test_unconfirmed_delete_with_registrations_is_refused(client, auth_headers):
+    session, registration = _tournament_with_registration(client, auth_headers)
+    admin = auth_headers(email="admin@example.com", role=Role.ADMIN)
+    response = client.delete("/api/admin/tournaments/cup", headers=admin)
+    assert response.status_code == 409
+    assert response.json()["detail"] == "has_registrations"
+    session.expire_all()
+    assert session.get(Registration, registration.id) is not None
+
+
+def test_confirmed_delete_by_admin_off_the_team_removes_it_and_mails_nobody(client, auth_headers):
+    session, registration = _tournament_with_registration(client, auth_headers)
+    credit_registration(session, registration, 50000)
+    registration_id = registration.id
+    admin = auth_headers(email="admin@example.com", role=Role.ADMIN)
+    queued = session.scalar(select(func.count()).select_from(OutgoingMail))
+    accounts = session.scalar(select(func.count()).select_from(Fencer))
+
+    response = client.delete("/api/admin/tournaments/cup?confirm=true", headers=admin)
+    assert response.status_code == 204
+    session.expire_all()
+    assert session.scalar(select(Tournament).where(Tournament.slug == "cup")) is None
+    assert session.get(Registration, registration_id) is None
+    assert session.scalar(select(func.count()).select_from(OutgoingMail)) == queued
+    assert session.scalar(select(func.count()).select_from(Fencer)) == accounts
+
+
+def test_tournament_list_reports_state_owner_count_and_live_credit(client, auth_headers):
+    session, registration = _tournament_with_registration(client, auth_headers)
+    credit_registration(session, registration, 30000)
+    reversed_entry = credit_registration(session, registration, 20000)
+    ledger.reverse(session, reversed_entry, by="test", reason="wrong payer")
+    session.commit()
+    owner = auth_headers(email="draft-owner@example.com")
+    client.post(
+        "/api/tournaments",
+        json={"slug": "draft", "display_name": "Draft", "date": "2027-01-10"},
+        headers=owner,
+    )
+    admin = auth_headers(email="admin@example.com", role=Role.ADMIN)
+
+    rows = {row["slug"]: row for row in client.get("/api/admin/tournaments", headers=admin).json()}
+    assert rows["cup"]["state"] == "published"
+    assert rows["cup"]["owner"]["email"] == "owner-cup@example.com"
+    assert rows["cup"]["registration_count"] == 1
+    assert rows["cup"]["credited"] == [{"currency": "CZK", "amount_cents": 30000}]
+    assert rows["draft"]["state"] == "draft"
+    assert rows["draft"]["registration_count"] == 0
+    assert rows["draft"]["credited"] == []

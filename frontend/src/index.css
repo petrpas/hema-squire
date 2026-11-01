@@ -2309,6 +2309,55 @@ tr.row-deleted td.col-actions {
   margin-left: 0.4rem;
 }
 
+/* The admin panel (spec user-roles, Admin panel): a tab strip above one
+   section at a time, a search field above each list. */
+.admin-tabs {
+  margin-bottom: 1rem;
+  align-self: flex-start;
+}
+
+.admin-search {
+  margin-bottom: 0.6rem;
+}
+
+.admin-shared-holders {
+  list-style: none;
+  margin: 0.2rem 0 0;
+  padding: 0;
+}
+
+.admin-shared-holders li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+}
+
+/* A sortable column's header is a button that looks like the header it sits
+   in: same label type, no frame, the direction drawn as an outline chevron. */
+.sort-header {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3em;
+  padding: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+.sort-header:focus-visible {
+  outline: var(--border-w) solid var(--stamp);
+  outline-offset: 2px;
+}
+
+.col-number .sort-header {
+  flex-direction: row-reverse;
+}
+
 .modal-actions {
   display: flex;
   justify-content: space-between;

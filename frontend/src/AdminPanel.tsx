@@ -1,177 +1,36 @@
-import { IconCheck, IconX } from "@tabler/icons-react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { type Account, type AdminAccount, api, type PleaQueueItem, type Role } from "./api";
+import AdminTabs, { type AdminTab } from "./admin/AdminTabs";
+import PeopleTab from "./admin/PeopleTab";
+import { sharedHrGroups } from "./admin/sharedHr";
+import TasksTab from "./admin/TasksTab";
+import TournamentsTab from "./admin/TournamentsTab";
+import {
+  type Account,
+  type AdminAccount,
+  type AdminTournament,
+  api,
+  type PleaQueueItem,
+} from "./api";
 import MenuPage from "./MenuPage";
 
-const ROLES: Role[] = ["fencer", "organizer", "admin"];
-
-function AccountsSection({
-  accounts,
-  onChanged,
-}: {
-  accounts: AdminAccount[];
-  onChanged: () => void;
-}) {
-  const { t } = useTranslation();
-  const [busy, setBusy] = useState<number | null>(null);
-
-  async function changeRole(account: AdminAccount, role: Role) {
-    setBusy(account.id);
-    try {
-      await api.adminSetRole(account.id, role);
-      onChanged();
-    } finally {
-      setBusy(null);
-    }
-  }
-
-  async function unbind(account: AdminAccount) {
-    setBusy(account.id);
-    try {
-      await api.adminHrUnbind(account.id);
-      onChanged();
-    } finally {
-      setBusy(null);
-    }
-  }
-
-  return (
-    <section className="rail-card">
-      <h2>{t("admin.accounts.title")}</h2>
-      <table className="sheet-table">
-        <thead>
-          <tr>
-            <th>{t("admin.accounts.email")}</th>
-            <th>{t("admin.accounts.displayName")}</th>
-            <th>{t("admin.accounts.role")}</th>
-            <th className="col-number">{t("admin.accounts.hrId")}</th>
-            <th>{t("admin.accounts.plea")}</th>
-            <th className="col-actions" />
-          </tr>
-        </thead>
-        <tbody>
-          {accounts.map((account) => (
-            <tr key={account.id}>
-              <td>{account.email}</td>
-              <td>{account.display_name}</td>
-              <td>
-                {account.is_deployment_owner ? (
-                  <span className="tag tag-file-blue">{t("admin.accounts.owner")}</span>
-                ) : (
-                  <select
-                    value={account.role}
-                    disabled={busy === account.id}
-                    onChange={(event) => void changeRole(account, event.target.value as Role)}
-                  >
-                    {ROLES.map((role) => (
-                      <option key={role} value={role}>
-                        {t(`admin.accounts.roles.${role}`)}
-                      </option>
-                    ))}
-                  </select>
-                )}
-              </td>
-              <td className="col-number">
-                {account.hr_id ?? "—"}
-                {account.hr_shared && (
-                  <span
-                    className="tag tag-form-yellow hr-shared-badge"
-                    title={t("admin.accounts.hrShared")}
-                  >
-                    {t("admin.accounts.shared")}
-                  </span>
-                )}
-              </td>
-              <td>{account.has_pending_plea ? t("admin.accounts.pleaPending") : "—"}</td>
-              <td className="col-actions">
-                {account.hr_id !== null && (
-                  <button
-                    type="button"
-                    className="row-action"
-                    title={t("admin.accounts.unbind")}
-                    disabled={busy === account.id}
-                    onClick={() => void unbind(account)}
-                  >
-                    <IconX size={16} stroke={1.5} />
-                  </button>
-                )}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </section>
-  );
-}
-
-function PleaQueueSection({ pleas, onChanged }: { pleas: PleaQueueItem[]; onChanged: () => void }) {
-  const { t } = useTranslation();
-  const [busy, setBusy] = useState<number | null>(null);
-
-  async function decide(plea: PleaQueueItem, grant: boolean) {
-    setBusy(plea.id);
-    try {
-      if (grant) await api.adminGrantPlea(plea.id);
-      else await api.adminDenyPlea(plea.id);
-      onChanged();
-    } finally {
-      setBusy(null);
-    }
-  }
-
-  return (
-    <section className="rail-card dashed">
-      <h2>{t("admin.pleas.title")}</h2>
-      {pleas.length === 0 ? (
-        <p className="rail-hint">{t("admin.pleas.empty")}</p>
-      ) : (
-        <ul className="edits-list">
-          {pleas.map((plea) => (
-            <li key={plea.id} className="edit-entry">
-              <div className="edit-body">
-                <div>
-                  <strong>{plea.display_name}</strong> · {plea.email}
-                </div>
-                {plea.message && <div className="edit-meta">{plea.message}</div>}
-              </div>
-              <button
-                type="button"
-                className="row-action"
-                title={t("admin.pleas.grant")}
-                disabled={busy === plea.id}
-                onClick={() => void decide(plea, true)}
-              >
-                <IconCheck size={16} stroke={1.5} />
-              </button>
-              <button
-                type="button"
-                className="row-action"
-                title={t("admin.pleas.deny")}
-                disabled={busy === plea.id}
-                onClick={() => void decide(plea, false)}
-              >
-                <IconX size={16} stroke={1.5} />
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
-    </section>
-  );
-}
-
+/** The admin panel: pending tasks, people and tournaments, one tab at a time
+ *  (spec user-roles, Admin panel). Loads the lists and holds the tab; each tab
+ *  is its own section under `admin/`. */
 export default function AdminPanel() {
   const { t } = useTranslation();
   const [accounts, setAccounts] = useState<AdminAccount[] | null>(null);
   const [pleas, setPleas] = useState<PleaQueueItem[] | null>(null);
+  const [tournaments, setTournaments] = useState<AdminTournament[] | null>(null);
   const [error, setError] = useState(false);
   const [account, setAccount] = useState<Account | null>(null);
+  const [tab, setTab] = useState<AdminTab>("tasks");
 
   function refresh() {
     api.adminAccounts().then(setAccounts, () => setError(true));
     api.adminPleas().then(setPleas, () => setError(true));
+    api.adminTournaments().then(setTournaments, () => setError(true));
   }
 
   useEffect(refresh, []);
@@ -179,16 +38,24 @@ export default function AdminPanel() {
     api.account().then(setAccount, () => setAccount(null));
   }, []);
 
+  const sharedHr = useMemo(() => sharedHrGroups(accounts ?? []), [accounts]);
+
   return (
     <MenuPage title={t("admin.title")} account={account}>
       {error ? (
         <p className="login-error">{t("admin.error")}</p>
-      ) : accounts === null || pleas === null ? (
+      ) : accounts === null || pleas === null || tournaments === null ? (
         <p>{t("common.loading")}</p>
       ) : (
         <div className="page-card-body">
-          <PleaQueueSection pleas={pleas} onChanged={refresh} />
-          <AccountsSection accounts={accounts} onChanged={refresh} />
+          <AdminTabs active={tab} openTasks={pleas.length + sharedHr.length} onChoose={setTab} />
+          <div role="tabpanel" id={`admin-tabpanel-${tab}`} aria-labelledby={`admin-tab-${tab}`}>
+            {tab === "tasks" && <TasksTab pleas={pleas} sharedHr={sharedHr} onChanged={refresh} />}
+            {tab === "people" && <PeopleTab accounts={accounts} onChanged={refresh} />}
+            {tab === "tournaments" && (
+              <TournamentsTab tournaments={tournaments} onChanged={refresh} />
+            )}
+          </div>
         </div>
       )}
     </MenuPage>
