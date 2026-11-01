@@ -7,6 +7,7 @@ import { BankAccountSection } from "./setup/BankAccountSection";
 import { CurrencySection } from "./setup/CurrencySection";
 import { DangerZoneSection } from "./setup/DangerZoneSection";
 import { DisciplinesSection } from "./setup/DisciplinesSection";
+import { DiscountCodesSection } from "./setup/DiscountCodesSection";
 import { DiscountsSection } from "./setup/DiscountsSection";
 import { ExtraItemsSection } from "./setup/ExtraItemsSection";
 import { IdentitySection, VsSeriesSection } from "./setup/IdentitySection";
@@ -239,6 +240,9 @@ export default function SetupPanel({
               pricingWarning={hasRegistrations}
               registry={registry}
             />
+            {detail.registrations_kept_by === "squire" && (
+              <DiscountCodesSection detail={detail} slug={slug} registry={registry} />
+            )}
             <LegacyFeesSection detail={detail} slug={slug} onSaved={onSaved} />
           </div>
           {isOwner && (

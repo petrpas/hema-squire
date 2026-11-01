@@ -905,6 +905,24 @@
         "includesNothing": "The tournament includes no schedule, team disciplines or extra services.",
         "change": "Change"
       }
+    },
+    "discountCodes": {
+      "title": "Discount codes",
+      "hint": "Private discounts you hand out yourself. A code made of a common word can be guessed, so rewrite it or set a limit for larger discounts.",
+      "name": "Name",
+      "code": "Code",
+      "limit": "Uses",
+      "unlimited": "unlimited",
+      "effect": "Effect",
+      "value": "Value",
+      "valueEur": "Value (EUR)",
+      "uses": "Used",
+      "scope": "What the percentage applies to",
+      "scopeWhole": "Whole total",
+      "scopeCategories": "Selected categories",
+      "disciplines": "Disciplines",
+      "locked": "Somebody has used this code, so only its name and uses can change.",
+      "add": "Add code"
     }
   },
   "preview": {
@@ -1345,7 +1363,8 @@
       "uncredited": "Uncredited",
       "noteProposals_one": "1 of them is a proposal",
       "noteProposals_other": "{{count}} of them are proposals",
-      "noteCredited": "{{total}} credited"
+      "noteCredited": "{{total}} credited",
+      "codes": "Discount codes"
     },
     "record": {
       "action": "Record a payment",
@@ -1409,6 +1428,16 @@
     },
     "unmatched": {
       "link": "Pair with a registration"
+    },
+    "codes": {
+      "empty": "Nobody has used a code yet.",
+      "fencer": "Fencer",
+      "name": "Name",
+      "code": "Code",
+      "deducted": "Discount",
+      "paid": "Paid",
+      "yes": "yes",
+      "no": "no"
     }
   },
   "validation": {
@@ -1438,7 +1467,10 @@
     "account_checksum": "this account number does not pass its checksum — check for a typo",
     "opening_time_without_date": "An opening time needs an opening date.",
     "opening_time_does_not_exist": "That time does not exist on that day — the clocks go forward.",
-    "unknown_timezone": "Unknown time zone."
+    "unknown_timezone": "Unknown time zone.",
+    "code_taken": "the tournament already has this code",
+    "code_in_use": "somebody has used this code, so it cannot change",
+    "below_uses": "cannot be below the {{min}} already used"
   },
   "queue": {
     "title": "Seating and queue",
@@ -1622,5 +1654,12 @@
     "invalid": "This link is no longer valid.",
     "requestNew": "Ask for a new link",
     "failed": "The password could not be saved. Please try again."
+  },
+  "discountCode": {
+    "title": "Discount code",
+    "label": "Code",
+    "apply": "Apply",
+    "refused": "This code does not apply.",
+    "applied": "{{name}}: {{amount}}"
   }
 }

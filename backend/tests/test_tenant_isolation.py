@@ -30,6 +30,16 @@ from app.main import app
 # endpoint with a required body therefore fails this test until it is listed
 # here — deliberately: that failure is the reminder.
 BODIES: dict[tuple[str, str], object] = {
+    ("POST", "/api/tournaments/{slug}/discount-codes"): {
+        "name": "Trainers",
+        "code": "trainers",
+        "effect": {"kind": "percent", "value": 10},
+    },
+    ("PUT", "/api/tournaments/{slug}/discount-codes/{code_id}"): {
+        "name": "Trainers",
+        "code": "trainers",
+        "effect": {"kind": "percent", "value": 10},
+    },
     ("POST", "/api/tournaments/{slug}/disciplines"): {
         "slug": "LS",
         "name": "Longsword",
@@ -107,6 +117,7 @@ PATH_PARAMS = {
     "team_id": "1",
     "transaction_id": "1",
     "item_id": "1",
+    "code_id": "1",
     "rule_id": "1",
     "payment_id": "1",
     "fencer_id": "1",

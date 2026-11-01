@@ -27,6 +27,8 @@ from app.fieldtypes import (
     DisciplineScheduleWhereStr,
     DisciplineSlug,
     DisciplineWeaponStr,
+    DiscountCodeNameStr,
+    DiscountCodeStr,
     DiscountNameStr,
     DisplayNameStr,
     ExternalRegistrationUrlStr,
@@ -62,6 +64,7 @@ from app.fieldtypes import (
     TournamentRegistrationInstructionsStr,
     TournamentShortCodeStr,
     TournamentSubtitleStr,
+    TypedDiscountCodeStr,
     UtcInstant,
 )
 from app.i18n import catalog
@@ -450,6 +453,52 @@ class DiscountIn(BaseModel):
     scope: list[ScopeCategory] = ["discipline"]
 
 
+class DiscountCodeIn(BaseModel):
+    name: DiscountCodeNameStr
+    code: DiscountCodeStr
+    # None is unlimited
+    max_uses: int | None = Field(default=None, ge=constraints.DISCOUNT_CODE_MAX_USES_MIN)
+    effect: DiscountEffect
+    # the categories a percentage reaches; empty is the whole total, which is
+    # what a fixed amount always reaches
+    scope: list[ScopeCategory] = []
+
+    @model_validator(mode="after")
+    def _fixed_reaches_everything(self) -> DiscountCodeIn:
+        if self.effect.kind == "fixed":
+            self.scope = []
+        return self
+
+
+class DiscountCodeOut(DiscountCodeIn):
+    id: int
+    uses: int
+    # some registration carries it, so what it means can no longer change
+    locked: bool
+
+
+class DiscountCodeUsesOut(BaseModel):
+    id: int
+    name: str
+    max_uses: int | None
+    uses: int
+
+
+class DiscountCodeRedemptionOut(BaseModel):
+    registration_id: int
+    fencer: str
+    name: str
+    code: str
+    deducted: int
+    currency: Currency
+    paid: bool
+
+
+class DiscountCodeRedemptionsOut(BaseModel):
+    codes: list[DiscountCodeUsesOut]
+    rows: list[DiscountCodeRedemptionOut]
+
+
 class OrganizerIn(BaseModel):
     name: OrganizerNameStr
     link: OrganizerLinkStr | None = None
@@ -789,6 +838,8 @@ class TournamentOut(BaseModel):
     # whether a registration form exists at all
     registrations_kept_by: RegistrationsKeptBy
     discounts: list[DiscountIn]
+    # whether a usable discount code exists, and nothing about any of them
+    accepts_discount_codes: bool = False
     extra_items: list[ExtraItemOut] = []
     # filled by the detail endpoint from setup.setup_missing(); None elsewhere
     setup_missing: list[str] | None = None
@@ -883,6 +934,8 @@ class FencerTournamentOut(BaseModel):
     disciplines: list[DisciplineOut]
     extra_items: list[ExtraItemOut] = []
     discounts: list[DiscountIn]
+    # whether a usable discount code exists, and nothing about any of them
+    accepts_discount_codes: bool = False
     local_currency: Currency
     eur_payments_enabled: bool
     # derived from the pair above, as on TournamentOut
@@ -1094,6 +1147,9 @@ class ExtraSelectionIn(BaseModel):
 
 
 class RegisterIn(BaseModel):
+    # a discount code as the fencer typed it; matched, never validated, since
+    # a malformed code must read exactly as an unknown one does
+    discount_code: TypedDiscountCodeStr | None = None
     # at least one discipline OR one team must be selected; enforced in the
     # router, where both fields are visible together (a team-only registration
     # is valid — spec: "Registration consisting only of a team")
@@ -1268,6 +1324,9 @@ class RegistrationOut(BaseModel):
     # selection this registration holds: the lines above are list prices, so
     # without it a discounted total could not be shown to add up
     discounts: list[DiscountBreakdownOut] = []
+    # what its code took off, apart from `discounts`: that list is the
+    # tournament's public offer, and this is nobody else's business
+    applied_code: DiscountBreakdownOut | None = None
 
 
 class AvailabilityOut(BaseModel):
@@ -1298,6 +1357,17 @@ class PricePreviewIn(BaseModel):
     teams: list[PreviewTeamIn] = []
 
 
+class CodePreviewIn(PricePreviewIn):
+    discount_code: TypedDiscountCodeStr
+
+
+class HeldCodePreviewIn(PricePreviewIn):
+    """The amendment form's preview: the code the registration holds prices by
+    itself, and this names one being added."""
+
+    discount_code: TypedDiscountCodeStr | None = None
+
+
 class PricePreviewOut(BaseModel):
     total: int
     currency: Currency = Currency.CZK
@@ -1307,6 +1377,8 @@ class PricePreviewOut(BaseModel):
     # one entry per discount the tournament configures, in configured order,
     # empty for a tournament that configures none
     discounts: list[DiscountBreakdownOut] = []
+    # the code's outcome, never one of `discounts`
+    applied_code: DiscountBreakdownOut | None = None
 
 
 class AmendmentPlacementOut(BaseModel):

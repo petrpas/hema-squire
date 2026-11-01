@@ -217,6 +217,28 @@ DiscountNameStr = Annotated[
         min_length=constraints.DISCOUNT_NAME_MIN_LENGTH,
     ),
 ]
+DiscountCodeNameStr = Annotated[
+    str,
+    SingleLine,
+    Field(
+        max_length=constraints.DISCOUNT_CODE_NAME_MAX_LENGTH,
+        min_length=constraints.DISCOUNT_CODE_NAME_MIN_LENGTH,
+    ),
+]
+DiscountCodeStr = Annotated[
+    str,
+    SingleLine,
+    Field(
+        max_length=constraints.DISCOUNT_CODE_MAX_LENGTH,
+        min_length=constraints.DISCOUNT_CODE_MIN_LENGTH,
+        pattern=constraints.DISCOUNT_CODE_PATTERN,
+    ),
+]
+# what a fencer typed: bounded, and matched rather than validated, since a
+# malformed code must read exactly as an unknown one does
+TypedDiscountCodeStr = Annotated[
+    str, SingleLine, Field(max_length=constraints.DISCOUNT_CODE_TYPED_MAX_LENGTH)
+]
 OrganizerNameStr = Annotated[
     str,
     SingleLine,
@@ -415,6 +437,8 @@ __all__ = [
     "DisciplineScheduleWhereStr",
     "DisciplineSlug",
     "DisciplineWeaponStr",
+    "DiscountCodeNameStr",
+    "DiscountCodeStr",
     "DiscountNameStr",
     "DisplayNameStr",
     "ExternalRegistrationUrlStr",
@@ -432,6 +456,7 @@ __all__ = [
     "ManualEntryNotesStr",
     "Multiline",
     "OptionValueStr",
+    "TypedDiscountCodeStr",
     "OrganizerLinkStr",
     "OrganizerNameStr",
     "OutputSheetUrlStr",

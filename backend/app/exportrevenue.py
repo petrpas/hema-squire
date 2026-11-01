@@ -137,6 +137,8 @@ class _Block:
     pieces: dict[tuple[str, int], _Tally] = field(default_factory=dict)
     # discount index → tally of the registrations it deducted from here
     discounts: dict[int, _Tally] = field(default_factory=dict)
+    # discount code id → the same, a code having no place in that list
+    codes: dict[int, _Tally] = field(default_factory=dict)
     holders: _Tally = field(default_factory=_Tally)
 
 
@@ -230,6 +232,25 @@ def _lines(tournament: Tournament, key: str, block: _Block) -> list[RevenueLine]
                 percent,
             )
         )
+    by_id = {code.id: code for code in tournament.discount_codes}
+    for code_id in sorted(block.codes):
+        code = by_id.get(code_id)
+        if code is None:
+            continue
+        tally = block.codes[code_id]
+        price, percent = _effect_price(code.effect)
+        lines.append(
+            RevenueLine(
+                DISCOUNT,
+                code.name,
+                price,
+                tally.paid_count,
+                tally.count,
+                -tally.paid,
+                -tally.to_pay,
+                percent,
+            )
+        )
     holders = block.holders
     lines.append(
         RevenueLine(
@@ -301,9 +322,9 @@ def _priced(
         for deduction in breakdown.deductions:
             key = ENTRY if deduction.category == pricing.DISCIPLINE_CATEGORY else deduction.category
             block = blocks.setdefault(key, _Block())
-            block.discounts.setdefault(deduction.position, _Tally()).add(
-                settled, 1, deduction.deducted
-            )
+            tallies = block.discounts if deduction.code_id is None else block.codes
+            subject = deduction.position if deduction.code_id is None else deduction.code_id
+            tallies.setdefault(subject, _Tally()).add(settled, 1, deduction.deducted)
     return blocks, everyone
 
 

@@ -22,6 +22,7 @@ from app.routers import (
     accounts,
     admin,
     auth,
+    discount_codes_api,
     export_api,
     guests,
     hr_api,
@@ -185,6 +186,7 @@ def create_app() -> FastAPI:
     app.include_router(import_api.router)
     app.include_router(import_api.operations_router)
     app.include_router(manual_api.router)
+    app.include_router(discount_codes_api.router)
     app.include_router(export_api.router)
     app.include_router(hr_api.router)
     app.include_router(hr_api.ratings_router)

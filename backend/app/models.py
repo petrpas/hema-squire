@@ -625,6 +625,9 @@ class Tournament(Base):
         back_populates="tournament", order_by=lambda: [Discipline.ordinal, Discipline.id]
     )
     extra_items: Mapped[list[ExtraItem]] = relationship(back_populates="tournament")
+    discount_codes: Mapped[list[DiscountCode]] = relationship(
+        order_by=lambda: DiscountCode.id, viewonly=False
+    )
     registrations: Mapped[list[Registration]] = relationship(back_populates="tournament")
     # account-based console access rows (exposed via the /team API); distinct
     # from `organizers`, the public-facing titular-organizer name+link list
@@ -732,6 +735,32 @@ class ExtraItem(Base):
     tournament: Mapped[Tournament] = relationship(back_populates="extra_items")
 
 
+class DiscountCode(Base):
+    """A private discount an organizer hands out: whoever types `code` gets
+    `effect`, and nobody else learns it exists (spec discount-codes).
+
+    Its own table and not more rows of `Tournament.discounts`, which is served
+    to every visitor and offers nothing to count against or to lock (design
+    add-discount-codes D1). `effect` has the shape of a discount's. An empty
+    `scope` is the whole total; a fixed effect always has one.
+
+    Uses are not stored: they are the live registrations carrying the code
+    (`discount_codes.uses`)."""
+
+    __tablename__ = "discount_codes"
+    __table_args__ = (UniqueConstraint("tournament_id", "code"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    tournament_id: Mapped[int] = mapped_column(ForeignKey("tournaments.id"))
+    # normalized (`discount_codes.normalize`), as the organizer's slug is
+    code: Mapped[str] = mapped_column(String(32))
+    name: Mapped[str] = mapped_column(String(200))
+    # None is unlimited
+    max_uses: Mapped[int | None]
+    effect: Mapped[dict] = mapped_column(JSON)
+    scope: Mapped[list] = mapped_column(JSON, default=list)
+
+
 class OrganizerRequest(Base):
     """A plea for the global Organizer role. At most one pending per account;
     decided pleas are kept as history, so re-pleading creates a new row."""
@@ -798,6 +827,15 @@ class Registration(Base):
     # places).
     claim_total: Mapped[int | None]
     claim_total_eur: Mapped[int | None]
+    # The code this registration was priced with. Stays on an expired or
+    # cancelled row, whose revival keeps the price it was quoted; a new cycle
+    # overwrites it (design add-discount-codes D3).
+    discount_code_id: Mapped[int | None] = mapped_column(ForeignKey("discount_codes.id"))
+    # Whether that code brought a lane's total to zero: a fact about the price,
+    # written by `pricing.reprice` alone, which `settled` reads. Not derivable
+    # from the columns: a code on a selection that was free anyway leaves the
+    # same zero behind and has covered nothing (design add-discount-codes D4).
+    code_covered: Mapped[bool] = mapped_column(default=False)
     expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     # Both lifecycle clocks are dormant for this registration, by virtue of its
     # origin: it was issued for a row that states who is competing rather than
@@ -1085,8 +1123,9 @@ class Registration(Base):
     @hybrid_property
     def settled(self) -> bool:
         """Whether this registration has been paid for, derived and never
-        assigned: a live waiver, or a lane that **holds credit** whose
-        outstanding balance is within tolerance.
+        assigned: a live waiver, a lane that **holds credit** whose outstanding
+        balance is within tolerance, or a discount code that brought a lane's
+        total to zero.
 
         **The credit test is load-bearing and is not a rounding guard.** A
         registration that was never asked for anything has an outstanding of
@@ -1109,11 +1148,19 @@ class Registration(Base):
         it into a paid fencer sitting in the queue. A waiver still settles it:
         that is a person's word that nothing is owed, not money in the queue.
 
+        **A code that covered the price settles with no money and no journal
+        row**: somebody decided that price, as a waiver decides, and the seat
+        would otherwise expire for want of a payment nobody is asked to make. It
+        stops as soon as a reprice leaves anything owed (`code_covered`), and a
+        registration waiting in the queue has no priced place for it to cover.
+
         This does **not** say what state a reader is shown; `wire_state` does,
         and the lifecycle wins over this wherever the two meet."""
         if self.waived:
             return True
-        return not self.waiting_in_queue and self.settling_lane is not None
+        if self.waiting_in_queue:
+            return False
+        return self.code_covered or self.settling_lane is not None
 
     @settled.inplace.expression
     @classmethod
@@ -1128,6 +1175,7 @@ class Registration(Base):
             and_(
                 not_(_waiting_in_queue_sql(cls)),
                 or_(
+                    cls.code_covered,
                     and_(
                         local_credited > 0,
                         local_total - local_credited <= local_total * percent / 100,
@@ -1215,6 +1263,7 @@ class Registration(Base):
     notes: Mapped[str | None] = mapped_column(Text)
 
     tournament: Mapped[Tournament] = relationship(back_populates="registrations")
+    discount_code: Mapped[DiscountCode | None] = relationship()
     fencer: Mapped[Fencer] = relationship(back_populates="registrations")
     entries: Mapped[list[RegistrationDiscipline]] = relationship(back_populates="registration")
     extra_selections: Mapped[list[RegistrationExtra]] = relationship(back_populates="registration")

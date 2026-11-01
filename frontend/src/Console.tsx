@@ -35,11 +35,13 @@ import OperationsIndicator from "./OperationsIndicator";
 import PaidStamp from "./PaidStamp";
 import ProblemsCell from "./ProblemsCell";
 import CreditedTable from "./payments/CreditedTable";
+import DiscountCodesTable, { usesLine } from "./payments/DiscountCodesTable";
 import IntakePanel from "./payments/IntakePanel";
 import IssueOnArrival from "./payments/IssueOnArrival";
 import PaymentTabs, { type PaymentTab, PaymentTabsProvider } from "./payments/PaymentTabs";
 import RecordPaymentDialog from "./payments/RecordPaymentDialog";
 import UncreditedTable from "./payments/UncreditedTable";
+import { useDiscountRedemptions } from "./payments/useDiscountRedemptions";
 import { usePaymentTables } from "./payments/usePaymentTables";
 import QueuePhase from "./queue/QueuePhase";
 import RentalsCell from "./RentalsCell";
@@ -779,14 +781,18 @@ export default function Console({
   // remembered rather than derived: derived from `openTab` it would be lost the
   // moment the reader went back to the fencers, which is exactly when it is
   // needed
-  const [lastMoneyTab, setLastMoneyTab] = useState<Exclude<PaymentTab, "fencers">>("credited");
+  const [lastMoneyTab, setLastMoneyTab] = useState<"credited" | "uncredited">("credited");
   const setOpenTab = useCallback((tab: PaymentTab) => {
     setOpenTabState(tab);
-    if (tab !== "fencers") setLastMoneyTab(tab);
+    if (tab === "credited" || tab === "uncredited") setLastMoneyTab(tab);
   }, []);
   // both loads live here rather than in the tables, which is what lets the line
   // beside the bands be computed in one place (design D3, D4)
   const tables = usePaymentTables(tournament.slug, queueReload, phase === "payments" && !boned);
+  // not held back where the phase is boned out: the codes are not money, and
+  // a tournament Squire collects nothing for gives them all the same
+  const redemptions = useDiscountRedemptions(tournament.slug, queueReload, phase === "payments");
+  const hasCodes = (redemptions.data?.codes.length ?? 0) > 0;
 
   /** The one line beside the tab bands: what the open table has to say that its
    *  own count cannot.
@@ -798,6 +804,9 @@ export default function Console({
    *  roster's totals, and saying it twice is the redundancy this phase is
    *  shedding. */
   const tableNote = (() => {
+    if (openTab === "codes") {
+      return (redemptions.data?.codes ?? []).map(usesLine).join(" · ") || null;
+    }
     if (openTab === "uncredited") {
       const proposals = (tables.uncredited.rows ?? []).filter(
         (payment) => payment.disposition === "proposal",
@@ -827,6 +836,14 @@ export default function Console({
    *  nothing or could not be read. Both shapes are the card's, so one table
    *  failing leaves the other and the fencer table as they were. */
   const paymentTable = (() => {
+    if (openTab === "codes") {
+      if (redemptions.failed) return <p className="login-error">{t("payments.queue.failed")}</p>;
+      if (redemptions.data === null) return <p className="rail-hint">{t("common.loading")}</p>;
+      if (redemptions.data.rows.length === 0) {
+        return <p className="rail-hint">{t("payments.codes.empty")}</p>;
+      }
+      return <DiscountCodesTable rows={redemptions.data.rows} />;
+    }
     const load = openTab === "credited" ? tables.credited : tables.uncredited;
     if (load.failed) return <p className="login-error">{t("payments.queue.failed")}</p>;
     if (load.rows === null) return <p className="rail-hint">{t("common.loading")}</p>;
@@ -1046,7 +1063,10 @@ export default function Console({
              Keyed by phase: the tabs belong to Payments, and a selection
              carried into a phase that draws none would leave the table hidden
              behind a tab that is not there */
-              <PaymentTabsProvider key={phase} open={boned ? "fencers" : openTab}>
+              <PaymentTabsProvider
+                key={phase}
+                open={boned && openTab !== "codes" ? "fencers" : openTab}
+              >
                 <SheetArea
                   phase={phase}
                   queues={
@@ -1058,6 +1078,28 @@ export default function Console({
                    misreading the one true thing about it */
                       <>
                         <p className="rail-hint">{t("console.settled.meaning")}</p>
+                        {hasCodes && (
+                          <PaymentTabs
+                            open={openTab}
+                            onOpen={setOpenTab}
+                            onOpenPayments={() => {}}
+                            creditedCount={null}
+                            uncreditedCount={null}
+                            note={tableNote}
+                            money={false}
+                            codes
+                          />
+                        )}
+                        {openTab === "codes" && (
+                          <section
+                            className="rail-card queue-card"
+                            role="tabpanel"
+                            id="payment-tabpanel-codes"
+                            aria-labelledby="payment-tab-codes"
+                          >
+                            {paymentTable}
+                          </section>
+                        )}
                         {/* no intake exists here to issue the roster, so arriving
                       does it (design Decision 10) */}
                         <IssueOnArrival slug={tournament.slug} onIssued={refresh} />
@@ -1083,6 +1125,7 @@ export default function Console({
                           creditedFailed={tables.credited.failed}
                           uncreditedFailed={tables.uncredited.failed}
                           note={tableNote}
+                          codes={hasCodes}
                         />
                         {openTab !== "fencers" && (
                           <section

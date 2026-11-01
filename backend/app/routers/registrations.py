@@ -1,16 +1,17 @@
 import base64
 from collections.abc import Sequence
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from decimal import ROUND_HALF_UP, Decimal
 from typing import Annotated, Protocol
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Response
+from fastapi import APIRouter, Depends, Header, HTTPException, Request, Response
 from sqlalchemy import delete, func, select, update
 from sqlalchemy.exc import IntegrityError
 
 from app import (
     accounts,
     amendment,
+    discount_codes,
     emails,
     entrants,
     ledger,
@@ -37,6 +38,7 @@ from app.mail import Mailer
 from app.models import (
     Discipline,
     DisciplineKind,
+    DiscountCode,
     ExtraItem,
     Fencer,
     ImportBatch,
@@ -53,6 +55,7 @@ from app.models import (
     Tournament,
 )
 from app.outgoing import QueuedMailerDep
+from app.ratelimit import limiter
 from app.routers.tournaments import (
     FencerDep,
     OptionalFencerDep,
@@ -63,9 +66,11 @@ from app.routers.tournaments import (
 from app.schemas import (
     AmendmentPlacementOut,
     AvailabilityOut,
+    CodePreviewIn,
     DiscountBreakdownOut,
     DiscountEffect,
     EntrantsOut,
+    HeldCodePreviewIn,
     OrganizerCancelIn,
     PaymentInstructionsOut,
     PricePreviewIn,
@@ -244,6 +249,7 @@ def registration_out(session, registration: Registration, tournament: Tournament
             }
             for d in pricing.registration_discounts(registration, tournament)
         ],
+        "applied_code": _code_out(pricing.registration_code(registration, tournament)),
     }
 
 
@@ -392,15 +398,49 @@ def _validate_options(selections, extras_by_id: dict[int, ExtraItem]) -> None:
         raise HTTPException(status_code=422, detail={"option_not_accepted": unexpected})
 
 
+def _code_out(breakdown: pricing.DiscountBreakdown | None) -> DiscountBreakdownOut | None:
+    if breakdown is None:
+        return None
+    return DiscountBreakdownOut(
+        name=breakdown.name,
+        effect=DiscountEffect.model_validate(breakdown.effect),
+        applied=breakdown.applied,
+        deducted=breakdown.deducted,
+        deducted_eur=breakdown.deducted_eur,
+    )
+
+
 @router.post("/price-preview", response_model=PricePreviewOut)
 def price_preview(data: PricePreviewIn, tournament: TournamentDep):
-    selected, extras = _resolve_selection(tournament, data)
-    team_entries = _resolve_teams(tournament, data.teams)
-    team_disciplines = [d for d, _ in team_entries]
+    """Takes no code, so that it can stay unthrottled while a form calls it on
+    every change; `/price-preview/code` is the route that does."""
     # the early-bird date and the date discount condition are dates the
     # organizer entered, so the preview asks which day it is where the
     # tournament is held (design unify-day-boundary-clocks D5)
-    at = setup.local_date(tournament, _now())
+    return _priced_preview(data, tournament, setup.local_date(tournament, _now()), None)
+
+
+@router.post("/price-preview/code", response_model=PricePreviewOut)
+@limiter.limit("60/minute")
+def price_preview_with_code(
+    request: Request,  # noqa: ARG001  # the limiter reads it
+    data: CodePreviewIn,
+    tournament: TournamentDep,
+    session: SessionDep,
+):
+    """The preview with a code in it: an answer to whether a string is a code,
+    so it is the one that is throttled, generously enough for a live form
+    behind a club's shared address (design add-discount-codes D6)."""
+    code = discount_codes.find_usable(session, tournament, data.discount_code)
+    return _priced_preview(data, tournament, setup.local_date(tournament, _now()), code)
+
+
+def _priced_preview(
+    data: PricePreviewIn, tournament: Tournament, at: date, code: DiscountCode | None
+) -> PricePreviewOut:
+    selected, extras = _resolve_selection(tournament, data)
+    team_entries = _resolve_teams(tournament, data.teams)
+    team_disciplines = [d for d, _ in team_entries]
     totals = pricing.selection_totals(
         tournament,
         disciplines=selected,
@@ -409,10 +449,28 @@ def price_preview(data: PricePreviewIn, tournament: TournamentDep):
         afterparty=data.afterparty,
         at=at,
         team_disciplines=team_disciplines,
+        code=code,
     )
     discounts = pricing.selection_discounts(
-        tournament, disciplines=selected, extras=extras, at=at, team_disciplines=team_disciplines
+        tournament,
+        disciplines=selected,
+        extras=extras,
+        at=at,
+        team_disciplines=team_disciplines,
+        code=code,
     )
+    applied_code = None
+    if code is not None:
+        applied_code = pricing.selection_code(
+            tournament,
+            code=code,
+            disciplines=selected,
+            extras=extras,
+            weapon_rentals=data.weapon_rentals,
+            afterparty=data.afterparty,
+            at=at,
+            team_disciplines=team_disciplines,
+        )
     return PricePreviewOut(
         total=totals.local,
         currency=tournament.local_currency,
@@ -427,6 +485,7 @@ def price_preview(data: PricePreviewIn, tournament: TournamentDep):
             )
             for d in discounts
         ],
+        applied_code=_code_out(applied_code),
     )
 
 
@@ -493,6 +552,14 @@ def create_registration(
         raise HTTPException(status_code=422, detail="no_disciplines_or_teams")
     team_entries = _resolve_teams(tournament, data.teams)
     _validate_options(data.extras, {item.id: item for item in tournament.extra_items})
+    # refused here while nothing is written, so that a fencer never gets a total
+    # higher than the one they submitted for; `claim` below is what holds under
+    # a race
+    code = (
+        discount_codes.find_usable(session, tournament, data.discount_code)
+        if data.discount_code
+        else None
+    )
     # Each discipline is placed against its own capacity, so a full one never
     # costs the fencer a seat in an open one (spec: "Capacity and substitutes").
     # The placement follows from capacity alone — there is nothing to negotiate,
@@ -573,6 +640,8 @@ def create_registration(
         registration.aftersparring = data.aftersparring
         registration.accommodation = data.accommodation
         registration.notes = data.notes
+        # a new cycle carries what it submits, and only that
+        registration.discount_code = code
         condition = set(data.condition)
         for discipline in selected:
             registration.entries.append(
@@ -621,6 +690,8 @@ def create_registration(
     else:
         raise HTTPException(status_code=409, detail="vs_allocation_failed")
 
+    if code is not None:
+        discount_codes.claim(session, code)
     pricing.reprice(registration, tournament)
     registration.expires_at = _initial_expires_at(tournament, registration)
     # the row enters the tournament's table here and takes its fixed number,
@@ -777,6 +848,7 @@ def amend_registration(
         raise HTTPException(status_code=422, detail="no_disciplines_or_teams")
     team_entries = _resolve_teams(tournament, data.teams)
     _validate_options(data.extras, {item.id: item for item in tournament.extra_items})
+    added_code = _code_to_add(session, tournament, registration, data.discount_code)
 
     amendment.apply_amendment(
         session,
@@ -796,8 +868,43 @@ def amend_registration(
             "notes": data.notes,
         },
         condition=set(data.condition),
+        added_code=added_code,
     )
     return registration_out(session, registration, tournament)
+
+
+def _code_to_add(
+    session, tournament: Tournament, registration: Registration, typed: str | None
+) -> DiscountCode | None:
+    """The code an amendment adds. A code can be added and never removed or
+    swapped: leaving the field out keeps what is held, and repeating the held
+    one changes nothing (spec registration, A code can be added by amending)."""
+    if not typed:
+        return None
+    held = registration.discount_code
+    if held is None:
+        return discount_codes.find_usable(session, tournament, typed)
+    if held.code != discount_codes.normalize(typed):
+        raise HTTPException(status_code=409, detail="code_already_held")
+    return None
+
+
+@router.post("/my-registration/price-preview", response_model=PricePreviewOut)
+@limiter.limit("60/minute")
+def price_preview_for_amendment(
+    request: Request,  # noqa: ARG001  # the limiter reads it
+    data: HeldCodePreviewIn,
+    tournament: TournamentDep,
+    session: SessionDep,
+    registration: ManagedRegistration,
+):
+    """What the amendment in `data` would cost: priced on the registration's own
+    day, as the amendment prices it, and with the code it holds whether or not
+    that has since run out for everybody else."""
+    code = registration.discount_code
+    if code is None and data.discount_code:
+        code = discount_codes.find_usable(session, tournament, data.discount_code)
+    return _priced_preview(data, tournament, pricing.priced_on(registration, tournament), code)
 
 
 @router.post("/my-registration/amend/preview", response_model=AmendmentPlacementOut)
@@ -932,7 +1039,8 @@ def cancel(registration: Registration, tournament: Tournament, cancelled_at: dat
     queue place are freed and no clock runs on, and money already credited is
     noted for a refund the organizer settles outside Squire. Nobody is
     promoted; a freed seat waits for the organizer."""
-    was_paid = registration.settled
+    # a total a code covered settled with no money, and there is none to return
+    was_paid = registration.waived or registration.settling_lane is not None
     registration.cancelled_at = cancelled_at
     registration.state = RegistrationState.CANCELLED
     if was_paid:

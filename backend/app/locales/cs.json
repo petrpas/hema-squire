@@ -73,6 +73,10 @@
       "subject": "Registrace na {tournament} — potvrzení",
       "body": "Ahoj {name},\n\npřijali jsme tvou registraci na {tournament}:\n\n{summary}\n\nCelkem: {total}\n\nRegistrace je potvrzená. Částka je informativní — platbu vyřizuje pořadatel mimo tento systém.\n\nTým {tournament}"
     },
+    "confirmationCovered": {
+      "subject": "Registrace na {tournament} — potvrzení",
+      "body": "Ahoj {name},\n\npřijali jsme tvou registraci na {tournament}:\n\n{summary}\n\nCelkem: {total}\n\nSlevový kód pokryl celou cenu, takže nic neplatíš. Registrace je potvrzená.\n\nTým {tournament}"
+    },
     "amendmentNoPayment": {
       "subject": "Změna registrace na {tournament}",
       "body": "Ahoj {name},\n\nupravili jsme tvou registraci na {tournament}:\n\n{summary}\n\nCelkem: {total}\n\nČástka je informativní — platbu vyřizuje pořadatel mimo tento systém.\n\nTým {tournament}"

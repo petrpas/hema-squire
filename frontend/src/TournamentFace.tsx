@@ -19,6 +19,7 @@ import {
 } from "./api";
 import { MeterTrack } from "./CapacityMeter";
 import { FIELD_CONSTRAINTS } from "./constraints";
+import { DiscountCodeField, DiscountCodeLine } from "./DiscountCodeField";
 import DotJoined from "./DotJoined";
 import { groupGoods, isAction } from "./extraItems";
 import GuestIdentityLine from "./GuestIdentityLine";
@@ -627,6 +628,12 @@ export function RegistrationForm({
   const [total, setTotal] = useState(initial?.total_amount ?? 0);
   const [eurTotal, setEurTotal] = useState<number | null>(initial?.total_eur ?? null);
   const [discounts, setDiscounts] = useState<DiscountBreakdown[]>([]);
+  const heldCode = mode.kind === "amend" ? (mode.initial.applied_code ?? null) : null;
+  const [typedCode, setTypedCode] = useState("");
+  /** The text being priced; the server's answer decides whether it stands. */
+  const [codeToApply, setCodeToApply] = useState<string | null>(null);
+  const [appliedCode, setAppliedCode] = useState<DiscountBreakdown | null>(heldCode);
+  const [codeRefused, setCodeRefused] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // the refusal of a guest whose address has an account, which offers sign-in
@@ -707,35 +714,49 @@ export function RegistrationForm({
       setTotal(0);
       setEurTotal(null);
       setDiscounts([]);
+      setAppliedCode(heldCode);
       return;
     }
     const handle = setTimeout(() => {
-      api
-        .pricePreview(detail.slug, {
-          disciplines: [...disciplines],
-          weapon_rentals: weaponRentals(),
-          afterparty,
-          extras: extrasPayload(),
-          teams: teams.map((team) => ({ slug: team.slug })),
-        })
-        .then(
-          (result) => {
-            setTotal(result.total);
-            setEurTotal(result.eur_total);
-            setDiscounts(result.discounts);
-          },
-          () => {
-            setTotal(0);
-            setEurTotal(null);
-            setDiscounts([]);
-          },
-        );
+      const selection = {
+        disciplines: [...disciplines],
+        weapon_rentals: weaponRentals(),
+        afterparty,
+        extras: extrasPayload(),
+        teams: teams.map((team) => ({ slug: team.slug })),
+      };
+      const typed = codeToApply === null ? {} : { discount_code: codeToApply };
+      const priced =
+        amending && (heldCode !== null || codeToApply !== null)
+          ? api.amendmentPricePreview(detail.slug, { ...selection, ...typed }, manageKey)
+          : codeToApply !== null
+            ? api.pricePreviewWithCode(detail.slug, { ...selection, discount_code: codeToApply })
+            : api.pricePreview(detail.slug, selection);
+      priced.then(
+        (result) => {
+          setTotal(result.total);
+          setEurTotal(result.eur_total);
+          setDiscounts(result.discounts);
+          setAppliedCode(result.applied_code ?? null);
+        },
+        (err) => {
+          if (err instanceof ApiError && err.detail === "code_unavailable") {
+            // pricing again without it restores the total it never changed
+            setCodeToApply(null);
+            setCodeRefused(true);
+            return;
+          }
+          setTotal(0);
+          setEurTotal(null);
+          setDiscounts([]);
+        },
+      );
     }, 300);
     return () => clearTimeout(handle);
     // `detail` is a dep too: the preview's `detail` changes identity on every
     // save (a fencer's never does mid-form), and a saved price change must
     // reach the running total, not just the per-row price.
-  }, [disciplines, teams, extraQty, legacyQty, afterparty, detail]);
+  }, [disciplines, teams, extraQty, legacyQty, afterparty, detail, codeToApply]);
 
   function addTeam(slug: string) {
     const name = (newTeamName[slug] ?? "").trim();
@@ -874,6 +895,7 @@ export function RegistrationForm({
         accommodation: null,
         notes: notes.trim() === "" ? null : notes,
         extras: extrasPayload(),
+        ...(codeToApply !== null && appliedCode !== null ? { discount_code: codeToApply } : {}),
         teams: teams.map((team) => ({
           ...(team.id ? { id: team.id } : {}),
           slug: team.slug,
@@ -899,6 +921,11 @@ export function RegistrationForm({
       // the moment, with the countdown recomputed from the fresh response
       if (err instanceof ApiError && err.detail === "amendment_would_queue_paid") {
         setError(t("form.condition.refused"));
+        return;
+      }
+      if (err instanceof ApiError && err.detail === "code_unavailable") {
+        setCodeToApply(null);
+        setCodeRefused(true);
         return;
       }
       if (err instanceof ApiError && err.detail === "email_has_account") {
@@ -1064,6 +1091,23 @@ export function RegistrationForm({
       ))}
 
       <DiscountList detail={detail} breakdown={discounts} />
+
+      {detail.accepts_discount_codes && heldCode === null && (
+        <DiscountCodeField
+          value={typedCode}
+          onChange={(value) => {
+            setTypedCode(value);
+            setCodeRefused(false);
+          }}
+          onApply={() => {
+            setCodeRefused(false);
+            setCodeToApply(typedCode.trim());
+          }}
+          disabled={disciplines.size === 0 && teams.length === 0}
+          refused={codeRefused}
+        />
+      )}
+      {appliedCode && <DiscountCodeLine applied={appliedCode} detail={detail} />}
 
       <p className="form-total">
         {t("form.total", { amount: formatMoneyWithEur(total, eurTotal, detail) })}

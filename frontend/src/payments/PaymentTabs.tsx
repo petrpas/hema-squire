@@ -20,7 +20,7 @@ import { useTranslation } from "react-i18next";
  *  size sitting among them would read as more of it.
  */
 
-export type PaymentTab = "fencers" | "credited" | "uncredited";
+export type PaymentTab = "fencers" | "credited" | "uncredited" | "codes";
 
 /** Which tab the phase is showing. A context rather than a prop because the
  *  fencer table sits under `SheetArea`, several levels from the band, and only
@@ -65,6 +65,8 @@ export default function PaymentTabs({
   creditedFailed = false,
   uncreditedFailed = false,
   note,
+  money = true,
+  codes = false,
 }: {
   open: PaymentTab;
   onOpen: (tab: PaymentTab) => void;
@@ -79,14 +81,43 @@ export default function PaymentTabs({
    *  is nothing to say — a line stating a zero is noise about a thing that did
    *  not happen. */
   note?: string | null;
+  /** Off where Squire does not collect: there is no money to read here. */
+  money?: boolean;
+  /** Whether the tournament has a discount code, without which the tab would
+   *  be one more thing for most tournaments to not use. */
+  codes?: boolean;
 }) {
   const { t } = useTranslation();
-  const onPayments = open !== "fencers";
+  const onPayments = open === "credited" || open === "uncredited";
 
   const bands: Entry[][] = [
     [
-      { key: "fencers", opens: "fencers", label: t("payments.tabs.fencers"), active: !onPayments },
-      { key: "payments", opens: null, label: t("payments.tabs.payments"), active: onPayments },
+      {
+        key: "fencers",
+        opens: "fencers",
+        label: t("payments.tabs.fencers"),
+        active: open === "fencers",
+      },
+      ...(money
+        ? [
+            {
+              key: "payments",
+              opens: null,
+              label: t("payments.tabs.payments"),
+              active: onPayments,
+            },
+          ]
+        : []),
+      ...(codes
+        ? [
+            {
+              key: "codes",
+              opens: "codes" as const,
+              label: t("payments.tabs.codes"),
+              active: open === "codes",
+            },
+          ]
+        : []),
     ],
   ];
   // the second band appears only while the money is being read: it answers a

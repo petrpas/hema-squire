@@ -70,6 +70,7 @@ export const DETAIL = {
   ],
   extra_items: [],
   discounts: [],
+  accepts_discount_codes: false,
   local_currency: "CZK",
   eur_payments_enabled: false,
   currency_mode: "local",

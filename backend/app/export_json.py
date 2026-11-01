@@ -23,6 +23,7 @@ from app.models import (
     BankTransaction,
     CreditSource,
     Discipline,
+    DiscountCode,
     ExtraItem,
     Fencer,
     ImportBatch,
@@ -44,7 +45,7 @@ from app.models import (
 )
 from app.routers.tournaments import _lowest_free_series
 
-SCHEMA_VERSION = 19
+SCHEMA_VERSION = 20
 
 _TOURNAMENT_FIELDS = [
     "slug",
@@ -127,6 +128,8 @@ _REGISTRATION_FIELDS = [
     # v17: the stored claim, null before it existed
     "claim_total",
     "claim_total_eur",
+    # v20: whether a discount code covered the total (absent before: none did)
+    "code_covered",
 ]
 
 # A payment the organizer recorded by hand. Removed ones are not exported:
@@ -346,6 +349,17 @@ def export_tournament(session: Session, tournament: Tournament) -> dict:
             }
             for f in fencers.values()
         ],
+        # v20; served only behind console access, as the whole document is
+        "discount_codes": [
+            {
+                "code": code.code,
+                "name": code.name,
+                "max_uses": code.max_uses,
+                "effect": code.effect,
+                "scope": code.scope,
+            }
+            for code in tournament.discount_codes
+        ],
         "registrations": [
             {
                 "ref": r.id,
@@ -354,6 +368,8 @@ def export_tournament(session: Session, tournament: Tournament) -> dict:
                 # before schema 12; `fencer_ref` is what the link is made on
                 "fencer_email": r.fencer.email,
                 **_record(r, _REGISTRATION_FIELDS),
+                # v20: by its text, which is what is unique within a tournament
+                "discount_code": r.discount_code.code if r.discount_code else None,
                 # the queue moment and the promotion mark arrived in v15
                 # (design demotion-hardening D7)
                 "entries": [
@@ -609,6 +625,12 @@ def restore_tournament(session: Session, data: dict, actor: Fencer) -> Tournamen
         item = ExtraItem(tournament_id=tournament.id, **fields)
         session.add(item)
         extra_items[(entry["name"], entry["category"])] = item
+    # a document before v20 holds none
+    discount_codes = {
+        entry["code"]: DiscountCode(tournament_id=tournament.id, **entry)
+        for entry in data.get("discount_codes", [])
+    }
+    session.add_all(discount_codes.values())
     session.flush()
 
     # Keyed by the document's own reference, which every fencer has. Before
@@ -653,6 +675,7 @@ def restore_tournament(session: Session, data: dict, actor: Fencer) -> Tournamen
         # one where it applies
         entry.setdefault("claim_total", None)
         entry.setdefault("claim_total_eur", None)
+        entry.setdefault("code_covered", False)
         payload = {k: entry[k] for k in _REGISTRATION_FIELDS}
         for field in (
             "registered_at",
@@ -666,6 +689,7 @@ def restore_tournament(session: Session, data: dict, actor: Fencer) -> Tournamen
             fencer_id=fencers[
                 entry["fencer_ref"] if "fencer_ref" in entry else entry["fencer_email"]
             ].id,
+            discount_code=discount_codes.get(entry.get("discount_code", "")),
             **payload,
         )
         session.add(registration)

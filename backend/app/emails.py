@@ -386,6 +386,12 @@ def send_registration_confirmation(
     lang = mail_language(tournament, fencer)
     queued = registration.fully_queued
 
+    if not queued and tournament.feature_payments and registration.code_covered:
+        _send_confirmation_without_payment(
+            mailer, tournament, fencer, registration, "email.confirmationCovered"
+        )
+        return
+
     if not queued and not tournament.feature_payments:
         _send_confirmation_without_payment(
             mailer, tournament, fencer, registration, "email.confirmationNoPayment"
@@ -576,13 +582,22 @@ def _payment_block(
     outstanding_eur = _units(max(registration.outstanding_in("eur"), 0)) if takes_eur else None
 
     if mode == PaymentMode.DEPOSIT and registration.expires_at is not None:
-        # the deposit still to send: what of it is not yet credited
+        # the deposit still to send: what of it is not yet credited, and never
+        # more than is owed, since a discount can leave a total below it
         deposit_local = _units(
-            max((tournament.deposit_amount or 0) * 100 - registration.credited_in("local"), 0)
+            max(
+                min(tournament.deposit_amount or 0, registration.total_amount) * 100
+                - registration.credited_in("local"),
+                0,
+            )
         )
         deposit_eur = (
             _units(
-                max((tournament.deposit_amount_eur or 0) * 100 - registration.credited_in("eur"), 0)
+                max(
+                    min(tournament.deposit_amount_eur or 0, registration.total_eur or 0) * 100
+                    - registration.credited_in("eur"),
+                    0,
+                )
             )
             if takes_eur
             else None

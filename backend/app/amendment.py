@@ -20,11 +20,12 @@ from fastapi import HTTPException
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
-from app import emails, placement, pricing, setup
+from app import discount_codes, emails, placement, pricing, setup
 from app.availability import full_disciplines, team_waitlist_flags
 from app.mail import Mailer
 from app.models import (
     DisciplineKind,
+    DiscountCode,
     ExtraCategory,
     PaymentEvent,
     RefundState,
@@ -84,6 +85,7 @@ def apply_amendment(
     team_entries: list | None = None,
     fields: dict | None = None,
     condition: set[str] | None = None,
+    added_code: DiscountCode | None = None,
 ) -> AmendmentResult:
     """Replace a registration's selection, re-price it and tell whoever is owed
     telling. Commits.
@@ -106,6 +108,9 @@ def apply_amendment(
     amendment that would move a registration holding credit into the queue is
     refused: money is not put in the queue by a fencer's edit (spec
     registration, Participation condition).
+
+    `added_code` is a discount code the fencer's amendment adds; `None` leaves
+    what the registration carries as it stands.
     """
     was_paid = registration.settled
     previous_total = registration.total_amount
@@ -243,6 +248,11 @@ def apply_amendment(
     ):
         session.rollback()
         raise HTTPException(status_code=409, detail="amendment_would_queue_paid")
+
+    if added_code is not None:
+        registration.discount_code = added_code
+        session.flush()
+        discount_codes.claim(session, added_code)
 
     # vs and expires_at are read-only through this path: amending must not
     # renew the hold or reissue the QR (Decision 3, the load-bearing guarantee).

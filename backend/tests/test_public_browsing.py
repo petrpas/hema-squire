@@ -235,6 +235,7 @@ FENCER_DETAIL_KEYS = {
     "disciplines",
     "extra_items",
     "discounts",
+    "accepts_discount_codes",
     "local_currency",
     "eur_payments_enabled",
     "currency_mode",

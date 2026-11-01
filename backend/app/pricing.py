@@ -7,6 +7,7 @@ Two pricing worlds exist:
   prices, then an ordered discount list — all applicable fixed discounts
   first, then percentage discounts sequentially, each within its category
   scope — rounded half-up to a whole currency unit exactly once at the end.
+  A discount code runs in that list, last among its kind, in either world.
 - Legacy (everything else): per-discipline fees plus the fixed
   weapon-rental/afterparty parameters, with per-item early-bird variants.
   Kept verbatim so historical totals and the pilot replay stay reproducible.
@@ -25,7 +26,14 @@ from collections.abc import Sequence
 from decimal import ROUND_HALF_UP, Decimal
 from typing import Literal, NamedTuple
 
-from app.models import Discipline, ExtraCategory, ExtraItem, Registration, Tournament
+from app.models import (
+    Discipline,
+    DiscountCode,
+    ExtraCategory,
+    ExtraItem,
+    Registration,
+    Tournament,
+)
 from app.setup import clocks_run, local_date
 
 # which currency column a computation reads: the tournament's local currency,
@@ -34,6 +42,10 @@ PriceColumn = Literal["local", "eur"]
 
 # the implicit category of discipline entries; extras carry ExtraCategory values
 DISCIPLINE_CATEGORY = "discipline"
+# the categories a legacy-priced tournament bills its flat-fee extras under,
+# so that a reader groups them with the item categories they became
+LEGACY_RENTAL = ExtraCategory.RENTAL.value
+LEGACY_AFTERPARTY = ExtraCategory.AFTERPARTY.value
 # canonical order in which a multi-category fixed discount consumes subtotals
 _CATEGORY_ORDER = [
     DISCIPLINE_CATEGORY,
@@ -146,45 +158,23 @@ def _apply_fixed(subtotals: dict[str, Decimal], scope: list[str], value: int) ->
     return takes
 
 
-def _itemized_selection_breakdown(
-    tournament: Tournament,
-    disciplines: list[Discipline],
-    extras: list[tuple[ExtraItem, int]],
-    at: datetime.date,
-    which: PriceColumn,
-    team_disciplines: Sequence[Discipline] = (),
-) -> tuple[int, list[DiscountOutcome]]:
-    """The total together with one `DiscountOutcome` per configured discount,
-    in configured order — inactive discounts included, so a caller can report
-    on the whole list, not just what applied.
-
-    `team_disciplines` carries one entry per priced team (a discipline
-    repeated once per team entered into it — not a `Team` row, so a
-    hypothetical price preview can price teams without persisting any). Each
-    entry contributes its discipline's per-team fee to the DISCIPLINE
-    subtotal once, regardless of roster size. Team entries are deliberately
-    not added to `disciplines` — that list feeds
-    `_condition_met(discipline_count=...)`, and a team entry must not trip a
-    discount conditioned on how many disciplines the fencer themselves
-    entered (design team-disciplines D1/D3).
-    """
-    subtotals: dict[str, Decimal] = {
-        DISCIPLINE_CATEGORY: Decimal(
-            sum(discipline_fee(tournament, d, at, which) for d in disciplines)
-            + sum(discipline_fee(tournament, d, at, which) for d in team_disciplines)
-        )
+def _code_discount(code: DiscountCode) -> dict:
+    """A code in the shape the discount loop reads: always met, and reaching
+    every category unless the organizer named some (design add-discount-codes
+    D2)."""
+    return {
+        "name": code.name,
+        "effect": code.effect,
+        "scope": code.scope or _CATEGORY_ORDER,
     }
-    for item, qty in extras:
-        category = item.category.value
-        price = (item.price_eur if which == "eur" else item.price) or 0
-        amount = Decimal(price * qty)
-        subtotals[category] = subtotals.get(category, Decimal(0)) + amount
 
-    discounts = tournament.discounts or []
-    met = [
-        _condition_met(d.get("condition", {}), discipline_count=len(disciplines), at=at)
-        for d in discounts
-    ]
+
+def _apply_discounts(
+    subtotals: dict[str, Decimal], discounts: list[dict], met: list[bool], which: PriceColumn
+) -> tuple[int, list[DiscountOutcome]]:
+    """Run an ordered discount list over category subtotals: every fixed effect,
+    then every percentage one, in list order within each. Returns the total,
+    rounded once at the end, and one outcome per discount."""
     deducted: list[int] = [0] * len(discounts)
     by_category: list[dict[str, Decimal]] = [{} for _ in discounts]
 
@@ -223,9 +213,108 @@ def _itemized_selection_breakdown(
         )
         for i, discount in enumerate(discounts)
     ]
-
     total = sum(subtotals.values(), Decimal(0))
     return int(total.quantize(Decimal("1"), rounding=ROUND_HALF_UP)), outcomes
+
+
+def _itemized_selection_breakdown(
+    tournament: Tournament,
+    disciplines: list[Discipline],
+    extras: list[tuple[ExtraItem, int]],
+    at: datetime.date,
+    which: PriceColumn,
+    team_disciplines: Sequence[Discipline] = (),
+    code: DiscountCode | None = None,
+) -> tuple[int, list[DiscountOutcome]]:
+    """The total together with one `DiscountOutcome` per configured discount,
+    in configured order — inactive discounts included, so a caller can report
+    on the whole list, not just what applied — followed by the code's, where
+    the selection carries one.
+
+    `team_disciplines` carries one entry per priced team (a discipline
+    repeated once per team entered into it — not a `Team` row, so a
+    hypothetical price preview can price teams without persisting any). Each
+    entry contributes its discipline's per-team fee to the DISCIPLINE
+    subtotal once, regardless of roster size. Team entries are deliberately
+    not added to `disciplines` — that list feeds
+    `_condition_met(discipline_count=...)`, and a team entry must not trip a
+    discount conditioned on how many disciplines the fencer themselves
+    entered (design team-disciplines D1/D3).
+    """
+    subtotals: dict[str, Decimal] = {
+        DISCIPLINE_CATEGORY: Decimal(
+            sum(discipline_fee(tournament, d, at, which) for d in disciplines)
+            + sum(discipline_fee(tournament, d, at, which) for d in team_disciplines)
+        )
+    }
+    for item, qty in extras:
+        category = item.category.value
+        price = (item.price_eur if which == "eur" else item.price) or 0
+        amount = Decimal(price * qty)
+        subtotals[category] = subtotals.get(category, Decimal(0)) + amount
+
+    discounts = list(tournament.discounts or [])
+    met = [
+        _condition_met(d.get("condition", {}), discipline_count=len(disciplines), at=at)
+        for d in discounts
+    ]
+    if code is not None:
+        discounts.append(_code_discount(code))
+        met.append(True)
+    return _apply_discounts(subtotals, discounts, met, which)
+
+
+def _legacy_selection_breakdown(
+    tournament: Tournament,
+    disciplines: list[Discipline],
+    weapon_rentals: list[str],
+    afterparty: bool,
+    at: datetime.date,
+    which: PriceColumn,
+    team_disciplines: Sequence[Discipline] = (),
+    code: DiscountCode | None = None,
+) -> tuple[int, list[DiscountOutcome]]:
+    """The legacy total, and the code's outcome where there is one. A legacy
+    tournament configures no discounts, so a code is the only one that can run.
+
+    A code never moves a tournament off this path: `uses_itemized_pricing` does
+    not know about codes, because the itemized path bills no flat fee and the
+    first code an organizer added would stop billing them (design
+    add-discount-codes D2). The flat fees are single-currency (design Decision
+    9) and contribute only to the local total."""
+    subtotals: dict[str, Decimal] = {
+        DISCIPLINE_CATEGORY: Decimal(
+            sum(discipline_fee(tournament, d, at, which) for d in disciplines)
+            + sum(discipline_fee(tournament, d, at, which) for d in team_disciplines)
+        )
+    }
+    if which == "local":
+        subtotals[LEGACY_RENTAL] = Decimal(len(weapon_rentals) * weapon_rental_fee(tournament, at))
+        if afterparty:
+            subtotals[LEGACY_AFTERPARTY] = Decimal(afterparty_fee(tournament, at))
+    discounts = [] if code is None else [_code_discount(code)]
+    return _apply_discounts(subtotals, discounts, [True] * len(discounts), which)
+
+
+def _selection_breakdown(
+    tournament: Tournament,
+    disciplines: list[Discipline],
+    extras: list[tuple[ExtraItem, int]],
+    weapon_rentals: list[str],
+    afterparty: bool,
+    at: datetime.date,
+    which: PriceColumn,
+    team_disciplines: Sequence[Discipline] = (),
+    code: DiscountCode | None = None,
+) -> tuple[int, list[DiscountOutcome]]:
+    """Either pricing world's total and outcomes, the code's last."""
+    if uses_itemized_pricing(tournament):
+        return _itemized_selection_breakdown(
+            tournament, disciplines, extras, at, which, team_disciplines, code
+        )
+    return _legacy_selection_breakdown(
+        tournament, disciplines, weapon_rentals, afterparty, at, which, team_disciplines, code
+    )
 
 
 def unpriced_rentals(tournament: Tournament, names: list[str]) -> list[str]:
@@ -246,20 +335,6 @@ def unpriced_rentals(tournament: Tournament, names: list[str]) -> list[str]:
     return [name for name in names if name not in lent]
 
 
-def _itemized_selection_total(
-    tournament: Tournament,
-    disciplines: list[Discipline],
-    extras: list[tuple[ExtraItem, int]],
-    at: datetime.date,
-    which: PriceColumn,
-    team_disciplines: Sequence[Discipline] = (),
-) -> int:
-    total, _ = _itemized_selection_breakdown(
-        tournament, disciplines, extras, at, which, team_disciplines
-    )
-    return total
-
-
 def selection_total(
     tournament: Tournament,
     *,
@@ -270,6 +345,7 @@ def selection_total(
     at: datetime.date,
     which: PriceColumn = "local",
     team_disciplines: Sequence[Discipline] = (),
+    code: DiscountCode | None = None,
 ) -> int:
     """Amount due, in one currency, for a set of active (non-substitute)
     picks, independent of whether they're persisted — the pricing entry point
@@ -286,16 +362,17 @@ def selection_total(
     """
     if not disciplines and not team_disciplines:
         return 0
-    if uses_itemized_pricing(tournament):
-        return _itemized_selection_total(
-            tournament, disciplines, extras, at, which, team_disciplines
-        )
-    total = sum(discipline_fee(tournament, d, at, which) for d in disciplines)
-    total += sum(discipline_fee(tournament, d, at, which) for d in team_disciplines)
-    if which == "local":
-        total += len(weapon_rentals) * weapon_rental_fee(tournament, at)
-        if afterparty:
-            total += afterparty_fee(tournament, at)
+    total, _ = _selection_breakdown(
+        tournament,
+        disciplines,
+        extras,
+        weapon_rentals,
+        afterparty,
+        at,
+        which,
+        team_disciplines,
+        code,
+    )
     return total
 
 
@@ -308,6 +385,7 @@ def selection_totals(
     afterparty: bool,
     at: datetime.date,
     team_disciplines: Sequence[Discipline] = (),
+    code: DiscountCode | None = None,
 ) -> Totals:
     """Both currencies' totals for a selection, each independently computed
     and summed from its own column (design Decision 1) — the totals need not
@@ -321,6 +399,7 @@ def selection_totals(
         at=at,
         which="local",
         team_disciplines=team_disciplines,
+        code=code,
     )
     eur = None
     if tournament.shows_eur:
@@ -333,35 +412,43 @@ def selection_totals(
             at=at,
             which="eur",
             team_disciplines=team_disciplines,
+            code=code,
         )
     return Totals(local=local, eur=eur)
 
 
-def selection_discounts(
+def _breakdowns(
     tournament: Tournament,
-    *,
     disciplines: list[Discipline],
     extras: list[tuple[ExtraItem, int]],
+    weapon_rentals: list[str],
+    afterparty: bool,
     at: datetime.date,
-    team_disciplines: Sequence[Discipline] = (),
+    team_disciplines: Sequence[Discipline],
+    code: DiscountCode | None,
 ) -> list[DiscountBreakdown]:
-    """The per-discount breakdown for a selection, in configured order,
-    reporting exactly what `selection_totals` applied rather than a separate
-    evaluation. A fixed effect's deduction is read from its own currency's
-    pass — local always, EUR only when the tournament shows one (design
-    Decision 3); a percentage effect carries one currency-neutral figure,
-    read from the local pass, since its condition can never differ between
-    currencies. Empty for a legacy tournament or one with no discounts."""
-    if not tournament.discounts:
-        return []
-    _, local_outcomes = _itemized_selection_breakdown(
-        tournament, disciplines, extras, at, "local", team_disciplines
-    )
-    eur_outcomes: list[DiscountOutcome] | None = None
-    if tournament.shows_eur:
-        _, eur_outcomes = _itemized_selection_breakdown(
-            tournament, disciplines, extras, at, "eur", team_disciplines
-        )
+    """One breakdown per discount of the selection, the code's last, read from
+    the passes that price it. A fixed effect's deduction is read from its own
+    currency's pass — local always, EUR only when the tournament shows one
+    (design Decision 3); a percentage effect carries one currency-neutral
+    figure, read from the local pass, since its condition can never differ
+    between currencies."""
+
+    def outcomes(which: PriceColumn) -> list[DiscountOutcome]:
+        return _selection_breakdown(
+            tournament,
+            disciplines,
+            extras,
+            weapon_rentals,
+            afterparty,
+            at,
+            which,
+            team_disciplines,
+            code,
+        )[1]
+
+    local_outcomes = outcomes("local")
+    eur_outcomes = outcomes("eur") if tournament.shows_eur else None
 
     breakdown = []
     for i, outcome in enumerate(local_outcomes):
@@ -381,6 +468,55 @@ def selection_discounts(
     return breakdown
 
 
+def selection_discounts(
+    tournament: Tournament,
+    *,
+    disciplines: list[Discipline],
+    extras: list[tuple[ExtraItem, int]],
+    at: datetime.date,
+    team_disciplines: Sequence[Discipline] = (),
+    code: DiscountCode | None = None,
+) -> list[DiscountBreakdown]:
+    """The per-discount breakdown for a selection, in configured order,
+    reporting exactly what `selection_totals` applied rather than a separate
+    evaluation. Empty for a legacy tournament or one with no discounts, and
+    never holding the code, which `selection_code` reports: the code is passed
+    only because a percentage evaluated after it deducts from what it left."""
+    configured = len(tournament.discounts or [])
+    if not configured:
+        return []
+    return _breakdowns(tournament, disciplines, extras, [], False, at, team_disciplines, code)[
+        :configured
+    ]
+
+
+def selection_code(
+    tournament: Tournament,
+    *,
+    code: DiscountCode,
+    disciplines: list[Discipline],
+    extras: list[tuple[ExtraItem, int]],
+    weapon_rentals: list[str],
+    afterparty: bool,
+    at: datetime.date,
+    team_disciplines: Sequence[Discipline] = (),
+) -> DiscountBreakdown:
+    """What the code took from a selection. A selection with nothing active is
+    billed nothing, extras included (`selection_total`), so nothing was taken
+    from it."""
+    if not disciplines and not team_disciplines:
+        return DiscountBreakdown(
+            code.name,
+            code.effect,
+            True,
+            0,
+            0 if tournament.shows_eur and code.effect.get("kind") == "fixed" else None,
+        )
+    return _breakdowns(
+        tournament, disciplines, extras, weapon_rentals, afterparty, at, team_disciplines, code
+    )[-1]
+
+
 def _registration_selection(
     registration: Registration,
 ) -> tuple[list[Discipline], list[tuple[ExtraItem, int]], list[Discipline]]:
@@ -394,7 +530,7 @@ def _registration_selection(
     )
 
 
-def _priced_on(registration: Registration, tournament: Tournament) -> datetime.date:
+def priced_on(registration: Registration, tournament: Tournament) -> datetime.date:
     """The day a persisted registration is priced by: the moment it was made,
     read where the tournament is held.
 
@@ -424,15 +560,31 @@ def registration_discounts(
         tournament,
         disciplines=active,
         extras=extras,
-        at=_priced_on(registration, tournament),
+        at=priced_on(registration, tournament),
         team_disciplines=team_disciplines,
+        code=registration.discount_code,
     )
 
 
-# the categories a legacy-priced tournament bills its flat-fee extras under,
-# so that a reader groups them with the item categories they became
-LEGACY_RENTAL = ExtraCategory.RENTAL.value
-LEGACY_AFTERPARTY = ExtraCategory.AFTERPARTY.value
+def registration_code(
+    registration: Registration, tournament: Tournament
+) -> DiscountBreakdown | None:
+    """What the registration's code took off its stored total, or None where it
+    carries none."""
+    code = registration.discount_code
+    if code is None:
+        return None
+    active, extras, team_disciplines = _registration_selection(registration)
+    return selection_code(
+        tournament,
+        code=code,
+        disciplines=active,
+        extras=extras,
+        weapon_rentals=registration.weapon_rentals,
+        afterparty=registration.afterparty,
+        at=priced_on(registration, tournament),
+        team_disciplines=team_disciplines,
+    )
 
 
 class PricedPiece(NamedTuple):
@@ -453,11 +605,14 @@ class PricedPiece(NamedTuple):
 class CategoryDeduction(NamedTuple):
     """What one configured discount took from one category of a registration,
     in whole local-currency units. `position` is the discount's place in the
-    tournament's configured list, which is what tells two discounts apart."""
+    tournament's configured list, which is what tells two discounts apart.
+    `code_id` is set instead where the deduction is a discount code's, which
+    has no place in that list."""
 
     position: int
     category: str
     deducted: int
+    code_id: int | None = None
 
 
 class Breakdown(NamedTuple):
@@ -465,14 +620,18 @@ class Breakdown(NamedTuple):
     deductions: list[CategoryDeduction]
 
 
-def _whole_deductions(outcomes: list[DiscountOutcome], target: int) -> list[CategoryDeduction]:
+def _whole_deductions(
+    outcomes: list[DiscountOutcome], target: int, code: DiscountCode | None = None
+) -> list[CategoryDeduction]:
     """The per-category deductions in whole units, summing to `target`.
 
     A percentage leaves fractions in each category it reaches, and the total is
     rounded once, at the end. Rounding each fraction on its own could leave the
     lines a unit away from the total they explain, so the units are handed out
     by largest remainder: every cell is floored, and the units still missing go
-    to the cells whose fractions were largest, earliest first on a tie."""
+    to the cells whose fractions were largest, earliest first on a tie.
+
+    With a `code`, the last outcome is that code's."""
     cells = [
         (index, category, amount)
         for index, outcome in enumerate(outcomes)
@@ -486,8 +645,11 @@ def _whole_deductions(outcomes: list[DiscountOutcome], target: int) -> list[Cate
     )
     for cell in by_fraction[: max(missing, 0)]:
         floors[cell] += 1
+    code_at = len(outcomes) - 1 if code is not None else None
     return [
-        CategoryDeduction(index, category, whole)
+        CategoryDeduction(
+            index, category, whole, code.id if code is not None and index == code_at else None
+        )
         for (index, category, _), whole in zip(cells, floors, strict=True)
         if whole
     ]
@@ -496,7 +658,7 @@ def _whole_deductions(outcomes: list[DiscountOutcome], target: int) -> list[Cate
 def registration_breakdown(registration: Registration, tournament: Tournament) -> Breakdown:
     """What a persisted registration's local total is made of: the pieces it is
     billed for at their unit prices, and what each discount took from each
-    category — evaluated at `_priced_on`, over the selection
+    category — evaluated at `priced_on`, over the selection
     `registration_total` prices, so that the pieces less the deductions are its
     local total.
 
@@ -508,24 +670,35 @@ def registration_breakdown(registration: Registration, tournament: Tournament) -
     active, extras, team_disciplines = _registration_selection(registration)
     if not active and not team_disciplines:
         return Breakdown([], [])
-    at = _priced_on(registration, tournament)
+    at = priced_on(registration, tournament)
     pieces = [
         PricedPiece(DISCIPLINE_CATEGORY, d, discipline_fee(tournament, d, at), 1)
         for d in [*active, *team_disciplines]
     ]
-    if not uses_itemized_pricing(tournament):
+    if uses_itemized_pricing(tournament):
+        pieces += [
+            PricedPiece(item.category.value, item, item.price or 0, qty) for item, qty in extras
+        ]
+    else:
         if registration.weapon_rentals:
             fee = weapon_rental_fee(tournament, at)
             pieces.append(PricedPiece(LEGACY_RENTAL, None, fee, len(registration.weapon_rentals)))
         if registration.afterparty:
             pieces.append(PricedPiece(LEGACY_AFTERPARTY, None, afterparty_fee(tournament, at), 1))
-        return Breakdown(pieces, [])
-    pieces += [PricedPiece(item.category.value, item, item.price or 0, qty) for item, qty in extras]
-    total, outcomes = _itemized_selection_breakdown(
-        tournament, active, extras, at, "local", team_disciplines
+    code = registration.discount_code
+    total, outcomes = _selection_breakdown(
+        tournament,
+        active,
+        extras,
+        registration.weapon_rentals,
+        registration.afterparty,
+        at,
+        "local",
+        team_disciplines,
+        code,
     )
     gross = sum(piece.unit_price * piece.qty for piece in pieces)
-    return Breakdown(pieces, _whole_deductions(outcomes, gross - total))
+    return Breakdown(pieces, _whole_deductions(outcomes, gross - total, code))
 
 
 def registration_total(registration: Registration, tournament: Tournament) -> Totals:
@@ -538,8 +711,9 @@ def registration_total(registration: Registration, tournament: Tournament) -> To
         extras=extras,
         weapon_rentals=registration.weapon_rentals,
         afterparty=registration.afterparty,
-        at=_priced_on(registration, tournament),
+        at=priced_on(registration, tournament),
         team_disciplines=team_disciplines,
+        code=registration.discount_code,
     )
 
 
@@ -549,12 +723,20 @@ def claim_applies(registration: Registration, tournament: Tournament) -> bool:
     with at least one individual placement, and its clocks run — a dormant
     registration is offered nothing and seated by nothing (spec seating-queue,
     A paying substitute takes free places)."""
-    return (
+    if not (
         tournament.queue_payment_seats
         and bool(registration.entries)
         and registration.waiting_in_queue
         and clocks_run(tournament, registration)
-    )
+    ):
+        return False
+    # a code that covers the claim leaves nothing to pay, so there is no payment
+    # to take a place with: the registration waits for the organizer, as one on
+    # a tournament without paying substitutes does
+    if registration.discount_code is None:
+        return True
+    claim = claim_totals(registration, tournament)
+    return claim.local > 0 and claim.eur != 0
 
 
 def claim_totals(registration: Registration, tournament: Tournament) -> Totals:
@@ -568,9 +750,36 @@ def claim_totals(registration: Registration, tournament: Tournament) -> Totals:
         extras=extras,
         weapon_rentals=registration.weapon_rentals,
         afterparty=registration.afterparty,
-        at=_priced_on(registration, tournament),
+        at=priced_on(registration, tournament),
         team_disciplines=team_disciplines,
+        code=registration.discount_code,
     )
+
+
+def _code_covers(registration: Registration, tournament: Tournament) -> bool:
+    """Whether the registration's code brought a lane's total to zero. Either
+    lane will do: the fencer chooses the lane, and one at zero leaves them
+    owing nothing (design add-discount-codes D4)."""
+    code = registration.discount_code
+    active, extras, team_disciplines = _registration_selection(registration)
+    if code is None or (not active and not team_disciplines):
+        return False
+    lanes: list[PriceColumn] = ["local", "eur"] if tournament.shows_eur else ["local"]
+    for which in lanes:
+        total, outcomes = _selection_breakdown(
+            tournament,
+            active,
+            extras,
+            registration.weapon_rentals,
+            registration.afterparty,
+            priced_on(registration, tournament),
+            which,
+            team_disciplines,
+            code,
+        )
+        if total == 0 and outcomes[-1].deducted > 0:
+            return True
+    return False
 
 
 def reprice(registration: Registration, tournament: Tournament) -> None:
@@ -581,6 +790,7 @@ def reprice(registration: Registration, tournament: Tournament) -> None:
     totals = registration_total(registration, tournament)
     registration.total_amount = totals.local
     registration.total_eur = totals.eur
+    registration.code_covered = _code_covers(registration, tournament)
     if claim_applies(registration, tournament):
         claim = claim_totals(registration, tournament)
         registration.claim_total = claim.local

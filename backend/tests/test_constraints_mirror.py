@@ -70,6 +70,7 @@ _REQUEST_MODELS = [
     "DiscountCondition",
     "DiscountEffect",
     "DiscountIn",
+    "DiscountCodeIn",
     "OrganizerIn",
     "TournamentCreate",
     "TournamentUpdate",

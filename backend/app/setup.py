@@ -139,7 +139,10 @@ def setup_missing(tournament: Tournament) -> list[str]:
         if any(
             (discount.get("effect") or {}).get("kind") == "fixed"
             and (discount.get("effect") or {}).get("value_eur") is None
-            for discount in (tournament.discounts or [])
+            for discount in [
+                *(tournament.discounts or []),
+                *({"effect": code.effect} for code in tournament.discount_codes),
+            ]
         ):
             missing.append(MISSING_DISCOUNT_PRICES)
         if uses_legacy_fixed_fees(tournament):

@@ -13,6 +13,7 @@ from app.models import (
     Currency,
     Discipline,
     DisciplineKind,
+    DiscountCode,
     ExtraCategory,
     ExtraItem,
     PaymentCredit,
@@ -303,6 +304,28 @@ def test_a_discount_nobody_got_has_no_line():
     revenue = compute(tournament, [paying(tournament, seated=[sabre])])
 
     assert all(line.kind != "discount" for block in revenue.blocks for line in block.lines)
+
+
+def test_a_code_stands_as_its_own_line_and_the_block_sums():
+    tournament = make_tournament()
+    ls = discipline(tournament, "ls", fee=1000)
+    code = DiscountCode(
+        id=3, code="trener", name="Trenéři", effect={"kind": "fixed", "value": 200}, scope=[]
+    )
+    tournament.discount_codes.append(code)
+    unpaid = register(tournament, [ls])
+    paid = register(tournament, [ls])
+    for registration in (unpaid, paid):
+        registration.discount_code = code
+        pricing.reprice(registration, tournament)
+    with_credit(paid, 80000)
+
+    revenue = compute(tournament, [unpaid, paid])
+
+    assert (exportrevenue.DISCOUNT, "Trenéři", -200, 1, 2, -200, -200) in lines(revenue)
+    block = next(block for block in revenue.blocks if block.key == exportrevenue.ENTRY)
+    total = next(line for line in block.lines if line.kind == "total")
+    assert total.paid + total.to_pay == 1600
 
 
 def test_block_and_grand_totals():

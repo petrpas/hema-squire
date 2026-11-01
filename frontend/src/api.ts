@@ -515,6 +515,8 @@ export interface TournamentDetail extends Tournament {
    *  team-disciplines D7). Independent of registration/amendment windows. */
   team_composition_deadline: string | null;
   discounts: Discount[];
+  /** Whether a usable discount code exists; nothing about any of them. */
+  accepts_discount_codes: boolean;
   extra_items: ExtraItem[];
   setup_missing: string[] | null;
   /** Who keeps the list of entrants. `organizer` means registration is held
@@ -582,6 +584,7 @@ type FencerTournamentFace = Pick<
   | "disciplines"
   | "extra_items"
   | "discounts"
+  | "accepts_discount_codes"
   | "local_currency"
   | "eur_payments_enabled"
   | "currency_mode"
@@ -1078,6 +1081,7 @@ export interface RegistrationDetail {
    *  applied ones are what makes the total add up. Empty for a tournament that
    *  configures none. */
   discounts: DiscountBreakdown[];
+  applied_code?: DiscountBreakdown | null;
 }
 
 export interface ExtraSelectionPayload {
@@ -1096,6 +1100,8 @@ export interface TeamEntryPayload {
 
 export interface RegisterPayload {
   disciplines: string[];
+  /** A code the server has accepted for this form. */
+  discount_code?: string;
   /** The participation condition, by slug: every individual discipline
    *  selected where the fencer ticked it, none otherwise. */
   condition?: string[];
@@ -1209,6 +1215,43 @@ export interface DiscountBreakdown {
   deducted_eur: number | null;
 }
 
+export interface DiscountCodePayload {
+  name: string;
+  code: string;
+  max_uses: number | null;
+  effect: DiscountEffect;
+  /** The categories a percentage reaches; empty is the whole total. */
+  scope: string[];
+}
+
+export interface DiscountCode extends DiscountCodePayload {
+  id: number;
+  uses: number;
+  locked: boolean;
+}
+
+export interface DiscountCodeUses {
+  id: number;
+  name: string;
+  max_uses: number | null;
+  uses: number;
+}
+
+export interface DiscountCodeRedemption {
+  registration_id: number;
+  fencer: string;
+  name: string;
+  code: string;
+  deducted: number;
+  currency: Currency;
+  paid: boolean;
+}
+
+export interface DiscountCodeRedemptions {
+  codes: DiscountCodeUses[];
+  rows: DiscountCodeRedemption[];
+}
+
 export interface PricePreview {
   total: number;
   currency: Currency;
@@ -1218,6 +1261,8 @@ export interface PricePreview {
   /** One entry per discount the tournament configures, in configured order;
    *  empty for a tournament that configures none. */
   discounts: DiscountBreakdown[];
+  /** What a code took off, never one of `discounts`. */
+  applied_code: DiscountBreakdown | null;
 }
 
 /** `likely` is a **proposal**, not an outcome: the resolver read a fencer's
@@ -1912,6 +1957,37 @@ export const api = {
       method: "POST",
       body: JSON.stringify(data),
     }),
+  pricePreviewWithCode: (slug: string, data: PricePreviewPayload & { discount_code: string }) =>
+    request<PricePreview>(`/api/tournaments/${slug}/price-preview/code`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+  amendmentPricePreview: (
+    slug: string,
+    data: PricePreviewPayload & { discount_code?: string },
+    key?: ManageKey,
+  ) =>
+    request<PricePreview>(`/api/tournaments/${slug}/my-registration/price-preview`, {
+      method: "POST",
+      body: JSON.stringify(data),
+      headers: managing(key),
+    }),
+  listDiscountCodes: (slug: string) =>
+    request<DiscountCode[]>(`/api/tournaments/${slug}/discount-codes`),
+  createDiscountCode: (slug: string, data: DiscountCodePayload) =>
+    request<DiscountCode>(`/api/tournaments/${slug}/discount-codes`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+  updateDiscountCode: (slug: string, id: number, data: DiscountCodePayload) =>
+    request<DiscountCode>(`/api/tournaments/${slug}/discount-codes/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }),
+  deleteDiscountCode: (slug: string, id: number) =>
+    request<void>(`/api/tournaments/${slug}/discount-codes/${id}`, { method: "DELETE" }),
+  discountCodeRedemptions: (slug: string) =>
+    request<DiscountCodeRedemptions>(`/api/tournaments/${slug}/discount-codes/redemptions`),
   paymentInstructions: (slug: string, key?: ManageKey) =>
     request<PaymentInstructions>(`/api/tournaments/${slug}/my-registration/payment`, {
       headers: managing(key),

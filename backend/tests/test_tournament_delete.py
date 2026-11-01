@@ -21,6 +21,7 @@ from app.models import (
     CreditSource,
     Currency,
     Discipline,
+    DiscountCode,
     ExtraCategory,
     ExtraItem,
     Fencer,
@@ -106,7 +107,12 @@ def populate(session, tournament: Tournament, registration: Registration, actor:
     assert discipline is not None
     item = ExtraItem(tournament_id=tid, name="Rental", category=ExtraCategory.RENTAL, price=100)
     session.add(item)
+    code = DiscountCode(
+        tournament_id=tid, code="c", name="C", effect={"kind": "percent", "value": 10}, scope=[]
+    )
+    session.add(code)
     session.flush()
+    registration.discount_code = code
 
     team = Team(
         tournament_id=tid,

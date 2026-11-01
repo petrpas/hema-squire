@@ -10,6 +10,7 @@ import {
 } from "./api";
 import FieldError, { invalidProps } from "./FieldError";
 import Modal from "./Modal";
+import { slugify } from "./slugify";
 import { TournamentSettingsFields } from "./TournamentSettingsDialog";
 import { useFieldValidation } from "./useFieldValidation";
 import { apiErrors, checkString } from "./validation";
@@ -24,15 +25,6 @@ export function canCreateTournament(account: Account | null): boolean {
 
 // slug = slugified display name + event year, editable before submission
 // (design D7); the server remains the validator on collision (409).
-function slugify(text: string): string {
-  return text
-    .normalize("NFKD")
-    .replace(/[̀-ͯ]/g, "") // strip combining diacritics after NFKD
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
-}
 
 const YEAR_TOKEN = /(^|-)(19|20)\d{2}(-|$)/;
 

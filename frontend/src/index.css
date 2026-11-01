@@ -5154,3 +5154,34 @@ tr.export-line td {
   border: var(--border-w) solid var(--hairline);
   border-radius: var(--radius);
 }
+
+/* Setup's discount codes: wide enough that a name and a code stay readable,
+   scrolling inside the card on a phone rather than crushing its columns */
+.code-table {
+  overflow-x: auto;
+}
+.code-table .sheet-table {
+  min-width: 44rem;
+}
+.code-table td:nth-child(-n + 2) .cell-input {
+  min-width: 8rem;
+}
+.code-table select + select {
+  margin-top: 0.3rem;
+}
+.code-scope {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem 1rem;
+  border: 0;
+  padding: 0;
+  margin: 0;
+}
+.code-scope label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.code-scope input {
+  accent-color: var(--stamp);
+}

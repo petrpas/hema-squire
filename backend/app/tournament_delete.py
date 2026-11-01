@@ -19,6 +19,7 @@ from sqlalchemy.orm import Session
 from app.models import (
     BankTransaction,
     Discipline,
+    DiscountCode,
     ExtraItem,
     HRRatingSnapshot,
     HRSnapshotRating,
@@ -66,6 +67,8 @@ def _delete_registrations(session: Session, tid: int) -> None:
     session.execute(delete(PaymentEvent).where(PaymentEvent.tournament_id == tid))
     session.execute(delete(BankTransaction).where(BankTransaction.tournament_id == tid))
     session.execute(delete(Registration).where(Registration.tournament_id == tid))
+    # after the registrations, whose rows name them
+    session.execute(delete(DiscountCode).where(DiscountCode.tournament_id == tid))
 
 
 def delete_tournament(session: Session, tournament: Tournament) -> None:

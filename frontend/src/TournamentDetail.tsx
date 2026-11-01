@@ -210,7 +210,10 @@ function RegistrationLines({
           discount the selection did not activate is not a line — it deducted
           nothing and belongs to the tournament's information screen, not to
           this statement of what was charged. */}
-      {registration.discounts
+      {[
+        ...registration.discounts,
+        ...(registration.applied_code ? [registration.applied_code] : []),
+      ]
         .filter((d) => d.applied)
         .map((d, index) => (
           <AmountLine

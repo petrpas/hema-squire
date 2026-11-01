@@ -920,6 +920,24 @@
         "includesNothing": "Turnaj nezahrnuje program, týmové disciplíny ani doplňkové služby.",
         "change": "Změnit"
       }
+    },
+    "discountCodes": {
+      "title": "Slevové kódy",
+      "hint": "Soukromé slevy, které rozdáváš sám. Kód z běžného slova jde uhodnout, u cennějších slev ho přepiš nebo nastav limit.",
+      "name": "Název",
+      "code": "Kód",
+      "limit": "Počet",
+      "unlimited": "neomezeno",
+      "effect": "Efekt",
+      "value": "Hodnota",
+      "valueEur": "Hodnota (EUR)",
+      "uses": "Uplatněno",
+      "scope": "Z čeho se procenta počítají",
+      "scopeWhole": "Z celku",
+      "scopeCategories": "Z vybraných kategorií",
+      "disciplines": "Disciplíny",
+      "locked": "Kód už někdo uplatnil, změnit jde jen název a počet.",
+      "add": "Přidat kód"
     }
   },
   "preview": {
@@ -1381,7 +1399,8 @@
       "noteProposals_few": "z toho {{count}} návrhy párování",
       "noteProposals_many": "z toho {{count}} návrhu párování",
       "noteProposals_other": "z toho {{count}} návrhů párování",
-      "noteCredited": "připsáno {{total}}"
+      "noteCredited": "připsáno {{total}}",
+      "codes": "Slevové kódy"
     },
     "record": {
       "action": "Zadat platbu",
@@ -1445,6 +1464,16 @@
     },
     "unmatched": {
       "link": "Přiřadit k registraci"
+    },
+    "codes": {
+      "empty": "Kód zatím nikdo neuplatnil.",
+      "fencer": "Šermíř",
+      "name": "Název",
+      "code": "Kód",
+      "deducted": "Sleva",
+      "paid": "Zaplaceno",
+      "yes": "ano",
+      "no": "ne"
     }
   },
   "validation": {
@@ -1474,7 +1503,10 @@
     "account_checksum": "toto číslo účtu neprochází kontrolním součtem — zkontroluj překlep",
     "opening_time_without_date": "Čas otevření potřebuje datum otevření.",
     "opening_time_does_not_exist": "Tento čas v daný den neexistuje — posouvají se hodiny.",
-    "unknown_timezone": "Neznámé časové pásmo."
+    "unknown_timezone": "Neznámé časové pásmo.",
+    "code_taken": "tento kód už turnaj má",
+    "code_in_use": "kód už někdo uplatnil, nelze změnit",
+    "below_uses": "nesmí být méně než {{min}} už uplatněných"
   },
   "queue": {
     "title": "Místa a fronta",
@@ -1663,5 +1695,12 @@
     "invalid": "Tento odkaz už neplatí.",
     "requestNew": "Požádat o nový odkaz",
     "failed": "Heslo se nepodařilo uložit. Zkuste to prosím znovu."
+  },
+  "discountCode": {
+    "title": "Slevový kód",
+    "label": "Kód",
+    "apply": "Uplatnit",
+    "refused": "Tento kód neplatí.",
+    "applied": "{{name}}: {{amount}}"
   }
 }

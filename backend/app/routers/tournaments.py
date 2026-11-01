@@ -13,6 +13,7 @@ from sqlalchemy.sql.elements import ColumnElement
 
 from app import (
     bank,
+    discount_codes,
     entrants,
     list_counts,
     money_bounds,
@@ -619,6 +620,7 @@ def tournament_detail(tournament: TournamentDep, session: SessionDep, fencer: Fe
     out.setup_missing = setup.setup_missing(tournament)
     out.in_app_registrations = _in_app_registrations(session, tournament)
     out.vs_series_editable = not _has_registrations(session, tournament)
+    out.accepts_discount_codes = discount_codes.accepts_codes(session, tournament)
     _apply_disciplines_frozen(session, tournament, out)
     return out
 
@@ -637,6 +639,7 @@ def fencer_tournament_detail(
     caller is entitled to know why."""
     require_public(tournament)
     out = FencerTournamentOut.model_validate(tournament)
+    out.accepts_discount_codes = discount_codes.accepts_codes(session, tournament)
     # the one bond the detail states, for its Spravovat control; absent with
     # no caller (spec public-browsing)
     if fencer is not None:

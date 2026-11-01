@@ -14,6 +14,9 @@ export type FieldError = { field: string; code: string; params: Record<string, u
 // The closed code set a validation.* message exists for on every layer
 // (design D3) — checked for locale-parity in i18n/locale-parity.test.ts.
 export const VALIDATION_CODES = [
+  "code_taken",
+  "code_in_use",
+  "below_uses",
   "required",
   "too_short",
   "too_long",
