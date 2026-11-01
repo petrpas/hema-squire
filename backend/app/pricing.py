@@ -346,6 +346,7 @@ def selection_total(
     which: PriceColumn = "local",
     team_disciplines: Sequence[Discipline] = (),
     code: DiscountCode | None = None,
+    items_stand_alone: bool = False,
 ) -> int:
     """Amount due, in one currency, for a set of active (non-substitute)
     picks, independent of whether they're persisted — the pricing entry point
@@ -354,13 +355,15 @@ def selection_total(
     `team_disciplines` carries one entry per priced team, as
     `_itemized_selection_breakdown` does. Extras are billed only when at
     least one discipline or team is active (a fully-queued substitute
-    registration owes nothing until admission). The legacy weapon-rental/
+    registration owes nothing until admission), unless `items_stand_alone`
+    says they are all there is to bill: an event, or a registration made on
+    one (spec discipline-less-events). The legacy weapon-rental/
     afterparty parameters are single-currency (design Decision 9) and
     contribute only to the local total. A legacy (non-itemized) tournament
     still prices a team's fee from the discipline row (design task 2.4) —
     teams join the same per-discipline sum extras do not.
     """
-    if not disciplines and not team_disciplines:
+    if not disciplines and not team_disciplines and not items_stand_alone:
         return 0
     total, _ = _selection_breakdown(
         tournament,
@@ -386,6 +389,7 @@ def selection_totals(
     at: datetime.date,
     team_disciplines: Sequence[Discipline] = (),
     code: DiscountCode | None = None,
+    items_stand_alone: bool = False,
 ) -> Totals:
     """Both currencies' totals for a selection, each independently computed
     and summed from its own column (design Decision 1) — the totals need not
@@ -400,6 +404,7 @@ def selection_totals(
         which="local",
         team_disciplines=team_disciplines,
         code=code,
+        items_stand_alone=items_stand_alone,
     )
     eur = None
     if tournament.shows_eur:
@@ -413,6 +418,7 @@ def selection_totals(
             which="eur",
             team_disciplines=team_disciplines,
             code=code,
+            items_stand_alone=items_stand_alone,
         )
     return Totals(local=local, eur=eur)
 
@@ -500,11 +506,12 @@ def selection_code(
     afterparty: bool,
     at: datetime.date,
     team_disciplines: Sequence[Discipline] = (),
+    items_stand_alone: bool = False,
 ) -> DiscountBreakdown:
     """What the code took from a selection. A selection with nothing active is
     billed nothing, extras included (`selection_total`), so nothing was taken
     from it."""
-    if not disciplines and not team_disciplines:
+    if not disciplines and not team_disciplines and not items_stand_alone:
         return DiscountBreakdown(
             code.name,
             code.effect,
@@ -584,6 +591,7 @@ def registration_code(
         afterparty=registration.afterparty,
         at=priced_on(registration, tournament),
         team_disciplines=team_disciplines,
+        items_stand_alone=registration.items_only,
     )
 
 
@@ -714,6 +722,7 @@ def registration_total(registration: Registration, tournament: Tournament) -> To
         at=priced_on(registration, tournament),
         team_disciplines=team_disciplines,
         code=registration.discount_code,
+        items_stand_alone=registration.items_only,
     )
 
 
@@ -762,7 +771,7 @@ def _code_covers(registration: Registration, tournament: Tournament) -> bool:
     owing nothing (design add-discount-codes D4)."""
     code = registration.discount_code
     active, extras, team_disciplines = _registration_selection(registration)
-    if code is None or (not active and not team_disciplines):
+    if code is None or (not active and not team_disciplines and not registration.items_only):
         return False
     lanes: list[PriceColumn] = ["local", "eur"] if tournament.shows_eur else ["local"]
     for which in lanes:

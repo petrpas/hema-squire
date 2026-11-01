@@ -21,6 +21,7 @@ import DedupPanel from "./dedup/DedupPanel";
 import DedupView from "./dedup/DedupView";
 import ExportTables from "./export/ExportTables";
 import ImportPanel from "./ImportPanel";
+import EventWording, { wordingI18n } from "./i18n/EventWording";
 import { IDENTITY_COLUMNS, identityValue, usesHRIdentity } from "./identity";
 import ManualEditsRail from "./ManualEditsRail";
 import MatchDialog from "./MatchDialog";
@@ -93,6 +94,9 @@ export const DEFAULT_PHASE: Phase = "fencers";
 export function offeredPhases(mode: ConsoleMode): Phase[] {
   return PHASES.filter((phase) => {
     if (phase === "teams") return mode.feature_teams;
+    // an event has no seat to queue for and no discipline a row could name
+    // (spec discipline-less-events)
+    if (mode.is_event && (phase === "import" || phase === "queue")) return false;
     // a table arrives by file only where the organizer keeps the list; an
     // automatic tournament's entrants register or are entered by hand (design
     // manual-entry-registers D5)
@@ -106,7 +110,8 @@ export function offeredPhases(mode: ConsoleMode): Phase[] {
 
 /** What decides which phases are offered: the features, and who keeps the
  *  tournament's list of entrants. */
-export type ConsoleMode = TournamentFlags & Pick<TournamentDetail, "registrations_kept_by">;
+export type ConsoleMode = TournamentFlags &
+  Pick<TournamentDetail, "registrations_kept_by" | "is_event">;
 
 /** Whether the Payments phase is boned out: on a tournament whose payments
  *  Squire does not handle it holds the settled mark and nothing else — no
@@ -589,11 +594,12 @@ export default function Console({
   tournament: TournamentDetail;
   phase: Phase;
 }) {
-  const { t } = useTranslation();
+  const [detail, setDetail] = useState<TournamentDetail | null>(null);
+  const isEvent = (detail ?? tournament).is_event;
+  const { t } = useTranslation(undefined, { i18n: wordingI18n(isEvent) });
   const navigate = useNavigate();
   const { onLogout } = useAuth();
   const [sheet, setSheet] = useState<Sheet | null>(null);
-  const [detail, setDetail] = useState<TournamentDetail | null>(null);
   const [error, setError] = useState(false);
   const [matchRow, setMatchRow] = useState<SheetRow | null>(null);
   // the last discipline correction's effect on the money, stated once and then
@@ -911,7 +917,7 @@ export default function Console({
       {/* the fencer list is entered and corrected here; making it billable
           is not an action of this phase and is not offered as one — payment
           intake issues registrations for it (design Decision 10) */}
-      {phase === "fencers" && (
+      {phase === "fencers" && !isEvent && (
         <ManualEntryPanel detail={detail} slug={tournament.slug} onEntered={refresh} />
       )}
       {phase === "matching" && (
@@ -953,330 +959,332 @@ export default function Console({
   );
 
   return (
-    <div className="app">
-      <header className="topbar">
-        {/* The application's name leads to the application's front page, from
+    <EventWording isEvent={isEvent}>
+      <div className="app">
+        <header className="topbar">
+          {/* The application's name leads to the application's front page, from
             the console as from anywhere else. It used to lead to the picker,
             which made the one fixed landmark on the page mean something
             different here than it did a screen away. */}
-        <Link className="logo-button" to={routes.home()} title={t("app.title")}>
-          <span className="logo">{t("app.title")}</span>
-        </Link>
-        <nav className="stage-control">
-          {STAGES.map((stage) => (
-            <button
-              type="button"
-              key={stage}
-              className={stage === "pre" ? "active" : ""}
-              disabled={stage !== "pre"}
-            >
-              {t(`stage.${stage}`)}
-            </button>
+          <Link className="logo-button" to={routes.home()} title={t("app.title")}>
+            <span className="logo">{t("app.title")}</span>
+          </Link>
+          <nav className="stage-control">
+            {STAGES.map((stage) => (
+              <button
+                type="button"
+                key={stage}
+                className={stage === "pre" ? "active" : ""}
+                disabled={stage !== "pre"}
+              >
+                {t(`stage.${stage}`)}
+              </button>
+            ))}
+          </nav>
+          <div className="tournament-info">
+            <div className="tournament-name">{tournament.display_name}</div>
+            <div className="tournament-date">
+              {new Date(tournament.date).toLocaleDateString("cs")}
+            </div>
+          </div>
+          <AccountMenu account={account} onLogout={onLogout} />
+        </header>
+
+        <nav className="stepper">
+          {phases.map((p, index) => (
+            <div key={p} className="step-slot">
+              {index > 0 && <div className="step-connector" />}
+              <button
+                type="button"
+                className={`step ${p === phase ? "active" : ""}`}
+                onClick={() => requestPhase(p)}
+              >
+                <span className="step-number">{index + 1}</span>
+                <span className="step-label">{t(`phase.${p}`)}</span>
+              </button>
+            </div>
           ))}
         </nav>
-        <div className="tournament-info">
-          <div className="tournament-name">{tournament.display_name}</div>
-          <div className="tournament-date">
-            {new Date(tournament.date).toLocaleDateString("cs")}
-          </div>
-        </div>
-        <AccountMenu account={account} onLogout={onLogout} />
-      </header>
 
-      <nav className="stepper">
-        {phases.map((p, index) => (
-          <div key={p} className="step-slot">
-            {index > 0 && <div className="step-connector" />}
-            <button
-              type="button"
-              className={`step ${p === phase ? "active" : ""}`}
-              onClick={() => requestPhase(p)}
-            >
-              <span className="step-number">{index + 1}</span>
-              <span className="step-label">{t(`phase.${p}`)}</span>
-            </button>
-          </div>
-        ))}
-      </nav>
-
-      <div className="workspace">
-        {phase === "setup" ? (
-          <SetupPanel
-            detail={detail}
-            slug={tournament.slug}
-            onSaved={refresh}
-            hasRegistrations={activeRows.length > 0}
-            onDeleted={() => navigate(routes.picker())}
-            onDirtyChange={setSetupDirty}
-          />
-        ) : !published ? (
-          /* every phase but Setup states its wait in place of its body — its
+        <div className="workspace">
+          {phase === "setup" ? (
+            <SetupPanel
+              detail={detail}
+              slug={tournament.slug}
+              onSaved={refresh}
+              hasRegistrations={activeRows.length > 0}
+              onDeleted={() => navigate(routes.picker())}
+              onDirtyChange={setSetupDirty}
+            />
+          ) : !published ? (
+            /* every phase but Setup states its wait in place of its body — its
              table, its panels, its parameter rail and its controls (spec
              etl-console, The console states what it is waiting for on a
              draft). The strip above is drawn unchanged, so the phase is still
              reachable, still in its place, and still at its own address */
-          <AwaitsPublication />
-        ) : phase === "teams" ? (
-          <TeamsPanel slug={tournament.slug} />
-        ) : phase === "queue" ? (
-          /* a band of discipline rosters with the two arrows that change who
+            <AwaitsPublication />
+          ) : phase === "teams" ? (
+            <TeamsPanel slug={tournament.slug} />
+          ) : phase === "queue" ? (
+            /* a band of discipline rosters with the two arrows that change who
              holds a seat; the settle action is in the rail beside them (spec
              seating-queue) */
-          <QueuePhase
-            slug={tournament.slug}
-            timezone={detail?.timezone ?? null}
-            teams={(detail ?? tournament).feature_teams}
-            revision={queueReload}
-            onChanged={refresh}
-            renderRail={renderRail}
-          />
-        ) : phase === "export" ? (
-          /* the Export phase is a band of tables — the fencer list, one per
+            <QueuePhase
+              slug={tournament.slug}
+              timezone={detail?.timezone ?? null}
+              teams={(detail ?? tournament).feature_teams}
+              revision={queueReload}
+              onChanged={refresh}
+              renderRail={renderRail}
+            />
+          ) : phase === "export" ? (
+            /* the Export phase is a band of tables — the fencer list, one per
              individual discipline, one per extra-item category the tournament
              offers — and the fencer list is one tab of it rather than the
              phase's own table (spec export-tables). The rail is the phase's as
              it is every other phase's, drawn by the band beside it */
-          <ExportTables
-            slug={tournament.slug}
-            edits={phaseEdits}
-            english={english}
-            onEnglishChange={setEnglish}
-            onChanged={refresh}
-            revision={sheet?.edits.length ?? 0}
-            renderRail={renderRail}
-          />
-        ) : (
-          <>
-            {phase === "dedup" ? (
-              /* the phase's work is a handful of rows out of fifty, and the fencer
+            <ExportTables
+              slug={tournament.slug}
+              edits={phaseEdits}
+              english={english}
+              onEnglishChange={setEnglish}
+              onChanged={refresh}
+              revision={sheet?.edits.length ?? 0}
+              renderRail={renderRail}
+            />
+          ) : (
+            <>
+              {phase === "dedup" ? (
+                /* the phase's work is a handful of rows out of fifty, and the fencer
              table states it where it is hardest to see (spec etl-console,
              Deduplication candidate review) */
-              <DedupView
-                slug={tournament.slug}
-                operations={operations}
-                onChanged={refresh}
-                timezone={detail?.timezone ?? null}
-              />
-            ) : (
-              /* the tabs' state lives above the table, because the fencer list
+                <DedupView
+                  slug={tournament.slug}
+                  operations={operations}
+                  onChanged={refresh}
+                  timezone={detail?.timezone ?? null}
+                />
+              ) : (
+                /* the tabs' state lives above the table, because the fencer list
              is one of them and gives way to whichever money table is read.
              Keyed by phase: the tabs belong to Payments, and a selection
              carried into a phase that draws none would leave the table hidden
              behind a tab that is not there */
-              <PaymentTabsProvider
-                key={phase}
-                open={boned && openTab !== "codes" ? "fencers" : openTab}
-              >
-                <SheetArea
-                  phase={phase}
-                  queues={
-                    boned ? (
-                      /* the phase's whole content is the mark, so what the mark
+                <PaymentTabsProvider
+                  key={phase}
+                  open={boned && openTab !== "codes" ? "fencers" : openTab}
+                >
+                  <SheetArea
+                    phase={phase}
+                    queues={
+                      boned ? (
+                        /* the phase's whole content is the mark, so what the mark
                    means goes above the table where the tables would be: a row
                    reading paid while still showing its total is the honest
                    reading of both, and a reader who takes it for a fault is
                    misreading the one true thing about it */
-                      <>
-                        <p className="rail-hint">{t("console.settled.meaning")}</p>
-                        {hasCodes && (
-                          <PaymentTabs
-                            open={openTab}
-                            onOpen={setOpenTab}
-                            onOpenPayments={() => {}}
-                            creditedCount={null}
-                            uncreditedCount={null}
-                            note={tableNote}
-                            money={false}
-                            codes
-                          />
-                        )}
-                        {openTab === "codes" && (
-                          <section
-                            className="rail-card queue-card"
-                            role="tabpanel"
-                            id="payment-tabpanel-codes"
-                            aria-labelledby="payment-tab-codes"
-                          >
-                            {paymentTable}
-                          </section>
-                        )}
-                        {/* no intake exists here to issue the roster, so arriving
+                        <>
+                          <p className="rail-hint">{t("console.settled.meaning")}</p>
+                          {hasCodes && (
+                            <PaymentTabs
+                              open={openTab}
+                              onOpen={setOpenTab}
+                              onOpenPayments={() => {}}
+                              creditedCount={null}
+                              uncreditedCount={null}
+                              note={tableNote}
+                              money={false}
+                              codes
+                            />
+                          )}
+                          {openTab === "codes" && (
+                            <section
+                              className="rail-card queue-card"
+                              role="tabpanel"
+                              id="payment-tabpanel-codes"
+                              aria-labelledby="payment-tab-codes"
+                            >
+                              {paymentTable}
+                            </section>
+                          )}
+                          {/* no intake exists here to issue the roster, so arriving
                       does it (design Decision 10) */}
-                        <IssueOnArrival slug={tournament.slug} onIssued={refresh} />
-                      </>
-                    ) : phase === "payments" ? (
-                      /* two tables where there were seven queues: what arrived
+                          <IssueOnArrival slug={tournament.slug} onIssued={refresh} />
+                        </>
+                      ) : phase === "payments" ? (
+                        /* two tables where there were seven queues: what arrived
                    and was credited, and what arrived and lies on nobody. Every
                    one of the seven was one of those two questions with a filter
                    on it, and the same fact showed on up to three of them at
                    once (spec payments-console) */
-                      <>
-                        <PaymentTabs
-                          open={openTab}
-                          onOpen={setOpenTab}
-                          onOpenPayments={() => {
-                            /* the reader asked for the money, not for a
+                        <>
+                          <PaymentTabs
+                            open={openTab}
+                            onOpen={setOpenTab}
+                            onOpenPayments={() => {
+                              /* the reader asked for the money, not for a
                                particular table of it: whichever they last read
                                is where they left off */
-                            if (openTab === "fencers") setOpenTab(lastMoneyTab);
-                          }}
-                          creditedCount={tables.credited.rows?.length ?? null}
-                          uncreditedCount={tables.uncredited.rows?.length ?? null}
-                          creditedFailed={tables.credited.failed}
-                          uncreditedFailed={tables.uncredited.failed}
-                          note={tableNote}
-                          codes={hasCodes}
-                        />
-                        {openTab !== "fencers" && (
-                          <section
-                            className="rail-card queue-card"
-                            role="tabpanel"
-                            id={`payment-tabpanel-${openTab}`}
-                            aria-labelledby={`payment-tab-${openTab}`}
-                          >
-                            {paymentTable}
-                          </section>
-                        )}
-                      </>
-                    ) : null
-                  }
-                  rows={rows}
-                  visibleRows={visibleRows}
-                  columns={columns}
-                  activeRows={activeRows}
-                  paidCount={paidCount}
-                  revision={sheet?.edits.length ?? 0}
-                  timezone={detail?.timezone ?? null}
-                  currency={detail ?? null}
-                  error={error}
-                  refresh={refresh}
-                  onEdit={saveEdit}
-                  onValidate={cellCheck}
-                  onDelete={(row) => void addRule("row_delete", row.id, {})}
-                  /* the roster is settled on the fencer list, and a seat is
+                              if (openTab === "fencers") setOpenTab(lastMoneyTab);
+                            }}
+                            creditedCount={tables.credited.rows?.length ?? null}
+                            uncreditedCount={tables.uncredited.rows?.length ?? null}
+                            creditedFailed={tables.credited.failed}
+                            uncreditedFailed={tables.uncredited.failed}
+                            note={tableNote}
+                            codes={hasCodes}
+                          />
+                          {openTab !== "fencers" && (
+                            <section
+                              className="rail-card queue-card"
+                              role="tabpanel"
+                              id={`payment-tabpanel-${openTab}`}
+                              aria-labelledby={`payment-tab-${openTab}`}
+                            >
+                              {paymentTable}
+                            </section>
+                          )}
+                        </>
+                      ) : null
+                    }
+                    rows={rows}
+                    visibleRows={visibleRows}
+                    columns={columns}
+                    activeRows={activeRows}
+                    paidCount={paidCount}
+                    revision={sheet?.edits.length ?? 0}
+                    timezone={detail?.timezone ?? null}
+                    currency={detail ?? null}
+                    error={error}
+                    refresh={refresh}
+                    onEdit={saveEdit}
+                    onValidate={cellCheck}
+                    onDelete={(row) => void addRule("row_delete", row.id, {})}
+                    /* the roster is settled on the fencer list, and a seat is
                handed on where it is given up */
-                  onSubstitute={phase === "fencers" ? setSubstituting : undefined}
-                  /* only where Squire keeps the registrations: a manual
+                    onSubstitute={phase === "fencers" ? setSubstituting : undefined}
+                    /* only where Squire keeps the registrations: a manual
                tournament has no guests, and no column to widen for them */
-                  onResendLink={
-                    phase === "fencers" && detail?.registrations_kept_by === "squire"
-                      ? setResending
-                      : undefined
-                  }
-                  onRestore={(row) => void addRule("row_restore", row.id, {})}
-                  onCancel={setCancelling}
-                  /* the mark is offered on every tournament: as the boned-out
+                    onResendLink={
+                      phase === "fencers" && detail?.registrations_kept_by === "squire"
+                        ? setResending
+                        : undefined
+                    }
+                    onRestore={(row) => void addRule("row_restore", row.id, {})}
+                    onCancel={setCancelling}
+                    /* the mark is offered on every tournament: as the boned-out
                phase's own column, and as the waiver on the state cell where
                Squire collects */
-                  onToggleSettled={phase === "payments" ? toggleSettled : undefined}
-                  collects={collects}
-                  onRecordPayment={phase === "payments" && collects ? setRecording : undefined}
-                  settling={settling}
-                  onRatify={ratifyMatch}
-                  onSearch={setMatchRow}
+                    onToggleSettled={phase === "payments" ? toggleSettled : undefined}
+                    collects={collects}
+                    onRecordPayment={phase === "payments" && collects ? setRecording : undefined}
+                    settling={settling}
+                    onRatify={ratifyMatch}
+                    onSearch={setMatchRow}
+                  />
+                </PaymentTabsProvider>
+              )}
+              {cancelling && typeof cancelling.registration_id === "number" && (
+                <CancelRegistrationDialog
+                  name={cancelling.name}
+                  paid={cancelling.paid}
+                  onConfirm={async (note) => {
+                    // narrowed above; read again here because the closure
+                    // outlives the render that narrowed it
+                    const id = cancelling.registration_id;
+                    if (typeof id !== "number") return;
+                    await api.cancelRegistrationAsOrganizer(tournament.slug, id, note);
+                    setCancelling(null);
+                    refresh();
+                  }}
+                  onClose={() => setCancelling(null)}
                 />
-              </PaymentTabsProvider>
-            )}
-            {cancelling && typeof cancelling.registration_id === "number" && (
-              <CancelRegistrationDialog
-                name={cancelling.name}
-                paid={cancelling.paid}
-                onConfirm={async (note) => {
-                  // narrowed above; read again here because the closure
-                  // outlives the render that narrowed it
-                  const id = cancelling.registration_id;
-                  if (typeof id !== "number") return;
-                  await api.cancelRegistrationAsOrganizer(tournament.slug, id, note);
-                  setCancelling(null);
-                  refresh();
-                }}
-                onClose={() => setCancelling(null)}
-              />
-            )}
-            {resending && typeof resending.registration_id === "number" && (
-              <ResendManageLinkDialog
-                name={resending.name}
-                onConfirm={async () => {
-                  // narrowed above; read again because the closure outlives
-                  // the render that narrowed it
-                  const id = resending.registration_id;
-                  if (typeof id !== "number") return;
-                  await api.resendManageLink(tournament.slug, id);
-                }}
-                onClose={() => setResending(null)}
-              />
-            )}
-            {substituting && detail && (
-              <SubstituteDialog
-                slug={tournament.slug}
-                row={substituting}
-                automatic={detail.registrations_kept_by === "squire"}
-                /* the table, the log and every queue read the seat again: the
+              )}
+              {resending && typeof resending.registration_id === "number" && (
+                <ResendManageLinkDialog
+                  name={resending.name}
+                  onConfirm={async () => {
+                    // narrowed above; read again because the closure outlives
+                    // the render that narrowed it
+                    const id = resending.registration_id;
+                    if (typeof id !== "number") return;
+                    await api.resendManageLink(tournament.slug, id);
+                  }}
+                  onClose={() => setResending(null)}
+                />
+              )}
+              {substituting && detail && (
+                <SubstituteDialog
+                  slug={tournament.slug}
+                  row={substituting}
+                  automatic={detail.registrations_kept_by === "squire"}
+                  /* the table, the log and every queue read the seat again: the
                row is about somebody else from now on */
-                onSubstituted={refresh}
-                onClose={() => setSubstituting(null)}
-              />
-            )}
-            {recording && detail && (
-              <RecordPaymentDialog
-                slug={tournament.slug}
-                row={recording}
-                currency={detail.local_currency}
-                eurOffered={detail.eur_payments_enabled}
-                /* `refresh` is already the console's "the money moved" signal
+                  onSubstituted={refresh}
+                  onClose={() => setSubstituting(null)}
+                />
+              )}
+              {recording && detail && (
+                <RecordPaymentDialog
+                  slug={tournament.slug}
+                  row={recording}
+                  currency={detail.local_currency}
+                  eurOffered={detail.eur_payments_enabled}
+                  /* `refresh` is already the console's "the money moved" signal
                and bumps every queue with it */
-                onRecorded={refresh}
-                onClose={() => setRecording(null)}
-              />
-            )}
+                  onRecorded={refresh}
+                  onClose={() => setRecording(null)}
+                />
+              )}
 
-            {renderRail()}
-          </>
+              {renderRail()}
+            </>
+          )}
+        </div>
+
+        {/* the tournament's running work, wherever the organizer stands */}
+        <OperationsIndicator running={operations.running} />
+
+        {/* what a discipline correction did to the money, which the cell cannot
+          show (spec discipline-amendment) */}
+        <AmendmentNotice
+          amendment={amendment}
+          refusal={refusal}
+          currency={detail?.local_currency ?? null}
+        />
+
+        {matchRow && (
+          <MatchDialog
+            row={matchRow}
+            onResolve={(hrId) => resolveMatch(matchRow, hrId)}
+            onClose={() => setMatchRow(null)}
+          />
+        )}
+
+        {pendingPhase !== null && (
+          <Modal onClose={() => setPendingPhase(null)}>
+            <div className="modal">
+              <h2>{t("console.leaveSetup.title")}</h2>
+              <p>{t("console.leaveSetup.body")}</p>
+              <div className="modal-actions">
+                <button type="button" className="secondary" onClick={() => setPendingPhase(null)}>
+                  {t("common.cancel")}
+                </button>
+                <button
+                  type="button"
+                  className="btn-primary"
+                  onClick={() => {
+                    navigate(routes.consolePath(tournament.slug, pendingPhase));
+                    setPendingPhase(null);
+                  }}
+                >
+                  {t("console.leaveSetup.confirm")}
+                </button>
+              </div>
+            </div>
+          </Modal>
         )}
       </div>
-
-      {/* the tournament's running work, wherever the organizer stands */}
-      <OperationsIndicator running={operations.running} />
-
-      {/* what a discipline correction did to the money, which the cell cannot
-          show (spec discipline-amendment) */}
-      <AmendmentNotice
-        amendment={amendment}
-        refusal={refusal}
-        currency={detail?.local_currency ?? null}
-      />
-
-      {matchRow && (
-        <MatchDialog
-          row={matchRow}
-          onResolve={(hrId) => resolveMatch(matchRow, hrId)}
-          onClose={() => setMatchRow(null)}
-        />
-      )}
-
-      {pendingPhase !== null && (
-        <Modal onClose={() => setPendingPhase(null)}>
-          <div className="modal">
-            <h2>{t("console.leaveSetup.title")}</h2>
-            <p>{t("console.leaveSetup.body")}</p>
-            <div className="modal-actions">
-              <button type="button" className="secondary" onClick={() => setPendingPhase(null)}>
-                {t("common.cancel")}
-              </button>
-              <button
-                type="button"
-                className="btn-primary"
-                onClick={() => {
-                  navigate(routes.consolePath(tournament.slug, pendingPhase));
-                  setPendingPhase(null);
-                }}
-              >
-                {t("console.leaveSetup.confirm")}
-              </button>
-            </div>
-          </div>
-        </Modal>
-      )}
-    </div>
+    </EventWording>
   );
 }

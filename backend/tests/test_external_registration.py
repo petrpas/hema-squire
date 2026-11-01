@@ -161,7 +161,6 @@ def test_the_other_mandatory_items_still_apply_when_organizer_kept(client, auth_
     missing = set(client.get("/api/tournaments/cup", headers=organizer).json()["setup_missing"])
     assert app_setup.MISSING_CITY in missing
     assert app_setup.MISSING_ORGANIZERS in missing
-    assert app_setup.MISSING_DISCIPLINES in missing
     assert app_setup.MISSING_EXTERNAL_REGISTRATION in missing
 
 

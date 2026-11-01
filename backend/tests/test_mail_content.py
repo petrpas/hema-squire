@@ -72,8 +72,14 @@ def register(client, headers):
     return response.json()
 
 
+# the session a test's registration was read from, held for the test's length:
+# the generator closes it when collected, and a mail reads lazily
+_held = []
+
+
 def the_registration() -> Registration:
-    registration = db_session().scalar(select(Registration))
+    _held[:] = [app.dependency_overrides[get_session]()]
+    registration = next(_held[0]).scalar(select(Registration))
     assert registration is not None
     return registration
 

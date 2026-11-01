@@ -49,7 +49,7 @@ def test_each_mandatory_item_reported():
     # where it is, and where in town can follow later
     assert setup_missing(make_tournament(address=None)) == []
     assert setup_missing(make_tournament(organizers=[])) == ["organizers"]
-    assert setup_missing(make_tournament(disciplines=[])) == ["disciplines"]
+    assert setup_missing(make_tournament(disciplines=[])) == []
 
 
 def test_unpriced_discipline_blocks():
@@ -60,7 +60,7 @@ def test_unpriced_discipline_blocks():
 
 def test_multiple_gaps_accumulate():
     tournament = make_tournament(city=None, organizers=[], disciplines=[])
-    assert setup_missing(tournament) == ["city", "organizers", "disciplines"]
+    assert setup_missing(tournament) == ["city", "organizers"]
 
 
 def test_eur_payments_without_a_rate_is_fine():

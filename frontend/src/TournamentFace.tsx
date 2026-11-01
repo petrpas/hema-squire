@@ -573,6 +573,14 @@ export function RegistrationForm({
   const [amendStatement, setAmendStatement] = useState<string | null>(null);
 
   const bySlug = new Map(availability.map((a) => [a.slug, a]));
+  // items carry a registration alone only on an event, or on a registration
+  // made on one (spec discipline-less-events)
+  const itemsSuffice =
+    detail.is_event || (initial !== undefined && !initial.entries.length && !initial.teams.length);
+  const nothingToSubmit =
+    disciplines.size === 0 &&
+    teams.length === 0 &&
+    !(itemsSuffice && Object.values(extraQty).some((qty) => qty > 0));
   const offersCondition = disciplines.size >= 2;
   const condition = together && offersCondition ? [...disciplines] : [];
 
@@ -635,7 +643,7 @@ export function RegistrationForm({
   // written option and never its price.
   // biome-ignore lint/correctness/useExhaustiveDependencies: the helpers' own inputs are listed; the helpers are not stable
   useEffect(() => {
-    if (disciplines.size === 0 && teams.length === 0) {
+    if (nothingToSubmit) {
       setTotal(0);
       setEurTotal(null);
       setDiscounts([]);
@@ -876,6 +884,10 @@ export function RegistrationForm({
         setError(t("form.itemSoldOut", { items: items.map((item) => item.name).join(", ") }));
         return;
       }
+      if (err instanceof ApiError && err.detail === "nothing_selected") {
+        setError(t("form.nothingSelected"));
+        return;
+      }
       if (err instanceof ApiError && err.detail === "email_has_account") {
         setError(t("guest.errors.hasAccount"));
         setHasAccount(true);
@@ -913,7 +925,7 @@ export function RegistrationForm({
         <GuestIdentityLine identity={mode.identity} onChange={mode.onChange} />
       )}
 
-      {!teamsOnly && (
+      {individualDisciplines.length > 0 && (
         <>
           <h3 className="register-section">{t("form.sections.tournament")}</h3>
           <div className="checklist">
@@ -1051,7 +1063,7 @@ export function RegistrationForm({
             setCodeRefused(false);
             setCodeToApply(typedCode.trim());
           }}
-          disabled={disciplines.size === 0 && teams.length === 0}
+          disabled={nothingToSubmit}
           refused={codeRefused}
         />
       )}
@@ -1091,7 +1103,7 @@ export function RegistrationForm({
         <button
           type="button"
           className="btn-primary param-save"
-          disabled={busy || (disciplines.size === 0 && teams.length === 0)}
+          disabled={busy || nothingToSubmit}
           onClick={() => void submit()}
         >
           {amending ? t("form.amendSubmit") : t("form.submit")}

@@ -68,6 +68,18 @@ describe("the phase list", () => {
     feature_teams: true,
     feature_extras: false,
     registrations_kept_by,
+    is_event: false,
+  });
+
+  it("offers an event neither Queue nor Import, whoever keeps its list", () => {
+    for (const keeper of ["squire", "organizer"] as const) {
+      const phases = offeredPhases({ ...mode(keeper), is_event: true });
+      expect(phases).not.toContain("queue");
+      expect(phases).not.toContain("import");
+      expect(phases).toContain("fencers");
+      expect(phases).toContain("payments");
+      expect(phases).toContain("export");
+    }
   });
 
   it("puts Queue between Payments and Export, since it changes who holds a seat", () => {

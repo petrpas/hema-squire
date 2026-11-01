@@ -173,7 +173,10 @@ def process_expiries(session: Session, tournament: Tournament, mailer: Mailer) -
                     if settled_seating:
                         expired += 1
                 continue
-        if settled_seating or registration.holds_queued_placement:
+        # items alone have nothing to demote: their window ends as any does
+        if (settled_seating and not registration.items_only) or (
+            registration.holds_queued_placement
+        ):
             # After settlement a lapsed promotion returns to the queue; before
             # it, the seat it did not pay for is given up and the queue place
             # it never owed for is kept. A distinct kind for the second: the

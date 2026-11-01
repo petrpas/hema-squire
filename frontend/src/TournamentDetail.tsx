@@ -22,6 +22,7 @@ import EntrantsTab from "./entrants/EntrantsTab";
 import type { FencerOutletContext } from "./FencerHome";
 import type { HomeTab } from "./FencerShell";
 import i18n from "./i18n";
+import EventWording, { wordingI18n } from "./i18n/EventWording";
 import ManageLinkDead from "./ManageLinkDead";
 import { ManageKeyContext, useManageKey } from "./manageKey";
 import { formatMoney, formatMoneyWithEur } from "./money";
@@ -380,7 +381,9 @@ function RegistrationPanel({
 }
 
 export default function TournamentDetail() {
-  const { t } = useTranslation();
+  const [detail, setDetail] = useState<TournamentDetailData | null>(null);
+  const isEvent = detail?.is_event ?? false;
+  const { t } = useTranslation(undefined, { i18n: wordingI18n(isEvent) });
   const navigate = useNavigate();
   const location = useLocation();
   const { slug = "", discipline, event } = useParams();
@@ -394,7 +397,6 @@ export default function TournamentDetail() {
   const managing = useMatch("/t/:slug/manage") !== null;
   const manageKey = managing && location.hash.length > 1 ? location.hash.slice(1) : null;
   const [deadLink, setDeadLink] = useState(false);
-  const [detail, setDetail] = useState<TournamentDetailData | null>(null);
   const [notFound, setNotFound] = useState(false);
   const [availability, setAvailability] = useState<Availability[]>([]);
   const [itemPlaces, setItemPlaces] = useState<ItemAvailability[]>([]);
@@ -558,211 +560,215 @@ export default function TournamentDetail() {
   if (notFound) return <NotFound />;
 
   return (
-    <ManageKeyContext.Provider value={manageKey}>
-      <div className="workspace detail-workspace">
-        {/* the tournament's own row, under the heading the list page shares
+    <EventWording isEvent={isEvent}>
+      <ManageKeyContext.Provider value={manageKey}>
+        <div className="workspace detail-workspace">
+          {/* the tournament's own row, under the heading the list page shares
           with this one (spec: "Tournament detail shares the home heading") */}
-        <div className="detail-header">
-          <h1>{detail?.display_name}</h1>
-          <nav
-            className="stage-control detail-tabs stage-control-band stage-control-pill"
-            ref={band}
-          >
+          <div className="detail-header">
+            <h1>{detail?.display_name}</h1>
+            <nav
+              className="stage-control detail-tabs stage-control-band stage-control-pill"
+              ref={band}
+            >
+              <button
+                type="button"
+                className={shown === "tournament" ? "active" : ""}
+                onClick={() => selectTab("tournament")}
+              >
+                {t("detail.tabs.tournament")}
+              </button>
+              {!isEvent && (
+                <Link
+                  to={entrants(slug)}
+                  className={shown === "entrants" ? "active" : ""}
+                  // leaving the registration tab abandons an amendment in progress
+                  onClick={() => setAmending(false)}
+                >
+                  {t("detail.tabs.entrants")}
+                </Link>
+              )}
+              {secondTabOffered && (
+                <button
+                  type="button"
+                  className={shown === "registration" ? "active" : ""}
+                  // With no account there is nothing to register, so the action
+                  // leads to sign-in and comes back here on this tab, rather than
+                  // opening a form whose submission could only fail.
+                  onClick={() =>
+                    signedIn || managing || guest !== null
+                      ? selectTab("registration")
+                      : onSignIn("detail.signInToRegister", "registration")
+                  }
+                >
+                  {held || managing ? t("detail.tabs.registered") : t("detail.tabs.register")}
+                </button>
+              )}
+              {teamsTabOffered && (
+                <button
+                  type="button"
+                  className={shown === "teams" ? "active" : ""}
+                  onClick={() => selectTab("teams")}
+                >
+                  {t("detail.tabs.teams")}
+                </button>
+              )}
+            </nav>
             <button
               type="button"
-              className={shown === "tournament" ? "active" : ""}
-              onClick={() => selectTab("tournament")}
+              className="row-action"
+              title={t("detail.close")}
+              aria-label={t("detail.close")}
+              onClick={close}
             >
-              {t("detail.tabs.tournament")}
+              <IconX size={18} stroke={1.5} />
             </button>
-            <Link
-              to={entrants(slug)}
-              className={shown === "entrants" ? "active" : ""}
-              // leaving the registration tab abandons an amendment in progress
-              onClick={() => setAmending(false)}
-            >
-              {t("detail.tabs.entrants")}
-            </Link>
-            {secondTabOffered && (
-              <button
-                type="button"
-                className={shown === "registration" ? "active" : ""}
-                // With no account there is nothing to register, so the action
-                // leads to sign-in and comes back here on this tab, rather than
-                // opening a form whose submission could only fail.
-                onClick={() =>
-                  signedIn || managing || guest !== null
-                    ? selectTab("registration")
-                    : onSignIn("detail.signInToRegister", "registration")
-                }
-              >
-                {held || managing ? t("detail.tabs.registered") : t("detail.tabs.register")}
-              </button>
-            )}
-            {teamsTabOffered && (
-              <button
-                type="button"
-                className={shown === "teams" ? "active" : ""}
-                onClick={() => selectTab("teams")}
-              >
-                {t("detail.tabs.teams")}
-              </button>
-            )}
-          </nav>
-          <button
-            type="button"
-            className="row-action"
-            title={t("detail.close")}
-            aria-label={t("detail.close")}
-            onClick={close}
-          >
-            <IconX size={18} stroke={1.5} />
-          </button>
-        </div>
-        {detail === null || !registrationChecked ? (
-          <p>{t("common.loading")}</p>
-        ) : (
-          <div className="page-card-body">
-            {shown === "entrants" ? (
-              <EntrantsTab
-                slug={slug}
-                discipline={discipline}
-                event={event}
-                timezone={detail.timezone}
-              />
-            ) : shown === "tournament" ? (
-              <>
-                <InfoHeader
-                  detail={detail}
-                  now={opening.now}
-                  coverAction={
-                    // only for an account that may manage it; a link, so
-                    // middle-click opens the console in a new tab (spec
-                    // fencer-home)
-                    detail.organized === true ? (
-                      <Link className="button-quiet cover-action" to={consolePath(slug)}>
-                        {t("home.manage")}
-                      </Link>
-                    ) : undefined
+          </div>
+          {detail === null || !registrationChecked ? (
+            <p>{t("common.loading")}</p>
+          ) : (
+            <div className="page-card-body">
+              {shown === "entrants" ? (
+                <EntrantsTab
+                  slug={slug}
+                  discipline={discipline}
+                  event={event}
+                  timezone={detail.timezone}
+                />
+              ) : shown === "tournament" ? (
+                <>
+                  <InfoHeader
+                    detail={detail}
+                    now={opening.now}
+                    coverAction={
+                      // only for an account that may manage it; a link, so
+                      // middle-click opens the console in a new tab (spec
+                      // fencer-home)
+                      detail.organized === true ? (
+                        <Link className="button-quiet cover-action" to={consolePath(slug)}>
+                          {t("home.manage")}
+                        </Link>
+                      ) : undefined
+                    }
+                  />
+                  <DisciplinesInfo detail={detail} availability={availability} linkCounts />
+                  <DiscountList detail={detail} />
+                  <OtherActionsInfo detail={detail} />
+                  {!readOnly &&
+                    !secondTabOffered &&
+                    (registrationStatus(detail, opening.now) === "elsewhere" ? (
+                      // the way out stands where the registration form would
+                      // have been, and never beside a Register action
+                      <ExternalRegistrationNotice detail={detail} />
+                    ) : registrationStatus(detail, opening.now) === "opens_on" ? (
+                      <OpeningNotice
+                        detail={detail}
+                        remainingMs={opening.remainingMs}
+                        counting={opening.counting}
+                      />
+                    ) : (
+                      <section className="rail-card dashed">
+                        <p className="rail-hint">{t("detail.closedNotice")}</p>
+                      </section>
+                    ))}
+                </>
+              ) : shown === "teams" && registration ? (
+                <TeamsTab
+                  slug={slug}
+                  teams={registration.teams}
+                  onTeamUpdated={(updated) =>
+                    setRegistration((prev) =>
+                      prev
+                        ? {
+                            ...prev,
+                            teams: prev.teams.map((team) =>
+                              team.id === updated.id ? updated : team,
+                            ),
+                          }
+                        : prev,
+                    )
                   }
                 />
-                <DisciplinesInfo detail={detail} availability={availability} linkCounts />
-                <DiscountList detail={detail} />
-                <OtherActionsInfo detail={detail} />
-                {!readOnly &&
-                  !secondTabOffered &&
-                  (registrationStatus(detail, opening.now) === "elsewhere" ? (
-                    // the way out stands where the registration form would
-                    // have been, and never beside a Register action
-                    <ExternalRegistrationNotice detail={detail} />
-                  ) : registrationStatus(detail, opening.now) === "opens_on" ? (
-                    <OpeningNotice
-                      detail={detail}
-                      remainingMs={opening.remainingMs}
-                      counting={opening.counting}
-                    />
-                  ) : (
-                    <section className="rail-card dashed">
-                      <p className="rail-hint">{t("detail.closedNotice")}</p>
-                    </section>
-                  ))}
-              </>
-            ) : shown === "teams" && registration ? (
-              <TeamsTab
-                slug={slug}
-                teams={registration.teams}
-                onTeamUpdated={(updated) =>
-                  setRegistration((prev) =>
-                    prev
-                      ? {
-                          ...prev,
-                          teams: prev.teams.map((team) =>
-                            team.id === updated.id ? updated : team,
-                          ),
-                        }
-                      : prev,
-                  )
-                }
-              />
-            ) : amending && registration ? (
-              <RegistrationForm
-                detail={detail}
-                availability={availability}
-                itemPlaces={itemPlaces}
-                mode={{
-                  kind: "amend",
-                  initial: registration,
-                  onRegistered: (r) => {
-                    setRegistration(r);
-                    setAmending(false);
-                    setTab("registration");
-                  },
-                }}
-              />
-            ) : held && registration ? (
-              readOnly ? (
-                <RegistrationSummary registration={registration} detail={detail} />
-              ) : (
-                <RegistrationPanel
-                  slug={slug}
+              ) : amending && registration ? (
+                <RegistrationForm
                   detail={detail}
-                  registration={registration}
-                  canAmend={canAmend}
-                  onAmend={() => setAmending(true)}
-                  onCancelled={refresh}
+                  availability={availability}
+                  itemPlaces={itemPlaces}
+                  mode={{
+                    kind: "amend",
+                    initial: registration,
+                    onRegistered: (r) => {
+                      setRegistration(r);
+                      setAmending(false);
+                      setTab("registration");
+                    },
+                  }}
                 />
-              )
-            ) : managing ? (
-              deadLink ? (
-                <ManageLinkDead />
+              ) : held && registration ? (
+                readOnly ? (
+                  <RegistrationSummary registration={registration} detail={detail} />
+                ) : (
+                  <RegistrationPanel
+                    slug={slug}
+                    detail={detail}
+                    registration={registration}
+                    canAmend={canAmend}
+                    onAmend={() => setAmending(true)}
+                    onCancelled={refresh}
+                  />
+                )
+              ) : managing ? (
+                deadLink ? (
+                  <ManageLinkDead />
+                ) : (
+                  <p className="login-error">{t("form.submitFailed")}</p>
+                )
+              ) : !signedIn && guest !== null ? (
+                <RegistrationForm
+                  detail={detail}
+                  availability={availability}
+                  itemPlaces={itemPlaces}
+                  mode={{
+                    kind: "guest",
+                    identity: guest,
+                    onChange: changeGuest,
+                    onSignIn: () => onSignIn("detail.signInToRegister", "registration"),
+                    // straight to the manage link, so the guest holds it even
+                    // where the address was mistyped and the mail never arrives
+                    onRegistered: (key) => {
+                      clearGuest();
+                      navigate(manage(slug, key), { replace: true });
+                    },
+                    onNotYetOpen: () => {
+                      setTab("tournament");
+                      refresh();
+                    },
+                  }}
+                />
               ) : (
-                <p className="login-error">{t("form.submitFailed")}</p>
-              )
-            ) : !signedIn && guest !== null ? (
-              <RegistrationForm
-                detail={detail}
-                availability={availability}
-                itemPlaces={itemPlaces}
-                mode={{
-                  kind: "guest",
-                  identity: guest,
-                  onChange: changeGuest,
-                  onSignIn: () => onSignIn("detail.signInToRegister", "registration"),
-                  // straight to the manage link, so the guest holds it even
-                  // where the address was mistyped and the mail never arrives
-                  onRegistered: (key) => {
-                    clearGuest();
-                    navigate(manage(slug, key), { replace: true });
-                  },
-                  onNotYetOpen: () => {
-                    setTab("tournament");
-                    refresh();
-                  },
-                }}
-              />
-            ) : (
-              <RegistrationForm
-                detail={detail}
-                availability={availability}
-                itemPlaces={itemPlaces}
-                mode={{
-                  kind: "register",
-                  onRegistered: (r) => {
-                    setRegistration(r);
-                    setTab("registration");
-                  },
-                  // back to the information screen, which re-derives the wait
-                  // from a fresh payload — the countdown included
-                  onNotYetOpen: () => {
-                    setTab("tournament");
-                    refresh();
-                  },
-                }}
-              />
-            )}
-          </div>
-        )}
-      </div>
-    </ManageKeyContext.Provider>
+                <RegistrationForm
+                  detail={detail}
+                  availability={availability}
+                  itemPlaces={itemPlaces}
+                  mode={{
+                    kind: "register",
+                    onRegistered: (r) => {
+                      setRegistration(r);
+                      setTab("registration");
+                    },
+                    // back to the information screen, which re-derives the wait
+                    // from a fresh payload — the countdown included
+                    onNotYetOpen: () => {
+                      setTab("tournament");
+                      refresh();
+                    },
+                  }}
+                />
+              )}
+            </div>
+          )}
+        </div>
+      </ManageKeyContext.Provider>
+    </EventWording>
   );
 }

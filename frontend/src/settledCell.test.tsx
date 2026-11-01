@@ -42,6 +42,7 @@ afterEach(() => {
 function flags(overrides: Partial<ConsoleMode> = {}): ConsoleMode {
   return {
     registrations_kept_by: "squire",
+    is_event: false,
     feature_schedule: false,
     feature_payments: false,
     feature_teams: false,

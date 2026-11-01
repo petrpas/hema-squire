@@ -784,6 +784,8 @@ class TournamentOut(BaseModel):
     has_cover_photo: bool
     date: datetime.date
     language: str
+    # no discipline of either kind (spec discipline-less-events)
+    is_event: bool
     owner_id: int | None
     cancelled_at: UtcInstant | None
     published_at: UtcInstant | None
@@ -930,6 +932,8 @@ class FencerTournamentOut(BaseModel):
     cover_tint: Literal["blue", "green", "yellow", "red", "photo"] | None = None
     has_cover_photo: bool
     date: datetime.date
+    # no discipline of either kind (spec discipline-less-events)
+    is_event: bool
     city: str | None
     address: str | None
     description: str | None
@@ -1156,9 +1160,10 @@ class RegisterIn(BaseModel):
     # a discount code as the fencer typed it; matched, never validated, since
     # a malformed code must read exactly as an unknown one does
     discount_code: TypedDiscountCodeStr | None = None
-    # at least one discipline OR one team must be selected; enforced in the
-    # router, where both fields are visible together (a team-only registration
-    # is valid — spec: "Registration consisting only of a team")
+    # at least one discipline OR one team must be selected, or on an event one
+    # item; enforced in the router, where all of them are visible together (a
+    # team-only registration is valid — spec: "Registration consisting only of
+    # a team")
     disciplines: list[str] = []
     weapon_rentals: list[str] = []
     afterparty: bool = False
@@ -1363,8 +1368,7 @@ class ItemAvailabilityOut(BaseModel):
 
 
 class PricePreviewIn(BaseModel):
-    # at least one discipline or team must be selected; enforced in the router
-    # (a team-only preview is valid — spec: "Team previewed without a roster")
+    # a team-only preview is valid — spec: "Team previewed without a roster"
     disciplines: list[str] = []
     weapon_rentals: list[str] = []
     afterparty: bool = False
@@ -1490,6 +1494,8 @@ class OpenTournamentOut(BaseModel):
     # the organizer's override for the plate's monogram; null derives it
     short_code: str | None = None
     date: datetime.date
+    # no discipline of either kind (spec discipline-less-events)
+    is_event: bool = False
     # the card names the town and nothing more; the address is read on the
     # tournament's own page (spec `fencer-home`)
     city: str | None

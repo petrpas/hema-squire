@@ -287,7 +287,7 @@ def _apply_deposit_threshold(
     than extension. Past the deposit the seating deadline is the only remaining
     obligation, so no window may keep running against it. Each currency lane is
     judged against its own deposit figure, never summed, exactly as totals are."""
-    if tournament.payment_mode != PaymentMode.DEPOSIT:
+    if setup.owing_mode(tournament, registration) != PaymentMode.DEPOSIT:
         return
     if registration.state != RegistrationState.RESERVED or registration.expires_at is None:
         return

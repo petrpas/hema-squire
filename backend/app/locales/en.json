@@ -15,7 +15,8 @@
     },
     "reinstated": {
       "subject": "Reservation reinstated, payment received — {tournament}",
-      "body": "Hi {name},\n\nyour payment of {total} (VS {vs}) arrived after your reservation had expired, but the place was still free — we've reinstated the reservation and accepted the payment. Your place at {tournament} is confirmed. See you at the tournament!\n\n{tournament} team"
+      "body": "Hi {name},\n\nyour payment of {total} (VS {vs}) arrived after your reservation had expired, but the place was still free — we've reinstated the reservation and accepted the payment. Your place at {tournament} is confirmed. See you at the tournament!\n\n{tournament} team",
+      "bodyEvent": "Hi {name},\n\nyour payment of {total} (VS {vs}) arrived after your reservation had expired, but the place was still free — we've reinstated the reservation and accepted the payment. Your place at {tournament} is confirmed. See you there!\n\n{tournament} team"
     },
     "afterExpiry": {
       "subject": "Payment received after reservation expiry — {tournament}",
@@ -117,7 +118,8 @@
       "body": "Hi {name},\n\nthe organizer of {tournament} has cancelled your registration. Cancelled:\n\n{summary}",
       "note": "A note from the organizer: {note}",
       "refund": "A payment had already arrived for this registration. Whether and how it is returned is the organizer's to settle, and they will be in touch.",
-      "signature": "{tournament} team"
+      "signature": "{tournament} team",
+      "bodyEvent": "Hi {name},\n\nthe organizer of {tournament} has cancelled your registration. Cancelled:\n\n{summary}"
     },
     "manageLink": "You can view, change or cancel your registration here:\n{link}\nThe link is yours alone — whoever has it can manage the registration as you can.",
     "verifySignup": {
@@ -135,7 +137,8 @@
     "manageLinkResent": {
       "subject": "The link to your registration — {tournament}",
       "body": "Hi {name},\n\nthe organizer of {tournament} is sending you the link to your registration again.",
-      "signature": "{tournament} team"
+      "signature": "{tournament} team",
+      "bodyEvent": "Hi {name},\n\nthe organizer of {tournament} is sending you the link to your registration again."
     },
     "date": {
       "format": "{d} {monthName} {y}",
@@ -182,12 +185,14 @@
     },
     "paid": {
       "subject": "Payment received — {tournament}",
-      "body": "Hi {name},\n\nwe've received your payment of {total} (VS {vs}), and your place at {tournament} is confirmed. See you at the tournament.\n\n{tournament} team"
+      "body": "Hi {name},\n\nwe've received your payment of {total} (VS {vs}), and your place at {tournament} is confirmed. See you at the tournament.\n\n{tournament} team",
+      "bodyEvent": "Hi {name},\n\nwe've received your payment of {total} (VS {vs}), and your place at {tournament} is confirmed. See you there.\n\n{tournament} team"
     },
     "reinstatedPartial": {
       "subject": "Reservation reinstated, balance still due — {tournament}",
       "body": "Hi {name},\n\nyour payment of {received} (VS {vs}) arrived after your reservation had expired, but the place was still free — we've reinstated your reservation for {tournament} and accepted the payment.\n\n{amounts}\nAccount: {account}\nVariable symbol: {vs}\n\nYou can pay by scanning the attached QR code.\n\n{consequence}\n\n{tournament} team"
-    }
+    },
+    "tournamentLinkEvent": "Event page: {link}"
   },
   "export": {
     "yes": "Yes",

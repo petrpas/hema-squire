@@ -76,12 +76,12 @@ def test_publishing_makes_it_appear_and_accept(client, auth_headers):
 
 def test_publishing_incomplete_tournament_names_missing_items(client, auth_headers):
     organizer = auth_headers()
-    # city present, organizers cleared, no discipline added
+    # city present, organizers cleared
     slug = make_tournament(client, organizer, organizers=[])
 
     response = client.post(f"/api/tournaments/{slug}/publish", headers=organizer)
     assert response.status_code == 422
-    assert set(response.json()["detail"]["missing"]) == {"organizers", "disciplines"}
+    assert set(response.json()["detail"]["missing"]) == {"organizers"}
 
 
 def test_republishing_refused_and_timestamp_unchanged(client, auth_headers):
@@ -171,20 +171,6 @@ def test_clearing_a_discipline_price_on_published_tournament_rejected(client, au
 
     detail = client.get(f"/api/tournaments/{slug}", headers=organizer).json()
     assert detail["disciplines"][0]["fee"] == 800
-
-
-def test_deleting_the_only_discipline_on_published_tournament_rejected(client, auth_headers):
-    organizer = auth_headers()
-    slug = make_tournament(client, organizer)
-    add_priced_discipline(client, organizer, slug)
-    publish(client, organizer, slug)
-
-    response = client.delete(f"/api/tournaments/{slug}/disciplines/LS", headers=organizer)
-    assert response.status_code == 422
-    assert response.json()["detail"] == {"reason": "setup_incomplete", "missing": ["disciplines"]}
-
-    detail = client.get(f"/api/tournaments/{slug}", headers=organizer).json()
-    assert len(detail["disciplines"]) == 1
 
 
 def test_emptying_the_location_on_published_tournament_rejected(client, auth_headers):

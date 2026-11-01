@@ -367,6 +367,16 @@ def _resolve_selection(tournament: Tournament, data) -> tuple[list, list[tuple]]
     return selected, extras
 
 
+def _require_something(
+    selected: list[Discipline], teams: Sequence[object], extras: list, items_suffice: bool
+) -> None:
+    """A registration must carry something: a discipline or a team (a team-only
+    registration is valid — spec: "Registration consisting only of a team"), or
+    items alone where nothing else is on offer (spec discipline-less-events)."""
+    if not selected and not teams and not (extras and items_suffice):
+        raise HTTPException(status_code=422, detail="nothing_selected")
+
+
 class _TeamEntry(Protocol):
     """What `_resolve_teams` reads off a team entry, and all it reads."""
 
@@ -473,6 +483,7 @@ def _priced_preview(
         at=at,
         team_disciplines=team_disciplines,
         code=code,
+        items_stand_alone=tournament.is_event,
     )
     discounts = pricing.selection_discounts(
         tournament,
@@ -493,6 +504,7 @@ def _priced_preview(
             afterparty=data.afterparty,
             at=at,
             team_disciplines=team_disciplines,
+            items_stand_alone=tournament.is_event,
         )
     return PricePreviewOut(
         total=totals.local,
@@ -569,10 +581,7 @@ def create_registration(
         raise HTTPException(status_code=409, detail="already_registered")
 
     selected, extras = _resolve_selection(tournament, data)
-    if not selected and not data.teams:
-        # a team-only registration is valid (spec: "Registration consisting
-        # only of a team"), but a registration must carry something
-        raise HTTPException(status_code=422, detail="no_disciplines_or_teams")
+    _require_something(selected, data.teams, extras, tournament.is_event)
     team_entries = _resolve_teams(tournament, data.teams)
     _validate_options(data.extras, {item.id: item for item in tournament.extra_items})
     # refused here while nothing is written, so that a fencer never gets a total
@@ -762,7 +771,10 @@ def _initial_expires_at(tournament: Tournament, registration: Registration) -> d
     makes the registration inert to expiry rather than a new state."""
     if not tournament.feature_payments:
         return None
-    if registration.fully_queued or tournament.payment_mode == PaymentMode.RESERVATION:
+    if (
+        registration.fully_queued
+        or setup.owing_mode(tournament, registration) == PaymentMode.RESERVATION
+    ):
         return None
     return registration.registered_at + timedelta(days=tournament.reservation_validity_days)
 
@@ -874,8 +886,7 @@ def amend_registration(
         raise HTTPException(status_code=409, detail="amend_not_allowed")
 
     selected, extras = _resolve_selection(tournament, data)
-    if not selected and not data.teams:
-        raise HTTPException(status_code=422, detail="no_disciplines_or_teams")
+    _require_something(selected, data.teams, extras, tournament.is_event or registration.items_only)
     team_entries = _resolve_teams(tournament, data.teams)
     _validate_options(data.extras, {item.id: item for item in tournament.extra_items})
     added_code = _code_to_add(session, tournament, registration, data.discount_code)

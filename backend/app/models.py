@@ -605,6 +605,13 @@ class Tournament(Base):
         return (self.vs_year % 100) * 100 + self.vs_series
 
     @property
+    def is_event(self) -> bool:
+        """Whether this is an event rather than a tournament: it has no
+        discipline of either kind. Derived and never stored, so adding the
+        first one is all it takes (spec discipline-less-events)."""
+        return not self.disciplines
+
+    @property
     def shows_eur(self) -> bool:
         """Whether EUR is an accepted second currency alongside the local one.
         False for an EUR-priced tournament (its local figure already is the
@@ -920,18 +927,28 @@ class Registration(Base):
     )
 
     @property
+    def items_only(self) -> bool:
+        """Whether it holds items and neither a placement nor a team: what an
+        event sells (spec discipline-less-events). Read off the row and not the
+        tournament, so a registration keeps its terms after the event gains its
+        first discipline."""
+        return not self.entries and not self.teams and bool(self.extra_selections)
+
+    @property
     def fully_queued(self) -> bool:
         """Whether this registration sits entirely below the line — every
         individual entry a substitute placement and every team waitlisted.
         Vacuously true on whichever axis carries nothing, so a team-only
         registration is judged on its teams alone (design team-disciplines
-        task 5.2).
+        task 5.2). Items alone are no place in any queue, and owe.
 
         Nothing is owed from the queue (design add-payment-modes D5), so this
         is what the confirmation email, the payment-instructions endpoint and
         the reminder pass all ask before offering or chasing money."""
-        return all(entry.is_substitute for entry in self.entries) and all(
-            team.waitlisted for team in self.teams
+        return (
+            not self.items_only
+            and all(entry.is_substitute for entry in self.entries)
+            and all(team.waitlisted for team in self.teams)
         )
 
     @property

@@ -77,8 +77,8 @@ def test_setup_fields_patch_round_trip_and_detail(client, auth_headers):
     detail = client.get("/api/tournaments/na-duel-2026", headers=headers).json()
     assert detail["city"] == "Brno"
     assert detail["address"] == "[Sportovní hala](https://osm.org/go/0J0ajlLg8?m=)"
-    # setup still incomplete: no disciplines yet
-    assert "disciplines" in detail["setup_missing"]
+    # no disciplines yet: that is an event, and nothing is missing on account of it
+    assert "disciplines" not in detail["setup_missing"]
 
     client.post(
         "/api/tournaments/na-duel-2026/disciplines",

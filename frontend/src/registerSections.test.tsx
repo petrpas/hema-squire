@@ -67,12 +67,11 @@ describe("register form sections", () => {
         [item("Tričko turnaje", "merch"), item("Šavle", "rental"), item("Parkovné", "other_item")],
         "cs",
       ),
-    ).toEqual(["Turnaj", "Zapůjčení vybavení", "Merch", "Ostatní zboží", "Ostatní"]);
+    ).toEqual(["Zapůjčení vybavení", "Merch", "Ostatní zboží", "Ostatní"]);
   });
 
   it("gives a lending-only tournament one goods heading naming the lending", () => {
     expect(headings([item("Šavle", "rental"), item("Meč", "rental")], "cs")).toEqual([
-      "Turnaj",
       "Zapůjčení vybavení",
       "Ostatní",
     ]);
@@ -81,7 +80,7 @@ describe("register form sections", () => {
   it("keeps the actions together under the one programme heading", () => {
     expect(
       headings([item("Páteční seminář", "seminar"), item("Afterparty", "afterparty")], "cs"),
-    ).toEqual(["Turnaj", "Volitelný program", "Ostatní"]);
+    ).toEqual(["Volitelný program", "Ostatní"]);
   });
 
   it("merges the tournament and teams headings when there is nothing individual", () => {
@@ -104,7 +103,6 @@ describe("register form sections", () => {
 
   it("heads the goods in English too", () => {
     expect(headings([item("Sabre", "rental"), item("T-shirt", "merch")], "en")).toEqual([
-      "Tournament",
       "Equipment rental",
       "Merch",
       "Other",

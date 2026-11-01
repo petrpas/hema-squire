@@ -92,6 +92,12 @@ def _eur_note(tournament: Tournament, lang: str) -> str:
     return t("email.confirmation.eur_note", lang)
 
 
+def _worded(tournament: Tournament, key: str) -> str:
+    """The catalogue key that names this record for what it is: a text saying
+    "tournament" has an `Event` variant (spec discipline-less-events)."""
+    return f"{key}Event" if tournament.is_event else key
+
+
 def _amount_text(
     tournament: Tournament, lang: str, local_amount: int | Decimal, eur_amount: int | Decimal | None
 ) -> str:
@@ -196,7 +202,11 @@ def _letter(
     is a guest's, the manage link — whichever message it is and whatever caused
     it. The same reasoning as `recipient`: a fifteenth send will be added
     without reading this file, and it must not be the one without its links."""
-    body += "\n\n" + t("email.tournamentLink", lang, link=tournament_link(registration.tournament))
+    body += "\n\n" + t(
+        _worded(registration.tournament, "email.tournamentLink"),
+        lang,
+        link=tournament_link(registration.tournament),
+    )
     link = manage_link(registration)
     if link is not None:
         body += "\n\n" + t("email.manageLink", lang, link=link)
@@ -214,7 +224,7 @@ def send_manage_link(mailer: Mailer, tournament: Tournament, registration: Regis
     fencer = registration.fencer
     lang = mail_language(tournament, fencer)
     body = t(
-        "email.manageLinkResent.body",
+        _worded(tournament, "email.manageLinkResent.body"),
         lang,
         name=fencer.display_name,
         tournament=tournament.display_name,
@@ -571,7 +581,7 @@ def _payment_block(
     seating deadline, when an unpaid seat goes to the queue rather than
     expiring. Immediate mode owes the total by the window's close, when the
     place is released."""
-    mode = tournament.payment_mode
+    mode = setup.owing_mode(tournament, registration)
     seating = _day(tournament, setup.seating_deadline_for(tournament), lang)
     window = _due_text(registration, lang) if registration.expires_at else seating
     takes_eur = registration.total_eur is not None
@@ -717,7 +727,7 @@ def send_payment_received(
     lang = mail_language(tournament, fencer)
     subject = t("email.paid.subject", lang, tournament=tournament.display_name)
     body = t(
-        "email.paid.body",
+        _worded(tournament, "email.paid.body"),
         lang,
         name=fencer.display_name,
         tournament=tournament.display_name,
@@ -1007,7 +1017,7 @@ def send_reservation_reinstated(
     if registration.settled:
         subject = t("email.reinstated.subject", lang, tournament=tournament.display_name)
         body = t(
-            "email.reinstated.body",
+            _worded(tournament, "email.reinstated.body"),
             lang,
             name=fencer.display_name,
             tournament=tournament.display_name,
@@ -1393,7 +1403,9 @@ def send_substitution(mailer: Mailer, tournament: Tournament, prepared: Prepared
                 tournament=tournament.display_name,
             )
             + "\n\n"
-            + t("email.tournamentLink", lang, link=tournament_link(tournament)),
+            + t(
+                _worded(tournament, "email.tournamentLink"), lang, link=tournament_link(tournament)
+            ),
         )
     )
 
@@ -1419,7 +1431,7 @@ def send_cancelled_by_organizer(
     # organizer's to return or keep
     paid = registration.credited_in("local") > 0 or registration.credited_in("eur") > 0
     body = t(
-        "email.cancelledByOrganizer.body",
+        _worded(tournament, "email.cancelledByOrganizer.body"),
         lang,
         name=registration.fencer.display_name,
         tournament=tournament.display_name,

@@ -37,7 +37,6 @@ CLOSED = "closed"
 # stable item keys, referenced by the frontend checklist and i18n catalogues
 MISSING_CITY = "city"
 MISSING_ORGANIZERS = "organizers"
-MISSING_DISCIPLINES = "disciplines"
 MISSING_DISCIPLINE_PRICES = "discipline_prices"
 MISSING_EXTRA_ITEM_PRICES = "extra_item_prices"
 MISSING_DISCOUNT_PRICES = "discount_prices"
@@ -100,15 +99,23 @@ def charges_money(tournament: Tournament) -> bool:
     )
 
 
+def owing_mode(tournament: Tournament, registration: Registration | None = None) -> PaymentMode:
+    """The payment mode money is actually asked under. `deposit` and
+    `reservation` hold a seat, so a registration holding none owes in full at
+    once, whatever is stored; the stored mode is not rewritten and applies again
+    once a discipline makes the event a tournament (design events D5). Without a
+    registration, the question is asked of the tournament's next one."""
+    holds_no_seat = tournament.is_event if registration is None else registration.items_only
+    return PaymentMode.IMMEDIATE if holds_no_seat else tournament.payment_mode
+
+
 def setup_missing(tournament: Tournament) -> list[str]:
     missing = []
     if not (tournament.city or "").strip():
         missing.append(MISSING_CITY)
     if not tournament.organizers:
         missing.append(MISSING_ORGANIZERS)
-    if not tournament.disciplines:
-        missing.append(MISSING_DISCIPLINES)
-    else:
+    if tournament.disciplines:
         incomplete = any(d.fee is None for d in tournament.disciplines)
         if tournament.shows_eur:
             incomplete = incomplete or any(d.fee_eur is None for d in tournament.disciplines)
@@ -154,7 +161,7 @@ def setup_missing(tournament: Tournament) -> list[str]:
     # is never requested (spec payments, setup-navigation)
     if (
         tournament.feature_payments
-        and tournament.payment_mode == PaymentMode.DEPOSIT
+        and owing_mode(tournament) == PaymentMode.DEPOSIT
         and (
             not tournament.deposit_amount
             or (tournament.shows_eur and not tournament.deposit_amount_eur)
@@ -181,7 +188,7 @@ def setup_missing(tournament: Tournament) -> list[str]:
     # organizer's behalf would hand them a mode they did not choose (design D5)
     if (
         tournament.feature_payments
-        and tournament.payment_mode == PaymentMode.DEPOSIT
+        and owing_mode(tournament) == PaymentMode.DEPOSIT
         and not (tournament.fio_token or "").strip()
     ):
         missing.append(MISSING_PAYMENT_FEED)

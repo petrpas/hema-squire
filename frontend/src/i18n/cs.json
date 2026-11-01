@@ -15,7 +15,7 @@
   "notFound": {
     "title": "Stránka nenalezena",
     "body": "Na této adrese žádná obrazovka není.",
-    "home": "Zpět na přehled turnajů"
+    "home": "Zpět na přehled akcí"
   },
   "actions": {
     "delete": "Smazat řádek (vratné)",
@@ -86,7 +86,8 @@
       "copy": "Zkopíruje tabulku do schránky, v pořadí a s filtrem, jak je na obrazovce — k vložení do tabulky nebo zprávy.",
       "pdf": "Stáhne soupisku disciplíny jako PDF, řádek po řádku jako tabulka na obrazovce, s čarou pod posledním přijatým.",
       "png": "Stáhne soupisku disciplíny jako obrázek PNG, k vyvěšení na sociální sítě. Řádky jsou stejné jako na obrazovce.",
-      "fetchRatings": "Stáhne aktuální ratingy z HEMA Ratings. Obnoví ratingy celého turnaje, ne jen této disciplíny."
+      "fetchRatings": "Stáhne aktuální ratingy z HEMA Ratings. Obnoví ratingy celého turnaje, ne jen této disciplíny.",
+      "downloadJson_event": "Úplný záložní export akce v JSON — z něj se dá akce celá obnovit."
     },
     "fetchRatings": "Stáhnout HR ratingy",
     "ratingsDone": "Ratingy staženy · {{ratings}} hodnot pro {{fencers}} šermířů.",
@@ -189,7 +190,8 @@
         "cancelled": "Peníze na zrušených a propadlých registracích, např. propadlé zálohy nebo dosud nevrácené platby.",
         "deleted": "Peníze na registracích, jejichž řádek byl v konzoli smazán. Smazání řádek jen skryje, registrace i její platby zůstávají.",
         "unissued": "Řádky seznamu šermířů, ke kterým zatím nebyla vystavena registrace. Nemají cenu, proto nejsou v blocích; uvádí se jen jejich počet.",
-        "journal": "Všechny platné platby turnaje v žurnálu. Rovná se součtu řádků Připsáno na vyrovnané, Připsáno na prominuté, Zálohy, Fronta, Zrušené a Smazané."
+        "journal": "Všechny platné platby turnaje v žurnálu. Rovná se součtu řádků Připsáno na vyrovnané, Připsáno na prominuté, Zálohy, Fronta, Zrušené a Smazané.",
+        "journal_event": "Všechny platné platby akce v žurnálu. Rovná se součtu řádků Připsáno na vyrovnané, Připsáno na prominuté, Zálohy, Fronta, Zrušené a Smazané."
       }
     },
     "pdf": "PDF",
@@ -275,15 +277,15 @@
     "en": "English"
   },
   "picker": {
-    "title": "Vyber turnaj",
-    "empty": "Zatím žádné turnaje.",
-    "newTournament": "Nový turnaj",
-    "formNumber": "Nový turnaj — tiskopis č. 2",
-    "displayName": "Název turnaje",
+    "title": "Vyber akci",
+    "empty": "Zatím žádné akce.",
+    "newTournament": "Nová akce",
+    "formNumber": "Nová akce — tiskopis č. 2",
+    "displayName": "Název akce",
     "date": "Datum",
     "slug": "Slug (adresa)",
     "slugTaken": "Tento slug už je obsazený. Uprav ho.",
-    "createFailed": "Vytvoření turnaje se nezdařilo.",
+    "createFailed": "Vytvoření akce se nezdařilo.",
     "create": "Vytvořit",
     "requestOrganizer": "Požádat o roli organizátora",
     "pleaMessagePlaceholder": "Volitelná zpráva pro adminy…",
@@ -297,7 +299,10 @@
   "stage": {
     "pre": "Před turnajem",
     "in": "Turnaj",
-    "post": "Po turnaji"
+    "post": "Po turnaji",
+    "pre_event": "Před akcí",
+    "in_event": "Akce",
+    "post_event": "Po akci"
   },
   "phase": {
     "setup": "Nastavení",
@@ -314,7 +319,7 @@
     "title": "Registrovaní šermíři",
     "titleImport": "Nahraná tabulka",
     "refresh": "obnovit",
-    "error": "Data se nepodařilo načíst. Jsi organizátorem tohoto turnaje?",
+    "error": "Data se nepodařilo načíst. Jsi organizátorem této akce?",
     "awaitsPublication": "Turnaj není zveřejněn a nezpracovává zatím žádná data.",
     "footerStats": "{{rows}} registrací · {{paid}} zaplaceno",
     "footerNote": "Spis veden řádně.",
@@ -362,7 +367,8 @@
         "field_is_not_amendable": "Tenhle sloupec se u vystavené registrace neopravuje.",
         "rentals_must_be_a_list": "Zápůjčky se zadávají jako názvy oddělené čárkou.",
         "registration_not_live": "Tato registrace už není živá a tady se neopravuje.",
-        "no_registration_for_row": "K tomuto řádku není žádná registrace, kterou by šlo změnit."
+        "no_registration_for_row": "K tomuto řádku není žádná registrace, kterou by šlo změnit.",
+        "not_published_event": "Akce není zveřejněná, oprava se neprovedla."
       }
     },
     "summary": {
@@ -407,7 +413,10 @@
       "confirm": "Poslat",
       "sent": "Odkaz byl odeslán.",
       "failed": "Odkaz se nepodařilo odeslat."
-    }
+    },
+    "awaitsPublication_event": "Akce není zveřejněná a nezpracovává zatím žádná data.",
+    "unpriced_rental_problem_event": "Akce nepůjčuje: {{items}} — nic se za to neúčtuje.",
+    "unpriced_rental_event": "Tuhle položku akce nepůjčuje, takže za ni nic neúčtuje."
   },
   "row": {
     "absorbed": "Sloučeno do tohoto řádku"
@@ -458,7 +467,7 @@
     "expiry_grace_hours": "Tolerance po vypršení (hodiny)",
     "amendments_close": "Úpravy registrace do",
     "output_sheet_url": "URL výstupní Google tabulky",
-    "display_name": "Název turnaje",
+    "display_name": "Název akce",
     "date": "Datum",
     "city": "Město",
     "address": "Adresa",
@@ -507,7 +516,7 @@
     "empty": "Zatím žádní šermíři. Data se objeví po registracích nebo importu tabulky."
   },
   "tournament": {
-    "unnamed": "Nový turnaj"
+    "unnamed": "Nová akce"
   },
   "setup": {
     "pricingWarning": "Turnaj už má registrace — úprava cen mění dlužnou částku u nezaplacených rezervací.",
@@ -523,7 +532,8 @@
       "publish": "Zveřejnění",
       "preview": "Náhled",
       "incomplete": "neúplné nastavení",
-      "unsaved": "neuložené změny"
+      "unsaved": "neuložené změny",
+      "tournament_event": "Akce"
     },
     "saveBar": {
       "save": "Uložit změny ({{count}})",
@@ -547,12 +557,17 @@
       "failedCancelled": "Zrušený turnaj nelze zveřejnit.",
       "failedIncomplete": "Nastavení ještě není kompletní — zkontroluj záložky výše.",
       "failedGeneric": "Zveřejnění se nezdařilo. Zkus to prosím znovu.",
-      "turnOnFeature": "Nastavení téhle položky je skryté — zapni funkci „{{feature}}“ v režimu turnaje na kartě ostatní, aby šla upravit."
+      "turnOnFeature": "Nastavení téhle položky je skryté — zapni funkci „{{feature}}“ v režimu turnaje na kartě ostatní, aby šla upravit.",
+      "draftStatement_event": "Tato akce není zveřejněná — šermířům je neviditelná a registrace je uzavřená.",
+      "confirmBody_event": "Po zveřejnění akci uvidí šermíři a registrace se bude řídit nastavenými daty. Tento krok nelze vrátit zpět.",
+      "cancelled_event": "Tato akce je zrušená a nelze ji zveřejnit.",
+      "failedAlreadyPublished_event": "Tato akce je už zveřejněná.",
+      "failedCancelled_event": "Zrušenou akci nelze zveřejnit.",
+      "turnOnFeature_event": "Nastavení téhle položky je skryté — zapni funkci „{{feature}}“ v režimu akce na kartě ostatní, aby šla upravit."
     },
     "missing": {
       "city": "Chybí město",
       "organizers": "Chybí alespoň jeden pořadatel",
-      "disciplines": "Chybí alespoň jedna disciplína",
       "discipline_prices": "Chybí cena u některé disciplíny",
       "extra_item_prices": "Chybí eurová cena u některé doplňkové služby",
       "discount_prices": "Chybí eurová částka u některé pevné slevy",
@@ -561,7 +576,8 @@
       "bank_account_holder": "Chybí majitel účtu, kterého musí uvést QR kód pro platbu v eurech",
       "deposit_amount": "Chybí záloha na turnaji, který zálohu vybírá",
       "external_registration_url": "Chybí adresa, kde běží registrace",
-      "payment_feed": "Zálohový režim potřebuje token bankovního feedu, aby se záloha poznala hned po připsání"
+      "payment_feed": "Zálohový režim potřebuje token bankovního feedu, aby se záloha poznala hned po připsání",
+      "legacy_fixed_fees_block_eur_event": "Akce používá staré pevné poplatky za zapůjčení zbraně nebo afterparty, které nemají eurový protějšek — přejdi na položkové doplňkové služby, aby šlo zapnout eura"
     },
     "priceChangeWarning": {
       "title": "Změna cen na turnaji s otevřenou registrací",
@@ -569,7 +585,8 @@
       "amending": "šermíř, který svou registraci později upraví, dostane přepočet podle nových cen",
       "new": "nové registrace se počítají podle nových cen",
       "badPractice": "Měnit ceny během registrace není dobrý zvyk. Pokračovat?",
-      "proceed": "Pokračovat"
+      "proceed": "Pokračovat",
+      "title_event": "Změna cen na akci s otevřenou registrací"
     },
     "inlineMarkdownHint": "podporuje markdown: **tučně**, *kurzíva*, [odkaz](https://...)",
     "identity": {
@@ -610,11 +627,15 @@
       "markdownHint": "podporuje markdown: **tučně**, *kurzíva*, nadpisy # a ##, odrážky -, číslovaný seznam 1., [odkazy](url), > citace, --- vodorovná čára",
       "externalRegistrationHint": "Kam se šermíři hlásí, když registraci vede pořadatel. Squire na ni jen odkazuje — adresu nekontroluje a nic z ní nečte.",
       "shortCode": "Zkratka",
-      "shortCodeHint": "Zobrazí se na kartě turnaje místo loga, dokud žádné nemá. Nejvýš tři znaky. Nezměněná zkratka se odvozuje z názvu a mění se s ním."
+      "shortCodeHint": "Zobrazí se na kartě turnaje místo loga, dokud žádné nemá. Nejvýš tři znaky. Nezměněná zkratka se odvozuje z názvu a mění se s ním.",
+      "coverPhotoNotAuthorized_event": "Nemáš oprávnění nahrát fotku této akce.",
+      "logoNotAuthorized_event": "Nemáš oprávnění nahrát logo této akce.",
+      "shortCodeHint_event": "Zobrazí se na kartě akce místo loga, dokud žádné nemá. Nejvýš tři znaky. Nezměněná zkratka se odvozuje z názvu a mění se s ním."
     },
     "vsSeries": {
       "title": "Řada variabilního symbolu",
-      "prefix": "Variabilní symboly tohoto turnaje začínají na {{prefix}}."
+      "prefix": "Variabilní symboly tohoto turnaje začínají na {{prefix}}.",
+      "prefix_event": "Variabilní symboly této akce začínají na {{prefix}}."
     },
     "organizers": {
       "title": "Pořadatelé (kluby/subjekty)",
@@ -733,7 +754,8 @@
       "alreadyMember": "Tento účet je už v týmu.",
       "addFailed": "Člena týmu se nepodařilo přidat.",
       "transferNotMember": "Vlastníkem se může stát jen stávající člen týmu.",
-      "transferFailed": "Předání vlastnictví se nezdařilo."
+      "transferFailed": "Předání vlastnictví se nezdařilo.",
+      "hint_event": "Každý zde uvedený má plný přístup do konzole této akce, stejně jako vlastník. Novým vlastníkem se může stát jen ten, kdo je už v tomto seznamu."
     },
     "language": {
       "title": "Jazyk komunikace",
@@ -748,14 +770,21 @@
       "alreadyCancelled": "Tento turnaj je zrušený. Data zůstávají zachována a konzole je i nadále dostupná.",
       "deleteButton": "Smazat turnaj",
       "cancelButton": "Zrušit turnaj",
-      "failed": "Akce se nezdařila. Zkus to prosím znovu."
+      "failed": "Akce se nezdařila. Zkus to prosím znovu.",
+      "deleteHint_event": "Akce zatím nemá registrace — lze ji trvale smazat.",
+      "cancelHint_event": "Tato akce má registrace, proto ji nelze smazat. Můžeš ji ale zrušit: zmizí z veřejného seznamu, přestane přijímat registrace a všechna data (včetně finanční historie) zůstanou zachována.",
+      "alreadyCancelled_event": "Tato akce je zrušená. Data zůstávají zachována a konzole je i nadále dostupná.",
+      "deleteButton_event": "Smazat akci",
+      "cancelButton_event": "Zrušit akci"
     },
     "bankAccount": {
       "title": "Bankovní účet",
       "label": "Účet",
       "hint": "Zadej číslo účtu nebo IBAN. Nepovinné, pokud je turnaj bezplatný.",
       "holderLabel": "Majitel účtu",
-      "holderHint": "Jméno osoby nebo spolku, jak ho zná banka. QR kód pro platbu v eurech musí majitele účtu uvést a zahraniční banka kód bez něj odmítne. Povinné, pokud turnaj přijímá eura."
+      "holderHint": "Jméno osoby nebo spolku, jak ho zná banka. QR kód pro platbu v eurech musí majitele účtu uvést a zahraniční banka kód bez něj odmítne. Povinné, pokud turnaj přijímá eura.",
+      "hint_event": "Zadej číslo účtu nebo IBAN. Nepovinné, pokud je akce bezplatná.",
+      "holderHint_event": "Jméno osoby nebo spolku, jak ho zná banka. QR kód pro platbu v eurech musí majitele účtu uvést a zahraniční banka kód bez něj odmítne. Povinné, pokud akce přijímá eura."
     },
     "feedToken": {
       "set": "zadat token pro výpisy",
@@ -788,7 +817,8 @@
       "rateHint": "Kolik jednotek místní měny je jedno euro — například 25,5 Kč za euro. Používá se jen pro tlačítko \"Doplnit chybějící ceny\".",
       "rateWarning": "Kurz vypadá nepravděpodobně. Zkontroluj směr: jednotek místní měny za 1 EUR.",
       "rateNote": "Kurz slouží jen jako pomůcka pro doplnění chybějících cen — uložené ceny, součty ani platební údaje se změnou kurzu nezmění.",
-      "legacyFixedFeesBlockEur": "Turnaj používá staré pevné poplatky za zapůjčení zbraně nebo afterparty, které nemají eurový protějšek — přejdi na položkové doplňkové služby, aby šlo zapnout eura."
+      "legacyFixedFeesBlockEur": "Turnaj používá staré pevné poplatky za zapůjčení zbraně nebo afterparty, které nemají eurový protějšek — přejdi na položkové doplňkové služby, aby šlo zapnout eura.",
+      "legacyFixedFeesBlockEur_event": "Akce používá staré pevné poplatky za zapůjčení zbraně nebo afterparty, které nemají eurový protějšek — přejdi na položkové doplňkové služby, aby šlo zapnout eura."
     },
     "timeline": {
       "title": "Termíny",
@@ -797,7 +827,11 @@
       "closesHint": "Po tomto dni systém nepřijme žádnou další přihlášku. Nevyplněno: platí datum turnaje.",
       "compositionHint": "Do tohoto dne mají mít týmy naplněný minimální počet členů. Slouží jen k připomenutí — žádný tým se nezamyká, neruší ani nepřesouvá mezi náhradníky. Nevyplněno: uzávěrka není a připomínky se neposílají.",
       "anchor": "Turnaj: {{date}} — nastavuje se na kartě turnaje.",
-      "timezoneHint": "Místní čas turnaje. V něm se čtou všechna data a časy na této časové ose."
+      "timezoneHint": "Místní čas turnaje. V něm se čtou všechna data a časy na této časové ose.",
+      "opensHint_event": "Přihlašování se otevře v tento den. Do té doby je akce vidět, ale přihlásit se nelze. Nevyplněno: otevře se hned po zveřejnění. Když k němu vyplníte i čas, otevře se v tuto hodinu místo na začátku dne.",
+      "closesHint_event": "Po tomto dni systém nepřijme žádnou další přihlášku. Nevyplněno: platí datum akce.",
+      "anchor_event": "Akce: {{date}} — nastavuje se na kartě akce.",
+      "timezoneHint_event": "Místní čas akce. V něm se čtou všechna data a časy na této časové ose."
     },
     "paymentMode": {
       "title": "Jak se platí",
@@ -812,12 +846,14 @@
         "label": "Náhradníci, kteří zaplatí, zaplní volná místa sami",
         "off": "Vypnuto: peníze poslané z fronty čekají na organizátora, který šermíře posune na místo, nebo platbu vrátí.",
         "on": "Zapnuto: šermíř čekající ve frontě dostane pokyny k platbě a jeho platba obsadí místa, na která čeká, jakmile jsou volná ve všech. O tom, kdo dostane místo, pak nerozhoduje pořadí ve frontě."
-      }
+      },
+      "deadline.date_event": "{{date}} (datum akce)"
     },
     "legacyFees": {
       "title": "Staré pevné poplatky",
       "explanation": "Tento turnaj stále počítá cenu přes staré pevné poplatky za zapůjčení zbraně a afterparty. Nemají protějšek v EUR, takže dokud jsou nastavené, nelze zapnout EUR, a už se nedají upravovat — nahrazují je položky doplňkových služeb. Vymazáním se níže uvedené částky zahodí.",
-      "clear": "Vymazat staré poplatky"
+      "clear": "Vymazat staré poplatky",
+      "explanation_event": "Tato akce stále počítá cenu přes staré pevné poplatky za zapůjčení zbraně a afterparty. Nemají protějšek v EUR, takže dokud jsou nastavené, nelze zapnout EUR, a už se nedají upravovat — nahrazují je položky doplňkových služeb. Vymazáním se níže uvedené částky zahodí."
     },
     "settings": {
       "title": "Nastavení turnaje",
@@ -833,7 +869,8 @@
           "squire": "Squire se stará o všechno: přihlášky, odhlášky, seznamy, změny…",
           "organizer": "Přihlášky si sbírám sám, do Squire nahraju seznam lidí."
         },
-        "fixedAtPublication": "Rozhodnuto při zveřejnění turnaje. Dokud je turnaj rozepsaný, jde měnit volně; zveřejnění ho ustálí."
+        "fixedAtPublication": "Rozhodnuto při zveřejnění turnaje. Dokud je turnaj rozepsaný, jde měnit volně; zveřejnění ho ustálí.",
+        "fixedAtPublication_event": "Rozhodnuto při zveřejnění akce. Dokud je akce rozepsaná, jde měnit volně; zveřejnění ho ustálí."
       },
       "payments": {
         "title": "Platby",
@@ -850,7 +887,8 @@
         "hint": {
           "automatic": {
             "squire": "Squire přiděluje variabilní symboly, posílá pokyny k platbě s QR kódem, čte bankovní výpis a označuje, kdo zaplatil.",
-            "self": "Peníze vybíráš, jak chceš — na místě, vlastním QR kódem, přes klubový účet. Squire turnaj nacení a šermířům ukáže, kolik to stojí."
+            "self": "Peníze vybíráš, jak chceš — na místě, vlastním QR kódem, přes klubový účet. Squire turnaj nacení a šermířům ukáže, kolik to stojí.",
+            "self_event": "Peníze vybíráš, jak chceš — na místě, vlastním QR kódem, přes klubový účet. Squire akci nacení a šermířům ukáže, kolik to stojí."
           },
           "manual": {
             "squire": "Nahraješ výpis z účtu a Squire ho spáruje se soupiskou — podle variabilního symbolu, podle částky i podle jména, které plátce napsal. Nikomu nic neposílá: šermíři se hlásili jinde a Squire jim nikdy nepsal.",
@@ -875,7 +913,8 @@
         "schedule": "Program turnaje",
         "payments": "Platby",
         "teams": "Týmové disciplíny",
-        "extras": "Doplňkové služby"
+        "extras": "Doplňkové služby",
+        "schedule_event": "Program akce"
       },
       "hint": {
         "schedule": "Pro větší turnaje s několika disciplínami v různé dny a na různých místech. Disciplíny pak mají uvedený čas a místo.",
@@ -906,7 +945,9 @@
         "title": "Nastavení turnaje",
         "mode": {
           "squire": "Registrace tohoto turnaje vede Squire.",
-          "organizer": "Registrace tohoto turnaje vede pořadatel."
+          "organizer": "Registrace tohoto turnaje vede pořadatel.",
+          "squire_event": "Registrace této akce vede Squire.",
+          "organizer_event": "Registrace této akce vede pořadatel."
         },
         "payments": {
           "automatic": {
@@ -920,8 +961,12 @@
         },
         "includes": "Turnaj zahrnuje: {{features}}.",
         "includesNothing": "Turnaj nezahrnuje program, týmové disciplíny ani doplňkové služby.",
-        "change": "Změnit"
-      }
+        "change": "Změnit",
+        "title_event": "Nastavení akce",
+        "includes_event": "Akce zahrnuje: {{features}}.",
+        "includesNothing_event": "Akce nezahrnuje program, týmové disciplíny ani doplňkové služby."
+      },
+      "title_event": "Nastavení akce"
     },
     "discountCodes": {
       "title": "Slevové kódy",
@@ -940,13 +985,15 @@
       "disciplines": "Disciplíny",
       "locked": "Kód už někdo uplatnil, změnit jde jen název a počet.",
       "add": "Přidat kód"
-    }
+    },
+    "pricingWarning_event": "Akce už má registrace — úprava cen mění dlužnou částku u nezaplacených rezervací."
   },
   "preview": {
     "heading": "náhled: co vidí šermíři",
     "tabs": {
       "face": "Turnaj",
-      "form": "Přihláška"
+      "form": "Přihláška",
+      "face_event": "Akce"
     },
     "cannotSubmit": "toto je náhled a nelze jej odeslat"
   },
@@ -983,7 +1030,7 @@
       "label": "Sekce admin panelu",
       "tasks": "Úkoly",
       "people": "Lidé",
-      "tournaments": "Turnaje"
+      "tournaments": "Akce"
     },
     "noMatch": "Hledání nic nenašlo.",
     "sharedHr": {
@@ -992,10 +1039,10 @@
       "hrId": "HRID {{hrId}}"
     },
     "tournaments": {
-      "title": "Turnaje",
-      "search": "Hledat turnaj, slug nebo vlastníka",
-      "empty": "Zatím žádné turnaje.",
-      "name": "Turnaj",
+      "title": "Akce",
+      "search": "Hledat akci, slug nebo vlastníka",
+      "empty": "Zatím žádné akce.",
+      "name": "Akce",
       "date": "Datum",
       "owner": "Vlastník",
       "state": "Stav",
@@ -1006,8 +1053,8 @@
         "cancelled": "Zrušený"
       },
       "delete": {
-        "action": "Smazat turnaj",
-        "title": "Smazat turnaj s registracemi",
+        "action": "Smazat akci",
+        "title": "Smazat akci s registracemi",
         "registrations_one": "Smaže se {{count}} registrace i se svou platební historií.",
         "registrations_few": "Smažou se {{count}} registrace i s jejich platební historií.",
         "registrations_many": "Smaže se {{count}} registrací i s jejich platební historií.",
@@ -1015,8 +1062,8 @@
         "credited": "Připsáno na ně bylo {{amount}}.",
         "nothingCredited": "Nebylo na ně nic připsáno.",
         "cancelInstead": "Skutečnou akci má organizátor zrušit, ne smazat. Smazání nejde vrátit a nikomu nepřijde e-mail.",
-        "confirm": "Smazat turnaj",
-        "failed": "Turnaj se nepodařilo smazat. Zkuste to znovu."
+        "confirm": "Smazat akci",
+        "failed": "Akci se nepodařilo smazat. Zkuste to znovu."
       }
     }
   },
@@ -1024,11 +1071,11 @@
     "ariaLabel": "Nabídka účtu",
     "profile": "Můj profil",
     "admin": "Admin panel",
-    "myTournaments": "Moje turnaje",
+    "myTournaments": "Moje akce",
     "logout": "Odhlásit",
     "signIn": "Přihlásit",
-    "signInForMine": "Moje turnaje jsou seznam účtu; přihlaste se.",
-    "createTournament": "Založit turnaj"
+    "signInForMine": "Moje akce jsou seznam účtu; přihlaste se.",
+    "createTournament": "Založit akci"
   },
   "profile": {
     "title": "Profil",
@@ -1068,7 +1115,7 @@
     }
   },
   "home": {
-    "title": "Turnaje",
+    "title": "Akce",
     "organized": "Organizátor",
     "tabs": {
       "announced": "Vyhlášené",
@@ -1080,8 +1127,8 @@
       "open": "Spis je prázdný. Zatím.",
       "announced": "Spis je prázdný. Zatím.",
       "past": "Spis je prázdný. Zatím.",
-      "openSeeAnnounced": "U vyhlášených turnajů registrace zatím nezačala.",
-      "mine": "Zatím nejsi na žádném turnaji."
+      "openSeeAnnounced": "U vyhlášených akcí registrace zatím nezačala.",
+      "mine": "Zatím nejsi na žádné akci."
     },
     "identity": {
       "hrid": "HRID: {{id}}",
@@ -1115,7 +1162,7 @@
     },
     "nextOpening": {
       "label": "příští otevření registrace",
-      "show": "Ukázat turnaj",
+      "show": "Ukázat akci",
       "at": "{{date}} v {{time}}"
     },
     "familiar": {
@@ -1143,7 +1190,8 @@
       "register": "Registrovat se",
       "registered": "Registrace",
       "teams": "Týmy",
-      "entrants": "Přihlášení"
+      "entrants": "Přihlášení",
+      "tournament_event": "Akce"
     },
     "close": "Zavřít",
     "otherActions": "Další aktivity",
@@ -1162,7 +1210,10 @@
     "opensIn": "otevře se za {{countdown}}",
     "registrationElsewhere": "Registraci na tento turnaj vede pořadatel mimo Squire.",
     "registrationElsewhereAction": "Přejít na registraci",
-    "signInToRegister": "Přihlaste se, založte si účet, nebo se registrujte bez něj."
+    "signInToRegister": "Přihlaste se, založte si účet, nebo se registrujte bez něj.",
+    "notYetOpen_event": "Registrace na tuto akci ještě nebyla otevřena.",
+    "closedNotice_event": "Registrace na tuto akci je uzavřena.",
+    "registrationElsewhere_event": "Registraci na tuto akci vede pořadatel mimo Squire."
   },
   "form": {
     "title": "Registrace",
@@ -1181,7 +1232,8 @@
         "merch": "Merch",
         "other_item": "Ostatní zboží"
       },
-      "other": "Ostatní"
+      "other": "Ostatní",
+      "programme_event": "Program"
     },
     "teams": {
       "perTeamFee": "{{amount}} za tým",
@@ -1206,7 +1258,8 @@
       "consequence": "Dokud je některá z nich plná, čekáš ve frontě na všechny a nedržíš místo v žádné. Nic přitom neplatíš.",
       "movesToQueue": "Touto úpravou se registrace přesune do fronty — nebudeš držet místo v žádné disciplíně.",
       "refused": "Touto úpravou by se do fronty přesunula registrace, na kterou už dorazily peníze. Tohle může udělat jen organizátor — obrať se na něj."
-    }
+    },
+    "nothingSelected": "Vyber aspoň jednu položku."
   },
   "discounts": {
     "title": "Slevy",
@@ -1309,7 +1362,7 @@
       "settledByHand": "Zaplaceno ručně: {{reason}}",
       "settledByPayment": "Zaplaceno ručně zadanou platbou: {{amount}}, {{date}}"
     },
-    "setAside": "{{count}} patřilo jinému turnaji na tomto účtu — není třeba nic dělat, spáruje je jeho vlastní konzole.",
+    "setAside": "{{count}} patřilo jiné akci na tomto účtu — není třeba nic dělat, spáruje je jeho vlastní konzole.",
     "tolerance": {
       "title": "Tolerance párování částky (%)",
       "hint": "O kolik se smí poslaná částka lišit od dlužné a přesto se počítat jako zaplaceno. Použije se na platby, které teprve přijdou; co je už rozhodnuté, se nepřepočítá samo.",
@@ -1370,14 +1423,17 @@
         "partialCovers": "Bez autorizace lze stáhnout dny od {{since}} do konce okna. Starší platby zůstanou nenačtené a dostanete je do konzole jedině načtením výpisu.",
         "noOverlap": "Celé okno turnaje skončilo {{to}}, tedy dřív, než sahá devadesátidenní hranice. Zkrácené stažení by se neptalo na jediný den, ve kterém mohla platba přijít.",
         "partial": "Stáhnout jen od {{since}}",
-        "authorized": "Autorizaci mám, stáhnout znovu"
+        "authorized": "Autorizaci mám, stáhnout znovu",
+        "window_event": "Akce se platila od {{from}} do {{to}}. Fio vydá bez další autorizace jen posledních devadesát dní, tedy od {{since}}; starší dny drží zamčené.",
+        "noOverlap_event": "Celé okno akce skončilo {{to}}, tedy dřív, než sahá devadesátidenní hranice. Zkrácené stažení by se neptalo na jediný den, ve kterém mohla platba přijít."
       },
       "pollWindowEmpty": "Zkrácené okno nesahá do turnaje, který skončil {{to}}. Banka nebyla dotázána.",
       "lifecycleFailed": "Spuštění se nezdařilo.",
       "unreadable": "Soubor nevypadá jako výpis — žádný sloupec v něm nenese data a částky. Ověřte, že jde o správný export a že se otevře jako tabulka v tabulkovém procesoru.",
       "willIssueWithSymbols": "Načtením výpisu se {{count}} řádkům seznamu vystaví registrace a přidělí variabilní symboly. Symboly se nevracejí ani nepoužívají znovu.",
       "dedupPending": "Načítat výpis zatím nelze: {{count}} duplicit čeká na posouzení. Vyřešte je ve fázi Deduplikace.",
-      "issued": "Vystaveno {{count}} registrací."
+      "issued": "Vystaveno {{count}} registrací.",
+      "pollWindowEmpty_event": "Zkrácené okno nesahá do akce, která skončila {{to}}. Banka nebyla dotázána."
     },
     "clear": {
       "action": "Smazat platby ({{payments}})…",
@@ -1409,7 +1465,8 @@
       "noteProposals_many": "z toho {{count}} návrhu párování",
       "noteProposals_other": "z toho {{count}} návrhů párování",
       "noteCredited": "připsáno {{total}}",
-      "codes": "Slevové kódy"
+      "codes": "Slevové kódy",
+      "label_event": "Platby akce"
     },
     "record": {
       "action": "Zadat platbu",
@@ -1433,7 +1490,9 @@
         "currency_not_accepted": "Turnaj v této měně nic neúčtuje.",
         "registration_not_live": "Na tuto registraci nelze platbu připsat.",
         "amount_not_positive": "Částka musí být větší než nula.",
-        "payments_disabled": "Platby tohoto turnaje Squire neřeší."
+        "payments_disabled": "Platby tohoto turnaje Squire neřeší.",
+        "currency_not_accepted_event": "Akce v této měně nic neúčtuje.",
+        "payments_disabled_event": "Platby této akce Squire neřeší."
       }
     },
     "credited": {
@@ -1499,10 +1558,10 @@
     "bad_enum": "tato hodnota není z povolené nabídky",
     "bad_date": "zadej platné datum",
     "forbidden_characters": "obsahuje znak, který zde není přijímán",
-    "slug_taken": "tento zkratkový tvar už turnaj používá",
+    "slug_taken": "tento zkratkový tvar už používá jiná akce",
     "discipline_slug_taken": "zkratkový tvar {{value}} už tahle disciplína používá",
     "discipline_slug_frozen": "zkratkový tvar nejde měnit — disciplína už má registrace",
-    "mode_frozen": "režim nejde měnit — ustálil se, když byl turnaj zveřejněn",
+    "mode_frozen": "režim nejde měnit — ustálil se při zveřejnění",
     "discipline_kind_frozen": "druh disciplíny nejde měnit — disciplína už má registrace",
     "discipline_name_required": "u zbraně mimo taxonomii je název povinný",
     "qualification_criteria_required": "je potřeba doplnit kritéria kvalifikace",
@@ -1513,7 +1572,7 @@
     "opening_time_without_date": "Čas otevření potřebuje datum otevření.",
     "opening_time_does_not_exist": "Tento čas v daný den neexistuje — posouvají se hodiny.",
     "unknown_timezone": "Neznámé časové pásmo.",
-    "code_taken": "tento kód už turnaj má",
+    "code_taken": "tento kód už je použitý",
     "code_in_use": "kód už někdo uplatnil, nelze změnit",
     "below_uses": "nesmí být méně než {{min}} už uplatněných"
   },
@@ -1657,7 +1716,8 @@
       "row_is_deleted": "smazaný řádek se nenahrazuje, jen obnovuje.",
       "row_was_absorbed": "tento řádek byl sloučen do jiného.",
       "hr_id_must_be_a_whole_number": "HEMA Ratings id musí být celé číslo.",
-      "failed": "náhrada nebyla přijata."
+      "failed": "náhrada nebyla přijata.",
+      "substitute_already_registered_event": "tento šermíř už je na akci přihlášen."
     }
   },
   "entrants": {

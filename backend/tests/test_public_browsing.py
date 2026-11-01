@@ -225,6 +225,7 @@ FENCER_DETAIL_KEYS = {
     "has_cover_photo",
     "short_code",
     "date",
+    "is_event",
     "city",
     "address",
     "description",

@@ -52,8 +52,13 @@ def accepts_import(tournament: Tournament) -> bool:
     An automatic tournament's entrants register in the application or are
     entered by hand, and a list kept elsewhere is what manual mode is for
     (design manual-entry-registers D5). Rows an automatic tournament took before
-    this held are left as they are, and every path serving them stays live."""
-    return tournament.registrations_kept_by is RegistrationsKeptBy.ORGANIZER
+    this held are left as they are, and every path serving them stays live. An
+    event takes no table: a row must name a discipline to be issued (spec
+    discipline-less-events)."""
+    return (
+        tournament.registrations_kept_by is RegistrationsKeptBy.ORGANIZER
+        and not tournament.is_event
+    )
 
 
 @router.post("", status_code=202)

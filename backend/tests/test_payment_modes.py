@@ -18,6 +18,7 @@ from app.db import get_session
 from app.mail import get_mailer
 from app.main import app
 from app.models import (
+    Discipline,
     PaymentEvent,
     PaymentMode,
     Registration,
@@ -916,6 +917,7 @@ def test_deposit_amount_is_a_setup_completeness_item(client, auth_headers):
         city="Brno",
         organizers=[{"name": "Org", "link": None}],
         feature_payments=True,
+        disciplines=[Discipline(slug="LS", fee=1000, capacity=5)],
     )
     assert MISSING_DEPOSIT_AMOUNT in setup_missing(tournament)
     tournament.deposit_amount = 300

@@ -190,6 +190,8 @@ export type CoverGround = CoverTint | "photo";
 
 export interface Tournament extends TournamentFlags {
   slug: string;
+  /** No discipline of either kind (spec `discipline-less-events`). */
+  is_event: boolean;
   display_name: string;
   subtitle: string | null;
   /** The organizer's override for the plate's monogram; null derives it. */
@@ -570,6 +572,7 @@ export type FencerTournament = FencerTournamentFace & {
 type FencerTournamentFace = Pick<
   TournamentDetail,
   | "slug"
+  | "is_event"
   | "display_name"
   | "subtitle"
   | "short_code"

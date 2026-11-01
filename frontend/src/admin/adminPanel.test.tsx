@@ -178,7 +178,7 @@ describe("deleting a tournament", () => {
     vi.spyOn(api, "adminTournaments").mockResolvedValue([tournament("empty", 0)]);
     const remove = vi.spyOn(api, "adminDeleteTournament").mockResolvedValue(undefined);
     const page = await mount();
-    await click(tab(page, "Turnaje"));
+    await click(tab(page, "Akce"));
     await click(page.querySelector("tbody .row-action"));
     expect(remove).toHaveBeenCalledWith("empty", false);
     expect(document.querySelector("dialog")).toBeNull();
@@ -188,7 +188,7 @@ describe("deleting a tournament", () => {
     vi.spyOn(api, "adminTournaments").mockResolvedValue([tournament("cup", 12)]);
     const remove = vi.spyOn(api, "adminDeleteTournament").mockResolvedValue(undefined);
     const page = await mount();
-    await click(tab(page, "Turnaje"));
+    await click(tab(page, "Akce"));
     await click(page.querySelector("tbody .row-action"));
     expect(remove).not.toHaveBeenCalled();
     const dialog = document.querySelector("dialog");

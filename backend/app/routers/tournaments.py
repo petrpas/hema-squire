@@ -325,6 +325,7 @@ def _fencer_tournament_out(
         has_cover_photo=tournament.has_cover_photo,
         short_code=tournament.short_code,
         date=tournament.date,
+        is_event=tournament.is_event,
         city=tournament.city,
         description=tournament.description,
         qualification_open=tournament.qualification_open,
@@ -784,7 +785,7 @@ def update_tournament(
                     f"registration_closes={closes}"
                 ),
             )
-    if tournament.payment_mode == PaymentMode.DEPOSIT:
+    if tournament.payment_mode == PaymentMode.DEPOSIT and not tournament.is_event:
         # a deposit mode with no deposit holds seats with nothing while
         # claiming to hold them with money. The EUR figure is required
         # alongside it on the same terms as every other price — independent,
