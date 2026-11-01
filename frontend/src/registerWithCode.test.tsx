@@ -76,6 +76,7 @@ async function form() {
             } as unknown as TournamentDetail
           }
           availability={[...AVAILABILITY, { ...AVAILABILITY[0], slug: "SB" } as Availability]}
+          itemPlaces={[]}
           mode={{ kind: "preview" }}
         />
       </MemoryRouter>,

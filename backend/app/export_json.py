@@ -45,7 +45,7 @@ from app.models import (
 )
 from app.routers.tournaments import _lowest_free_series
 
-SCHEMA_VERSION = 20
+SCHEMA_VERSION = 21
 
 _TOURNAMENT_FIELDS = [
     "slug",
@@ -336,6 +336,7 @@ def export_tournament(session: Session, tournament: Tournament) -> dict:
                     "price",
                     "price_eur",
                     "max_qty",
+                    "capacity",
                     "option_label",
                     "option_choices",
                 ],
@@ -616,8 +617,10 @@ def restore_tournament(session: Session, data: dict, actor: Fencer) -> Tournamen
 
     extra_items: dict[tuple[str, str], ExtraItem] = {}
     for entry in data.get("extra_items", []):
-        # option fields arrived in v3; an older file's items declare no option
+        # option fields arrived in v3, capacity in v21; an older file's items
+        # declare no option and no limit
         fields = {
+            "capacity": None,
             "option_label": None,
             "option_choices": [],
             **entry,

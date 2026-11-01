@@ -1592,6 +1592,7 @@ def update_extra_item(
     item.price = fields["price"]
     item.price_eur = fields["price_eur"]
     item.max_qty = fields["max_qty"]
+    item.capacity = fields["capacity"]
     item.schedule_when = fields["schedule_when"]
     item.schedule_where = fields["schedule_where"]
     item.remark = fields["remark"]

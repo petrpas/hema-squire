@@ -686,6 +686,8 @@
       "price": "jednotková cena ({{currency}})",
       "priceEur": "jednotková cena (EUR)",
       "maxQty": "Max. množství",
+      "capacity": "Kapacita",
+      "taken": "obsazeno {{taken}}",
       "add": "Přidat službu",
       "categories": {
         "seminar": "Seminář",
@@ -1192,6 +1194,8 @@
     "quantity": "Počet kusů",
     "full": "zaplněno {{taken}}/{{capacity}} — budeš registrován jako náhradník",
     "freePlaces": "volných míst {{free}} z {{capacity}}",
+    "soldOut": "vyprodáno",
+    "itemSoldOut": "Vyprodáno: {{items}}. Odeber to z výběru.",
     "chooseOption": "vyber",
     "optionRequired": "Vyber {{label}} u položky {{item}}.",
     "amendTitle": "Úprava registrace",

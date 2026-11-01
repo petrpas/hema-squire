@@ -25,9 +25,13 @@ from app import (
 )
 from app.auth import require_console_access, require_published
 from app.availability import (
+    ITEM_SOLD_OUT,
+    claim_items,
+    item_taken,
     queue_length,
     queue_position,
     queued_on_entry,
+    sold_out_items,
     taken_seats,
     taken_team_slots,
     team_queue_length,
@@ -71,6 +75,7 @@ from app.schemas import (
     DiscountEffect,
     EntrantsOut,
     HeldCodePreviewIn,
+    ItemAvailabilityOut,
     OrganizerCancelIn,
     PaymentInstructionsOut,
     PricePreviewIn,
@@ -286,6 +291,24 @@ def availability(tournament: TournamentDep, session: SessionDep):
                     queue_length=queue_length(session, discipline),
                 )
             )
+    return result
+
+
+@router.get("/item-availability", response_model=list[ItemAvailabilityOut])
+def item_availability(tournament: TournamentDep, session: SessionDep):
+    result = []
+    for item in tournament.extra_items:
+        if item.capacity is None:
+            continue
+        taken = item_taken(session, item)
+        result.append(
+            ItemAvailabilityOut(
+                id=item.id,
+                capacity=item.capacity,
+                taken=taken,
+                free=max(item.capacity - taken, 0),
+            )
+        )
     return result
 
 
@@ -560,6 +583,12 @@ def create_registration(
         if data.discount_code
         else None
     )
+    # also refused while nothing is written, which spares a variable symbol;
+    # `claim_items` below is what holds under a race
+    wanted_items = {e.extra_item_id: e.qty for e in data.extras}
+    sold_out = sold_out_items(session, tournament, wanted_items)
+    if sold_out:
+        raise HTTPException(status_code=422, detail={ITEM_SOLD_OUT: sold_out})
     # Each discipline is placed against its own capacity, so a full one never
     # costs the fencer a seat in an open one (spec: "Capacity and substitutes").
     # The placement follows from capacity alone — there is nothing to negotiate,
@@ -690,6 +719,7 @@ def create_registration(
     else:
         raise HTTPException(status_code=409, detail="vs_allocation_failed")
 
+    claim_items(session, tournament, wanted_items)
     if code is not None:
         discount_codes.claim(session, code)
     pricing.reprice(registration, tournament)
@@ -849,6 +879,14 @@ def amend_registration(
     team_entries = _resolve_teams(tournament, data.teams)
     _validate_options(data.extras, {item.id: item for item in tournament.extra_items})
     added_code = _code_to_add(session, tournament, registration, data.discount_code)
+    sold_out = sold_out_items(
+        session,
+        tournament,
+        {e.extra_item_id: e.qty for e in data.extras},
+        {s.extra_item_id: s.qty for s in registration.extra_selections},
+    )
+    if sold_out:
+        raise HTTPException(status_code=422, detail={ITEM_SOLD_OUT: sold_out})
 
     amendment.apply_amendment(
         session,

@@ -1,7 +1,12 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { type Availability, api, type TournamentDetail as TournamentDetailData } from "./api";
+import {
+  type Availability,
+  api,
+  type ItemAvailability,
+  type TournamentDetail as TournamentDetailData,
+} from "./api";
 import {
   DisciplinesInfo,
   DiscountList,
@@ -31,6 +36,7 @@ export default function SetupPreview({
   const { t } = useTranslation();
   const [tab, setTab] = useState<PreviewTab>("face");
   const [availability, setAvailability] = useState<Availability[]>([]);
+  const [itemPlaces, setItemPlaces] = useState<ItemAvailability[]>([]);
   // A hidden element's scrollTop is not kept reliably across browsers, so the
   // position is followed as it scrolls and put back when the preview is shown
   // again (setup-preview-tab D2). It is read while scrolling rather than on
@@ -45,6 +51,7 @@ export default function SetupPreview({
 
   useEffect(() => {
     api.availability(slug).then(setAvailability, () => setAvailability([]));
+    api.itemAvailability(slug).then(setItemPlaces, () => setItemPlaces([]));
   }, [slug, detail]);
 
   return (
@@ -89,7 +96,12 @@ export default function SetupPreview({
           <OtherActionsInfo detail={detail} />
         </>
       ) : (
-        <RegistrationForm detail={detail} availability={availability} mode={{ kind: "preview" }} />
+        <RegistrationForm
+          detail={detail}
+          availability={availability}
+          itemPlaces={itemPlaces}
+          mode={{ kind: "preview" }}
+        />
       )}
     </div>
   );

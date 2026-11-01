@@ -377,6 +377,8 @@ export interface ExtraItemInput {
    *  local + EUR mode. */
   price_eur?: number | null;
   max_qty: number;
+  /** Pieces across all registrations; null is unlimited. */
+  capacity?: number | null;
   schedule_when?: string | null;
   schedule_where?: string | null;
   remark?: string | null;
@@ -393,6 +395,8 @@ export interface ExtraItem {
   price: number;
   price_eur: number | null;
   max_qty: number;
+  /** Pieces across all registrations; null is unlimited. */
+  capacity: number | null;
   schedule_when: string | null;
   schedule_where: string | null;
   remark: string | null;
@@ -982,6 +986,14 @@ export interface Entrants {
   /** When the roster last reached Squire, where Squire does not keep it. */
   as_of: string | null;
   rosters: Roster[];
+}
+
+/** One capped item's places; an item without a capacity is not listed. */
+export interface ItemAvailability {
+  id: number;
+  capacity: number;
+  taken: number;
+  free: number;
 }
 
 export interface Availability {
@@ -1918,6 +1930,8 @@ export const api = {
   heldTournaments: () => request<OpenTournament[]>("/api/tournaments/held"),
   myTournaments: () => request<OpenTournament[]>("/api/tournaments/mine"),
   availability: (slug: string) => request<Availability[]>(`/api/tournaments/${slug}/availability`),
+  itemAvailability: (slug: string) =>
+    request<ItemAvailability[]>(`/api/tournaments/${slug}/item-availability`),
   entrants: (slug: string) => request<Entrants>(`/api/tournaments/${slug}/entrants`),
   myRegistration: (slug: string, key?: ManageKey) =>
     request<RegistrationDetail>(`/api/tournaments/${slug}/my-registration`, {

@@ -8,22 +8,27 @@ A team discipline is counted in teams, never in fencers: `taken_seats`/
 exclusive by `discipline.kind` (design team-disciplines D1/2.6) — calling the
 wrong pair for a discipline's kind is a programming error, asserted below."""
 
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from datetime import UTC, datetime
 
-from sqlalchemy import ColumnElement, and_, func, or_, select
+from fastapi import HTTPException
+from sqlalchemy import ColumnElement, and_, func, or_, select, update
 from sqlalchemy.orm import Session
 
 from app.models import (
     Discipline,
     DisciplineKind,
+    ExtraItem,
     Registration,
     RegistrationDiscipline,
+    RegistrationExtra,
     RegistrationState,
     Team,
     Tournament,
 )
 from app.setup import seating_has_settled
+
+ITEM_SOLD_OUT = "item_sold_out"
 
 
 def live_registration():
@@ -179,6 +184,70 @@ def taken_seats(session: Session, discipline: Discipline) -> int:
         )
         or 0
     )
+
+
+def item_taken(session: Session, item: ExtraItem) -> int:
+    """Pieces of an item held by live registrations, queued ones included: a
+    fencer waiting for a seat keeps their item, so that admission can never
+    meet a full one (spec item-capacity)."""
+    return (
+        session.scalar(
+            select(func.sum(RegistrationExtra.qty))
+            .join(Registration)
+            .where(RegistrationExtra.extra_item_id == item.id, live_registration())
+        )
+        or 0
+    )
+
+
+def sold_out_items(
+    session: Session,
+    tournament: Tournament,
+    wanted: Mapping[int, int],
+    held: Mapping[int, int] | None = None,
+) -> list[int]:
+    """Which capped items have no room for `wanted`, by id. `held` is what the
+    registration already holds and `item_taken` already counts: only an
+    increase needs room, so a kept item is never refused."""
+    held = held or {}
+    return [
+        item.id
+        for item in tournament.extra_items
+        if item.capacity is not None
+        and wanted.get(item.id, 0) > held.get(item.id, 0)
+        and item_taken(session, item) + wanted[item.id] - held.get(item.id, 0) > item.capacity
+    ]
+
+
+def claim_items(
+    session: Session,
+    tournament: Tournament,
+    wanted: Mapping[int, int],
+    held: Mapping[int, int] | None = None,
+) -> None:
+    """Take the pieces of a registration already flushed holding `wanted`.
+
+    Touching an item's row is the lock, as `discount_codes.claim` has it, taken
+    in id order so that two submissions cannot deadlock over two items. The
+    count then includes the registration itself. Refusing rolls back, so the
+    submission creates nothing."""
+    held = held or {}
+    claimed = sorted(
+        (
+            item
+            for item in tournament.extra_items
+            if item.capacity is not None and wanted.get(item.id, 0) > held.get(item.id, 0)
+        ),
+        key=lambda item: item.id,
+    )
+    for item in claimed:
+        session.execute(
+            update(ExtraItem).where(ExtraItem.id == item.id).values(name=ExtraItem.name)
+        )
+    refused = [item.id for item in claimed if item_taken(session, item) > (item.capacity or 0)]
+    if refused:
+        session.rollback()
+        raise HTTPException(status_code=422, detail={ITEM_SOLD_OUT: refused})
 
 
 def queue_length(session: Session, discipline: Discipline) -> int:

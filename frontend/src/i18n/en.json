@@ -671,6 +671,8 @@
       "price": "unit price ({{currency}})",
       "priceEur": "unit price (EUR)",
       "maxQty": "Max quantity",
+      "capacity": "Capacity",
+      "taken": "{{taken}} taken",
       "add": "Add service",
       "categories": {
         "seminar": "Seminar",
@@ -1169,6 +1171,8 @@
     "quantity": "Number of pieces",
     "full": "full {{taken}}/{{capacity}} — you will be registered as a substitute",
     "freePlaces": "{{free}} of {{capacity}} places free",
+    "soldOut": "sold out",
+    "itemSoldOut": "Sold out: {{items}}. Remove it from your selection.",
     "chooseOption": "choose",
     "optionRequired": "Choose {{label}} for {{item}}.",
     "amendTitle": "Amend registration",

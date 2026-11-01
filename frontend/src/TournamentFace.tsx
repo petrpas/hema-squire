@@ -14,6 +14,7 @@ import {
   type DiscountCondition,
   type ExtraItem,
   type GuestIdentity,
+  type ItemAvailability,
   type RegistrationDetail,
   type FencerTournament as TournamentDetailData,
 } from "./api";
@@ -387,17 +388,19 @@ export function ChecklistRow({
   price,
   checked,
   onToggle,
+  disabled = false,
   children,
 }: {
   name: string;
   price: string;
   checked: boolean;
   onToggle: () => void;
+  disabled?: boolean;
   children?: React.ReactNode;
 }) {
   return (
     <label className="checklist-row">
-      <input type="checkbox" checked={checked} onChange={onToggle} />
+      <input type="checkbox" checked={checked} disabled={disabled} onChange={onToggle} />
       <span className="checklist-name">{name}</span>
       <span className="checklist-price">{price}</span>
       {children && <span className="checklist-detail">{children}</span>}
@@ -409,12 +412,14 @@ export function ChecklistRow({
 export function ItemControls({
   item,
   qty,
+  maxQty = item.max_qty,
   optionValue,
   onQty,
   onOption,
 }: {
   item: ExtraItem;
   qty: number;
+  maxQty?: number;
   optionValue: string;
   onQty: (qty: number) => void;
   onOption: (value: string) => void;
@@ -434,7 +439,7 @@ export function ItemControls({
             value={qty}
             onChange={(event) => {
               const result = parseInteger(event.target.value);
-              if (result.ok) onQty(Math.max(1, Math.min(item.max_qty, result.value)));
+              if (result.ok) onQty(Math.max(1, Math.min(maxQty, result.value)));
             }}
           />
         </span>
@@ -500,10 +505,12 @@ export type FormMode =
 export function RegistrationForm({
   detail,
   availability,
+  itemPlaces,
   mode,
 }: {
   detail: TournamentDetailData;
   availability: Availability[];
+  itemPlaces: ItemAvailability[];
   mode: FormMode;
 }) {
   const { t } = useTranslation();
@@ -765,6 +772,12 @@ export function RegistrationForm({
 
   function itemRow(item: ExtraItem) {
     const qty = extraQty[item.id] ?? 0;
+    const places = itemPlaces.find((place) => place.id === item.id);
+    // what this registration holds counts as taken, and amending keeps it, so
+    // it is room for this form as `freePlaces` has it for a discipline
+    const held = initial?.extras.find((extra) => extra.extra_item_id === item.id)?.qty ?? 0;
+    const free = places ? places.free + held : null;
+    const soldOut = free !== null && free <= 0;
     return (
       <ChecklistRow
         key={item.id}
@@ -772,12 +785,20 @@ export function RegistrationForm({
         price={formatMoneyWithEur(item.price, item.price_eur, detail)}
         checked={qty > 0}
         onToggle={() => toggleItem(item)}
+        disabled={soldOut && qty === 0}
       >
         <ScheduleLines when={item.schedule_when} where={item.schedule_where} remark={item.remark} />
+        {places &&
+          (soldOut ? (
+            <span>{t("form.soldOut")}</span>
+          ) : (
+            <span>{t("form.freePlaces", { free, capacity: places.capacity })}</span>
+          ))}
         {qty > 0 && (
           <ItemControls
             item={item}
             qty={qty}
+            maxQty={free === null ? item.max_qty : Math.min(item.max_qty, free)}
             optionValue={extraOption[item.id] ?? ""}
             onQty={(next) => setExtraQty({ ...extraQty, [item.id]: next })}
             onOption={(value) => setExtraOption({ ...extraOption, [item.id]: value })}
@@ -844,6 +865,15 @@ export function RegistrationForm({
       if (err instanceof ApiError && err.detail === "code_unavailable") {
         setCodeToApply(null);
         setCodeRefused(true);
+        return;
+      }
+      const soldOut = (err instanceof ApiError ? err.detail : null) as {
+        item_sold_out?: number[];
+      } | null;
+      if (soldOut?.item_sold_out) {
+        const ids = soldOut.item_sold_out;
+        const items = detail.extra_items.filter((item) => ids.includes(item.id));
+        setError(t("form.itemSoldOut", { items: items.map((item) => item.name).join(", ") }));
         return;
       }
       if (err instanceof ApiError && err.detail === "email_has_account") {

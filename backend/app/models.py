@@ -717,6 +717,9 @@ class ExtraItem(Base):
     price_eur: Mapped[int | None]
     # per-registration quantity limit; 1 renders as a checkbox
     max_qty: Mapped[int] = mapped_column(default=1)
+    # pieces the tournament has to give across all registrations; null is
+    # unlimited. A full item is sold out and has no queue (spec item-capacity)
+    capacity: Mapped[int | None]
     # optional descriptive fields shown when the item is presented
     # informationally; never affect pricing
     schedule_when: Mapped[str | None] = mapped_column(String(200))

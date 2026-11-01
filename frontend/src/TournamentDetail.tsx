@@ -13,6 +13,7 @@ import {
   ApiError,
   type Availability,
   api,
+  type ItemAvailability,
   type RegistrationDetail,
   type FencerTournament as TournamentDetailData,
 } from "./api";
@@ -396,6 +397,7 @@ export default function TournamentDetail() {
   const [detail, setDetail] = useState<TournamentDetailData | null>(null);
   const [notFound, setNotFound] = useState(false);
   const [availability, setAvailability] = useState<Availability[]>([]);
+  const [itemPlaces, setItemPlaces] = useState<ItemAvailability[]>([]);
   const [registration, setRegistration] = useState<RegistrationDetail | null>(null);
   const [registrationChecked, setRegistrationChecked] = useState(false);
   // the page opens on `tournament` from every entry point (design D3); the
@@ -422,6 +424,7 @@ export default function TournamentDetail() {
   function refresh() {
     api.tournament(slug).then(setDetail, () => setNotFound(true));
     api.availability(slug).then(setAvailability, () => setAvailability([]));
+    api.itemAvailability(slug).then(setItemPlaces, () => setItemPlaces([]));
     setDeadLink(false);
     if (managing) {
       api.myRegistration(slug, manageKey).then(
@@ -483,9 +486,13 @@ export default function TournamentDetail() {
   const readOnly = detail !== null && detail.date < new Date().toISOString().slice(0, 10);
   const hasActive = registration !== null && registration.state !== "cancelled";
   // register is offered only when open and at least one discipline or item has
-  // an open slot (extra items carry no capacity, so their presence counts)
+  // an open slot (an item without a capacity is not listed, and always has one)
   const hasOpenSlot =
-    detail !== null && (availability.some((a) => a.free > 0) || detail.extra_items.length > 0);
+    detail !== null &&
+    (availability.some((a) => a.free > 0) ||
+      detail.extra_items.some(
+        (item) => (itemPlaces.find((place) => place.id === item.id)?.free ?? 1) > 0,
+      ));
   // the manage screen shows the registration its key names, cancelled or not,
   // and offers no second one (spec `guest-registration`, The manage screen)
   const held = managing ? registration !== null : hasActive;
@@ -681,6 +688,7 @@ export default function TournamentDetail() {
               <RegistrationForm
                 detail={detail}
                 availability={availability}
+                itemPlaces={itemPlaces}
                 mode={{
                   kind: "amend",
                   initial: registration,
@@ -714,6 +722,7 @@ export default function TournamentDetail() {
               <RegistrationForm
                 detail={detail}
                 availability={availability}
+                itemPlaces={itemPlaces}
                 mode={{
                   kind: "guest",
                   identity: guest,
@@ -735,6 +744,7 @@ export default function TournamentDetail() {
               <RegistrationForm
                 detail={detail}
                 availability={availability}
+                itemPlaces={itemPlaces}
                 mode={{
                   kind: "register",
                   onRegistered: (r) => {

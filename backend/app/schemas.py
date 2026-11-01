@@ -355,6 +355,12 @@ class ExtraItemIn(BaseModel):
     # computed from `price` (design Decision 1) — always EUR, static ceiling
     price_eur: TolerantInt | None = Field(default=None, ge=0, le=constraints.MONEY_MAX["EUR"])
     max_qty: TolerantInt = Field(default=1, ge=constraints.EXTRA_ITEM_MAX_QTY_MIN)
+    # pieces across all registrations; none is unlimited
+    capacity: TolerantInt | None = Field(
+        default=None,
+        ge=constraints.EXTRA_ITEM_CAPACITY_MIN,
+        le=constraints.EXTRA_ITEM_CAPACITY_MAX,
+    )
     # optional descriptive fields; informational, never affect pricing
     schedule_when: ExtraItemScheduleWhenStr | None = None
     schedule_where: ExtraItemScheduleWhereStr | None = None
@@ -1345,6 +1351,15 @@ class AvailabilityOut(BaseModel):
     # 4.8); absent for an individual discipline
     team_min: int | None = None
     team_max: int | None = None
+
+
+class ItemAvailabilityOut(BaseModel):
+    """One capped item's places; an item without a capacity is not listed."""
+
+    id: int
+    capacity: int
+    taken: int
+    free: int
 
 
 class PricePreviewIn(BaseModel):

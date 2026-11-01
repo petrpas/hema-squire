@@ -17,6 +17,7 @@ function item(name: string, category: ExtraCategory): ExtraItem {
     price: 5000,
     price_eur: null,
     max_qty: 1,
+    capacity: null,
     schedule_when: null,
     schedule_where: null,
     remark: null,

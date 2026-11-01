@@ -26,7 +26,7 @@ from sqlalchemy.orm import Session
 
 from app import bank, emails, ledger, nameresolve, pricing, setup
 from app import rules as rules_engine
-from app.availability import taken_seats
+from app.availability import item_taken, taken_seats
 from app.mail import Mailer
 from app.models import (
     BankTransaction,
@@ -204,11 +204,16 @@ def within_expiry_grace(registration: Registration, tournament: Tournament) -> b
 def seats_free(session: Session, registration: Registration) -> bool:
     """Every seated (non-substitute) discipline on the registration still has a
     free place — the gate that stops grace reinstatement from displacing a
-    fencer who has been waiting in the substitute queue."""
+    fencer who has been waiting in the substitute queue — and every capped item
+    it holds still has room. An expired registration counts in neither."""
     return all(
         taken_seats(session, entry.discipline) < entry.discipline.capacity
         for entry in registration.entries
         if not entry.is_substitute
+    ) and all(
+        selection.item.capacity is None
+        or item_taken(session, selection.item) + selection.qty <= selection.item.capacity
+        for selection in registration.extra_selections
     )
 
 

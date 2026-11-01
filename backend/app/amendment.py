@@ -21,7 +21,7 @@ from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
 from app import discount_codes, emails, placement, pricing, setup
-from app.availability import full_disciplines, team_waitlist_flags
+from app.availability import claim_items, full_disciplines, team_waitlist_flags
 from app.mail import Mailer
 from app.models import (
     DisciplineKind,
@@ -128,6 +128,7 @@ def apply_amendment(
         entry.discipline_id for entry in registration.entries if entry.conditional
     }
     held_a_seat = not registration.fully_queued
+    held_items = {s.extra_item_id: s.qty for s in registration.extra_selections}
 
     # drop the current selection before checking capacity, so the registration's
     # own existing seats are not counted as taken against itself
@@ -248,6 +249,11 @@ def apply_amendment(
     ):
         session.rollback()
         raise HTTPException(status_code=409, detail="amendment_would_queue_paid")
+
+    # the organizer's own correction records what they agreed and may overrun
+    # (spec item-capacity); only the fencer's increase has to find room
+    if notice == FENCER and extras is not None:
+        claim_items(session, tournament, {e.extra_item_id: e.qty for e in extras}, held_items)
 
     if added_code is not None:
         registration.discount_code = added_code

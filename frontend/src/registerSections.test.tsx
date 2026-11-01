@@ -20,6 +20,7 @@ function item(name: string, category: ExtraItem["category"]): ExtraItem {
     price: 50,
     price_eur: null,
     max_qty: 1,
+    capacity: null,
     schedule_when: null,
     schedule_where: null,
     remark: null,
@@ -49,7 +50,12 @@ function headings(
     extra_items: extraItems,
   } as unknown as TournamentDetail;
   const html = renderToStaticMarkup(
-    <RegistrationForm detail={detail} availability={[]} mode={{ kind: "preview" }} />,
+    <RegistrationForm
+      detail={detail}
+      availability={[]}
+      itemPlaces={[]}
+      mode={{ kind: "preview" }}
+    />,
   );
   return [...html.matchAll(/class="register-section">([^<]*)</g)].map((match) => match[1]!);
 }
@@ -147,6 +153,7 @@ describe("the participation condition tick", () => {
       <RegistrationForm
         detail={detail}
         availability={[]}
+        itemPlaces={[]}
         mode={{ kind: "amend", initial, onRegistered: () => {} }}
       />,
     );
@@ -172,5 +179,56 @@ describe("the participation condition tick", () => {
       { slug: "SA", conditional: true },
     ]);
     expect(html).toMatch(/checked=""[^>]*\/><span>Pojedu jen/);
+  });
+});
+
+describe("an item's places", () => {
+  function row(free: number, mode: Parameters<typeof RegistrationForm>[0]["mode"]) {
+    void i18n.changeLanguage("cs");
+    const seminar = { ...item("Seminář", "seminar"), capacity: 20 };
+    const detail = {
+      slug: "na-duel-2026",
+      display_name: "Na Duel! 2026",
+      language: "cs",
+      local_currency: "CZK",
+      disciplines: [],
+      discounts: [],
+      extra_items: [seminar],
+    } as unknown as TournamentDetail;
+    const places = [{ id: seminar.id, capacity: 20, taken: 20 - free, free }];
+    return {
+      seminar,
+      html: (m = mode) =>
+        renderToStaticMarkup(
+          <RegistrationForm detail={detail} availability={[]} itemPlaces={places} mode={m} />,
+        ),
+    };
+  }
+
+  it("states the places left", () => {
+    expect(row(3, { kind: "preview" }).html()).toContain("volných míst 3 z 20");
+  });
+
+  it("marks a full item sold out and takes no tick", () => {
+    const html = row(0, { kind: "preview" }).html();
+    expect(html).toContain("vyprodáno");
+    expect(html).toMatch(/<input[^>]*disabled/);
+  });
+
+  it("leaves a full item a fencer holds selectable while amending", () => {
+    const { seminar, html } = row(0, { kind: "preview" });
+    const initial = {
+      entries: [],
+      teams: [],
+      extras: [{ extra_item_id: seminar.id, qty: 1, option_value: null }],
+      weapon_rentals: [],
+      afterparty: false,
+      notes: null,
+      total_amount: 0,
+      total_eur: null,
+    } as unknown as RegistrationDetail;
+    const amended = html({ kind: "amend", initial, onRegistered: () => {} });
+    expect(amended).not.toContain("vyprodáno");
+    expect(amended).not.toMatch(/<input[^>]*disabled/);
   });
 });

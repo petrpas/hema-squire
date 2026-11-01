@@ -9,6 +9,7 @@ import {
   type ExtraCategory,
   type ExtraItem,
   type ExtraItemInput,
+  type ItemAvailability,
   type TournamentDetail,
 } from "../api";
 import { EXTRA_ITEM_MAX_QTY_CEILING } from "../constraints";
@@ -66,6 +67,7 @@ function blankExtraRow(rowId: string): ExtraRow {
     price: 0,
     price_eur: null,
     max_qty: 1,
+    capacity: null,
     schedule_when: null,
     schedule_where: null,
     remark: null,
@@ -84,6 +86,7 @@ function extraRowDirty(row: ExtraRow, detail: TournamentDetail): boolean {
     row.price !== item.price ||
     row.price_eur !== item.price_eur ||
     row.max_qty !== item.max_qty ||
+    row.capacity !== item.capacity ||
     (row.schedule_when ?? "") !== (item.schedule_when ?? "") ||
     (row.schedule_where ?? "") !== (item.schedule_where ?? "") ||
     (row.remark ?? "") !== (item.remark ?? "") ||
@@ -124,6 +127,12 @@ function extraRowChecks(
       }
       return null;
     },
+    capacity: () =>
+      checkNumeric(
+        scoped("capacity"),
+        "ExtraItemIn.capacity",
+        row.capacity === null ? "" : String(row.capacity),
+      ),
     schedule_when: () =>
       isActionCategory(row.category)
         ? checkString(scoped("schedule_when"), "ExtraItemIn.schedule_when", row.schedule_when ?? "")
@@ -150,6 +159,7 @@ function extraRowInput(row: ExtraRow): ExtraItemInput {
     price: row.price,
     price_eur: row.price_eur,
     max_qty: row.max_qty,
+    capacity: row.capacity,
     schedule_when: row.schedule_when || null,
     schedule_where: row.schedule_where || null,
     remark: row.remark || null,
@@ -172,6 +182,7 @@ export function ExtraItemsSection({
 }) {
   const { t } = useTranslation();
   const [rows, setRows] = useState<ExtraRow[]>(() => detail.extra_items.map(extraItemToRow));
+  const [places, setPlaces] = useState<ItemAvailability[]>([]);
   const [removed, setRemoved] = useState<Set<number>>(new Set());
   const eur = showsEur(detail);
   const rate = Number(detail.eur_rate);
@@ -194,6 +205,10 @@ export function ExtraItemsSection({
       setRows(detail.extra_items.map(extraItemToRow));
       setRemoved(new Set());
     }
+  }, [detail]);
+
+  useEffect(() => {
+    api.itemAvailability(detail.slug).then(setPlaces, () => setPlaces([]));
   }, [detail]);
 
   function patchRow(rowId: string, patch: Partial<ExtraRow>) {
@@ -337,6 +352,7 @@ export function ExtraItemsSection({
             </th>
             {eur && <th className="col-num">{t("setup.extras.priceEur")}</th>}
             <th className="col-num">{t("setup.extras.maxQty")}</th>
+            <th className="col-num">{t("setup.extras.capacity")}</th>
             <th className="col-actions" />
           </tr>
         </thead>
@@ -451,6 +467,31 @@ export function ExtraItemsSection({
                       </>
                     )}
                   </td>
+                  <td className="col-num">
+                    <input
+                      className="cell-input"
+                      type="text"
+                      inputMode="numeric"
+                      {...fieldProps(
+                        "capacity",
+                        row.capacity === null ? "" : String(row.capacity),
+                        (value) => ({
+                          capacity: value === "" ? null : _int(value),
+                        }),
+                      )}
+                    />
+                    <FieldError
+                      field={`capacity-${row.rowId}`}
+                      error={validation.errors[`capacity-${row.rowId}`]}
+                    />
+                    {places.some((place) => place.id === row.id) && (
+                      <span className="muted">
+                        {t("setup.extras.taken", {
+                          taken: places.find((place) => place.id === row.id)?.taken,
+                        })}
+                      </span>
+                    )}
+                  </td>
                   <td className="col-actions">
                     <button
                       type="button"
@@ -463,7 +504,7 @@ export function ExtraItemsSection({
                   </td>
                 </tr>
                 <tr className="detail-subrow">
-                  <td colSpan={eur ? 6 : 5}>
+                  <td colSpan={eur ? 7 : 6}>
                     <div className="param-fields">
                       {isActionCategory(row.category) && (
                         <>

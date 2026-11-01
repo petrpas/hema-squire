@@ -48,6 +48,7 @@ export const FIELD_CONSTRAINTS: Record<string, FieldConstraint> = {
   "ExtraItemIn.price": { "minimum": 0 },
   "ExtraItemIn.price_eur": { "minimum": 0, "maximum": 1000 },
   "ExtraItemIn.max_qty": { "minimum": 1 },
+  "ExtraItemIn.capacity": { "minimum": 1, "maximum": 10000 },
   "ExtraItemIn.schedule_when": { "maxLength": 200 },
   "ExtraItemIn.schedule_where": { "maxLength": 300 },
   "ExtraItemIn.remark": { "maxLength": 500 },
