@@ -419,8 +419,8 @@
       missing URL. Known limit: the local position advances only when the daemon writes LTX, so a
       daemon alive but no longer reading the WAL would pass. The stated outcome stays open until
       the uptime and CPU alerts exist. The cron is installed on the server (05:17 UTC) and its
-      first run on 2026-11-01 answered `ok` with both positions at `...0002` and pinged. No write
-      has happened since Litestream started, so that run proves the comparison and the ping, not
-      yet that a new write reaches the bucket
+      first run on 2026-11-01 answered `ok` with both positions at `...0002` and pinged. The
+      `6fece8d` deploy then gave the first real write: migration `e5a7c9b1d3f6` moved the database
+      to `...0004` and the replica followed without Litestream being restarted
 - [ ] 5.3 Add a calendar rule, not a technical control: no deploys during a tournament's opening
       window
