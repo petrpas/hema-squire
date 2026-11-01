@@ -25,5 +25,5 @@ docker run --rm \
   "${TS_ARG[@]}" \
   "s3://${REPLICA_BUCKET}/hema-squire?endpoint=${REPLICA_ENDPOINT}&region=${REPLICA_REGION:-auto}"
 
-echo "Restored to ${TARGET}. Verify: sqlite3 ${TARGET} 'select count(*) from registration;'"
+echo "Restored to ${TARGET}. Verify: sqlite3 ${TARGET} 'select count(*) from registrations;'"
 echo "Real recovery: place it as the app volume's /data/hema_squire.sqlite before first start."
