@@ -466,7 +466,7 @@ A fencer viewing their registration SHALL be shown the outstanding amount in eac
 - **THEN** the outstanding amount is presented with its currency alongside the total
 
 ### Requirement: Confirmation email with QR payment
-On registration for a tournament whose payments feature is on, the system SHALL send a localized confirmation email containing the registration summary — items with quantities and option values — the total amount with its currency, the bank account, the VS, and an SPAYD-format QR code encoding amount, currency, account, VS, and message. When the tournament prices in EUR as a second currency, the email SHALL additionally carry the EUR total and a second QR code denominated in EUR against the same account.
+On registration for a tournament whose payments feature is on, the system SHALL send a localized confirmation email containing the registration summary — items with quantities and option values — the total amount with its currency, the bank account, the VS, and a QR code encoding amount, currency, account, VS, and message in the format its currency takes, as fixed by `payments` (**A payment code's format follows its currency**). When the tournament prices in EUR as a second currency, the email SHALL additionally carry the EUR total and a second QR code denominated in EUR against the same account.
 
 **What the confirmation states about when money is due follows the tournament's payment mode**, and it SHALL NOT state a consequence the mode does not have:
 
@@ -480,7 +480,7 @@ A registration placed wholly in the queue at submission SHALL, where the tournam
 
 Each discipline entered SHALL be summarized by its name alone. The email SHALL NOT carry discipline slugs, which are not fencer-facing text (`discipline-identity`); where a tournament offers several disciplines classified alike, the name is what tells the fencer which one they entered.
 
-Each total QR code SHALL encode the stored total of its own currency, and each deposit QR code the tournament's stored deposit amount of its own currency, with the SPAYD currency field taken from that currency. No amount in any QR code SHALL be produced by conversion.
+Each total QR code SHALL encode the stored total of its own currency, and each deposit QR code the tournament's stored deposit amount of its own currency, with its currency taken from that currency. No amount in any QR code SHALL be produced by conversion.
 
 The account SHALL be stated in the same form as the in-app instructions: a Czech account as its domestic form together with its IBAN, any other account as its IBAN alone. The two surfaces SHALL NOT differ in how they present one account, because a fencer comparing the email against the page must not have to work out whether they are looking at the same thing. The QR code SHALL continue to encode the IBAN whatever form the email states, since the payment descriptor admits no other.
 
@@ -506,7 +506,7 @@ The account SHALL be stated in the same form as the in-app instructions: a Czech
 
 #### Scenario: EUR QR carries the stored EUR total
 - **WHEN** a CZK + EUR tournament confirms a reservation totalling 1500 Kč and 60 €
-- **THEN** the email carries a CZK QR for 1500 and a EUR QR for 60, each with its own currency in the SPAYD currency field
+- **THEN** the email carries a CZK QR for 1500 and a EUR QR for 60, the CZK one a SPAYD string with `CC:CZK` and the EUR one an EPC code for `EUR60`
 
 #### Scenario: No EUR block in single-currency mode
 - **WHEN** a tournament prices in one currency and its payment mode is not `deposit`
@@ -687,7 +687,7 @@ The preview SHALL additionally return a discount breakdown: one entry for every 
 - **THEN** the response carries its totals and an empty discount breakdown
 
 ### Requirement: In-app payment instructions retrieval
-The system SHALL provide, to the owning account only, the payment data for its unpaid reservation: total amount with its currency, the bank account, variable symbol, payment message, reservation expiry, and the SPAYD QR code — plus the EUR total and a EUR-denominated QR code when the tournament prices in EUR as a second currency. Every amount SHALL be a stored total and every QR code SHALL encode the stored total of its own currency. The content SHALL be identical to the confirmation email's. The EUR fields SHALL be absent, not empty, when they do not apply.
+The system SHALL provide, to the owning account only, the payment data for its unpaid reservation: total amount with its currency, the bank account, variable symbol, payment message, reservation expiry, and the QR code in the format its currency takes (`payments`) — plus the EUR total and a EUR-denominated QR code when the tournament prices in EUR as a second currency. Every amount SHALL be a stored total and every QR code SHALL encode the stored total of its own currency. The content SHALL be identical to the confirmation email's. The EUR fields SHALL be absent, not empty, when they do not apply.
 
 The account SHALL be presented in the form the payer can use. Where the tournament's account is Czech, both its domestic form and its IBAN SHALL be presented, because a Czech payer enters the domestic form in their banking application and a foreign payer needs the IBAN. Where it is not Czech, the IBAN alone SHALL be presented and no domestic form SHALL be invented. The domestic form SHALL be derived from the stored account rather than stored a second time, and SHALL be carried as its own field rather than requiring the presenting surface to take an IBAN apart. No label SHALL name the account as an IBAN where a domestic form may be shown beside it.
 

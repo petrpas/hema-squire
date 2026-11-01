@@ -627,7 +627,7 @@ Submitting SHALL create the registration through the existing registration contr
 - **THEN** the screen presents the full disciplines and offers joining the substitute queue or removing them before resubmitting
 
 ### Requirement: In-app payment instructions
-WHEN the tournament's payments feature is on and the account holds an unpaid reservation for it, the detail page SHALL display the payment instructions: total amount, bank account (IBAN), variable symbol, the instruction to quote the VS in the payment message for transfers without a VS field, the reservation expiry date, and an SPAYD QR code. The QR code and the full transfer details SHALL always be shown together.
+WHEN the tournament's payments feature is on and the account holds an unpaid reservation for it, the detail page SHALL display the payment instructions: total amount, bank account (IBAN), variable symbol, the instruction to quote the VS in the payment message for transfers without a VS field, the reservation expiry date, and a payment QR code in the format its currency takes, as fixed by `payments`. The QR code and the full transfer details SHALL always be shown together.
 
 WHEN the tournament's payments feature is off, no payment instructions SHALL be shown for any registration it holds, whatever that registration owes on paper. There is no account to quote, no variable symbol in use and no expiry to state, and showing a partial set would tell the fencer to do something the tournament is not asking of them.
 

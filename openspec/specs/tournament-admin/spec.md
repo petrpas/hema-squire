@@ -939,7 +939,7 @@ A tournament SHALL additionally have an optional team composition deadline, cons
 - **THEN** the registration is accepted
 
 ### Requirement: Setup completeness
-Mandatory setup SHALL comprise: display name, date, city, at least one titular organizer, at least one discipline with a unit price, the bank account payments are collected into whenever the tournament charges anything at all **and its payments feature is on**, and — whenever the tournament prices in EUR as a second currency — every rendered EUR price field: each discipline's EUR price, each extra item's EUR price, and the EUR amount of each fixed discount. Every team discipline SHALL additionally have valid roster bounds, and a team discipline missing them SHALL be reported as a missing item. The team composition deadline SHALL NOT be part of mandatory setup: a tournament may offer team disciplines without one. A tournament still pricing through the legacy fixed weapon-rental/afterparty parameters SHALL be reported as blocked from enabling EUR, naming those parameters and directing the organizer to itemized extra services. The recorded exchange ratio is a Setup convenience only and is never part of completeness.
+Mandatory setup SHALL comprise: display name, date, city, at least one titular organizer, at least one discipline with a unit price, the bank account payments are collected into whenever the tournament charges anything at all **and its payments feature is on**, the account holder whenever such a tournament also takes EUR — as its only currency or as its second — and — whenever the tournament prices in EUR as a second currency — every rendered EUR price field: each discipline's EUR price, each extra item's EUR price, and the EUR amount of each fixed discount. Every team discipline SHALL additionally have valid roster bounds, and a team discipline missing them SHALL be reported as a missing item. The team composition deadline SHALL NOT be part of mandatory setup: a tournament may offer team disciplines without one. A tournament still pricing through the legacy fixed weapon-rental/afterparty parameters SHALL be reported as blocked from enabling EUR, naming those parameters and directing the organizer to itemized extra services. The recorded exchange ratio is a Setup convenience only and is never part of completeness.
 
 The bank account is mandatory **on a tournament Squire collects money for** because a published tournament accepts registrations, and a registration that cannot be paid holds a place against a deadline the fencer has no way to meet. Completeness is the only guarantee the registration path relies on, so the account SHALL be guaranteed by the same rule as every other mandatory item rather than checked again when a fencer asks how to pay.
 
@@ -1022,6 +1022,25 @@ A tournament published before the bank account became mandatory SHALL remain pub
 #### Scenario: Setup completed
 - **WHEN** the last mandatory item is filled
 - **THEN** the `PUBLISH` tab lists nothing blocking and offers the publish action; the tournament remains invisible to fencers and closed to registration until it is published
+
+#### Scenario: A EUR-taking tournament needs its holder
+- **WHEN** the organizer opens `PUBLISH` on a CZK + EUR tournament with payments on, a bank account and no account holder
+- **THEN** the account holder is named as missing and the tournament cannot be published
+
+#### Scenario: A CZK-only tournament does not
+- **WHEN** a CZK-only tournament with payments on records a bank account and no holder
+- **THEN** no holder is reported missing
+
+### Requirement: The account holder is recorded beside the bank account
+A tournament SHALL record the name of the bank account's holder — the person or organization the account belongs to, as the bank knows it — as plain text of at most 70 characters, the limit of the EPC code's beneficiary name. It SHALL be entered on `PAYMENTS` directly below the bank account, in the same section and under the same save, and SHALL carry a help hint stating that a EUR payment code must name the account's holder and that a foreign bank refuses a code without it. It SHALL be offered wherever the bank account is offered and hidden wherever the bank account is hidden.
+
+#### Scenario: Holder entered under the account
+- **WHEN** the organizer of a payments-enabled tournament opens `PAYMENTS`
+- **THEN** the account holder field sits directly below the bank account, with a help hint saying why it is needed
+
+#### Scenario: Holder too long
+- **WHEN** the organizer enters a holder longer than 70 characters
+- **THEN** the save is refused with the limit stated
 
 ### Requirement: Price columns labelled uniformly
 Every price column the organizer edits in Setup — on the disciplines table, the
