@@ -169,7 +169,7 @@
 
 ## 3. Provider setup (console clicking, ~30 minutes)
 
-- [ ] 3.1 **Deferred 2026-08-24 for the ~1 month testing period; due before real use.**
+- [x] 3.1 **Deferred 2026-08-24 for the ~1 month testing period; due before real use.**
       Create the object-storage bucket (Backblaze B2, or Cloudflare R2), private, with an API
       key scoped to that bucket only. Note the region value the provider expects (`auto` for R2,
       a real region such as `eu-central-003` for B2) — it goes in `REPLICA_REGION` and into the
@@ -178,6 +178,16 @@
       REPLICA_/LITESTREAM_ variables are filled; it snapshots the database as it then stands,
       so nothing needs migrating — but everything written before that moment was never backed up.
       `deploy/verify-replica.sh` checks the bucket before Litestream is pointed at it.
+      **Provider chosen 2026-11-01: Backblaze B2, `eu-central-003`.** Both candidates are free at
+      this size (about 3 MB, under 100 MB with 28 days of snapshots); B2 has a real EU region and
+      an official Litestream guide. The bucket must be set to "Keep only the last version": B2
+      keeps every version by default, so files Litestream retires at 28 days could otherwise stay
+      stored as hidden versions, which breaks the retention argument in `litestream.yml`. Confirm
+      on the live bucket that retired files really disappear.
+      Done 2026-11-01: `verify-replica.sh` passed on the server (write and read back, anonymous GET
+      401, key sees no other bucket) and `litestream` was started with `--no-deps`, so the changed
+      `.env` did not recreate `app`. Still to confirm: a day on, that retired files left no hidden
+      versions, since B2 holds a hidden version for a day before deleting it
 - [x] 3.2 Create the CX23 (Falkenstein/Nuremberg) with `cloud-init.yaml` as user data.
       Done, with two deviations on the record. The location is `hel1-dc2` — Helsinki, not
       Falkenstein or Nuremberg; still Hetzner, still the EU, so nothing in Decision 1 or the
@@ -311,7 +321,7 @@
       `/data/squire.db`. Guessing that name once created a stray 0-byte file there, since
       `sqlite3.connect` makes what it cannot find; it was removed. Open the production file with
       `mode=rw`/`mode=ro` URIs so a wrong path fails loudly instead of silently succeeding
-- [ ] 4.3 Verify: HTTPS answers on the domain, `/api/tournaments` responds, a signup round-trips,
+- [x] 4.3 Verify: HTTPS answers on the domain, `/api/tournaments` responds, a signup round-trips,
       a reminder email arrives via SMTP, and the replica is live — `litestream snapshots` is a 0.3
       command that 0.5.x does not have; use `litestream ltx s3://$REPLICA_BUCKET/hema-squire?...`
       (or `litestream status`) and expect the daemon's log to show `replica sync` lines advancing.
@@ -356,6 +366,9 @@
       foreign payers it exists for will mostly not read (EPC/SEPA QR needs a beneficiary name the
       tournament does not store); and the confirmation came in Czech to an English-preferring
       account, because the create dialog sends no language and every tournament is `cs`
+      **Replica live 2026-11-01, on B2.** The first snapshot of 1.96 MB is in the bucket at levels
+      0, 1 and 9, `replica sync` lines show `txid.replica` equal to `txid.db`, and no ERROR or WARN
+      appeared in the daemon's first minutes. Seznam stays unverified, by the owner's call
 
 - [x] 4.4 **Do not deploy `main` from `3af13b1` on until 3.5 and the mail half of 2.7 are done.**
       From that commit an account exists only once its address is verified by mail; deployed with
@@ -383,6 +396,15 @@
       exit, the container stays up. So the restart-count alarm suggested here would never fire and
       is not an acceptable substitute; the check must look at the replica. Use the age of the newest
       LTX file (`litestream ltx` against the replica URL — `snapshots` is a 0.3 command that 0.5
-      does not have), daily, alerting when it is older than a day
+      does not have), daily, alerting when it is older than a day.
+      **Corrected 2026-11-01, age alone does not work.** Rehearsed on 0.5.16 with a file replica
+      and a 1-minute snapshot interval: a database with no writes produced no new snapshot in over
+      three minutes, so a quiet day would look exactly like a stalled replica and the alarm would
+      teach the owner to ignore it. The check must instead compare positions: alert when the
+      replica cannot be listed, or when its newest `max_txid` stays behind the database's. The
+      daemon's `replica sync` log lines carry both (`txid.replica`, `txid.db`). Also observed: with
+      an endpoint whose name does not resolve, 0.5.16 does log `sync error` at ERROR, so "logs
+      nothing" holds for the case first measured and not for every unreachable endpoint. Nothing
+      reads those logs, so the need for this check stands
 - [ ] 5.3 Add a calendar rule, not a technical control: no deploys during a tournament's opening
       window

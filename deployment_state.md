@@ -25,6 +25,11 @@ Hetzner console and in `~/.ssh/config` on the build machine, which is where the
 `ssh hemasquire` alias resolves them. Keep it that way when editing — the
 reasoning here is worth publishing, the coordinates are not.
 
+**Update 2026-11-01:** the sections below are the August picture. Mail now runs
+through Scaleway TEM, the filled `.env` is in the password manager, and
+`litestream` replicates to Backblaze B2 (`eu-central-003`). Open: the restore
+drill (5.1), monitoring (5.2) and the deploy calendar rule (5.3). See tasks.md.
+
 ## Production host — live, bootstrapped, serving
 
 `<SERVER_IP>`, reachable as `ssh hemasquire` (an `~/.ssh/config` alias for
