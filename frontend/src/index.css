@@ -2821,15 +2821,23 @@ tr.row-deleted td.col-actions {
   font-weight: var(--weight-display);
   font-size: 26px;
   line-height: 1.05;
+  text-align: center;
   overflow-wrap: anywhere;
 }
 
 .home-card-subtitle {
   color: var(--ink-soft);
   font-size: 14px;
+  text-align: center;
 }
 
+/* the date at the card's left edge, the town at its right; a town too long to
+   share the line wraps beneath the date */
 .home-card-when {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0 1rem;
   font-family: var(--font-data);
   font-size: 13px;
   color: var(--ink);
@@ -3077,8 +3085,15 @@ tr.row-deleted td.col-actions {
     padding: 0;
   }
 
+  /* the compact row reads from the plate at its left, so the name starts
+     beside it rather than centering in what the plate leaves */
   .home-card-main h2 {
+    text-align: left;
     font-size: 20px;
+  }
+
+  .home-card-subtitle {
+    text-align: left;
   }
 
   .home-card .status-block {
@@ -3137,7 +3152,7 @@ tr.row-deleted td.col-actions {
 }
 
 .detail-cover {
-  margin: -0.9rem -0.9rem 0.9rem;
+  margin: -0.9rem -0.9rem 1.4rem;
 }
 
 .detail-cover {
@@ -3716,6 +3731,9 @@ label.checkbox-chip,
 }
 
 .detail-description {
+  margin-top: 0.8rem;
+  padding-top: 0.8rem;
+  border-top: var(--border-w) solid var(--hairline);
   color: var(--ink);
   font-size: 14px;
 }
@@ -3965,19 +3983,42 @@ label.checkbox-chip,
   border-bottom: none;
 }
 
-/* the detail's own third line: date · place · qualification, in reading ink
-   rather than the faded meta grey it replaced */
+/* The tournament's facts: every one the same label over the same value, so
+   the block reads as a form rather than as lines each set differently. The
+   columns follow the width the card actually has, not the viewport's: the
+   Setup preview is narrow on a wide monitor. Two fit the detail's measure,
+   and anything narrower than two falls to one by itself. */
 .detail-facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(18rem, 100%), 1fr));
+  gap: 0.8rem 1.5rem;
+  margin-top: 0.8rem;
+  padding-top: 0.8rem;
+  border-top: var(--border-w) solid var(--hairline);
   font-size: 13px;
   color: var(--ink);
 }
 
-/* where in town, under the date · place · qualification line it elaborates.
-   Its own line because an address runs longer than a town name and carries a
-   venue link, neither of which belongs in a dot-joined run of short facts. */
+.detail-fact {
+  min-width: 0;
+}
+
+.detail-fact[data-wide] {
+  grid-column: 1 / -1;
+}
+
+.detail-fact dt {
+  margin-bottom: 0.2rem;
+  font-size: var(--label-size);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-weight: 500;
+  color: var(--ink-faded);
+}
+
+/* an address is organizer text and may be one unbroken string */
 .detail-address {
-  font-size: 13px;
-  color: var(--ink);
+  overflow-wrap: anywhere;
 }
 
 /* the team-event marker stands off the discipline name it qualifies, rather
@@ -3997,7 +4038,6 @@ label.checkbox-chip,
 .detail-inline-link {
   color: var(--ink);
   text-decoration: underline;
-  font-size: 12px;
 }
 
 /* register-screen section headings */

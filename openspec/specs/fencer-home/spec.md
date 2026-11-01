@@ -20,9 +20,9 @@ The cards SHALL be laid out in a grid of columns at least 320px wide, filling a 
 - **The plate**, centred in the cover at `--radius-plate`: the tournament's logo on `--plate` when one is set, filling the plate and cropped on its longer side; otherwise its monogram (see `A tournament without a logo shows its monogram`) on `--paper` in the tint's `-ink` color. The plate SHALL be ringed in `--stamp` while registration is open, and in `--hairline-strong` otherwise. The ring is drawn by an outline, not a border or a shadow.
 - **The ordinal**, at the cover's top right in `--font-data` 12px `--ink-faded`: the card's position in the list as shown, zero-padded (`001`).
 - **The status block**, at the cover's top left, never reaching the plate: three short lines at `--radius-chip` stating registration's state. Open: `registrace` / `otevřena` / `do {closing date}`, on `--stamp-tint` in `--stamp-on-tint`, led by a small `--stamp` dot. Opens on a date: `registrace` / `od {date}` / `v {time}` when an hour is set. Closed: `registrace` / `uzavřena`. The last two stand on `--paper` in `--ink` and `--ink-faded` respectively. A tournament whose registrations its organizer keeps SHALL carry no status block at all. A line whose value is absent SHALL be omitted. On the Mine and Past tabs the block SHALL state the account's own bond instead, as those tabs require.
-- **The body**: the tournament's name in `--font-display` at `--weight-display`; the subtitle beneath it when one is set, in `--ink-soft`; the date and the city together on their own line in `--font-data`; the organizer names as plain `--ink-soft` text, with no links in them; then one row per offered discipline, its name at the left and its figure at the right over a capacity meter (`design-system`); and at the foot, below a hairline and aligned across a row of cards, the count of seated fencers and of their clubs at the right in `--font-data` 12px `--ink-faded`.
+- **The body**: the tournament's name in `--font-display` at `--weight-display`, centered on the card; the subtitle beneath it when one is set, in `--ink-soft`, centered likewise; the date at the left and the city at the right of their own line in `--font-data`; the organizer names as plain `--ink-soft` text, with no links in them; then one row per offered discipline, its name at the left and its figure at the right over a capacity meter (`design-system`); and at the foot, below a hairline and aligned across a row of cards, the count of seated fencers and of their clubs at the right in `--font-data` 12px `--ink-faded`.
 
-The date and city line SHALL separate its parts with the spaced middle dot and SHALL wrap rather than overflow on a narrow screen. The card layout SHALL render correctly whether or not a logo, subtitle, city, or organizer is present.
+The date and city line SHALL hold its two parts to the card's opposite edges, with no separator between them, and SHALL wrap rather than overflow on a narrow screen. The card layout SHALL render correctly whether or not a logo, subtitle, city, or organizer is present.
 
 The card's whole body SHALL be one link to the tournament's detail, and the card SHALL carry no Register or Manage registration action of its own: registration's state is stated by the status block, where it has one, and acted on from the detail page. A card SHALL carry no link inside its body link; the organizer names are text for that reason. **A tournament in manual mode SHALL state nothing about its registration on its card** (`tournament-mode`, `external-registration`); the way out SHALL be offered on the tournament detail page the card opens, where the registration form would otherwise be. The card SHALL NOT state that such a tournament's registration is closed, which would be untrue of a window that never existed here. Each tab SHALL show its own empty-state message when it lists nothing.
 
@@ -30,7 +30,7 @@ Hovering a card, where the pointer can hover, SHALL change only its border to `-
 
 A discipline on a card SHALL be labelled by its name, never by its slug (`discipline-identity`). Names are longer than the codes they replace and a tournament MAY offer several disciplines whose names differ only in a trailing qualifier, so a discipline's name SHALL wrap across lines rather than truncate, overflow, or force the card wider, and SHALL remain legible on the narrowest supported screen.
 
-Below 480px a card SHALL become a compact row: no cover band; the plate at 56px at its left, ring kept; then the name, the date and city line, and the status as one line of text in the status block's colors without its block; the discipline rows and meters below, unchanged.
+Below 480px a card SHALL become a compact row: no cover band; the plate at 56px at its left, ring kept; then the name and subtitle, left-aligned, the date and city line, and the status as one line of text in the status block's colors without its block; the discipline rows and meters below, unchanged.
 
 #### Scenario: Open tournament listed with counts
 - **WHEN** a visitor opens the tournament list while a published upcoming tournament with two disciplines (18 of 25 entered, and 16 of 16 with 9 waiting) is open for registration and closes on 28 February
@@ -129,17 +129,17 @@ The address SHALL be an inline markdown field (`organizer-prose`), a link among 
 
 A Fencer Home card SHALL present the city, on the bold date-and-place line, and SHALL NOT present the address. The card is itself a link, and a second link inside it would be a link within a link.
 
-The tournament information screen SHALL present the city on the `date · place · qualification` line and the address on its own line beneath it, rendered with its links live. Its own line rather than a fourth dot-joined part: an address runs longer than the short facts that line is made of.
+The tournament information screen SHALL present the city and the address together as its place fact, the address on its own line beneath the city, rendered with its links live.
 
-Neither field SHALL introduce a block, a line break, or a heading of its own, both SHALL wrap rather than overflow on a narrow screen, and an absent field SHALL leave no stray middle dot and no empty line.
+Both fields SHALL wrap rather than overflow on a narrow screen, and an absent field SHALL leave no stray middle dot and no empty line.
 
 #### Scenario: City and address on the information screen
 - **WHEN** a tournament in Brno whose address is `[ZŠ Bílá](https://osm.org/go/0J0ajlLg8?m=)` is opened
-- **THEN** the identity line reads date · Brno · qualification and the line beneath it reads `ZŠ Bílá` as a link opening in a new tab, with no markup characters visible
+- **THEN** the place fact reads Brno and the line beneath it reads `ZŠ Bílá` as a link opening in a new tab, with no markup characters visible
 
 #### Scenario: The same tournament on a home card
 - **WHEN** that tournament is listed on Fencer Home
-- **THEN** the bold date-and-place line reads date · Brno, the address appears nowhere on the card, and selecting anywhere on the card opens the tournament
+- **THEN** the date-and-place line reads the date at the left and Brno at the right, the address appears nowhere on the card, and selecting anywhere on the card opens the tournament
 
 #### Scenario: A tournament with no address yet
 - **WHEN** a tournament names its city and no address
@@ -147,7 +147,7 @@ Neither field SHALL introduce a block, a line break, or a heading of its own, bo
 
 #### Scenario: Absent city leaves no separator
 - **WHEN** a listed tournament has no city
-- **THEN** the date stands alone on its line with no middle dot before or after it, on the card and on the information screen alike
+- **THEN** the date stands alone on its card line, and the information screen states no place fact
 
 ### Requirement: Fencer identity header
 The top bar SHALL show three things across it: the application's own name, Hema Squire, at the left; the page's title at the **centre**; and at the right the visitor's display name with their hemaratings identity, followed by the account menu (⋯).
@@ -458,7 +458,7 @@ The detail page's own controls — the tournament's display name, its tab contro
 - **THEN** the four filter tabs are not shown anywhere on the page, and the close control rather than a tab is the way back to the list
 
 ### Requirement: Tournament detail — information
-The tournament detail page SHALL open, from the list, on an information screen that presents the tournament's full public information and does not itself contain the registration form. It SHALL open with the tournament's identity stated as consecutive lines in this order: the title; the subtitle when set; the date, the city and the qualification statement on one line; the address on its own line when set; the registration opening moment and closing date on one line; the titular organizers; and the description. Parts sharing a line SHALL be separated by the spaced middle dot, and a line whose every part is absent SHALL be omitted rather than left blank. The logo, when set, stands beside these lines.
+The tournament detail page SHALL open, from the list, on an information screen that presents the tournament's full public information and does not itself contain the registration form. It SHALL open with the title and the subtitle when set, followed by the tournament's facts, then the description set off from them by a hairline. The facts SHALL be presented alike, each a small label over its value, in this order: the date; the place (the city, and the address beneath it when set); the entry condition (the qualification statement); registration (the opening moment and the closing date, one line each); and the titular organizers across the full width. The facts SHALL stand in two columns where the card's own width holds two and in one where it does not, whatever the viewport's width, so the Setup preview follows the width it actually has. A fact with nothing to state SHALL be omitted, label included, and the rest SHALL close up.
 
 The opening moment SHALL be stated with its time of day whenever the tournament sets one, and with the zone that time is stated in. Where the tournament sets no opening time, the opening SHALL be stated as a date alone exactly as before, with no invented hour and no zone.
 
@@ -468,19 +468,19 @@ Where a discipline or an action carries any of its optional when/where/ruleset/r
 
 #### Scenario: Fencer reviews a tournament
 - **WHEN** a fencer opens a tournament's detail from Fencer Home
-- **THEN** they read the title, the subtitle, the date · place · qualification line, the address line, the registration window line, the organizers and the description in that order, followed by each discipline under its name with its fee, registered/capacity count, and any when/where and ruleset
+- **THEN** they read the title, the subtitle, the date, the place, the entry condition, the registration window, the organizers and the description in that order, followed by each discipline under its name with its fee, registered/capacity count, and any when/where and ruleset
 
 #### Scenario: Absent parts collapse
 - **WHEN** a tournament has no subtitle, no city, no address and no registration dates
-- **THEN** those lines are omitted and no blank line, stray dot, or empty gap is left behind
+- **THEN** those facts are omitted with their labels and no blank line, stray dot, or empty cell is left behind
 
 #### Scenario: Opening moment states its hour
 - **WHEN** a fencer opens the detail of a tournament whose registration opens at 18:00 on 1 September
-- **THEN** the registration window line states that opening date together with 18:00 and the zone it is stated in
+- **THEN** the registration fact states that opening date together with 18:00 and the zone it is stated in
 
 #### Scenario: Date-only opening states no hour
 - **WHEN** a fencer opens the detail of a tournament whose registration-opens date carries no time
-- **THEN** the line states the date alone, with no time and no zone
+- **THEN** the registration fact states the date alone, with no time and no zone
 
 #### Scenario: Team marker set off from the name
 - **WHEN** a team discipline is listed

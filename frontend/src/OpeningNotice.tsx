@@ -1,8 +1,7 @@
 import { useTranslation } from "react-i18next";
 
 import type { FencerTournament } from "./api";
-import { formatCountdown } from "./openingMoment";
-import { zoneAbbreviation } from "./TournamentFace";
+import { formatCountdown, zoneAbbreviation } from "./openingMoment";
 
 /** What the fencer reads while registration has not opened yet: the moment it
  *  opens, and — inside the last day — how long is left.

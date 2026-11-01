@@ -49,7 +49,22 @@ describe("a tournament's detail is public", () => {
     expect(page.textContent).not.toContain(i18n.t("home.tabs.announced"));
   });
 
-  it("names the town on its facts line and the address under it, link and all", async () => {
+  it("states no fact it has nothing to say about, leaving no label behind", async () => {
+    detailApi({
+      city: null,
+      address: null,
+      organizers: [],
+      registration_opens: null,
+      registration_closes: null,
+    });
+    const page = mount("/t/spring-open");
+    await settle();
+
+    const labels = [...page.querySelectorAll(".detail-fact dt")].map((dt) => dt.textContent);
+    expect(labels).toHaveLength(2);
+  });
+
+  it("names the town among its facts and the address under it, link and all", async () => {
     detailApi({
       city: "Brno",
       address: "[Sportovní hala](https://osm.org/go/0J0ajlLg8?m=)",

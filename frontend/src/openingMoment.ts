@@ -31,6 +31,24 @@ export function openingMomentMs(opensAt: string | null): number | null {
   return Number.isNaN(parsed) ? null : parsed;
 }
 
+/** How the tournament's zone is named beside its opening hour — the short
+ *  form the zone itself uses on that date ("SELČ", "CEST"), which is what a
+ *  reader recognizes, falling back to the identifier when the browser cannot
+ *  produce one. */
+export function zoneAbbreviation(detail: FencerTournament): string {
+  const at = openingMomentMs(detail.registration_opens_at);
+  if (at === null) return detail.timezone;
+  try {
+    const parts = new Intl.DateTimeFormat(undefined, {
+      timeZone: detail.timezone,
+      timeZoneName: "short",
+    }).formatToParts(new Date(at));
+    return parts.find((part) => part.type === "timeZoneName")?.value ?? detail.timezone;
+  } catch {
+    return detail.timezone;
+  }
+}
+
 /** The last day before the opening, the only span a countdown is shown in
  *  (design D7). A ticking seconds counter beside a date six weeks out is
  *  noise, and a page left open that long should not hold a running timer. */

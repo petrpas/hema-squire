@@ -19,6 +19,7 @@ import {
 } from "./api";
 import { MeterTrack } from "./CapacityMeter";
 import { FIELD_CONSTRAINTS } from "./constraints";
+import DetailFacts from "./DetailFacts";
 import { DiscountCodeField, DiscountCodeLine } from "./DiscountCodeField";
 import DotJoined from "./DotJoined";
 import { groupGoods, isAction } from "./extraItems";
@@ -27,7 +28,7 @@ import InlineProse from "./InlineProse";
 import { useManageKey } from "./manageKey";
 import { formatMoneyWithEur } from "./money";
 import { parseInteger } from "./numeric";
-import { openingMomentMs, registrationClosesOn, registrationStatus } from "./openingMoment";
+import { registrationClosesOn, registrationStatus } from "./openingMoment";
 import Prose from "./Prose";
 import { entrants } from "./routes";
 import { StatusBlock } from "./StatusBlock";
@@ -110,24 +111,6 @@ export function normalizeSlug(value: string): string {
   return collapsed.replace(/^-+|-+$/g, "");
 }
 
-/** How the tournament's zone is named beside its opening hour — the short
- *  form the zone itself uses on that date ("SELČ", "CEST"), which is what a
- *  reader recognizes, falling back to the identifier when the browser cannot
- *  produce one. */
-export function zoneAbbreviation(detail: TournamentDetailData): string {
-  const at = openingMomentMs(detail.registration_opens_at);
-  if (at === null) return detail.timezone;
-  try {
-    const parts = new Intl.DateTimeFormat(undefined, {
-      timeZone: detail.timezone,
-      timeZoneName: "short",
-    }).formatToParts(new Date(at));
-    return parts.find((part) => part.type === "timeZoneName")?.value ?? detail.timezone;
-  } catch {
-    return detail.timezone;
-  }
-}
-
 export function InfoHeader({
   detail,
   now,
@@ -142,12 +125,7 @@ export function InfoHeader({
    *  device's. */
   now?: number;
 }) {
-  const { t } = useTranslation();
   const status = registrationStatus(detail, now);
-  // the tournament states itself as consecutive lines, in this order: title,
-  // subtitle, date · place · qualification, the registration window, the
-  // titular organizers, the description. A line whose every part is absent is
-  // not rendered — DotJoined returns null rather than an empty rule.
   return (
     <section className="rail-card detail-info">
       {/* the card's cover, opened: the same tint, plate, ring and status
@@ -177,67 +155,7 @@ export function InfoHeader({
       <div className="detail-info-heading">
         <h1>{detail.display_name}</h1>
         {detail.subtitle && <p className="detail-subtitle">{detail.subtitle}</p>}
-        <DotJoined
-          className="detail-facts"
-          parts={[
-            new Date(detail.date).toLocaleDateString("cs"),
-            // the town on the facts line; the address, which may carry a map
-            // link, gets its own line below (spec `fencer-home`)
-            detail.city?.trim() ? detail.city : null,
-            detail.qualification_open
-              ? t("detail.qualificationOpen")
-              : t("detail.qualificationRequired", { criteria: detail.qualification_criteria }),
-          ]}
-        />
-        {detail.address?.trim() && (
-          <p className="detail-address">
-            <InlineProse source={detail.address} />
-          </p>
-        )}
-        <DotJoined
-          className="rail-hint"
-          parts={[
-            detail.registration_opens &&
-              (detail.registration_opens_time
-                ? // the hour the organizer named, with the zone it is named in:
-                  // without the zone the hour is only true where the tournament
-                  // is (spec: fencer-home)
-                  t("detail.opensAt", {
-                    date: new Date(detail.registration_opens).toLocaleDateString("cs"),
-                    time: detail.registration_opens_time.slice(0, 5),
-                    zone: zoneAbbreviation(detail),
-                  })
-                : t("detail.opensOn", {
-                    date: new Date(detail.registration_opens).toLocaleDateString("cs"),
-                  })),
-            detail.registration_closes &&
-              t("detail.closesOn", {
-                date: new Date(detail.registration_closes).toLocaleDateString("cs"),
-              }),
-          ]}
-        />
-        {detail.organizers.length > 0 && (
-          <p className="rail-hint">
-            {detail.organizers.map((organizer, index) => (
-              // biome-ignore lint/suspicious/noArrayIndexKey: a read-only list rebuilt from props; position is the only identity these rows have
-              <span key={index}>
-                {index > 0 && ", "}
-                {organizer.link ? (
-                  <a
-                    className="detail-inline-link"
-                    href={organizer.link}
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    {organizer.name}
-                  </a>
-                ) : (
-                  organizer.name
-                )}
-              </span>
-            ))}
-          </p>
-        )}
+        <DetailFacts detail={detail} />
         <Prose source={detail.description} className="detail-description" />
       </div>
     </section>

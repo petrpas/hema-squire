@@ -2,7 +2,6 @@ import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 import type { OpenTournament } from "./api";
 import CapacityMeter from "./CapacityMeter";
-import DotJoined from "./DotJoined";
 import FamiliarFaces from "./FamiliarFaces";
 import type { HomeTab } from "./FencerShell";
 import PaidStamp from "./PaidStamp";
@@ -63,13 +62,10 @@ export default function TournamentCard({
           {tournament.subtitle && <p className="home-card-subtitle">{tournament.subtitle}</p>}
           {/* the town alone, as plain text: everyone knows where Brno is, and
               where in town is read on the tournament's own page */}
-          <DotJoined
-            className="home-card-when"
-            parts={[
-              new Date(tournament.date).toLocaleDateString("cs"),
-              tournament.city?.trim() ? tournament.city : null,
-            ]}
-          />
+          <p className="home-card-when">
+            <span>{new Date(tournament.date).toLocaleDateString("cs")}</span>
+            {tournament.city?.trim() && <span>{tournament.city}</span>}
+          </p>
           {tournament.organizers.length > 0 && (
             <p className="home-card-organizers">
               {tournament.organizers.map((organizer) => organizer.name).join(", ")}
