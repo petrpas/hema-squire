@@ -382,12 +382,18 @@
 
 ## 5. Restore drill and monitoring (definition of done)
 
-- [ ] 5.1 On a scratch machine (or locally), run `deploy/restore.sh` against the production
+- [x] 5.1 On a scratch machine (or locally), run `deploy/restore.sh` against the production
       replica and boot the app on the restored file (the script runs a full integrity check as part
       of the restore); verify a known registration is present. Use the
       password-manager copy of `.env`, not the production host's — the drill proves recovery only if
       it uses material that survives the host. Record the date in `deploy/README` — the drill
-      repeats when the stack changes materially
+      repeats when the stack changes materially.
+      Performed 2026-11-01 on the workstation from the B2 replica with the password-manager copy
+      of `.env`. `restore.sh` ran under podman's docker shim; `integrity_check` is `ok`. The commit
+      running in production, `44cdd02`, booted on a copy of the file with scheduler, sweeps, HR
+      refresh and SMTP off: alembic at head `d4f6a8c1e3b5`, `/api/health` ok, `foreign_key_check`
+      empty, and 8 tournaments, 5 fencers, 4 registrations, 8 mails, matching production. The known
+      registration was checked by count, not by name. All restored copies were then deleted
 - [ ] 5.2 Register `/api/health` with an uptime monitor; add a Hetzner console CPU alert (sustained
       high load on an idle-by-design machine is the compromise signature); and add a replication
       check — a Litestream that dies or meets a rotated key fails silently, and neither uptime nor

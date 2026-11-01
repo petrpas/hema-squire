@@ -23,4 +23,5 @@ Restore drill log
 
   date        performed by   restored to   result
   ----------  -------------  ------------  ---------------------------------
-  (pending — task 5.1)
+  2026-11-01  owner, Claude   workstation   ok: 4 registrations, integrity ok,
+                                           app booted at 44cdd02, no FK errors
