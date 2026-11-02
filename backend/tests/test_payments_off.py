@@ -45,7 +45,7 @@ def setup(client, organizer, *, capacity=10, **patch):
     anywhere."""
     client.post(
         "/api/tournaments",
-        json={"slug": "cup", "display_name": "Cup", "date": "2026-12-05"},
+        json={"slug": "cup", "display_name": "Cup", "date": "2099-12-05"},
         headers=organizer,
     )
     base = {"city": "Brno", "organizers": [{"name": "Cup Org", "link": None}]}
@@ -274,8 +274,8 @@ def test_stored_payment_settings_survive_the_feature_being_turned_off(
             "deposit_amount": 300,
             "reservation_validity_days": 5,
             "reminder_day": 3,
-            "registration_closes": "2026-11-01",
-            "seating_deadline": "2026-11-01",
+            "registration_closes": "2099-11-01",
+            "seating_deadline": "2099-11-01",
         },
         headers=organizer,
     )
