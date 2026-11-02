@@ -520,7 +520,7 @@
   },
   "setup": {
     "pricingWarning": "Turnaj už má registrace — úprava cen mění dlužnou částku u nezaplacených rezervací.",
-    "recalculateMissing": "Doplnit chybějící ceny",
+    "recalculateMissing": "Dopočítat chybějící ceny",
     "tabs": {
       "tournament": "Turnaj",
       "disciplines": "Disciplíny",
@@ -814,7 +814,7 @@
         "eur": "Jen EUR"
       },
       "rate": "Kurz (1 EUR = ?)",
-      "rateHint": "Kolik jednotek místní měny je jedno euro — například 25,5 Kč za euro. Používá se jen pro tlačítko \"Doplnit chybějící ceny\".",
+      "rateHint": "Kolik jednotek místní měny je jedno euro — například 25,5 Kč za euro. Používá se jen pro tlačítko \"Dopočítat chybějící ceny\".",
       "rateWarning": "Kurz vypadá nepravděpodobně. Zkontroluj směr: jednotek místní měny za 1 EUR.",
       "rateNote": "Kurz slouží jen jako pomůcka pro doplnění chybějících cen — uložené ceny, součty ani platební údaje se změnou kurzu nezmění.",
       "legacyFixedFeesBlockEur": "Turnaj používá staré pevné poplatky za zapůjčení zbraně nebo afterparty, které nemají eurový protějšek — přejdi na položkové doplňkové služby, aby šlo zapnout eura.",

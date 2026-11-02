@@ -506,7 +506,7 @@
   },
   "setup": {
     "pricingWarning": "This tournament already has registrations — editing prices changes what unpaid reservations owe.",
-    "recalculateMissing": "Recalculate missing",
+    "recalculateMissing": "Calculate missing prices",
     "tabs": {
       "tournament": "Tournament",
       "disciplines": "Disciplines",
@@ -799,7 +799,7 @@
         "eur": "EUR only"
       },
       "rate": "Exchange rate (1 EUR = ?)",
-      "rateHint": "How many units of the local currency one euro is worth — for example 25.5 CZK per EUR. Used only for the \"Recalculate missing\" button.",
+      "rateHint": "How many units of the local currency one euro is worth — for example 25.5 CZK per EUR. Used only for the \"Calculate missing prices\" button.",
       "rateWarning": "That rate looks implausible. Check the direction: local-currency units per 1 EUR.",
       "rateNote": "The rate is only a convenience for filling in missing prices — stored prices, totals, and payment instructions never change when it changes.",
       "legacyFixedFeesBlockEur": "This tournament uses the legacy fixed weapon-rental/afterparty fees, which have no EUR counterpart — switch to itemized extra services to enable EUR.",
