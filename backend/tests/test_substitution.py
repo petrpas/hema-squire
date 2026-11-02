@@ -34,7 +34,7 @@ def mailbox():
 def setup(client, organizer, *, payments=True):
     client.post(
         "/api/tournaments",
-        json={"slug": "cup", "display_name": "Cup", "date": "2026-12-05"},
+        json={"slug": "cup", "display_name": "Cup", "date": "2099-12-05"},
         headers=organizer,
     )
     client.post(
@@ -134,7 +134,7 @@ def test_a_queued_placement_is_inherited_queued(client, auth_headers, mailbox):
     organizer = auth_headers()
     client.post(
         "/api/tournaments",
-        json={"slug": "cup", "display_name": "Cup", "date": "2026-12-05"},
+        json={"slug": "cup", "display_name": "Cup", "date": "2099-12-05"},
         headers=organizer,
     )
     client.post(
@@ -493,7 +493,7 @@ def test_a_manual_tournament_sends_nothing(client, auth_headers, mailbox):
     organizer = auth_headers()
     client.post(
         "/api/tournaments",
-        json={"slug": "cup", "display_name": "Cup", "date": "2026-12-05"},
+        json={"slug": "cup", "display_name": "Cup", "date": "2099-12-05"},
         headers=organizer,
     )
     client.patch(
@@ -532,7 +532,7 @@ def test_a_manual_tournament_needs_no_address(client, auth_headers, mailbox):
     organizer = auth_headers()
     client.post(
         "/api/tournaments",
-        json={"slug": "cup", "display_name": "Cup", "date": "2026-12-05"},
+        json={"slug": "cup", "display_name": "Cup", "date": "2099-12-05"},
         headers=organizer,
     )
     client.patch(

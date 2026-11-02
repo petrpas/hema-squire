@@ -341,7 +341,7 @@ def test_tournament_endpoints_refused_below_admin(client, auth_headers):
     organizer = auth_headers(email="o@example.com", role=Role.ORGANIZER)
     client.post(
         "/api/tournaments",
-        json={"slug": "cup", "display_name": "Cup", "date": "2026-12-05"},
+        json={"slug": "cup", "display_name": "Cup", "date": "2099-12-05"},
         headers=organizer,
     )
     assert client.get("/api/admin/tournaments", headers=organizer).status_code == 403
@@ -352,7 +352,7 @@ def test_admin_deletes_empty_draft_without_confirmation(client, auth_headers):
     owner = auth_headers(email="o@example.com")
     client.post(
         "/api/tournaments",
-        json={"slug": "cup", "display_name": "Cup", "date": "2026-12-05"},
+        json={"slug": "cup", "display_name": "Cup", "date": "2099-12-05"},
         headers=owner,
     )
     admin = auth_headers(email="admin@example.com", role=Role.ADMIN)

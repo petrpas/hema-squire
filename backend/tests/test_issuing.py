@@ -83,7 +83,7 @@ def row(name, email, *, when="2026-04-01T10:00:00", disciplines="SA", borrow="",
 def setup(client, organizer, *, fee=800, early_fee=None, early_until=None):
     client.post(
         "/api/tournaments",
-        json={"slug": "cup", "display_name": "Cup", "date": "2026-12-05"},
+        json={"slug": "cup", "display_name": "Cup", "date": "2099-12-05"},
         headers=organizer,
     )
     body = {"slug": "SA", "weapon": "SA", "capacity": 20, "fee": fee}

@@ -237,7 +237,7 @@ def test_bank_account_pattern_enforced_despite_schema_blind_spot(client, auth_he
     headers = auth_headers()
     client.post(
         "/api/tournaments",
-        json={"slug": "cup", "display_name": "Cup", "date": "2026-12-05"},
+        json={"slug": "cup", "display_name": "Cup", "date": "2099-12-05"},
         headers=headers,
     )
     rejected = client.patch(

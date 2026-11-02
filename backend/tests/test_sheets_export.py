@@ -66,7 +66,7 @@ def snapshot(client, organizer):
 def setup(client, auth_headers, organizer):
     client.post(
         "/api/tournaments",
-        json={"slug": "cup", "display_name": "Cup", "date": "2026-12-05"},
+        json={"slug": "cup", "display_name": "Cup", "date": "2099-12-05"},
         headers=organizer,
     )
     for code in ("LS", "SA"):
@@ -399,7 +399,7 @@ def test_two_tiers_produce_two_worksheets(client, auth_headers):
     organizer = auth_headers()
     client.post(
         "/api/tournaments",
-        json={"slug": "tiers", "display_name": "Tiers", "date": "2026-12-05"},
+        json={"slug": "tiers", "display_name": "Tiers", "date": "2099-12-05"},
         headers=organizer,
     )
     client.post(
@@ -452,7 +452,7 @@ def test_custom_weapon_worksheet_has_empty_rating_columns(client, auth_headers):
     organizer = auth_headers()
     client.post(
         "/api/tournaments",
-        json={"slug": "messer", "display_name": "Messer Cup", "date": "2026-12-05"},
+        json={"slug": "messer", "display_name": "Messer Cup", "date": "2099-12-05"},
         headers=organizer,
     )
     client.post(

@@ -50,7 +50,7 @@ def db_session():
 def setup_tournament(client, organizer, *, publish_it=True, capacity=5):
     client.post(
         "/api/tournaments",
-        json={"slug": "cup", "display_name": "Cup", "date": "2026-12-05"},
+        json={"slug": "cup", "display_name": "Cup", "date": "2099-12-05"},
         headers=organizer,
     )
     enable_payments(client, organizer, "cup")
@@ -440,7 +440,7 @@ def test_another_tournaments_code_is_no_code(client, auth_headers):
     setup_tournament(client, organizer)
     client.post(
         "/api/tournaments",
-        json={"slug": "other", "display_name": "Other", "date": "2026-12-05"},
+        json={"slug": "other", "display_name": "Other", "date": "2099-12-05"},
         headers=organizer,
     )
     response = client.post(

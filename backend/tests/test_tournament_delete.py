@@ -74,7 +74,7 @@ def tables_under_tournaments() -> list[Table]:
 def make_published_cup(client, organizer, slug: str) -> None:
     client.post(
         "/api/tournaments",
-        json={"slug": slug, "display_name": slug.title(), "date": "2026-12-05"},
+        json={"slug": slug, "display_name": slug.title(), "date": "2099-12-05"},
         headers=organizer,
     )
     client.patch(

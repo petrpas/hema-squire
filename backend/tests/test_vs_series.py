@@ -7,7 +7,7 @@ from app.models import Registration, Tournament
 from tests.conftest import enable_payments, import_statement, publish
 
 
-def create_tournament(client, organizer, slug, date="2026-12-05"):
+def create_tournament(client, organizer, slug, date="2099-12-05"):
     response = client.post(
         "/api/tournaments",
         json={"slug": slug, "display_name": slug, "date": date},
@@ -37,19 +37,19 @@ def register(client, slug, headers):
 
 
 def test_structured_vs_is_year_series_sequence(client, auth_headers):
-    """6.1: the fifth tournament of 2026, third registration, yields 2605003."""
+    """6.1: the fifth tournament of 2099, third registration, yields 9905003."""
     organizer = auth_headers()
     for i in range(1, 6):
         create_tournament(client, organizer, f"t{i}")
     detail = client.get("/api/tournaments/t5", headers=organizer).json()
-    assert detail["vs_year"] == 2026
+    assert detail["vs_year"] == 2099
     assert detail["vs_series"] == 5
-    assert detail["vs_prefix"] == 2605
+    assert detail["vs_prefix"] == 9905
 
     for i in range(1, 3):
         register(client, "t5", auth_headers(email=f"f{i}@example.com", name=f"F{i}"))
     third = register(client, "t5", auth_headers(email="f3@example.com", name="F3"))
-    assert third["vs"] == 2605003
+    assert third["vs"] == 9905003
 
 
 def test_sequence_is_per_tournament_both_start_at_one(client, auth_headers):
@@ -60,8 +60,8 @@ def test_sequence_is_per_tournament_both_start_at_one(client, auth_headers):
 
     first = register(client, "aa", auth_headers(email="a1@example.com", name="A1"))
     second = register(client, "bb", auth_headers(email="b1@example.com", name="B1"))
-    assert first["vs"] == 2601001
-    assert second["vs"] == 2602001
+    assert first["vs"] == 9901001
+    assert second["vs"] == 9902001
 
 
 def test_series_unique_within_year_reusable_across_years(client, auth_headers):
@@ -102,7 +102,7 @@ def test_series_editable_before_registration_frozen_after(client, auth_headers):
     assert ok.json()["vs_series_editable"] is True
 
     body = register(client, "aa", auth_headers(email="f1@example.com", name="F1"))
-    assert body["vs"] == 2605001  # uses the newly assigned prefix
+    assert body["vs"] == 9905001  # uses the newly assigned prefix
 
     detail = client.get("/api/tournaments/aa", headers=organizer).json()
     assert detail["vs_series_editable"] is False
@@ -120,15 +120,15 @@ def test_date_change_after_registration_does_not_renumber(client, auth_headers):
     organizer = auth_headers()
     create_tournament(client, organizer, "aa")
     first = register(client, "aa", auth_headers(email="f1@example.com", name="F1"))
-    assert first["vs"] == 2601001
+    assert first["vs"] == 9901001
 
-    moved = client.patch("/api/tournaments/aa", json={"date": "2027-01-10"}, headers=organizer)
+    moved = client.patch("/api/tournaments/aa", json={"date": "2100-01-10"}, headers=organizer)
     assert moved.status_code == 200
-    assert moved.json()["vs_year"] == 2026
+    assert moved.json()["vs_year"] == 2099
     assert moved.json()["vs_series"] == 1
 
     second = register(client, "aa", auth_headers(email="f2@example.com", name="F2"))
-    assert second["vs"] == 2601002  # sequence continues on the original prefix
+    assert second["vs"] == 9901002  # sequence continues on the original prefix
 
 
 def test_sequence_overflow_refused(client, auth_headers):
@@ -197,7 +197,7 @@ def test_concurrent_registrations_get_distinct_vs(client, auth_headers):
     first = next_vs(session, tournament)
     second = next_vs(session, tournament)
     assert first != second
-    assert {first, second} == {2601001, 2601002}
+    assert {first, second} == {9901001, 9901002}
 
 
 def test_legacy_vs_still_resolves_and_matches(client, auth_headers):

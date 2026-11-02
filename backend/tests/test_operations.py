@@ -23,7 +23,7 @@ def make_tournament(session: Session, slug: str = "cup") -> Tournament:
     tournament = Tournament(
         slug=slug,
         display_name=slug.title(),
-        date=date(2026, 12, 5),
+        date=date(2099, 12, 5),
         vs_year=2026,
         vs_series=series,
     )

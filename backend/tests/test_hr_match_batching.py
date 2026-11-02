@@ -138,7 +138,7 @@ def test_identical_rows_are_one_question_and_both_count_as_matched(client, auth_
     organizer = auth_headers()
     client.post(
         "/api/tournaments",
-        json={"slug": "cup", "display_name": "Cup", "date": "2026-12-05"},
+        json={"slug": "cup", "display_name": "Cup", "date": "2099-12-05"},
         headers=organizer,
     )
     client.post(

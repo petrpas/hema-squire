@@ -56,7 +56,7 @@ def setup(client, organizer, *, sb_capacity=20, early_fee=None, early_until=None
     500. `sb_capacity` is how the fullness tests make SB genuinely full."""
     client.post(
         "/api/tournaments",
-        json={"slug": "cup", "display_name": "Cup", "date": "2026-12-05"},
+        json={"slug": "cup", "display_name": "Cup", "date": "2099-12-05"},
         headers=organizer,
     )
     enable_payments(client, organizer, "cup")

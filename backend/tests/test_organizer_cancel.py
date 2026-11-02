@@ -42,7 +42,7 @@ def mailbox():
 def setup(client, organizer, *, capacity=10):
     client.post(
         "/api/tournaments",
-        json={"slug": "cup", "display_name": "Cup", "date": "2026-12-05"},
+        json={"slug": "cup", "display_name": "Cup", "date": "2099-12-05"},
         headers=organizer,
     )
     client.patch(
@@ -58,7 +58,7 @@ def setup(client, organizer, *, capacity=10):
     enable_payments(client, organizer, "cup")
     client.patch(
         "/api/tournaments/cup",
-        json={"bank_account": "CZ6508000000192000145399", "refundable_until": "2026-12-01"},
+        json={"bank_account": "CZ6508000000192000145399", "refundable_until": "2099-12-01"},
         headers=organizer,
     )
     publish(client, organizer, "cup")
@@ -298,7 +298,7 @@ def test_a_cancelled_issued_registration_is_not_reissued(client, auth_headers, m
     organizer = auth_headers()
     client.post(
         "/api/tournaments",
-        json={"slug": "cup", "display_name": "Cup", "date": "2026-12-05"},
+        json={"slug": "cup", "display_name": "Cup", "date": "2099-12-05"},
         headers=organizer,
     )
     client.post(

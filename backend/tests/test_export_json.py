@@ -18,7 +18,7 @@ pytestmark = pytest.mark.usefixtures("before_manual_entry_registers")
 def setup(client, organizer):
     client.post(
         "/api/tournaments",
-        json={"slug": "cup", "display_name": "Cup", "date": "2026-12-05"},
+        json={"slug": "cup", "display_name": "Cup", "date": "2099-12-05"},
         headers=organizer,
     )
     enable_payments(client, organizer, "cup")
@@ -355,7 +355,7 @@ def test_tiers_round_trip(client, auth_headers):
     organizer = auth_headers()
     client.post(
         "/api/tournaments",
-        json={"slug": "tiers", "display_name": "Tiers", "date": "2026-12-05"},
+        json={"slug": "tiers", "display_name": "Tiers", "date": "2099-12-05"},
         headers=organizer,
     )
     client.patch(
@@ -403,7 +403,7 @@ def test_individual_and_team_in_one_weapon_round_trip(client, auth_headers):
     organizer = auth_headers()
     client.post(
         "/api/tournaments",
-        json={"slug": "mixed", "display_name": "Mixed", "date": "2026-12-05"},
+        json={"slug": "mixed", "display_name": "Mixed", "date": "2099-12-05"},
         headers=organizer,
     )
     client.patch(
@@ -576,7 +576,7 @@ def test_opening_moment_round_trips(client, auth_headers):
     organizer = auth_headers()
     client.post(
         "/api/tournaments",
-        json={"slug": "evening", "display_name": "Evening", "date": "2026-12-05"},
+        json={"slug": "evening", "display_name": "Evening", "date": "2099-12-05"},
         headers=organizer,
     )
     client.patch(
@@ -623,7 +623,7 @@ def test_document_without_an_opening_time_restores_with_the_default_zone(client,
     organizer = auth_headers()
     client.post(
         "/api/tournaments",
-        json={"slug": "older", "display_name": "Older", "date": "2026-12-05"},
+        json={"slug": "older", "display_name": "Older", "date": "2099-12-05"},
         headers=organizer,
     )
     client.patch(

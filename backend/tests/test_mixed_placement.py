@@ -20,7 +20,7 @@ from app.main import app
 from app.models import Registration, RegistrationState
 from tests.conftest import credit_registration, enable_payments, publish
 
-TOURNAMENT_DATE = "2026-12-05"
+TOURNAMENT_DATE = "2099-12-05"
 IBAN = "CZ6508000000192000145399"
 
 

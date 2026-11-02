@@ -39,7 +39,7 @@ from tests.conftest import (
 )
 
 IBAN = "CZ6508000000192000145399"
-TOURNAMENT_DATE = "2026-12-05"
+TOURNAMENT_DATE = "2099-12-05"
 
 
 class CollectingMailer:
@@ -182,7 +182,7 @@ def test_seating_deadline_explicit_wins_over_both_fallbacks():
     from app.setup import seating_deadline_for
 
     tournament = Tournament(
-        date=datetime.date(2026, 12, 5),
+        date=datetime.date(2099, 12, 5),
         registration_closes=None,
         seating_deadline=datetime.date(2026, 9, 1),
     )
@@ -194,7 +194,7 @@ def test_seating_has_settled_by_stamp_or_by_deadline():
     between the deadline and the next tick, the deadline alone ignores an
     organizer who settled early."""
     tournament = Tournament(
-        date=datetime.date(2026, 12, 5), seating_deadline=datetime.date(2026, 10, 1)
+        date=datetime.date(2099, 12, 5), seating_deadline=datetime.date(2026, 10, 1)
     )
     noon = datetime.time(12, 0)
 
@@ -222,10 +222,10 @@ def test_seating_deadline_runs_to_the_end_of_the_local_day():
     instant = datetime.datetime(2026, 10, 1, 22, 30, tzinfo=UTC)
 
     prague = Tournament(
-        date=datetime.date(2026, 12, 5), seating_deadline=deadline, timezone="Europe/Prague"
+        date=datetime.date(2099, 12, 5), seating_deadline=deadline, timezone="Europe/Prague"
     )
     new_york = Tournament(
-        date=datetime.date(2026, 12, 5), seating_deadline=deadline, timezone="America/New_York"
+        date=datetime.date(2099, 12, 5), seating_deadline=deadline, timezone="America/New_York"
     )
 
     assert seating_has_settled(prague, instant)
@@ -369,7 +369,7 @@ def test_settlement_waits_for_the_deadline_day_to_end_where_the_tournament_is(cl
         tournament = Tournament(
             slug=f"tz-{series}",
             display_name="TZ",
-            date=datetime.date(2026, 12, 5),
+            date=datetime.date(2099, 12, 5),
             seating_deadline=deadline,
             timezone=timezone,
             vs_year=2026,
@@ -912,7 +912,7 @@ def test_deposit_amount_is_a_setup_completeness_item(client, auth_headers):
 
     session = db_session()
     tournament = Tournament(
-        date=datetime.date(2026, 12, 5),
+        date=datetime.date(2099, 12, 5),
         payment_mode=PaymentMode.DEPOSIT,
         city="Brno",
         organizers=[{"name": "Org", "link": None}],

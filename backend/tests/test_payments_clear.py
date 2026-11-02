@@ -349,7 +349,7 @@ def test_refused_where_payments_are_disabled(client, auth_headers, mailbox, pars
     organizer = auth_headers()
     client.post(
         "/api/tournaments",
-        json={"slug": "nopay", "display_name": "No Pay", "date": "2026-12-05"},
+        json={"slug": "nopay", "display_name": "No Pay", "date": "2099-12-05"},
         headers=organizer,
     )
 

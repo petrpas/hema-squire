@@ -57,7 +57,7 @@ def db_session():
 def make_tournament(client, organizer, *, payments=True, fee_eur=None, **params):
     client.post(
         "/api/tournaments",
-        json={"slug": "cup", "display_name": "Cup", "date": "2026-12-05"},
+        json={"slug": "cup", "display_name": "Cup", "date": "2099-12-05"},
         headers=organizer,
     )
     if payments:

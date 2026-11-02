@@ -65,7 +65,7 @@ def tournament_row(slug="cup", session=None):
 def make_tournament(client, organizer, slug="cup", **patch):
     client.post(
         "/api/tournaments",
-        json={"slug": slug, "display_name": slug.upper(), "date": "2026-12-05"},
+        json={"slug": slug, "display_name": slug.upper(), "date": "2099-12-05"},
         headers=organizer,
     )
     base = {"city": "Brno", "organizers": [{"name": "Org", "link": None}]}

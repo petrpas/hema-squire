@@ -19,7 +19,7 @@ TODAY = today_local()
 def make_tournament(client, organizer, slug="cup", **patch):
     client.post(
         "/api/tournaments",
-        json={"slug": slug, "display_name": "Cup", "date": "2026-12-05"},
+        json={"slug": slug, "display_name": "Cup", "date": "2099-12-05"},
         headers=organizer,
     )
     if patch:
@@ -150,7 +150,7 @@ def test_no_close_date_stays_open_through_tournament_date(client, auth_headers):
     add_priced_discipline(client, organizer, slug)
     publish(client, organizer, slug)
     fencer = auth_headers(email="f1@example.com", name="F1")
-    # tournament date (2026-12-05) is in the future; no opens/closes set
+    # tournament date (2099-12-05) is in the future; no opens/closes set
     assert register(client, fencer, slug=slug).status_code == 201
 
 

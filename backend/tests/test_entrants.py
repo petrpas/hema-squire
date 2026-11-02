@@ -17,7 +17,7 @@ def db_session():
 def setup_tournament(client, organizer, *, payments=True, sabre_capacity=1):
     client.post(
         "/api/tournaments",
-        json={"slug": "cup", "display_name": "Cup", "date": "2026-12-05"},
+        json={"slug": "cup", "display_name": "Cup", "date": "2099-12-05"},
         headers=organizer,
     )
     client.patch(
@@ -113,7 +113,7 @@ def test_a_draft_is_not_found(client, auth_headers):
     organizer = auth_headers()
     client.post(
         "/api/tournaments",
-        json={"slug": "cup", "display_name": "Cup", "date": "2026-12-05"},
+        json={"slug": "cup", "display_name": "Cup", "date": "2099-12-05"},
         headers=organizer,
     )
     assert client.get("/api/tournaments/cup/entrants").status_code == 404
@@ -347,7 +347,7 @@ def test_an_organizer_kept_list_states_when_the_roster_reached_squire(client, au
 def setup_team_tournament(client, organizer):
     client.post(
         "/api/tournaments",
-        json={"slug": "cup", "display_name": "Cup", "date": "2026-12-05"},
+        json={"slug": "cup", "display_name": "Cup", "date": "2099-12-05"},
         headers=organizer,
     )
     client.patch(

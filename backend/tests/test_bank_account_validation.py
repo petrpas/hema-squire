@@ -9,7 +9,7 @@ CZ_DOMESTIC = "19-2000145399/0800"
 def make_tournament(client, organizer, slug="cup"):
     client.post(
         "/api/tournaments",
-        json={"slug": slug, "display_name": "Cup", "date": "2026-12-05"},
+        json={"slug": slug, "display_name": "Cup", "date": "2099-12-05"},
         headers=organizer,
     )
     return slug

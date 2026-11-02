@@ -220,7 +220,7 @@ def _hand_entry(dormant_source: str | None) -> tuple[Tournament, Fencer, Registr
     tournament = Tournament(
         slug="cup",
         display_name="Cup",
-        date=datetime.date(2026, 12, 5),
+        date=datetime.date(2099, 12, 5),
         language="cs",
         feature_payments=True,
         local_currency=Currency.CZK,

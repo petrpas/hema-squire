@@ -17,7 +17,7 @@ pytestmark = pytest.mark.usefixtures("before_manual_entry_registers")
 def setup(client, organizer):
     client.post(
         "/api/tournaments",
-        json={"slug": "cup", "display_name": "Cup", "date": "2026-12-05"},
+        json={"slug": "cup", "display_name": "Cup", "date": "2099-12-05"},
         headers=organizer,
     )
     client.patch(
@@ -67,7 +67,7 @@ def test_numbers_are_per_tournament(client, auth_headers, engine):
     setup(client, organizer)
     client.post(
         "/api/tournaments",
-        json={"slug": "other", "display_name": "Other", "date": "2026-12-06"},
+        json={"slug": "other", "display_name": "Other", "date": "2099-12-06"},
         headers=organizer,
     )
     with Session(engine) as session:

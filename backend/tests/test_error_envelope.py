@@ -5,7 +5,7 @@
 def make_tournament(client, headers, slug="cup"):
     response = client.post(
         "/api/tournaments",
-        json={"slug": slug, "display_name": "Cup", "date": "2026-12-05"},
+        json={"slug": slug, "display_name": "Cup", "date": "2099-12-05"},
         headers=headers,
     )
     assert response.status_code == 201, response.text

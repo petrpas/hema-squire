@@ -5,7 +5,7 @@ and registration gating (tasks 3.1-3.3)."""
 from app.models import Role
 from tests.conftest import publish
 
-TOURNAMENT = {"slug": "cup", "display_name": "Cup", "date": "2026-12-05"}
+TOURNAMENT = {"slug": "cup", "display_name": "Cup", "date": "2099-12-05"}
 
 
 def make_tournament(client, headers, slug="cup"):

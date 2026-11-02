@@ -5,7 +5,7 @@ from tests.conftest import enable_payments, publish
 from tests.conftest import import_statement as conftest_import_statement
 
 
-def create_tournament(client, organizer, slug, date="2026-12-05"):
+def create_tournament(client, organizer, slug, date="2099-12-05"):
     response = client.post(
         "/api/tournaments",
         json={"slug": slug, "display_name": slug, "date": date},
@@ -56,11 +56,11 @@ def test_sibling_tournaments_transaction_is_set_aside_then_matches_its_own(clien
     in B's unmatched queue, no payment, no email — and matches normally when
     A ingests its own copy."""
     organizer = auth_headers()
-    create_tournament(client, organizer, "aa")  # series 1 -> prefix 2601
-    create_tournament(client, organizer, "bb")  # series 2 -> prefix 2602
+    create_tournament(client, organizer, "aa")  # series 1 -> prefix 9901
+    create_tournament(client, organizer, "bb")  # series 2 -> prefix 9902
     fencer_a = auth_headers(email="fa@example.com", name="FA")
     reg_a = register(client, "aa", fencer_a)
-    assert reg_a["vs"] == 2601001
+    assert reg_a["vs"] == 9901001
 
     # B ingests a statement that (as on a shared bank account) also carries
     # A's transaction
@@ -91,12 +91,12 @@ def test_mistyped_prefix_does_not_route_to_a_sibling(client, auth_headers):
     matches no registration lands in the unmatched queue, selecting no
     tournament from its prefix."""
     organizer = auth_headers()
-    create_tournament(client, organizer, "aa")  # series 1 -> prefix 2601
-    create_tournament(client, organizer, "bb")  # series 2 -> prefix 2602
+    create_tournament(client, organizer, "aa")  # series 1 -> prefix 9901
+    create_tournament(client, organizer, "bb")  # series 2 -> prefix 9902
     register(client, "bb", auth_headers(email="fb@example.com", name="FB"))
 
-    # 2602999: names bb's real prefix (2602) but no registration owns it
-    result = import_statement(client, organizer, "aa", statement_for(2602999))
+    # 9902999: names bb's real prefix (9902) but no registration owns it
+    result = import_statement(client, organizer, "aa", statement_for(9902999))
     assert result["matched"] == 0
     assert result["set_aside"] == 0
     assert result["unmatched"] == 1

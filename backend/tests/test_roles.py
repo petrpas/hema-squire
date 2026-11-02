@@ -7,7 +7,7 @@ from app.config import settings
 from app.models import Role
 from tests.conftest import publish
 
-TOURNAMENT = {"slug": "cup", "display_name": "Cup", "date": "2026-12-05"}
+TOURNAMENT = {"slug": "cup", "display_name": "Cup", "date": "2099-12-05"}
 
 
 def create_tournament(client, headers):
@@ -142,7 +142,7 @@ def test_global_admin_has_no_console_access(client, auth_headers):
 def test_a_new_tournament_takes_its_creators_language(client, auth_headers):
     created = client.post(
         "/api/tournaments",
-        json={"slug": "cup", "display_name": "Cup", "date": "2026-12-05"},
+        json={"slug": "cup", "display_name": "Cup", "date": "2099-12-05"},
         headers=auth_headers(language="en"),
     )
     assert created.status_code == 201, created.text

@@ -28,7 +28,7 @@ def tournament(**kwargs) -> Tournament:
     not cancelled. Unattached, so column defaults do not run — the zone is set
     here rather than left to the ORM."""
     fields = {
-        "date": datetime.date(2026, 12, 5),
+        "date": datetime.date(2099, 12, 5),
         "timezone": PRAGUE,
         "published_at": datetime.datetime(2026, 1, 1, tzinfo=UTC),
         "cancelled_at": None,
@@ -209,7 +209,7 @@ def test_cancelled_and_unpublished_still_outrank_the_window():
 def setup_tournament(client, organizer, slug="cup", **patch):
     client.post(
         "/api/tournaments",
-        json={"slug": slug, "display_name": "Cup", "date": "2026-12-05"},
+        json={"slug": slug, "display_name": "Cup", "date": "2099-12-05"},
         headers=organizer,
     )
     if patch:

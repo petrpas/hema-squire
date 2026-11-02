@@ -42,7 +42,7 @@ def setup_draft(client, organizer, slug="cup"):
     stands between this tournament and its data work."""
     client.post(
         "/api/tournaments",
-        json={"slug": slug, "display_name": "Cup", "date": "2026-12-05"},
+        json={"slug": slug, "display_name": "Cup", "date": "2099-12-05"},
         headers=organizer,
     )
     client.patch(

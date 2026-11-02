@@ -45,7 +45,7 @@ def test_qr_png_magic_bytes():
 def _setup(client, organizer):
     client.post(
         "/api/tournaments",
-        json={"slug": "cup", "display_name": "Na Duel! 2026", "date": "2026-12-05"},
+        json={"slug": "cup", "display_name": "Na Duel! 2026", "date": "2099-12-05"},
         headers=organizer,
     )
     enable_payments(client, organizer, "cup")
@@ -83,7 +83,7 @@ def test_confirmation_email_localized_with_qr(client, auth_headers, mailbox):
     assert message["To"] == "jan@example.com"
     assert "pokyny k platbě" in message["Subject"]
     body = message.get_body(("plain",)).get_content()
-    assert "Variabilní symbol: 2601001" in body
+    assert "Variabilní symbol: 9901001" in body
     assert "1100 Kč" in body
     assert "CZ6508000000192000145399" in body
     assert "19-2000145399/0800" in body  # domestic form stated alongside the IBAN
@@ -97,7 +97,7 @@ def test_confirmation_email_states_iban_alone_for_foreign_account(client, auth_h
     organizer = auth_headers()
     client.post(
         "/api/tournaments",
-        json={"slug": "cup", "display_name": "Na Duel! 2026", "date": "2026-12-05"},
+        json={"slug": "cup", "display_name": "Na Duel! 2026", "date": "2099-12-05"},
         headers=organizer,
     )
     enable_payments(client, organizer, "cup")
@@ -162,7 +162,7 @@ def test_admission_sends_payment_email(client, auth_headers, mailbox):
     from app.models import Registration
 
     session = next(app.dependency_overrides[get_session]())
-    waiting_id = session.scalar(select(Registration.id).where(Registration.vs == 2601002))
+    waiting_id = session.scalar(select(Registration.id).where(Registration.vs == 9901002))
 
     admitted = client.post(
         f"/api/tournaments/cup/registrations/{waiting_id}/admit/LS", headers=organizer
@@ -175,7 +175,7 @@ def test_admission_sends_payment_email(client, auth_headers, mailbox):
     assert payment_message["To"] == "b@example.com"
     assert "Uvolnilo se místo" in payment_message["Subject"]
     body = payment_message.get_body(("plain",)).get_content()
-    assert "Variabilní symbol: 2601002" in body
+    assert "Variabilní symbol: 9901002" in body
     assert "Longsword" in body
     assert len(list(payment_message.iter_attachments())) == 1
 

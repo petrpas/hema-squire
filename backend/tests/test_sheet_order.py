@@ -16,7 +16,7 @@ pytestmark = pytest.mark.usefixtures("before_manual_entry_registers")
 CSV = (
     "Name,When\n"
     "Early Import,2026-04-01T14:15:27\n"
-    "Late Import,2027-01-01T09:00:00\n"
+    "Late Import,2099-01-01T09:00:00\n"
     "Timeless Import,\n"
     "Unreadable Import,sometime in spring\n"
 )
@@ -41,7 +41,7 @@ class TimeParser:
 def setup(client, organizer):
     client.post(
         "/api/tournaments",
-        json={"slug": "cup", "display_name": "Cup", "date": "2026-12-05"},
+        json={"slug": "cup", "display_name": "Cup", "date": "2099-12-05"},
         headers=organizer,
     )
     client.patch(

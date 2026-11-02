@@ -9,7 +9,7 @@ TODAY = today_local()
 def setup_tournament(client, organizer, early_bird=False):
     client.post(
         "/api/tournaments",
-        json={"slug": "cup", "display_name": "Cup", "date": "2026-12-05"},
+        json={"slug": "cup", "display_name": "Cup", "date": "2099-12-05"},
         headers=organizer,
     )
     enable_payments(client, organizer, "cup")
@@ -56,13 +56,13 @@ def test_registration_computes_total_and_assigns_vs(client, auth_headers):
     assert response.status_code == 201
     body = response.json()
     assert body["total_amount"] == 800 + 500 + 200 + 300
-    assert body["vs"] == 2601001
+    assert body["vs"] == 9901001
     assert body["state"] == "reserved"
     assert body["expires_at"] is not None
     assert all(not e["is_substitute"] for e in body["entries"])
 
     second = auth_headers(email="f2@example.com", name="F2")
-    assert register(client, second).json()["vs"] == 2601002
+    assert register(client, second).json()["vs"] == 9901002
 
 
 def test_early_bird_prices_apply(client, auth_headers):
@@ -586,7 +586,7 @@ def test_admit_requires_organizer_and_capacity(client, auth_headers):
     from app.models import Registration
 
     session = next(app.dependency_overrides[get_session]())
-    waiting_id = session.scalar(select(Registration.id).where(Registration.vs == 2601002))
+    waiting_id = session.scalar(select(Registration.id).where(Registration.vs == 9901002))
 
     denied = client.post(f"/api/tournaments/cup/registrations/{waiting_id}/admit/SB", headers=first)
     assert denied.status_code == 403
@@ -608,7 +608,7 @@ def test_two_disciplines_same_classification_get_generated_slugs(client, auth_he
     organizer = auth_headers()
     client.post(
         "/api/tournaments",
-        json={"slug": "cup", "display_name": "Cup", "date": "2026-12-05"},
+        json={"slug": "cup", "display_name": "Cup", "date": "2099-12-05"},
         headers=organizer,
     )
     first = client.post(
@@ -631,7 +631,7 @@ def test_individual_and_team_discipline_in_one_weapon_both_accepted(client, auth
     organizer = auth_headers()
     client.post(
         "/api/tournaments",
-        json={"slug": "cup", "display_name": "Cup", "date": "2026-12-05"},
+        json={"slug": "cup", "display_name": "Cup", "date": "2099-12-05"},
         headers=organizer,
     )
     individual = client.post(
@@ -662,7 +662,7 @@ def test_second_individual_and_team_discipline_disambiguated(client, auth_header
     organizer = auth_headers()
     client.post(
         "/api/tournaments",
-        json={"slug": "cup", "display_name": "Cup", "date": "2026-12-05"},
+        json={"slug": "cup", "display_name": "Cup", "date": "2099-12-05"},
         headers=organizer,
     )
     payload = {"weapon": "LS", "capacity": 10, "fee": 800}
@@ -692,7 +692,7 @@ def test_organizer_override_accepted_and_collision_refused(client, auth_headers)
     organizer = auth_headers()
     client.post(
         "/api/tournaments",
-        json={"slug": "cup", "display_name": "Cup", "date": "2026-12-05"},
+        json={"slug": "cup", "display_name": "Cup", "date": "2099-12-05"},
         headers=organizer,
     )
     a = client.post(
@@ -723,7 +723,7 @@ def test_slug_generated_from_a_weapon_outside_the_taxonomy_is_normalized(client,
     organizer = auth_headers()
     client.post(
         "/api/tournaments",
-        json={"slug": "cup", "display_name": "Cup", "date": "2026-12-05"},
+        json={"slug": "cup", "display_name": "Cup", "date": "2099-12-05"},
         headers=organizer,
     )
     created = client.post(
@@ -739,7 +739,7 @@ def test_slug_override_is_normalized(client, auth_headers):
     organizer = auth_headers()
     client.post(
         "/api/tournaments",
-        json={"slug": "cup", "display_name": "Cup", "date": "2026-12-05"},
+        json={"slug": "cup", "display_name": "Cup", "date": "2099-12-05"},
         headers=organizer,
     )
     created = client.post(
@@ -765,7 +765,7 @@ def test_existing_team_slug_from_before_kind_aware_generation_is_not_rewritten(
     organizer = auth_headers()
     client.post(
         "/api/tournaments",
-        json={"slug": "cup", "display_name": "Cup", "date": "2026-12-05"},
+        json={"slug": "cup", "display_name": "Cup", "date": "2099-12-05"},
         headers=organizer,
     )
     client.post(
@@ -899,7 +899,7 @@ def test_slug_frozen_after_team_entry(client, auth_headers):
     organizer = auth_headers()
     client.post(
         "/api/tournaments",
-        json={"slug": "cup", "display_name": "Cup", "date": "2026-12-05"},
+        json={"slug": "cup", "display_name": "Cup", "date": "2099-12-05"},
         headers=organizer,
     )
     client.patch(
@@ -950,7 +950,7 @@ def test_custom_weapon_accepted_with_name_refused_without(client, auth_headers):
     organizer = auth_headers()
     client.post(
         "/api/tournaments",
-        json={"slug": "cup", "display_name": "Cup", "date": "2026-12-05"},
+        json={"slug": "cup", "display_name": "Cup", "date": "2099-12-05"},
         headers=organizer,
     )
     named = client.post(
@@ -982,7 +982,7 @@ def test_entering_one_tier_does_not_count_against_the_other(client, auth_headers
     organizer = auth_headers()
     client.post(
         "/api/tournaments",
-        json={"slug": "cup", "display_name": "Cup", "date": "2026-12-05"},
+        json={"slug": "cup", "display_name": "Cup", "date": "2099-12-05"},
         headers=organizer,
     )
     client.patch(

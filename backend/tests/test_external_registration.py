@@ -30,7 +30,7 @@ def tournament_row(slug="cup"):
 def make_tournament(client, organizer, **patch):
     client.post(
         "/api/tournaments",
-        json={"slug": "cup", "display_name": "Cup", "date": "2026-12-05"},
+        json={"slug": "cup", "display_name": "Cup", "date": "2099-12-05"},
         headers=organizer,
     )
     base = {"city": "Brno", "organizers": [{"name": "Org", "link": None}]}
@@ -154,7 +154,7 @@ def test_the_other_mandatory_items_still_apply_when_organizer_kept(client, auth_
     organizer = auth_headers()
     client.post(
         "/api/tournaments",
-        json={"slug": "cup", "display_name": "Cup", "date": "2026-12-05"},
+        json={"slug": "cup", "display_name": "Cup", "date": "2099-12-05"},
         headers=organizer,
     )
     kept_by_organizer(client, organizer)

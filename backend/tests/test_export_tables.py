@@ -16,7 +16,7 @@ def organizer_with_tournament(client, auth_headers):
     organizer = auth_headers()
     client.post(
         "/api/tournaments",
-        json={"slug": "cup", "display_name": "Cup", "date": "2026-12-05"},
+        json={"slug": "cup", "display_name": "Cup", "date": "2099-12-05"},
         headers=organizer,
     )
     for code in ("LS", "SA"):

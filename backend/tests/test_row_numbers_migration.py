@@ -54,7 +54,7 @@ def _seed(db_path: Path) -> None:
         id=1,
         slug="cup",
         display_name="Cup",
-        date="2026-12-05",
+        date="2099-12-05",
         language="cs",
         organizers="[]",
         discounts="[]",

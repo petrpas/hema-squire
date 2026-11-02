@@ -48,7 +48,7 @@ def silent_bank():
 def setup_tournament(client, organizer):
     client.post(
         "/api/tournaments",
-        json={"slug": "cup", "display_name": "Cup", "date": "2026-12-05"},
+        json={"slug": "cup", "display_name": "Cup", "date": "2099-12-05"},
         headers=organizer,
     )
     enable_payments(client, organizer, "cup")
@@ -219,7 +219,7 @@ def test_the_window_never_asks_about_days_that_have_not_happened(client, auth_he
     _override(bank)
     try:
         organizer = auth_headers()
-        setup_tournament(client, organizer)  # dated 2026-12-05, well ahead
+        setup_tournament(client, organizer)  # dated 2099-12-05, well ahead
         client.patch(
             "/api/tournaments/cup",
             json={

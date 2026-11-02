@@ -33,7 +33,7 @@ def mailbox():
 def setup(client, organizer, slug="cup", *, capacity=10):
     client.post(
         "/api/tournaments",
-        json={"slug": slug, "display_name": slug.title(), "date": "2026-12-05"},
+        json={"slug": slug, "display_name": slug.title(), "date": "2099-12-05"},
         headers=organizer,
     )
     client.patch(

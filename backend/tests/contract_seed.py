@@ -73,7 +73,7 @@ def build(client, auth_headers, engine) -> Seed:
 
     client.post(
         "/api/tournaments",
-        json={"slug": SLUG, "display_name": "Cup", "date": "2026-12-01"},
+        json={"slug": SLUG, "display_name": "Cup", "date": "2099-12-01"},
         headers=organizer,
     )
     client.post(
