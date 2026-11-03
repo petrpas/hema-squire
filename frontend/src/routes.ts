@@ -80,3 +80,8 @@ export function admin(): string {
 export function profile(): string {
   return "/profile";
 }
+
+/** The public privacy notice (spec `privacy`). */
+export function privacy(): string {
+  return "/privacy";
+}

@@ -245,6 +245,9 @@ export interface Account {
    *  menu asks only whether there are any, and asks it on every signed-in
    *  page, so the answer rides on the account rather than on a listing. */
   organized_count: number;
+  /** Whether the account owns a tournament and has not accepted the current
+   *  organizer data terms; the console asks first (spec `privacy`). */
+  organizer_terms_due: boolean;
 }
 
 export type PleaState = "pending" | "granted" | "denied" | "cancelled" | null;
@@ -1883,6 +1886,10 @@ export const api = {
   ratingsLatest: (slug: string) =>
     request<{ taken_at: string | null; ratings: number }>(`/api/tournaments/${slug}/ratings`),
   account: () => request<Account>("/api/account"),
+  /** The account's own data, kept as a file by the Profile page (spec
+   *  `privacy`). Its shape is the file's, read by the person, not the app. */
+  accountExport: () => request<unknown>("/api/account/export"),
+  acceptOrganizerTerms: () => request<Account>("/api/account/organizer-terms", { method: "POST" }),
   updateAccount: (patch: {
     email?: string;
     display_name?: string;

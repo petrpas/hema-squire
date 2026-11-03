@@ -1059,7 +1059,8 @@
     "logout": "Log out",
     "signIn": "Sign in",
     "signInForMine": "Your events are an account's list; sign in to read it.",
-    "createTournament": "Create event"
+    "createTournament": "Create event",
+    "privacy": "Privacy"
   },
   "profile": {
     "title": "Profile",
@@ -1731,5 +1732,105 @@
     "apply": "Apply",
     "refused": "This code does not apply.",
     "applied": "{{name}}: {{amount}}"
+  },
+  "privacy": {
+    "link": "Privacy",
+    "notice": "How we handle your data is described in the",
+    "noticeLink": "privacy notice",
+    "page": {
+      "title": "Privacy",
+      "effective": "Effective from 3 November 2026.",
+      "sections": [
+        {
+          "title": "Who is responsible",
+          "paragraphs": [
+            "Squire is operated by Petr Paščenko, a natural person, Prague.",
+            "The operator is the controller for accounts, the public pages and event rosters including their history, for sending mail and for the security of the service.",
+            "The event's organizer is the controller for entries to that event, its payments and their matching. The operator processes that data as the organizer's processor. Exports an organizer downloads or sends to Google Sheets are outside Squire and are the organizer's responsibility."
+          ]
+        },
+        {
+          "title": "Contact",
+          "paragraphs": [
+            "Send requests to access, correct, erase or restrict your data, or to object, to privacy@hemasquire.eu. The address is for everyone, including a guest without an account and a person entered by an organizer. A request about an entry to an event is passed to its organizer where we cannot settle it ourselves."
+          ]
+        },
+        {
+          "title": "What we process and why",
+          "paragraphs": [
+            "Account: name, e-mail, password (stored only as a hash), club, nationality, HEMA Ratings ID, language and the history of profile changes. Used to keep the account and sign you in. Legal basis: performance of a contract (Art. 6(1)(b) GDPR).",
+            "Event entry: chosen disciplines and items, contact address, accommodation, notes, amounts and variable symbol. Used to enter you in the event and to bill it. Legal basis: performance of the contract between you and the organizer.",
+            "Payments: from the organizer's bank statement, the payer's name, account number, message, amount and date. Used to match a payment to an entry. Legal basis: the organizer's legitimate interest in keeping track of payments (Art. 6(1)(f) GDPR).",
+            "Public rosters: name, nationality, club, HEMA Ratings ID and whether the entry is paid. Used as a public list of participants and a complete historical record of a sporting event. Legal basis: legitimate interest (Art. 6(1)(f) GDPR).",
+            "Sent mail: recipient, subject, text and delivery status. Used to deliver messages about your account and entries and to resolve delivery problems. Legal basis: performance of a contract and legitimate interest.",
+            "IP address: used only in the server's memory to limit repeated sign-in attempts and stored nowhere. Legal basis: legitimate interest in the security of the service."
+          ]
+        },
+        {
+          "title": "Who receives data",
+          "paragraphs": [
+            "An event's organizer sees the entries and payments of that event.",
+            "The operator uses these processors: Hetzner Online GmbH (server, Helsinki, Finland), Backblaze, Inc. (database backup, Amsterdam, the Netherlands), Scaleway SAS (sending e-mail, France) and Anthropic, PBC (language model, USA). Anthropic receives names, clubs and payment texts only when an organizer runs table reading, duplicate search or payment matching with the language model.",
+            "Squire only downloads public rankings from HEMA Ratings and sends nothing there."
+          ]
+        },
+        {
+          "title": "Transfers outside the EU",
+          "paragraphs": [
+            "Data passed to Anthropic is processed in the USA under the European Commission's standard contractual clauses. An export to Google Sheets is the organizer's decision and falls under the organizer's own agreement with Google."
+          ]
+        },
+        {
+          "title": "How long we keep data",
+          "paragraphs": [
+            "Account: until it is deleted.",
+            "Sent mail: 30 days after it was sent or delivery was given up.",
+            "An unfinished signup and a password reset link: until they expire.",
+            "The payer's name, account number and message from bank statements, contact addresses, notes, accommodation and details of imported rows: 12 months after the event's date. Amounts, dates and variable symbols stay for the organizer's records.",
+            "Event rosters: with no time limit, as a historical record.",
+            "Database backups: 28 days."
+          ]
+        },
+        {
+          "title": "After an account is deleted",
+          "paragraphs": [
+            "Ask for your account to be deleted at privacy@hemasquire.eu. The e-mail address, password and profile history are deleted, and entries to events still to come are cancelled. The organizer of such an event is told.",
+            "On the rosters of events that have already taken place, your name, HEMA Ratings ID, club and nationality stay. A roster is the complete record of a sporting event and would not hold without them. This data is not anonymised: it stays linked to the entry. You can object to it being kept at the address above, and we will decide each objection on its own merits."
+          ]
+        },
+        {
+          "title": "Your rights",
+          "paragraphs": [
+            "You have the right to access your data, to have it corrected or erased, to restrict its processing, to data portability, and to object to processing based on legitimate interest. You can download your account's data on your profile page and correct it there.",
+            "You can lodge a complaint with the Czech data protection authority, Úřad pro ochranu osobních údajů (www.uoou.gov.cz)."
+          ]
+        },
+        {
+          "title": "Storage in your browser",
+          "paragraphs": [
+            "Squire sets no cookies. It keeps only a sign-in token in your browser, without which signing in does not work."
+          ]
+        }
+      ]
+    },
+    "terms": {
+      "title": "Data processing terms for organizers",
+      "paragraphs": [
+        "For entries to your events, their payments and their matching, you are the controller of the personal data. Squire (Petr Paščenko) processes it as your processor, only for those purposes and on the instructions you give by how you use Squire.",
+        "Squire uses further processors for this: Hetzner (server, Finland), Backblaze (backup, the Netherlands), Scaleway (e-mail, France) and Anthropic (language model, USA), the last only when you run table reading, duplicate search or matching with the language model.",
+        "Squire removes the payer's name, account number and message from bank statements, contact addresses, notes and accommodation 12 months after the event's date. Amounts, dates and variable symbols stay. Rosters stay with no time limit as the event's historical record; the operator is responsible for them.",
+        "Squire keeps the data secure, helps you answer people's requests about their data, and tells you without undue delay of a security breach. On request it hands you your event's data as an export.",
+        "You are responsible for exports you download or send to Google Sheets."
+      ],
+      "accept": "I agree",
+      "failed": "The agreement could not be saved.",
+      "leave": "Back to my events"
+    },
+    "download": {
+      "title": "My data",
+      "hint": "Download everything Squire keeps about your account: the profile, its change history and your entries with their payments.",
+      "action": "Download my data (JSON)",
+      "failed": "The data could not be downloaded."
+    }
   }
 }

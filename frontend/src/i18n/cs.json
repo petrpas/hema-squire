@@ -1076,7 +1076,8 @@
     "logout": "Odhlásit",
     "signIn": "Přihlásit",
     "signInForMine": "Moje akce jsou seznam účtu; přihlaste se.",
-    "createTournament": "Založit akci"
+    "createTournament": "Založit akci",
+    "privacy": "Ochrana osobních údajů"
   },
   "profile": {
     "title": "Profil",
@@ -1772,5 +1773,105 @@
     "apply": "Uplatnit",
     "refused": "Tento kód neplatí.",
     "applied": "{{name}}: {{amount}}"
+  },
+  "privacy": {
+    "link": "Ochrana osobních údajů",
+    "notice": "Jak s údaji zacházíme, popisují",
+    "noticeLink": "zásady ochrany osobních údajů",
+    "page": {
+      "title": "Ochrana osobních údajů",
+      "effective": "Platí od 3. 11. 2026.",
+      "sections": [
+        {
+          "title": "Kdo za údaje odpovídá",
+          "paragraphs": [
+            "Squire provozuje Petr Paščenko, fyzická osoba, Praha.",
+            "Za účty, veřejné stránky a soupisky akcí včetně jejich historie, za odesílání pošty a za bezpečnost provozu odpovídá provozovatel jako správce.",
+            "Za přihlášky na konkrétní akci, platby za ni a jejich párování odpovídá jako správce pořadatel akce. Provozovatel tyto údaje zpracovává jako jeho zpracovatel. Exporty, které si pořadatel stáhne nebo pošle do Google Sheets, jsou mimo Squire a odpovídá za ně pořadatel."
+          ]
+        },
+        {
+          "title": "Kontakt",
+          "paragraphs": [
+            "Žádosti o přístup k údajům, jejich opravu, výmaz, omezení nebo námitku posílejte na privacy@hemasquire.eu. Tato adresa platí pro každého, i pro hosta bez účtu a pro osobu, kterou do akce zapsal pořadatel. Žádost týkající se přihlášky na akci předáme jejímu pořadateli, pokud ji nemůžeme vyřídit sami."
+          ]
+        },
+        {
+          "title": "Jaké údaje zpracováváme a proč",
+          "paragraphs": [
+            "Účet: jméno, e-mail, heslo (uložené jen jako otisk), klub, národnost, ID HEMA Ratings, jazyk a historie změn profilu. Slouží k vedení účtu a přihlašování. Právním základem je plnění smlouvy (čl. 6 odst. 1 písm. b GDPR).",
+            "Přihláška na akci: zvolené disciplíny a položky, kontaktní adresa, ubytování, poznámky, částky a variabilní symbol. Slouží k přihlášení na akci a jejímu vyúčtování. Právním základem je plnění smlouvy mezi vámi a pořadatelem.",
+            "Platby: z bankovního výpisu pořadatele jméno plátce, číslo účtu, zpráva pro příjemce, částka a datum. Slouží ke spárování platby s přihláškou. Právním základem je oprávněný zájem pořadatele na evidenci plateb (čl. 6 odst. 1 písm. f GDPR).",
+            "Veřejné soupisky: jméno, národnost, klub, ID HEMA Ratings a údaj, zda je zaplaceno. Slouží jako veřejný přehled účastníků a jako úplný historický záznam sportovní akce. Právním základem je oprávněný zájem (čl. 6 odst. 1 písm. f GDPR).",
+            "Odeslaná pošta: příjemce, předmět, text a stav doručení. Slouží k doručení zpráv o účtu a přihláškách a k řešení problémů s doručením. Právním základem je plnění smlouvy a oprávněný zájem.",
+            "IP adresa: používá se jen v paměti serveru k omezení opakovaných pokusů o přihlášení a nikam se neukládá. Právním základem je oprávněný zájem na bezpečnosti služby."
+          ]
+        },
+        {
+          "title": "Komu údaje předáváme",
+          "paragraphs": [
+            "Pořadatel akce vidí přihlášky a platby své akce.",
+            "Provozovatel využívá tyto zpracovatele: Hetzner Online GmbH (server, Helsinky, Finsko), Backblaze, Inc. (záloha databáze, Amsterdam, Nizozemsko), Scaleway SAS (odesílání e-mailů, Francie) a Anthropic, PBC (jazykový model, USA). Anthropic dostává jména, kluby a texty plateb jen tehdy, když pořadatel spustí čtení tabulky, hledání duplicit nebo párování plateb jazykovým modelem.",
+            "Z HEMA Ratings Squire jen stahuje veřejné žebříčky a nic tam neposílá."
+          ]
+        },
+        {
+          "title": "Předání mimo EU",
+          "paragraphs": [
+            "Údaje předané společnosti Anthropic se zpracovávají v USA na základě standardních smluvních doložek Evropské komise. Export do Google Sheets je rozhodnutím pořadatele a řídí se jeho smlouvou se společností Google."
+          ]
+        },
+        {
+          "title": "Jak dlouho údaje uchováváme",
+          "paragraphs": [
+            "Účet: do jeho smazání.",
+            "Odeslaná pošta: 30 dní od odeslání nebo od vzdání se doručení.",
+            "Nedokončená registrace a odkaz pro obnovu hesla: do vypršení platnosti.",
+            "Jméno plátce, číslo účtu a zpráva z bankovních výpisů, kontaktní adresy, poznámky, ubytování a podrobnosti řádků z importu: 12 měsíců od data akce. Částky, data a variabilní symboly zůstávají kvůli evidenci pořadatele.",
+            "Soupisky akcí: bez časového omezení, jako historický záznam.",
+            "Zálohy databáze: 28 dní."
+          ]
+        },
+        {
+          "title": "Po smazání účtu",
+          "paragraphs": [
+            "Smazání účtu si vyžádáte na adrese privacy@hemasquire.eu. Smaže se e-mail, heslo a historie profilu a přihlášky na akce, které teprve budou, se zruší. Pořadatel takové akce dostane zprávu.",
+            "Na soupiskách akcí, které už proběhly, zůstane vaše jméno, ID HEMA Ratings, klub a národnost. Soupiska je úplný záznam sportovní akce a bez nich by neplatila. Tyto údaje nejsou anonymizované, zůstávají spojené s přihláškou. Proti jejich ponechání můžete podat námitku na adrese výše a posoudíme ji jednotlivě."
+          ]
+        },
+        {
+          "title": "Vaše práva",
+          "paragraphs": [
+            "Máte právo na přístup ke svým údajům, jejich opravu, výmaz, omezení zpracování a přenositelnost a právo vznést námitku proti zpracování založenému na oprávněném zájmu. Údaje svého účtu si můžete stáhnout na stránce profilu a opravit je tamtéž.",
+            "Můžete podat stížnost u Úřadu pro ochranu osobních údajů (www.uoou.gov.cz)."
+          ]
+        },
+        {
+          "title": "Ukládání v prohlížeči",
+          "paragraphs": [
+            "Squire nepoužívá cookies. V prohlížeči ukládá jen přihlašovací token, bez kterého přihlášení nefunguje."
+          ]
+        }
+      ]
+    },
+    "terms": {
+      "title": "Podmínky zpracování údajů pro pořadatele",
+      "paragraphs": [
+        "Pro přihlášky na vaše akce, platby za ně a jejich párování jste správcem osobních údajů vy. Squire (Petr Paščenko) je zpracovává jako váš zpracovatel, jen k těmto účelům a podle pokynů, které dáváte tím, jak Squire používáte.",
+        "Squire k tomu využívá další zpracovatele: Hetzner (server, Finsko), Backblaze (záloha, Nizozemsko), Scaleway (e-maily, Francie) a Anthropic (jazykový model, USA). Anthropic jen tehdy, když spustíte čtení tabulky, hledání duplicit nebo párování jazykovým modelem.",
+        "Jméno plátce, číslo účtu a zprávu z bankovních výpisů, kontaktní adresy, poznámky a ubytování Squire odstraní 12 měsíců po datu akce. Částky, data a variabilní symboly zůstávají. Soupisky zůstávají bez časového omezení jako historický záznam akce; za ně odpovídá provozovatel.",
+        "Squire údaje zabezpečí, pomůže vám vyřídit žádosti lidí o jejich údaje a o porušení zabezpečení vás bez zbytečného odkladu informuje. Na požádání vám předá údaje vaší akce jako export.",
+        "Za exporty, které si stáhnete nebo pošlete do Google Sheets, odpovídáte vy."
+      ],
+      "accept": "Souhlasím",
+      "failed": "Souhlas se nepodařilo uložit.",
+      "leave": "Zpět na seznam akcí"
+    },
+    "download": {
+      "title": "Moje údaje",
+      "hint": "Stáhnete si vše, co Squire o vašem účtu vede: profil, historii jeho změn a přihlášky s platbami.",
+      "action": "Stáhnout údaje (JSON)",
+      "failed": "Údaje se nepodařilo stáhnout."
+    }
   }
 }

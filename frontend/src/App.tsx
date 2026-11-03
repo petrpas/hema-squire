@@ -5,6 +5,7 @@ import ConsoleRoute from "./ConsoleRoute";
 import FencerHome from "./FencerHome";
 import FencerLayout from "./FencerLayout";
 import NotFound from "./NotFound";
+import PrivacyPage from "./PrivacyPage";
 import ProfilePage from "./ProfilePage";
 import RequireAuth from "./RequireAuth";
 import ResetPassword from "./ResetPassword";
@@ -35,6 +36,9 @@ export default function App() {
         <Route path="verify" element={<VerifyScreen />} />
         {/* following a reset link; public, since the visitor cannot sign in */}
         <Route path="reset" element={<ResetPassword />} />
+        {/* the privacy notice: public, since it is owed before an account
+            exists (spec privacy) */}
+        <Route path="privacy" element={<PrivacyPage />} />
       </Route>
       {/* Everything else keeps the gate: Login renders in place at the
           requested URL, so the destination survives signing in. */}

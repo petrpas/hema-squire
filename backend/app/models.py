@@ -244,6 +244,12 @@ class Fencer(Base):
     # password was never changed that way, and every unexpired session stands —
     # which is also what introducing the column did to every existing one.
     sessions_valid_from: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # The organizer data terms this account last accepted, and when (spec
+    # `privacy`, "A tournament owner accepts the organizer data terms"). Both
+    # `None` until a tournament owner first accepts; a version other than
+    # `privacy.ORGANIZER_TERMS_VERSION` asks again.
+    organizer_terms_version: Mapped[str | None] = mapped_column(String(20))
+    organizer_terms_accepted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     registrations: Mapped[list[Registration]] = relationship(back_populates="fencer")
 

@@ -1,6 +1,9 @@
 import type { ReactNode } from "react";
+import { useTranslation } from "react-i18next";
+import { Link } from "react-router-dom";
 
 import type { Account } from "./api";
+import { privacy } from "./routes";
 import TopBar from "./TopBar";
 
 /** The four filter tabs the tournament list is cut into. The first three
@@ -44,6 +47,19 @@ export default function FencerShell({
     <div className="app" data-skin="night">
       <TopBar account={account} signedIn={signedIn} onLogout={onLogout} onSignIn={onSignIn} />
       {children}
+      <ShellFooter />
     </div>
+  );
+}
+
+/** The way to the privacy notice from every public screen, signed in or not
+ *  (spec `privacy`, reachable from every screen). The account menu carries the
+ *  same link for the screens outside this shell. */
+function ShellFooter() {
+  const { t } = useTranslation();
+  return (
+    <footer className="app-footer">
+      <Link to={privacy()}>{t("privacy.link")}</Link>
+    </footer>
   );
 }

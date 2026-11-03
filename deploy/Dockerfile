@@ -32,7 +32,11 @@ ENV PATH="/app/.venv/bin:$PATH" \
 # container address; trusting every peer is safe because the container
 # publishes no ports, so Caddy is the only thing that can reach it, and the
 # Caddyfile overwrites X-Forwarded-For rather than appending to it.
-CMD ["sh", "-c", "alembic upgrade head && exec uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 1 --proxy-headers --forwarded-allow-ips='*'"]
+# --no-access-log: an access line is a client IP and a path, kept in the Docker
+# log with no rotation, i.e. forever. Nothing reads it, and the privacy notice
+# states no period for it, so it is not written (change privacy-baseline). The
+# throttle keeps addresses in memory only; errors are still logged.
+CMD ["sh", "-c", "alembic upgrade head && exec uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 1 --proxy-headers --forwarded-allow-ips='*' --no-access-log"]
 
 # --- 3. caddy with the built SPA --------------------------------------------
 FROM docker.io/library/caddy:2-alpine AS web

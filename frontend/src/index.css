@@ -5225,3 +5225,38 @@ tr.export-line td {
 .code-scope input {
   accent-color: var(--stamp);
 }
+
+/* The way to the privacy notice at the foot of every fencer-shell screen
+   (spec privacy): quiet metadata, never a call to action. */
+.app-footer {
+  padding: 16px;
+  text-align: center;
+  font-family: var(--font-data);
+  font-size: 12px;
+}
+
+.app-footer a {
+  color: var(--ink-faded);
+}
+
+/* The privacy notice reads as a document: one column of prose at a
+   comfortable measure, on the card the other public screens use. */
+.privacy-page {
+  justify-content: center;
+  align-items: flex-start;
+  overflow-y: auto;
+  padding: 24px 16px;
+}
+
+.privacy-page > article {
+  max-width: 720px;
+  width: 100%;
+}
+
+.privacy-page h2 {
+  margin-top: 24px;
+}
+
+.privacy-notice {
+  margin-top: 12px;
+}

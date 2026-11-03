@@ -33,6 +33,7 @@ import { formatMoney, formatMoneyWithEur } from "./money";
 import NoteMarker from "./NoteMarker";
 import { parseInteger } from "./numeric";
 import OperationsIndicator from "./OperationsIndicator";
+import OrganizerTermsDialog from "./OrganizerTermsDialog";
 import PaidStamp from "./PaidStamp";
 import ProblemsCell from "./ProblemsCell";
 import CreditedTable from "./payments/CreditedTable";
@@ -989,6 +990,11 @@ export default function Console({
           </div>
           <AccountMenu account={account} onLogout={onLogout} />
         </header>
+        {/* the owner accepts the organizer data terms before the console is
+            usable; a team member is not asked (spec privacy) */}
+        {account?.organizer_terms_due && account.id === tournament.owner_id && (
+          <OrganizerTermsDialog onAccepted={setAccount} onLeave={() => navigate(routes.picker())} />
+        )}
 
         <nav className="stepper">
           {phases.map((p, index) => (

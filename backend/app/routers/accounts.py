@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
-from app import emails
+from app import emails, privacy
 from app.auth import current_fencer, is_deployment_owner, set_password, verify_password
 from app.db import get_session
 from app.hr_index import HRIndex, HRProfile, get_hr_index
@@ -19,6 +19,7 @@ from app.models import (
 from app.outgoing import QueuedMailerDep
 from app.ratelimit import limiter
 from app.schemas import (
+    AccountExportOut,
     AccountOut,
     AccountUpdate,
     HRBindIn,
@@ -55,6 +56,7 @@ def account_out(session: Session, fencer: Fencer) -> AccountOut:
     out = AccountOut.model_validate(fencer)
     out.is_deployment_owner = is_deployment_owner(fencer)
     out.organized_count = _organized_count(session, fencer)
+    out.organizer_terms_due = privacy.organizer_terms_due(session, fencer)
     return out
 
 
@@ -82,6 +84,23 @@ def _organized_count(session: Session, fencer: Fencer) -> int:
 @router.get("/api/account", response_model=AccountOut)
 def my_account(session: SessionDep, fencer: FencerDep):
     return account_out(session, fencer)
+
+
+@router.post("/api/account/organizer-terms", response_model=AccountOut)
+def accept_organizer_terms(session: SessionDep, fencer: FencerDep):
+    """Record that the account accepts the current organizer data terms (spec
+    `privacy`). Accepting again restamps the moment; nothing else changes."""
+    privacy.accept_organizer_terms(fencer)
+    session.commit()
+    session.refresh(fencer)
+    return account_out(session, fencer)
+
+
+@router.get("/api/account/export", response_model=AccountExportOut)
+def export_my_data(session: SessionDep, fencer: FencerDep):
+    """The account's own personal data, as a file it can keep (spec
+    `privacy`, An account holder can download their own data)."""
+    return privacy.account_export(session, fencer)
 
 
 def audit_change(session: Session, fencer: Fencer, field: str, new_value: str | int | None) -> None:

@@ -183,6 +183,93 @@ class AccountOut(BaseModel):
     # owned or sat on the team of. Counted rather than listed: the account menu
     # only asks whether there are any, and it asks on every signed-in page.
     organized_count: int = 0
+    # whether the account owns a tournament and has not accepted the current
+    # organizer data terms; the console asks before it opens (spec `privacy`)
+    organizer_terms_due: bool = False
+
+
+class ExportAuditOut(BaseModel):
+    field: str
+    old_value: str | None
+    new_value: str | None
+    changed_at: UtcInstant
+
+
+class ExportProfileOut(BaseModel):
+    """The account's own record. No credential: the password hash and the
+    session watermark are not personal data the account holder supplied, and
+    handing out a hash would only help an attacker who intercepts the file."""
+
+    display_name: str
+    email: str | None
+    hr_id: int | None
+    nationality: str | None
+    club: str | None
+    language: str
+    role: str
+    created_at: UtcInstant
+    organizer_terms_version: str | None
+    organizer_terms_accepted_at: UtcInstant | None
+    audit: list[ExportAuditOut]
+
+
+class ExportEntryOut(BaseModel):
+    discipline: str
+    is_substitute: bool
+    conditional: bool
+
+
+class ExportExtraOut(BaseModel):
+    item: str
+    category: str
+    qty: int
+    option_value: str | None
+
+
+class ExportTeamOut(BaseModel):
+    """A team the account entered, by name only: its members are other people."""
+
+    name: str
+    discipline: str
+
+
+class ExportCreditOut(BaseModel):
+    """A payment credited to the registration. Who paid it and from which
+    account is the payer's data, which may be another person's, so only the
+    amount and its day are stated."""
+
+    amount_cents: int
+    currency: str
+    value_date: datetime.date
+    kind: str
+    reversed_at: UtcInstant | None
+
+
+class ExportRegistrationOut(BaseModel):
+    tournament: str
+    tournament_date: datetime.date
+    registered_at: UtcInstant
+    state: str
+    variable_symbol: int | None
+    total_amount: int
+    total_eur: int | None
+    contact_email: str | None
+    accommodation: str | None
+    notes: str | None
+    cancelled_at: UtcInstant | None
+    disciplines: list[ExportEntryOut]
+    extras: list[ExportExtraOut]
+    teams: list[ExportTeamOut]
+    credits: list[ExportCreditOut]
+
+
+class AccountExportOut(BaseModel):
+    """Everything Squire holds about the account itself (spec `privacy`, An
+    account holder can download their own data)."""
+
+    exported_at: UtcInstant
+    profile: ExportProfileOut
+    registrations: list[ExportRegistrationOut]
 
 
 class PleaIn(BaseModel):

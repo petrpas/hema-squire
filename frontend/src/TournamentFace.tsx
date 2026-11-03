@@ -30,6 +30,7 @@ import { useManageKey } from "./manageKey";
 import { formatMoneyWithEur } from "./money";
 import { parseInteger } from "./numeric";
 import { registrationClosesOn, registrationStatus } from "./openingMoment";
+import PrivacyNotice from "./PrivacyNotice";
 import Prose from "./Prose";
 import { entrants } from "./routes";
 import { StatusBlock } from "./StatusBlock";
@@ -1112,6 +1113,7 @@ export function RegistrationForm({
           {amending ? t("form.amendSubmit") : t("form.submit")}
         </button>
       )}
+      <PrivacyNotice />
     </section>
   );
 }

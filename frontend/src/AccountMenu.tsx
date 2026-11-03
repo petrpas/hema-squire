@@ -83,6 +83,11 @@ export default function AccountMenu({
                 {t("menu.createTournament")}
               </button>
             )}
+            {/* the privacy notice, from the screens outside the fencer shell
+                too: the console, the picker, the admin panel (spec privacy) */}
+            <Link to={routes.privacy()} onClick={close}>
+              {t("menu.privacy")}
+            </Link>
             <button
               type="button"
               onClick={() => {

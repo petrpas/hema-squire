@@ -4,6 +4,7 @@ import { ApiError, api, type GuestIdentity, type HRProfile } from "./api";
 import FieldError, { invalidProps } from "./FieldError";
 import HelpHint from "./HelpHint";
 import i18n from "./i18n";
+import PrivacyNotice from "./PrivacyNotice";
 import SignupHrStep from "./SignupHrStep";
 import useEscape from "./useEscape";
 import { useFieldValidation } from "./useFieldValidation";
@@ -281,6 +282,9 @@ export default function SignupForm({
             ? t("signup.submitting")
             : t("signup.submit")}
       </button>
+      {/* both variants collect personal data, so both state where it is
+          described; nothing to tick (spec privacy) */}
+      <PrivacyNotice />
       <button type="button" className="link-button" onClick={onCancel}>
         {t("signup.backToLogin")}
       </button>

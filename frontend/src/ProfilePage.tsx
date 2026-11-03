@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { type Account, api } from "./api";
 import MenuPage from "./MenuPage";
 import AccountSection from "./profile/AccountSection";
+import DataSection from "./profile/DataSection";
 import HRBoundSection from "./profile/HRBoundSection";
 import HRMatchSection from "./profile/HRMatchSection";
 import RoleSection from "./profile/RoleSection";
@@ -35,6 +36,7 @@ export default function ProfilePage() {
           ) : (
             <HRMatchSection account={account} onBound={setAccount} />
           )}
+          <DataSection />
         </div>
       )}
     </MenuPage>
