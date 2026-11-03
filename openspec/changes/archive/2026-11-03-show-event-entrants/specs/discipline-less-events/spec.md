@@ -9,7 +9,7 @@ An event's public detail SHALL offer the Entrants tab exactly when the event off
 - **WHEN** an organizer opens the console of an event
 - **THEN** neither Queue nor Import is offered and no hand-entry control is shown
 
-#### Scenario: Public detail of an event without program
+#### Scenario: Public detail of an event
 - **WHEN** anyone opens the public detail of an event offering only an afterparty and a T-shirt
 - **THEN** no Entrants tab, no seat count and no disciplines section is shown
 
