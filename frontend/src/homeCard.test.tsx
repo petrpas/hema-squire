@@ -52,6 +52,7 @@ function tournament(over: Partial<OpenTournament> = {}): OpenTournament {
     registration_closes_on: "2026-11-15",
     entrant_count: 0,
     club_count: 0,
+    program_meters: [],
     disciplines: [],
     ...over,
   };
@@ -222,11 +223,43 @@ describe("familiar faces", () => {
   });
 });
 
+describe("an event's card", () => {
+  const meter = (id: number, name: string, entered: number, capacity: number) => ({
+    id,
+    name,
+    entered,
+    capacity,
+  });
+
+  it("meters its capped program where a tournament meters disciplines", () => {
+    const page = render(
+      card({
+        program_meters: [meter(7, "Seminář", 12, 20), meter(8, "Prohlídka", 2, 2)],
+      }),
+    );
+    const figures = [...page.querySelectorAll(".meter")].map((row) => [
+      row.querySelector(".meter-name")?.textContent,
+      row.querySelector(".meter-figure")?.textContent,
+      row.hasAttribute("data-full"),
+    ]);
+    expect(figures).toEqual([
+      ["Seminář", "12/20", false],
+      ["Prohlídka", i18n.t("home.meter.full"), true],
+    ]);
+  });
+
+  it("shows no meter without a capped program item", () => {
+    const page = render(card({ entrant_count: 14, club_count: 3 }));
+    expect(page.querySelector(".meters")).toBeNull();
+    expect(page.querySelector(".home-card-counts")).not.toBeNull();
+  });
+});
+
 describe("the capacity meter", () => {
   it("states the figure as text and hides the track", () => {
     const page = render(
       <ul>
-        <CapacityMeter discipline={discipline({ entered: 24 })} />
+        <CapacityMeter meter={discipline({ entered: 24 })} />
       </ul>,
     );
     expect(page.querySelector(".meter-figure")?.textContent).toBe("24/32");
@@ -237,7 +270,7 @@ describe("the capacity meter", () => {
   it("states a full discipline with its queue instead of the fraction", () => {
     const page = render(
       <ul>
-        <CapacityMeter discipline={discipline({ entered: 32, queue_length: 3 })} />
+        <CapacityMeter meter={discipline({ entered: 32, queue_length: 3 })} />
       </ul>,
     );
     expect(page.querySelector(".meter")?.hasAttribute("data-full")).toBe(true);

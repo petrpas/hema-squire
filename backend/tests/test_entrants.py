@@ -295,6 +295,7 @@ def test_manual_mode_shows_no_queue_and_no_line(client, auth_headers):
     roster = rosters(client)["LS"]
 
     assert roster["line"] is False
+    assert roster["capacity"] is None
     assert roster["queued"] == []
     assert [(row["number"], row["name"]) for row in roster["seated"]] == [
         (1, "Adéla"),
@@ -454,10 +455,10 @@ def test_a_removed_row_is_not_counted_but_keeps_its_seat(client, auth_headers):
 # ------------------------------------------------------------ side events
 
 
-def add_item(client, organizer, name, category):
+def add_item(client, organizer, name, category, capacity=None):
     response = client.post(
         "/api/tournaments/cup/extra-items",
-        json={"name": name, "category": category, "price": 300},
+        json={"name": name, "category": category, "price": 300, "capacity": capacity},
         headers=organizer,
     )
     assert response.status_code == 201, response.text
@@ -496,3 +497,52 @@ def test_seminars_and_other_events_have_rosters_the_afterparty_does_not(client, 
     assert seated(by_slug[str(seminar)]) == [(1, "Boris", "yes", False), (2, "Adéla", "no", True)]
     assert [row["name"] for row in by_slug[str(walk)]["seated"]] == ["Boris"]
     assert by_slug[str(seminar)]["line"] is False
+
+
+def test_a_capped_seminar_draws_its_line_with_nothing_below(client, auth_headers):
+    organizer = auth_headers()
+    setup_tournament(client, organizer)
+    full = add_item(client, organizer, "Seminář", "seminar", capacity=1)
+    filling = add_item(client, organizer, "Workshop", "other_action", capacity=5)
+    open_ended = add_item(client, organizer, "Prohlídka", "other_action")
+    register(
+        client,
+        auth_headers(email="a@example.com", name="Adéla"),
+        extras=[
+            {"extra_item_id": full},
+            {"extra_item_id": filling},
+            {"extra_item_id": open_ended},
+        ],
+    )
+
+    by_slug = rosters(client)
+
+    # full and part full alike: the line marks the limit, and an item keeps
+    # no queue to list beneath it
+    for slug in (str(full), str(filling)):
+        assert by_slug[slug]["line"] is True
+        assert [row["name"] for row in by_slug[slug]["seated"]] == ["Adéla"]
+        assert by_slug[slug]["queued"] == []
+    assert by_slug[str(open_ended)]["line"] is False
+    # the line states the limit it marks; nothing to state where none is drawn
+    assert [by_slug[str(i)]["capacity"] for i in (full, filling, open_ended)] == [1, 5, None]
+
+
+def test_a_held_record_draws_no_line_for_a_capped_seminar(client, auth_headers):
+    organizer = auth_headers()
+    setup_tournament(client, organizer)
+    seminar = add_item(client, organizer, "Seminář", "seminar", capacity=1)
+    register(
+        client,
+        auth_headers(email="a@example.com", name="Adéla"),
+        extras=[{"extra_item_id": seminar}],
+    )
+    session = db_session()
+    tournament_row(session).date = datetime.now(UTC).date() - timedelta(days=30)
+    session.commit()
+
+    roster = rosters(client)[str(seminar)]
+
+    assert [row["name"] for row in roster["seated"]] == ["Adéla"]
+    assert roster["line"] is False
+    assert roster["capacity"] is None

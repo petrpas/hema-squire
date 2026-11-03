@@ -858,6 +858,16 @@ export interface ExportSheetConfig {
 export type RegistrationStatus = "open" | "opens_on" | "closed" | "elsewhere";
 export type MyRegistrationState = "none" | "reserved" | "paid" | "substitute" | "cancelled";
 
+/** One capped program item of an event, as its card meters it. */
+export interface ProgramMeter {
+  /** The item's id, carried only as a stable list key. */
+  id: number;
+  name: string;
+  /** The people the item's roster lists. */
+  entered: number;
+  capacity: number;
+}
+
 export interface OpenDiscipline {
   /** Not rendered to fencers (design discipline-identity D6); carried only
    *  as a stable list key. */
@@ -924,6 +934,10 @@ export interface OpenTournament {
    *  clubs among them (spec public-browsing). */
   entrant_count: number;
   club_count: number;
+  /** An event's capped seminar and other-program items, metered on its card
+   *  where a tournament's disciplines are; always empty on a tournament (spec
+   *  public-browsing). */
+  program_meters: ProgramMeter[];
   /** This response's own instant (see TournamentDetail.server_time). */
   server_time: string;
   disciplines: OpenDiscipline[];
@@ -981,8 +995,14 @@ interface RosterBase {
 
 export type Roster =
   | (RosterBase & { kind: "individual"; seated: EntrantRow[]; queued: EntrantRow[] })
-  /** A seminar or another side event: fencers, never a line or a queue. */
-  | (RosterBase & { kind: "event"; seated: EntrantRow[]; queued: EntrantRow[] })
+  /** A seminar or another side event: fencers and never a queue; a capped
+   *  one draws its line, labelled with `capacity`, null where none is drawn. */
+  | (RosterBase & {
+      kind: "event";
+      seated: EntrantRow[];
+      queued: EntrantRow[];
+      capacity: number | null;
+    })
   | (RosterBase & { kind: "team"; seated: EntrantTeam[]; queued: EntrantTeam[] });
 
 export interface Entrants {

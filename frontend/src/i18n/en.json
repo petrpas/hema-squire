@@ -129,7 +129,8 @@
     },
     "line": {
       "queue": "capacity line — substitutes below",
-      "capacity": "capacity line"
+      "capacity": "capacity line",
+      "limit": "capacity {{capacity}}"
     },
     "yes": "Yes",
     "no": "No",

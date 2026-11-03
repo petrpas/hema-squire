@@ -75,7 +75,17 @@ export default function TournamentCard({
         {tournament.disciplines.length > 0 && (
           <ul className="meters">
             {tournament.disciplines.map((d) => (
-              <CapacityMeter key={d.slug} discipline={d} />
+              <CapacityMeter key={d.slug} meter={d} />
+            ))}
+          </ul>
+        )}
+        {/* an event has no discipline to meter, so its capped program items
+            take their place; a tournament's list of them is always empty
+            (spec fencer-home, An event's card meters its program) */}
+        {tournament.program_meters.length > 0 && (
+          <ul className="meters">
+            {tournament.program_meters.map((item) => (
+              <CapacityMeter key={item.id} meter={{ ...item, queue_length: 0 }} />
             ))}
           </ul>
         )}

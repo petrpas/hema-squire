@@ -133,7 +133,8 @@
     },
     "line": {
       "queue": "hranice kapacity — níže náhradníci",
-      "capacity": "hranice kapacity"
+      "capacity": "hranice kapacity",
+      "limit": "kapacita {{capacity}}"
     },
     "yes": "Ano",
     "no": "Ne",

@@ -198,6 +198,9 @@ export function DisciplinesInfo({
   const { t } = useTranslation();
   const bySlug = new Map(availability.map((a) => [a.slug, a]));
   const hasTeamDiscipline = detail.disciplines.some((d) => d.kind === "team");
+  // an event has no discipline, and an empty section would state that it has
+  // some to list (spec discipline-less-events)
+  if (detail.disciplines.length === 0) return null;
   return (
     <section className="rail-card">
       <h2>{t("detail.disciplines")}</h2>

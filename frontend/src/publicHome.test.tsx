@@ -60,6 +60,7 @@ function tournament(slug: string, over: Partial<OpenTournament> = {}): OpenTourn
     registration_closes_on: null,
     entrant_count: 0,
     club_count: 0,
+    program_meters: [],
     disciplines: [],
     ...over,
   } as OpenTournament;

@@ -162,14 +162,15 @@ const ENTRANTS: Entrants = {
       name: "Seminář",
       kind: "event",
       line: false,
+      capacity: null,
       seated: [row(1, "Eva")],
       queued: [],
     },
   ],
 };
 
-function detailApi(entrants: Entrants = ENTRANTS) {
-  vi.spyOn(api, "tournament").mockResolvedValue(DETAIL);
+function detailApi(entrants: Entrants = ENTRANTS, detail: FencerTournament = DETAIL) {
+  vi.spyOn(api, "tournament").mockResolvedValue(detail);
   vi.spyOn(api, "availability").mockResolvedValue(AVAILABILITY);
   vi.spyOn(api, "entrants").mockResolvedValue(entrants);
   vi.spyOn(api, "openTournaments").mockResolvedValue([]);
@@ -270,6 +271,21 @@ describe("the Entrants tab", () => {
     expect(page.querySelector(".export-line")).toBeNull();
   });
 
+  it("labels a capped side event's line with its capacity", async () => {
+    detailApi({
+      as_of: null,
+      rosters: ENTRANTS.rosters.map((r) =>
+        r.kind === "event" ? { ...r, line: true, capacity: 10 } : r,
+      ),
+    });
+    const page = mount("/t/spring-open/entrants/events/LS");
+    await settle();
+
+    expect(page.querySelector(".export-line")?.textContent).toBe(
+      i18n.t("export.line.limit", { capacity: 10 }),
+    );
+  });
+
   it("an unknown side event is not found", async () => {
     detailApi();
     const page = mount("/t/spring-open/entrants/events/99");
@@ -284,6 +300,62 @@ describe("the Entrants tab", () => {
     await settle();
 
     expect(page.textContent).toContain(i18n.t("notFound.title"));
+  });
+});
+
+describe("an event's Entrants tab", () => {
+  const item = (id: number, name: string, category: string) => ({
+    id,
+    name,
+    category,
+    price: 300,
+    price_eur: null,
+    max_qty: 1,
+    capacity: null,
+  });
+  const event = (items: ReturnType<typeof item>[]) =>
+    ({
+      ...DETAIL,
+      is_event: true,
+      disciplines: [],
+      feature_extras: true,
+      extra_items: items,
+    }) as unknown as FencerTournament;
+  const offersEntrants = (page: HTMLElement) =>
+    page.querySelector('.detail-tabs a[href="/t/spring-open/entrants"]') !== null;
+
+  it("is offered for a seminar nobody has taken yet", async () => {
+    detailApi(
+      { as_of: null, rosters: [] },
+      event([item(7, "Seminar", "seminar"), item(8, "Party", "afterparty")]),
+    );
+    const page = mount("/t/spring-open");
+    await settle();
+
+    expect(offersEntrants(page)).toBe(true);
+  });
+
+  it("is offered for other program", async () => {
+    detailApi({ as_of: null, rosters: [] }, event([item(7, "Castle tour", "other_action")]));
+    const page = mount("/t/spring-open");
+    await settle();
+
+    expect(offersEntrants(page)).toBe(true);
+  });
+
+  it("is not offered for an afterparty and goods alone", async () => {
+    detailApi(
+      { as_of: null, rosters: [] },
+      event([
+        item(8, "Party", "afterparty"),
+        item(9, "Shirt", "merch"),
+        item(10, "Sword", "rental"),
+      ]),
+    );
+    const page = mount("/t/spring-open");
+    await settle();
+
+    expect(offersEntrants(page)).toBe(false);
   });
 });
 

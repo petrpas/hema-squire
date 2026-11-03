@@ -9,12 +9,26 @@ export function PaidCell({ paid }: { paid: "yes" | "no" | null }) {
 }
 
 /** The capacity line, a row of the table with a rule above it, as the Export
- *  tab draws it. Its label names a queue only where one stands below it. */
-export function CapacityLine({ columns, queued }: { columns: number; queued: boolean }) {
+ *  tab draws it. Its label names a queue only where one stands below it. A
+ *  side event's line states its capacity instead: no queue ever stands below
+ *  it, so the line marks the limit and not where the places ran out. */
+export function CapacityLine({
+  columns,
+  queued,
+  capacity = null,
+}: {
+  columns: number;
+  queued: boolean;
+  capacity?: number | null;
+}) {
   const { t } = useTranslation();
+  const label =
+    capacity !== null
+      ? t("export.line.limit", { capacity })
+      : t(queued ? "export.line.queue" : "export.line.capacity");
   return (
     <tr className="export-line">
-      <td colSpan={columns}>{t(queued ? "export.line.queue" : "export.line.capacity")}</td>
+      <td colSpan={columns}>{label}</td>
     </tr>
   );
 }

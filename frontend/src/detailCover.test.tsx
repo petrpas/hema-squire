@@ -154,4 +154,11 @@ describe("the detail's disciplines", () => {
     expect(meter?.querySelector(".meter-track")?.getAttribute("aria-hidden")).toBe("true");
     expect(meter?.querySelector<HTMLElement>(".meter-fill")?.style.width).toBe("100%");
   });
+
+  it("offers no disciplines section on an event", () => {
+    const page = render(
+      <DisciplinesInfo detail={detail({ disciplines: [], is_event: true })} availability={[]} />,
+    );
+    expect(page.querySelector(".rail-card")).toBeNull();
+  });
 });

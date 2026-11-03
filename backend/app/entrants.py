@@ -45,6 +45,8 @@ RosterKind = Literal["individual", "team", "event"]
 # other programme. The afterparty is left out by owner decision (2026-10-11) —
 # who goes drinking is not the tournament's to publish — and goods are not
 # events at all.
+# The frontend keeps a copy to offer an event's Entrants tab: `ROSTERED` in
+# `frontend/src/TournamentDetail.tsx`.
 PUBLIC_EVENT_CATEGORIES = (ExtraCategory.SEMINAR, ExtraCategory.OTHER_ACTION)
 
 
@@ -88,6 +90,10 @@ class Roster:
     line: bool
     seated: list[EntrantRow] | list[TeamRow] = field(default_factory=list)
     queued: list[EntrantRow] | list[TeamRow] = field(default_factory=list)
+    # a side event's capacity, stated on its line where one is drawn: with no
+    # queue below it, the line alone would read as if the rows above were all
+    # the places there are
+    capacity: int | None = None
 
 
 @dataclass(frozen=True)
@@ -321,9 +327,10 @@ def _teams(
 
 def _event(item: ExtraItem, rows: list[Row], live: set[int], conduct: _Conduct) -> Roster:
     """Who has taken a place at one side event: the rows of its category's
-    Export tab holding this item, live and not removed, paid first. An event
-    has no capacity, so no line and no queue; its Paid cell follows the
-    registration as a discipline's does."""
+    Export tab holding this item, live and not removed, paid first. An item
+    keeps no queue (spec item-capacity); a capped one draws the capacity line
+    under its last row wherever a discipline's roster would draw its line.
+    Its Paid cell follows the registration as a discipline's does."""
     tab = exporttables.Tab(kind=exporttables.CATEGORY, key=item.category.value, label="")
     seated: list[EntrantRow] = []
     for row in exporttables.table_rows(rows, tab):
@@ -345,7 +352,15 @@ def _event(item: ExtraItem, rows: list[Row], live: set[int], conduct: _Conduct) 
                 conditional=False,
             )
         )
-    return Roster(slug=str(item.id), name=item.name, kind="event", line=False, seated=seated)
+    line = conduct.queue and item.capacity is not None
+    return Roster(
+        slug=str(item.id),
+        name=item.name,
+        kind="event",
+        line=line,
+        seated=seated,
+        capacity=item.capacity if line else None,
+    )
 
 
 def rosters(session: Session, tournament: Tournament) -> list[Roster]:

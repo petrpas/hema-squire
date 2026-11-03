@@ -7,8 +7,9 @@ type IndividualRosterData = Extract<Roster, { kind: "individual" | "event" }>;
 
 /** A roster of fencers — an individual discipline's or a side event's: the
  *  seated above the capacity line and the queue below it, each queued row
- *  numbered by its position in the queue. A side event has no capacity, so
- *  it draws neither (spec public-entrants). */
+ *  numbered by its position in the queue. A side event keeps no queue, and
+ *  draws its line, stating its capacity, only where it has one (spec
+ *  public-entrants). */
 export default function IndividualRoster({ roster }: { roster: IndividualRosterData }) {
   const { t } = useTranslation();
   if (roster.seated.length === 0 && roster.queued.length === 0) {
@@ -31,7 +32,13 @@ export default function IndividualRoster({ roster }: { roster: IndividualRosterD
           {roster.seated.map((row) => (
             <EntrantLine key={`seated-${row.number}`} row={row} />
           ))}
-          {roster.line && <CapacityLine columns={6} queued={roster.queued.length > 0} />}
+          {roster.line && (
+            <CapacityLine
+              columns={6}
+              queued={roster.queued.length > 0}
+              capacity={roster.kind === "event" ? roster.capacity : null}
+            />
+          )}
           {roster.queued.map((row) => (
             <EntrantLine key={`queued-${row.number}`} row={row} />
           ))}

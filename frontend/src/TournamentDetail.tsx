@@ -13,6 +13,7 @@ import {
   ApiError,
   type Availability,
   api,
+  type ExtraCategory,
   type ItemAvailability,
   type RegistrationDetail,
   type FencerTournament as TournamentDetailData,
@@ -380,9 +381,18 @@ function RegistrationPanel({
   );
 }
 
+/** The item categories with a public roster: seminars and other program.
+ *  Mirrors `PUBLIC_EVENT_CATEGORIES` in `backend/app/entrants.py`. */
+const ROSTERED: ReadonlySet<ExtraCategory> = new Set(["seminar", "other_action"]);
+
 export default function TournamentDetail() {
   const [detail, setDetail] = useState<TournamentDetailData | null>(null);
   const isEvent = detail?.is_event ?? false;
+  // an event's band holds only its program's rosters, so it is offered once
+  // there is a program to list, even before anyone has taken a place (spec
+  // discipline-less-events)
+  const entrantsTabOffered =
+    !isEvent || (detail?.extra_items ?? []).some((item) => ROSTERED.has(item.category));
   const { t } = useTranslation(undefined, { i18n: wordingI18n(isEvent) });
   const navigate = useNavigate();
   const location = useLocation();
@@ -578,7 +588,7 @@ export default function TournamentDetail() {
               >
                 {t("detail.tabs.tournament")}
               </button>
-              {!isEvent && (
+              {entrantsTabOffered && (
                 <Link
                   to={entrants(slug)}
                   className={shown === "entrants" ? "active" : ""}

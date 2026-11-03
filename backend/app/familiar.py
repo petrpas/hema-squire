@@ -69,9 +69,10 @@ def _caller_identity(session: Session, caller: Fencer) -> tuple[str | None, str 
 def _ratings(
     session: Session, tournaments: Sequence[Tournament], hr_ids: set[int]
 ) -> dict[int, dict[int, float]]:
-    """Per tournament with a rating snapshot, each rated fencer's best rating
-    across the tournament's individual disciplines. A tournament absent from
-    the answer has no snapshot, and its order is by name."""
+    """Per tournament with a rating snapshot and an individual discipline,
+    each rated fencer's best rating across those disciplines. A tournament
+    absent from the answer has no snapshot or nothing to be rated in, and its
+    order is by name."""
     ids = [tournament.id for tournament in tournaments]
     latest = dict(
         session.execute(
@@ -106,6 +107,11 @@ def _ratings(
         codes = {
             d.taxonomy_code for d in tournament.disciplines if d.kind is DisciplineKind.INDIVIDUAL
         }
+        if not codes:
+            # nothing to be rated in — an event, or teams only — whatever
+            # snapshot it kept from a time it had a discipline: by name, and
+            # not claimed as ranked (spec public-browsing)
+            continue
         best: dict[int, float] = {}
         for hr_id, code, rating in by_snapshot.get(snapshot_id, []):
             if code in codes and rating is not None:

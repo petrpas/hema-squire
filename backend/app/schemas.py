@@ -1481,6 +1481,15 @@ class FamiliarOut(BaseModel):
     people: list[FamiliarPersonOut]
 
 
+class ProgramMeterOut(BaseModel):
+    # the item's id, carried only as a stable list key
+    id: int
+    name: str
+    # the people the item's roster lists
+    entered: int
+    capacity: int
+
+
 class OpenTournamentOut(BaseModel):
     slug: str
     display_name: str
@@ -1525,6 +1534,10 @@ class OpenTournamentOut(BaseModel):
     # fencers, and distinct clubs among them (spec public-browsing)
     entrant_count: int = 0
     club_count: int = 0
+    # an event's capped program items, metered on its card where a
+    # tournament's disciplines are; always empty on a tournament (spec
+    # public-browsing)
+    program_meters: list[ProgramMeterOut] = []
     # this response's own instant, for the same reason as on TournamentOut
     server_time: datetime.datetime = Field(
         default_factory=lambda: datetime.datetime.now(datetime.UTC)
@@ -2156,6 +2169,9 @@ class RosterOut(BaseModel):
     line: bool
     seated: list[EntrantRowOut] | list[EntrantTeamOut]
     queued: list[EntrantRowOut] | list[EntrantTeamOut]
+    # a side event's capacity, stated on its line; null wherever no side
+    # event's line is drawn (spec public-entrants)
+    capacity: int | None = None
 
 
 class EntrantsOut(BaseModel):

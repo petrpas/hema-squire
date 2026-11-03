@@ -9,7 +9,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models import Fencer, HRRatingSnapshot, HRSnapshotRating, Tournament
-from tests.conftest import publish, today_utc
+from tests.conftest import publish, set_features, today_utc
 
 
 def make_cup(client, organizer):
@@ -135,3 +135,44 @@ def test_a_rating_snapshot_orders_and_is_claimed(client, auth_headers, engine):
     found = familiar(client, me)
     assert found["ranked"] is True
     assert [p["label"] for p in found["people"]] == ["High R.", "Mid R.", "Low R."]
+
+
+def test_clubmates_at_an_events_seminar_are_found_unranked(client, auth_headers, engine):
+    """An event's faces are its program's attendees, and with no discipline to
+    be rated in they are ordered by name and not claimed as ranked, even
+    beside a snapshot kept from a time it had one."""
+    organizer = auth_headers()
+    client.post(
+        "/api/tournaments",
+        json={"slug": "cup", "display_name": "Cup", "date": str(today_utc() + timedelta(days=30))},
+        headers=organizer,
+    )
+    set_features(client, organizer, "cup", feature_extras=True)
+    items = {
+        category: client.post(
+            "/api/tournaments/cup/extra-items",
+            json={"name": category, "category": category, "price": 300},
+            headers=organizer,
+        ).json()["id"]
+        for category in ("seminar", "afterparty")
+    }
+    publish(client, organizer, "cup")
+    me = fencer(auth_headers, engine, "me@example.com", "Petr Novák", "Klub A", "CZ")
+    attendees = [("Zdeněk Malý", "seminar"), ("Adam Velký", "seminar"), ("Eva Party", "afterparty")]
+    for i, (name, category) in enumerate(attendees):
+        response = client.post(
+            "/api/tournaments/cup/register",
+            json={"disciplines": [], "extras": [{"extra_item_id": items[category]}]},
+            headers=fencer(auth_headers, engine, f"o{i}@example.com", name, "Klub A", "CZ"),
+        )
+        assert response.status_code == 201, response.text
+    with Session(engine) as session:
+        cup = session.scalars(select(Tournament).where(Tournament.slug == "cup")).one()
+        session.add(HRRatingSnapshot(tournament_id=cup.id, fencer_count=0))
+        session.commit()
+
+    found = familiar(client, me)
+    assert found["basis"] == "club"
+    assert found["total"] == 2
+    assert found["ranked"] is False
+    assert [p["label"] for p in found["people"]] == ["Adam V.", "Zdeněk M."]

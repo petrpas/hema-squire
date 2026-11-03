@@ -77,6 +77,7 @@ from app.schemas import (
     OpenTournamentOut,
     OrganizerOut,
     OwnerTransferIn,
+    ProgramMeterOut,
     QueueDisciplineOut,
     QueueOut,
     QueueTeamOut,
@@ -278,6 +279,7 @@ def _fencer_tournament_out(
     organized: bool | None,
     removed: set[int],
     counts: tuple[int, int],
+    meters: list[list_counts.ProgramMeter],
     familiar: familiar_mod.Familiar | None = None,
 ) -> OpenTournamentOut:
     """One entry of a fencer-facing list. The three scopes (upcoming, held,
@@ -341,6 +343,12 @@ def _fencer_tournament_out(
         ),
         entrant_count=counts[0],
         club_count=counts[1],
+        program_meters=[
+            ProgramMeterOut(
+                id=meter.item_id, name=meter.name, entered=meter.entered, capacity=meter.capacity
+            )
+            for meter in meters
+        ],
         disciplines=[_open_discipline_out(session, d, removed) for d in tournament.disciplines],
         my_registration_state=(
             _my_registration_state(session, tournament, fencer) if fencer is not None else None
@@ -373,6 +381,7 @@ def _fencer_list(
     removed = {t.id: entrants.removed_registration_ids(session, t) for t in tournaments}
     seated = list_counts.seated_entrants(session, tournaments, removed)
     counts = list_counts.entrant_counts(seated)
+    meters = list_counts.program_meters(session, tournaments, removed)
     familiar = (
         familiar_mod.familiar_entrants(session, tournaments, seated, fencer)
         if fencer is not None
@@ -386,6 +395,7 @@ def _fencer_list(
             organized=organized(tournament),
             removed=removed[tournament.id],
             counts=counts[tournament.id],
+            meters=meters.get(tournament.id, []),
             familiar=familiar.get(tournament.id),
         )
         for tournament in tournaments
