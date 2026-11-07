@@ -37,6 +37,8 @@ from app.models import (
     Registration,
     RegistrationDiscipline,
     RegistrationExtra,
+    RosterChange,
+    RosterChangeKind,
     Rule,
     SheetRowNumber,
     Team,
@@ -46,7 +48,7 @@ from app.models import (
 )
 from app.routers.tournaments import _lowest_free_series
 
-SCHEMA_VERSION = 21
+SCHEMA_VERSION = 22
 
 _TOURNAMENT_FIELDS = [
     "slug",
@@ -237,9 +239,20 @@ def export_tournament(session: Session, tournament: Tournament) -> dict:
             selectinload(Registration.extra_selections).selectinload(RegistrationExtra.item),
             selectinload(Registration.teams).selectinload(Team.discipline),
             selectinload(Registration.teams).selectinload(Team.members),
+            selectinload(Registration.teams).selectinload(Team.removed_members),
         )
         .order_by(Registration.id)
     ).all()
+    # v22: the roster log, so a restore does not quietly erase a roster's
+    # history (design roster-identity-and-history D5)
+    roster_changes: dict[int, list[RosterChange]] = {}
+    for change in session.scalars(
+        select(RosterChange)
+        .join(Team, Team.id == RosterChange.team_id)
+        .where(Team.tournament_id == tournament.id)
+        .order_by(RosterChange.id)
+    ).all():
+        roster_changes.setdefault(change.team_id, []).append(change)
     transactions = session.scalars(
         select(BankTransaction)
         .where(BankTransaction.tournament_id == tournament.id)
@@ -301,6 +314,16 @@ def export_tournament(session: Session, tournament: Tournament) -> dict:
     # registrations at whichever survived. Schema 12 carries `ref` for exactly
     # this; `email` stays in the payload because it is worth reading.
     fencers = {r.fencer.id: r.fencer for r in registrations}
+    # an organizer who edited a roster is an actor of this tournament's history
+    # without being an entrant of it, so the document has to carry them too
+    for entries in roster_changes.values():
+        for change in entries:
+            fencers.setdefault(change.actor.id, change.actor)
+    for registration in registrations:
+        for team in registration.teams:
+            for gone in team.removed_members:
+                if gone.removed_by is not None:
+                    fencers.setdefault(gone.removed_by.id, gone.removed_by)
     reg_by_id = {r.id: r for r in registrations}
 
     return {
@@ -401,14 +424,44 @@ def export_tournament(session: Session, tournament: Tournament) -> dict:
                         "waitlisted": team.waitlisted,
                         "waitlisted_since": team.waitlisted_since.isoformat(),
                         "promoted_unpaid": team.promoted_unpaid,
+                        # v22: `ref` is the member's identity, which the log
+                        # below points at and which a restore re-anchors
                         "members": [
                             {
+                                "ref": m.id,
                                 "name": m.name,
                                 "hr_id": m.hr_id,
                                 "club": m.club,
                                 "nationality": m.nationality,
                             }
                             for m in team.members
+                        ],
+                        "removed_members": [
+                            {
+                                "ref": m.id,
+                                "name": m.name,
+                                "hr_id": m.hr_id,
+                                "club": m.club,
+                                "nationality": m.nationality,
+                                "removed_at": _plain(m.removed_at),
+                                "removed_by_ref": m.removed_by_fencer_id,
+                            }
+                            for m in team.removed_members
+                        ],
+                        "roster_log": [
+                            {
+                                "member_ref": change.member_id,
+                                "member_name": change.member_name,
+                                "kind": change.kind.value,
+                                "field": change.field,
+                                "before": change.before,
+                                "after": change.after,
+                                "actor_ref": change.actor_fencer_id,
+                                "by_organizer": change.by_organizer,
+                                "after_deadline": change.after_deadline,
+                                "created_at": _plain(change.created_at),
+                            }
+                            for change in roster_changes.get(team.id, [])
                         ],
                     }
                     for team in r.teams
@@ -751,22 +804,63 @@ def restore_tournament(session: Session, data: dict, actor: Fencer) -> Tournamen
             )
             session.add(team)
             session.flush()
-            for ordinal, member in enumerate(team_entry.get("members", [])):
+            # the member's identity in the document, so the log below can name
+            # the row it belongs to after that row has been given a new id
+            member_map: dict[object, TeamMember] = {}
+            removed_entries = team_entry.get("removed_members", [])
+            for ordinal, member in enumerate([*team_entry.get("members", []), *removed_entries]):
+                gone = ordinal >= len(team_entry.get("members", []))
+                row = TeamMember(
+                    team_id=team.id,
+                    # a removed member keeps an ordinal, which means nothing
+                    # once it is off the roster
+                    ordinal=ordinal,
+                    name=member["name"],
+                    hr_id=member.get("hr_id"),
+                    club=member.get("club"),
+                    # read like any other write of a member (spec
+                    # team-disciplines): a document written before the
+                    # column spoke one vocabulary restores into rows that
+                    # do, as an older document's discipline code restores
+                    # with its classification parsed out of it
+                    nationality=(
+                        country_code(member.get("nationality")) or member.get("nationality")
+                    ),
+                    # a pre-v22 document states no removal, so every member it
+                    # carries arrives live
+                    removed_at=_parse_dt(member.get("removed_at")) if gone else None,
+                    removed_by_fencer_id=(
+                        removed_by.id
+                        if (removed_by := fencers.get(member.get("removed_by_ref"))) is not None
+                        else None
+                    ),
+                )
+                session.add(row)
+                if "ref" in member:
+                    member_map[member["ref"]] = row
+            session.flush()
+            for change in team_entry.get("roster_log", []):
+                by = fencers.get(change.get("actor_ref"))
+                anchor = member_map.get(change.get("member_ref"))
+                # an entry naming a member or an actor the document does not
+                # carry has nothing to hang on. Dropped rather than refusing
+                # the restore: a log is a record, and one unanchorable line is
+                # a smaller loss than the tournament
+                if by is None or anchor is None:
+                    continue
                 session.add(
-                    TeamMember(
+                    RosterChange(
                         team_id=team.id,
-                        ordinal=ordinal,
-                        name=member["name"],
-                        hr_id=member.get("hr_id"),
-                        club=member.get("club"),
-                        # read like any other write of a member (spec
-                        # team-disciplines): a document written before the
-                        # column spoke one vocabulary restores into rows that
-                        # do, as an older document's discipline code restores
-                        # with its classification parsed out of it
-                        nationality=(
-                            country_code(member.get("nationality")) or member.get("nationality")
-                        ),
+                        member_id=anchor.id,
+                        member_name=change["member_name"],
+                        kind=RosterChangeKind(change["kind"]),
+                        field=change.get("field"),
+                        before=change.get("before"),
+                        after=change.get("after"),
+                        actor_fencer_id=by.id,
+                        by_organizer=change.get("by_organizer", False),
+                        after_deadline=change.get("after_deadline", False),
+                        created_at=_parse_dt(change.get("created_at")),
                     )
                 )
         reg_map[entry["ref"]] = registration

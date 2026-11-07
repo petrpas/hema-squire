@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 
-import type { RosterMember, TeamEntry } from "./api";
+import type { RosterMember, RosterMemberFields, TeamEntry } from "./api";
 import { rosterChanged, summarizeSaves } from "./roster";
 
-function member(overrides: Partial<RosterMember> = {}): RosterMember {
+function member(overrides: Partial<RosterMemberFields> = {}): RosterMemberFields {
   return { name: "Alice", hr_id: null, club: null, nationality: null, ...overrides };
 }
 
@@ -65,7 +65,8 @@ describe("summarizeSaves", () => {
   it("splits saved and failed teams from a partial failure", () => {
     const teamA = team({ id: 1, name: "Team A" });
     const teamB = team({ id: 2, name: "Team B" });
-    const updatedA = { ...teamA, members: [member({ name: "Alicia" })] };
+    const stored: RosterMember = { id: 7, ...member({ name: "Alicia" }) };
+    const updatedA = { ...teamA, members: [stored] };
 
     const { saved, failed } = summarizeSaves([
       { team: teamA, result: { status: "fulfilled", value: updatedA } },

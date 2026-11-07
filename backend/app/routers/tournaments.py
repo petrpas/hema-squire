@@ -17,6 +17,7 @@ from app import (
     entrants,
     list_counts,
     money_bounds,
+    roster,
     scheduler,
     setup,
     taxonomy,
@@ -82,7 +83,10 @@ from app.schemas import (
     QueueOut,
     QueueTeamOut,
     RegistrationsKeptByIn,
+    RemovedRosterMemberOut,
+    RosterChangeOut,
     RosterMemberOut,
+    RosterUpdateIn,
     SettleSeatingOut,
     SetupSuggestionsOut,
     TeamAdd,
@@ -1355,12 +1359,71 @@ def live_teams(session: Session, discipline: Discipline) -> list[Team]:
     )
 
 
+def _console_team_out(
+    session: Session, team: Team, *, waitlist_position: int | None, below_minimum: bool
+) -> ConsoleTeamOut:
+    """One team as the organizer reads it: the live roster, the members off it,
+    and the roster's whole log. The removed and the log are what let the view
+    restore a member and say who changed what."""
+    return ConsoleTeamOut(
+        id=team.id,
+        name=team.name,
+        entering_fencer=team.registration.fencer.display_name,
+        waitlisted=team.waitlisted,
+        waitlist_position=waitlist_position,
+        members=[
+            RosterMemberOut(
+                id=m.id,
+                name=m.name,
+                hr_id=m.hr_id,
+                club=m.club,
+                nationality=m.nationality,
+            )
+            for m in team.members
+        ],
+        removed_members=[
+            RemovedRosterMemberOut(
+                id=m.id,
+                name=m.name,
+                hr_id=m.hr_id,
+                club=m.club,
+                nationality=m.nationality,
+                # a `Mapped[datetime | None]` the relationship's own filter has
+                # already settled: `removed_members` is exactly the rows whose
+                # moment is set
+                removed_at=removed_at,
+                removed_by=m.removed_by.display_name if m.removed_by else None,
+            )
+            for m in team.removed_members
+            if (removed_at := m.removed_at) is not None
+        ],
+        log=[
+            RosterChangeOut(
+                id=entry.id,
+                member_id=entry.member_id,
+                member_name=entry.member_name,
+                kind=entry.kind.value,
+                field=entry.field,
+                before=entry.before,
+                after=entry.after,
+                actor=entry.actor.display_name,
+                by_organizer=entry.by_organizer,
+                after_deadline=entry.after_deadline,
+                created_at=entry.created_at,
+            )
+            for entry in roster.roster_log(session, team)
+        ],
+        below_minimum=below_minimum,
+    )
+
+
 @router.get("/{slug}/teams", response_model=list[ConsoleTeamDisciplineOut])
 def console_teams(tournament: TournamentDep, session: SessionDep, fencer: FencerDep):
-    """Read-only, per team discipline: every team with its entering fencer,
-    ordered roster, member count, waitlist position, and below-minimum flag.
-    Offers no action (spec: "Organizer's read-only teams view") — there is no
-    admit/edit/cancel endpoint here or anywhere else for a team."""
+    """Per team discipline: every team with its entering fencer, ordered
+    roster, member count, waitlist position, below-minimum flag, the members
+    removed from it and its roster log. The roster is editable from here
+    (`console_update_roster`); admission is the Queue phase's and cancellation
+    is offered nowhere (spec: "Organizer's teams view")."""
     require_console_access(session, tournament, fencer)
     # a date the organizer entered, so the whole of that day where the
     # tournament is held — the same rule the registration close follows, and
@@ -1389,21 +1452,10 @@ def console_teams(tournament: TournamentDep, session: SessionDep, fencer: Fencer
             else:
                 position = None
             team_rows.append(
-                ConsoleTeamOut(
-                    id=team.id,
-                    name=team.name,
-                    entering_fencer=team.registration.fencer.display_name,
-                    waitlisted=team.waitlisted,
+                _console_team_out(
+                    session,
+                    team,
                     waitlist_position=position,
-                    members=[
-                        RosterMemberOut(
-                            name=m.name,
-                            hr_id=m.hr_id,
-                            club=m.club,
-                            nationality=m.nationality,
-                        )
-                        for m in team.members
-                    ],
                     below_minimum=deadline_passed and len(team.members) < team_min,
                 )
             )
@@ -1417,6 +1469,64 @@ def console_teams(tournament: TournamentDep, session: SessionDep, fencer: Fencer
             )
         )
     return result
+
+
+def _waitlist_position(session: Session, team: Team) -> int | None:
+    """Where a waitlisted team stands among the discipline's waiting teams;
+    None for a seated one. Read from the same ordering the teams view lists,
+    so one team's row cannot disagree with the list it came from."""
+    if not team.waitlisted:
+        return None
+    waiting = [t for t in live_teams(session, team.discipline) if t.waitlisted]
+    return next((i for i, t in enumerate(waiting, 1) if t.id == team.id), None)
+
+
+@router.put("/{slug}/teams/{team_id}/roster", response_model=ConsoleTeamOut)
+def console_update_roster(
+    team_id: RowId,
+    data: RosterUpdateIn,
+    tournament: TournamentDep,
+    session: SessionDep,
+    fencer: FencerDep,
+):
+    """The organizer's own roster save, which the entering fencer's route
+    cannot serve: that one is about *my* registration and exists to refuse
+    anybody else (design roster-identity-and-history D6). Same diff and same
+    log as `update_roster`, with the organizer recorded as the actor.
+
+    A team arrives at the venue and the fencer who entered it cannot reach
+    their manage link; the organizer acting for them is the remedy, and a safe
+    one — a roster edit moves no money, sends no mail, and consumes no
+    capacity (spec team-disciplines, Roster editing changes no money). Neither
+    the amendment window nor the composition deadline gates it: the whole
+    point is the day of the event.
+    """
+    require_console_access(session, tournament, fencer)
+    team = session.get(Team, team_id)
+    if team is None or team.tournament_id != tournament.id:
+        raise HTTPException(status_code=404, detail="team_not_found")
+    roster.apply_roster_save(
+        session,
+        tournament,
+        team,
+        data.members,
+        actor_fencer_id=fencer.id,
+        by_organizer=True,
+    )
+    session.commit()
+    session.refresh(team)
+    today = setup.local_date(tournament, datetime.now(UTC))
+    deadline = tournament.team_composition_deadline
+    return _console_team_out(
+        session,
+        team,
+        waitlist_position=_waitlist_position(session, team),
+        below_minimum=(
+            deadline is not None
+            and today > deadline
+            and len(team.members) < (team.discipline.team_min or 0)
+        ),
+    )
 
 
 @router.get("/{slug}/queue", response_model=QueueOut)

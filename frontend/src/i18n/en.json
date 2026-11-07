@@ -1317,7 +1317,35 @@
     "waitlistPosition": "position {{position}}",
     "belowMinimum": "below minimum",
     "enteredBy": "entered by {{name}}",
-    "admittedOnQueue": "admission from the waitlist is on the Queue phase"
+    "admittedOnQueue": "admission from the waitlist is on the Queue phase",
+    "editRoster": "Edit roster",
+    "editor": {
+      "movesNoMoney": "A roster edit moves no money and sends nothing to the entering fencer.",
+      "removedTitle": "Off the roster",
+      "removedBy": "removed by {{name}}, {{at}}",
+      "restore": "Restore",
+      "save": "Save roster",
+      "saveFailed": "Could not save the roster."
+    },
+    "log": {
+      "show": "History",
+      "hide": "Hide history",
+      "empty": "No change recorded. The history begins where Squire started keeping it.",
+      "added": "{{member}} added",
+      "removed": "{{member}} removed",
+      "restored": "{{member}} restored",
+      "edited": "{{member}} — {{field}}: {{before}} → {{after}}",
+      "blank": "—",
+      "by": "{{actor}}, {{at}}",
+      "byOrganizer": "by the organizer",
+      "afterDeadline": "after the composition deadline",
+      "field": {
+        "name": "name",
+        "hr_id": "HR identifier",
+        "club": "club",
+        "nationality": "nationality"
+      }
+    }
   },
   "cancel": {
     "button": "Cancel registration",

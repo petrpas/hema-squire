@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import type { HRProfile, RosterMember } from "./api";
+import type { HRProfile, RosterMemberFields } from "./api";
 import HRSearchPicker from "./HRSearch";
 import Modal from "./Modal";
 
@@ -19,8 +19,10 @@ export default function RosterMemberDialog({
   onClose,
 }: {
   /** The member being rebound, or null when adding a new one. */
-  initial: RosterMember | null;
-  onConfirm: (member: RosterMember) => void;
+  initial: RosterMemberFields | null;
+  // the dialog names a person; it never issues or carries an identity, which
+  // is the server's and which the caller keeps on the row being rebound
+  onConfirm: (member: RosterMemberFields) => void;
   onClose: () => void;
 }) {
   const { t } = useTranslation();

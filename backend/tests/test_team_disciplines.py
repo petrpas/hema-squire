@@ -23,11 +23,19 @@ from app.models import (
     Fencer,
     Registration,
     Role,
+    RosterChange,
     Team,
     TeamMember,
     Tournament,
 )
-from tests.conftest import FAR_EAST, FAR_WEST, publish, today_in, today_local
+from tests.conftest import (
+    FAR_EAST,
+    FAR_WEST,
+    pay_registration,
+    publish,
+    today_in,
+    today_local,
+)
 
 REGISTERED_AT = datetime(2026, 5, 1, 12, 0)
 
@@ -630,6 +638,474 @@ def test_roster_edit_moves_no_money_vs_or_email(client, auth_headers):
 
 
 # ---------------------------------------------------------------------------
+# A roster member keeps its identity across saves
+# ---------------------------------------------------------------------------
+
+
+def put_roster(client, team_id, members, headers):
+    return client.put(
+        f"/api/tournaments/cup/my-registration/teams/{team_id}/roster",
+        json={"members": members},
+        headers=headers,
+    )
+
+
+def log_rows(team_id):
+    session = db_session()
+    return list(
+        session.scalars(
+            select(RosterChange).where(RosterChange.team_id == team_id).order_by(RosterChange.id)
+        ).all()
+    )
+
+
+def test_corrected_nationality_keeps_the_member(client, auth_headers):
+    """A save states the roster it wants and is applied as a difference: the
+    corrected member is the same member afterwards, and the others are
+    untouched (spec team-disciplines, A correction keeps the member)."""
+    organizer = auth_headers()
+    setup_team_tournament(client, organizer)
+    fencer = auth_headers(email="f1@example.com", name="F1")
+    team_id = register_team(client, fencer, name="Wolves").json()["teams"][0]["id"]
+    before = put_roster(
+        client,
+        team_id,
+        [{"name": "A", "nationality": "SK"}, {"name": "B"}, {"name": "C"}],
+        fencer,
+    ).json()["members"]
+
+    corrected = [dict(m) for m in before]
+    corrected[0]["nationality"] = "CZ"
+    after = put_roster(client, team_id, corrected, fencer).json()["members"]
+
+    assert [m["id"] for m in after] == [m["id"] for m in before]
+    assert after[0]["nationality"] == "CZ"
+    assert [m["nationality"] for m in after[1:]] == [None, None]
+    entries = log_rows(team_id)
+    # three additions from the first save, then the one correction
+    assert [(e.kind, e.field, e.before, e.after) for e in entries[3:]] == [
+        ("edited", "nationality", "SK", "CZ")
+    ]
+
+
+def test_reordering_identifies_nobody_differently(client, auth_headers):
+    """Order is rewritten from the order stated and carries no identity, so a
+    reorder changes nothing anybody could dispute and the log gains no entry
+    (spec team-disciplines, A reorder is not a change)."""
+    organizer = auth_headers()
+    setup_team_tournament(client, organizer, team_max=4)
+    fencer = auth_headers(email="f1@example.com", name="F1")
+    team_id = register_team(client, fencer, name="Wolves").json()["teams"][0]["id"]
+    before = put_roster(
+        client, team_id, [{"name": n} for n in ("A", "B", "C", "D")], fencer
+    ).json()["members"]
+    entries_before = len(log_rows(team_id))
+
+    reversed_order = [dict(m) for m in reversed(before)]
+    after = put_roster(client, team_id, reversed_order, fencer).json()["members"]
+
+    assert [m["name"] for m in after] == ["D", "C", "B", "A"]
+    assert [m["id"] for m in after] == [m["id"] for m in reversed(before)]
+    assert len(log_rows(team_id)) == entries_before
+
+
+def test_two_members_alike_are_still_two_members(client, auth_headers):
+    """Two members may be identical in every stored field; their identities
+    are still distinct, and a save applies to the one it names (spec
+    team-disciplines, Two members alike are still two members)."""
+    organizer = auth_headers()
+    setup_team_tournament(client, organizer)
+    fencer = auth_headers(email="f1@example.com", name="F1")
+    team_id = register_team(client, fencer, name="Wolves").json()["teams"][0]["id"]
+    before = put_roster(
+        client, team_id, [{"name": "Jan Novak"}, {"name": "Jan Novak"}], fencer
+    ).json()["members"]
+    assert before[0]["id"] != before[1]["id"]
+
+    first = [dict(m) for m in before]
+    first[0]["name"] = "Jan Novak the elder"
+    after_first = put_roster(client, team_id, first, fencer).json()["members"]
+    assert [m["name"] for m in after_first] == ["Jan Novak the elder", "Jan Novak"]
+    assert [m["id"] for m in after_first] == [m["id"] for m in before]
+
+    second = [dict(m) for m in after_first]
+    second[1]["name"] = "Jan Novak the younger"
+    after_second = put_roster(client, team_id, second, fencer).json()["members"]
+    assert [m["name"] for m in after_second] == [
+        "Jan Novak the elder",
+        "Jan Novak the younger",
+    ]
+    assert [m["id"] for m in after_second] == [m["id"] for m in before]
+
+
+def test_a_member_added_and_a_member_removed_in_one_save(client, auth_headers):
+    """The three stated keep their identities, the omitted one is removed, and
+    the one stated without an identity is added (spec team-disciplines)."""
+    organizer = auth_headers()
+    setup_team_tournament(client, organizer, team_max=4)
+    fencer = auth_headers(email="f1@example.com", name="F1")
+    team_id = register_team(client, fencer, name="Wolves").json()["teams"][0]["id"]
+    before = put_roster(
+        client, team_id, [{"name": n} for n in ("A", "B", "C", "D")], fencer
+    ).json()["members"]
+    entries_before = len(log_rows(team_id))
+
+    kept = [dict(m) for m in before if m["name"] != "C"]
+    after = put_roster(client, team_id, [*kept, {"name": "E"}], fencer).json()["members"]
+
+    assert [m["name"] for m in after] == ["A", "B", "D", "E"]
+    assert [m["id"] for m in after[:3]] == [m["id"] for m in kept]
+    new_entries = log_rows(team_id)[entries_before:]
+    assert sorted((e.kind, e.member_name) for e in new_entries) == [
+        ("added", "E"),
+        ("removed", "C"),
+    ]
+    # the removed member is retained, not erased: still there, marked
+    session = db_session()
+    removed = session.scalars(
+        select(TeamMember).where(TeamMember.team_id == team_id, TeamMember.removed_at.is_not(None))
+    ).all()
+    assert [m.name for m in removed] == ["C"]
+
+
+def test_a_foreign_member_id_is_refused(client, auth_headers):
+    """An id that is not a member of this team makes the request a statement
+    about some other roster. Refused rather than ignored, which would silently
+    add a member the sender meant to move (design D1)."""
+    organizer = auth_headers()
+    setup_team_tournament(client, organizer, capacity=2)
+    fencer = auth_headers(email="f1@example.com", name="F1")
+    teams = register_team(
+        client,
+        fencer,
+        teams=[{"slug": "LS", "name": "Wolves"}, {"slug": "LS", "name": "Bears"}],
+    ).json()["teams"]
+    wolves, bears = teams[0]["id"], teams[1]["id"]
+    theirs = put_roster(client, bears, [{"name": "Theirs"}], fencer).json()["members"][0]
+
+    refused = put_roster(client, wolves, [{"name": "Ours"}, dict(theirs)], fencer)
+    assert refused.status_code == 422
+    assert refused.json()["detail"] == {"member_not_on_roster": theirs["id"]}
+    # nothing of the refused save was applied
+    assert (
+        client.get("/api/tournaments/cup/my-registration", headers=fencer).json()["teams"][0][
+            "members"
+        ]
+        == []
+    )
+    assert [
+        m["name"] for m in put_roster(client, bears, [dict(theirs)], fencer).json()["members"]
+    ] == ["Theirs"]
+
+
+def test_the_same_member_stated_twice_is_refused(client, auth_headers):
+    """One member cannot be two places on one roster. Stating its id twice is
+    not a roster, so it is refused the same way a foreign id is."""
+    organizer = auth_headers()
+    setup_team_tournament(client, organizer)
+    fencer = auth_headers(email="f1@example.com", name="F1")
+    team_id = register_team(client, fencer, name="Wolves").json()["teams"][0]["id"]
+    member = put_roster(client, team_id, [{"name": "A"}], fencer).json()["members"][0]
+
+    refused = put_roster(client, team_id, [dict(member), dict(member)], fencer)
+    assert refused.status_code == 422
+    assert refused.json()["detail"] == {"member_not_on_roster": member["id"]}
+
+
+# ---------------------------------------------------------------------------
+# A removed roster member is retained
+# ---------------------------------------------------------------------------
+
+
+def test_a_removed_member_counts_for_nothing(client, auth_headers):
+    """A removed member is excluded from everything that states a roster or
+    counts one. Each surface reads `len(team.members)` in its own file, so
+    each is asked here (spec team-disciplines, A removed member counts for
+    nothing)."""
+    organizer = auth_headers()
+    # the deadline is already past, so the below-minimum mark is live
+    yesterday = (today_local() - timedelta(days=1)).isoformat()
+    setup_team_tournament(client, organizer, team_min=3, team_max=4, deadline=yesterday)
+    fencer = auth_headers(email="f1@example.com", name="F1")
+    team_id = register_team(client, fencer, name="Wolves").json()["teams"][0]["id"]
+    four = put_roster(client, team_id, [{"name": n} for n in ("A", "B", "C", "D")], fencer).json()[
+        "members"
+    ]
+
+    kept = [dict(m) for m in four if m["name"] != "D"]
+    after = put_roster(client, team_id, kept, fencer)
+    assert [m["name"] for m in after.json()["members"]] == ["A", "B", "C"]
+
+    # the entering fencer's own detail page
+    detail = client.get("/api/tournaments/cup/my-registration", headers=fencer).json()
+    assert [m["name"] for m in detail["teams"][0]["members"]] == ["A", "B", "C"]
+    # the organizer's teams view: three members, and not below a minimum of 3
+    console = client.get("/api/tournaments/cup/teams", headers=organizer).json()
+    assert [m["name"] for m in console[0]["teams"][0]["members"]] == ["A", "B", "C"]
+    assert console[0]["teams"][0]["below_minimum"] is False
+    # the Queue phase's count of a team's members
+    queue = client.get("/api/tournaments/cup/queue/teams/LS", headers=organizer).json()
+    assert queue[0]["members"] == 3
+    # the public entrants roster
+    entrants = client.get("/api/tournaments/cup/entrants").json()
+    team_rows = [t for r in entrants["rosters"] for t in r["seated"] + r["queued"]]
+    assert [m["name"] for m in team_rows[0]["members"]] == ["A", "B", "C"]
+    # the backup document
+    doc = client.get("/api/tournaments/cup/export/json", headers=organizer).json()
+    exported = doc["registrations"][0]["teams"][0]
+    assert [m["name"] for m in exported["members"]] == ["A", "B", "C"]
+
+
+def test_a_removed_member_does_not_earn_a_composition_reminder(client, auth_headers):
+    """The scheduler's completeness test and the mail's "have N of M" both
+    count the live roster; a removed member neither triggers the reminder nor
+    inflates the count it states."""
+    organizer = auth_headers()
+    soon = (today_local() + timedelta(days=3)).isoformat()
+    setup_team_tournament(client, organizer, capacity=5, deadline=soon)
+    complete = auth_headers(email="complete@example.com", name="Complete")
+    team_id = register_team(client, complete, name="Complete Team").json()["teams"][0]["id"]
+    four = put_roster(
+        client, team_id, [{"name": n} for n in ("A", "B", "C", "D")], complete
+    ).json()["members"]
+    # still complete at three: no reminder is due
+    put_roster(client, team_id, [dict(m) for m in four[:3]], complete)
+
+    mailer = mailbox_fixture()
+    try:
+        from app import scheduler
+
+        session = db_session()
+        tournament = session.scalar(select(Tournament).where(Tournament.slug == "cup"))
+        assert scheduler.process_composition_reminders(session, tournament, mailer) == 0
+
+        # drop one more and the team is short, with the mail stating two
+        put_roster(client, team_id, [dict(m) for m in four[:2]], complete)
+        session = db_session()
+        tournament = session.scalar(select(Tournament).where(Tournament.slug == "cup"))
+        assert scheduler.process_composition_reminders(session, tournament, mailer) == 1
+        body = mailer.sent[0].get_body(("plain",)).get_content()
+        assert "2" in body
+        assert "C" not in [line.strip() for line in body.splitlines()]
+    finally:
+        app.dependency_overrides.pop(get_mailer, None)
+
+
+def test_a_removal_is_not_an_erasure(client, auth_headers):
+    """The removed member is reachable as the roster's history, carrying the
+    moment it was removed and who removed it (spec team-disciplines)."""
+    organizer = auth_headers()
+    setup_team_tournament(client, organizer)
+    fencer = auth_headers(email="f1@example.com", name="F1")
+    team_id = register_team(client, fencer, name="Wolves").json()["teams"][0]["id"]
+    two = put_roster(client, team_id, [{"name": "A"}, {"name": "B"}], fencer).json()["members"]
+    put_roster(client, team_id, [dict(two[0])], fencer)
+
+    session = db_session()
+    team = session.get(Team, team_id)
+    assert [m.name for m in team.members] == ["A"]
+    assert [m.name for m in team.removed_members] == ["B"]
+    gone = team.removed_members[0]
+    assert gone.id == two[1]["id"]
+    assert gone.removed_at is not None
+    actor = session.get(Fencer, gone.removed_by_fencer_id)
+    assert actor is not None and actor.email == "f1@example.com"
+
+
+def test_restored_rather_than_retyped(client, auth_headers):
+    """A restore returns the same member, not a copy: whatever the tournament
+    has decided about that person is still about them (spec
+    team-disciplines)."""
+    organizer = auth_headers()
+    setup_team_tournament(client, organizer, team_max=4)
+    fencer = auth_headers(email="f1@example.com", name="F1")
+    team_id = register_team(client, fencer, name="Wolves").json()["teams"][0]["id"]
+    four = put_roster(client, team_id, [{"name": n} for n in ("A", "B", "C", "D")], fencer).json()[
+        "members"
+    ]
+    put_roster(client, team_id, [dict(m) for m in four[:3]], fencer)
+
+    restored = put_roster(client, team_id, [dict(m) for m in four], fencer).json()["members"]
+    assert [m["id"] for m in restored] == [m["id"] for m in four]
+    assert [m["name"] for m in restored] == ["A", "B", "C", "D"]
+    session = db_session()
+    assert session.get(Team, team_id).removed_members == []
+    kinds = [e.kind for e in log_rows(team_id)]
+    assert kinds[-2:] == ["removed", "restored"]
+
+
+def test_a_full_roster_has_no_room_to_restore_into(client, auth_headers):
+    """A restore is a member of the roster the save states, so the maximum
+    refuses it the way it refuses any other roster too large, naming the
+    maximum (spec team-disciplines)."""
+    organizer = auth_headers()
+    setup_team_tournament(client, organizer, team_max=4)
+    fencer = auth_headers(email="f1@example.com", name="F1")
+    team_id = register_team(client, fencer, name="Wolves").json()["teams"][0]["id"]
+    four = put_roster(client, team_id, [{"name": n} for n in ("A", "B", "C", "D")], fencer).json()[
+        "members"
+    ]
+    # D out, E in: the roster is full again, and D is the removed one
+    full = put_roster(
+        client, team_id, [*[dict(m) for m in four[:3]], {"name": "E"}], fencer
+    ).json()["members"]
+
+    # D back without letting anybody go: a roster of five, which is one too many
+    refused = put_roster(client, team_id, [*[dict(m) for m in full], dict(four[3])], fencer)
+    assert refused.status_code == 422
+    assert refused.json()["detail"] == {"roster_over_maximum": 4}
+    session = db_session()
+    assert [m.name for m in session.get(Team, team_id).removed_members] == ["D"]
+
+
+# ---------------------------------------------------------------------------
+# The organizer's own route
+# ---------------------------------------------------------------------------
+
+
+def console_put_roster(client, team_id, members, headers):
+    return client.put(
+        f"/api/tournaments/cup/teams/{team_id}/roster",
+        json={"members": members},
+        headers=headers,
+    )
+
+
+def test_the_organizer_swaps_a_member_at_the_venue(client, auth_headers):
+    """A team arrives and the fencer who entered it cannot reach their editor.
+    The organizer acts for them: the roster states the new member, the log
+    holds both changes naming the organizer, and the registration is unchanged
+    (spec team-disciplines, Organizer's teams view)."""
+    organizer = auth_headers()
+    setup_team_tournament(client, organizer)
+    fencer = auth_headers(email="f1@example.com", name="F1")
+    team_id = register_team(client, fencer, name="Wolves").json()["teams"][0]["id"]
+    three = put_roster(client, team_id, [{"name": n} for n in ("A", "B", "C")], fencer).json()[
+        "members"
+    ]
+
+    swapped = console_put_roster(
+        client,
+        team_id,
+        [*[dict(m) for m in three[:2]], {"name": "Substitute"}],
+        organizer,
+    )
+    assert swapped.status_code == 200, swapped.text
+    body = swapped.json()
+    assert [m["name"] for m in body["members"]] == ["A", "B", "Substitute"]
+    assert [m["name"] for m in body["removed_members"]] == ["C"]
+    # the log is one story: the entrant's three additions and the organizer's
+    # two changes, the organizer's named as theirs
+    organizer_entries = [e for e in body["log"] if e["by_organizer"]]
+    assert sorted((e["kind"], e["member_name"]) for e in organizer_entries) == [
+        ("added", "Substitute"),
+        ("removed", "C"),
+    ]
+    assert {e["actor"] for e in organizer_entries} == {"Organizer"}
+    assert [e["by_organizer"] for e in body["log"] if not e["by_organizer"]] == [
+        False,
+        False,
+        False,
+    ]
+
+
+def test_the_organizers_route_refuses_a_fencer(client, auth_headers):
+    """The console's gate is `require_console_access`; the entrant's own route
+    keeps checking ownership and nothing else changed about it."""
+    organizer = auth_headers()
+    setup_team_tournament(client, organizer, capacity=3)
+    fencer = auth_headers(email="f1@example.com", name="F1")
+    stranger = auth_headers(email="f2@example.com", name="F2")
+    team_id = register_team(client, fencer, name="Wolves").json()["teams"][0]["id"]
+    register_team(client, stranger, name="Bears")
+
+    refused = console_put_roster(client, team_id, [{"name": "Theirs"}], stranger)
+    assert refused.status_code == 403
+    # and the entrant's own route still refuses a team that is not theirs
+    not_mine = put_roster(client, team_id, [{"name": "Theirs"}], stranger)
+    assert not_mine.status_code == 404
+    assert (
+        client.get("/api/tournaments/cup/teams", headers=organizer).json()[0]["teams"][0]["members"]
+        == []
+    )
+
+
+def test_the_organizers_edit_moves_no_money_and_sends_no_mail(client, auth_headers):
+    """A team's fee is per team and never multiplied by its roster, so there
+    is no edit to a roster that money could follow — and a letter per
+    corrected row would cost more than the error (spec team-disciplines)."""
+    organizer = auth_headers()
+    setup_team_tournament(client, organizer)
+    mailer = mailbox_fixture()
+    try:
+        fencer = auth_headers(email="f1@example.com", name="F1")
+        created = register_team(client, fencer, name="Wolves").json()
+        team_id = created["teams"][0]["id"]
+        three = put_roster(client, team_id, [{"name": n} for n in ("A", "B", "C")], fencer).json()[
+            "members"
+        ]
+        session = db_session()
+        registration = session.scalar(
+            select(Registration).join(Fencer).where(Fencer.email == "f1@example.com")
+        )
+        assert registration is not None
+        pay_registration(session, registration)
+        before = client.get("/api/tournaments/cup/my-registration", headers=fencer).json()
+        assert before["state"] == "paid"
+        mailer.sent.clear()
+
+        swapped = console_put_roster(
+            client,
+            team_id,
+            [*[dict(m) for m in three[:2]], {"name": "Substitute"}],
+            organizer,
+        )
+        assert swapped.status_code == 200, swapped.text
+
+        after = client.get("/api/tournaments/cup/my-registration", headers=fencer).json()
+        for field in (
+            "vs",
+            "total_amount",
+            "outstanding_amount",
+            "outstanding_currency",
+            "paid_at",
+            "refundable",
+            "refund_state",
+        ):
+            assert after[field] == before[field], field
+        assert after["state"] == before["state"]
+        assert mailer.sent == []
+    finally:
+        app.dependency_overrides.pop(get_mailer, None)
+
+
+def test_the_deadline_constrains_neither_actor(client, auth_headers):
+    """Roster editing is gated by neither the amendment window nor the
+    composition deadline, for the entering fencer or the organizer. The
+    organizer's entry says it was made after the deadline, because a change
+    made afterwards is read differently from one made before it."""
+    organizer = auth_headers()
+    yesterday = (today_local() - timedelta(days=1)).isoformat()
+    setup_team_tournament(client, organizer, deadline=yesterday)
+    fencer = auth_headers(email="f1@example.com", name="F1")
+    team_id = register_team(client, fencer, name="Wolves").json()["teams"][0]["id"]
+
+    by_entrant = put_roster(client, team_id, [{"name": "A"}], fencer)
+    assert by_entrant.status_code == 200
+    mine = by_entrant.json()["members"]
+    by_organizer = console_put_roster(
+        client, team_id, [*[dict(m) for m in mine], {"name": "B"}], organizer
+    )
+    assert by_organizer.status_code == 200, by_organizer.text
+
+    entries = {(e["kind"], e["member_name"]): e for e in by_organizer.json()["log"]}
+    assert entries[("added", "A")]["after_deadline"] is True
+    assert entries[("added", "A")]["by_organizer"] is False
+    assert entries[("added", "B")]["after_deadline"] is True
+    assert entries[("added", "B")]["by_organizer"] is True
+
+
+# ---------------------------------------------------------------------------
 # 10.5 Deadline
 # ---------------------------------------------------------------------------
 
@@ -876,6 +1352,86 @@ def test_v6_roundtrip_with_teams_and_rosters(client, auth_headers):
     assert member_as_account is None
 
 
+def test_v22_roundtrip_carries_removed_members_and_the_roster_log(client, auth_headers):
+    """A restore that dropped the history would make the history worth less
+    than the paper it is not printed on (design D5). The document carries the
+    members off the roster and every entry of its log, the organizer's acts
+    among them, with the actor still named afterwards."""
+    organizer = auth_headers()
+    setup_team_tournament(client, organizer, team_max=4)
+    fencer = auth_headers(email="f1@example.com", name="F1")
+    team_id = register_team(client, fencer, name="Wolves").json()["teams"][0]["id"]
+    three = put_roster(
+        client, team_id, [{"name": "A", "hr_id": 111}, {"name": "B"}, {"name": "C"}], fencer
+    ).json()["members"]
+    # the organizer swaps one at the venue, which is the history worth keeping
+    console_put_roster(
+        client, team_id, [*[dict(m) for m in three[:2]], {"name": "Substitute"}], organizer
+    )
+
+    doc = client.get("/api/tournaments/cup/export/json", headers=organizer).json()
+    assert doc["schema_version"] == 22
+    exported = doc["registrations"][0]["teams"][0]
+    assert [m["name"] for m in exported["removed_members"]] == ["C"]
+    assert len(exported["roster_log"]) == 5
+
+    new_organizer, restore_client = fresh_deployment(client, auth_headers)
+    restore = restore_client.post("/api/tournaments/restore", json=doc, headers=new_organizer)
+    assert restore.status_code == 201, restore.text
+    publish(restore_client, new_organizer, "cup")
+
+    restored = restore_client.get("/api/tournaments/cup/teams", headers=new_organizer).json()
+    team = restored[0]["teams"][0]
+    assert [m["name"] for m in team["members"]] == ["A", "B", "Substitute"]
+    assert [m["name"] for m in team["removed_members"]] == ["C"]
+    assert sorted((e["kind"], e["member_name"], e["by_organizer"]) for e in team["log"]) == [
+        ("added", "A", False),
+        ("added", "B", False),
+        ("added", "C", False),
+        ("added", "Substitute", True),
+        ("removed", "C", True),
+    ]
+    # the log still points at members of this restored roster, not at the ids
+    # the old deployment issued
+    live_and_gone = {m["id"] for m in team["members"] + team["removed_members"]}
+    assert {e["member_id"] for e in team["log"]} <= live_and_gone
+    # and the organizer who swapped is named, though they entered nothing
+    assert {e["actor"] for e in team["log"] if e["by_organizer"]} == {"Organizer"}
+
+
+def test_restore_of_a_v21_document_has_live_members_and_no_history(client, auth_headers):
+    """An empty log on an old document is honest: it says nothing rather than
+    something false. Its members arrive live, as the document meant them
+    (design D5)."""
+    organizer = auth_headers()
+    setup_team_tournament(client, organizer)
+    fencer = auth_headers(email="f1@example.com", name="F1")
+    team_id = register_team(client, fencer, name="Wolves").json()["teams"][0]["id"]
+    put_roster(client, team_id, [{"name": "A"}, {"name": "B"}], fencer)
+
+    doc = client.get("/api/tournaments/cup/export/json", headers=organizer).json()
+    # as a v21 export was written: no member identity, no removals, no log
+    doc["schema_version"] = 21
+    team_entry = doc["registrations"][0]["teams"][0]
+    team_entry.pop("removed_members")
+    team_entry.pop("roster_log")
+    team_entry["members"] = [
+        {k: v for k, v in m.items() if k != "ref"} for m in team_entry["members"]
+    ]
+
+    new_organizer, restore_client = fresh_deployment(client, auth_headers)
+    restore = restore_client.post("/api/tournaments/restore", json=doc, headers=new_organizer)
+    assert restore.status_code == 201, restore.text
+    publish(restore_client, new_organizer, "cup")
+
+    team = restore_client.get("/api/tournaments/cup/teams", headers=new_organizer).json()[0][
+        "teams"
+    ][0]
+    assert [m["name"] for m in team["members"]] == ["A", "B"]
+    assert team["removed_members"] == []
+    assert team["log"] == []
+
+
 def test_restore_reads_an_older_documents_country_name(client, auth_headers):
     """A document written before the column spoke one vocabulary restores into
     rows that do (spec team-disciplines): the restore is a writer of rows, and
@@ -899,9 +1455,7 @@ def test_restore_reads_an_older_documents_country_name(client, auth_headers):
     assert restore.status_code == 201, restore.text
     publish(restore_client, new_organizer, "cup")
 
-    exported = restore_client.get(
-        "/api/tournaments/cup/export/json", headers=new_organizer
-    ).json()
+    exported = restore_client.get("/api/tournaments/cup/export/json", headers=new_organizer).json()
     member = exported["registrations"][0]["teams"][0]["members"][0]
     assert member["nationality"] == "CZ"
 

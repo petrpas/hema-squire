@@ -1,14 +1,17 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { api, type ConsoleTeamDiscipline } from "./api";
-import PaidStamp from "./PaidStamp";
+import { api, type ConsoleTeam, type ConsoleTeamDiscipline } from "./api";
 import PhaseSummary from "./PhaseSummary";
+import TeamRow from "./teams/TeamRow";
 
-/** Read-only, per team discipline (spec: "Organizer's read-only teams
- *  view"). Offers no action — no roster editing on the entrant's behalf, no
- *  cancellation: those controls simply do not exist here, rather than existing
- *  disabled. Admission from the waitlist is the Queue phase's, and a waitlisted
- *  team's row says so. */
+/** Per team discipline, the teams entered into it, each with its roster, the
+ *  editor for that roster and its log (spec: "Organizer's teams view").
+ *
+ *  Editing is here because a team arrives at the venue and the fencer who
+ *  entered it cannot always reach their own editor. No other action is: no
+ *  cancellation, and no admission — that is the Queue phase's, which a
+ *  waitlisted team's row says. Those controls do not exist here rather than
+ *  existing disabled. */
 export default function TeamsPanel({ slug }: { slug: string }) {
   const { t } = useTranslation();
   const [disciplines, setDisciplines] = useState<ConsoleTeamDiscipline[] | null>(null);
@@ -17,6 +20,23 @@ export default function TeamsPanel({ slug }: { slug: string }) {
   useEffect(() => {
     api.consoleTeams(slug).then(setDisciplines, () => setDisciplines([]));
   }, [slug, reload]);
+
+  /** A saved roster lands back in the discipline it belongs to, so the member
+   *  count, the below-minimum mark and the log the response carries all move
+   *  together without a reload. */
+  function replaceTeam(disciplineSlug: string, saved: ConsoleTeam) {
+    setDisciplines(
+      (prev) =>
+        prev?.map((discipline) =>
+          discipline.slug === disciplineSlug
+            ? {
+                ...discipline,
+                teams: discipline.teams.map((team) => (team.id === saved.id ? saved : team)),
+              }
+            : discipline,
+        ) ?? prev,
+    );
+  }
 
   if (disciplines === null) return <p>{t("common.loading")}</p>;
 
@@ -54,43 +74,13 @@ export default function TeamsPanel({ slug }: { slug: string }) {
               ) : (
                 <ul className="detail-list">
                   {discipline.teams.map((team) => (
-                    <li key={team.id}>
-                      <div className="detail-row">
-                        <strong>{team.name}</strong>
-                        <span>
-                          {t("teams.memberCount", {
-                            count: team.members.length,
-                            min: discipline.team_min,
-                            max: discipline.team_max,
-                          })}
-                          {team.waitlisted && (
-                            <span className="tag tag-file-blue">
-                              {" "}
-                              {t("teams.waitlistPosition", { position: team.waitlist_position })}
-                            </span>
-                          )}
-                          {team.below_minimum && (
-                            <PaidStamp id={team.id} label={t("teams.belowMinimum")} />
-                          )}
-                        </span>
-                      </div>
-                      <div className="detail-extra">
-                        {t("teams.enteredBy", { name: team.entering_fencer })}
-                        {team.waitlisted && ` · ${t("teams.admittedOnQueue")}`}
-                      </div>
-                      {team.members.length > 0 && (
-                        <ul className="detail-list">
-                          {team.members.map((member, index) => (
-                            // biome-ignore lint/suspicious/noArrayIndexKey: a read-only list rebuilt from props; position is the only identity these rows have
-                            <li key={index} className="muted">
-                              {member.name}
-                              {member.club && ` · ${member.club}`}
-                              {member.nationality && ` · ${member.nationality}`}
-                            </li>
-                          ))}
-                        </ul>
-                      )}
-                    </li>
+                    <TeamRow
+                      key={team.id}
+                      slug={slug}
+                      team={team}
+                      discipline={discipline}
+                      onSaved={(saved) => replaceTeam(discipline.slug, saved)}
+                    />
                   ))}
                 </ul>
               )}

@@ -1067,11 +1067,43 @@ export interface RegistrationExtraSelection {
   option_value: string | null;
 }
 
-export interface RosterMember {
+/** What a roster states about a person, with no identity of its own — the
+ *  shape of the prefill, which is suggested and never stored. */
+export interface RosterMemberFields {
   name: string;
   hr_id: number | null;
   club: string | null;
   nationality: string | null;
+}
+
+/** A stored member. `id` is the identity the server issued and the next save
+ *  sends back to say "this member": stable across renames, rebindings and
+ *  reorderings, and never the member's position. */
+export interface RosterMember extends RosterMemberFields {
+  id: number;
+}
+
+/** A member off the roster: counted in nothing, kept so that one removed by
+ *  mistake at the venue can be put back rather than re-typed. */
+export interface RemovedRosterMember extends RosterMember {
+  removed_at: string;
+  removed_by: string | null;
+}
+
+/** One entry of a roster's log — the entering fencer's edits and the
+ *  organizer's in one story. */
+export interface RosterChange {
+  id: number;
+  member_id: number;
+  member_name: string;
+  kind: "added" | "removed" | "restored" | "edited";
+  field: string | null;
+  before: string | null;
+  after: string | null;
+  actor: string;
+  by_organizer: boolean;
+  after_deadline: boolean;
+  created_at: string;
 }
 
 export interface TeamEntry {
@@ -1088,7 +1120,7 @@ export interface TeamEntry {
   members: RosterMember[];
   /** The entering fencer's own name/HR binding, suggested as the first
    *  member while the roster is still empty; never persisted as a role. */
-  prefill: RosterMember | null;
+  prefill: RosterMemberFields | null;
 }
 
 export interface RegistrationDetail {
@@ -1178,6 +1210,9 @@ export interface PricePreviewPayload {
 }
 
 export interface RosterMemberInput {
+  /** The member this save is about, as the server named it. Absent for a
+   *  member the roster does not have yet. */
+  id?: number | null;
   name: string;
   hr_id?: number | null;
   club?: string | null;
@@ -1191,6 +1226,8 @@ export interface ConsoleTeam {
   waitlisted: boolean;
   waitlist_position: number | null;
   members: RosterMember[];
+  removed_members: RemovedRosterMember[];
+  log: RosterChange[];
   below_minimum: boolean;
 }
 
@@ -2049,6 +2086,13 @@ export const api = {
     }),
   consoleTeams: (slug: string) =>
     request<ConsoleTeamDiscipline[]>(`/api/tournaments/${slug}/teams`),
+  /** The organizer's own roster save: the same diff and the same log as the
+   *  entering fencer's, recorded as the organizer's act. */
+  consoleUpdateRoster: (slug: string, teamId: number, members: RosterMemberInput[]) =>
+    request<ConsoleTeam>(`/api/tournaments/${slug}/teams/${teamId}/roster`, {
+      method: "PUT",
+      body: JSON.stringify({ members }),
+    }),
   queue: (slug: string) => request<Queue>(`/api/tournaments/${slug}/queue`),
   queueTeams: (slug: string, disciplineSlug: string) =>
     request<QueueTeam[]>(`/api/tournaments/${slug}/queue/teams/${disciplineSlug}`),

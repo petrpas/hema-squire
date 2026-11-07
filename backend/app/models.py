@@ -1939,8 +1939,26 @@ class Team(Base):
 
     registration: Mapped[Registration] = relationship(back_populates="teams")
     discipline: Mapped[Discipline] = relationship()
-    members: Mapped[list[TeamMember]] = relationship(
+    # every member ever on this roster, live and removed; owns the ORM cascade
+    # and is not what a reader of a roster wants — see `members`
+    all_members: Mapped[list[TeamMember]] = relationship(
         back_populates="team", order_by="TeamMember.ordinal", cascade="all, delete-orphan"
+    )
+    # `members` IS THE ROSTER AS IT STANDS: live members only, in storage
+    # order. A removed member is marked, not erased (design
+    # roster-identity-and-history D2), and every site that states or counts a
+    # roster means this one, unfiltered-looking and already filtered. The
+    # removed ones are `removed_members` and nowhere else.
+    members: Mapped[list[TeamMember]] = relationship(
+        order_by="TeamMember.ordinal",
+        primaryjoin=lambda: and_(Team.id == TeamMember.team_id, TeamMember.removed_at.is_(None)),
+        viewonly=True,
+    )
+    # the roster's history: removed members, most recently removed first
+    removed_members: Mapped[list[TeamMember]] = relationship(
+        order_by="TeamMember.removed_at.desc(), TeamMember.id.desc()",
+        primaryjoin=lambda: and_(Team.id == TeamMember.team_id, TeamMember.removed_at.is_not(None)),
+        viewonly=True,
     )
 
 
@@ -1953,7 +1971,14 @@ class TeamMember(Base):
     The original reason also cited `Fencer.email` being non-nullable, which it
     no longer is; the locality of the identity is what was doing the work and is
     what remains. `hr_id` null is the expected case for an HR-unknown member,
-    not a degraded one, and carries no uniqueness constraint."""
+    not a degraded one, and carries no uniqueness constraint.
+
+    **The row survives every save of its roster.** A save is a diff, not a
+    replace: this `id` is the member's identity, stable across renames,
+    rebindings and reorderings, so a verdict or a rating may be hung on it
+    (design roster-identity-and-history D1). Removal marks `removed_at` rather
+    than deleting the row, which is why `Team.members` is filtered and
+    `Team.removed_members` exists."""
 
     __tablename__ = "team_members"
 
@@ -1964,8 +1989,63 @@ class TeamMember(Base):
     hr_id: Mapped[int | None] = mapped_column(index=True)
     club: Mapped[str | None] = mapped_column(String(200))
     nationality: Mapped[str | None] = mapped_column(String(100))
+    # NULL is the live predicate: the roster is the members whose removal
+    # moment is unset. A removed member keeps its ordinal, which means nothing
+    # once it is off the roster.
+    removed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    removed_by_fencer_id: Mapped[int | None] = mapped_column(ForeignKey("fencers.id"))
 
-    team: Mapped[Team] = relationship(back_populates="members")
+    team: Mapped[Team] = relationship(back_populates="all_members")
+    removed_by: Mapped[Fencer | None] = relationship(foreign_keys=[removed_by_fencer_id])
+
+
+class RosterChangeKind(enum.StrEnum):
+    """What happened to a member. `EDITED` carries a field with its value
+    before and after; the other three carry none, since the member itself is
+    what changed."""
+
+    ADDED = "added"
+    REMOVED = "removed"
+    RESTORED = "restored"
+    EDITED = "edited"
+
+
+class RosterChange(Base):
+    """One recorded change to one roster — the entering fencer's own edits and
+    the organizer's in one log, so a disputed roster has a whole story rather
+    than half of one (spec team-disciplines, Every roster change is recorded in
+    one log).
+
+    Modelled on `PaymentEvent` for its shape and on `FencerProfileAudit` for
+    its field/before/after, with the actor neither of them records (design
+    roster-identity-and-history D3). Append-only: nothing edits or deletes a
+    row while the team exists.
+
+    `by_organizer` is stored rather than derived from whether the actor holds
+    the registration, because the organizer may also be the entering fencer on
+    their own tournament, and "the organizer did this" is a fact about the act.
+    `after_deadline` is stored rather than recomputed, because the composition
+    deadline is a setting the organizer may move afterwards, and an entry whose
+    meaning changed with it would be worse than no entry."""
+
+    __tablename__ = "roster_changes"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    team_id: Mapped[int] = mapped_column(ForeignKey("teams.id", ondelete="CASCADE"), index=True)
+    member_id: Mapped[int] = mapped_column(ForeignKey("team_members.id", ondelete="CASCADE"))
+    # the member's name when the change was recorded, so the log reads as a
+    # story even where the row it points at was renamed afterwards
+    member_name: Mapped[str] = mapped_column(String(200))
+    kind: Mapped[RosterChangeKind] = mapped_column(str_enum(RosterChangeKind))
+    field: Mapped[str | None] = mapped_column(String(50))
+    before: Mapped[str | None] = mapped_column(Text)
+    after: Mapped[str | None] = mapped_column(Text)
+    actor_fencer_id: Mapped[int] = mapped_column(ForeignKey("fencers.id"))
+    by_organizer: Mapped[bool] = mapped_column(default=False)
+    after_deadline: Mapped[bool] = mapped_column(default=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    actor: Mapped[Fencer] = relationship(foreign_keys=[actor_fencer_id])
 
 
 class Operation(Base):

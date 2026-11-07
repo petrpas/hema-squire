@@ -1341,7 +1341,35 @@
     "waitlistPosition": "v pořadí {{position}}",
     "belowMinimum": "pod minimem",
     "enteredBy": "přihlásil/a {{name}}",
-    "admittedOnQueue": "přijetí z čekací listiny je ve fázi Fronta"
+    "admittedOnQueue": "přijetí z čekací listiny je ve fázi Fronta",
+    "editRoster": "Upravit soupisku",
+    "editor": {
+      "movesNoMoney": "Úprava soupisky nehýbe s penězi a přihlašujícímu nic neposílá.",
+      "removedTitle": "Mimo soupisku",
+      "removedBy": "odebral/a {{name}}, {{at}}",
+      "restore": "Vrátit",
+      "save": "Uložit soupisku",
+      "saveFailed": "Soupisku nelze uložit."
+    },
+    "log": {
+      "show": "Historie",
+      "hide": "Skrýt historii",
+      "empty": "Žádná zaznamenaná změna. Historie začíná tam, kde ji Squire začal vést.",
+      "added": "{{member}} přidán/a",
+      "removed": "{{member}} odebrán/a",
+      "restored": "{{member}} vrácen/a",
+      "edited": "{{member}} — {{field}}: {{before}} → {{after}}",
+      "blank": "—",
+      "by": "{{actor}}, {{at}}",
+      "byOrganizer": "organizátor",
+      "afterDeadline": "po uzávěrce soupisek",
+      "field": {
+        "name": "jméno",
+        "hr_id": "identifikátor HR",
+        "club": "klub",
+        "nationality": "národnost"
+      }
+    }
   },
   "cancel": {
     "button": "Zrušit registraci",

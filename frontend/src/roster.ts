@@ -1,8 +1,42 @@
-import type { RosterMember, TeamEntry } from "./api";
+import type { RosterMemberFields, RosterMemberInput, TeamEntry } from "./api";
+
+/** One row of a roster draft: a stored member carries the identity the server
+ *  issued, a member not yet saved carries none. */
+export interface DraftRosterMember extends RosterMemberFields {
+  id: number | null;
+}
+
+/** A draft row as React holds it. A stored member's identity is the server's
+ *  `id`; a member added but not yet saved has none, and needs `rowId` until it
+ *  does — two members may share every field, and a row that is removed or
+ *  moved up must not hand its open name field to whichever member takes its
+ *  place. */
+export interface DraftRow extends DraftRosterMember {
+  rowId: string;
+}
+
+let nextRowId = 0;
+
+export function draftRow(member: RosterMemberFields & { id?: number | null }): DraftRow {
+  return { ...member, id: member.id ?? null, rowId: `row-${nextRowId++}` };
+}
+
+/** What one draft row says to the server: the member it is about, where it has
+ *  one, and the four stored fields. Order is the position in the list sent,
+ *  which identifies nobody. */
+export function toRosterInput(member: DraftRosterMember): RosterMemberInput {
+  return {
+    id: member.id,
+    name: member.name,
+    hr_id: member.hr_id,
+    club: member.club,
+    nationality: member.nationality,
+  };
+}
 
 /** Order-sensitive: a roster is a list, so a reorder is a real change
  *  (design D3). Compares every field the editor can alter. */
-export function rosterChanged(saved: RosterMember[], draft: RosterMember[]): boolean {
+export function rosterChanged(saved: RosterMemberFields[], draft: RosterMemberFields[]): boolean {
   if (saved.length !== draft.length) return true;
   return saved.some((member, index) => {
     const next = draft[index];
