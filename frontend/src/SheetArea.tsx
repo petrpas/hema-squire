@@ -60,6 +60,7 @@ export default function SheetArea({
   rows,
   visibleRows,
   columns,
+  namesTeamDiscipline,
   activeRows,
   paidCount,
   revision,
@@ -91,6 +92,11 @@ export default function SheetArea({
   rows: SheetRow[];
   visibleRows: SheetRow[];
   columns: string[];
+  /** Whether a team cell names the discipline the team was entered into. True
+   *  where the tournament has more than one team discipline, which is the only
+   *  case where the name alone leaves a reader guessing; on a tournament with
+   *  one, every team is in it and saying so on every row is noise. */
+  namesTeamDiscipline?: boolean;
   activeRows: SheetRow[];
   paidCount: number;
   revision: number;
@@ -267,6 +273,7 @@ export default function SheetArea({
                                   timezone={timezone}
                                   currency={currency}
                                   hrIdentity={hrIdentity}
+                                  namesTeamDiscipline={namesTeamDiscipline}
                                 />
                               }
                               // a list is edited as the text it is shown as, so
@@ -288,6 +295,7 @@ export default function SheetArea({
                               timezone={timezone}
                               currency={currency}
                               hrIdentity={hrIdentity}
+                              namesTeamDiscipline={namesTeamDiscipline}
                             />
                           )}
                         </td>

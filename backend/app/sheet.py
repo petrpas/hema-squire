@@ -45,6 +45,7 @@ from app.models import (
     Registration,
     RegistrationExtra,
     RegistrationState,
+    Team,
     Tournament,
 )
 from app.rules import Row
@@ -284,6 +285,7 @@ def base_rows(
             selectinload(Registration.fencer),
             selectinload(Registration.entries),
             selectinload(Registration.extra_selections).selectinload(RegistrationExtra.item),
+            selectinload(Registration.teams).selectinload(Team.discipline),
         )
         .order_by(Registration.registered_at)
     ).all()
@@ -344,6 +346,17 @@ def base_rows(
             # registration is addressed in (`emails.recipient`)
             "email": registration.contact_email or registration.fencer.email,
             "disciplines": [e.discipline.slug for e in registration.entries if not e.is_substitute],
+            # the teams this registration entered, each with the discipline it
+            # was entered into — what the fencer list's team column states
+            # (spec etl-console, The teams a row entered). Never the rosters
+            # this fencer is named on: a member is a name local to someone
+            # else's team and not an identity (design team-disciplines D4).
+            # Ordered by id, which is entry order; the relationship declares no
+            # order of its own.
+            "teams": [
+                {"name": team.name, "discipline": team.discipline.slug}
+                for team in sorted(registration.teams, key=lambda team: team.id)
+            ],
             "substitute_for": [e.discipline.slug for e in registration.entries if e.is_substitute],
             # the participation condition: disciplines attended only together
             "conditional": [e.discipline.slug for e in registration.entries if e.conditional],
@@ -548,6 +561,9 @@ def _imported_rows(
             "substitute_for": [],
             "queued_since": {},
             "conditional": [],
+            # a team is entered through a registration, so no source row can
+            # carry one (design team-disciplines D1)
+            "teams": [],
             # a source row carries no ratings: a snapshot is taken over the
             # fencers the tournament has registered, and a row that has not
             # been issued one is in no snapshot to read
@@ -597,6 +613,7 @@ def _unparsed_row(row_id: str, row: ImportedRow) -> Row:
         "substitute_for": [],
         "queued_since": {},
         "conditional": [],
+        "teams": [],
         "ratings": {},
         "ranks": {},
         "extras": {},
@@ -654,6 +671,7 @@ def _manual_row(row: ManualRow, index: HRIndex | None = None) -> Row:
         "substitute_for": [],
         "queued_since": {},
         "conditional": [],
+        "teams": [],
         "ratings": {},
         "ranks": {},
         "extras": {},

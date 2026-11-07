@@ -9,6 +9,7 @@ import {
   type Amendment,
   ApiError,
   api,
+  type DisciplineKind,
   type NetChange,
   type Sheet,
   type SheetRow,
@@ -126,6 +127,45 @@ export function paymentsBonedOut(mode: TournamentFlags): boolean {
 // Setup, Teams and Queue replace the fencer table entirely, so they own no
 // columns.
 const BASE_COLUMNS = ["name", "nationality", "club"];
+
+// The same identity group with the team a row entered beside the club it
+// registered under (spec etl-console, The teams a row entered). A second
+// declared set rather than a condition spliced into BASE_COLUMNS, on the same
+// grounds as BONED_PAYMENTS_COLUMNS below: a column is a property of its
+// phase, and none has to be read as sometimes present.
+const TEAM_BASE_COLUMNS = ["name", "nationality", "club", "team"];
+
+/** Which identity group a phase draws. The teams a row entered are stated on
+ *  the fencer list alone, and only where the tournament has a team discipline
+ *  to enter one into: on a tournament with none the column could never say
+ *  anything, and the table is not widened for it.
+ *
+ *  Keyed on a discipline existing rather than on a team having been entered: an
+ *  empty column on a tournament that has the discipline is information — nobody
+ *  has entered a team yet — while a column arriving with the first team would
+ *  make the table's shape a function of its contents. */
+/** Whether a team on the fencer list is named with the discipline it was
+ *  entered into. Only a tournament with more than one team discipline needs it:
+ *  there a bare name does not say which team this is, while on a tournament
+ *  with one discipline every team is in it and the slug repeats on every row
+ *  without telling the reader anything (owner decision). */
+export function teamsNeedTheirDiscipline(
+  disciplines: readonly { kind: DisciplineKind }[],
+): boolean {
+  return disciplines.filter((discipline) => discipline.kind === "team").length > 1;
+}
+
+export function baseColumns(
+  phase: Phase,
+  mode: Pick<TournamentFlags, "feature_teams">,
+  disciplines: readonly { kind: DisciplineKind }[],
+): string[] {
+  const statesTeams =
+    phase === "fencers" &&
+    mode.feature_teams &&
+    disciplines.some((discipline) => discipline.kind === "team");
+  return statesTeams ? TEAM_BASE_COLUMNS : BASE_COLUMNS;
+}
 
 // Columns whose cell is a marker rather than a value: as wide as the marker,
 // and empty on most rows.
@@ -463,6 +503,7 @@ export function CellDisplay({
   timezone,
   currency = null,
   hrIdentity = false,
+  namesTeamDiscipline = false,
 }: {
   row: SheetRow;
   column: string;
@@ -478,6 +519,10 @@ export function CellDisplay({
    *  itself: the cell is a function of what it draws, not of where the console
    *  is. */
   hrIdentity?: boolean;
+  /** Whether a team is named with the discipline it was entered into. Only a
+   *  tournament with more than one team discipline needs it; see the team case
+   *  below. */
+  namesTeamDiscipline?: boolean;
 }) {
   if (IDENTITY_COLUMNS.includes(column)) {
     const { text, declared } = identityValue(row, column, hrIdentity);
@@ -574,6 +619,24 @@ export function CellDisplay({
       return <>{row.afterparty ? "✓" : "—"}</>;
     case "registered_at":
       return <>{registeredMoment(row.registered_at, timezone)}</>;
+    case "team":
+      // The teams this row entered, one per line, so a cell holding two is read
+      // rather than parsed (spec etl-console, The teams a row entered). The
+      // discipline is named only where the tournament has more than one team
+      // discipline: there two bare names would not say which is which, while on
+      // a tournament with one every team is in it and the slug is noise on
+      // every row. Read-only — a team's name is corrected in the entrant's own
+      // roster editor, and `editableHere` never opens this column.
+      return row.teams.length === 0 ? (
+        <>—</>
+      ) : (
+        row.teams.map((team, index) => (
+          // biome-ignore lint/suspicious/noArrayIndexKey: two teams of one row may share a name and a discipline (design team-disciplines D9), so position is the only identity the payload gives
+          <div key={index}>
+            {namesTeamDiscipline ? `${team.name} (${team.discipline})` : team.name}
+          </div>
+        ))
+      );
     case "expires_at":
     case "paid_at":
       // both read where the tournament is, like the registration moment above:
@@ -893,7 +956,10 @@ export default function Console({
     // open and states the reason. Swallowing it here left a row that did not
     // change and nothing at all saying why
   }
-  const columns = [...BASE_COLUMNS, ...(boned ? BONED_PAYMENTS_COLUMNS : PHASE_COLUMNS[phase])];
+  const columns = [
+    ...baseColumns(phase, detail ?? tournament, detail?.disciplines ?? []),
+    ...(boned ? BONED_PAYMENTS_COLUMNS : PHASE_COLUMNS[phase]),
+  ];
   const phaseEdits = editsForPhase(sheet?.edits ?? [], phase);
 
   /* The parameter rail: the phase's own operation panel and its
@@ -1150,6 +1216,7 @@ export default function Console({
                     rows={rows}
                     visibleRows={visibleRows}
                     columns={columns}
+                    namesTeamDiscipline={teamsNeedTheirDiscipline(detail?.disciplines ?? [])}
                     activeRows={activeRows}
                     paidCount={paidCount}
                     revision={sheet?.edits.length ?? 0}

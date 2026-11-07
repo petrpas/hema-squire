@@ -611,6 +611,13 @@ type FencerTournamentFace = Pick<
   | "feature_extras"
 >;
 
+/** One team a fencer-list row entered: its name and the slug of the discipline
+ *  it was entered into, which is what tells two teams on one row apart. */
+export interface EnteredTeam {
+  name: string;
+  discipline: string;
+}
+
 export interface SheetRow {
   id: string;
   /** The fixed number this row carries in the tournament, allocated once and
@@ -628,6 +635,11 @@ export interface SheetRow {
   queued_since: Record<string, string>;
   /** The participation condition's disciplines, by slug; empty for none. */
   conditional: string[];
+  /** The teams this row's registration entered, each with the discipline it
+   *  was entered into, in entry order. Never the rosters this fencer is named
+   *  on: a member is a name local to someone else's team and not an identity
+   *  (design team-disciplines D4). */
+  teams: EnteredTeam[];
   /** A payment sent from the queue is held for the organizer. */
   payment_held?: boolean;
   state: string;

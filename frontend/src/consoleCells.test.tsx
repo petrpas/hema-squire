@@ -29,6 +29,7 @@ function row(fields: Partial<SheetRow>): SheetRow {
     weapon_rentals: [],
     afterparty: false,
     aftersparring: false,
+    teams: [],
     ...fields,
   } as SheetRow;
 }
@@ -36,6 +37,19 @@ function row(fields: Partial<SheetRow>): SheetRow {
 function cell(column: string, fields: Partial<SheetRow>, timezone: string | null): string {
   return renderToStaticMarkup(
     <CellDisplay row={row(fields)} column={column} timezone={timezone} />,
+  );
+}
+
+/** A team cell on a tournament with more than one team discipline, where each
+ *  team is named with the discipline it was entered into. */
+function teamCell(teams: SheetRow["teams"], namesTeamDiscipline = true): string {
+  return renderToStaticMarkup(
+    <CellDisplay
+      row={row({ teams })}
+      column="team"
+      timezone={null}
+      namesTeamDiscipline={namesTeamDiscipline}
+    />,
   );
 }
 
@@ -334,5 +348,53 @@ describe("money cells", () => {
     expect(shown).toContain("over");
     expect(shown).toContain("200");
     expect(shown).not.toContain("-200");
+  });
+});
+
+// What the fencer list's Team column states (spec `etl-console`, The teams a
+// row entered): the teams this row entered, with the discipline beside each
+// only where the tournament has more than one team discipline.
+
+describe("the team column", () => {
+  it("names each team with its discipline where the tournament has several", () => {
+    const html = teamCell([
+      { name: "Rudá růže", discipline: "LS" },
+      { name: "Ulice 2", discipline: "SA" },
+    ]);
+
+    expect(html).toContain("Rudá růže (LS)");
+    expect(html).toContain("Ulice 2 (SA)");
+  });
+
+  it("states the name alone where the tournament has one team discipline", () => {
+    // every team is in it, so naming it on every row says nothing
+    const html = teamCell([{ name: "Rudá růže", discipline: "LS" }], false);
+
+    expect(html).toContain("Rudá růže");
+    expect(html).not.toContain("(LS)");
+  });
+
+  it("states both of two teams in one discipline", () => {
+    const html = teamCell([
+      { name: "Rudá růže", discipline: "LS" },
+      { name: "Rudá růže B", discipline: "LS" },
+    ]);
+
+    expect(html).toContain("Rudá růže (LS)");
+    expect(html).toContain("Rudá růže B (LS)");
+  });
+
+  it("puts each team on its own line", () => {
+    const html = teamCell([
+      { name: "Rudá růže", discipline: "LS" },
+      { name: "Ulice 2", discipline: "SA" },
+    ]);
+
+    expect(html.match(/<div>/g)).toHaveLength(2);
+  });
+
+  it("reads a dash where the row entered no team", () => {
+    expect(teamCell([])).toBe("—");
+    expect(teamCell([], false)).toBe("—");
   });
 });

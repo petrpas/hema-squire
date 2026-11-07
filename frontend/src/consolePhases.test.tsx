@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import type { NetChange, SheetRow } from "./api";
 import {
   absorbedInto,
+  baseColumns,
   DEFAULT_PHASE,
   editableHere,
   editsForPhase,
@@ -17,6 +18,7 @@ import {
   rowAction,
   rowsForPhase,
   ruleKindFor,
+  teamsNeedTheirDiscipline,
 } from "./Console";
 
 // Which rows and which edits belong to which phase (spec `etl-console`,
@@ -506,5 +508,71 @@ describe("what a phase states beside its title", () => {
 
   it("gives Export no line, which leaves it the button alone", () => {
     expect(phaseSummary("export", [row("imp:a1")])).toBeNull();
+  });
+});
+
+// Which identity columns a phase draws (spec `etl-console`, The teams a row
+// entered): the team stands beside the club, on the fencer list of a
+// tournament that has a team discipline and nowhere else.
+
+describe("the team column", () => {
+  const teamTournament = { feature_teams: true } as const;
+  const disciplines = [{ kind: "team" as const }, { kind: "individual" as const }];
+  const soloOnly = [{ kind: "individual" as const }];
+
+  it("stands directly after the club on the fencer list", () => {
+    expect(baseColumns("fencers", teamTournament, disciplines)).toEqual([
+      "name",
+      "nationality",
+      "club",
+      "team",
+    ]);
+  });
+
+  it("is absent where the feature is off", () => {
+    expect(baseColumns("fencers", { feature_teams: false }, disciplines)).toEqual([
+      "name",
+      "nationality",
+      "club",
+    ]);
+  });
+
+  it("is absent where the tournament has no team discipline to enter one into", () => {
+    expect(baseColumns("fencers", teamTournament, soloOnly)).toEqual([
+      "name",
+      "nationality",
+      "club",
+    ]);
+  });
+
+  it("belongs to the fencer list alone", () => {
+    for (const phase of PHASES.filter((candidate) => candidate !== "fencers")) {
+      expect(baseColumns(phase, teamTournament, disciplines)).not.toContain("team");
+    }
+  });
+
+  it("is no phase's own column, so it takes no phase marking", () => {
+    for (const phase of PHASES) {
+      expect(PHASE_COLUMNS[phase]).not.toContain("team");
+    }
+  });
+
+  it("names the discipline only where the tournament has more than one", () => {
+    const team = { kind: "team" as const };
+    const individual = { kind: "individual" as const };
+    expect(teamsNeedTheirDiscipline([team, team])).toBe(true);
+    // one team discipline: every team is in it, so the slug repeats on every
+    // row without telling the reader anything
+    expect(teamsNeedTheirDiscipline([team, individual, individual])).toBe(false);
+    expect(teamsNeedTheirDiscipline([individual])).toBe(false);
+    expect(teamsNeedTheirDiscipline([])).toBe(false);
+  });
+
+  it("does not open for editing, on the fencer list or anywhere else", () => {
+    // a team's name is the entering fencer's, corrected in their own roster
+    // editor; an edit here would show a correction the roster never received
+    for (const phase of PHASES) {
+      expect(editableHere("team", phase)).toBe(false);
+    }
   });
 });

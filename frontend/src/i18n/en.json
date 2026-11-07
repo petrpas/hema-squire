@@ -418,6 +418,7 @@
     "name": "Name",
     "nationality": "Nat.",
     "club": "Club",
+    "team": "Team",
     "hr_id": "HRID",
     "hr_name": "HR_Name",
     "hr_nationality": "HR_Nat",
