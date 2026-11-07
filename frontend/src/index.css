@@ -5109,6 +5109,17 @@ tr.export-line td {
   padding-left: 1.6rem;
 }
 
+/* A team and its members are one block, so the hairline is drawn where one
+   team ends and the next begins — never between a team and its own members,
+   which would read as separate entries. */
+.entrant-team-block td {
+  border-bottom: none;
+}
+
+.entrant-team-block tr:last-child td {
+  border-bottom: var(--border-w) solid var(--hairline);
+}
+
 /* ===== pages reached from the account menu ===== */
 
 /* The card's page under the top bar. .app is a 100dvh column, so this takes
