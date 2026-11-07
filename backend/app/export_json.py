@@ -19,6 +19,7 @@ from sqlalchemy.orm import Session, selectinload
 
 from app import rownumbers, taxonomy
 from app.constraints import DEFAULT_TIMEZONE
+from app.hr_index import country_code
 from app.models import (
     BankTransaction,
     CreditSource,
@@ -758,7 +759,14 @@ def restore_tournament(session: Session, data: dict, actor: Fencer) -> Tournamen
                         name=member["name"],
                         hr_id=member.get("hr_id"),
                         club=member.get("club"),
-                        nationality=member.get("nationality"),
+                        # read like any other write of a member (spec
+                        # team-disciplines): a document written before the
+                        # column spoke one vocabulary restores into rows that
+                        # do, as an older document's discipline code restores
+                        # with its classification parsed out of it
+                        nationality=(
+                            country_code(member.get("nationality")) or member.get("nationality")
+                        ),
                     )
                 )
         reg_map[entry["ref"]] = registration

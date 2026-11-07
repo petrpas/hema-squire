@@ -38,6 +38,7 @@ from app.availability import (
     team_waitlist_flags,
 )
 from app.fieldtypes import RowId
+from app.hr_index import country_code
 from app.mail import Mailer
 from app.models import (
     Discipline,
@@ -1670,7 +1671,13 @@ def update_roster(
                 name=member.name,
                 hr_id=member.hr_id,
                 club=member.club,
-                nationality=member.nationality,
+                # one vocabulary down the nationality column, as the identity
+                # columns of every table read it (spec team-disciplines, A
+                # roster member is a named person): the search result the
+                # client echoes back spells a country in the fighters index's
+                # own English, and this is the only place a member is written.
+                # A spelling no country can be read from stands as given.
+                nationality=country_code(member.nationality) or member.nationality,
             )
         )
     session.commit()

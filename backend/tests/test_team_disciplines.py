@@ -516,6 +516,46 @@ def test_unbound_member_accepted(client, auth_headers):
     assert member["hr_id"] is None
 
 
+def test_roster_nationality_stored_as_country_code(client, auth_headers):
+    """One vocabulary down the nationality column, whatever the source spelled
+    (spec team-disciplines, A roster member is a named person). The HR search
+    the client echoes back writes the fighters index's own English name, which
+    would otherwise read "Czech Republic" beside a fencer table reading "CZ"."""
+    organizer = auth_headers()
+    setup_team_tournament(client, organizer, team_max=4)
+    fencer = auth_headers(email="f1@example.com", name="F1")
+    team_id = register_team(client, fencer, name="Wolves").json()["teams"][0]["id"]
+
+    response = client.put(
+        f"/api/tournaments/cup/my-registration/teams/{team_id}/roster",
+        json={
+            "members": [
+                {"name": "A", "nationality": "Czech Republic"},
+                {"name": "B", "nationality": "CZE"},
+                # no country can be read from it, so it stands as given
+                {"name": "C", "nationality": "Mordor"},
+                {"name": "D"},
+            ]
+        },
+        headers=fencer,
+    )
+    assert response.status_code == 200, response.text
+    assert [m["nationality"] for m in response.json()["members"]] == [
+        "CZ",
+        "CZ",
+        "Mordor",
+        None,
+    ]
+
+    read_back = client.get("/api/tournaments/cup/my-registration", headers=fencer).json()
+    assert [m["nationality"] for m in read_back["teams"][0]["members"]] == [
+        "CZ",
+        "CZ",
+        "Mordor",
+        None,
+    ]
+
+
 def test_roster_editable_after_amendments_close(client, auth_headers):
     organizer = auth_headers()
     setup_team_tournament(client, organizer)
@@ -822,6 +862,10 @@ def test_v6_roundtrip_with_teams_and_rosters(client, auth_headers):
     assert wolves["waitlisted"] is False
     assert [m["name"] for m in wolves["members"]] == ["A", "B"]
     assert wolves["members"][0]["hr_id"] == 111
+    # the document states what the row holds, and the row holds the code the
+    # save read out of "CZE" (spec team-disciplines)
+    assert wolves["members"][0]["nationality"] == "CZ"
+    assert wolves["members"][1]["nationality"] is None
     bears = reg_teams["f2@example.com"][0]
     assert bears["waitlisted"] is True
 
@@ -830,6 +874,36 @@ def test_v6_roundtrip_with_teams_and_rosters(client, auth_headers):
     assert session.scalar(select(Fencer).where(Fencer.email == "f1@example.com")) is not None
     member_as_account = session.scalar(select(Fencer).where(Fencer.display_name == "A"))
     assert member_as_account is None
+
+
+def test_restore_reads_an_older_documents_country_name(client, auth_headers):
+    """A document written before the column spoke one vocabulary restores into
+    rows that do (spec team-disciplines): the restore is a writer of rows, and
+    the migration that converted the stored ones cannot reach a row arriving
+    after it ran."""
+    organizer = auth_headers()
+    setup_team_tournament(client, organizer)
+    fencer = auth_headers(email="f1@example.com", name="F1")
+    team_id = register_team(client, fencer, name="Wolves").json()["teams"][0]["id"]
+    client.put(
+        f"/api/tournaments/cup/my-registration/teams/{team_id}/roster",
+        json={"members": [{"name": "A", "hr_id": 111, "nationality": "CZ"}]},
+        headers=fencer,
+    )
+    doc = client.get("/api/tournaments/cup/export/json", headers=organizer).json()
+    # as an export taken before this reading spelled it
+    doc["registrations"][0]["teams"][0]["members"][0]["nationality"] = "Czech Republic"
+
+    new_organizer, restore_client = fresh_deployment(client, auth_headers)
+    restore = restore_client.post("/api/tournaments/restore", json=doc, headers=new_organizer)
+    assert restore.status_code == 201, restore.text
+    publish(restore_client, new_organizer, "cup")
+
+    exported = restore_client.get(
+        "/api/tournaments/cup/export/json", headers=new_organizer
+    ).json()
+    member = exported["registrations"][0]["teams"][0]["members"][0]
+    assert member["nationality"] == "CZ"
 
 
 def test_v5_fixture_restores_with_no_teams(client, auth_headers):
@@ -1162,3 +1236,145 @@ def test_composition_reminder_links_the_tournament_page(client, auth_headers):
         assert "/t/cup" in message.get_body(("plain",)).get_content()
     finally:
         app.dependency_overrides.pop(get_mailer, None)
+
+
+# ---------------------------------------------------------------------------
+# The teams a console row entered (spec etl-console, The teams a row entered)
+# ---------------------------------------------------------------------------
+
+
+def setup_two_team_disciplines(client, organizer):
+    """A tournament with two team disciplines and one individual one, so a row
+    can enter a team in each and a row can enter no team at all."""
+    client.post(
+        "/api/tournaments",
+        json={"slug": "cup", "display_name": "Cup", "date": "2099-12-05"},
+        headers=organizer,
+    )
+    client.patch(
+        "/api/tournaments/cup",
+        json={"city": "Brno", "organizers": [{"name": "Cup Org", "link": None}]},
+        headers=organizer,
+    )
+    for slug, kind in (("LS", "team"), ("SA", "team"), ("RD", "individual")):
+        payload = {"slug": slug, "weapon": slug, "capacity": 10, "fee": 1000, "kind": kind}
+        if kind == "team":
+            payload |= {"team_min": 3, "team_max": 4}
+        response = client.post("/api/tournaments/cup/disciplines", json=payload, headers=organizer)
+        assert response.status_code == 201, response.text
+    publish(client, organizer, "cup")
+
+
+def sheet_rows(client, organizer) -> dict[str, dict]:
+    response = client.get("/api/tournaments/cup/sheet", headers=organizer)
+    assert response.status_code == 200, response.text
+    return {row["name"]: row for row in response.json()["rows"]}
+
+
+def test_console_row_states_each_team_with_its_discipline(client, auth_headers):
+    organizer = auth_headers()
+    setup_two_team_disciplines(client, organizer)
+    fencer = auth_headers(email="f1@example.com", name="Two Teams")
+    response = client.post(
+        "/api/tournaments/cup/register",
+        json={
+            "disciplines": [],
+            "teams": [{"slug": "LS", "name": "Red Rose"}, {"slug": "SA", "name": "Street 2"}],
+        },
+        headers=fencer,
+    )
+    assert response.status_code == 201, response.text
+
+    row = sheet_rows(client, organizer)["Two Teams"]
+
+    # the discipline is what separates two teams that would otherwise read as
+    # two bare names, and the order is the order they were entered
+    assert row["teams"] == [
+        {"name": "Red Rose", "discipline": "LS"},
+        {"name": "Street 2", "discipline": "SA"},
+    ]
+
+
+def test_two_teams_in_one_discipline_both_named(client, auth_headers):
+    organizer = auth_headers()
+    setup_two_team_disciplines(client, organizer)
+    fencer = auth_headers(email="f2@example.com", name="Same Twice")
+    client.post(
+        "/api/tournaments/cup/register",
+        json={
+            "disciplines": [],
+            "teams": [{"slug": "LS", "name": "Red Rose"}, {"slug": "LS", "name": "Red Rose B"}],
+        },
+        headers=fencer,
+    )
+
+    row = sheet_rows(client, organizer)["Same Twice"]
+
+    assert row["teams"] == [
+        {"name": "Red Rose", "discipline": "LS"},
+        {"name": "Red Rose B", "discipline": "LS"},
+    ]
+
+
+def test_individual_only_row_entered_no_team(client, auth_headers):
+    organizer = auth_headers()
+    setup_two_team_disciplines(client, organizer)
+    fencer = auth_headers(email="f3@example.com", name="Solo Only")
+    response = client.post(
+        "/api/tournaments/cup/register",
+        json={"disciplines": ["RD"], "teams": []},
+        headers=fencer,
+    )
+    assert response.status_code == 201, response.text
+
+    assert sheet_rows(client, organizer)["Solo Only"]["teams"] == []
+
+
+def test_a_rosters_member_is_not_a_team_entry(client, auth_headers):
+    """A member is a name local to someone else's roster, not an identity
+    (design team-disciplines D4): the team stands on the entering row alone."""
+    organizer = auth_headers()
+    setup_two_team_disciplines(client, organizer)
+    captain = auth_headers(email="cap@example.com", name="Captain")
+    client.post(
+        "/api/tournaments/cup/register",
+        json={"disciplines": [], "teams": [{"slug": "LS", "name": "Red Rose"}]},
+        headers=captain,
+    )
+    member = auth_headers(email="member@example.com", name="Member")
+    client.post(
+        "/api/tournaments/cup/register",
+        json={"disciplines": ["RD"], "teams": []},
+        headers=member,
+    )
+    session = db_session()
+    team = session.scalars(select(Team)).one()
+    team.members.append(TeamMember(name="Member", ordinal=1))
+    session.commit()
+
+    rows = sheet_rows(client, organizer)
+
+    assert rows["Captain"]["teams"] == [{"name": "Red Rose", "discipline": "LS"}]
+    assert rows["Member"]["teams"] == []
+
+
+def test_a_hand_entered_source_row_entered_no_team(client, auth_headers):
+    """A team is entered through a registration, so no source row carries one."""
+    from app.models import RegistrationsKeptBy
+
+    organizer = auth_headers()
+    setup_two_team_disciplines(client, organizer)
+    session = db_session()
+    tournament = session.scalar(select(Tournament).where(Tournament.slug == "cup"))
+    assert tournament is not None
+    tournament.registrations_kept_by = RegistrationsKeptBy.ORGANIZER
+    session.commit()
+    response = client.post(
+        "/api/tournaments/cup/manual-rows",
+        json={"name": "Door Fencer", "nationality": "CZ", "disciplines": ["RD"]},
+        headers=organizer,
+    )
+    assert response.status_code == 201, response.text
+    assert response.json()["registration_id"] is None
+
+    assert sheet_rows(client, organizer)["Door Fencer"]["teams"] == []
