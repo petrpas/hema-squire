@@ -1,13 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import {
-  ApiError,
-  api,
-  type DiscountCode,
-  type DiscountCodePayload,
-  type TournamentDetail,
-} from "../api";
+import { api, type DiscountCode, type DiscountCodePayload, type TournamentDetail } from "../api";
 import { showsEur } from "../money";
 import { useFieldValidation } from "../useFieldValidation";
 import {
@@ -19,7 +13,7 @@ import {
   type FieldError as FieldErrorValue,
 } from "../validation";
 import { DiscountCodeRows, type Draft } from "./DiscountCodeRows";
-import { type SaverRegistry, useSectionSaver } from "./shared";
+import { type SaverRegistry, saveFailureMessage, useSectionSaver } from "./shared";
 
 let nextRowId = 0;
 
@@ -145,12 +139,7 @@ export function DiscountCodesSection({
         return [{ change: "discount-codes", section: "discount-codes", error: null }];
       } catch (err) {
         const fieldErrors = apiErrors(err);
-        const message =
-          fieldErrors.length > 0
-            ? fieldErrors.map((e) => t(`validation.${e.code}`, e.params)).join(" ")
-            : t("setup.saveBar.genericError", {
-                status: err instanceof ApiError ? err.status : "?",
-              });
+        const message = saveFailureMessage(err, fieldErrors, detail, t);
         return [{ change: "discount-codes", section: "discount-codes", error: message }];
       }
     },

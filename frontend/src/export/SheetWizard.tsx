@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { ApiError, api } from "../api";
+import { api } from "../api";
 import FieldError, { invalidProps } from "../FieldError";
 import Modal from "../Modal";
+import { saveFailureMessage } from "../setup/shared";
 import { useFieldValidation } from "../useFieldValidation";
 import { apiErrors, checkUrl, type FieldError as FieldErrorValue } from "../validation";
 import ServiceAccountStep from "./ServiceAccountStep";
@@ -57,13 +58,9 @@ export default function SheetWizard({
       // address they pasted with it.
       const fields = apiErrors(failure);
       validation.applyApiErrors(fields);
-      setError(
-        fields.length > 0
-          ? fields.map((field) => t(`validation.${field.code}`, field.params)).join(" ")
-          : t("setup.saveBar.genericError", {
-              status: failure instanceof ApiError ? failure.status : "?",
-            }),
-      );
+      // No tournament in scope here, so the completeness guard's items are
+      // named without the tab that resolves them (saveFailureMessage).
+      setError(saveFailureMessage(failure, fields, null, t));
     } finally {
       setBusy(false);
     }

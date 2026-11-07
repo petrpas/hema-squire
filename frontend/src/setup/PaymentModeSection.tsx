@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { ApiError, api, type PaymentMode, type TournamentDetail } from "../api";
+import { api, type PaymentMode, type TournamentDetail } from "../api";
 import FieldError, { invalidProps } from "../FieldError";
 import HelpHint from "../HelpHint";
 import { showsEur } from "../money";
@@ -12,7 +12,7 @@ import {
   checkNumeric,
   type FieldError as FieldErrorValue,
 } from "../validation";
-import { _int, type SaverRegistry, useSectionSaver } from "./shared";
+import { _int, type SaverRegistry, saveFailureMessage, useSectionSaver } from "./shared";
 
 const MODES: PaymentMode[] = ["immediate", "deposit", "reservation"];
 
@@ -131,12 +131,7 @@ export function PaymentModeSection({
       } catch (err) {
         const fieldErrors = apiErrors(err);
         validation.applyApiErrors(fieldErrors);
-        const message =
-          fieldErrors.length > 0
-            ? fieldErrors.map((e) => t(`validation.${e.code}`, e.params)).join(" ")
-            : t("setup.saveBar.genericError", {
-                status: err instanceof ApiError ? err.status : "?",
-              });
+        const message = saveFailureMessage(err, fieldErrors, detail, t);
         setError(message);
         return [{ change: "paymentMode", section: "paymentMode", error: message }];
       }

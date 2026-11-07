@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { isFioAccount } from "../accounts";
-import { ApiError, api, type SetupSuggestions, type TournamentDetail } from "../api";
+import { api, type SetupSuggestions, type TournamentDetail } from "../api";
 import FieldError, { invalidProps } from "../FieldError";
 import HelpHint from "../HelpHint";
 import SuggestionAnchor from "../SuggestionAnchor";
@@ -13,7 +13,7 @@ import { useSuggestions } from "../useSuggestions";
 import { apiErrors, checkString, type FieldError as FieldErrorValue } from "../validation";
 import BankAccountHolderField, { holderCheck } from "./BankAccountHolderField";
 import FeedTokenDialog from "./FeedTokenDialog";
-import { type SaverRegistry, useSectionSaver } from "./shared";
+import { type SaverRegistry, saveFailureMessage, useSectionSaver } from "./shared";
 
 export function BankAccountSection({
   detail,
@@ -108,12 +108,7 @@ export function BankAccountSection({
       } catch (err) {
         const fieldErrors = apiErrors(err);
         validation.applyApiErrors(fieldErrors);
-        const message =
-          fieldErrors.length > 0
-            ? fieldErrors.map((e) => t(`validation.${e.code}`, e.params)).join(" ")
-            : t("setup.saveBar.genericError", {
-                status: err instanceof ApiError ? err.status : "?",
-              });
+        const message = saveFailureMessage(err, fieldErrors, detail, t);
         setError(message);
         return [{ change: "bankAccount", section: "bankAccount", error: message }];
       }

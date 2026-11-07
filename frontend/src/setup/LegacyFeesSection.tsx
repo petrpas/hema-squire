@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { ApiError, api, type TournamentDetail } from "../api";
+import { api, type TournamentDetail } from "../api";
+import { saveFailureMessage } from "./shared";
 
 /** Whether the tournament still prices through the superseded fixed
  *  weapon-rental / afterparty parameters — the same condition
@@ -59,9 +60,7 @@ export function LegacyFeesSection({
       });
       onSaved();
     } catch (err) {
-      setError(
-        t("setup.saveBar.genericError", { status: err instanceof ApiError ? err.status : "?" }),
-      );
+      setError(saveFailureMessage(err, [], detail, t));
     } finally {
       setBusy(false);
     }

@@ -3,7 +3,6 @@ import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import {
-  ApiError,
   api,
   type Discount,
   type DiscountCondition,
@@ -21,7 +20,13 @@ import {
   checkString,
   type FieldError as FieldErrorValue,
 } from "../validation";
-import { _int, recalculateMissing, type SaverRegistry, useSectionSaver } from "./shared";
+import {
+  _int,
+  recalculateMissing,
+  type SaverRegistry,
+  saveFailureMessage,
+  useSectionSaver,
+} from "./shared";
 
 /** A row's identity for React, which a discount has none of: two rows may
  *  carry the same name while one is still being typed, and a removed row must
@@ -174,12 +179,7 @@ export function DiscountsSection({
       } catch (err) {
         const fieldErrors = apiErrors(err);
         validation.applyApiErrors(fieldErrors);
-        const message =
-          fieldErrors.length > 0
-            ? fieldErrors.map((e) => t(`validation.${e.code}`, e.params)).join(" ")
-            : t("setup.saveBar.genericError", {
-                status: err instanceof ApiError ? err.status : "?",
-              });
+        const message = saveFailureMessage(err, fieldErrors, detail, t);
         return [{ change: "discounts", section: "discounts", error: message }];
       }
     },

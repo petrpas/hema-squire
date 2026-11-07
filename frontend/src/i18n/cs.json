@@ -541,6 +541,10 @@
       "nothingToSave": "Není co ukládat",
       "partial": "Uloženo {{written}} z {{total}} změn, {{pending}} zbývá neuloženo",
       "genericError": "Změnu se nepodařilo uložit (chyba {{status}}).",
+      "incompleteError": "Zveřejněný turnaj odmítá jakékoli uložení, dokud něco povinného chybí: {{items}}. Doplň to v záložce {{tabs}} a ulož znovu.",
+      "incompleteErrorNoTab": "Zveřejněný turnaj odmítá jakékoli uložení, dokud něco povinného chybí: {{items}}.",
+      "incompleteError_event": "Zveřejněná akce odmítá jakékoli uložení, dokud něco povinného chybí: {{items}}. Doplň to v záložce {{tabs}} a ulož znovu.",
+      "incompleteErrorNoTab_event": "Zveřejněná akce odmítá jakékoli uložení, dokud něco povinného chybí: {{items}}.",
       "fieldsNeedAttention_one": "{{count}} pole potřebuje opravu",
       "fieldsNeedAttention_few": "{{count}} pole potřebují opravu",
       "fieldsNeedAttention_other": "{{count}} polí potřebuje opravu"
@@ -570,6 +574,7 @@
       "city": "Chybí město",
       "organizers": "Chybí alespoň jeden pořadatel",
       "discipline_prices": "Chybí cena u některé disciplíny",
+      "team_bounds": "Některá týmová disciplína nemá platné hranice velikosti týmu",
       "extra_item_prices": "Chybí eurová cena u některé doplňkové služby",
       "discount_prices": "Chybí eurová částka u některé pevné slevy",
       "legacy_fixed_fees_block_eur": "Turnaj používá staré pevné poplatky za zapůjčení zbraně nebo afterparty, které nemají eurový protějšek — přejdi na položkové doplňkové služby, aby šlo zapnout eura",

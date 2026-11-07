@@ -3,7 +3,6 @@ import { type ChangeEvent, Fragment, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import {
-  ApiError,
   api,
   type Currency,
   type ExtraCategory,
@@ -31,6 +30,7 @@ import {
   recalculateMissing,
   type SaveOutcome,
   type SaverRegistry,
+  saveFailureMessage,
   splitChoices,
   useSectionSaver,
 } from "./shared";
@@ -272,9 +272,7 @@ export function ExtraItemsSection({
           outcomes.push({ change: String(id), section: "extra", error: null });
         } catch (err) {
           stillRemoved.add(id);
-          const message = t("setup.saveBar.genericError", {
-            status: err instanceof ApiError ? err.status : "?",
-          });
+          const message = saveFailureMessage(err, [], detail, t);
           outcomes.push({ change: String(id), section: "extra", error: message });
         }
       }
@@ -292,12 +290,7 @@ export function ExtraItemsSection({
             field: `${e.field}-${row.rowId}`,
           }));
           validation.applyApiErrors(fieldErrors);
-          const message =
-            fieldErrors.length > 0
-              ? fieldErrors.map((e) => t(`validation.${e.code}`, e.params)).join(" ")
-              : t("setup.saveBar.genericError", {
-                  status: err instanceof ApiError ? err.status : "?",
-                });
+          const message = saveFailureMessage(err, fieldErrors, detail, t);
           results.set(row.rowId, message);
           outcomes.push({ change: row.name, section: "extra", error: message });
         }
@@ -313,12 +306,7 @@ export function ExtraItemsSection({
             field: `${e.field}-${row.rowId}`,
           }));
           validation.applyApiErrors(fieldErrors);
-          const message =
-            fieldErrors.length > 0
-              ? fieldErrors.map((e) => t(`validation.${e.code}`, e.params)).join(" ")
-              : t("setup.saveBar.genericError", {
-                  status: err instanceof ApiError ? err.status : "?",
-                });
+          const message = saveFailureMessage(err, fieldErrors, detail, t);
           results.set(row.rowId, message);
           outcomes.push({ change: row.name, section: "extra", error: message });
         }

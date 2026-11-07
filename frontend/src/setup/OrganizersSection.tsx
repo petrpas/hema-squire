@@ -1,13 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import {
-  ApiError,
-  api,
-  type Organizer,
-  type SetupSuggestions,
-  type TournamentDetail,
-} from "../api";
+import { api, type Organizer, type SetupSuggestions, type TournamentDetail } from "../api";
 import { useFieldValidation } from "../useFieldValidation";
 import {
   apiErrors,
@@ -16,7 +10,7 @@ import {
   type FieldError as FieldErrorValue,
 } from "../validation";
 import OrganizerRow from "./OrganizerRow";
-import { type SaverRegistry, useSectionSaver } from "./shared";
+import { type SaverRegistry, saveFailureMessage, useSectionSaver } from "./shared";
 
 /** A row's identity for React, which the stored organizer has none of: two
  *  organizers may share a name, and a removed row must not hand its field
@@ -108,12 +102,7 @@ export function OrganizersSection({
       } catch (err) {
         const fieldErrors = apiErrors(err);
         validation.applyApiErrors(fieldErrors);
-        const message =
-          fieldErrors.length > 0
-            ? fieldErrors.map((e) => t(`validation.${e.code}`, e.params)).join(" ")
-            : t("setup.saveBar.genericError", {
-                status: err instanceof ApiError ? err.status : "?",
-              });
+        const message = saveFailureMessage(err, fieldErrors, detail, t);
         return [{ change: "organizers", section: "organizers", error: message }];
       }
     },

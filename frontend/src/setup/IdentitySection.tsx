@@ -1,13 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import {
-  ApiError,
-  api,
-  type CoverGround,
-  type SetupSuggestions,
-  type TournamentDetail,
-} from "../api";
+import { api, type CoverGround, type SetupSuggestions, type TournamentDetail } from "../api";
 import FieldError, { invalidProps } from "../FieldError";
 import HelpHint from "../HelpHint";
 import SuggestionAnchor from "../SuggestionAnchor";
@@ -20,7 +14,7 @@ import { apiErrors, checkString, type FieldError as FieldErrorValue } from "../v
 import CoverGroundField from "./CoverGroundField";
 import LogoControl from "./LogoControl";
 import ShortCodeField, { shortCodeCheck, shortCodePatch, shortCodeShown } from "./ShortCodeField";
-import { type SaverRegistry, useSectionSaver } from "./shared";
+import { type SaverRegistry, saveFailureMessage, useSectionSaver } from "./shared";
 
 // Identity fields patched as a whole, mirroring ParamPanel's save pattern
 // but for the fields that live in the Setup tab's main content, not the rail.
@@ -215,12 +209,7 @@ export function IdentitySection({
       } catch (err) {
         const fieldErrors = apiErrors(err);
         validation.applyApiErrors(fieldErrors);
-        const message =
-          fieldErrors.length > 0
-            ? fieldErrors.map((e) => t(`validation.${e.code}`, e.params)).join(" ")
-            : t("setup.saveBar.genericError", {
-                status: err instanceof ApiError ? err.status : "?",
-              });
+        const message = saveFailureMessage(err, fieldErrors, detail, t);
         return [{ change: "identity", section: "identity", error: message }];
       }
     },

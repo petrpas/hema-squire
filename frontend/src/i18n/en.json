@@ -527,6 +527,10 @@
       "nothingToSave": "Nothing to save",
       "partial": "{{written}} of {{total}} changes written, {{pending}} still unsaved",
       "genericError": "The change could not be saved (error {{status}}).",
+      "incompleteError": "A published tournament refuses every save while something mandatory is missing: {{items}}. Fix it on the {{tabs}} tab, then save again.",
+      "incompleteErrorNoTab": "A published tournament refuses every save while something mandatory is missing: {{items}}.",
+      "incompleteError_event": "A published event refuses every save while something mandatory is missing: {{items}}. Fix it on the {{tabs}} tab, then save again.",
+      "incompleteErrorNoTab_event": "A published event refuses every save while something mandatory is missing: {{items}}.",
       "fieldsNeedAttention_one": "{{count}} field needs attention",
       "fieldsNeedAttention_other": "{{count}} fields need attention"
     },
@@ -555,6 +559,7 @@
       "city": "City is missing",
       "organizers": "At least one titular organizer is missing",
       "discipline_prices": "Some discipline has no price",
+      "team_bounds": "Some team discipline has no valid roster bounds",
       "extra_item_prices": "Some extra service has no EUR price",
       "discount_prices": "Some fixed discount has no EUR amount",
       "legacy_fixed_fees_block_eur": "This tournament uses the legacy fixed weapon-rental/afterparty fees, which have no EUR counterpart — switch to itemized extra services to enable EUR",
