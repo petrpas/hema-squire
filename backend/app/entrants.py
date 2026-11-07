@@ -20,7 +20,7 @@ from typing import Literal
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session, selectinload
 
-from app import exporttables, rules, sheet
+from app import exporttables, rules, setup, sheet
 from app.availability import (
     QUEUE_ORDER,
     live_registration,
@@ -101,33 +101,63 @@ class _Conduct:
     """What the tournament lets a roster state."""
 
     # Squire collects the money: payments on, registrations kept by Squire.
-    # Only there does an unsettled registration mean money is outstanding
+    # Only there can an unsettled registration mean money is outstanding
     collects: bool
     # the queue and the capacity line are shown
     queue: bool
+    # whether the obligation a seat is held under has fallen due: the seating
+    # deadline has passed, or the organizer closed seating early. Asked of the
+    # tournament, while the payment window is asked of each registration
+    seating_settled: bool
 
 
-def _conduct(tournament: Tournament) -> _Conduct:
+def _conduct(tournament: Tournament, now: datetime) -> _Conduct:
     kept_by_squire = tournament.registrations_kept_by is RegistrationsKeptBy.SQUIRE
     # the boundary that splits the public tournament list (spec day-boundaries):
     # a tournament leaves Open for Past at the moment its queue disappears
-    held = tournament.date < datetime.now(UTC).date()
+    held = tournament.date < now.date()
     return _Conduct(
         collects=tournament.feature_payments and kept_by_squire,
         queue=kept_by_squire and not held,
+        seating_settled=setup.seating_has_settled(tournament, now),
     )
 
 
-def _paid(conduct: _Conduct, settled: bool) -> tuple[Paid, bool]:
+def _paid(conduct: _Conduct, settled: bool, window_running: bool) -> tuple[Paid, bool]:
     """A seated entry's Paid cell and whether it is drawn faded.
 
-    Where Squire collects, unsettled means money outstanding: "no", faded.
-    Where it does not, only the organizer's hand tick is a fact, and an
-    unticked entry carries no mark at all — not "no", which would claim a
-    failure to pay that nobody has observed."""
-    if conduct.collects:
-        return ("yes" if settled else "no"), not settled
-    return ("yes" if settled else None), False
+    Settled reads yes wherever it is settled, whether or not anything was due:
+    paying early is not something the roster hides.
+
+    Unsettled reads no, and fades, only where Squire collects *and* that
+    registration's money is due — a payment window is running on it, or the
+    obligation its seat is held under has fallen due. In reservation mode
+    nothing is owed until the seating deadline, and in deposit mode nothing
+    beyond a deposit already paid; a roster reading no before then states a
+    failure to pay against somebody nobody has asked (spec public-entrants).
+    Owing nothing and having paid are different statements, and the cell makes
+    neither out of the other.
+
+    The window is the whole of the per-registration question, because
+    `_initial_expires_at` has already applied the payment mode to decide
+    whether one opened: it opens in immediate mode, in deposit mode until the
+    deposit arrives, for items held with no seat at all whatever the stored
+    mode says, and never for a seat the tournament holds unbilled. Reading it
+    rather than re-deriving the mode here leaves one place where that is
+    decided.
+
+    Where Squire does not collect, only the organizer's hand tick is a fact,
+    and an unticked entry carries no mark at all — not "no", which would claim
+    a failure to pay that nobody has observed. An empty cell therefore has two
+    causes, and neither is a claim about a person, which is why they read
+    alike."""
+    if settled:
+        return "yes", False
+    if not conduct.collects:
+        return None, False
+    if window_running or conduct.seating_settled:
+        return "no", True
+    return None, False
 
 
 def _live_registration_ids(session: Session, tournament: Tournament) -> set[int]:
@@ -249,7 +279,9 @@ def _individual(
     seated: list[EntrantRow] = []
     for row in listed:
         if discipline.slug in (row.get("disciplines") or []):
-            paid, faded = _paid(conduct, bool(row.get("paid")))
+            paid, faded = _paid(
+                conduct, bool(row.get("paid")), row.get("expires_at") is not None
+            )
             seated.append(_entrant(row, discipline.slug, len(seated) + 1, paid, faded))
     queued: list[EntrantRow] = []
     if conduct.queue:
@@ -309,7 +341,11 @@ def _teams(
     queued: list[TeamRow] = []
     for team in teams:
         if not team.waitlisted:
-            paid, faded = _paid(conduct, team.registration.settled)
+            paid, faded = _paid(
+                conduct,
+                team.registration.settled,
+                team.registration.expires_at is not None,
+            )
             seated.append(_team(team, len(seated) + 1, paid, faded))
         elif conduct.queue:
             # listed in waitlist order, so the count so far is the position
@@ -339,7 +375,7 @@ def _event(item: ExtraItem, rows: list[Row], live: set[int], conduct: _Conduct) 
         selections = (row.get("extras") or {}).get(item.category.value) or []
         if not any(selection.get("item_id") == item.id for selection in selections):
             continue
-        paid, faded = _paid(conduct, bool(row.get("paid")))
+        paid, faded = _paid(conduct, bool(row.get("paid")), row.get("expires_at") is not None)
         seated.append(
             EntrantRow(
                 number=len(seated) + 1,
@@ -366,7 +402,9 @@ def _event(item: ExtraItem, rows: list[Row], live: set[int], conduct: _Conduct) 
 def rosters(session: Session, tournament: Tournament) -> list[Roster]:
     """Every discipline's roster, in the tournament's discipline order, then
     each listed side event's, in the order they were offered."""
-    conduct = _conduct(tournament)
+    # one instant for the whole page, so a long answer straddling midnight does
+    # not have one roster reading the day before and the next the day after
+    conduct = _conduct(tournament, datetime.now(UTC))
     base = sheet.base_rows(session, tournament)
     replayed, _ = rules.replay(
         base, rules.active_rules(session, tournament), sheet.rating_lookup(session, tournament)
