@@ -29,9 +29,9 @@ function tournament(teams: boolean, kinds: ("individual" | "team")[]): Tournamen
   } as unknown as TournamentDetail;
 }
 
-function row(name: string, teams: SheetRow["teams"]): SheetRow {
+function row(name: string, teams: SheetRow["teams"], id = `reg:${name}`): SheetRow {
   return {
-    id: `reg:${name}`,
+    id,
     number: 1,
     name,
     nationality: "CZ",
@@ -89,6 +89,15 @@ function headers(page: HTMLElement): string[] {
   return [...page.querySelectorAll(".sheet-table thead th")].map((th) => th.textContent ?? "");
 }
 
+/** The team cells of the table, found by the column's own header: what stands
+ *  left of it is not this test's subject. */
+function teamCells(page: HTMLElement): (string | null | undefined)[] {
+  const at = headers(page).indexOf(i18n.t("column.team"));
+  return [...page.querySelectorAll(".sheet-table tbody tr")].map(
+    (tr) => [...tr.querySelectorAll("td")][at]?.textContent,
+  );
+}
+
 afterEach(() => {
   host?.remove();
   host = null;
@@ -118,8 +127,7 @@ describe("the fencer list's team column", () => {
       ]),
     ]);
 
-    const cell = [...page.querySelectorAll(".sheet-table tbody td")][4];
-    expect(cell?.textContent).toBe("Rudá růže (LS)Ulice 2 (SA)");
+    expect(teamCells(page)[0]).toBe("Rudá růže (LS)Ulice 2 (SA)");
   });
 
   it("drops the discipline where the tournament has only one team discipline", async () => {
@@ -127,8 +135,7 @@ describe("the fencer list's team column", () => {
       row("Jan Novák", [{ name: "Rudá růže", discipline: "D0" }]),
     ]);
 
-    const cell = [...page.querySelectorAll(".sheet-table tbody td")][4];
-    expect(cell?.textContent).toBe("Rudá růže");
+    expect(teamCells(page)[0]).toBe("Rudá růže");
   });
 
   it("reads a dash on a row that entered none", async () => {
@@ -136,7 +143,21 @@ describe("the fencer list's team column", () => {
       row("Jan Novák", []),
     ]);
 
-    expect([...page.querySelectorAll(".sheet-table tbody td")][4]?.textContent).toBe("—");
+    expect(teamCells(page)[0]).toBe("—");
+  });
+
+  it("states a member row's own team, and never a dash on one", async () => {
+    // a member row is on one roster, and that is its place in the tournament:
+    // the column states the team this row stands in, as a fighter or as an
+    // entry (spec etl-console, A member row states the team it fights for)
+    const page = await openConsole(tournament(true, ["team", "team"]), [
+      row("Jan Novák", [{ name: "Rudá růže", discipline: "LS" }], "mem:7"),
+      row("Petr Svoboda", [{ name: "Ulice 2", discipline: "SA" }], "mem:8"),
+    ]);
+
+    const cells = teamCells(page);
+    expect(cells).toEqual(["Rudá růže (LS)", "Ulice 2 (SA)"]);
+    expect(cells).not.toContain("—");
   });
 
   it("does not widen a tournament with no team discipline", async () => {

@@ -429,3 +429,165 @@ def test_category_matches_whole_name_not_a_fragment(client, auth_headers):
         override={"LSW": "Women's Steel Longsword", "SA": "mixed and men's steel sabre"},
     )
     assert ratings == {"SA": 1200.0}
+
+
+# ---------------------------------------------------------------------------
+# A team discipline's fighters carry ratings (spec team-disciplines, A team
+# discipline carries a rating category for its fighters)
+# ---------------------------------------------------------------------------
+
+
+def team_tournament(client, auth_headers, organizer, **extra):
+    """A tournament offering one team discipline and nothing individual — the
+    shape that mapped no taxonomy code at all, and so fetched a rating for
+    nobody, before the category map stopped refusing a team code."""
+    response = client.post(
+        "/api/tournaments/cup/disciplines",
+        json={
+            "slug": "LS",
+            "weapon": "LS",
+            "capacity": 5,
+            "fee": 3000,
+            "kind": "team",
+            "team_min": 2,
+            "team_max": 4,
+            **extra,
+        },
+        headers=organizer,
+    )
+    assert response.status_code == 201, response.text
+    publish(client, organizer, "cup")
+
+
+def enter_team(client, auth_headers, members):
+    """One team entered by a fencer, with the given (name, hr_id) members."""
+    fencer = auth_headers(email="entrant@example.com", name="Entrant")
+    created = client.post(
+        "/api/tournaments/cup/register",
+        json={"disciplines": [], "teams": [{"slug": "LS", "name": "Wolves"}]},
+        headers=fencer,
+    )
+    assert created.status_code == 201, created.text
+    team_id = created.json()["teams"][0]["id"]
+    saved = client.put(
+        f"/api/tournaments/cup/my-registration/teams/{team_id}/roster",
+        json={"members": [{"name": name, "hr_id": hr_id} for name, hr_id in members]},
+        headers=fencer,
+    )
+    assert saved.status_code == 200, saved.text
+    return team_id
+
+
+def test_a_team_only_tournament_fetches_a_rating_for_every_matched_member(client, auth_headers):
+    organizer = make_organizer(client, auth_headers)
+    team_tournament(client, auth_headers, organizer)
+    enter_team(client, auth_headers, [("Jan N", 10234), ("Anna K", 3340), ("Unmatched", None)])
+
+    fetcher = FakeHRFetcher()
+    page = fighter_page([("Mixed & Men's Steel Longsword", 1400.0, 20)])
+    fetcher.pages[10234] = page
+    fetcher.pages[3340] = fighter_page([("Mixed & Men's Steel Longsword", 1100.0, 60)])
+    wire_fetcher(fetcher)
+
+    outcome = client.post("/api/tournaments/cup/ratings/snapshot", headers=organizer).json()
+    assert outcome["status"] == "ok"
+    # the two matched fighters, and no fetch for the one nobody matched
+    assert outcome["fencers"] == 2
+    assert outcome["ratings"] == 2
+
+
+def test_a_team_discipline_outside_the_taxonomy_is_skipped_without_failing(client, auth_headers):
+    organizer = make_organizer(client, auth_headers)
+    team_tournament(client, auth_headers, organizer, weapon="Messer", name="Messer Teams")
+    enter_team(client, auth_headers, [("Jan N", 10234)])
+
+    fetcher = FakeHRFetcher()
+    fetcher.pages[10234] = fighter_page([("Mixed & Men's Steel Longsword", 1400.0, 20)])
+    wire_fetcher(fetcher)
+
+    outcome = client.post("/api/tournaments/cup/ratings/snapshot", headers=organizer).json()
+    assert outcome["status"] == "ok"
+    assert outcome["ratings"] == 0
+    assert outcome["fencers"] == 1
+
+
+def test_a_team_carries_no_rating_of_its_own(client, auth_headers):
+    """The category rates the discipline's fighters. A team has no rating and no
+    rank, and nothing derives one from its roster's (design D10)."""
+    from sqlalchemy import select
+
+    from app.models import HRRatingSnapshot
+
+    organizer = make_organizer(client, auth_headers)
+    team_tournament(client, auth_headers, organizer)
+    enter_team(client, auth_headers, [("Jan N", 10234), ("Anna K", 3340)])
+
+    fetcher = FakeHRFetcher()
+    fetcher.pages[10234] = fighter_page([("Mixed & Men's Steel Longsword", 1400.0, 20)])
+    fetcher.pages[3340] = fighter_page([("Mixed & Men's Steel Longsword", 1100.0, 60)])
+    wire_fetcher(fetcher)
+    client.post("/api/tournaments/cup/ratings/snapshot", headers=organizer)
+
+    session = next(app.dependency_overrides[get_session]())
+    snapshot = session.scalars(
+        select(HRRatingSnapshot).order_by(HRRatingSnapshot.id.desc()).limit(1)
+    ).first()
+    assert snapshot is not None
+    # every rating the snapshot stores is a fighter's, keyed by their own
+    # identifier; there is no row for a team
+    assert sorted((r.hr_id, r.rating) for r in snapshot.ratings) == [
+        (3340, 1100.0),
+        (10234, 1400.0),
+    ]
+    # and the team's own row on its export tab states none
+    table = client.get(
+        "/api/tournaments/cup/export/table?kind=discipline&key=LS", headers=organizer
+    ).json()
+    team_row = next(row for row in table["rows"] if row.get("_team") is not None)
+    assert team_row["ratings"] == {} and team_row["ranks"] == {}
+    fighters = [row for row in table["rows"] if row.get("_team") is None]
+    assert [row["ratings"].get("LS") for row in fighters] == [1400.0, 1100.0]
+
+
+def test_the_same_weapon_individually_and_in_teams_shares_one_fetch(client, auth_headers):
+    """A member's identifier is fetched with everyone else's, once per fighter
+    page, under the taxonomy code the two disciplines share."""
+    organizer = make_organizer(client, auth_headers)
+    client.post(
+        "/api/tournaments/cup/disciplines",
+        json={"slug": "LS-open", "weapon": "LS", "capacity": 10, "fee": 800},
+        headers=organizer,
+    )
+    client.post(
+        "/api/tournaments/cup/disciplines",
+        json={
+            "slug": "LS",
+            "weapon": "LS",
+            "capacity": 5,
+            "fee": 3000,
+            "kind": "team",
+            "team_min": 2,
+            "team_max": 4,
+        },
+        headers=organizer,
+    )
+    publish(client, organizer, "cup")
+    individual = auth_headers(email="solo@example.com", name="Solo")
+    client.post("/api/account/hr-binding", json={"hr_id": 10234}, headers=individual)
+    client.post(
+        "/api/tournaments/cup/register",
+        json={"disciplines": ["LS-open"]},
+        headers=individual,
+    )
+    enter_team(client, auth_headers, [("Anna K", 3340)])
+
+    fetcher = FakeHRFetcher()
+    fetcher.pages[10234] = fighter_page([("Mixed & Men's Steel Longsword", 1400.0, 20)])
+    fetcher.pages[3340] = fighter_page([("Mixed & Men's Steel Longsword", 1100.0, 60)])
+    wire_fetcher(fetcher)
+
+    outcome = client.post("/api/tournaments/cup/ratings/snapshot", headers=organizer).json()
+    assert outcome["status"] == "ok"
+    assert outcome["fencers"] == 2
+    # one rating per fighter under the one shared code, not one per discipline
+    assert outcome["ratings"] == 2

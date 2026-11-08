@@ -398,3 +398,18 @@ describe("the team column", () => {
     expect(teamCell([], false)).toBe("—");
   });
 });
+
+describe("the state cell", () => {
+  it("reads a dash on a member row, which carries no payment state", () => {
+    // "member" names the fourth population in the projection (design D6); it
+    // is not a state a registration is in, and printing it put an English
+    // identifier into a Czech table
+    const html = cell("state", { id: "mem:7", state: "member" }, null);
+    expect(html).not.toContain("member");
+    expect(html).toBe("—");
+  });
+
+  it("still states a registration's own state", () => {
+    expect(cell("state", { state: "reserved" }, null)).toContain("Reserved");
+  });
+});

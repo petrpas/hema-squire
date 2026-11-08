@@ -1163,6 +1163,15 @@ button.secondary:disabled {
   font-family: var(--font-data);
 }
 
+/* The count of standing rows, left of the fencer's own number: narrower than
+   the number it precedes, since it is read to learn how many and not to find
+   a fencer, and faded a step further so the two columns are not mistaken for
+   one two-part figure. */
+.col-position {
+  width: 2.5rem;
+  color: var(--ink-faded);
+}
+
 /* A column that states a number stands right-aligned, so a rating, an amount
    or an identifier is read by magnitude down the column (the table's figures
    are tabular already); the row number is one of them, and so is every numeric
@@ -4543,6 +4552,16 @@ label.checklist-row > input[type="checkbox"] {
 .unpriced-rental {
   font-style: italic;
   cursor: help;
+}
+
+/* A team's member count that the discipline's bounds do not admit — short of
+   the minimum or over the maximum. The only saturated ink the design has,
+   plus the italic: the figure is the problem, and the row states it where the
+   organizer is already reading the counts (spec team-disciplines, Organizer's
+   teams view). */
+.member-count-off {
+  color: var(--stamp);
+  font-style: italic;
 }
 
 .identity-declared {

@@ -125,6 +125,74 @@ export const FENCERS_COLUMNS = (t: TFunction): ExportColumn[] => [
   paidColumn(t),
 ];
 
+/** The position a team discipline's tab states: the team's number, and nothing
+ *  on a fighter's row. The tab is read as the discipline's field, and that
+ *  field is teams (spec export-tables, Each tab states its own columns and
+ *  order).
+ *
+ *  Numbered from the order the tab displays rather than from the row's index,
+ *  which counts fighters too. */
+export function teamPositionColumn(numbers: Map<string, number>): ExportColumn {
+  return {
+    id: "position",
+    numeric: true,
+    value: (row) => text(numbers.get(row.id)),
+  };
+}
+
+/** The paid cell of a team discipline's tab: the team's, and empty on a
+ *  fighter's row. A fighter holds no registration, and a team is paid for
+ *  once. */
+export function teamPaidColumn(t: TFunction): ExportColumn {
+  return {
+    id: "paid",
+    value: (row) => (row._team === undefined ? "" : t(row.paid ? "export.yes" : "export.no")),
+  };
+}
+
+/** The name cell of a team discipline's tab. A fighter states its own name; a
+ *  team states its name with the fencer who entered it and how many it names
+ *  against the discipline's bounds.
+ *
+ *  One cell rather than columns of their own, because the three belong to the
+ *  team and a fighter's row has nothing to put under them — and because what
+ *  leaves the tab by the clipboard then carries them too (spec export-tables,
+ *  Each tab states its own columns and order). */
+export function teamNameColumn(t: TFunction): ExportColumn {
+  return {
+    id: "name",
+    value: (row) => {
+      const team = row._team;
+      if (team === undefined) return text(row.name);
+      const count = t("export.team.members", {
+        count: team.members,
+        min: team.team_min,
+        max: team.team_max,
+      });
+      return `${text(row.name)} · ${t("export.team.enteredBy", { name: team.entering_fencer })} · ${count}`;
+    },
+  };
+}
+
+/** A team discipline's tab: the same columns as an individual one, read by two
+ *  kinds of row. A team states its number, its name, who entered it with its
+ *  member count, and paid; a fighter states its name, nationality, club,
+ *  identifier, rating and rank, and no paid of its own. */
+export const TEAM_COLUMNS = (
+  t: TFunction,
+  slug: string,
+  numbers: Map<string, number>,
+): ExportColumn[] => [
+  teamPositionColumn(numbers),
+  teamNameColumn(t),
+  NATIONALITY,
+  CLUB,
+  HR_ID,
+  ratingColumn(slug),
+  rankColumn(slug),
+  teamPaidColumn(t),
+];
+
 export const ROSTER_COLUMNS = (t: TFunction, slug: string): ExportColumn[] => [
   POSITION,
   NAME,

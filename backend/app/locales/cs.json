@@ -192,7 +192,14 @@
       "subject": "Rezervace obnovena, zbývá doplatit — {tournament}",
       "body": "Ahoj {name},\n\ntvá platba {received} (VS {vs}) dorazila po vypršení rezervace, ale místo bylo ještě volné — rezervaci na {tournament} jsme obnovili a platbu přijali.\n\n{amounts}\nÚčet: {account}\nVariabilní symbol: {vs}\n\nZaplatit můžeš naskenováním přiloženého QR kódu.\n\n{consequence}\n\nTým {tournament}"
     },
-    "tournamentLinkEvent": "Stránka akce: {link}"
+    "tournamentLinkEvent": "Stránka akce: {link}",
+    "teamCancelled": {
+      "subject": "Tým byl zrušen — {tournament}",
+      "body": "Ahoj {name},\n\norganizátor turnaje {tournament} zrušil tvůj tým {team} v disciplíně {discipline}. Tvoje registrace i všechno ostatní na ní platí dál.",
+      "owes": "Na registraci teď chybí {amount}. Zaplať je pod variabilním symbolem {vs}.",
+      "owed": "Na registraci je teď o {amount} víc. O vrácení rozhoduje organizátor a ozve se ti.",
+      "settled": "Na registraci nic nechybí."
+    }
   },
   "export": {
     "yes": "Ano",
@@ -257,6 +264,10 @@
       "hr_id": "HRID",
       "rank": "Rank",
       "paid": "Zaplaceno"
+    },
+    "team": {
+      "enteredBy": "přihlásil {name}",
+      "members": "{members}/{min}–{max} na soupisce"
     }
   }
 }

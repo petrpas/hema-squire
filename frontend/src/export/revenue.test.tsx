@@ -144,13 +144,23 @@ describe("the revenue on screen", () => {
 });
 
 const BAND: ExportBandTab[] = [
-  { kind: "fencers", key: "", label: "fencers", capacity: null, line: null, count: 3, queued: 0 },
+  {
+    kind: "fencers",
+    key: "",
+    label: "fencers",
+    capacity: null,
+    line: null,
+    teams: false,
+    count: 3,
+    queued: 0,
+  },
   {
     kind: "revenue",
     key: "",
     label: "revenue",
     capacity: null,
     line: null,
+    teams: false,
     count: null,
     queued: 0,
   },

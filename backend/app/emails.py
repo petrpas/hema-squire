@@ -1410,6 +1410,60 @@ def send_substitution(mailer: Mailer, tournament: Tournament, prepared: Prepared
     )
 
 
+def send_team_cancelled(
+    mailer: Mailer,
+    tournament: Tournament,
+    registration: Registration,
+    team_name: str,
+    discipline_name: str,
+) -> bool:
+    """One team of a registration cancelled by the organizer, told to the
+    fencer who entered it (spec team-disciplines, Cancelling one team).
+
+    Money moves, so this is not the silent correction a roster edit is: the
+    letter names the team and its discipline and states what the registration
+    now owes or is owed. The balance is stated only where Squire collects the
+    money — on a tournament it does not, there is no figure of Squire's to
+    state.
+
+    Sent under the rule every organizer action on a seat follows, the one
+    `send_cancelled_by_organizer` keeps: a seat the organizer entered by hand
+    is sent nothing, the organizer being the one in contact, and a seat with no
+    address has nowhere to be sent. Returns whether a message went out, which
+    is what the console is told.
+    """
+    if _entered_by_hand(registration):
+        return False
+    to = recipient(registration, registration.fencer)
+    if not to:
+        return False
+    lang = mail_language(tournament, registration.fencer)
+    body = t(
+        "email.teamCancelled.body",
+        lang,
+        name=registration.fencer.display_name,
+        tournament=tournament.display_name,
+        team=team_name,
+        discipline=discipline_name,
+    )
+    if tournament.feature_payments:
+        balance, currency = registration.balance_cents(tournament)
+        amount = format_money(
+            (Decimal(abs(balance)) / 100).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP),
+            currency.value.upper(),
+            lang,
+        )
+        if balance > 0:
+            body += "\n\n" + t("email.teamCancelled.owes", lang, amount=amount, vs=registration.vs)
+        elif balance < 0:
+            body += "\n\n" + t("email.teamCancelled.owed", lang, amount=amount)
+        else:
+            body += "\n\n" + t("email.teamCancelled.settled", lang)
+    subject = t("email.teamCancelled.subject", lang, tournament=tournament.display_name)
+    mailer.send(_letter(registration, lang, to, subject, body))
+    return True
+
+
 def send_cancelled_by_organizer(
     mailer: Mailer, tournament: Tournament, registration: Registration, note: str | None
 ) -> None:

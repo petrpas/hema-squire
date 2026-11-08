@@ -20,7 +20,7 @@ from fastapi import HTTPException
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app import setup
+from app import rownumbers, setup
 from app.hr_index import country_code
 from app.models import (
     RosterChange,
@@ -170,6 +170,13 @@ def apply_roster_save(
         session.flush()
         for member in added:
             record(member, RosterChangeKind.ADDED)
+        # A member is a row of the fencer list and carries a fixed number,
+        # allocated where the row is born — here, since this is the one place a
+        # member is added (spec etl-console, Fixed fencer number). Removal
+        # retires the number rather than releasing it, and a restore above
+        # returns it: the id is the member's identity, so the number it already
+        # holds is still its own and nothing is minted for it.
+        rownumbers.allocate(session, tournament, [f"mem:{member.id}" for member in added])
 
 
 def roster_log(session: Session, team: Team) -> list[RosterChange]:

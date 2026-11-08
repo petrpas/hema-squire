@@ -642,6 +642,16 @@ export interface SheetRow {
   teams: EnteredTeam[];
   /** A payment sent from the queue is held for the organizer. */
   payment_held?: boolean;
+  /** Whether this row is one of the tournament's fighters. False on a
+   *  registration whose whole content is team entries: entering a team is not
+   *  fighting, so it is not on the start field, and its agenda — money, a seat,
+   *  the teams themselves — is read on Payments, the Queue and Teams (spec
+   *  `etl-console`, The fencer list is the tournament's start field). */
+  fights?: boolean;
+  /** Present only on a team discipline's export tab, and only on the rows that
+   *  are teams rather than fighters: a team's own facts, which no fencer row
+   *  has (spec `export-tables`, Each tab states its own columns and order). */
+  _team?: ExportTeamRow;
   state: string;
   /** The registration standing in this row's place, where one has been issued
    *  for it; null while the row is still a row. Disciplines are the row's to
@@ -745,10 +755,24 @@ export interface Sheet {
   edits: NetChange[];
 }
 
+/** A team as its discipline's export tab lists it, above its fighters. A team
+ *  carries no nationality, club, identifier, rating or rank — and nothing
+ *  computes one from its fighters': what a tournament makes of four fighters'
+ *  ratings when it seeds is the tournament's decision. */
+export interface ExportTeamRow {
+  entering_fencer: string;
+  members: number;
+  team_min: number;
+  team_max: number;
+  /** Where this team stands in the discipline's waitlist; null for a seated
+   *  one, which is also what puts the tab's line where it falls. */
+  waitlist_position: number | null;
+}
+
 /** One table of the Export phase's band, derived from the tournament: the
- *  fencer list, one per individual discipline, one per extra-item category it
- *  offers something in. `key` names what the table is of and is empty for the
- *  fencer table, which is of the whole tournament. */
+ *  fencer list, one per discipline — individual and team alike — one per
+ *  extra-item category it offers something in. `key` names what the table is of
+ *  and is empty for the fencer table, which is of the whole tournament. */
 export interface ExportTab {
   kind: "fencers" | "discipline" | "category" | "summary" | "revenue";
   key: string;
@@ -757,6 +781,10 @@ export interface ExportTab {
   /** What a discipline tab's line means here: a queue boundary, or a bare
    *  capacity mark on a tournament whose mode queues nobody. */
   line: "queue" | "capacity" | null;
+  /** A discipline tab whose population is teams rather than fencers: its rows
+   *  are of two kinds, its capacity and its counts are in teams, and it offers
+   *  no seeding tick (spec `export-tables`). */
+  teams: boolean;
 }
 
 /** A tab as the band lists it, with how many it holds: `queued` counts a
@@ -1223,12 +1251,24 @@ export interface ConsoleTeam {
   id: number;
   name: string;
   entering_fencer: string;
+  /** The payment standing of the registration this team was entered on: a team
+   *  is paid for once, on that registration, and carries no money of its own. */
+  paid: boolean;
   waitlisted: boolean;
   waitlist_position: number | null;
   members: RosterMember[];
   removed_members: RemovedRosterMember[];
   log: RosterChange[];
   below_minimum: boolean;
+}
+
+/** What cancelling one team did to the registration it was entered on: the
+ *  totals before and after, as decimal strings the money cells read, and
+ *  whether the entering fencer was written to. */
+export interface TeamCancelled {
+  previous_total: string;
+  total: string;
+  notified: boolean;
 }
 
 export interface ConsoleTeamDiscipline {
@@ -2092,6 +2132,14 @@ export const api = {
     request<ConsoleTeam>(`/api/tournaments/${slug}/teams/${teamId}/roster`, {
       method: "PUT",
       body: JSON.stringify({ members }),
+    }),
+  /** Cancel one team of a registration, leaving the registration and every
+   *  other team and entry on it standing. Money moves, so the answer says what
+   *  the registration was worth, what it is worth now, and whether the entering
+   *  fencer was told (spec `team-disciplines`, Cancelling one team). */
+  cancelTeam: (slug: string, teamId: number) =>
+    request<TeamCancelled>(`/api/tournaments/${slug}/teams/${teamId}/cancel`, {
+      method: "POST",
     }),
   queue: (slug: string) => request<Queue>(`/api/tournaments/${slug}/queue`),
   queueTeams: (slug: string, disciplineSlug: string) =>

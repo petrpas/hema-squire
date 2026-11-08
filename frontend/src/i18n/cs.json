@@ -197,7 +197,11 @@
     },
     "pdf": "PDF",
     "png": "PNG",
-    "printFailed": "Soupisku se nepodařilo vysázet."
+    "printFailed": "Soupisku se nepodařilo vysázet.",
+    "team": {
+      "enteredBy": "přihlásil {{name}}",
+      "members": "{{count}}/{{min}}–{{max}} na soupisce"
+    }
   },
   "dedup": {
     "title": "Deduplikace",
@@ -429,6 +433,7 @@
     "substituted": "Náhrada"
   },
   "column": {
+    "position": "Poř.",
     "name": "Jméno",
     "nationality": "Nár.",
     "club": "Klub",
@@ -1368,6 +1373,34 @@
         "hr_id": "identifikátor HR",
         "club": "klub",
         "nationality": "národnost"
+      }
+    },
+    "column": {
+      "team": "Tým",
+      "discipline": "Disciplína",
+      "enteringFencer": "Přihlásil",
+      "members": "Soupiska",
+      "waitlist": "Fronta",
+      "paid": "Zaplaceno"
+    },
+    "roster": {
+      "show": "Soupiska",
+      "hide": "Skrýt soupisku"
+    },
+    "rosterEmpty": "Zatím není uveden nikdo.",
+    "cancel": {
+      "action": "Zrušit tento tým",
+      "title": "Zrušení jednoho týmu",
+      "irreversible": "Zrušení týmu nelze vzít zpět.",
+      "meaning": "Tým se zruší a jeho startovné odejde z částky za registraci. Ostatní týmy a přihlášky na téže registraci zůstávají.",
+      "roster": "Soupiska odejde s týmem — {{count}} uvedených šermířů tím zmizí ze seznamu šermířů.",
+      "place": "Místo, které tým držel, se uvolní. Z čekací listiny nikdo nepostoupí sám — tým z ní přijmeš ve fázi Fronta.",
+      "mail": "Šermíř, který tým přihlásil, dostane e-mail: název týmu, disciplínu a kolik registrace po změně dluží nebo má přeplaceno.",
+      "confirm": "Zrušit tým",
+      "error": {
+        "failed": "Tým se nepodařilo zrušit.",
+        "registration_not_live": "Registrace, na které byl tým přihlášen, je zrušená nebo propadlá.",
+        "team_disciplines_off": "Týmové disciplíny jsou u tohoto turnaje vypnuté."
       }
     }
   },

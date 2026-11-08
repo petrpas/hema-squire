@@ -35,6 +35,7 @@ const sabre: ExportTab = {
   label: "Sabre Open",
   capacity: 2,
   line: "queue",
+  teams: false,
 };
 
 const card = (discipline: boolean) =>

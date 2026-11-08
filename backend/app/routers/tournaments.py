@@ -1,3 +1,4 @@
+import decimal
 import io
 import logging
 from collections.abc import Callable, Iterable
@@ -12,8 +13,10 @@ from sqlalchemy.orm import Session, selectinload
 from sqlalchemy.sql.elements import ColumnElement
 
 from app import (
+    amendment,
     bank,
     discount_codes,
+    emails,
     entrants,
     list_counts,
     money_bounds,
@@ -33,7 +36,7 @@ from app.auth import (
     require_tournament_owner,
 )
 from app.availability import (
-    live_registration,
+    live_teams,
     queue_length,
     taken_seats,
     taken_team_slots,
@@ -90,6 +93,8 @@ from app.schemas import (
     SettleSeatingOut,
     SetupSuggestionsOut,
     TeamAdd,
+    TeamCancelledOut,
+    TeamEntryIn,
     TeamMemberOut,
     TournamentCreate,
     TournamentFeaturesIn,
@@ -808,15 +813,6 @@ def update_tournament(
             raise HTTPException(status_code=422, detail="deposit_amount_required")
         if tournament.shows_eur and not tournament.deposit_amount_eur:
             raise HTTPException(status_code=422, detail="deposit_amount_eur_required")
-    if updates.get("hr_category_map") is not None:
-        team_codes = {
-            d.taxonomy_code for d in tournament.disciplines if d.kind == DisciplineKind.TEAM
-        }
-        offending = team_codes & set(tournament.hr_category_map)
-        if offending:
-            # team disciplines carry no HR rating category (design
-            # team-disciplines: "Team disciplines carry no HR rating category")
-            raise HTTPException(status_code=422, detail="hr_category_map_excludes_team_disciplines")
     if tournament.reminder_day >= tournament.reservation_validity_days:
         # expiry runs before reminders (scheduler.run_tournament_tick): a
         # reservation would always be expired before its reminder was due,
@@ -1340,25 +1336,6 @@ def delete_discipline(
     session.commit()
 
 
-def live_teams(session: Session, discipline: Discipline) -> list[Team]:
-    """A team discipline's teams on live registrations, in waitlist order.
-
-    Entry order, except that a team demoted for non-payment waits from the
-    moment it was demoted, at the end of the waitlist. A team whose entering
-    registration expired or was cancelled no longer exists for the waitlist:
-    it is not listed and takes no place (spec team-disciplines, Team capacity
-    and the team waitlist)."""
-    return list(
-        session.scalars(
-            select(Team)
-            .join(Registration)
-            .where(Team.discipline_id == discipline.id, live_registration())
-            .options(selectinload(Team.members), selectinload(Team.registration))
-            .order_by(Team.waitlisted_since, Team.created_at, Team.id)
-        ).all()
-    )
-
-
 def _console_team_out(
     session: Session, team: Team, *, waitlist_position: int | None, below_minimum: bool
 ) -> ConsoleTeamOut:
@@ -1369,6 +1346,7 @@ def _console_team_out(
         id=team.id,
         name=team.name,
         entering_fencer=team.registration.fencer.display_name,
+        paid=team.registration.settled,
         waitlisted=team.waitlisted,
         waitlist_position=waitlist_position,
         members=[
@@ -1419,11 +1397,13 @@ def _console_team_out(
 
 @router.get("/{slug}/teams", response_model=list[ConsoleTeamDisciplineOut])
 def console_teams(tournament: TournamentDep, session: SessionDep, fencer: FencerDep):
-    """Per team discipline: every team with its entering fencer, ordered
-    roster, member count, waitlist position, below-minimum flag, the members
-    removed from it and its roster log. The roster is editable from here
-    (`console_update_roster`); admission is the Queue phase's and cancellation
-    is offered nowhere (spec: "Organizer's teams view")."""
+    """Per team discipline: every team with its entering fencer, the payment
+    standing of the registration it was entered on, its ordered roster, member
+    count, waitlist position, below-minimum flag, the members removed from it
+    and its roster log. The roster is editable from here
+    (`console_update_roster`) and one team may be cancelled
+    (`console_cancel_team`); admission is the Queue phase's (spec:
+    "Organizer's teams view")."""
     require_console_access(session, tournament, fencer)
     # a date the organizer entered, so the whole of that day where the
     # tournament is held — the same rule the registration close follows, and
@@ -1526,6 +1506,84 @@ def console_update_roster(
             and today > deadline
             and len(team.members) < (team.discipline.team_min or 0)
         ),
+    )
+
+
+@router.post("/{slug}/teams/{team_id}/cancel", response_model=TeamCancelledOut)
+def console_cancel_team(
+    team_id: RowId,
+    tournament: TournamentDep,
+    session: SessionDep,
+    fencer: FencerDep,
+    mailer: QueuedMailerDep,
+):
+    """Cancel one team of a registration, leaving the registration and every
+    other team and entry on it standing (spec team-disciplines, Cancelling one
+    team).
+
+    A registration may carry several teams, in one discipline or several, so
+    cancelling the registration is too blunt an instrument for a team that has
+    withdrawn. It is an amendment of the registration, which is where the
+    machinery already lives: the team's fee leaves the total, the registration
+    is repriced on its own frozen prices, and what that leaves owed or overpaid
+    is stated as any amendment's result is. The team's roster goes with it and
+    its members leave the fencer list, since they will not fight.
+
+    The place a seated team held is freed by the team ceasing to exist, and
+    nothing is promoted into it: a freed place waits for the organizer, as a
+    freed individual seat does. Admission stays the Queue phase's.
+
+    Refused on a registration that is cancelled or expired — there is nothing
+    live to amend — and where the team disciplines feature is off, since the
+    teams a hidden feature holds are retained untouched.
+    """
+    require_console_access(session, tournament, fencer)
+    require_published(tournament)
+    if not tournament.feature_teams:
+        raise HTTPException(status_code=409, detail="team_disciplines_off")
+    team = session.get(Team, team_id)
+    if team is None or team.tournament_id != tournament.id:
+        raise HTTPException(status_code=404, detail="team_not_found")
+    registration = team.registration
+    # cancelled and expired are both lifecycle states, so one test covers the
+    # two the requirement names: there is nothing live to amend in either
+    if registration.state is not RegistrationState.RESERVED:
+        raise HTTPException(status_code=409, detail="registration_not_live")
+    # the name and the discipline are read before the row goes, because the
+    # letter names both and the row will not be there to ask
+    team_name = team.name
+    discipline_name = team.discipline.name or team.discipline.slug
+    # The amendment states the selection rather than a difference from it: the
+    # individual entries this registration holds, and every team but this one,
+    # each by its own id so that its roster is kept (`amendment`,
+    # `team_entries`). The extras are not mentioned, which leaves them as they
+    # stand.
+    kept = [
+        (other.discipline, TeamEntryIn(id=other.id, slug=other.discipline.slug, name=other.name))
+        for other in registration.teams
+        if other.id != team.id
+    ]
+    result = amendment.apply_amendment(
+        session,
+        tournament,
+        registration,
+        [entry.discipline for entry in registration.entries],
+        mailer,
+        seat_all=True,
+        # the amendment itself says nothing: a cancellation is not a surcharge,
+        # and what the fencer is told is the letter below, which names the team
+        notice=amendment.SURCHARGE_ONLY,
+        team_entries=kept,
+    )
+    # after the commit `apply_amendment` makes, so a failed send cannot undo
+    # what was decided — the rule the organizer's cancellation already follows
+    notified = emails.send_team_cancelled(
+        mailer, tournament, registration, team_name, discipline_name
+    )
+    return TeamCancelledOut(
+        previous_total=decimal.Decimal(result.previous_total),
+        total=decimal.Decimal(result.total),
+        notified=notified,
     )
 
 

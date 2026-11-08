@@ -279,9 +279,7 @@ def _individual(
     seated: list[EntrantRow] = []
     for row in listed:
         if discipline.slug in (row.get("disciplines") or []):
-            paid, faded = _paid(
-                conduct, bool(row.get("paid")), row.get("expires_at") is not None
-            )
+            paid, faded = _paid(conduct, bool(row.get("paid")), row.get("expires_at") is not None)
             seated.append(_entrant(row, discipline.slug, len(seated) + 1, paid, faded))
     queued: list[EntrantRow] = []
     if conduct.queue:
@@ -303,26 +301,37 @@ def _individual(
     )
 
 
-def _team(team: Team, number: int, paid: Paid, faded: bool) -> TeamRow:
-    return TeamRow(
-        number=number,
-        name=team.name,
-        paid=paid,
-        faded=faded,
-        members=[
+def _team(team: Team, number: int, paid: Paid, faded: bool, rows: dict[str, Row]) -> TeamRow:
+    """One team with its roster beneath it.
+
+    A member's identity is read from the projection, as an individual
+    entrant's already is: an identifier the organizer has ruled on is the
+    tournament's answer, and the public would otherwise see the claim typed
+    into the roster where the console knows a different verdict (spec
+    public-entrants, A team roster names the team and its members). Where no
+    row stands for a member — nothing projects one while the member is not on a
+    live roster — the stored claim is what there is.
+    """
+    members = []
+    for member in team.members:
+        row = rows.get(f"mem:{member.id}")
+        members.append(
             TeamMemberRow(
-                name=member.name,
-                nationality=member.nationality,
-                club=member.club,
-                hr_id=member.hr_id,
+                name=row["name"] if row else member.name,
+                nationality=(row.get("nationality") if row else member.nationality),
+                club=row.get("club") if row else member.club,
+                hr_id=row.get("hr_id") if row else member.hr_id,
             )
-            for member in team.members
-        ],
-    )
+        )
+    return TeamRow(number=number, name=team.name, paid=paid, faded=faded, members=members)
 
 
 def _teams(
-    session: Session, discipline: Discipline, removed: set[int], conduct: _Conduct
+    session: Session,
+    discipline: Discipline,
+    removed: set[int],
+    conduct: _Conduct,
+    rows: dict[str, Row],
 ) -> Roster:
     teams = session.scalars(
         select(Team)
@@ -346,11 +355,11 @@ def _teams(
                 team.registration.settled,
                 team.registration.expires_at is not None,
             )
-            seated.append(_team(team, len(seated) + 1, paid, faded))
+            seated.append(_team(team, len(seated) + 1, paid, faded, rows))
         elif conduct.queue:
             # listed in waitlist order, so the count so far is the position
             # `team_waitlist_position` states
-            queued.append(_team(team, len(queued) + 1, None, False))
+            queued.append(_team(team, len(queued) + 1, None, False, rows))
     return Roster(
         slug=discipline.slug,
         name=discipline.name,
@@ -415,7 +424,7 @@ def rosters(session: Session, tournament: Tournament) -> list[Roster]:
     disciplines = [
         _individual(session, discipline, rows, live, conduct)
         if discipline.kind is DisciplineKind.INDIVIDUAL
-        else _teams(session, discipline, removed, conduct)
+        else _teams(session, discipline, removed, conduct, replayed)
         for discipline in tournament.disciplines
     ]
     events = [

@@ -73,7 +73,7 @@ def test_english_changes_the_printed_headers(client, auth_headers):
     assert english.content != czech.content
 
 
-def test_a_team_discipline_does_not_print(client, auth_headers):
+def test_a_team_discipline_prints(client, auth_headers):
     organizer = organizer_with_tournament(client, auth_headers)
     client.post(
         "/api/tournaments/cup/disciplines",
@@ -89,9 +89,13 @@ def test_a_team_discipline_does_not_print(client, auth_headers):
         headers=organizer,
     )
 
+    # it typesets what the tab shows, and a team discipline's tab is one of the
+    # band's: the rows arrive from the client either way, and the server checks
+    # only that the discipline is one of this tournament's
     response = print_roster(client, organizer, discipline="LS-T")
 
-    assert response.status_code == 404
+    assert response.status_code == 200, response.text
+    assert response.content[:4] == b"%PDF"
 
 
 def test_a_foreign_organizer_is_refused(client, auth_headers):

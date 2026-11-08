@@ -524,6 +524,16 @@ def premerge_rows(session, tournament, index=None) -> list[dict]:
     merges applied, a settled group would show its survivor already carrying the
     merged values and its absorbed rows gone — the group could state neither
     what it merged nor what it could merge instead (design D2).
+
+    **A member of a team's roster is never a candidate.** Two rosters naming one
+    person are two places in two competitions rather than one record entered
+    twice, and a member row standing beside the registration row of the fencer
+    who entered its team is one person in two roles; merging either would
+    destroy a fact rather than a repetition (spec etl-console). This is the one
+    place that exclusion is stated — the phase shows candidate groups and not
+    the fencer list, so nothing is taken off a screen by it — and the
+    operation's own population is `sheet.source_rows`, which a member row is
+    outside of for the same reason.
     """
     base = sheet.base_rows(session, tournament, index)
     kept = [

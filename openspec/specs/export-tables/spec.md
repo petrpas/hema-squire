@@ -6,8 +6,8 @@ Fix what leaves a tournament as a table: the Export phase's band of tabs — the
 ### Requirement: The Export phase is a band of tables
 The Export phase SHALL replace the single fencer table with a band of tabs, each
 tab one table. The band SHALL be derived from the tournament rather than fixed:
-a **Fencers** tab first, then one tab per individual discipline in the
-tournament's discipline order, then one tab per extra-item category for which
+a **Fencers** tab first, then one tab per discipline — individual and team
+alike — in the tournament's discipline order, then one tab per extra-item category for which
 the tournament offers at least one item, goods categories before programme
 categories, then a **Summary** tab, whose table `export-summary` fixes, and
 last a **Revenue** tab, whose table `export-revenue` fixes. Every tournament
@@ -16,9 +16,12 @@ has both.
 A category the tournament offers nothing in SHALL have no tab, and a category
 the tournament does offer SHALL have one whatever it is — a tournament selling
 parking or running a seminar SHALL be exported as completely as one selling
-T-shirts. A team discipline SHALL have no tab, for the reason it produces no
-worksheet: its entries are teams, not registrations, and there is no roster of
-individuals to seed.
+T-shirts. A **team** discipline SHALL have a tab on the same terms as an
+individual one: its fighters carry ratings, and rating and rank are stated on a
+discipline tab and nowhere else, so a team discipline's fighters would otherwise
+have their ratings fetched with nothing to show them. What that tab holds is
+teams rather than registrations, which **Each tab states its own columns and
+order** fixes.
 
 The band SHALL stand on the line of the phase's title where both fit, and SHALL be as long as its tabs and end at its last tab. It SHALL NOT
 draw an empty stretch of frame after it. Where the tabs are wider than the
@@ -39,7 +42,7 @@ band in the console is, and the selected tab SHALL be kept visible in it.
 
 #### Scenario: A team discipline is not a tab
 - **WHEN** a tournament offers one individual and one team longsword discipline
-- **THEN** only the individual discipline has a tab
+- **THEN** each has a tab of its own — this scenario's answer is reversed by this change, and its heading is kept because a modified requirement replaces its whole block and may drop nothing
 
 #### Scenario: Summary and Revenue close the band
 - **WHEN** a tournament offering one discipline and nothing else is exported
@@ -114,9 +117,18 @@ stand; the line itself SHALL carry no number.
 The **Fencers** tab SHALL list, after the position, name, nationality, club, HEMA
 Ratings identifier, disciplines and paid, in registration order.
 
-A **discipline** tab SHALL list, after the position, name, nationality, club, HEMA
-Ratings identifier, rating, rank and paid, ordered by paid then registration
-order.
+An **individual discipline** tab SHALL list, after the position, name,
+nationality, club, HEMA Ratings identifier, rating, rank and paid, ordered by
+paid then registration order.
+
+A **team discipline** tab SHALL list its teams, ordered by paid then the moment
+the team entered, each team stating after the position its name, the fencer who
+entered it, its member count against the discipline's minimum and maximum, and
+paid — the standing of the registration it was entered on. Each team's fighters
+SHALL stand beneath it in roster order, each stating name, nationality, club,
+HEMA Ratings identifier, rating and rank, and no paid of its own: a fighter holds
+no registration, and a team is paid for once. The position column SHALL number
+teams, not fighters, since the tab is read as a list of teams.
 
 An **item category** tab SHALL list, after the position, name, nationality, club,
 the items the fencer selected in that category with their quantities, and paid,
@@ -197,6 +209,10 @@ that is sometimes a word and sometimes a sum can be neither counted nor filtered
 - **WHEN** a fencer's entries all sit in a queue, so the registration is priced at zero and has been credited nothing
 - **THEN** their paid column reads no on every tab
 
+#### Scenario: A team tab reads as teams with their fighters
+- **WHEN** the organizer opens the tab of a team discipline holding six teams of four
+- **THEN** six numbered team rows are listed, each with its four fighters beneath it stating their ratings and ranks, and no fighter carries a paid cell
+
 ### Requirement: Every tab filters to the paid
 Each tab but Summary and Revenue SHALL offer a switch between all rows and active
 rows only. The Summary and Revenue tabs SHALL NOT offer it: their columns already
@@ -242,14 +258,21 @@ on every tab they open.
 - **THEN** those two are listed
 
 ### Requirement: A discipline tab is a seeding roster
-A discipline tab SHALL offer, beside its active-only switch, a tick ordering its
-fencers by rating, highest first — the seeding order — rather than by
-registration. The tick SHALL be independent of the switch: either may be on
+An individual discipline tab SHALL offer, beside its active-only switch, a tick
+ordering its fencers by rating, highest first — the seeding order — rather than by
+registration. A **team** discipline tab SHALL NOT offer it: a team has no rating
+to order by, and what a tournament makes of its fighters' ratings when it seeds is
+the tournament's decision and not Squire's. The tab states the fighters' ratings
+and the organizer seeds with them. The tick SHALL be independent of the switch: either may be on
 without the other, so that the organizer can see the seeding of everybody
 entered or of the paid alone. A fencer with no rating SHALL sort last, in
 registration order among their like. The tick SHALL be offered on a discipline
 tab only, since no other tab has a rating to order by, and SHALL hold one value
 across every discipline tab, as the active-only switch holds across the band.
+
+A team discipline tab SHALL draw its line at the discipline's capacity in teams,
+with waitlisted teams below it in waitlist order, as the public team roster draws
+it (`public-entrants`); the paragraphs below govern an individual tab.
 
 The tab SHALL draw one line at the discipline's capacity. Fencers holding a
 seated entry SHALL be above it; fencers holding a substitute entry in that
@@ -306,6 +329,10 @@ block in the displayed order and SHALL NOT carry the line.
 #### Scenario: Other tabs offer no seeding order
 - **WHEN** the organizer opens the Fencers tab or an item tab
 - **THEN** no seeding order tick is offered
+
+#### Scenario: No seeding tick on a team tab
+- **WHEN** the organizer opens a team discipline's tab
+- **THEN** no seeding tick is offered, and the active-only switch is
 
 ### Requirement: The rating is the organizer's to correct
 The rating cell of a discipline tab SHALL be editable. A typed rating SHALL

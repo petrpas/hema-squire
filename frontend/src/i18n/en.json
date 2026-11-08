@@ -193,7 +193,11 @@
     },
     "pdf": "PDF",
     "png": "PNG",
-    "printFailed": "The roster could not be typeset."
+    "printFailed": "The roster could not be typeset.",
+    "team": {
+      "enteredBy": "entered by {{name}}",
+      "members": "{{count}}/{{min}}–{{max}} members"
+    }
   },
   "dedup": {
     "title": "Deduplication",
@@ -415,6 +419,7 @@
     "substituted": "Substitution"
   },
   "column": {
+    "position": "Pos.",
     "name": "Name",
     "nationality": "Nat.",
     "club": "Club",
@@ -1344,6 +1349,34 @@
         "hr_id": "HR identifier",
         "club": "club",
         "nationality": "nationality"
+      }
+    },
+    "column": {
+      "team": "Team",
+      "discipline": "Discipline",
+      "enteringFencer": "Entered by",
+      "members": "Members",
+      "waitlist": "Waitlist",
+      "paid": "Paid"
+    },
+    "roster": {
+      "show": "Roster",
+      "hide": "Hide roster"
+    },
+    "rosterEmpty": "No member named yet.",
+    "cancel": {
+      "action": "Cancel this team",
+      "title": "Cancel one team",
+      "irreversible": "Cancelling a team cannot be undone.",
+      "meaning": "The team is cancelled and its fee leaves the amount the registration pays. Every other team and entry on the same registration stands.",
+      "roster": "The roster goes with the team — its {{count}} named fighters leave the fencer list.",
+      "place": "The place the team held is freed. Nobody moves up from the waitlist on their own — you admit a team from it on the Queue phase.",
+      "mail": "The fencer who entered the team gets an e-mail: the team, the discipline, and what the registration now owes or is owed.",
+      "confirm": "Cancel the team",
+      "error": {
+        "failed": "Could not cancel the team.",
+        "registration_not_live": "The registration this team was entered on is cancelled or expired.",
+        "team_disciplines_off": "Team disciplines are turned off for this tournament."
       }
     }
   },

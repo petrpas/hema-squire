@@ -267,8 +267,26 @@ describe("the seating rail card", () => {
 
 describe("a refused arrow", () => {
   const TABS: ExportBandTab[] = [
-    { kind: "fencers", key: "", label: "", capacity: null, line: null, count: 3, queued: 0 },
-    { kind: "discipline", key: "LS", label: "LS", capacity: 2, line: "queue", count: 2, queued: 1 },
+    {
+      kind: "fencers",
+      key: "",
+      label: "",
+      capacity: null,
+      line: null,
+      teams: false,
+      count: 3,
+      queued: 0,
+    },
+    {
+      kind: "discipline",
+      key: "LS",
+      label: "LS",
+      capacity: 2,
+      line: "queue",
+      teams: false,
+      count: 2,
+      queued: 1,
+    },
   ];
 
   beforeEach(() => {

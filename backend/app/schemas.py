@@ -1906,6 +1906,19 @@ class AmendmentOut(BaseModel):
     notified: bool
 
 
+class TeamCancelledOut(BaseModel):
+    """What cancelling one team did to the registration it was entered on
+    (spec team-disciplines, Cancelling one team).
+
+    The same three facts an organizer's discipline correction reports, for the
+    same reason: the team leaving the list is in front of the organizer, and
+    the price and the letter are not."""
+
+    previous_total: decimal.Decimal
+    total: decimal.Decimal
+    notified: bool
+
+
 class RuleOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -1950,6 +1963,9 @@ class ExportTabOut(BaseModel):
     # what a discipline tab's capacity line means here: a queue boundary, or a
     # bare capacity mark on a tournament whose mode queues nobody
     line: str | None = None
+    # a discipline tab whose population is teams: its rows are of two kinds,
+    # its capacity and its counts are in teams, and it offers no seeding tick
+    teams: bool = False
 
 
 class ExportBandTabOut(ExportTabOut):
@@ -2067,13 +2083,16 @@ class ExportSheetConfigOut(BaseModel):
 
 class ConsoleTeamOut(BaseModel):
     """One team as the organizer's teams view presents it (spec: "Organizer's
-    teams view"). The roster may be edited from here and every edit is logged;
-    no other action is offered — no admission, which is the Queue phase's, and
-    no cancellation."""
+    teams view"). The roster may be edited from here and every edit is logged,
+    and one team may be cancelled; admission is not offered — that is the Queue
+    phase's, which a waitlisted team's row says."""
 
     id: int
     name: str
     entering_fencer: str
+    # the payment standing of the registration this team was entered on: a team
+    # is paid for once, on that registration, and carries no money of its own
+    paid: bool
     waitlisted: bool
     # position in the team waitlist, in entry order; None for a placed team
     waitlist_position: int | None = None

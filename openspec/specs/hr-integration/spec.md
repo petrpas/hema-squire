@@ -18,13 +18,13 @@ WHEN the HEMA Ratings page format changes and parsing yields an implausible resu
 - **THEN** the previous index is kept and the operator is shown what failed
 
 ### Requirement: Ratings snapshots
-The system SHALL fetch weighted rating and rank per fencer per discipline as dated snapshots. Exports SHALL use a selected snapshot, defaulting to the latest, **as corrected by the ratings an organizer has typed** (`export-tables`): a snapshot states what HEMA Ratings says, and a correction is replayed over it, so a refresh SHALL NOT overwrite a typed rating.
+The system SHALL fetch weighted rating and rank per fencer per discipline as dated snapshots. A snapshot SHALL fetch for **every identifier the tournament's fencer list carries**, which is every fighter — roster members among them, as `etl-console` fixes — and not for registrations alone: a fighter whose rating nobody fetched cannot be seeded, and a team's fighters hold no registration of their own. Exports SHALL use a selected snapshot, defaulting to the latest, **as corrected by the ratings an organizer has typed** (`export-tables`): a snapshot states what HEMA Ratings says, and a correction is replayed over it, so a refresh SHALL NOT overwrite a typed rating.
 
 A refresh SHALL fetch a fighter's page at most once per run, whatever the tournament's disciplines, and SHALL parse it once. A refresh SHALL be startable from a discipline's export table, where the ratings being read are; it refreshes the tournament rather than that discipline, and SHALL say so, since a fighter page carries every category at once and narrowing the fetch to one discipline would save no request.
 
-The mapping from tournament disciplines to HEMA Ratings categories SHALL be a per-tournament parameter keyed by **taxonomy code** — the weapon × gender × material classification derived per `discipline-identity` — and not by a discipline's identity. Several disciplines classified alike therefore share one mapping entry, one configured override, and one fetched rating per fencer; the system SHALL offer no way to map them to different categories. A snapshot SHALL fetch once per distinct taxonomy code among the tournament's individual disciplines, not once per discipline.
+The mapping from tournament disciplines to HEMA Ratings categories SHALL be a per-tournament parameter keyed by **taxonomy code** — the weapon × gender × material classification derived per `discipline-identity` — and not by a discipline's identity. Several disciplines classified alike therefore share one mapping entry, one configured override, and one fetched rating per fencer; the system SHALL offer no way to map them to different categories. A snapshot SHALL fetch once per distinct taxonomy code among the tournament's disciplines — team disciplines among them, as `team-disciplines` fixes — and not once per discipline. A team discipline derives its code the way an individual one does, and one classified alike with an individual discipline shares its entry and its fetch.
 
-A discipline whose weapon lies outside the HEMA taxonomy derives a taxonomy code no category mapping recognizes. Such a discipline SHALL carry no rating category and SHALL be skipped by the snapshot without being reported as a failure — the same path as a taxonomy code for which the organizer has configured no keyword. Where the organizer configures such a discipline, the console SHALL state at the point of configuration that it will carry no ratings, rather than leaving its absence to be discovered at export time. Team disciplines carry no HR rating category, as before.
+A discipline whose weapon lies outside the HEMA taxonomy derives a taxonomy code no category mapping recognizes. Such a discipline SHALL carry no rating category and SHALL be skipped by the snapshot without being reported as a failure — the same path as a taxonomy code for which the organizer has configured no keyword. Where the organizer configures such a discipline, the console SHALL state at the point of configuration that it will carry no ratings, rather than leaving its absence to be discovered at export time.
 
 #### Scenario: Snapshot selection
 - **WHEN** the organizer exports discipline sheets
@@ -57,6 +57,14 @@ A discipline whose weapon lies outside the HEMA taxonomy derives a taxonomy code
 #### Scenario: A refresh started from a discipline refreshes the tournament
 - **WHEN** the organizer starts a refresh from the rapier export table
 - **THEN** every individual discipline's ratings are refreshed and the action states that it refreshes the tournament
+
+#### Scenario: A roster member's rating is fetched
+- **WHEN** a snapshot is taken for a tournament whose rosters hold matched members
+- **THEN** those members' identifiers are fetched with every other fencer's, once per fighter page
+
+#### Scenario: A team-only tournament fetches ratings
+- **WHEN** a tournament offers one team discipline and nothing individual, and its category map is configured for that discipline's code
+- **THEN** a snapshot fetches a rating for every matched roster member
 
 ### Requirement: Canonical naming
 The HR canonical name SHALL be the display name for HR-bound fencers; the
@@ -160,4 +168,3 @@ A fencer's rating category SHALL be found by comparing the whole category name o
 #### Scenario: Override matched the same way
 - **WHEN** the organizer overrides longsword with "mixed & men's steel longsword" in lower case
 - **THEN** it matches the page's "Mixed & Men's Steel Longsword", and does not match any longer category that contains it
-

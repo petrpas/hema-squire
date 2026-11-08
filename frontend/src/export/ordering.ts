@@ -15,6 +15,51 @@ export function activeOnly(rows: SheetRow[], active: boolean): SheetRow[] {
   return active ? rows.filter((row) => row.paid) : rows;
 }
 
+/** A team discipline's tab under the active-only switch: the paid teams, each
+ *  with its fighters.
+ *
+ *  A fighter holds no registration and so is never paid; filtering on the rows'
+ *  own paid cell would narrow the tab to nothing. What is paid here is the
+ *  team, on the registration it was entered on, and its fighters follow it
+ *  (spec export-tables, Each tab states its own columns and order). */
+export function activeTeamsOnly(rows: SheetRow[], active: boolean): SheetRow[] {
+  if (!active) return rows;
+  const kept: SheetRow[] = [];
+  let keeping = false;
+  for (const row of rows) {
+    if (row._team !== undefined) keeping = row.paid;
+    if (keeping) kept.push(row);
+  }
+  return kept;
+}
+
+/** A team discipline's tab in display order, where its line falls, and the
+ *  number each team carries.
+ *
+ *  The order is the server's: the seated teams by paid then the moment the team
+ *  entered, the waitlisted below them in waitlist order, each team's fighters
+ *  beneath it in roster order. Nothing is re-sorted here — there is no seeding
+ *  tick on a team tab to sort for (spec export-tables, A discipline tab is a
+ *  seeding roster).
+ *
+ *  The line falls above the first waitlisted team, as the public team roster
+ *  draws it, and the numbering counts teams rather than rows: the tab is read
+ *  as the discipline's field, and that field is teams. */
+export function teamOrder(
+  rows: SheetRow[],
+  kind: "queue" | "capacity",
+): { rows: SheetRow[]; line: CapacityLine; numbers: Map<string, number> } {
+  const numbers = new Map<string, number>();
+  let after: number | null = null;
+  rows.forEach((row, index) => {
+    const team = row._team;
+    if (team === undefined) return;
+    numbers.set(row.id, numbers.size + 1);
+    if (after === null && team.waitlist_position !== null) after = index;
+  });
+  return { rows, line: { after, kind }, numbers };
+}
+
 /** The seeding order: rating descending, a fencer with no rating last in the
  *  order they arrived in.
  *
