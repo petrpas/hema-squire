@@ -12,7 +12,7 @@ from datetime import UTC, datetime, timedelta
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app import account_deletion, bank, emails, matching, pricing
+from app import account_deletion, bank, emails, matching, pricing, retention
 from app.availability import queue_position, team_waitlist_position
 from app.config import settings
 from app.db import SessionLocal
@@ -669,6 +669,10 @@ def run_tick() -> None:
         # tournament loop and each in its own transaction (design
         # account-deletion D3)
         account_deletion.run_pass(session, mailer)
+        # finished mail, expired tokens and tournaments a year past their date;
+        # its own selection, since tournaments_to_tick holds only current ones
+        # (design data-retention D1)
+        retention.run_pass(session)
         deliver_pending(session, transport)
 
 

@@ -38,6 +38,11 @@ class Settings(BaseSettings):
     rate_limit_enabled: bool = True
     scheduler_enabled: bool = True
     scheduler_interval_seconds: int = 300
+    # the retention pass (app.retention) deletes and blanks only when this is
+    # on; off, it runs the same work, logs the counts and rolls it back, so the
+    # first real run can be reviewed before anything is lost (design
+    # data-retention, Migration Plan)
+    retention_writes_enabled: bool = False
     # startup recovery of operations a dead process left running (design D5);
     # off in the test suite, where the app boots against the configured
     # database while the tests themselves run on an in-memory one

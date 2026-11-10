@@ -25,7 +25,7 @@ Blanked: `payer_name`, `payer_account`, `message`, `named_person`, `user_identif
 
 ### D3. Import rows: remove addresses and free text, keep what the row needs
 
-Removing `raw` wholesale would break replay and the Export tab of a held tournament. The pass blanks values under address and free-text columns in `raw`, using each batch's parsed mapping where available, plus any value shaped like an address. The stored fingerprint is not recomputed, as an already-imported batch is never rehashed. Pruned tournaments must be verified not to re-ingest: Task 2.3 tests it.
+Removing `raw` wholesale would break replay and the Export tab of a held tournament. No column mapping is stored, so the pass blanks a cell in `raw` where it equals the email, notes or accommodation of the row's parse decision, and cuts any value shaped like an address out of every cell. The fencer list reads the parse decision, not `raw`, so the decision loses those fields too. A rule that edited one of them, a merge's fields and the rule journal's snapshots lose them as well, because replay would otherwise write them back onto the row. The stored fingerprint is not recomputed, as an already-imported batch is never rehashed. Pruned tournaments must be verified not to re-ingest: Task 2.3 tests it.
 
 ### D4. 30 days for mail, no exception for failures
 

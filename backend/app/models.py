@@ -421,6 +421,10 @@ class Tournament(Base):
     # clears this (design D1 of add-explicit-publishing)
     published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     published_by_id: Mapped[int | None] = mapped_column(ForeignKey("fencers.id"))
+    # when the 12-month pass removed this tournament's bank text, contact
+    # addresses and free-text details (spec data-retention); null until then.
+    # The pass selects on it, so each tournament is pruned once
+    personal_data_pruned_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     language: Mapped[str] = mapped_column(String(10), default="cs")
     # the town the tournament is held in, plain text: everyone knows where
     # Berlin is, and a card has room for the name and nothing more
