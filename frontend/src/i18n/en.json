@@ -1150,8 +1150,7 @@
       "summary": "Squire is operated by Petr Paščenko. Send questions and requests to access, correct or erase your data, or to object, to privacy@hemasquire.eu.",
       "readAll": "The full privacy notice",
       "termsAccepted": "Accepted on {{date}}, version {{version}}.",
-      "termsDue": "You will accept them the next time you open your event's console.",
-      "termsRead": "Read the terms"
+      "termsDue": "You will accept them the next time you open your event's console."
     }
   },
   "home": {

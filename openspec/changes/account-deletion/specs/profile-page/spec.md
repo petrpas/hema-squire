@@ -5,8 +5,8 @@ The Profile page SHALL be split into two tabs, `Profile` and `Privacy`, the firs
 
 - who is responsible and the contact for requests, with a link to the full privacy notice (`privacy`);
 - the download of the account's own data (`privacy`, An account holder can download their own data);
-- for an account that has accepted the organizer data terms or owes them, which version it accepted and when, or that acceptance is due, with the terms to read;
-- account deletion, opening a dialog that states the impact and asks for the password. While a deletion is pending the tab SHALL state the date it takes effect and SHALL offer withdrawal.
+- account deletion, opening a dialog that states the impact and asks for the password. While a deletion is pending the tab SHALL state the date it takes effect and SHALL offer withdrawal;
+- for an account that has accepted the organizer data terms or owes them, a button below the other sections opening the terms, with which version it accepted and when, or that acceptance is due.
 
 The Profile tab SHALL hold the account, role and HEMA Ratings sections and none of the above.
 

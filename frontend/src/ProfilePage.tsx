@@ -43,6 +43,7 @@ export default function ProfilePage() {
           />
           <div
             role="tabpanel"
+            className="profile-tabpanel"
             id={`profile-tabpanel-${tab}`}
             aria-labelledby={`profile-tab-${tab}`}
           >
