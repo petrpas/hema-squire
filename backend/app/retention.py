@@ -276,13 +276,20 @@ def due_tournaments(session: Session, today: date) -> list[int]:
 
 
 def _finish(session: Session, what: str, counts: Counter[str]) -> None:
+    """Commit or, with writes disabled, roll back. Only a pass that changed
+    something is logged: the scheduler ticks every few minutes, and a log of
+    zeros would bury the one line worth reading."""
     summary = ", ".join(f"{name} {count}" for name, count in sorted(counts.items()))
     if settings.retention_writes_enabled:
         session.commit()
-        logger.info("retention: %s: %s", what, summary)
+        if any(counts.values()):
+            logger.info("retention: %s: %s", what, summary)
     else:
         session.rollback()
-        logger.info("retention (writes disabled, rolled back): %s: would change %s", what, summary)
+        if any(counts.values()):
+            logger.info(
+                "retention (writes disabled, rolled back): %s: would change %s", what, summary
+            )
 
 
 def run_pass(session: Session, now: datetime | None = None) -> None:
