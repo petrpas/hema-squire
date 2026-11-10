@@ -1,8 +1,8 @@
 ## 1. Facts and owner decisions
 
 - [x] 1.1 Inventory browser storage and confirm nothing non-essential is set
-- [ ] 1.2 Verify retention and terms: Anthropic in the organization's settings for the model in use, Scaleway TEM logs, Hetzner, Backblaze B2 lifecycle, Google; collect each processor's data processing agreement and transfer basis
-- [ ] 1.3 Owner chooses the request mailbox and what address is published; make the mailbox receive mail and test delivery from outside
+- [ ] 1.2 Verify retention and terms: Anthropic in the organization's settings for the model in use, Scaleway TEM logs, Hetzner, Backblaze B2 lifecycle, Google; collect each processor's data processing agreement and transfer basis. Owner, 2026-11-10: not pursued
+- [x] 1.3 Owner chooses the request mailbox and what address is published; make the mailbox receive mail and test delivery from outside. Done 2026-11-10: `privacy@hemasquire.eu` on Czechia.com's free mail (Zoner), forwarded to the owner; MX `1 relay`, `10 10mx`, `15 15mx.zoner.com` replace Scaleway's blackhole, SPF is one record with both includes, DMARC unchanged; a message from outside arrived
 - [x] 1.5 Access log: uvicorn wrote client IP and path to an unrotated Docker log; turned off with `--no-access-log` (owner decision 2026-11-03), and the page states the IP is held in memory only
 - [x] 1.4 Confirm the state of the leaked dump recorded in `security_tbd.md`; the page must not contradict it. Owner, 2026-11-03: the dump came from the local database and held only test accounts and test passwords; no third person's data, so nothing to rotate, record or notify
 
@@ -14,7 +14,7 @@
 ## 3. Text
 
 - [x] 3.1 Draft privacy page and organizer terms in `cs` and `en`, sentence case, no exclamation marks; retention periods match `data-retention` and `account-deletion`
-- [ ] 3.2 Owner has the role split, the roster retention and both texts legally reviewed; record the outcome in `docs/privacy/`
+- [ ] 3.2 Owner has the role split, the roster retention and both texts legally reviewed; record the outcome in `docs/privacy/`. Owner, 2026-11-10: not pursued
 
 ## 4. Backend
 
