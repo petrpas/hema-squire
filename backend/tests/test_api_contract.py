@@ -13,6 +13,9 @@ import schemathesis
 from schemathesis.checks import not_a_server_error
 from schemathesis.specs.openapi.checks import response_schema_conformance
 
+from app.dedup import DedupLLM, MergeProposal, ThreeBands, default_merge, get_dedup_llm
+from app.hr_index import HRProfile
+from app.hr_match import HRMatcher, HRMatchResult, get_hr_matcher
 from app.main import app
 from tests import contract_seed
 
@@ -46,6 +49,33 @@ CONTRACT_CHECKS = [not_a_server_error, response_schema_conformance]
 schema = schemathesis.openapi.from_asgi("/openapi.json", app)
 
 
+class SilentMatcher:
+    """Finds nobody: the match operation runs its whole path without a model."""
+
+    def match(self, fencers: list[dict], candidates: list[HRProfile]) -> list[HRMatchResult]:
+        return [
+            HRMatchResult(
+                name=fencer.get("name") or "",
+                club=fencer.get("club"),
+                hr_id=None,
+                matched_name=None,
+                matched_club=None,
+                nationality=fencer.get("nationality"),
+            )
+            for fencer in fencers
+        ]
+
+
+class SilentDedup:
+    """Calls nothing a duplicate, so the dedup operation runs without a model."""
+
+    def propose_merge(self, records: list[dict], language: str) -> MergeProposal:
+        return MergeProposal(fields=default_merge(records), note="")
+
+    def classify(self, records: list[dict]) -> ThreeBands:
+        return ThreeBands()
+
+
 @pytest.fixture
 def seeded(client, auth_headers, engine):
     """One tournament with something of everything, built once per operation.
@@ -54,6 +84,13 @@ def seeded(client, auth_headers, engine):
     generated input, so a second signup would answer 409 and a second tournament
     409 again. The scope this belongs to is the test function, which is also the
     scope of the database it writes to."""
+    # the suite runs with no model configured, where match and dedup answer a
+    # deliberate 503 that `not_a_server_error` cannot tell from a crash; a
+    # model that finds nothing lets both run their whole path instead
+    matcher: HRMatcher = SilentMatcher()
+    deduper: DedupLLM = SilentDedup()
+    app.dependency_overrides[get_hr_matcher] = lambda: matcher
+    app.dependency_overrides[get_dedup_llm] = lambda: deduper
     return contract_seed.build(client, auth_headers, engine)
 
 

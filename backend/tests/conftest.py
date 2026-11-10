@@ -26,6 +26,7 @@ from sqlalchemy.pool import StaticPool
 
 from app import operations
 from app.bank import get_fio_client
+from app.config import settings
 from app.constraints import DEFAULT_TIMEZONE
 from app.db import Base, apply_sqlite_pragmas, get_session
 from app.hr_index import get_hr_index, stub_index
@@ -177,6 +178,12 @@ def client(engine, monkeypatch):
     # file database with a pool per connection — so the tests drive the same
     # `run_now` the background task drives, without the thread.
     monkeypatch.setattr(operations, "run_in_background", operations.run_now)
+    # no test reaches a language model. A developer's backend/.env may hold a
+    # real key, and with it every parse, match or dedup a test starts without
+    # its own stub would call Anthropic; CI has none, so the suite asked two
+    # different questions in two places. Tests that need a model override the
+    # dependency with a fake
+    monkeypatch.setattr(settings, "anthropic_api_key", "")
     app.dependency_overrides[get_session] = override_session
     # tests run on the stub fixture dataset; hr-integration tests override this
     app.dependency_overrides[get_hr_index] = stub_index

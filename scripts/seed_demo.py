@@ -162,7 +162,7 @@ def main() -> None:
     _grant_role(admin_email, Role.ADMIN)
 
     call("POST", "/api/tournaments", token, {
-        "slug": SLUG, "display_name": "Na Duel! 2026", "date": "2026-10-17",
+        "slug": SLUG, "display_name": "Na Duel! 2026", "date": "2099-10-17",
     })
     # itemized pricing (design D8): the demo exercises the new path — extra
     # services across categories plus a count discount and an early-bird
@@ -184,7 +184,7 @@ def main() -> None:
             },
             {
                 "name": "Early bird",
-                "condition": {"kind": "early", "until": "2026-08-31"},
+                "condition": {"kind": "early", "until": "2099-08-31"},
                 "effect": {"kind": "percent", "value": 10},
                 "scope": ["discipline"],
             },
