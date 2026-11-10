@@ -5,10 +5,9 @@ Run from the backend directory (dev.sh --seed does this):
     cd backend && uv run python ../scripts/seed_demo.py
 
 Creates an organizer account, the "Na Duel! 2026" tournament with four
-disciplines, four registered fencers (one paid via a simulated Fio CSV
-statement), and an imported Google-Form-style table. Without an Anthropic
-key the imported rows would stay unparsed, so their parse decisions are
-backfilled directly — the sheet then shows what a configured LLM produces.
+disciplines and four registered fencers (one paid via a simulated Fio CSV
+statement). No table is imported: importing is for a tournament whose
+organizer keeps the registrations, and this one is kept by Squire.
 
 Also demonstrates the role model (add-user-roles): the tournament creator is
 granted the global Organizer role directly in the DB — the same move an
@@ -266,26 +265,6 @@ def main() -> None:
     assert started["operation_id"]
     print(f"bank statement: {_await_operation(token)}")
 
-    # imported legacy table (google-form style)
-    table = (
-        "Časová značka,E-mailová adresa,Jméno / Full Name,Klub / Club,"
-        "Národnost / Nationality,Disciplíny / Disciplines,hemaratings.com ID,"
-        "Afterparty,Poznámka / Note\n"
-        "1.6.2026 14:15:27,alex.b@example.com,Alexander Bryzgalov,Twerchhau,RU,"
-        "šavle / sabre,,Asi jo / Likely so,\n"
-        "1.6.2026 15:02:00,lukas.m@example.com,Lukas Mueller,Berlin Schwert,DE,"
-        "longsword,8821,Ano / Yes,vegetarián\n"
-        "2.6.2026 09:30:12,marie.n@example.com,Marie Nová,Praha HEMA,CZ,"
-        "šavle / sabre,,Ne / No,\n"
-    ).encode()
-    outcome = call("POST", f"/api/tournaments/{SLUG}/import", token,
-                   files=("file", "registrace_v0.csv", table))
-    print(f"table import: {outcome}")
-
-    if outcome.get("unparsed"):
-        _backfill_parse_decisions()
-        print(f"backfilled {outcome['unparsed']} parse decisions (no LLM key set)")
-
     print(f"\ndone — organizer login: {email} / {password} (Organizer role, owns '{SLUG}')")
     print(f"admin login:            {admin_email} / {admin_password} (Admin role)")
     print("fencer logins:           jan.novak@example.com / anna.k@example.com / "
@@ -312,42 +291,6 @@ def _await_operation(token: str, kind: str = "statement", timeout: float = 20.0)
             return {}
         time.sleep(0.2)
     return {"timeout": True}
-
-
-def _backfill_parse_decisions() -> None:
-    """What the LLM parser would return for the three imported rows."""
-    from sqlalchemy import select
-    from sqlalchemy.orm import Session
-
-    from app.db import engine
-    from app.importer import ParsedFencer, store_decision
-    from app.models import ImportedRow, Tournament
-
-    records = {
-        1: ParsedFencer(
-            registration_time="2026-06-01T14:15:27", name="Alexander Bryzgalov",
-            nationality="RU", email="alex.b@example.com", club="Twerchhau",
-            disciplines=["SA"],
-            problems="afterparty answer ambiguous (Asi jo)"),
-        2: ParsedFencer(
-            registration_time="2026-06-01T15:02:00", name="Lukas Mueller",
-            nationality="DE", email="lukas.m@example.com", club="Berlin Schwert",
-            hr_id=8821, disciplines=["LS"],
-            after_party="Yes", notes="vegetarián"),
-        3: ParsedFencer(
-            registration_time="2026-06-02T09:30:12", name="Marie Nová",
-            nationality="CZ", email="marie.n@example.com", club="Praha HEMA",
-            disciplines=["SA"], after_party="No"),
-    }
-    with Session(engine) as session:
-        tournament = session.scalars(select(Tournament).where(Tournament.slug == SLUG)).one()
-        rows = session.scalars(
-            select(ImportedRow).where(ImportedRow.tournament_id == tournament.id)
-        ).all()
-        for row in rows:
-            store_decision(session, tournament, "parse", row.key,
-                           records[row.row_number].model_dump())
-        session.commit()
 
 
 if __name__ == "__main__":
