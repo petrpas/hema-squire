@@ -12,10 +12,10 @@ import {
 } from "../api";
 import ExportPanel, { offersEnglishTick } from "../ExportPanel";
 import { useTabBand } from "../useTabBand";
-import { FENCERS_COLUMNS, ITEM_COLUMNS, ROSTER_COLUMNS, toTsv } from "./columns";
+import { FENCERS_COLUMNS, ITEM_COLUMNS, ROSTER_COLUMNS, TEAM_COLUMNS, toTsv } from "./columns";
 import FencersTable from "./FencersTable";
 import ItemsTable from "./ItemsTable";
-import { activeOnly, rosterOrder } from "./ordering";
+import { activeOnly, activeTeamsOnly, rosterOrder, teamOrder } from "./ordering";
 import RevenueTable from "./RevenueTable";
 import RosterTable from "./RosterTable";
 import { revenueLineCount, revenueTsv } from "./revenue";
@@ -23,6 +23,7 @@ import { rosterPrint, saveBlob } from "./roster";
 import SummaryTable from "./SummaryTable";
 import { summaryTsv } from "./summary";
 import TableOperations from "./TableOperations";
+import TeamRosterTable from "./TeamRosterTable";
 import { tabCount, tabId, tabLabel } from "./tabs";
 
 /** The Export phase: a band of tables derived from the tournament, in place of
@@ -103,7 +104,10 @@ export default function ExportTables({
 
   useEffect(reload, [reload, revision]);
 
-  const listed = activeOnly(rows, active);
+  // a team discipline's tab narrows by the team, which is what is paid for: a
+  // fighter holds no registration, and filtering on the rows' own paid cell
+  // would leave the tab empty
+  const listed = tab?.teams === true ? activeTeamsOnly(rows, active) : activeOnly(rows, active);
 
   async function rate(row: SheetRow, raw: string) {
     const typed = raw.trim();
@@ -154,17 +158,22 @@ export default function ExportTables({
       setMessage(t("export.copied", { count: revenueLineCount(revenue) }));
       return;
     }
+    // the copy follows the order on screen, and the line is not part of it
+    const teams = tab.teams ? teamOrder(listed, tab.line ?? "capacity") : null;
     const columns =
       tab.kind === "fencers"
         ? FENCERS_COLUMNS(locale)
-        : tab.kind === "discipline"
-          ? ROSTER_COLUMNS(locale, tab.key)
-          : ITEM_COLUMNS(locale, tab.key);
-    // the copy follows the order on screen, and the line is not part of it
+        : teams !== null
+          ? TEAM_COLUMNS(locale, tab.key, teams.numbers)
+          : tab.kind === "discipline"
+            ? ROSTER_COLUMNS(locale, tab.key)
+            : ITEM_COLUMNS(locale, tab.key);
     const ordered =
-      tab.kind === "discipline"
-        ? rosterOrder(listed, tab.key, tab.capacity, tab.line ?? "capacity", seeded).rows
-        : listed;
+      teams !== null
+        ? teams.rows
+        : tab.kind === "discipline"
+          ? rosterOrder(listed, tab.key, tab.capacity, tab.line ?? "capacity", seeded).rows
+          : listed;
     void navigator.clipboard.writeText(toTsv(columns, ordered, header));
     setMessage(t("export.copied", { count: ordered.length }));
   }
@@ -226,6 +235,14 @@ export default function ExportTables({
           <RevenueTable revenue={revenue} />
         ) : tab.kind === "fencers" ? (
           <FencersTable rows={listed} />
+        ) : tab.teams ? (
+          <TeamRosterTable
+            rows={listed}
+            slug={tab.key}
+            lineKind={tab.line ?? "capacity"}
+            edited={rated}
+            onRate={(row, raw) => void rate(row, raw)}
+          />
         ) : tab.kind === "discipline" ? (
           <RosterTable
             rows={listed}
@@ -266,8 +283,14 @@ export default function ExportTables({
                   ? undefined
                   : { checked: active, onChange: setActive }
               }
+              // not on a team tab: a team has no rating to order by, and what
+              // a tournament makes of its fighters' ratings when it seeds is
+              // the tournament's decision (spec export-tables, No seeding tick
+              // on a team tab)
               seeded={
-                tab.kind === "discipline" ? { checked: seeded, onChange: setSeeded } : undefined
+                tab.kind === "discipline" && !tab.teams
+                  ? { checked: seeded, onChange: setSeeded }
+                  : undefined
               }
               onCopy={copy}
               print={

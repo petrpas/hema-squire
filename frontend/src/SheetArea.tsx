@@ -60,6 +60,7 @@ export default function SheetArea({
   rows,
   visibleRows,
   columns,
+  namesTeamDiscipline,
   activeRows,
   paidCount,
   revision,
@@ -91,6 +92,14 @@ export default function SheetArea({
   rows: SheetRow[];
   visibleRows: SheetRow[];
   columns: string[];
+  /** Whether a team cell names the discipline the team was entered into. True
+   *  where the tournament has more than one team discipline, which is the only
+   *  case where the name alone leaves a reader guessing; on a tournament with
+   *  one, every team is in it and saying so on every row is noise. */
+  namesTeamDiscipline?: boolean;
+  /** The rows the footer counts: the contracts, which is what its words say.
+   *  A member row carries no payment state and is counted in neither figure
+   *  (design D6); how long the list is, the table itself states. */
   activeRows: SheetRow[];
   paidCount: number;
   revision: number;
@@ -162,6 +171,18 @@ export default function SheetArea({
   // are two statements about the same thing
   const summary = phaseSummary(phase, visibleRows);
 
+  // The count down the left column: each standing row's position among the
+  // rows that stand, so the last number read is how many fencers the list
+  // holds. A removed row is listed struck through and takes no place in the
+  // count — it is not a fencer the tournament has.
+  const position = new Map<string, number>();
+  let standing = 0;
+  for (const row of visibleRows) {
+    if (row._deleted) continue;
+    standing += 1;
+    position.set(row.id, standing);
+  }
+
   return (
     <main className="sheet-area">
       <div className="sheet-header">
@@ -190,6 +211,11 @@ export default function SheetArea({
             <table className="sheet-table">
               <thead>
                 <tr>
+                  {/* Two numbers, and they answer different questions: the
+                      count says how many fencers are listed, and "#" names a
+                      fencer and never moves (spec etl-console, Position in
+                      the list / Fixed fencer number). */}
+                  <th className="col-index col-position">{t("column.position")}</th>
                   <th className="col-index">#</th>
                   {columns.map((column) => (
                     <th
@@ -216,6 +242,10 @@ export default function SheetArea({
               <tbody>
                 {visibleRows.map((row) => (
                   <tr key={row.id} className={row._deleted ? "row-deleted" : ""}>
+                    {/* the count of fencers who stand, so a removed row takes
+                        no place in it and leaves the rest of the count
+                        unmoved */}
+                    <td className="col-index col-position">{position.get(row.id) ?? ""}</td>
                     <td className="col-index">
                       {rowNumber(row)}
                       {absorbedInto(row, rows) !== null && (
@@ -228,7 +258,7 @@ export default function SheetArea({
                     {columns.map((column) => {
                       const phaseOwned =
                         PHASE_COLUMNS[phase].includes(column) || column === "settled";
-                      const editable = editableHere(column, phase) && !row._deleted;
+                      const editable = editableHere(column, phase, row) && !row._deleted;
                       const isMatch = column === "match";
                       return (
                         <td
@@ -267,6 +297,7 @@ export default function SheetArea({
                                   timezone={timezone}
                                   currency={currency}
                                   hrIdentity={hrIdentity}
+                                  namesTeamDiscipline={namesTeamDiscipline}
                                 />
                               }
                               // a list is edited as the text it is shown as, so
@@ -288,6 +319,7 @@ export default function SheetArea({
                               timezone={timezone}
                               currency={currency}
                               hrIdentity={hrIdentity}
+                              namesTeamDiscipline={namesTeamDiscipline}
                             />
                           )}
                         </td>

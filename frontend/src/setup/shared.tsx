@@ -1,9 +1,17 @@
+import type { TFunction } from "i18next";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import type { Currency, CurrencyMode, ExtraCategory, TournamentFlags } from "../api";
+import {
+  ApiError,
+  type Currency,
+  type CurrencyMode,
+  type ExtraCategory,
+  type TournamentFlags,
+} from "../api";
 import { parseInteger } from "../numeric";
 import { LEGACY_WEAPONS } from "../TournamentFace";
+import { type FieldError, setupIncompleteItems } from "../validation";
 
 export const TAXONOMY_WEAPON_CODES = Object.keys(LEGACY_WEAPONS);
 
@@ -69,9 +77,9 @@ export function setupTabTitleKey(tab: SetupBarTab, mode: TournamentFlags): strin
 // never breaks the bar. That fallback is for a backend ahead of a deployed
 // client; it is not where a key this client is expected to resolve belongs.
 export const MISSING_TAB: Record<string, SetupTab> = {
-  location: "tournament",
+  city: "tournament",
   organizers: "tournament",
-  disciplines: "disciplines",
+  external_registration_url: "tournament",
   discipline_prices: "disciplines",
   team_bounds: "disciplines",
   extra_item_prices: "extra",
@@ -82,6 +90,7 @@ export const MISSING_TAB: Record<string, SetupTab> = {
   legacy_fixed_fees_block_eur: "payments",
   bank_account: "payments",
   bank_account_holder: "payments",
+  payment_feed: "payments",
 };
 
 // The feature whose absence takes a missing item's editor out of Setup. The
@@ -108,6 +117,52 @@ export function concealedBy(key: string, mode: TournamentFlags): keyof Tournamen
 export function missingTab(key: string, mode: TournamentFlags): SetupTab | undefined {
   if (concealedBy(key, mode) !== undefined) return undefined;
   return MISSING_TAB[key];
+}
+
+/** The statement a failed section flush shows. Three cases, in the order a
+ *  caller can act on them: fields the backend named, which are already shown
+ *  under those fields and are repeated here as one line; the published
+ *  tournament's completeness guard, which refuses a save of ANY section over
+ *  an item that may belong to another tab, and so has to name both the items
+ *  and the tab holding them; and anything else, which can only be reported by
+ *  status. Shared by every section, since the guard applies to every write.
+ *
+ *  `mode` is null where the caller is not a Setup section and holds no
+ *  tournament — the items are then named without the tab that resolves them,
+ *  which is still the difference between a statement and a bare status. */
+export function saveFailureMessage(
+  err: unknown,
+  fieldErrors: FieldError[],
+  mode: TournamentFlags | null,
+  t: TFunction,
+): string {
+  if (fieldErrors.length > 0) {
+    return fieldErrors.map((error) => t(`validation.${error.code}`, error.params)).join(" ");
+  }
+  const missing = setupIncompleteItems(err);
+  if (missing !== null) {
+    // An item this client does not recognize still reads as its key rather
+    // than as nothing: a backend ahead of the deployed client must not turn
+    // the statement into an empty list (same fallback as MISSING_TAB).
+    const items = missing.map((key) => t(`setup.missing.${key}`, { defaultValue: key }));
+    const tabs =
+      mode === null
+        ? []
+        : [
+            ...new Set(
+              missing
+                .map((key) => missingTab(key, mode))
+                .filter((tab): tab is SetupTab => tab !== undefined),
+            ),
+          ].map((tab) => t(setupTabTitleKey(tab, mode)));
+    return tabs.length > 0
+      ? t("setup.saveBar.incompleteError", {
+          items: items.join("; "),
+          tabs: tabs.join(", "),
+        })
+      : t("setup.saveBar.incompleteErrorNoTab", { items: items.join("; ") });
+  }
+  return t("setup.saveBar.genericError", { status: err instanceof ApiError ? err.status : "?" });
 }
 
 // Fixed flush/registration order, independent of effect-firing order (D7).

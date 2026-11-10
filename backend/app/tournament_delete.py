@@ -35,6 +35,7 @@ from app.models import (
     Registration,
     RegistrationDiscipline,
     RegistrationExtra,
+    RosterChange,
     Rule,
     RuleJournalEntry,
     SheetRowNumber,
@@ -51,6 +52,8 @@ def _delete_registrations(session: Session, tid: int) -> None:
     registration, so they go before it."""
     registration_ids = select(Registration.id).where(Registration.tournament_id == tid)
     team_ids = select(Team.id).where(Team.tournament_id == tid)
+    # the roster log names a member, so it goes before the members
+    session.execute(delete(RosterChange).where(RosterChange.team_id.in_(team_ids)))
     session.execute(delete(TeamMember).where(TeamMember.team_id.in_(team_ids)))
     session.execute(delete(Team).where(Team.tournament_id == tid))
     session.execute(

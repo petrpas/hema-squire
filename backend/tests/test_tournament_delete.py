@@ -40,6 +40,8 @@ from app.models import (
     PaymentWaiver,
     Registration,
     RegistrationExtra,
+    RosterChange,
+    RosterChangeKind,
     Rule,
     RuleJournalEntry,
     SheetRowNumber,
@@ -123,7 +125,18 @@ def populate(session, tournament: Tournament, registration: Registration, actor:
     )
     session.add(team)
     session.flush()
-    session.add(TeamMember(team_id=team.id, ordinal=1, name="Member"))
+    member = TeamMember(team_id=team.id, ordinal=1, name="Member")
+    session.add(member)
+    session.flush()
+    session.add(
+        RosterChange(
+            team_id=team.id,
+            member_id=member.id,
+            member_name=member.name,
+            kind=RosterChangeKind.ADDED,
+            actor_fencer_id=actor.id,
+        )
+    )
     session.add(RegistrationExtra(registration_id=registration.id, extra_item_id=item.id))
 
     transaction = BankTransaction(
@@ -211,7 +224,7 @@ def rows_of(session, table: Table, tid: int, registration_ids: list[int]) -> int
         return session.scalar(
             select(func.count()).where(table.c.registration_id.in_(registration_ids))
         )
-    if table.name == "team_members":
+    if table.name in ("team_members", "roster_changes"):
         teams = select(Team.id).where(Team.tournament_id == tid)
         return session.scalar(select(func.count()).where(table.c.team_id.in_(teams)))
     if table.name == "hr_snapshot_ratings":

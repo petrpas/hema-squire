@@ -31,6 +31,32 @@ from app.setup import seating_has_settled
 ITEM_SOLD_OUT = "item_sold_out"
 
 
+def live_teams(session: Session, discipline: Discipline) -> list[Team]:
+    """A team discipline's teams on live registrations, in waitlist order.
+
+    Entry order, except that a team demoted for non-payment waits from the
+    moment it was demoted, at the end of the waitlist. A team whose entering
+    registration expired or was cancelled no longer exists for the waitlist:
+    it is not listed and takes no place (spec team-disciplines, Team capacity
+    and the team waitlist).
+
+    Here rather than in the console's router because three surfaces read it:
+    the organizer's teams view, the queue, and the export band's tab per team
+    discipline (`exporttables`).
+    """
+    from sqlalchemy.orm import selectinload
+
+    return list(
+        session.scalars(
+            select(Team)
+            .join(Registration)
+            .where(Team.discipline_id == discipline.id, live_registration())
+            .options(selectinload(Team.members), selectinload(Team.registration))
+            .order_by(Team.waitlisted_since, Team.created_at, Team.id)
+        ).all()
+    )
+
+
 def live_registration():
     """The registration still exists: reserved within its validity window, or
     paid for. Cancelled and expired registrations are neither.

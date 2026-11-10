@@ -110,12 +110,12 @@ describe("a draft's phases", () => {
     expect(labels).toEqual([
       en.phase.setup,
       en.phase.fencers,
+      en.phase.teams,
       en.phase.matching,
       en.phase.dedup,
       en.phase.payments,
       en.phase.queue,
       en.phase.export,
-      en.phase.teams,
     ]);
   });
 

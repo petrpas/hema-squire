@@ -1,17 +1,24 @@
 """Base projection of the fencer table: source records as rows, before rules.
 
 Row ids are stable references: in-app registrations are "reg:<id>", imported
-rows are "imp:<fingerprint>" (stable across re-uploads of unchanged rows), and
-fencers the organizer entered by hand are "man:<id>".
+rows are "imp:<fingerprint>" (stable across re-uploads of unchanged rows),
+fencers the organizer entered by hand are "man:<id>", and a member of a team's
+roster is "mem:<member_id>".
 Phase views select columns over this same projection; the Import view selects
 the "imp:" rows of it.
+
+The list is the tournament's start field: everyone who will fight, which on a
+team tournament is the rosters rather than the registrations that bought them
+(spec etl-console, The fencer list is the tournament's start field). A member
+row carries a fighter's facts and states a contract's as absent, and a
+registration whose whole content is team entries is not a fencer at all.
 
 A row the rules removed carries "_removed_in", the phase of the rule that
 deleted or absorbed it. It is a replay product, not a base field: this module
 never writes it, and it lives exactly as long as its causing rule.
 
 The projection is returned in the order the fencer list displays: by
-registration moment across all three populations together, rows without a readable
+registration moment across all four populations together, rows without a readable
 moment last (spec etl-console, Order of the fencer list). Each row carries the
 fixed number allocated to it, or None where none has been.
 """
@@ -38,13 +45,14 @@ from app import (
 from app.hr_index import DbHRIndex, HRIndex, HRRating, RatingLookup, evidence_fields
 from app.models import (
     Currency,
-    DisciplineKind,
     ExtraCategory,
     ImportedRow,
     ManualRow,
     Registration,
     RegistrationExtra,
     RegistrationState,
+    Team,
+    TeamMember,
     Tournament,
 )
 from app.rules import Row
@@ -118,14 +126,19 @@ def _rating_maps(
     discipline the snapshot has nothing for is absent from the maps rather than
     present as null — the export states the absence itself, from the missing
     key.
+
+    Every discipline the tournament offers, team disciplines among them: a team
+    discipline derives a taxonomy code the way an individual one does, and what
+    its category rates is its fighters (spec team-disciplines, A team discipline
+    carries a rating category for its fighters). A team carries no rating of its
+    own and nothing here computes one — these are the ratings of the fighter
+    whose row this is.
     """
     if hr_id is None:
         return {}, {}
     rating_by_slug: dict[str, float | None] = {}
     rank_by_slug: dict[str, int | None] = {}
     for discipline in tournament.disciplines:
-        if discipline.kind is not DisciplineKind.INDIVIDUAL:
-            continue
         found = ratings.get((hr_id, discipline.taxonomy_code))
         if found is None:
             continue
@@ -166,17 +179,32 @@ def _instant(moment: datetime.datetime) -> str:
     return moment.isoformat()
 
 
-def _display_order(rows: dict[str, Row], zone: datetime.tzinfo) -> dict[str, Row]:
+def _display_order(
+    rows: dict[str, Row],
+    zone: datetime.tzinfo,
+    places: dict[str, tuple[float, int, int]] | None = None,
+) -> dict[str, Row]:
     """Every population interleaved by registration moment, earliest first;
     rows stating none after them, in the order they were numbered — which for
-    an imported batch is the order of its file."""
+    an imported batch is the order of its file.
+
+    `places` overrides the tiebreak for the rows that need one of their own:
+    a member row takes the moment of the team's registration, so a whole team
+    shares one moment and the number a member happens to carry would scatter the
+    roster. Its place is `(the entering registration's number, the team, the
+    member's place in the roster)` — the team stands under the row of the
+    registration that entered it, and its members stand in roster order (spec
+    etl-console, Order of the fencer list).
+    """
+    places = places or {}
 
     def key(row: Row) -> tuple:
         moment = _wall_clock(row.get("registered_at"), zone)
         number = row.get("number")
         # an unnumbered row cannot jump ahead of numbered ones on the tiebreak
         rank = number if number is not None else float("inf")
-        return (moment is None, moment or "", rank, row["id"])
+        place = places.get(row["id"], (rank, 0, 0))
+        return (moment is None, moment or "", *place, row["id"])
 
     return {row["id"]: row for row in sorted(rows.values(), key=key)}
 
@@ -261,6 +289,82 @@ def _add_source_rows(rows: dict[str, Row], source: dict[str, Row]) -> None:
             rows[row_id] = row
 
 
+def _member_row(
+    member: TeamMember,
+    team: Team,
+    moment: str,
+    ratings: tuple[dict[str, float | None], dict[str, int | None]],
+    hr: tuple[int | None, dict | None, str],
+    index: HRIndex | None,
+) -> Row:
+    """One member of a team's roster as a row of the fencer list.
+
+    It carries what a fighter has — a name, nationality, club, the identifier
+    claimed for it with the evidence and verdict standing against that claim,
+    the team it fights for and that team's discipline — and states a contract's
+    facts as absent: no variable symbol, total, balance, payment state, expiry,
+    seat or queue place, since a member holds no registration (spec etl-console,
+    The fencer list is the tournament's start field).
+
+    The absences are the ones an imported row already states, cell for cell, so
+    no new empty-cell idiom is invented: `vs` and `total_amount` null, `paid`
+    false, no `outstanding_amount` key at all (design D1).
+    """
+    hr_id, payload, verdict = hr
+    rating_by_slug, rank_by_slug = ratings
+    return {
+        "id": f"mem:{member.id}",
+        "name": member.name,
+        "reg_name": None,
+        "nationality": member.nationality,
+        "club": member.club,
+        "hr_id": hr_id,
+        **_evidence(index, hr_id, payload),
+        "match_verdict": verdict,
+        # a roster records no address: a member is a name on somebody else's
+        # contract, and what Squire has to say about that contract it says to
+        # the fencer who entered it
+        "email": None,
+        # the discipline a member fights is its team's, stated by the team cell;
+        # `disciplines` is what a row entered, and a member entered nothing
+        "disciplines": [],
+        "substitute_for": [],
+        "queued_since": {},
+        "conditional": [],
+        # the one team this member fights for — its place in the tournament
+        # (spec etl-console, The teams a row entered)
+        "teams": [{"name": team.name, "discipline": team.discipline.slug}],
+        "ratings": rating_by_slug,
+        "ranks": rank_by_slug,
+        "extras": {},
+        # a fourth population, named so that every reader selecting by state
+        # keeps its own: issuing and deduplication take "imported" and "manual"
+        # and a member row is neither (`source_rows`)
+        "state": "member",
+        # a fighter, not a contract: the list states it and the phases that work
+        # money do not
+        "fights": True,
+        "registration_id": None,
+        "vs": None,
+        "paid": False,
+        "settled_by_hand": False,
+        "settled_by_hand_reason": None,
+        "waived_amount": None,
+        # the moment the team entered, shared by the whole roster
+        "registered_at": moment,
+        "total_amount": None,
+        "expires_at": None,
+        "paid_at": None,
+        "weapon_rentals": [],
+        "unpriced_rentals": [],
+        "afterparty": False,
+        "aftersparring": False,
+        "notes": None,
+        "problems": None,
+        "_deleted": False,
+    }
+
+
 def base_rows(
     session: Session, tournament: Tournament, index: HRIndex | None = None
 ) -> dict[str, Row]:
@@ -284,6 +388,8 @@ def base_rows(
             selectinload(Registration.fencer),
             selectinload(Registration.entries),
             selectinload(Registration.extra_selections).selectinload(RegistrationExtra.item),
+            selectinload(Registration.teams).selectinload(Team.discipline),
+            selectinload(Registration.teams).selectinload(Team.members),
         )
         .order_by(Registration.registered_at)
     ).all()
@@ -291,6 +397,10 @@ def base_rows(
     held = matching.held_symbols(session, tournament)
 
     rows: dict[str, Row] = {}
+    # (the row id of the registration that entered the team, the team, the
+    # member): collected while the registrations are read and projected below,
+    # once the registration rows exist to anchor each roster to.
+    rostered: list[tuple[str, Team, TeamMember]] = []
     for registration in registrations:
         # A registration issued for a fencer-list row stands in that row's
         # place, under the row's own id: the fencer keeps the fixed number the
@@ -344,6 +454,17 @@ def base_rows(
             # registration is addressed in (`emails.recipient`)
             "email": registration.contact_email or registration.fencer.email,
             "disciplines": [e.discipline.slug for e in registration.entries if not e.is_substitute],
+            # the teams this registration entered, each with the discipline it
+            # was entered into — what the fencer list's team column states
+            # (spec etl-console, The teams a row entered). Never the rosters
+            # this fencer is named on: a member is a name local to someone
+            # else's team and not an identity (design team-disciplines D4).
+            # Ordered by id, which is entry order; the relationship declares no
+            # order of its own.
+            "teams": [
+                {"name": team.name, "discipline": team.discipline.slug}
+                for team in sorted(registration.teams, key=lambda team: team.id)
+            ],
             "substitute_for": [e.discipline.slug for e in registration.entries if e.is_substitute],
             # the participation condition: disciplines attended only together
             "conditional": [e.discipline.slug for e in registration.entries if e.conditional],
@@ -371,6 +492,15 @@ def base_rows(
             # where the four values a reader knows are put back together
             # (`Registration.wire_state`)
             "state": registration.wire_state,
+            # Whether this row is a fighter. A registration whose whole content
+            # is team entries holds none: entering a team is not fighting, and
+            # the roster's prefill marks no role (spec team-disciplines). Such a
+            # row is not on the fencer list and is fully present where its
+            # agenda is — Teams, Payments and the Queue (spec etl-console, The
+            # fencer list is the tournament's start field). A registration that
+            # entered no team at all is a fighter whatever it bought: an event's
+            # registration names no discipline and is still a person coming.
+            "fights": bool(registration.entries) or not registration.teams,
             # the registration behind this row, where one is behind it. The row
             # id cannot stand in: an issued registration takes its source row's
             # id, so `reg:<id>` is only sometimes the shape (see above). Read by
@@ -419,6 +549,34 @@ def base_rows(
             "problems": None,
             "_deleted": False,
         }
+        # The fighters of every team this registration entered. They hold no
+        # registration of their own, which is why they are rows: without them
+        # the list would state eighteen contracts for sixty-seven fighters
+        # (spec etl-console, The fencer list is the tournament's start field).
+        # Teams in entry order, as the team column reads them.
+        for team in sorted(registration.teams, key=lambda team: team.id):
+            rostered += [(row_id, team, member) for member in team.members]
+    for entry_row_id, team, member in rostered:
+        member_hr = _hr_proposal(
+            session,
+            tournament,
+            index,
+            member.name,
+            member.club,
+            member.nationality,
+            member.hr_id,
+        )
+        rows[f"mem:{member.id}"] = _member_row(
+            member,
+            team,
+            # the team's own moment, which is its registration's: a member has
+            # none of its own that means anything, and the instant it was typed
+            # in would scatter a team across the list (design D2)
+            rows[entry_row_id]["registered_at"],
+            _rating_maps(tournament, snapshot_ratings, member_hr[0]),
+            member_hr,
+            index,
+        )
     # A source row that has been issued a registration is already present
     # above, as that registration, and must not be drawn a second time as the
     # row it came from
@@ -447,7 +605,20 @@ def base_rows(
         # None rather than a positional fallback: a visible gap beats a number
         # that lies (design, Allocation happens where a row is born)
         row["number"] = numbers.get(row_id)
-    return _display_order(rows, setup.zone_for(tournament))
+    # A team stands where the team entered, in roster order, under the row of
+    # the registration that entered it (spec etl-console, Order of the fencer
+    # list). The member's own number cannot do it: a roster may be reordered
+    # after its members were numbered, and a member added later would otherwise
+    # sort away from the rest of its team.
+    places = {
+        f"mem:{member.id}": (
+            number if (number := numbers.get(entry_row_id)) is not None else float("inf"),
+            team.id,
+            member.ordinal,
+        )
+        for entry_row_id, team, member in rostered
+    }
+    return _display_order(rows, setup.zone_for(tournament), places)
 
 
 def _money(cents: int | None) -> str | None:
@@ -548,6 +719,9 @@ def _imported_rows(
             "substitute_for": [],
             "queued_since": {},
             "conditional": [],
+            # a team is entered through a registration, so no source row can
+            # carry one (design team-disciplines D1)
+            "teams": [],
             # a source row carries no ratings: a snapshot is taken over the
             # fencers the tournament has registered, and a row that has not
             # been issued one is in no snapshot to read
@@ -555,6 +729,7 @@ def _imported_rows(
             "ranks": {},
             "extras": {},
             "state": "imported",
+            "fights": True,
             "vs": None,
             "paid": False,
             "settled_by_hand": False,
@@ -597,10 +772,12 @@ def _unparsed_row(row_id: str, row: ImportedRow) -> Row:
         "substitute_for": [],
         "queued_since": {},
         "conditional": [],
+        "teams": [],
         "ratings": {},
         "ranks": {},
         "extras": {},
         "state": "imported",
+        "fights": True,
         "vs": None,
         "paid": False,
         "settled_by_hand": False,
@@ -654,10 +831,12 @@ def _manual_row(row: ManualRow, index: HRIndex | None = None) -> Row:
         "substitute_for": [],
         "queued_since": {},
         "conditional": [],
+        "teams": [],
         "ratings": {},
         "ranks": {},
         "extras": {},
         "state": "manual",
+        "fights": True,
         "vs": None,
         "paid": False,
         "settled_by_hand": False,
@@ -707,3 +886,23 @@ def source_rows(
     base = base_rows(session, tournament, index)
     replayed, _ = rules.replay(base, rules.active_rules(session, tournament))
     return [row for row in replayed.values() if row["state"] in ("imported", "manual")]
+
+
+def unmatched_rows(
+    session: Session, tournament: Tournament, index: HRIndex | None = None
+) -> list[Row]:
+    """The rows HEMA Ratings matching works on: the source rows, and every
+    member of a team's roster.
+
+    A member holds no registration and so is not HR-bound at birth the way an
+    in-app registration is; the identifier the entrant typed into the roster is
+    a claim, and matching is where it is answered (spec etl-console, The fencer
+    list is the tournament's start field). Wider than `source_rows`, which is
+    the population issuing and deduplication take: a member row is neither
+    billed nor a duplicate of anything (design D4).
+    """
+    from app import rules
+
+    base = base_rows(session, tournament, index)
+    replayed, _ = rules.replay(base, rules.active_rules(session, tournament))
+    return [row for row in replayed.values() if row["state"] in ("imported", "manual", "member")]

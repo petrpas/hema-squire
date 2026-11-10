@@ -19,6 +19,7 @@ from app import (
     matching,
     placement,
     pricing,
+    roster,
     rownumbers,
     setup,
     spayd,
@@ -172,6 +173,7 @@ def _team_out(team: Team, tournament: Tournament, at) -> dict:
         "team_max": team.discipline.team_max,
         "members": [
             {
+                "id": m.id,
                 "name": m.name,
                 "hr_id": m.hr_id,
                 "club": m.club,
@@ -1647,32 +1649,27 @@ def update_roster(
     session: SessionDep,
     editor: Annotated[Registration | Fencer, Depends(roster_editor)],
 ):
-    """Whole-roster replace: add, remove, rename, rebind, and reorder are all
-    expressed as a new member list, persisted as `ordinal` (spec: "The roster
-    is an ordered list without roles"). Deliberately untouched here: price,
-    VS, email, refund state, and capacity (design D6) — this endpoint does not
-    import pricing, emails, or availability, and does not consult
-    `setup.amendment_availability`, so a roster save succeeds even after the
-    amendment window has closed (design team-disciplines 4.4/4.5)."""
+    """The whole roster, stated and applied as a difference against the roster
+    stored: a member sent with its id is updated, one sent without is added,
+    one the request omits is removed, and ordinals are rewritten from the order
+    sent (`app.roster`, design roster-identity-and-history D1). A member
+    therefore keeps its identity across every save, and every change is logged
+    with the entering fencer as its actor.
+
+    Deliberately untouched here: price, VS, email, refund state, and capacity
+    (design D6) — this endpoint does not import pricing, emails, or
+    availability, and does not consult `setup.amendment_availability`, so a
+    roster save succeeds even after the amendment window has closed (design
+    team-disciplines 4.4/4.5), and after the composition deadline."""
     team = _team_for_roster_edit(session, tournament, editor, team_id)
-    # a team discipline always carries a maximum (`DisciplineIn` enforces it on
-    # write); no maximum recorded is no maximum to exceed
-    team_max = team.discipline.team_max
-    if team_max is not None and len(data.members) > team_max:
-        raise HTTPException(status_code=422, detail={"roster_over_maximum": team_max})
-    session.execute(delete(TeamMember).where(TeamMember.team_id == team.id))
-    session.flush()
-    for ordinal, member in enumerate(data.members):
-        session.add(
-            TeamMember(
-                team_id=team.id,
-                ordinal=ordinal,
-                name=member.name,
-                hr_id=member.hr_id,
-                club=member.club,
-                nationality=member.nationality,
-            )
-        )
+    roster.apply_roster_save(
+        session,
+        tournament,
+        team,
+        data.members,
+        actor_fencer_id=team.registration.fencer_id,
+        by_organizer=False,
+    )
     session.commit()
     session.refresh(team)
     return _team_out(team, tournament, team.registration.registered_at.date())

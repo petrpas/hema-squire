@@ -192,7 +192,14 @@
       "subject": "Reservation reinstated, balance still due — {tournament}",
       "body": "Hi {name},\n\nyour payment of {received} (VS {vs}) arrived after your reservation had expired, but the place was still free — we've reinstated your reservation for {tournament} and accepted the payment.\n\n{amounts}\nAccount: {account}\nVariable symbol: {vs}\n\nYou can pay by scanning the attached QR code.\n\n{consequence}\n\n{tournament} team"
     },
-    "tournamentLinkEvent": "Event page: {link}"
+    "tournamentLinkEvent": "Event page: {link}",
+    "teamCancelled": {
+      "subject": "A team has been cancelled — {tournament}",
+      "body": "Hi {name},\n\nthe organizer of {tournament} has cancelled your team {team} in {discipline}. Your registration and everything else on it stand.",
+      "owes": "Your registration is now {amount} short. Pay it against variable symbol {vs}.",
+      "owed": "Your registration is now {amount} overpaid. Whether and how that is returned is the organizer's to settle, and they will be in touch.",
+      "settled": "Your registration owes nothing."
+    }
   },
   "export": {
     "yes": "Yes",
@@ -257,6 +264,10 @@
       "hr_id": "HRID",
       "rank": "Rank",
       "paid": "Paid"
+    },
+    "team": {
+      "enteredBy": "entered by {name}",
+      "members": "{members}/{min}–{max} members"
     }
   }
 }

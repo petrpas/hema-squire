@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 
 import { ApiError, api, type TournamentDetail, type TournamentFlags } from "../api";
 import { FEATURE_NAMES } from "../TournamentSettingsDialog";
+import { setupIncompleteItems } from "../validation";
 import { concealedBy } from "./shared";
 
 export function PublishSection({
@@ -40,13 +41,10 @@ export function PublishSection({
       onPublished();
     } catch (err) {
       const reason =
-        err instanceof ApiError && typeof err.detail === "string"
-          ? err.detail
-          : err instanceof ApiError &&
-              typeof err.detail === "object" &&
-              err.detail !== null &&
-              (err.detail as { reason?: string }).reason === "setup_incomplete"
-            ? "setup_incomplete"
+        setupIncompleteItems(err) !== null
+          ? "setup_incomplete"
+          : err instanceof ApiError && typeof err.detail === "string"
+            ? err.detail
             : null;
       setError(
         reason === "already_published"

@@ -230,3 +230,20 @@ export function apiErrors(err: unknown): FieldError[] {
   }
   return [];
 }
+
+/** The checklist items a published tournament is still missing, when that is
+ * why a write was refused — `app/setup.py:guard_published_completeness` runs
+ * after every mutation of a published tournament, so a save of one section
+ * can be refused over an item belonging to another (envelope
+ * `{reason: "setup_incomplete", missing: [...]}`). `null` for every other
+ * failure, which keeps a caller's existing fallback reachable. */
+export function setupIncompleteItems(err: unknown): string[] | null {
+  if (!(err instanceof ApiError)) return null;
+  const detail = err.detail;
+  if (!detail || typeof detail !== "object") return null;
+  const envelope = detail as { reason?: unknown; missing?: unknown };
+  if (envelope.reason !== "setup_incomplete") return null;
+  return Array.isArray(envelope.missing)
+    ? envelope.missing.filter((key): key is string => typeof key === "string")
+    : [];
+}

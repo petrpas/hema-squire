@@ -1193,19 +1193,61 @@ class PreviewTeamIn(BaseModel):
 
 
 class RosterMemberIn(BaseModel):
+    """One member of the roster a save states. `id` is the member's identity as
+    the server issued it: present, this save is about that stored member;
+    absent, it is a member the roster does not have yet (design
+    roster-identity-and-history D1). Never the member's position, which the
+    save rewrites and which identifies nobody."""
+
+    id: RowId | None = None
     name: RosterMemberNameStr
     hr_id: RowId | None = None
     club: RosterMemberClubStr | None = None
     nationality: RosterMemberNationalityStr | None = None
 
 
-class RosterMemberOut(BaseModel):
+class RosterMemberFieldsOut(BaseModel):
+    """What a roster states about a person. Carries no identity, which is why
+    the prefill — the entering fencer's own details, suggested and never
+    stored — can wear this shape and a stored member cannot."""
+
     model_config = ConfigDict(from_attributes=True)
 
     name: str
     hr_id: int | None
     club: str | None
     nationality: str | None
+
+
+class RosterMemberOut(RosterMemberFieldsOut):
+    # the identity the next save sends back to say "this member, the one you
+    # gave me", rather than the position it happens to occupy
+    id: int
+
+
+class RemovedRosterMemberOut(RosterMemberOut):
+    """A member who is off the roster: retained as history, countable in
+    nothing, restorable while the roster has room (spec team-disciplines, A
+    removed roster member is retained)."""
+
+    removed_at: UtcInstant
+    removed_by: str | None = None
+
+
+class RosterChangeOut(BaseModel):
+    """One entry of the roster's log, as the organizer's view reads it."""
+
+    id: int
+    member_id: int
+    member_name: str
+    kind: str
+    field: str | None = None
+    before: str | None = None
+    after: str | None = None
+    actor: str
+    by_organizer: bool
+    after_deadline: bool
+    created_at: UtcInstant
 
 
 class OrganizerCancelIn(BaseModel):
@@ -1232,7 +1274,7 @@ class TeamEntryOut(BaseModel):
     # the entering fencer's own name/HR binding, suggested as the first member
     # while the roster is still empty; a UI convenience only, never persisted
     # as a role (design team-disciplines D5) — None once any member exists
-    prefill: RosterMemberOut | None = None
+    prefill: RosterMemberFieldsOut | None = None
 
 
 class ExtraSelectionIn(BaseModel):
@@ -1951,6 +1993,19 @@ class AmendmentOut(BaseModel):
     notified: bool
 
 
+class TeamCancelledOut(BaseModel):
+    """What cancelling one team did to the registration it was entered on
+    (spec team-disciplines, Cancelling one team).
+
+    The same three facts an organizer's discipline correction reports, for the
+    same reason: the team leaving the list is in front of the organizer, and
+    the price and the letter are not."""
+
+    previous_total: decimal.Decimal
+    total: decimal.Decimal
+    notified: bool
+
+
 class RuleOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -1995,6 +2050,9 @@ class ExportTabOut(BaseModel):
     # what a discipline tab's capacity line means here: a queue boundary, or a
     # bare capacity mark on a tournament whose mode queues nobody
     line: str | None = None
+    # a discipline tab whose population is teams: its rows are of two kinds,
+    # its capacity and its counts are in teams, and it offers no seeding tick
+    teams: bool = False
 
 
 class ExportBandTabOut(ExportTabOut):
@@ -2111,18 +2169,27 @@ class ExportSheetConfigOut(BaseModel):
 
 
 class ConsoleTeamOut(BaseModel):
-    """One team as the organizer's read-only teams view presents it (spec:
-    "Organizer's read-only teams view"). Offers no action — no admission, no
-    roster editing on the entrant's behalf, no cancellation; the console
-    renders none for a reason, since those controls do not exist here."""
+    """One team as the organizer's teams view presents it (spec: "Organizer's
+    teams view"). The roster may be edited from here and every edit is logged,
+    and one team may be cancelled; admission is not offered — that is the Queue
+    phase's, which a waitlisted team's row says."""
 
     id: int
     name: str
     entering_fencer: str
+    # the payment standing of the registration this team was entered on: a team
+    # is paid for once, on that registration, and carries no money of its own
+    paid: bool
     waitlisted: bool
     # position in the team waitlist, in entry order; None for a placed team
     waitlist_position: int | None = None
     members: list[RosterMemberOut] = []
+    # off the roster and counted in nothing, retained so that a member removed
+    # by mistake at the venue can be put back rather than re-typed
+    removed_members: list[RemovedRosterMemberOut] = []
+    # the roster's whole story — the entering fencer's edits and the
+    # organizer's alike — most recent first
+    log: list[RosterChangeOut] = []
     # distinguishes a team whose roster is short after the deadline has
     # passed (deadline set, in the past, and members below team_min);
     # unrelated to waitlisted, and never true with no deadline configured

@@ -4,6 +4,9 @@ import { describe, expect, it } from "vitest";
 import type { NetChange, SheetRow } from "./api";
 import {
   absorbedInto,
+  baseColumns,
+  canSubstitute,
+  carriesPaymentState,
   DEFAULT_PHASE,
   editableHere,
   editsForPhase,
@@ -17,6 +20,7 @@ import {
   rowAction,
   rowsForPhase,
   ruleKindFor,
+  teamsNeedTheirDiscipline,
 } from "./Console";
 
 // Which rows and which edits belong to which phase (spec `etl-console`,
@@ -86,13 +90,21 @@ describe("the phase list", () => {
     expect(offeredPhases(mode("squire"))).toEqual([
       "setup",
       "fencers",
+      "teams",
       "matching",
       "dedup",
       "payments",
       "queue",
       "export",
-      "teams",
     ]);
+  });
+
+  it("puts Teams immediately after Fencers, which is where it is read", () => {
+    // Fencers lists who will fight, Teams lists the entries those fighters
+    // fight under (spec etl-console, Phase-tabbed fencer table). On an
+    // automatic tournament, offered no Import, Teams is the third tab.
+    const phases = offeredPhases(mode("squire"));
+    expect(phases.slice(0, 3)).toEqual(["setup", "fencers", "teams"]);
   });
 
   it("offers Import on a manual tournament alone, which is the one that imports", () => {
@@ -506,5 +518,145 @@ describe("what a phase states beside its title", () => {
 
   it("gives Export no line, which leaves it the button alone", () => {
     expect(phaseSummary("export", [row("imp:a1")])).toBeNull();
+  });
+});
+
+// Which identity columns a phase draws (spec `etl-console`, The teams a row
+// entered): the team stands beside the club, on the fencer list of a
+// tournament that has a team discipline and nowhere else.
+
+describe("the team column", () => {
+  const teamTournament = { feature_teams: true } as const;
+  const disciplines = [{ kind: "team" as const }, { kind: "individual" as const }];
+  const soloOnly = [{ kind: "individual" as const }];
+
+  it("stands directly after the club on the fencer list", () => {
+    expect(baseColumns("fencers", teamTournament, disciplines)).toEqual([
+      "name",
+      "nationality",
+      "club",
+      "team",
+    ]);
+  });
+
+  it("is absent where the feature is off", () => {
+    expect(baseColumns("fencers", { feature_teams: false }, disciplines)).toEqual([
+      "name",
+      "nationality",
+      "club",
+    ]);
+  });
+
+  it("is absent where the tournament has no team discipline to enter one into", () => {
+    expect(baseColumns("fencers", teamTournament, soloOnly)).toEqual([
+      "name",
+      "nationality",
+      "club",
+    ]);
+  });
+
+  it("belongs to the fencer list alone", () => {
+    for (const phase of PHASES.filter((candidate) => candidate !== "fencers")) {
+      expect(baseColumns(phase, teamTournament, disciplines)).not.toContain("team");
+    }
+  });
+
+  it("is no phase's own column, so it takes no phase marking", () => {
+    for (const phase of PHASES) {
+      expect(PHASE_COLUMNS[phase]).not.toContain("team");
+    }
+  });
+
+  it("names the discipline only where the tournament has more than one", () => {
+    const team = { kind: "team" as const };
+    const individual = { kind: "individual" as const };
+    expect(teamsNeedTheirDiscipline([team, team])).toBe(true);
+    // one team discipline: every team is in it, so the slug repeats on every
+    // row without telling the reader anything
+    expect(teamsNeedTheirDiscipline([team, individual, individual])).toBe(false);
+    expect(teamsNeedTheirDiscipline([individual])).toBe(false);
+    expect(teamsNeedTheirDiscipline([])).toBe(false);
+  });
+
+  it("does not open for editing, on the fencer list or anywhere else", () => {
+    // a team's name is the entering fencer's, corrected in their own roster
+    // editor; an edit here would show a correction the roster never received
+    for (const phase of PHASES) {
+      expect(editableHere("team", phase)).toBe(false);
+    }
+  });
+});
+
+describe("what a member row offers", () => {
+  // A member of a team's roster is a fighter who holds no registration. What
+  // the row offers follows from what it is rather than from which tab it is
+  // being read on (spec etl-console, The fencer list is the tournament's start
+  // field; design D5).
+  const member = row("mem:12", { teams: [{ name: "Wolves", discipline: "LS" }] });
+
+  it("offers neither cancellation nor deletion nor a restore, on any phase", () => {
+    for (const phase of PHASES) {
+      expect(rowAction(member, phase)).toBeNull();
+    }
+    // including the two phases that do offer something at the end of a row
+    expect(rowAction(member, "import")).toBeNull();
+    expect(rowAction(member, "fencers")).toBeNull();
+    // and a deleted member row is not offered a restore either
+    expect(rowAction(row("mem:12", { _deleted: true }), "fencers")).toBeNull();
+  });
+
+  it("is not handed over to anybody: there is no registration to hand", () => {
+    expect(canSubstitute(member, "fencers")).toBe(false);
+  });
+
+  it("closes the cells for what a row bought, and leaves identity open", () => {
+    // it bought nothing: no disciplines and no borrowed items to correct. A
+    // misspelled fighter is still the organizer's to put right.
+    expect(editableHere("disciplines", "fencers", member)).toBe(false);
+    expect(editableHere("weapon_rentals", "fencers", member)).toBe(false);
+    expect(editableHere("name", "fencers", member)).toBe(true);
+    expect(editableHere("club", "fencers", member)).toBe(true);
+    expect(editableHere("hr_id", "fencers", member)).toBe(true);
+    // and a row that did buy something keeps them open
+    const registration = row("reg:7", { registration_id: 7 });
+    expect(editableHere("disciplines", "fencers", registration)).toBe(true);
+    expect(editableHere("weapon_rentals", "fencers", registration)).toBe(true);
+  });
+
+  it("carries no payment state, so the payment summary counts contracts", () => {
+    // a tournament of many fighters and few contracts states the contracts:
+    // a count including rows that can never be paid would read as a permanent
+    // shortfall (design D6)
+    const fighters = Array.from({ length: 67 }, (_, index) => row(`mem:${index}`));
+    const contracts = Array.from({ length: 18 }, (_, index) =>
+      row(`reg:${index}`, { paid: false, registration_id: index }),
+    );
+    expect(phaseSummary("payments", [...fighters, ...contracts])?.count).toBe(18);
+    expect(fighters.filter(carriesPaymentState)).toEqual([]);
+    expect(contracts.filter(carriesPaymentState)).toHaveLength(18);
+  });
+});
+
+describe("a registration that bought nothing but team entries", () => {
+  // Entering a team is not fighting, so it is not on the start field — but its
+  // agenda is money and a seat, and Payments lists it as it lists every
+  // contract (spec etl-console, A fencer who entered a team but fights
+  // nothing).
+  const entrant = row("reg:9", { fights: false, registration_id: 9 });
+  const fighter = row("mem:1", { fights: true });
+
+  it("is listed on Payments and on no phase that shows the fencer list", () => {
+    expect(rowsForPhase([entrant, fighter], "payments").map((r) => r.id)).toEqual([
+      "reg:9",
+      "mem:1",
+    ]);
+    for (const phase of ["fencers", "matching", "export"] as Phase[]) {
+      expect(rowsForPhase([entrant, fighter], phase).map((r) => r.id)).toEqual(["mem:1"]);
+    }
+  });
+
+  it("reads a row with no such field as a fighter", () => {
+    // the fencer list is what it has always been unless something says otherwise
+    expect(rowsForPhase([row("reg:1")], "fencers").map((r) => r.id)).toEqual(["reg:1"]);
   });
 });

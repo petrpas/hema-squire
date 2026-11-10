@@ -614,6 +614,13 @@ type FencerTournamentFace = Pick<
   | "feature_extras"
 >;
 
+/** One team a fencer-list row entered: its name and the slug of the discipline
+ *  it was entered into, which is what tells two teams on one row apart. */
+export interface EnteredTeam {
+  name: string;
+  discipline: string;
+}
+
 export interface SheetRow {
   id: string;
   /** The fixed number this row carries in the tournament, allocated once and
@@ -631,8 +638,23 @@ export interface SheetRow {
   queued_since: Record<string, string>;
   /** The participation condition's disciplines, by slug; empty for none. */
   conditional: string[];
+  /** The teams this row's registration entered, each with the discipline it
+   *  was entered into, in entry order. Never the rosters this fencer is named
+   *  on: a member is a name local to someone else's team and not an identity
+   *  (design team-disciplines D4). */
+  teams: EnteredTeam[];
   /** A payment sent from the queue is held for the organizer. */
   payment_held?: boolean;
+  /** Whether this row is one of the tournament's fighters. False on a
+   *  registration whose whole content is team entries: entering a team is not
+   *  fighting, so it is not on the start field, and its agenda — money, a seat,
+   *  the teams themselves — is read on Payments, the Queue and Teams (spec
+   *  `etl-console`, The fencer list is the tournament's start field). */
+  fights?: boolean;
+  /** Present only on a team discipline's export tab, and only on the rows that
+   *  are teams rather than fighters: a team's own facts, which no fencer row
+   *  has (spec `export-tables`, Each tab states its own columns and order). */
+  _team?: ExportTeamRow;
   state: string;
   /** The registration standing in this row's place, where one has been issued
    *  for it; null while the row is still a row. Disciplines are the row's to
@@ -736,10 +758,24 @@ export interface Sheet {
   edits: NetChange[];
 }
 
+/** A team as its discipline's export tab lists it, above its fighters. A team
+ *  carries no nationality, club, identifier, rating or rank — and nothing
+ *  computes one from its fighters': what a tournament makes of four fighters'
+ *  ratings when it seeds is the tournament's decision. */
+export interface ExportTeamRow {
+  entering_fencer: string;
+  members: number;
+  team_min: number;
+  team_max: number;
+  /** Where this team stands in the discipline's waitlist; null for a seated
+   *  one, which is also what puts the tab's line where it falls. */
+  waitlist_position: number | null;
+}
+
 /** One table of the Export phase's band, derived from the tournament: the
- *  fencer list, one per individual discipline, one per extra-item category it
- *  offers something in. `key` names what the table is of and is empty for the
- *  fencer table, which is of the whole tournament. */
+ *  fencer list, one per discipline — individual and team alike — one per
+ *  extra-item category it offers something in. `key` names what the table is of
+ *  and is empty for the fencer table, which is of the whole tournament. */
 export interface ExportTab {
   kind: "fencers" | "discipline" | "category" | "summary" | "revenue";
   key: string;
@@ -748,6 +784,10 @@ export interface ExportTab {
   /** What a discipline tab's line means here: a queue boundary, or a bare
    *  capacity mark on a tournament whose mode queues nobody. */
   line: "queue" | "capacity" | null;
+  /** A discipline tab whose population is teams rather than fencers: its rows
+   *  are of two kinds, its capacity and its counts are in teams, and it offers
+   *  no seeding tick (spec `export-tables`). */
+  teams: boolean;
 }
 
 /** A tab as the band lists it, with how many it holds: `queued` counts a
@@ -1058,11 +1098,43 @@ export interface RegistrationExtraSelection {
   option_value: string | null;
 }
 
-export interface RosterMember {
+/** What a roster states about a person, with no identity of its own — the
+ *  shape of the prefill, which is suggested and never stored. */
+export interface RosterMemberFields {
   name: string;
   hr_id: number | null;
   club: string | null;
   nationality: string | null;
+}
+
+/** A stored member. `id` is the identity the server issued and the next save
+ *  sends back to say "this member": stable across renames, rebindings and
+ *  reorderings, and never the member's position. */
+export interface RosterMember extends RosterMemberFields {
+  id: number;
+}
+
+/** A member off the roster: counted in nothing, kept so that one removed by
+ *  mistake at the venue can be put back rather than re-typed. */
+export interface RemovedRosterMember extends RosterMember {
+  removed_at: string;
+  removed_by: string | null;
+}
+
+/** One entry of a roster's log — the entering fencer's edits and the
+ *  organizer's in one story. */
+export interface RosterChange {
+  id: number;
+  member_id: number;
+  member_name: string;
+  kind: "added" | "removed" | "restored" | "edited";
+  field: string | null;
+  before: string | null;
+  after: string | null;
+  actor: string;
+  by_organizer: boolean;
+  after_deadline: boolean;
+  created_at: string;
 }
 
 export interface TeamEntry {
@@ -1079,7 +1151,7 @@ export interface TeamEntry {
   members: RosterMember[];
   /** The entering fencer's own name/HR binding, suggested as the first
    *  member while the roster is still empty; never persisted as a role. */
-  prefill: RosterMember | null;
+  prefill: RosterMemberFields | null;
 }
 
 export interface RegistrationDetail {
@@ -1169,6 +1241,9 @@ export interface PricePreviewPayload {
 }
 
 export interface RosterMemberInput {
+  /** The member this save is about, as the server named it. Absent for a
+   *  member the roster does not have yet. */
+  id?: number | null;
   name: string;
   hr_id?: number | null;
   club?: string | null;
@@ -1179,10 +1254,24 @@ export interface ConsoleTeam {
   id: number;
   name: string;
   entering_fencer: string;
+  /** The payment standing of the registration this team was entered on: a team
+   *  is paid for once, on that registration, and carries no money of its own. */
+  paid: boolean;
   waitlisted: boolean;
   waitlist_position: number | null;
   members: RosterMember[];
+  removed_members: RemovedRosterMember[];
+  log: RosterChange[];
   below_minimum: boolean;
+}
+
+/** What cancelling one team did to the registration it was entered on: the
+ *  totals before and after, as decimal strings the money cells read, and
+ *  whether the entering fencer was written to. */
+export interface TeamCancelled {
+  previous_total: string;
+  total: string;
+  notified: boolean;
 }
 
 export interface ConsoleTeamDiscipline {
@@ -2044,6 +2133,21 @@ export const api = {
     }),
   consoleTeams: (slug: string) =>
     request<ConsoleTeamDiscipline[]>(`/api/tournaments/${slug}/teams`),
+  /** The organizer's own roster save: the same diff and the same log as the
+   *  entering fencer's, recorded as the organizer's act. */
+  consoleUpdateRoster: (slug: string, teamId: number, members: RosterMemberInput[]) =>
+    request<ConsoleTeam>(`/api/tournaments/${slug}/teams/${teamId}/roster`, {
+      method: "PUT",
+      body: JSON.stringify({ members }),
+    }),
+  /** Cancel one team of a registration, leaving the registration and every
+   *  other team and entry on it standing. Money moves, so the answer says what
+   *  the registration was worth, what it is worth now, and whether the entering
+   *  fencer was told (spec `team-disciplines`, Cancelling one team). */
+  cancelTeam: (slug: string, teamId: number) =>
+    request<TeamCancelled>(`/api/tournaments/${slug}/teams/${teamId}/cancel`, {
+      method: "POST",
+    }),
   queue: (slug: string) => request<Queue>(`/api/tournaments/${slug}/queue`),
   queueTeams: (slug: string, disciplineSlug: string) =>
     request<QueueTeam[]>(`/api/tournaments/${slug}/queue/teams/${disciplineSlug}`),

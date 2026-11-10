@@ -174,7 +174,7 @@ async def run_matching(
     require_published(tournament)
     if matcher is None:
         raise HTTPException(status_code=503, detail="llm_not_configured")
-    rows = sheet.source_rows(session, tournament, index)
+    rows = sheet.unmatched_rows(session, tournament, index)
     total = hr_match.pending_count(session, tournament, rows)
     operation = _start(session, tournament, fencer, OperationKind.MATCH, total)
 
@@ -185,7 +185,7 @@ async def run_matching(
             work_tournament,
             matcher,
             index,
-            sheet.source_rows(work_session, work_tournament, index),
+            sheet.unmatched_rows(work_session, work_tournament, index),
             progress=lambda session, units: operations.advance(session, work_operation, units),
         )
 

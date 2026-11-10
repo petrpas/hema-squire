@@ -1,7 +1,7 @@
 """organizer terms acceptance
 
-Revision ID: b3d5f7a9c1e2
-Revises: a2c4e6f8b0d1
+Revision ID: e5a7c9b1d3f4
+Revises: d4a7c2e8b015
 Create Date: 2026-11-03 20:00:00.000000
 
 Adds `fencers.organizer_terms_version` and `fencers.organizer_terms_accepted_at`
@@ -14,8 +14,8 @@ import sqlalchemy as sa
 from alembic import op
 
 # revision identifiers, used by Alembic.
-revision: str = "b3d5f7a9c1e2"
-down_revision: str | Sequence[str] | None = "a2c4e6f8b0d1"
+revision: str = "e5a7c9b1d3f4"
+down_revision: str | Sequence[str] | None = "d4a7c2e8b015"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 

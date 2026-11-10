@@ -4,10 +4,18 @@ from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import select
 
+from app import matching
 from app.db import get_session
 from app.main import app
-from app.models import Discipline, ImportBatch, Registration, RegistrationsKeptBy, Tournament
-from tests.conftest import credit_registration, enable_payments, publish
+from app.models import (
+    Discipline,
+    ImportBatch,
+    PaymentMode,
+    Registration,
+    RegistrationsKeptBy,
+    Tournament,
+)
+from tests.conftest import credit_registration, enable_payments, publish, set_fio_token
 
 
 def db_session():
@@ -212,6 +220,94 @@ def test_a_hand_tick_is_the_only_mark_where_squire_does_not_collect(client, auth
     ]
 
 
+def set_mode(client, organizer, mode, **extra):
+    """Put the tournament in `mode` with a seating deadline still to come. A
+    deposit holds a seat on a sliding window, so it is offered only where a
+    bank feed that arrives by itself is configured (spec tournament-admin)."""
+    if mode == "deposit":
+        set_fio_token(client, organizer, "cup", "test-feed-token")
+    response = client.patch(
+        "/api/tournaments/cup",
+        json={"payment_mode": mode, "seating_deadline": "2099-11-01", **extra},
+        headers=organizer,
+    )
+    assert response.status_code == 200, response.text
+
+
+def pass_the_seating_deadline():
+    """Move the deadline into the past. It is validated against the
+    registration close on write, so a test that wants a passed one sets it
+    directly (mirrors tests/test_payment_modes.set_seating_deadline)."""
+    session = db_session()
+    tournament_row(session).seating_deadline = datetime.now(UTC).date() - timedelta(days=1)
+    session.commit()
+
+
+def test_nothing_is_claimed_before_the_seating_deadline(client, auth_headers):
+    """In reservation mode nothing is owed until the seating deadline (spec
+    registration, Payment mode), so a roster reading no before then would
+    state a failure to pay against somebody nobody has asked."""
+    organizer = auth_headers()
+    setup_tournament(client, organizer)
+    set_mode(client, organizer, "reservation")
+    register(client, auth_headers(email="a@example.com", name="Adéla"))
+    boris = register(client, auth_headers(email="b@example.com", name="Boris"))
+    pay(boris["vs"])
+
+    assert seated(rosters(client)["LS"]) == [
+        # paying early is not something the roster hides
+        (1, "Boris", "yes", False),
+        (2, "Adéla", None, False),
+    ]
+
+
+def test_the_seating_deadline_is_when_the_roster_may_say_no(client, auth_headers):
+    organizer = auth_headers()
+    setup_tournament(client, organizer)
+    set_mode(client, organizer, "reservation")
+    register(client, auth_headers(email="a@example.com", name="Adéla"))
+    pass_the_seating_deadline()
+
+    assert seated(rosters(client)["LS"]) == [(1, "Adéla", "no", True)]
+
+
+def test_an_organizers_early_close_says_no_as_the_deadline_would(client, auth_headers):
+    organizer = auth_headers()
+    setup_tournament(client, organizer)
+    set_mode(client, organizer, "reservation")
+    register(client, auth_headers(email="a@example.com", name="Adéla"))
+    session = db_session()
+    tournament_row(session).seating_settled_at = datetime.now(UTC)
+    session.commit()
+
+    assert seated(rosters(client)["LS"]) == [(1, "Adéla", "no", True)]
+
+
+def test_a_deposit_paid_carries_no_mark(client, auth_headers):
+    """Crediting the deposit closes the payment window and leaves the balance
+    owed by the seating deadline (spec payments): a date that has not come."""
+    organizer = auth_headers()
+    setup_tournament(client, organizer)
+    set_mode(client, organizer, "deposit", deposit_amount=200)
+    adela = register(client, auth_headers(email="a@example.com", name="Adéla"))
+
+    # the deposit is owed at registration, and a window runs for it
+    assert seated(rosters(client)["LS"]) == [(1, "Adéla", "no", True)]
+
+    session = db_session()
+    registration = session.scalar(select(Registration).where(Registration.vs == adela["vs"]))
+    assert registration is not None
+    credit_registration(session, registration, 20000)
+    # the application's own discharge, so the test does not imitate it
+    matching._apply_deposit_threshold(  # pyright: ignore[reportPrivateUsage]  the public path needs a bank feed; this is the transition under test
+        session, tournament_row(session), None, registration, "local", "test"
+    )
+    session.commit()
+    assert registration.expires_at is None
+
+    assert seated(rosters(client)["LS"]) == [(1, "Adéla", None, False)]
+
+
 # ------------------------------------------------------------ the queue
 
 
@@ -402,6 +498,26 @@ def test_a_team_is_listed_with_its_members_and_the_waitlist_below(client, auth_h
     assert (vlci["number"], vlci["name"], vlci["members"], vlci["paid"]) == (1, "Vlci", [], None)
 
 
+def test_a_seated_team_owing_nothing_yet_carries_no_mark(client, auth_headers):
+    """A team's cell states its entering registration under the rules of the
+    Paid column (spec public-entrants), so a reservation-mode team discipline
+    reads nothing about money until the seating deadline."""
+    organizer = auth_headers()
+    setup_team_tournament(client, organizer)
+    enable_payments(client, organizer, "cup")
+    # a priced tournament cannot stay published without an account to pay into
+    set_mode(client, organizer, "reservation", bank_account="CZ6508000000192000145399")
+    enter_team(client, auth_headers(email="a@example.com", name="Adéla"), "Draci")
+
+    (draci,) = rosters(client)["TM"]["seated"]
+    assert (draci["name"], draci["paid"], draci["faded"]) == ("Draci", None, False)
+
+    pass_the_seating_deadline()
+
+    (draci,) = rosters(client)["TM"]["seated"]
+    assert (draci["paid"], draci["faded"]) == ("no", True)
+
+
 # ------------------------------------------------------------ the counts
 
 
@@ -497,6 +613,33 @@ def test_seminars_and_other_events_have_rosters_the_afterparty_does_not(client, 
     assert seated(by_slug[str(seminar)]) == [(1, "Boris", "yes", False), (2, "Adéla", "no", True)]
     assert [row["name"] for row in by_slug[str(walk)]["seated"]] == ["Boris"]
     assert by_slug[str(seminar)]["line"] is False
+
+
+def test_a_side_events_item_owes_at_once_whatever_the_stored_mode(client, auth_headers):
+    """An entry holding no seat owes in full at registration whatever mode the
+    record stores (`setup.owing_mode`), so its roster has something to say from
+    the moment it is made — the mode's held seat being nothing it holds."""
+    organizer = auth_headers()
+    client.post(
+        "/api/tournaments",
+        json={"slug": "cup", "display_name": "Cup", "date": "2099-12-05"},
+        headers=organizer,
+    )
+    enable_payments(client, organizer, "cup")
+    seminar = add_item(client, organizer, "Seminář Liechtenauer", "seminar")
+    publish(client, organizer, "cup")
+    # the stored mode holds a seat; this registration holds none
+    session = db_session()
+    tournament_row(session).payment_mode = PaymentMode.RESERVATION
+    session.commit()
+    response = client.post(
+        "/api/tournaments/cup/register",
+        json={"disciplines": [], "extras": [{"extra_item_id": seminar, "qty": 1}]},
+        headers=auth_headers(email="a@example.com", name="Adéla"),
+    )
+    assert response.status_code == 201, response.text
+
+    assert seated(rosters(client)[str(seminar)]) == [(1, "Adéla", "no", True)]
 
 
 def test_a_capped_seminar_draws_its_line_with_nothing_below(client, auth_headers):

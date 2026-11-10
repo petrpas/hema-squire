@@ -3,7 +3,6 @@ import { type ChangeEvent, Fragment, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import {
-  ApiError,
   api,
   type Currency,
   type Discipline,
@@ -32,6 +31,7 @@ import {
   recalculateMissing,
   type SaveOutcome,
   type SaverRegistry,
+  saveFailureMessage,
   TAXONOMY_WEAPON_CODES,
   useSectionSaver,
 } from "./shared";
@@ -384,9 +384,7 @@ export function DisciplinesSection({
           outcomes.push({ change: rowSlug, section: "disciplines", error: null });
         } catch (err) {
           stillRemoved.add(rowSlug);
-          const message = t("setup.saveBar.genericError", {
-            status: err instanceof ApiError ? err.status : "?",
-          });
+          const message = saveFailureMessage(err, [], detail, t);
           outcomes.push({ change: rowSlug, section: "disciplines", error: message });
         }
       }
@@ -407,12 +405,7 @@ export function DisciplinesSection({
             field: `${e.field}-${row.rowId}`,
           }));
           validation.applyApiErrors(fieldErrors);
-          const message =
-            fieldErrors.length > 0
-              ? fieldErrors.map((e) => t(`validation.${e.code}`, e.params)).join(" ")
-              : t("setup.saveBar.genericError", {
-                  status: err instanceof ApiError ? err.status : "?",
-                });
+          const message = saveFailureMessage(err, fieldErrors, detail, t);
           results.set(row.rowId, message);
           outcomes.push({ change: row.slug, section: "disciplines", error: message });
         }
@@ -429,12 +422,7 @@ export function DisciplinesSection({
             field: `${e.field}-${row.rowId}`,
           }));
           validation.applyApiErrors(fieldErrors);
-          const message =
-            fieldErrors.length > 0
-              ? fieldErrors.map((e) => t(`validation.${e.code}`, e.params)).join(" ")
-              : t("setup.saveBar.genericError", {
-                  status: err instanceof ApiError ? err.status : "?",
-                });
+          const message = saveFailureMessage(err, fieldErrors, detail, t);
           results.set(row.rowId, message);
           outcomes.push({ change: row.slug || row.name, section: "disciplines", error: message });
         }

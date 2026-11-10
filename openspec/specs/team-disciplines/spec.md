@@ -39,15 +39,6 @@ A discipline's kind SHALL NOT change once any registration references it.
 - **WHEN** an organizer attempts to change the kind of a discipline that a registration already references
 - **THEN** the change is rejected
 
-### Requirement: Team disciplines carry no HR rating category
-A team discipline SHALL be excluded from the tournament's HR category map. The map SHALL
-NOT offer, store, or require an entry for a team discipline, and no HR path SHALL derive
-a rating category from one.
-
-#### Scenario: Team discipline absent from the map
-- **WHEN** a tournament offering an individual and a team discipline exposes its HR category map
-- **THEN** only the individual discipline is present
-
 ### Requirement: A team is entered by one registered fencer
 A team SHALL be entered by exactly one fencer, through that fencer's own registration for
 the tournament. The team SHALL carry a name, the team discipline it enters, and a roster.
@@ -135,6 +126,22 @@ search. Selecting a search result SHALL bind the member to that profile and take
 canonical name, club, and nationality; typing a name without selecting a result SHALL
 store that name unbound.
 
+A member's nationality SHALL be held as the two-letter ISO country code of the country
+it names, whatever vocabulary it was given in — the reading the Matching evidence
+register and every identity column after it use (`etl-console`), so that one column does
+not read `CZ` on the fencer table and `Czech Republic` on a roster beside it. Where no
+country can be identified from the spelling, that spelling SHALL stand as given: a
+spelling Squire cannot read is still what it was given. The rule SHALL hold wherever a
+member is written, so that every screen listing members states one vocabulary without
+converting anything itself.
+
+The canonical JSON export (`data-export`) SHALL state the member's nationality as the
+record holds it, as it states every other stored field: it is a dump reporting rows, not
+a display. A restore SHALL apply this reading to what the document carries, as it already
+parses a classification out of an older document's discipline code — a document written
+before this reading restores into rows that obey it, rather than into the only rows in
+the database that do not.
+
 Member identity SHALL be local to its roster. The same person named on two rosters
 produces two independent members, and a member is never linked to a registration or a
 fencer account, even when a HEMA Ratings identifier would match one.
@@ -142,6 +149,14 @@ fencer account, even when a HEMA Ratings identifier would match one.
 #### Scenario: Member bound through the HR search
 - **WHEN** the entering fencer types a partial name and selects a search result
 - **THEN** the member is stored with that profile's identifier, canonical name, club, and nationality
+
+#### Scenario: One vocabulary across the roster
+- **WHEN** a member is bound to a profile the fighters index records as `Czech Republic`
+- **THEN** the member's nationality reads `CZ` on the Teams tab, in the organizer's teams view and on the public roster
+
+#### Scenario: A country Squire cannot read keeps its words
+- **WHEN** a member is bound to a profile whose nationality names no country Squire can identify
+- **THEN** that spelling is kept as given and the member is not treated as incomplete
 
 #### Scenario: Member HR does not know
 - **WHEN** the entering fencer types a name and the search offers no matching profile
@@ -184,16 +199,129 @@ exactly like any other, and no stored field SHALL mark it as the entrant's.
 - **WHEN** a fencer enters a team and opens its roster for the first time
 - **THEN** they appear as the first member, and removing or renaming that member is accepted
 
-### Requirement: Roster editing changes no money
-Editing a roster — adding, removing, renaming, rebinding, or reordering members — SHALL
-NOT recompute any total, SHALL NOT issue or reissue a VS, SHALL NOT change any amount
-owed or credited, SHALL NOT alter refund state, SHALL NOT send a confirmation email, and
-SHALL NOT consume or check capacity.
+### Requirement: A roster member keeps its identity across saves
 
-Roster editing SHALL NOT be gated by the tournament's amendment window. It SHALL be
-available to the entering fencer from the moment the team is entered until the tournament
-date, on a reserved or a paid registration alike, and SHALL be refused on a cancelled or
-expired registration.
+A roster member SHALL have an identity of its own that survives every save of the
+roster it belongs to. Saving a roster SHALL NOT discard and recreate its members.
+
+A save SHALL state the roster it wants and SHALL be applied as a difference
+against the roster stored: a member stated with its identity SHALL be updated in
+place, a member stated without one SHALL be added, and a member the save does not
+state SHALL be removed. A member whose fields are unchanged SHALL be left
+untouched, and its identity SHALL be the same identity afterwards.
+
+A member's identity SHALL NOT be its position. The order SHALL be rewritten from
+the order the save states, and reordering a roster SHALL change no member's
+identity — the list is ordered and without roles, as **The roster is an ordered
+list without roles** fixes, so position carries no meaning that could identify
+anybody.
+
+Two members of one roster MAY be identical in every stored field; their
+identities SHALL still be distinct, and a save SHALL apply to the one it names.
+
+#### Scenario: A correction keeps the member
+- **WHEN** the entering fencer corrects one member's nationality and saves
+- **THEN** that member is the same member afterwards, and the other members are untouched
+
+#### Scenario: Reordering identifies nobody differently
+- **WHEN** a roster of four is saved in a different order with no other change
+- **THEN** the four are the same four members, in the new order
+
+#### Scenario: Two members alike are still two members
+- **WHEN** a roster holds two members with the same name, club, nationality and no identifier, and a save renames one of them
+- **THEN** only the named one is renamed
+
+#### Scenario: A member added and a member removed in one save
+- **WHEN** a save states three of a roster's four members and one member not stored before
+- **THEN** the three keep their identities, the fourth is removed, and the new member is added
+
+### Requirement: A removed roster member is retained
+
+Removing a member SHALL mark it removed rather than erase it. A removed member
+SHALL be excluded from everything that states a roster or counts one: the
+entrant's editor, the organizer's teams view, the public entrants roster, the
+member count against the discipline's minimum and maximum, the below-minimum
+mark, and the composition reminder. It SHALL remain retrievable as part of the
+roster's history, and restoring it SHALL be possible while the roster has room
+for it.
+
+Restoring a removed member SHALL return the same member, not a copy: whatever
+the tournament has decided about that person SHALL still be about them.
+
+The tournament's backup document SHALL carry removed members, so that a restore
+does not quietly erase a roster's history.
+
+#### Scenario: A removed member counts for nothing
+- **WHEN** a team of four removes one member on a discipline requiring three
+- **THEN** every list and count states three members, and the team is not below minimum
+
+#### Scenario: A removal is not an erasure
+- **WHEN** the roster's history is read after that removal
+- **THEN** the removed member is there, named, with the moment it was removed
+
+#### Scenario: Restored rather than retyped
+- **WHEN** the organizer restores that member at the venue
+- **THEN** the roster states four members again and the restored member is the member that was removed
+
+#### Scenario: A full roster has no room to restore into
+- **WHEN** a restore would exceed the discipline's maximum roster size
+- **THEN** it is refused, naming the maximum
+
+### Requirement: Every roster change is recorded in one log
+
+Every change to a roster SHALL be recorded: a member added, removed, restored, or
+any stored field of a member changed. One log SHALL hold the entering fencer's
+changes and the organizer's together, so that a roster's story is whole rather
+than half of one.
+
+Each entry SHALL state what changed — the member, and for a field change the
+field with its value before and after — who changed it, and when. Where the
+organizer changed it, the entry SHALL name the organizer; where the entering
+fencer did, it SHALL name them. An entry SHALL state whether the change was made
+after the tournament's composition deadline, since a change made afterwards is
+read differently from one made before it.
+
+Reordering a roster SHALL NOT be recorded: order carries no meaning, so a
+reorder changes nothing anybody could dispute.
+
+The log SHALL be visible to the organizer beside the roster it belongs to. It
+SHALL be append-only: no entry SHALL be edited or deleted while the team exists.
+
+#### Scenario: The entrant's own edit is in the log
+- **WHEN** the entering fencer replaces a member the evening before the tournament
+- **THEN** the log holds the removal and the addition, naming them as the actor and the moment
+
+#### Scenario: The organizer's edit names the organizer
+- **WHEN** the organizer swaps a member at the venue
+- **THEN** the log holds that change, naming the organizer, and states that it was made after the composition deadline
+
+#### Scenario: A field change states before and after
+- **WHEN** a member's club is corrected
+- **THEN** the log holds one entry naming the member, the club field, and both values
+
+#### Scenario: A reorder is not a change
+- **WHEN** a roster is saved in a different order and nothing else differs
+- **THEN** the log gains no entry
+
+### Requirement: Roster editing changes no money
+Editing a roster — adding, removing, restoring, renaming, rebinding, or reordering
+members — SHALL NOT recompute any total, SHALL NOT issue or reissue a VS, SHALL
+NOT change any amount owed or credited, SHALL NOT alter refund state, SHALL NOT
+send a confirmation email, and SHALL NOT consume or check capacity. This holds
+whoever edits it: a team's fee is per team and never multiplied by its roster, so
+there is no edit to a roster that money could follow.
+
+Roster editing SHALL NOT be gated by the tournament's amendment window, and SHALL
+NOT be gated by the composition deadline. It SHALL be available to the entering
+fencer from the moment the team is entered until the tournament date, on a
+reserved or a paid registration alike, and SHALL be refused on a cancelled or
+expired registration. It SHALL be available to the organizer on the same terms,
+as **Organizer's teams view** fixes.
+
+The organizer's edit SHALL send nothing to the entering fencer. A roster edit
+moves no money, and a letter for each corrected row would cost more than the
+error it reports; the change SHALL be visible to the entering fencer on the
+tournament's detail page, where their own roster already is.
 
 #### Scenario: Total unmoved by a roster edit
 - **WHEN** the entering fencer replaces two members of a team on a paid registration
@@ -206,6 +334,10 @@ expired registration.
 #### Scenario: Roster editing refused on a dead registration
 - **WHEN** the entering fencer attempts to edit a roster on a registration that has expired or been cancelled
 - **THEN** the edit is rejected
+
+#### Scenario: The organizer's edit after the deadline moves nothing and says nothing
+- **WHEN** the organizer swaps a member on a paid registration after the composition deadline
+- **THEN** the edit is accepted, the registration's money is unchanged, and no mail is sent
 
 ### Requirement: Rosters are edited on the detail page's Teams tab
 Every roster the entering fencer may edit for a tournament SHALL be presented together on
@@ -376,16 +508,26 @@ stamp continues to mean that a message was sent.
 - **WHEN** the reminder runs ahead of the deadline for a short team on a registration issued from an imported list
 - **THEN** no reminder is sent and the team is not stamped as reminded
 
-### Requirement: Organizer's read-only teams view
-The console SHALL present, per team discipline, the teams entered into it: the team name, the entering fencer, the roster in order with each member's name and — where bound — HEMA Ratings identifier, club, and nationality, the member count against the discipline's minimum and maximum, and the team's waitlist position where it is waitlisted. Teams marked below minimum after the composition deadline SHALL be distinguished.
+### Requirement: Organizer's teams view
+The console SHALL present, per team discipline, the teams entered into it: the team name, the entering fencer, the roster in order with each member's name and — where bound — HEMA Ratings identifier, club, and nationality, the member count, and the team's waitlist position where it is waitlisted. Teams marked below minimum after the composition deadline SHALL be distinguished.
 
 The view SHALL be offered only while the tournament's team disciplines feature is on, as fixed by `tournament-features`. An organizer who has turned the feature off SHALL see no Teams phase; the teams, rosters and waitlist positions it would have shown SHALL be retained untouched and SHALL be shown again when the feature is turned back on. The entering fencer's own roster editor on the tournament detail page SHALL be unaffected by the feature, which governs the organizer's console alone.
 
-The view SHALL be read-only. It SHALL offer no action on a team or a roster: no roster editing on the entrant's behalf and no team cancellation. Admission from the waitlist and return to it are the Queue phase's (`seating-queue`), and the view SHALL say so where it shows a waitlisted team. The organizer acts through the controls that exist elsewhere in the console.
+**The view SHALL let the organizer edit a roster**: add a member, remove one, restore a removed one, and correct a member's name, HEMA Ratings identifier, club or nationality. A team arrives at the tournament and the fencer who entered it cannot always reach their own editor; the organizer acting for them is the remedy, and it is a safe one — a roster edit moves no money, as **Roster editing changes no money** fixes. Every such edit SHALL be recorded as **Every roster change is recorded in one log** fixes, and the log SHALL be shown beside the roster.
+
+**The view SHALL be a table**, one row per team, read the way the fencer list is read: the team's name, its discipline, the fencer who entered it, its member count, its waitlist position where it is waitlisted, and the payment standing of the registration it was entered on. The count SHALL be stated as the number alone, without the bounds beside it — the organizer configured the discipline and knows the size it asks for, and a bound repeated on eighteen rows is eighteen readings of one fact. A count the bounds do not admit, short of the minimum or over the maximum, SHALL be distinguished from one they do, which is the comparison the bounds were there to make. The roster SHALL be reachable from its team's row rather than printed under every row, so that a tournament's teams can be read as a list. The phase SHALL stand immediately after Fencers (`etl-console`): Fencers lists who will fight, this lists the entries they fight under.
+
+**The view SHALL carry the agenda of a team entry**, since a registration that entered a team offers that agenda nowhere else: a fencer who entered a team and fights nothing is not on the fencer list at all (`etl-console`). The organizer SHALL be able to cancel one team of a registration, as **Cancelling one team** fixes.
+
+Admission from the waitlist and return to it remain the Queue phase's (`seating-queue`), and the view SHALL say so where it shows a waitlisted team: admission moves money and opens a payment window, and the phase that does that is the phase that shows the queue.
 
 #### Scenario: Teams listed per discipline
 - **WHEN** an organizer opens the teams view for a team discipline holding six teams
-- **THEN** each team is listed with its name, entering fencer, ordered roster, and member count against the minimum and maximum
+- **THEN** each team is listed with its name, entering fencer, ordered roster, and member count
+
+#### Scenario: A bound member states its identifier here too
+- **WHEN** a listed roster holds a member bound to a HEMA Ratings profile
+- **THEN** the view states that identifier, as the public entrants roster already does
 
 #### Scenario: Short teams distinguished after the deadline
 - **WHEN** the composition deadline has passed and two of the listed teams are below minimum
@@ -395,9 +537,21 @@ The view SHALL be read-only. It SHALL offer no action on a team or a roster: no 
 - **WHEN** a listed roster contains members with no HEMA Ratings identifier
 - **THEN** those members are shown by name with no identifier, club, or nationality, and are not marked as a problem
 
+#### Scenario: The organizer swaps a member at the venue
+- **WHEN** the organizer removes a member of a listed team and adds another in their place
+- **THEN** the roster states the new member, the log holds both changes naming the organizer, and the entering fencer's registration is unchanged
+
 #### Scenario: No actions offered
-- **WHEN** an organizer views a waitlisted team or a team below minimum
-- **THEN** the view offers no control to admit, edit, or cancel it, and a waitlisted team's row states that admission is on the Queue phase
+- **WHEN** an organizer views a waitlisted team
+- **THEN** the view offers no control to admit it, and its row states that admission is on the Queue phase
+
+#### Scenario: A count the bounds do not admit
+- **WHEN** a discipline asking for three to four members holds a team of two and a team of three
+- **THEN** both rows state the number alone, and the two is distinguished while the three is not
+
+#### Scenario: Teams read as a table
+- **WHEN** an organizer opens the Teams phase of a tournament holding eighteen teams
+- **THEN** the teams are one table of eighteen rows, each stating its discipline, entering fencer, member count and payment standing, with its roster reachable from the row
 
 #### Scenario: No teams view while the feature is off
 - **WHEN** an organizer opens the console of a tournament whose team disciplines feature is off
@@ -410,3 +564,88 @@ The view SHALL be read-only. It SHALL offer no action on a team or a roster: no 
 #### Scenario: Entrants keep their roster editor
 - **WHEN** a fencer who entered a team opens the tournament detail page while the team feature is off
 - **THEN** the team is listed and its roster editor is offered as usual
+
+### Requirement: Cancelling one team
+
+The organizer SHALL be able to cancel a single team of a registration, leaving that
+registration and every other team and entry on it standing. A registration may carry
+several teams, in one discipline or several (**A team is entered by one registered
+fencer**), so cancelling the registration is too blunt an instrument for a team that has
+withdrawn.
+
+Cancelling a team SHALL be an amendment of the registration it was entered on: the team's
+fee SHALL leave the registration's total, the registration SHALL be repriced on its own
+frozen prices, and what that leaves owed or overpaid SHALL be stated as any amendment's
+result is. A seated team's place SHALL be freed, and the discipline's waitlist SHALL NOT
+be promoted from automatically — a freed place waits for the organizer, as a freed
+individual seat does (`seating-queue`).
+
+The team's roster SHALL go with it and SHALL NOT be retained as a roster of nobody. Its
+members SHALL leave the fencer list, since they will not fight.
+
+The organizer SHALL confirm it, and the confirmation SHALL state in plain words what the
+cancellation does before it is taken: that it cannot be undone, that the team's fee leaves
+what the registration pays while its other teams and entries stand, that the roster goes
+with the team and its members leave the fencer list, that the place is freed and nobody
+moves up from the waitlist by itself, and that the entering fencer is written to. No part
+of it SHALL be stated in the vocabulary of the pricing machinery: the reader is an
+organizer cancelling a team, not a reader of the repricing rules.
+
+It SHALL be refused on a registration that is cancelled or expired, and on a tournament
+whose team disciplines feature is off — the teams a hidden feature holds are retained
+untouched.
+
+The entering fencer SHALL be told, naming the team and the discipline and stating what
+the registration now owes or is owed, unless it is a registration Squire sends nothing
+to. This is money changing hands and is not the silent correction a roster edit is.
+
+#### Scenario: The confirmation says what will happen
+- **WHEN** the organizer opens the cancellation of a seated team of four
+- **THEN** it states that the cancellation cannot be undone, that the fee leaves the registration, that four fighters leave the fencer list, that the freed place promotes nobody, and that the entering fencer is told
+
+#### Scenario: One team of two cancelled
+- **WHEN** a registration carrying two teams has one cancelled
+- **THEN** the other team stands, the registration stands, and its total is reduced by the cancelled team's fee alone
+
+#### Scenario: The place is freed but nobody is promoted
+- **WHEN** a seated team is cancelled in a discipline with a waitlist
+- **THEN** the discipline states one free place and no waitlisted team is admitted
+
+#### Scenario: Its fighters leave the start field
+- **WHEN** a team of four is cancelled
+- **THEN** those four members are no longer listed on the fencer list
+
+#### Scenario: The entrant is told
+- **WHEN** the organizer cancels a team on a paid registration
+- **THEN** the entering fencer receives one message naming the team and the discipline and stating the resulting balance
+
+#### Scenario: Refused on a dead registration
+- **WHEN** the organizer attempts to cancel a team on a cancelled registration
+- **THEN** it is refused
+
+### Requirement: A team discipline carries a rating category for its fighters
+
+A team discipline SHALL derive a HEMA Ratings category from its taxonomy code, as an
+individual discipline does, and the tournament's category map SHALL offer and store an
+entry for it. A team discipline classified alike with an individual one SHALL share that
+one entry, since the map is keyed by taxonomy code and not by a discipline's identity
+(`hr-integration`).
+
+The category SHALL rate the discipline's **fighters**, not its teams. A team SHALL carry
+no rating and no rank of its own: what a tournament makes of four fighters' ratings when
+it seeds is the tournament's decision and SHALL NOT be computed here.
+
+A team discipline whose weapon lies outside the HEMA taxonomy SHALL be skipped by the
+snapshot without being reported as a failure, on the same terms as an individual one.
+
+#### Scenario: Team discipline present in the map
+- **WHEN** a tournament offering an individual and a team discipline of different weapons exposes its HR category map
+- **THEN** both are present, each with its own entry
+
+#### Scenario: Alike disciplines share one entry
+- **WHEN** a tournament offers sabre individually and sabre in teams
+- **THEN** the map offers one sabre entry governing both, and a snapshot fetches one sabre rating per fighter
+
+#### Scenario: A team carries no rating of its own
+- **WHEN** a snapshot has been taken for a tournament with a team discipline
+- **THEN** each matched roster member carries a rating and a rank, and no team carries either

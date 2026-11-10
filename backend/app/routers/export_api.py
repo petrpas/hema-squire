@@ -61,9 +61,10 @@ def export_tabs(
         base, rules.active_rules(session, tournament), sheet.rating_lookup(session, tournament)
     )
     rows = list(replayed.values())
+    teams = exporttables.team_entries(session, tournament)
     band: list[ExportBandTabOut] = []
     for tab in exporttables.tabs(tournament):
-        count, queued = exporttables.tab_counts(rows, tab)
+        count, queued = exporttables.tab_counts(rows, tab, teams)
         band.append(ExportBandTabOut(**tab.__dict__, count=count, queued=queued))
     return band
 
@@ -97,7 +98,9 @@ def export_table(
     )
     return ExportTableOut(
         **tab.__dict__,
-        rows=exporttables.table_rows(list(replayed.values()), tab),
+        rows=exporttables.table_rows(
+            list(replayed.values()), tab, exporttables.team_entries(session, tournament)
+        ),
     )
 
 
@@ -168,13 +171,14 @@ def export_roster(
 
     The rows are the ones the tab displays, sent as the copy sends them, so
     the order, the switch and a corrected rating stay facts of the tab alone
-    (design roster-print D1). The server checks only that the discipline is
-    one of this tournament's individual disciplines, which names the title,
+    (design roster-print D1). The server checks only that the discipline is one
+    of this tournament's — a team discipline included, whose tab typesets the
+    teams and their fighters exactly as it shows them — which names the title,
     and states the headers in the console's language or in English."""
     require_console_access(session, tournament, fencer)
     require_published(tournament)
     discipline = next(
-        (d for d in exporttables.individual_disciplines(tournament) if d.slug == body.discipline),
+        (d for d in exporttables.band_disciplines(tournament) if d.slug == body.discipline),
         None,
     )
     if discipline is None:
@@ -262,7 +266,14 @@ def export_sheet(
         if finances
         else None
     )
-    return sheets_export.export_to_sheets(tournament, list(rows.values()), client, locale, revenue)
+    return sheets_export.export_to_sheets(
+        tournament,
+        list(rows.values()),
+        client,
+        locale,
+        revenue,
+        exporttables.team_entries(session, tournament),
+    )
 
 
 @router.post("/restore", status_code=201)

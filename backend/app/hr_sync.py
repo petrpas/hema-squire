@@ -18,7 +18,6 @@ from sqlalchemy.orm import Session, selectinload
 from app.config import settings
 from app.hr_index import HRRating, fold
 from app.models import (
-    DisciplineKind,
     HRFighter,
     HRIndexRefresh,
     HRRatingSnapshot,
@@ -271,15 +270,15 @@ def take_snapshot(
 ) -> dict:
     """Fetch current ratings for the given fencers and store a dated snapshot.
     If every page parses to zero categories, the fetch is rejected as drift."""
-    # team disciplines carry no HR rating category (design team-disciplines:
-    # "Team disciplines carry no HR rating category"). Distinct taxonomy
-    # codes, not one per discipline: tiers of one weapon share a fetch and a
-    # rating (design discipline-identity D5)
-    codes = list(
-        dict.fromkeys(
-            d.taxonomy_code for d in tournament.disciplines if d.kind == DisciplineKind.INDIVIDUAL
-        )
-    )
+    # Every discipline the tournament offers, team disciplines among them: a
+    # team discipline derives a taxonomy code the way an individual one does,
+    # and what its category rates is its fighters (spec team-disciplines, A team
+    # discipline carries a rating category for its fighters). A tournament
+    # offering only team disciplines mapped no code at all while this filtered,
+    # and so fetched a rating for nobody. Distinct taxonomy codes, not one per
+    # discipline: tiers of one weapon share a fetch and a rating (design
+    # discipline-identity D5)
+    codes = list(dict.fromkeys(d.taxonomy_code for d in tournament.disciplines))
     parsed_pages = 0
     pages_with_ratings = 0
     missing: list[int] = []

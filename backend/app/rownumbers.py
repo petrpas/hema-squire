@@ -69,8 +69,10 @@ def restore(session: Session, tournament: Tournament, pairs: list[tuple[str, int
 def arrival_order(session: Session, tournament: Tournament) -> list[str]:
     """The order rows would have been numbered in, for a document that records
     no numbers: registrations by registration moment, then every imported row
-    in the order it arrived, then the hand-entered rows as they were entered."""
-    from app.models import ImportedRow, ManualRow, Registration
+    in the order it arrived, then the hand-entered rows as they were entered,
+    then every roster member — live and removed, since a removed member keeps
+    its number — in the order the members were created."""
+    from app.models import ImportedRow, ManualRow, Registration, Team, TeamMember
 
     row_ids = [
         f"reg:{row_id}"
@@ -96,6 +98,15 @@ def arrival_order(session: Session, tournament: Tournament) -> list[str]:
             select(ManualRow.id)
             .where(ManualRow.tournament_id == tournament.id)
             .order_by(ManualRow.id)
+        )
+    ]
+    row_ids += [
+        f"mem:{row_id}"
+        for row_id in session.scalars(
+            select(TeamMember.id)
+            .join(Team, Team.id == TeamMember.team_id)
+            .where(Team.tournament_id == tournament.id)
+            .order_by(TeamMember.id)
         )
     ]
     return row_ids

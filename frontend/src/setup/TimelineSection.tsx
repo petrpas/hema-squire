@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { ApiError, api, type TournamentDetail } from "../api";
+import { api, type TournamentDetail } from "../api";
 import FieldError, { invalidProps } from "../FieldError";
 import HelpHint from "../HelpHint";
 import { useFieldValidation } from "../useFieldValidation";
 import { apiErrors } from "../validation";
-import { type SaverRegistry, useSectionSaver } from "./shared";
+import { type SaverRegistry, saveFailureMessage, useSectionSaver } from "./shared";
 
 /** The zone a tournament is given when it has not chosen one — the launch
  *  market's, matching the backend default (app.constraints). */
@@ -141,12 +141,7 @@ export function TimelineSection({
       } catch (err) {
         const fieldErrors = apiErrors(err);
         validation.applyApiErrors(fieldErrors);
-        const message =
-          fieldErrors.length > 0
-            ? fieldErrors.map((e) => t(`validation.${e.code}`, e.params)).join(" ")
-            : t("setup.saveBar.genericError", {
-                status: err instanceof ApiError ? err.status : "?",
-              });
+        const message = saveFailureMessage(err, fieldErrors, detail, t);
         setError(message);
         return [{ change: "timeline", section: "timeline", error: message }];
       }

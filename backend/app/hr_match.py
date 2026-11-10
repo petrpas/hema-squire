@@ -222,10 +222,14 @@ def run_matching(
     rows: list[dict],
     progress: Callable[[Session, int], None] | None = None,
 ) -> dict:
-    """Match every imported row without an hr_id and without a cached verdict.
+    """Match every row without an hr_id and without a cached verdict.
 
-    `rows` are replayed sheet rows (imp:* only) — replay first means organizer
-    edits and confirmed resolutions are respected, not re-litigated.
+    `rows` are replayed sheet rows — the imported and hand-entered ones and
+    every member of a team's roster (`sheet.unmatched_rows`). Replay first means
+    organizer edits and confirmed resolutions are respected, not re-litigated.
+    Nothing here asks which population a row came from: a fighter's claim is
+    answered the same way whoever wrote it down (spec etl-console, A member is
+    matched like anybody else).
 
     `progress` commits, and is where the operation's count is raised — the
     decision and the count of it travel together (design D4).

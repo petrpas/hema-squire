@@ -59,6 +59,9 @@ def _arguments(mailer: CollectingMailer, registration: Registration) -> dict:
         "moved": [("LS", 1)],
         "moved_teams": [],
         "team": SimpleNamespace(name="Tým A", discipline=SimpleNamespace(name="LS")),
+        # a cancelled team is named by what it was, read off the row before it
+        # goes (`emails.send_team_cancelled`)
+        "team_name": "Tým A",
         "teams": [],
         "deadline": datetime.date(2099, 12, 1),
         "note": None,

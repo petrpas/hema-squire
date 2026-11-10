@@ -18,7 +18,7 @@ hand would be overwritten by a tick.
 """
 
 import unicodedata
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from typing import Protocol
 
@@ -137,7 +137,13 @@ def _fencer_values(row: Row, locale: str) -> dict[str, str]:
 def _discipline_values(row: Row, slug: str, locale: str) -> dict[str, str]:
     """A seeding row. The rating is read off the replayed row, so an
     organizer's correction is what the sheet carries and a re-export never
-    restores a stale fetched value over a typed one."""
+    restores a stale fetched value over a typed one.
+
+    A team discipline's worksheet carries the same columns, because it is the
+    same table: a team row states its name and its paid cell and leaves the
+    fighter columns blank, and its fighters state everything but paid (spec
+    export-tables, Each tab states its own columns and order).
+    """
     rating = (row.get("ratings") or {}).get(slug)
     rank = (row.get("ranks") or {}).get(slug)
     return {
@@ -145,6 +151,33 @@ def _discipline_values(row: Row, slug: str, locale: str) -> dict[str, str]:
         RATING.id: "" if rating is None else str(rating),
         RANK.id: "" if rank is None else str(rank),
     }
+
+
+def _team_fighter_values(row: Row, slug: str, locale: str) -> dict[str, str]:
+    """A row of a team discipline's worksheet: the team row, or one of its
+    fighters.
+
+    A fighter holds no registration, so its paid cell is blank — a team is paid
+    for once, on the row of the team. A team's name cell carries the fencer who
+    entered it and how many it names against the discipline's bounds, as the tab
+    states them: the three belong to the team, and a fighter's row has nothing
+    to put under columns of their own.
+    """
+    values = _discipline_values(row, slug, locale)
+    team = row.get("_team")
+    if team is None:
+        values[PAID.id] = ""
+        return values
+    entered = catalog.translate("export.team.enteredBy", locale, name=team["entering_fencer"])
+    counted = catalog.translate(
+        "export.team.members",
+        locale,
+        members=team["members"],
+        min=team["team_min"],
+        max=team["team_max"],
+    )
+    values[NAME.id] = f"{values[NAME.id]} · {entered} · {counted}"
+    return values
 
 
 def _item_label(selection: dict) -> str:
@@ -426,6 +459,7 @@ def export_to_sheets(
     client: SheetsClient,
     locale: str,
     revenue: exportrevenue.Revenue | None = None,
+    teams: Sequence[exporttables.TeamEntry] = (),
 ) -> dict:
     """One worksheet per export table, each carrying its table's columns and
     its table's order (spec data-export, Google Sheets export mirrors the
@@ -453,14 +487,15 @@ def export_to_sheets(
                 client.write(REVENUE_SHEET, revenue_grid(revenue, locale))
                 written.append(REVENUE_SHEET)
             continue
-        table = exporttables.table_rows(rows, tab)
+        table = exporttables.table_rows(rows, tab, teams)
         if tab.kind == exporttables.FENCERS:
             name, columns = FENCERS_SHEET, FENCERS_COLUMNS
             roster = _roster(table, lambda row: _fencer_values(row, locale))
             fencers = len(roster)
         elif tab.kind == exporttables.DISCIPLINE:
             name, columns = tab.key, DISCIPLINE_COLUMNS
-            roster = _roster(table, lambda row, slug=tab.key: _discipline_values(row, slug, locale))
+            values = _team_fighter_values if tab.teams else _discipline_values
+            roster = _roster(table, lambda row, slug=tab.key, f=values: f(row, slug, locale))
         else:
             name, columns = CATEGORY_SHEETS[ExtraCategory(tab.key)], CATEGORY_COLUMNS
             roster = _roster(

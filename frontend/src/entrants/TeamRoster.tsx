@@ -27,15 +27,17 @@ export default function TeamRoster({ roster }: { roster: TeamRosterData }) {
             <th>{t("export.column.paid")}</th>
           </tr>
         </thead>
-        <tbody>
-          {roster.seated.map((team) => (
-            <TeamLines key={`seated-${team.number}`} team={team} />
-          ))}
-          {roster.line && <CapacityLine columns={COLUMNS} queued={roster.queued.length > 0} />}
-          {roster.queued.map((team) => (
-            <TeamLines key={`queued-${team.number}`} team={team} />
-          ))}
-        </tbody>
+        {roster.seated.map((team) => (
+          <TeamLines key={`seated-${team.number}`} team={team} />
+        ))}
+        {roster.line && (
+          <tbody>
+            <CapacityLine columns={COLUMNS} queued={roster.queued.length > 0} />
+          </tbody>
+        )}
+        {roster.queued.map((team) => (
+          <TeamLines key={`queued-${team.number}`} team={team} />
+        ))}
       </table>
     </div>
   );
@@ -45,7 +47,9 @@ function TeamLines({ team }: { team: EntrantTeam }) {
   const { t } = useTranslation();
   const faded = team.faded ? "muted" : undefined;
   return (
-    <>
+    // one team is one row group: the hairline falls between teams, not
+    // between a team and its own members
+    <tbody className="entrant-team-block">
       <tr className={faded}>
         <td className="col-index">{team.number}</td>
         <td>
@@ -76,6 +80,6 @@ function TeamLines({ team }: { team: EntrantTeam }) {
           </tr>
         ))
       )}
-    </>
+    </tbody>
   );
 }

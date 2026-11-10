@@ -9,6 +9,7 @@ import {
   type Amendment,
   ApiError,
   api,
+  type DisciplineKind,
   type NetChange,
   type Sheet,
   type SheetRow,
@@ -61,20 +62,22 @@ import WaivedBalance from "./WaivedBalance";
 
 const STAGES = ["pre", "in", "post"] as const;
 // Setup is step 0, ahead of the fencer-list phases (spec: etl-console).
-// Queue, the seating view, stands before Export: it changes who holds a seat,
-// and Export is what leaves the tournament once nothing further changes it
-// (design queue-rosters). Teams is a read-only view of team disciplines
-// (design team-disciplines 7.2), tacked on at the end.
+// Teams stands immediately after Fencers because the two are read together:
+// Fencers lists who will fight, Teams lists the entries those fighters fight
+// under, and a reader moving between them is answering one question (spec
+// etl-console, Phase-tabbed fencer table). Queue, the seating view, stands
+// before Export: it changes who holds a seat, and Export is what leaves the
+// tournament once nothing further changes it (design queue-rosters).
 export const PHASES = [
   "setup",
   "import",
   "fencers",
+  "teams",
   "matching",
   "dedup",
   "payments",
   "queue",
   "export",
-  "teams",
 ] as const;
 export type Phase = (typeof PHASES)[number];
 
@@ -127,6 +130,45 @@ export function paymentsBonedOut(mode: TournamentFlags): boolean {
 // Setup, Teams and Queue replace the fencer table entirely, so they own no
 // columns.
 const BASE_COLUMNS = ["name", "nationality", "club"];
+
+// The same identity group with the team a row entered beside the club it
+// registered under (spec etl-console, The teams a row entered). A second
+// declared set rather than a condition spliced into BASE_COLUMNS, on the same
+// grounds as BONED_PAYMENTS_COLUMNS below: a column is a property of its
+// phase, and none has to be read as sometimes present.
+const TEAM_BASE_COLUMNS = ["name", "nationality", "club", "team"];
+
+/** Which identity group a phase draws. The teams a row entered are stated on
+ *  the fencer list alone, and only where the tournament has a team discipline
+ *  to enter one into: on a tournament with none the column could never say
+ *  anything, and the table is not widened for it.
+ *
+ *  Keyed on a discipline existing rather than on a team having been entered: an
+ *  empty column on a tournament that has the discipline is information — nobody
+ *  has entered a team yet — while a column arriving with the first team would
+ *  make the table's shape a function of its contents. */
+/** Whether a team on the fencer list is named with the discipline it was
+ *  entered into. Only a tournament with more than one team discipline needs it:
+ *  there a bare name does not say which team this is, while on a tournament
+ *  with one discipline every team is in it and the slug repeats on every row
+ *  without telling the reader anything (owner decision). */
+export function teamsNeedTheirDiscipline(
+  disciplines: readonly { kind: DisciplineKind }[],
+): boolean {
+  return disciplines.filter((discipline) => discipline.kind === "team").length > 1;
+}
+
+export function baseColumns(
+  phase: Phase,
+  mode: Pick<TournamentFlags, "feature_teams">,
+  disciplines: readonly { kind: DisciplineKind }[],
+): string[] {
+  const statesTeams =
+    phase === "fencers" &&
+    mode.feature_teams &&
+    disciplines.some((discipline) => discipline.kind === "team");
+  return statesTeams ? TEAM_BASE_COLUMNS : BASE_COLUMNS;
+}
 
 // Columns whose cell is a marker rather than a value: as wide as the marker,
 // and empty on most rows.
@@ -220,8 +262,12 @@ export function parseDisciplines(raw: string): string[] {
  *  cell is read-only there too: making only those editable would put the
  *  affordance on exactly the rows that are hardest to identify, and the rule it
  *  created would stop being displayed the moment the row was matched. */
-export function editableHere(column: string, phase: Phase): boolean {
+export function editableHere(column: string, phase: Phase, row?: SheetRow): boolean {
   if (FENCER_LIST_COLUMNS.has(column)) {
+    // a member row bought nothing: it holds no registration, so there are no
+    // disciplines and no borrowed items to correct on it. Its identity cells
+    // stay open — a misspelled fighter is the organizer's to put right.
+    if (row !== undefined && isMemberRow(row)) return false;
     return phase === "fencers";
   }
   // Matching decides one thing: which profile the row is. Its table shows the
@@ -281,7 +327,8 @@ export function phaseSummary(
       // row owes nothing whatever its counters say
       return {
         key: "console.summary.unpaid",
-        count: live.filter((row) => !row.paid && !row.settled_by_hand).length,
+        count: live.filter((row) => carriesPaymentState(row) && !row.paid && !row.settled_by_hand)
+          .length,
       };
     default:
       return null;
@@ -350,7 +397,12 @@ function listsRemovedRow(row: SheetRow, phase: Phase): boolean {
  *  batch / Reversible row deletion). */
 export function rowsForPhase(rows: SheetRow[], phase: Phase): SheetRow[] {
   if (phase !== "import") {
-    return rows.filter((row) => !row._deleted || listsRemovedRow(row, phase));
+    // A registration whose whole content is team entries holds no fighter and
+    // is not on the start field — but its agenda is money and a seat, so
+    // Payments lists it as it lists every contract (spec etl-console, A fencer
+    // who entered a team but fights nothing).
+    const listed = phase === "payments" ? rows : rows.filter(fights);
+    return listed.filter((row) => !row._deleted || listsRemovedRow(row, phase));
   }
   // in arrival order, not that of the fencer list: the fencer list is ordered
   // by registration moment, which scatters an upload's rows and sends the ones
@@ -397,7 +449,37 @@ export function phaseRemovesRows(phase: Phase): boolean {
  *  change hands, and an absorbed one is not a seat of its own (spec
  *  `etl-console`, Substitution is offered on the fencer list). */
 export function canSubstitute(row: SheetRow, phase: Phase): boolean {
+  if (isMemberRow(row)) return false;
   return phase === "fencers" && !row._deleted && row._merged_into === undefined;
+}
+
+/** Whether this row is one of the tournament's fighters.
+ *
+ *  Everything is, except a registration that bought nothing but team entries:
+ *  entering a team is not fighting, and the roster's prefill marks no role
+ *  (spec team-disciplines). Absent on a row projected before the field existed,
+ *  which is read as a fighter — the fencer list is what it has always been
+ *  unless something says otherwise. */
+export function fights(row: SheetRow): boolean {
+  return row.fights !== false;
+}
+
+/** Whether this row is a member of a team's roster: a fighter who holds no
+ *  registration of their own.
+ *
+ *  Read off the row id, as the Import view reads `imp:`. What such a row offers
+ *  follows from what it is rather than from which tab it is being read on: it
+ *  has no registration to correct, cancel or hand over, and it bought nothing
+ *  (spec etl-console, The fencer list is the tournament's start field). */
+export function isMemberRow(row: SheetRow): boolean {
+  return row.id.startsWith("mem:");
+}
+
+/** Whether this row can carry a payment state at all. A member row cannot: it
+ *  holds no registration, so a count that included it would read as a
+ *  permanent shortfall no payment could ever close (design D6). */
+export function carriesPaymentState(row: SheetRow): boolean {
+  return !isMemberRow(row);
 }
 
 /** Whether a row stands for a registration that still holds a place: one
@@ -411,6 +493,11 @@ export function holdsLiveRegistration(row: SheetRow): boolean {
 
 export function rowAction(row: SheetRow, phase: Phase): "delete" | "restore" | "cancel" | null {
   if (!phaseRemovesRows(phase)) return null;
+  // A member row offers nothing: there is no registration behind it to cancel,
+  // and it is not a row somebody typed by mistake — it is a person on a
+  // roster, and the way to take them off it is the roster editor, which has
+  // one home (design D5).
+  if (isMemberRow(row)) return null;
   if (row._merged_into !== undefined) return null;
   if (row._deleted) return "restore";
   // a person holding a seat is cancelled, never tidied away: a deletion only
@@ -437,6 +524,10 @@ export function absorbedInto(row: SheetRow, rows: SheetRow[]): number | null {
 
 export function StateBadge({ id, state }: { id: string; state: string }) {
   const { t } = useTranslation();
+  // A member row has no registration state to print: it is a fighter, and the
+  // column states what a contract is doing (design D6). "member" names the
+  // population in the projection and is not a word in anybody's language.
+  if (state === "member") return <>—</>;
   if (state === "paid") return <PaidStamp id={id} label={t("registration.state.paid")} />;
   // the stored value is an enum, not a word anybody reads: every other state
   // was printing its English identifier into a Czech table
@@ -464,6 +555,7 @@ export function CellDisplay({
   timezone,
   currency = null,
   hrIdentity = false,
+  namesTeamDiscipline = false,
 }: {
   row: SheetRow;
   column: string;
@@ -479,6 +571,10 @@ export function CellDisplay({
    *  itself: the cell is a function of what it draws, not of where the console
    *  is. */
   hrIdentity?: boolean;
+  /** Whether a team is named with the discipline it was entered into. Only a
+   *  tournament with more than one team discipline needs it; see the team case
+   *  below. */
+  namesTeamDiscipline?: boolean;
 }) {
   if (IDENTITY_COLUMNS.includes(column)) {
     const { text, declared } = identityValue(row, column, hrIdentity);
@@ -575,6 +671,24 @@ export function CellDisplay({
       return <>{row.afterparty ? "✓" : "—"}</>;
     case "registered_at":
       return <>{registeredMoment(row.registered_at, timezone)}</>;
+    case "team":
+      // The teams this row entered, one per line, so a cell holding two is read
+      // rather than parsed (spec etl-console, The teams a row entered). The
+      // discipline is named only where the tournament has more than one team
+      // discipline: there two bare names would not say which is which, while on
+      // a tournament with one every team is in it and the slug is noise on
+      // every row. Read-only — a team's name is corrected in the entrant's own
+      // roster editor, and `editableHere` never opens this column.
+      return row.teams.length === 0 ? (
+        <>—</>
+      ) : (
+        row.teams.map((team, index) => (
+          // biome-ignore lint/suspicious/noArrayIndexKey: two teams of one row may share a name and a discipline (design team-disciplines D9), so position is the only identity the payload gives
+          <div key={index}>
+            {namesTeamDiscipline ? `${team.name} (${team.discipline})` : team.name}
+          </div>
+        ))
+      );
     case "expires_at":
     case "paid_at":
       // both read where the tournament is, like the registration moment above:
@@ -760,7 +874,12 @@ export default function Console({
   // too — one predicate, so the panel and the header cannot disagree
   const pendingVerdicts = rows.filter((row) => !row._deleted && awaitsVerdict(row)).length;
   const activeRows = rows.filter((row) => !row._deleted);
-  const paidCount = activeRows.filter((row) => row.paid).length;
+  // The document footer counts contracts, which is what its words say: a
+  // member row carries no payment state, and counting it would read as a
+  // permanent shortfall no payment could ever close (design D6). How long the
+  // list is, the table itself states.
+  const contractRows = activeRows.filter(carriesPaymentState);
+  const paidCount = contractRows.filter((row) => row.paid).length;
   // from the refreshed detail where there is one, so applying a mode in Setup
   // adds and removes phases at once rather than on the next load
   const phases = offeredPhases(detail ?? tournament);
@@ -894,7 +1013,10 @@ export default function Console({
     // open and states the reason. Swallowing it here left a row that did not
     // change and nothing at all saying why
   }
-  const columns = [...BASE_COLUMNS, ...(boned ? BONED_PAYMENTS_COLUMNS : PHASE_COLUMNS[phase])];
+  const columns = [
+    ...baseColumns(phase, detail ?? tournament, detail?.disciplines ?? []),
+    ...(boned ? BONED_PAYMENTS_COLUMNS : PHASE_COLUMNS[phase]),
+  ];
   const phaseEdits = editsForPhase(sheet?.edits ?? [], phase);
 
   /* The parameter rail: the phase's own operation panel and its
@@ -1156,7 +1278,8 @@ export default function Console({
                     rows={rows}
                     visibleRows={visibleRows}
                     columns={columns}
-                    activeRows={activeRows}
+                    namesTeamDiscipline={teamsNeedTheirDiscipline(detail?.disciplines ?? [])}
+                    activeRows={contractRows}
                     paidCount={paidCount}
                     revision={sheet?.edits.length ?? 0}
                     timezone={detail?.timezone ?? null}

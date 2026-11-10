@@ -197,7 +197,11 @@
     },
     "pdf": "PDF",
     "png": "PNG",
-    "printFailed": "Soupisku se nepodařilo vysázet."
+    "printFailed": "Soupisku se nepodařilo vysázet.",
+    "team": {
+      "enteredBy": "přihlásil {{name}}",
+      "members": "{{count}}/{{min}}–{{max}} na soupisce"
+    }
   },
   "dedup": {
     "title": "Deduplikace",
@@ -429,9 +433,11 @@
     "substituted": "Náhrada"
   },
   "column": {
+    "position": "Poř.",
     "name": "Jméno",
     "nationality": "Nár.",
     "club": "Klub",
+    "team": "Tým",
     "hr_id": "HRID",
     "hr_name": "HR_Jméno",
     "hr_nationality": "HR_Nár.",
@@ -541,6 +547,10 @@
       "nothingToSave": "Není co ukládat",
       "partial": "Uloženo {{written}} z {{total}} změn, {{pending}} zbývá neuloženo",
       "genericError": "Změnu se nepodařilo uložit (chyba {{status}}).",
+      "incompleteError": "Zveřejněný turnaj odmítá jakékoli uložení, dokud něco povinného chybí: {{items}}. Doplň to v záložce {{tabs}} a ulož znovu.",
+      "incompleteErrorNoTab": "Zveřejněný turnaj odmítá jakékoli uložení, dokud něco povinného chybí: {{items}}.",
+      "incompleteError_event": "Zveřejněná akce odmítá jakékoli uložení, dokud něco povinného chybí: {{items}}. Doplň to v záložce {{tabs}} a ulož znovu.",
+      "incompleteErrorNoTab_event": "Zveřejněná akce odmítá jakékoli uložení, dokud něco povinného chybí: {{items}}.",
       "fieldsNeedAttention_one": "{{count}} pole potřebuje opravu",
       "fieldsNeedAttention_few": "{{count}} pole potřebují opravu",
       "fieldsNeedAttention_other": "{{count}} polí potřebuje opravu"
@@ -570,6 +580,7 @@
       "city": "Chybí město",
       "organizers": "Chybí alespoň jeden pořadatel",
       "discipline_prices": "Chybí cena u některé disciplíny",
+      "team_bounds": "Některá týmová disciplína nemá platné hranice velikosti týmu",
       "extra_item_prices": "Chybí eurová cena u některé doplňkové služby",
       "discount_prices": "Chybí eurová částka u některé pevné slevy",
       "legacy_fixed_fees_block_eur": "Turnaj používá staré pevné poplatky za zapůjčení zbraně nebo afterparty, které nemají eurový protějšek — přejdi na položkové doplňkové služby, aby šlo zapnout eura",
@@ -1336,7 +1347,63 @@
     "waitlistPosition": "v pořadí {{position}}",
     "belowMinimum": "pod minimem",
     "enteredBy": "přihlásil/a {{name}}",
-    "admittedOnQueue": "přijetí z čekací listiny je ve fázi Fronta"
+    "admittedOnQueue": "přijetí z čekací listiny je ve fázi Fronta",
+    "editRoster": "Upravit soupisku",
+    "editor": {
+      "movesNoMoney": "Úprava soupisky nehýbe s penězi a přihlašujícímu nic neposílá.",
+      "removedTitle": "Mimo soupisku",
+      "removedBy": "odebral/a {{name}}, {{at}}",
+      "restore": "Vrátit",
+      "save": "Uložit soupisku",
+      "saveFailed": "Soupisku nelze uložit."
+    },
+    "log": {
+      "show": "Historie",
+      "hide": "Skrýt historii",
+      "empty": "Žádná zaznamenaná změna. Historie začíná tam, kde ji Squire začal vést.",
+      "added": "{{member}} přidán/a",
+      "removed": "{{member}} odebrán/a",
+      "restored": "{{member}} vrácen/a",
+      "edited": "{{member}} — {{field}}: {{before}} → {{after}}",
+      "blank": "—",
+      "by": "{{actor}}, {{at}}",
+      "byOrganizer": "organizátor",
+      "afterDeadline": "po uzávěrce soupisek",
+      "field": {
+        "name": "jméno",
+        "hr_id": "identifikátor HR",
+        "club": "klub",
+        "nationality": "národnost"
+      }
+    },
+    "column": {
+      "team": "Tým",
+      "discipline": "Disciplína",
+      "enteringFencer": "Přihlásil",
+      "members": "Soupiska",
+      "waitlist": "Fronta",
+      "paid": "Zaplaceno"
+    },
+    "roster": {
+      "show": "Soupiska",
+      "hide": "Skrýt soupisku"
+    },
+    "rosterEmpty": "Zatím není uveden nikdo.",
+    "cancel": {
+      "action": "Zrušit tento tým",
+      "title": "Zrušení jednoho týmu",
+      "irreversible": "Zrušení týmu nelze vzít zpět.",
+      "meaning": "Tým se zruší a jeho startovné odejde z částky za registraci. Ostatní týmy a přihlášky na téže registraci zůstávají.",
+      "roster": "Soupiska odejde s týmem — {{count}} uvedených šermířů tím zmizí ze seznamu šermířů.",
+      "place": "Místo, které tým držel, se uvolní. Z čekací listiny nikdo nepostoupí sám — tým z ní přijmeš ve fázi Fronta.",
+      "mail": "Šermíř, který tým přihlásil, dostane e-mail: název týmu, disciplínu a kolik registrace po změně dluží nebo má přeplaceno.",
+      "confirm": "Zrušit tým",
+      "error": {
+        "failed": "Tým se nepodařilo zrušit.",
+        "registration_not_live": "Registrace, na které byl tým přihlášen, je zrušená nebo propadlá.",
+        "team_disciplines_off": "Týmové disciplíny jsou u tohoto turnaje vypnuté."
+      }
+    }
   },
   "cancel": {
     "button": "Zrušit registraci",

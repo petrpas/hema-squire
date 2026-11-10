@@ -193,7 +193,11 @@
     },
     "pdf": "PDF",
     "png": "PNG",
-    "printFailed": "The roster could not be typeset."
+    "printFailed": "The roster could not be typeset.",
+    "team": {
+      "enteredBy": "entered by {{name}}",
+      "members": "{{count}}/{{min}}–{{max}} members"
+    }
   },
   "dedup": {
     "title": "Deduplication",
@@ -415,9 +419,11 @@
     "substituted": "Substitution"
   },
   "column": {
+    "position": "Pos.",
     "name": "Name",
     "nationality": "Nat.",
     "club": "Club",
+    "team": "Team",
     "hr_id": "HRID",
     "hr_name": "HR_Name",
     "hr_nationality": "HR_Nat",
@@ -527,6 +533,10 @@
       "nothingToSave": "Nothing to save",
       "partial": "{{written}} of {{total}} changes written, {{pending}} still unsaved",
       "genericError": "The change could not be saved (error {{status}}).",
+      "incompleteError": "A published tournament refuses every save while something mandatory is missing: {{items}}. Fix it on the {{tabs}} tab, then save again.",
+      "incompleteErrorNoTab": "A published tournament refuses every save while something mandatory is missing: {{items}}.",
+      "incompleteError_event": "A published event refuses every save while something mandatory is missing: {{items}}. Fix it on the {{tabs}} tab, then save again.",
+      "incompleteErrorNoTab_event": "A published event refuses every save while something mandatory is missing: {{items}}.",
       "fieldsNeedAttention_one": "{{count}} field needs attention",
       "fieldsNeedAttention_other": "{{count}} fields need attention"
     },
@@ -555,6 +565,7 @@
       "city": "City is missing",
       "organizers": "At least one titular organizer is missing",
       "discipline_prices": "Some discipline has no price",
+      "team_bounds": "Some team discipline has no valid roster bounds",
       "extra_item_prices": "Some extra service has no EUR price",
       "discount_prices": "Some fixed discount has no EUR amount",
       "legacy_fixed_fees_block_eur": "This tournament uses the legacy fixed weapon-rental/afterparty fees, which have no EUR counterpart — switch to itemized extra services to enable EUR",
@@ -1312,7 +1323,63 @@
     "waitlistPosition": "position {{position}}",
     "belowMinimum": "below minimum",
     "enteredBy": "entered by {{name}}",
-    "admittedOnQueue": "admission from the waitlist is on the Queue phase"
+    "admittedOnQueue": "admission from the waitlist is on the Queue phase",
+    "editRoster": "Edit roster",
+    "editor": {
+      "movesNoMoney": "A roster edit moves no money and sends nothing to the entering fencer.",
+      "removedTitle": "Off the roster",
+      "removedBy": "removed by {{name}}, {{at}}",
+      "restore": "Restore",
+      "save": "Save roster",
+      "saveFailed": "Could not save the roster."
+    },
+    "log": {
+      "show": "History",
+      "hide": "Hide history",
+      "empty": "No change recorded. The history begins where Squire started keeping it.",
+      "added": "{{member}} added",
+      "removed": "{{member}} removed",
+      "restored": "{{member}} restored",
+      "edited": "{{member}} — {{field}}: {{before}} → {{after}}",
+      "blank": "—",
+      "by": "{{actor}}, {{at}}",
+      "byOrganizer": "by the organizer",
+      "afterDeadline": "after the composition deadline",
+      "field": {
+        "name": "name",
+        "hr_id": "HR identifier",
+        "club": "club",
+        "nationality": "nationality"
+      }
+    },
+    "column": {
+      "team": "Team",
+      "discipline": "Discipline",
+      "enteringFencer": "Entered by",
+      "members": "Members",
+      "waitlist": "Waitlist",
+      "paid": "Paid"
+    },
+    "roster": {
+      "show": "Roster",
+      "hide": "Hide roster"
+    },
+    "rosterEmpty": "No member named yet.",
+    "cancel": {
+      "action": "Cancel this team",
+      "title": "Cancel one team",
+      "irreversible": "Cancelling a team cannot be undone.",
+      "meaning": "The team is cancelled and its fee leaves the amount the registration pays. Every other team and entry on the same registration stands.",
+      "roster": "The roster goes with the team — its {{count}} named fighters leave the fencer list.",
+      "place": "The place the team held is freed. Nobody moves up from the waitlist on their own — you admit a team from it on the Queue phase.",
+      "mail": "The fencer who entered the team gets an e-mail: the team, the discipline, and what the registration now owes or is owed.",
+      "confirm": "Cancel the team",
+      "error": {
+        "failed": "Could not cancel the team.",
+        "registration_not_live": "The registration this team was entered on is cancelled or expired.",
+        "team_disciplines_off": "Team disciplines are turned off for this tournament."
+      }
+    }
   },
   "cancel": {
     "button": "Cancel registration",

@@ -5,13 +5,22 @@ import { describe, expect, it } from "vitest";
 import type { SheetRow } from "../api";
 import ExportPanel, { offersEnglishTick } from "../ExportPanel";
 import i18n from "../i18n";
-import { FENCERS_COLUMNS, ITEM_COLUMNS, ROSTER_COLUMNS, selectionsOf, toTsv } from "./columns";
+import {
+  FENCERS_COLUMNS,
+  ITEM_COLUMNS,
+  ROSTER_COLUMNS,
+  selectionsOf,
+  TEAM_COLUMNS,
+  toTsv,
+} from "./columns";
 import ExportTables from "./ExportTables";
 import FencersTable from "./FencersTable";
 import ItemsTable from "./ItemsTable";
-import { activeOnly, rosterOrder, seedingOrder } from "./ordering";
+import { activeOnly, activeTeamsOnly, rosterOrder, seedingOrder, teamOrder } from "./ordering";
 import RosterTable from "./RosterTable";
+import { rosterPrint } from "./roster";
 import TableOperations from "./TableOperations";
+import TeamRosterTable from "./TeamRosterTable";
 import { tabCount, tabLabel } from "./tabs";
 
 // The Export phase's tables: what each lists, the order it lists it in, where
@@ -340,6 +349,7 @@ describe("the rail card of the open tab", () => {
       label: "rental",
       capacity: null,
       line: null,
+      teams: false,
     };
     expect(tabLabel(t, tab)).toBe(t("export.category.rental"));
   });
@@ -451,5 +461,128 @@ describe("the position column", () => {
     const lines = toTsv(FENCERS_COLUMNS(en), rows, (id) => en(`export.column.${id}`)).split("\n");
     expect(lines[0]?.split("\t")[0]).toBe("#");
     expect(lines[1]?.split("\t").slice(0, 2)).toEqual(["1", "Paid Two"]);
+  });
+});
+
+describe("a team discipline's tab", () => {
+  // The thing being seeded is a team, so the tab is a list of teams with their
+  // fighters beneath each, numbered as teams (spec export-tables, A team tab
+  // reads as teams with their fighters).
+  const teamRow = (
+    id: string,
+    name: string,
+    paid: boolean,
+    waitlist: number | null = null,
+  ): SheetRow =>
+    row(id, name, {
+      paid,
+      disciplines: [],
+      // a team carries no nationality, club, identifier, rating or rank, and
+      // nothing computes one from its fighters' (design D10)
+      nationality: null,
+      _team: {
+        entering_fencer: "F1",
+        members: 2,
+        team_min: 3,
+        team_max: 4,
+        waitlist_position: waitlist,
+      },
+    } as Partial<SheetRow>);
+  const fighter = (id: string, name: string, rating: number | null): SheetRow =>
+    row(id, name, {
+      disciplines: [],
+      hr_id: 10234,
+      ratings: rating === null ? {} : { LS: rating },
+      ranks: rating === null ? {} : { LS: 7 },
+    } as Partial<SheetRow>);
+
+  const rows = [
+    teamRow("team:LS:Wolves", "Wolves", true),
+    fighter("mem:1", "Fighter One", 1400),
+    fighter("mem:2", "Fighter Two", null),
+    teamRow("team:LS:Bears", "Bears", false, 1),
+    fighter("mem:3", "Fighter Three", 1100),
+  ];
+
+  it("numbers the teams and not the fighters, and draws the line above the waitlist", () => {
+    const { numbers, line } = teamOrder(rows, "capacity");
+    expect([...numbers.entries()]).toEqual([
+      ["team:LS:Wolves", 1],
+      ["team:LS:Bears", 2],
+    ]);
+    // the line falls above the first waitlisted team, as the public team
+    // roster draws it
+    expect(line).toEqual({ after: 3, kind: "capacity" });
+  });
+
+  it("states each team with its entering fencer and its count, and its fighters' ratings", () => {
+    const { numbers } = teamOrder(rows, "capacity");
+    const columns = TEAM_COLUMNS(t, "LS", numbers);
+    const header = (id: string) => t(`export.column.${id}`);
+    const tsv = toTsv(columns, rows, header).split("\n");
+    expect(tsv[1]).toBe(
+      [
+        "1",
+        `Wolves · ${t("export.team.enteredBy", { name: "F1" })} · ${t("export.team.members", { count: 2, min: 3, max: 4 })}`,
+        "",
+        "",
+        "",
+        "",
+        "",
+        t("export.yes"),
+      ].join("\t"),
+    );
+    // a fighter states its own identity and rating, and no paid of its own: it
+    // holds no registration, and a team is paid for once
+    expect(tsv[2]).toBe(["", "Fighter One", "CZ", "", "10234", "1400", "7", ""].join("\t"));
+    // and a fighter with no rating states the absence rather than a figure
+    expect(tsv[3]).toBe(["", "Fighter Two", "CZ", "", "10234", "", "", ""].join("\t"));
+  });
+
+  it("narrows by the team under the active-only switch, fighters following it", () => {
+    // a fighter is never paid — filtering on the rows' own paid cell would
+    // leave the tab empty
+    expect(activeTeamsOnly(rows, true).map((r) => r.name)).toEqual([
+      "Wolves",
+      "Fighter One",
+      "Fighter Two",
+    ]);
+    expect(activeTeamsOnly(rows, false)).toHaveLength(5);
+  });
+
+  it("renders the teams in bold above their fighters and offers no rating on a team", () => {
+    const html = renderToStaticMarkup(
+      <TeamRosterTable
+        rows={rows}
+        slug="LS"
+        lineKind="capacity"
+        edited={() => false}
+        onRate={() => {}}
+      />,
+    );
+    expect(html).toContain("<strong>Wolves");
+    expect(html).toContain("Fighter One");
+    expect(html).toContain(t("export.line.capacity"));
+  });
+
+  it("prints what it shows: the teams numbered, the fighters beneath", () => {
+    const print = rosterPrint(
+      t,
+      rows,
+      {
+        kind: "discipline",
+        key: "LS",
+        label: "LS",
+        capacity: 1,
+        line: "capacity",
+        teams: true,
+      },
+      false,
+      false,
+    );
+    expect(print.rows[0]?.[0]).toBe("1");
+    expect(print.rows[1]?.[0]).toBe("");
+    expect(print.rows[1]?.[1]).toBe("Fighter One");
+    expect(print.line_after).toBe(3);
   });
 });

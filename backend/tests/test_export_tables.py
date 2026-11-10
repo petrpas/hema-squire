@@ -244,7 +244,7 @@ def test_the_band_is_derived_from_the_tournament(client, auth_headers):
     ]
 
 
-def test_a_team_discipline_has_no_tab(client, auth_headers):
+def test_a_team_discipline_has_a_tab_of_its_own(client, auth_headers):
     organizer = organizer_with_tournament(client, auth_headers)
     client.post(
         "/api/tournaments/cup/disciplines",
@@ -260,8 +260,14 @@ def test_a_team_discipline_has_no_tab(client, auth_headers):
         headers=organizer,
     )
 
-    keys = [tab["key"] for tab in tabs(client, organizer) if tab["kind"] == "discipline"]
-    assert keys == ["LS", "SA"]
+    # one tab per discipline, individual and team alike, in the tournament's
+    # own discipline order: rating and rank are stated on a discipline tab and
+    # nowhere else, so a team discipline's fighters would otherwise have their
+    # ratings fetched with nothing to show them (spec export-tables)
+    listed = [
+        (tab["key"], tab["teams"]) for tab in tabs(client, organizer) if tab["kind"] == "discipline"
+    ]
+    assert listed == [("LS", False), ("SA", False), ("LS-T", True)]
 
 
 def test_a_discipline_tab_states_its_capacity_and_its_line(client, auth_headers):
