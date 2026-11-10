@@ -186,6 +186,45 @@ class AccountOut(BaseModel):
     # whether the account owns a tournament and has not accepted the current
     # organizer data terms; the console asks before it opens (spec `privacy`)
     organizer_terms_due: bool = False
+    # the organizer data terms this account last accepted, and when; shown on
+    # the Profile page's Privacy tab
+    organizer_terms_version: str | None = None
+    organizer_terms_accepted_at: UtcInstant | None = None
+    # when a pending deletion takes effect; null without one (spec
+    # `account-deletion`)
+    deletion_effective_at: UtcInstant | None = None
+
+
+class DeletionIn(BaseModel):
+    password: str
+
+
+class DeletionBlockerOut(BaseModel):
+    kind: Literal["owner", "last_admin", "deployment_owner"]
+    # the tournaments to hand over first, for an owner
+    tournaments: list[str] = []
+
+
+class DeletionCreditOut(BaseModel):
+    amount_cents: int
+    currency: str
+
+
+class DeletionCancelledOut(BaseModel):
+    tournament: str
+    tournament_date: datetime.date
+    variable_symbol: int | None
+    # what was credited on it, per currency, in cents
+    credited: list[DeletionCreditOut]
+
+
+class DeletionImpactOut(BaseModel):
+    """What deleting the account would do, stated before it is asked for
+    (spec `account-deletion`, An account holder can request deletion)."""
+
+    cancelled: list[DeletionCancelledOut]
+    held_rosters: int
+    blockers: list[DeletionBlockerOut]
 
 
 class ExportAuditOut(BaseModel):
@@ -1126,6 +1165,21 @@ class AdminAccountOut(BaseModel):
     is_deployment_owner: bool = False
     has_pending_plea: bool = False
     hr_shared: bool = False
+    # a former account: no address, no login (spec `account-deletion`,
+    # Deleted records are distinguished from accounts)
+    deleted: bool = False
+
+
+class AdminDeferredDeletionOut(BaseModel):
+    """A deletion whose seven days are up but which something blocks; it waits
+    among the Admin's tasks until the blocker is gone (design account-deletion
+    D3)."""
+
+    fencer_id: int
+    display_name: str
+    email: EmailStr | None
+    requested_at: UtcInstant
+    blockers: list[DeletionBlockerOut]
 
 
 class AdminTournamentOwnerOut(BaseModel):

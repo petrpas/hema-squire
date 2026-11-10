@@ -4,7 +4,7 @@
 - [ ] 1.2 Verify retention and terms: Anthropic in the organization's settings for the model in use, Scaleway TEM logs, Hetzner, Backblaze B2 lifecycle, Google; collect each processor's data processing agreement and transfer basis
 - [ ] 1.3 Owner chooses the request mailbox and what address is published; make the mailbox receive mail and test delivery from outside
 - [x] 1.5 Access log: uvicorn wrote client IP and path to an unrotated Docker log; turned off with `--no-access-log` (owner decision 2026-11-03), and the page states the IP is held in memory only
-- [ ] 1.4 Confirm the state of the leaked dump recorded in `security_tbd.md`; the page must not contradict it
+- [x] 1.4 Confirm the state of the leaked dump recorded in `security_tbd.md`; the page must not contradict it. Owner, 2026-11-03: the dump came from the local database and held only test accounts and test passwords; no third person's data, so nothing to rotate, record or notify
 
 ## 2. Records
 

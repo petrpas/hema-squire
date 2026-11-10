@@ -12,7 +12,7 @@ from datetime import UTC, datetime, timedelta
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app import bank, emails, matching, pricing
+from app import account_deletion, bank, emails, matching, pricing
 from app.availability import queue_position, team_waitlist_position
 from app.config import settings
 from app.db import SessionLocal
@@ -665,6 +665,10 @@ def run_tick() -> None:
             except Exception:
                 session.rollback()
                 logger.exception("scheduler tick failed for %s", tournament.slug)
+        # requested account deletions whose seven days are up, outside the
+        # tournament loop and each in its own transaction (design
+        # account-deletion D3)
+        account_deletion.run_pass(session, mailer)
         deliver_pending(session, transport)
 
 

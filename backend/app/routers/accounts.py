@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
-from app import emails, privacy
+from app import account_deletion, emails, privacy
 from app.auth import current_fencer, is_deployment_owner, set_password, verify_password
 from app.db import get_session
 from app.hr_index import HRIndex, HRProfile, get_hr_index
@@ -22,6 +22,11 @@ from app.schemas import (
     AccountExportOut,
     AccountOut,
     AccountUpdate,
+    DeletionBlockerOut,
+    DeletionCancelledOut,
+    DeletionCreditOut,
+    DeletionImpactOut,
+    DeletionIn,
     HRBindIn,
     PasswordChangeIn,
     PleaIn,
@@ -40,7 +45,13 @@ HRIndexDep = Annotated[HRIndex, Depends(get_hr_index)]
 def hr_search(q: str, session: SessionDep, hr: HRIndexDep, nationality: str | None = None):
     results = hr.search(q, nationality)
     claimed_ids = set(
-        session.scalars(select(Fencer.hr_id).where(Fencer.hr_id.in_([p.hr_id for p in results])))
+        session.scalars(
+            select(Fencer.hr_id).where(
+                Fencer.hr_id.in_([p.hr_id for p in results]),
+                # a deleted record is nobody's account, so it claims nothing
+                Fencer.deleted_at.is_(None),
+            )
+        )
     )
     for profile in results:
         profile.claimed = profile.hr_id in claimed_ids
@@ -57,6 +68,7 @@ def account_out(session: Session, fencer: Fencer) -> AccountOut:
     out.is_deployment_owner = is_deployment_owner(fencer)
     out.organized_count = _organized_count(session, fencer)
     out.organizer_terms_due = privacy.organizer_terms_due(session, fencer)
+    out.deletion_effective_at = account_deletion.effective_on(fencer)
     return out
 
 
@@ -91,6 +103,57 @@ def accept_organizer_terms(session: SessionDep, fencer: FencerDep):
     """Record that the account accepts the current organizer data terms (spec
     `privacy`). Accepting again restamps the moment; nothing else changes."""
     privacy.accept_organizer_terms(fencer)
+    session.commit()
+    session.refresh(fencer)
+    return account_out(session, fencer)
+
+
+@router.get("/api/account/deletion", response_model=DeletionImpactOut)
+def deletion_impact(session: SessionDep, fencer: FencerDep):
+    """What deleting the account would do, and what stands in its way."""
+    found = account_deletion.impact(session, fencer)
+    return DeletionImpactOut(
+        cancelled=[
+            DeletionCancelledOut(
+                tournament=entry.tournament,
+                tournament_date=entry.tournament_date,
+                variable_symbol=entry.vs,
+                credited=[
+                    DeletionCreditOut(amount_cents=cents, currency=currency)
+                    for cents, currency in entry.credited
+                ],
+            )
+            for entry in found.cancelled
+        ],
+        held_rosters=found.held_rosters,
+        blockers=[
+            DeletionBlockerOut(kind=blocker.kind, tournaments=blocker.tournaments)
+            for blocker in found.blockers
+        ],
+    )
+
+
+@router.post("/api/account/deletion", response_model=AccountOut)
+@limiter.limit("5/minute")
+def request_deletion(
+    request: Request,
+    data: DeletionIn,
+    session: SessionDep,
+    fencer: FencerDep,
+    mailer: QueuedMailerDep,
+):
+    """Ask for the account to be deleted in seven days, confirmed by the
+    password (spec `account-deletion`). Rate-limited as a password change is,
+    since a session alone would let it be used to guess the password."""
+    account_deletion.request_deletion(session, fencer, data.password, mailer)
+    session.commit()
+    session.refresh(fencer)
+    return account_out(session, fencer)
+
+
+@router.post("/api/account/deletion/withdraw", response_model=AccountOut)
+def withdraw_deletion(session: SessionDep, fencer: FencerDep, mailer: QueuedMailerDep):
+    account_deletion.withdraw_deletion(fencer, mailer)
     session.commit()
     session.refresh(fencer)
     return account_out(session, fencer)

@@ -193,6 +193,25 @@
       "body": "Hi {name},\n\nyour payment of {received} (VS {vs}) arrived after your reservation had expired, but the place was still free — we've reinstated your reservation for {tournament} and accepted the payment.\n\n{amounts}\nAccount: {account}\nVariable symbol: {vs}\n\nYou can pay by scanning the attached QR code.\n\n{consequence}\n\n{tournament} team"
     },
     "tournamentLinkEvent": "Event page: {link}",
+    "accountDeletion": {
+      "requested": {
+        "subject": "Your HEMA Squire account deletion request",
+        "body": "Hi {name},\n\nwe have recorded a request to delete your HEMA Squire account. It will be deleted on {date}. Until then it works as before, and you can withdraw the request on your profile page.\n\nAfter deletion, your name, HEMA Ratings ID, club and nationality stay on the rosters of events that have already taken place. Entries to events still to come are cancelled.\n\nIf you did not ask for this, sign in and withdraw the request, or set a new password through \"Forgot password\".\n\nHEMA Squire"
+      },
+      "withdrawn": {
+        "subject": "HEMA Squire account deletion withdrawn",
+        "body": "Hi {name},\n\nthe request to delete your HEMA Squire account was withdrawn. The account is unchanged.\n\nHEMA Squire"
+      },
+      "completed": {
+        "subject": "Your HEMA Squire account was deleted",
+        "body": "Hi {name},\n\nyour HEMA Squire account was deleted. You can no longer sign in, and this address is no longer stored. Your name, HEMA Ratings ID, club and nationality stay on the rosters of events that have already taken place.\n\nIf you want to come back, you can create a new account.\n\nHEMA Squire"
+      },
+      "organizerNotice": {
+        "subject": "{tournament}: an entry cancelled by account deletion",
+        "body": "Hello,\n\n{name} deleted their HEMA Squire account, so their entry to {tournament} (variable symbol {vs}) was cancelled. The freed place was not given to anyone automatically.\n\nPaid: {paid}. Any refund is yours to settle; Squire does not move money.\n\nHEMA Squire",
+        "nothingPaid": "nothing"
+      }
+    },
     "teamCancelled": {
       "subject": "A team has been cancelled — {tournament}",
       "body": "Hi {name},\n\nthe organizer of {tournament} has cancelled your team {team} in {discipline}. Your registration and everything else on it stand.",

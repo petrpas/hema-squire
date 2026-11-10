@@ -250,6 +250,15 @@ class Fencer(Base):
     # `privacy.ORGANIZER_TERMS_VERSION` asks again.
     organizer_terms_version: Mapped[str | None] = mapped_column(String(20))
     organizer_terms_accepted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # Account deletion (spec `account-deletion`). `deletion_requested_at` is
+    # set when the holder confirms with their password and cleared by a
+    # withdrawal; the scheduler executes it seven days later. `deleted_at`
+    # marks a record that was an account and no longer is: it holds no
+    # address and no password, like any credential-less record, and this is
+    # what tells the two apart — for the Paid mark on held rosters, the shared
+    # HR IDs and the admin list (design account-deletion D1).
+    deletion_requested_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     registrations: Mapped[list[Registration]] = relationship(back_populates="fencer")
 
@@ -336,6 +345,22 @@ class OutgoingMail(Base):
     failed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     __table_args__ = (Index("ix_outgoing_mail_pending", "sent_at", "failed_at"),)
+
+
+class AccountErasure(Base):
+    """That a record was erased, and how — never who: no name, no address
+    (spec `account-deletion`, A restore reapplies erasures). A point-in-time
+    restore reads this table from the latest replica and erases again every
+    record it lists, so going back in time cannot bring a person back."""
+
+    __tablename__ = "account_erasures"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    fencer_id: Mapped[int] = mapped_column(ForeignKey("fencers.id"), index=True)
+    # "account": an executed account deletion; "identity": an Admin's erasure
+    # of the name, HR ID, club and nationality as well
+    kind: Mapped[str] = mapped_column(String(20))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
 
 
 class FencerProfileAudit(Base):

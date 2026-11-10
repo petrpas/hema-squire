@@ -1,4 +1,5 @@
-import type { PleaQueueItem } from "../api";
+import type { AdminDeferredDeletion, PleaQueueItem } from "../api";
+import DeferredDeletions from "./DeferredDeletions";
 import PleaQueue from "./PleaQueue";
 import SharedHrIds from "./SharedHrIds";
 import type { SharedHrGroup } from "./sharedHr";
@@ -7,16 +8,19 @@ import type { SharedHrGroup } from "./sharedHr";
 export default function TasksTab({
   pleas,
   sharedHr,
+  deletions,
   onChanged,
 }: {
   pleas: PleaQueueItem[];
   sharedHr: SharedHrGroup[];
+  deletions: AdminDeferredDeletion[];
   onChanged: () => void;
 }) {
   return (
     <>
       <PleaQueue pleas={pleas} onChanged={onChanged} />
       <SharedHrIds groups={sharedHr} onChanged={onChanged} />
+      <DeferredDeletions deletions={deletions} />
     </>
   );
 }

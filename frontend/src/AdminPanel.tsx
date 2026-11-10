@@ -9,6 +9,7 @@ import TournamentsTab from "./admin/TournamentsTab";
 import {
   type Account,
   type AdminAccount,
+  type AdminDeferredDeletion,
   type AdminTournament,
   api,
   type PleaQueueItem,
@@ -22,6 +23,7 @@ export default function AdminPanel() {
   const { t } = useTranslation();
   const [accounts, setAccounts] = useState<AdminAccount[] | null>(null);
   const [pleas, setPleas] = useState<PleaQueueItem[] | null>(null);
+  const [deletions, setDeletions] = useState<AdminDeferredDeletion[]>([]);
   const [tournaments, setTournaments] = useState<AdminTournament[] | null>(null);
   const [error, setError] = useState(false);
   const [account, setAccount] = useState<Account | null>(null);
@@ -30,6 +32,7 @@ export default function AdminPanel() {
   function refresh() {
     api.adminAccounts().then(setAccounts, () => setError(true));
     api.adminPleas().then(setPleas, () => setError(true));
+    api.adminDeletions().then(setDeletions, () => setError(true));
     api.adminTournaments().then(setTournaments, () => setError(true));
   }
 
@@ -48,9 +51,20 @@ export default function AdminPanel() {
         <p>{t("common.loading")}</p>
       ) : (
         <div className="page-card-body">
-          <AdminTabs active={tab} openTasks={pleas.length + sharedHr.length} onChoose={setTab} />
+          <AdminTabs
+            active={tab}
+            openTasks={pleas.length + sharedHr.length + deletions.length}
+            onChoose={setTab}
+          />
           <div role="tabpanel" id={`admin-tabpanel-${tab}`} aria-labelledby={`admin-tab-${tab}`}>
-            {tab === "tasks" && <TasksTab pleas={pleas} sharedHr={sharedHr} onChanged={refresh} />}
+            {tab === "tasks" && (
+              <TasksTab
+                pleas={pleas}
+                sharedHr={sharedHr}
+                deletions={deletions}
+                onChanged={refresh}
+              />
+            )}
             {tab === "people" && <PeopleTab accounts={accounts} onChanged={refresh} />}
             {tab === "tournaments" && (
               <TournamentsTab tournaments={tournaments} onChanged={refresh} />

@@ -1015,7 +1015,8 @@
         "admin": "Admin"
       },
       "search": "Search name, email or HRID",
-      "created": "Created"
+      "created": "Created",
+      "deleted": "deleted account"
     },
     "pleas": {
       "title": "Organizer role requests",
@@ -1060,6 +1061,16 @@
         "confirm": "Delete event",
         "failed": "The event could not be deleted. Try again."
       }
+    },
+    "erase": {
+      "open": "Erase identity",
+      "title": "Erase the identity",
+      "body": "The name, HEMA Ratings ID, club and nationality of {{name}} will be erased, and rosters will show the record as a deleted account. Payments stay. This cannot be undone.",
+      "confirm": "Erase",
+      "failed": "The identity could not be erased."
+    },
+    "deletions": {
+      "title": "Account deletions on hold"
     }
   },
   "menu": {
@@ -1108,6 +1119,39 @@
       "wrong": "The current password is not right.",
       "changed": "Password changed. Other sessions were signed out.",
       "failed": "The password could not be changed."
+    },
+    "deletion": {
+      "open": "Delete account",
+      "title": "Delete the account",
+      "intro": "The account will be deleted in 7 days. Until then it works as before, and you can withdraw the request.",
+      "cancelled": "These entries to events still to come will be cancelled. The organizer is told, and settles any refund with you outside Squire:",
+      "credited": "paid {{amount}}",
+      "heldRosters_one": "Your name, HEMA Ratings ID, club and nationality stay on the roster of {{count}} event that has already taken place.",
+      "heldRosters_other": "Your name, HEMA Ratings ID, club and nationality stay on the rosters of {{count}} events that have already taken place.",
+      "heldRosters_zero": "You are on no roster of an event that has taken place, so your name goes too.",
+      "outOfReach": "Squire cannot delete copies organizers have downloaded or sent to Google Sheets.",
+      "submit": "Delete the account in 7 days",
+      "failed": "The request could not be processed.",
+      "pending": "The account will be deleted on {{date}}.",
+      "withdraw": "Withdraw the deletion",
+      "blocker": {
+        "owner": "You own {{tournaments}}. Hand over their ownership first.",
+        "last_admin": "You are the last admin. Make someone else an admin first.",
+        "deployment_owner": "The deployment owner's account cannot be deleted."
+      }
+    },
+    "tabs": {
+      "label": "Profile sections",
+      "profile": "Profile",
+      "privacy": "Privacy"
+    },
+    "privacy": {
+      "title": "Privacy",
+      "summary": "Squire is operated by Petr Paščenko. Send questions and requests to access, correct or erase your data, or to object, to privacy@hemasquire.eu.",
+      "readAll": "The full privacy notice",
+      "termsAccepted": "Accepted on {{date}}, version {{version}}.",
+      "termsDue": "You will accept them the next time you open your event's console.",
+      "termsRead": "Read the terms"
     }
   },
   "home": {
@@ -1861,14 +1905,15 @@
         {
           "title": "After an account is deleted",
           "paragraphs": [
-            "Ask for your account to be deleted at privacy@hemasquire.eu. The e-mail address, password and profile history are deleted, and entries to events still to come are cancelled. The organizer of such an event is told.",
-            "On the rosters of events that have already taken place, your name, HEMA Ratings ID, club and nationality stay. A roster is the complete record of a sporting event and would not hold without them. This data is not anonymised: it stays linked to the entry. You can object to it being kept at the address above, and we will decide each objection on its own merits."
+            "Ask for your account to be deleted on the Privacy tab of your profile page, confirmed by your password. It is deleted after 7 days, and until then you can withdraw the request. A guest without an account and a person entered by an organizer ask for erasure at privacy@hemasquire.eu.",
+            "The e-mail address, password, profile history and your requests are deleted, and the address is removed from imported rows, organizers' corrections and payment records wherever it appears whole. Entries to events still to come are cancelled, and the organizer is told what had been paid. Squire cannot delete copies organizers have downloaded or sent to Google Sheets.",
+            "On the rosters of events that have already taken place, your name, HEMA Ratings ID, club and nationality stay, without any statement about payment. A roster is the complete record of a sporting event and would not hold without them. This data is not anonymised: it stays linked to the entry. If you are on no such roster, your name goes too. You can object to the data being kept at the address above, and we will decide each objection on its own merits."
           ]
         },
         {
           "title": "Your rights",
           "paragraphs": [
-            "You have the right to access your data, to have it corrected or erased, to restrict its processing, to data portability, and to object to processing based on legitimate interest. You can download your account's data on your profile page and correct it there.",
+            "You have the right to access your data, to have it corrected or erased, to restrict its processing, to data portability, and to object to processing based on legitimate interest. You can download your account's data on the Privacy tab of your profile page and correct it there.",
             "You can lodge a complaint with the Czech data protection authority, Úřad pro ochranu osobních údajů (www.uoou.gov.cz)."
           ]
         },

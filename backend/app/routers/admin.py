@@ -9,7 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app import tournament_delete
+from app import account_deletion, tournament_delete
 from app.auth import current_fencer, is_deployment_owner, require_role
 from app.db import get_session
 from app.fieldtypes import RowId
@@ -26,8 +26,10 @@ from app.routers.accounts import audit_change
 from app.schemas import (
     AdminAccountOut,
     AdminCreditedOut,
+    AdminDeferredDeletionOut,
     AdminTournamentOut,
     AdminTournamentOwnerOut,
+    DeletionBlockerOut,
     PleaDecisionOut,
     PleaQueueOut,
     RoleUpdateIn,
@@ -53,14 +55,17 @@ def _admin_account_out(
         )
     )
     out.hr_shared = account.hr_id in shared_hr_ids
+    out.deleted = account.deleted_at is not None
     return out
 
 
 def _shared_hr_ids(session: Session) -> set[int]:
-    """hr_ids bound by more than one account (design D4)."""
+    """hr_ids bound by more than one account (design D4). A deleted record
+    keeps its HR ID only for a held roster and is nobody's account, so it
+    shares with no one (spec account-deletion)."""
     rows = session.scalars(
         select(Fencer.hr_id)
-        .where(Fencer.hr_id.isnot(None))
+        .where(Fencer.hr_id.isnot(None), Fencer.deleted_at.is_(None))
         .group_by(Fencer.hr_id)
         .having(func.count(Fencer.id) > 1)
     )
@@ -111,6 +116,48 @@ def hr_unbind(fencer_id: RowId, session: SessionDep, fencer: FencerDep):
     if target is None:
         raise HTTPException(status_code=404, detail="account_not_found")
     audit_change(session, target, "hr_id", None)
+    session.commit()
+    session.refresh(target)
+    return _admin_account_out(session, target, _shared_hr_ids(session))
+
+
+@router.get("/deletions", response_model=list[AdminDeferredDeletionOut])
+def deferred_deletions(session: SessionDep, fencer: FencerDep):
+    """Deletions past their seven days that a blocker holds back."""
+    require_role(fencer, Role.ADMIN)
+    out: list[AdminDeferredDeletionOut] = []
+    for pending in account_deletion.due(session):
+        found = account_deletion.blockers(session, pending)
+        if not found or pending.deletion_requested_at is None:
+            continue
+        out.append(
+            AdminDeferredDeletionOut(
+                fencer_id=pending.id,
+                display_name=pending.display_name,
+                email=pending.email,
+                requested_at=pending.deletion_requested_at,
+                blockers=[
+                    DeletionBlockerOut(kind=blocker.kind, tournaments=blocker.tournaments)
+                    for blocker in found
+                ],
+            )
+        )
+    return out
+
+
+@router.post("/accounts/{fencer_id}/erase-identity", response_model=AdminAccountOut)
+def erase_identity(fencer_id: RowId, session: SessionDep, fencer: FencerDep):
+    """Erase what a roster shows of a person (spec account-deletion, An Admin
+    can erase an identity on request). The dialog asks for confirmation; here
+    it is refused only for a live account, whose holder deletes it
+    themselves."""
+    require_role(fencer, Role.ADMIN)
+    target = session.get(Fencer, fencer_id)
+    if target is None:
+        raise HTTPException(status_code=404, detail="account_not_found")
+    if target.password_hash is not None:
+        raise HTTPException(status_code=409, detail="live_account")
+    account_deletion.erase_identity(session, target)
     session.commit()
     session.refresh(target)
     return _admin_account_out(session, target, _shared_hr_ids(session))

@@ -5290,3 +5290,14 @@ tr.export-line td {
 .privacy-notice {
   margin-top: 12px;
 }
+
+/* What an account deletion would do, or what blocks it: a short list in the
+   dialog's prose, not a table (spec account-deletion). */
+.deletion-impact {
+  margin: 8px 0;
+  padding-left: 20px;
+}
+
+.deletion-pending {
+  margin-top: 12px;
+}

@@ -1371,7 +1371,7 @@ def test_v22_roundtrip_carries_removed_members_and_the_roster_log(client, auth_h
     )
 
     doc = client.get("/api/tournaments/cup/export/json", headers=organizer).json()
-    assert doc["schema_version"] == 22
+    assert doc["schema_version"] >= 22
     exported = doc["registrations"][0]["teams"][0]
     assert [m["name"] for m in exported["removed_members"]] == ["C"]
     assert len(exported["roster_log"]) == 5

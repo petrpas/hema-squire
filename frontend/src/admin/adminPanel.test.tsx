@@ -26,6 +26,7 @@ function person(id: number, name: string, extra: Partial<AdminAccount> = {}): Ad
     is_deployment_owner: false,
     has_pending_plea: false,
     hr_shared: false,
+    deleted: false,
     ...extra,
   };
 }
@@ -95,6 +96,7 @@ beforeEach(async () => {
   setToken("t");
   vi.spyOn(api, "account").mockResolvedValue({ id: 99, role: "admin" } as Account);
   vi.spyOn(api, "adminPleas").mockResolvedValue([]);
+  vi.spyOn(api, "adminDeletions").mockResolvedValue([]);
   vi.spyOn(api, "adminAccounts").mockResolvedValue([]);
   vi.spyOn(api, "adminTournaments").mockResolvedValue([]);
   vi.spyOn(api, "tournaments").mockResolvedValue([]);
@@ -197,5 +199,47 @@ describe("deleting a tournament", () => {
     expect(dialog?.textContent).toMatch(/3\s800/);
     await click(dialog?.querySelector(".btn-danger"));
     expect(remove).toHaveBeenCalledWith("cup", true);
+  });
+});
+
+describe("account deletion in the admin panel", () => {
+  it("lists a deletion a blocker holds back among the tasks", async () => {
+    vi.spyOn(api, "adminDeletions").mockResolvedValue([
+      {
+        fencer_id: 5,
+        display_name: "Held Back",
+        email: "held@example.com",
+        requested_at: "2026-10-01T10:00:00Z",
+        blockers: [{ kind: "owner", tournaments: ["Cup"] }],
+      },
+    ]);
+    const page = await mount();
+
+    expect(tab(page, i18n.t("admin.tabs.tasks")).textContent).toContain("1");
+    expect(page.textContent).toContain("Held Back");
+    expect(page.textContent).toContain("Cup");
+  });
+
+  it("marks a deleted record and erases its identity after asking", async () => {
+    vi.spyOn(api, "adminAccounts").mockResolvedValue([
+      person(5, "Jana Held", { email: null, deleted: true }),
+      person(6, "Live One"),
+    ]);
+    const erase = vi.spyOn(api, "adminEraseIdentity").mockResolvedValue(person(5, "x"));
+    const page = await mount();
+    await click(tab(page, i18n.t("admin.tabs.people")));
+
+    expect(page.textContent).toContain(i18n.t("admin.accounts.deleted"));
+    const buttons = [...page.querySelectorAll("button")].filter(
+      (button) => button.textContent === i18n.t("admin.erase.open"),
+    );
+    expect(buttons).toHaveLength(1);
+    await click(buttons[0]);
+    const confirm = [...page.querySelectorAll("dialog button")].find(
+      (button) => button.textContent === i18n.t("admin.erase.confirm"),
+    );
+    await click(confirm);
+
+    expect(erase).toHaveBeenCalledWith(5);
   });
 });

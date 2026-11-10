@@ -77,8 +77,9 @@ export function admin(): string {
   return "/admin";
 }
 
-export function profile(): string {
-  return "/profile";
+/** The Profile page, on its Privacy tab where named (spec `profile-page`). */
+export function profile(tab?: "privacy"): string {
+  return tab ? `/profile?tab=${tab}` : "/profile";
 }
 
 /** The public privacy notice (spec `privacy`). */

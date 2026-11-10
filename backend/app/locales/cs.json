@@ -193,6 +193,25 @@
       "body": "Ahoj {name},\n\ntvá platba {received} (VS {vs}) dorazila po vypršení rezervace, ale místo bylo ještě volné — rezervaci na {tournament} jsme obnovili a platbu přijali.\n\n{amounts}\nÚčet: {account}\nVariabilní symbol: {vs}\n\nZaplatit můžeš naskenováním přiloženého QR kódu.\n\n{consequence}\n\nTým {tournament}"
     },
     "tournamentLinkEvent": "Stránka akce: {link}",
+    "accountDeletion": {
+      "requested": {
+        "subject": "Žádost o smazání účtu HEMA Squire",
+        "body": "Ahoj {name},\n\nzaznamenali jsme žádost o smazání tvého účtu v HEMA Squire. Účet bude smazán {date}. Do té doby funguje jako dosud a žádost můžeš na stránce profilu odvolat.\n\nPo smazání zůstane tvoje jméno, ID HEMA Ratings, klub a národnost na soupiskách akcí, které už proběhly. Přihlášky na akce, které teprve budou, se zruší.\n\nPokud jsi o smazání nežádal(a), přihlas se a žádost odvolej, nebo si nastav nové heslo přes „Zapomenuté heslo“.\n\nHEMA Squire"
+      },
+      "withdrawn": {
+        "subject": "Smazání účtu HEMA Squire odvoláno",
+        "body": "Ahoj {name},\n\nžádost o smazání tvého účtu v HEMA Squire byla odvolána. Účet zůstává beze změny.\n\nHEMA Squire"
+      },
+      "completed": {
+        "subject": "Váš účet HEMA Squire byl smazán",
+        "body": "Ahoj {name},\n\ntvůj účet v HEMA Squire byl smazán. Přihlásit se už nejde a tuhle adresu už u nás nemáme uloženou. Na soupiskách akcí, které už proběhly, zůstává tvoje jméno, ID HEMA Ratings, klub a národnost.\n\nKdybys se chtěl(a) vrátit, můžeš si založit nový účet.\n\nHEMA Squire"
+      },
+      "organizerNotice": {
+        "subject": "{tournament}: přihláška zrušena smazáním účtu",
+        "body": "Ahoj,\n\n{name} smazal(a) svůj účet v HEMA Squire, a přihláška na {tournament} (variabilní symbol {vs}) byla proto zrušena. Uvolněné místo nikomu automaticky přiděleno nebylo.\n\nZaplaceno: {paid}. Případné vrácení peněz je na tobě, Squire s penězi nic nedělá.\n\nHEMA Squire",
+        "nothingPaid": "nic"
+      }
+    },
     "teamCancelled": {
       "subject": "Tým byl zrušen — {tournament}",
       "body": "Ahoj {name},\n\norganizátor turnaje {tournament} zrušil tvůj tým {team} v disciplíně {discipline}. Tvoje registrace i všechno ostatní na ní platí dál.",

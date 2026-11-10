@@ -48,7 +48,7 @@ from app.models import (
 )
 from app.routers.tournaments import _lowest_free_series
 
-SCHEMA_VERSION = 22
+SCHEMA_VERSION = 23
 
 _TOURNAMENT_FIELDS = [
     "slug",
@@ -371,6 +371,9 @@ def export_tournament(session: Session, tournament: Tournament) -> dict:
             {
                 "ref": f.id,
                 **_record(f, ["email", "display_name", "hr_id", "nationality", "club"]),
+                # v23: a deleted account, whose row states no payment on a
+                # held roster; absent before, when none existed
+                "deleted_at": _plain(f.deleted_at),
             }
             for f in fencers.values()
         ],
@@ -699,6 +702,7 @@ def restore_tournament(session: Session, data: dict, actor: Fencer) -> Tournamen
         key = entry.pop("ref", None)
         if key is None:
             key = entry["email"]
+        entry["deleted_at"] = _parse_dt(entry.get("deleted_at"))
         # an address that exists still identifies an account, so a restore
         # rejoins one that is already here rather than making a second
         address = entry.get("email")

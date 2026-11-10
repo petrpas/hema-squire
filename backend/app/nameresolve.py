@@ -58,6 +58,9 @@ def roster(session: Session, tournament: Tournament) -> list[tuple[int, str]]:
         .where(
             Registration.tournament_id == tournament.id,
             Registration.state == RegistrationState.RESERVED,
+            # a deleted account is never proposed to receive money (spec
+            # account-deletion, Deleted records are distinguished)
+            Fencer.deleted_at.is_(None),
         )
         .distinct()
     ).all()

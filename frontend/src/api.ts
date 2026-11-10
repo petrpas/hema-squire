@@ -248,6 +248,41 @@ export interface Account {
   /** Whether the account owns a tournament and has not accepted the current
    *  organizer data terms; the console asks first (spec `privacy`). */
   organizer_terms_due: boolean;
+  /** The organizer data terms last accepted, and when; null before any. */
+  organizer_terms_version: string | null;
+  organizer_terms_accepted_at: string | null;
+  /** When a requested deletion takes effect; null without one (spec
+   *  `account-deletion`). */
+  deletion_effective_at: string | null;
+}
+
+export type DeletionBlockerKind = "owner" | "last_admin" | "deployment_owner";
+
+export interface DeletionBlocker {
+  kind: DeletionBlockerKind;
+  /** the tournaments to hand over first, for an owner */
+  tournaments: string[];
+}
+
+/** What deleting the account would do, stated before it is asked for. */
+export interface DeletionImpact {
+  cancelled: {
+    tournament: string;
+    tournament_date: string;
+    variable_symbol: number | null;
+    credited: { amount_cents: number; currency: string }[];
+  }[];
+  held_rosters: number;
+  blockers: DeletionBlocker[];
+}
+
+/** A deletion past its seven days that a blocker holds back. */
+export interface AdminDeferredDeletion {
+  fencer_id: number;
+  display_name: string;
+  email: string | null;
+  requested_at: string;
+  blockers: DeletionBlocker[];
 }
 
 export type PleaState = "pending" | "granted" | "denied" | "cancelled" | null;
@@ -276,6 +311,8 @@ export interface AdminAccount {
   is_deployment_owner: boolean;
   has_pending_plea: boolean;
   hr_shared: boolean;
+  /** a former account: no address, no login (spec `account-deletion`) */
+  deleted: boolean;
 }
 
 export type AdminTournamentState = "draft" | "published" | "cancelled";
@@ -1978,6 +2015,13 @@ export const api = {
   /** The account's own data, kept as a file by the Profile page (spec
    *  `privacy`). Its shape is the file's, read by the person, not the app. */
   accountExport: () => request<unknown>("/api/account/export"),
+  deletionImpact: () => request<DeletionImpact>("/api/account/deletion"),
+  requestDeletion: (password: string) =>
+    request<Account>("/api/account/deletion", {
+      method: "POST",
+      body: JSON.stringify({ password }),
+    }),
+  withdrawDeletion: () => request<Account>("/api/account/deletion/withdraw", { method: "POST" }),
   acceptOrganizerTerms: () => request<Account>("/api/account/organizer-terms", { method: "POST" }),
   updateAccount: (patch: {
     email?: string;
@@ -2034,6 +2078,9 @@ export const api = {
   adminHrUnbind: (fencerId: number) =>
     request<AdminAccount>(`/api/admin/accounts/${fencerId}/hr-unbind`, { method: "POST" }),
   adminPleas: () => request<PleaQueueItem[]>("/api/admin/pleas"),
+  adminDeletions: () => request<AdminDeferredDeletion[]>("/api/admin/deletions"),
+  adminEraseIdentity: (fencerId: number) =>
+    request<AdminAccount>(`/api/admin/accounts/${fencerId}/erase-identity`, { method: "POST" }),
   adminTournaments: () => request<AdminTournament[]>("/api/admin/tournaments"),
   /** `confirm` is required once the tournament has registrations; the
    *  server refuses with `has_registrations` without it. */

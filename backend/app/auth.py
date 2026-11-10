@@ -95,7 +95,10 @@ def _presented_fencer(credentials: HTTPAuthorizationCredentials, session: Sessio
     except jwt.InvalidTokenError:
         raise HTTPException(status_code=401, detail="invalid_token") from None
     fencer = session.get(Fencer, int(payload["sub"]))
-    if fencer is None:
+    # a deleted account is no account: refused outright, not only by the
+    # session watermark, which a token stamped in the same second would pass
+    # (spec account-deletion, A session stops working)
+    if fencer is None or fencer.deleted_at is not None:
         raise HTTPException(status_code=401, detail="unknown_account")
     # the same refusal as a token that has expired: the client signs in again
     # at the URL it is on, which is all an ended session should ask of it

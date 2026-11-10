@@ -13,7 +13,7 @@ are shown at all. A client restating the mode rules would be a second place
 for them to drift (D4).
 """
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import UTC, datetime
 from typing import Literal
 
@@ -30,6 +30,7 @@ from app.models import (
     DisciplineKind,
     ExtraCategory,
     ExtraItem,
+    Fencer,
     Registration,
     RegistrationDiscipline,
     RegistrationsKeptBy,
@@ -109,6 +110,10 @@ class _Conduct:
     # deadline has passed, or the organizer closed seating early. Asked of the
     # tournament, while the payment window is asked of each registration
     seating_settled: bool
+    # registrations of deleted accounts: their rows state no payment and are
+    # never faded (spec account-deletion, A deleted account's row states no
+    # payment)
+    deleted: frozenset[int] = frozenset()
 
 
 def _conduct(tournament: Tournament, now: datetime) -> _Conduct:
@@ -121,6 +126,14 @@ def _conduct(tournament: Tournament, now: datetime) -> _Conduct:
         queue=kept_by_squire and not held,
         seating_settled=setup.seating_has_settled(tournament, now),
     )
+
+
+def _row_paid(conduct: _Conduct, row: Row) -> tuple[Paid, bool]:
+    """A row's Paid cell and fading: `_paid`, unless the row is a deleted
+    account's, which states nothing whatever the money says."""
+    if row.get("registration_id") in conduct.deleted:
+        return None, False
+    return _paid(conduct, bool(row.get("paid")), row.get("expires_at") is not None)
 
 
 def _paid(conduct: _Conduct, settled: bool, window_running: bool) -> tuple[Paid, bool]:
@@ -279,7 +292,7 @@ def _individual(
     seated: list[EntrantRow] = []
     for row in listed:
         if discipline.slug in (row.get("disciplines") or []):
-            paid, faded = _paid(conduct, bool(row.get("paid")), row.get("expires_at") is not None)
+            paid, faded = _row_paid(conduct, row)
             seated.append(_entrant(row, discipline.slug, len(seated) + 1, paid, faded))
     queued: list[EntrantRow] = []
     if conduct.queue:
@@ -384,7 +397,7 @@ def _event(item: ExtraItem, rows: list[Row], live: set[int], conduct: _Conduct) 
         selections = (row.get("extras") or {}).get(item.category.value) or []
         if not any(selection.get("item_id") == item.id for selection in selections):
             continue
-        paid, faded = _paid(conduct, bool(row.get("paid")), row.get("expires_at") is not None)
+        paid, faded = _row_paid(conduct, row)
         seated.append(
             EntrantRow(
                 number=len(seated) + 1,
@@ -413,7 +426,16 @@ def rosters(session: Session, tournament: Tournament) -> list[Roster]:
     each listed side event's, in the order they were offered."""
     # one instant for the whole page, so a long answer straddling midnight does
     # not have one roster reading the day before and the next the day after
-    conduct = _conduct(tournament, datetime.now(UTC))
+    conduct = replace(
+        _conduct(tournament, datetime.now(UTC)),
+        deleted=frozenset(
+            session.scalars(
+                select(Registration.id)
+                .join(Fencer, Fencer.id == Registration.fencer_id)
+                .where(Registration.tournament_id == tournament.id, Fencer.deleted_at.is_not(None))
+            ).all()
+        ),
+    )
     base = sheet.base_rows(session, tournament)
     replayed, _ = rules.replay(
         base, rules.active_rules(session, tournament), sheet.rating_lookup(session, tournament)

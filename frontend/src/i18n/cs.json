@@ -1030,7 +1030,8 @@
         "admin": "Admin"
       },
       "search": "Hledat jméno, e-mail nebo HRID",
-      "created": "Vytvořeno"
+      "created": "Vytvořeno",
+      "deleted": "smazaný účet"
     },
     "pleas": {
       "title": "Žádosti o roli organizátora",
@@ -1077,6 +1078,16 @@
         "confirm": "Smazat akci",
         "failed": "Akci se nepodařilo smazat. Zkuste to znovu."
       }
+    },
+    "erase": {
+      "open": "Vymazat identitu",
+      "title": "Vymazat identitu",
+      "body": "Ze záznamu {{name}} se vymaže jméno, ID HEMA Ratings, klub a národnost a soupisky ho budou ukazovat jako smazaný účet. Platby zůstanou. Vrátit to nejde.",
+      "confirm": "Vymazat",
+      "failed": "Identitu se nepodařilo vymazat."
+    },
+    "deletions": {
+      "title": "Zadržená smazání účtů"
     }
   },
   "menu": {
@@ -1125,6 +1136,40 @@
       "wrong": "Současné heslo nesouhlasí.",
       "changed": "Heslo je změněné. Ostatní přihlášení byla ukončena.",
       "failed": "Heslo se nepodařilo změnit."
+    },
+    "deletion": {
+      "open": "Smazat účet",
+      "title": "Smazání účtu",
+      "intro": "Účet bude smazán za 7 dní. Do té doby funguje jako dosud a žádost můžeš odvolat.",
+      "cancelled": "Zruší se tyto přihlášky na akce, které teprve budou. Pořadatel dostane zprávu a případné vrácení peněz vyřeší s tebou mimo Squire:",
+      "credited": "zaplaceno {{amount}}",
+      "heldRosters_one": "Na soupisce {{count}} akce, která už proběhla, zůstane tvoje jméno, ID HEMA Ratings, klub a národnost.",
+      "heldRosters_few": "Na soupiskách {{count}} akcí, které už proběhly, zůstane tvoje jméno, ID HEMA Ratings, klub a národnost.",
+      "heldRosters_other": "Na soupiskách {{count}} akcí, které už proběhly, zůstane tvoje jméno, ID HEMA Ratings, klub a národnost.",
+      "heldRosters_zero": "Na žádné soupisce akce, která už proběhla, nejsi, takže se smaže i jméno.",
+      "outOfReach": "Kopie, které si pořadatelé stáhli nebo poslali do Google Sheets, Squire smazat nemůže.",
+      "submit": "Smazat účet za 7 dní",
+      "failed": "Žádost se nepodařilo zpracovat.",
+      "pending": "Účet bude smazán {{date}}.",
+      "withdraw": "Odvolat smazání",
+      "blocker": {
+        "owner": "Vlastníš akce {{tournaments}}. Nejdřív předej jejich vlastnictví.",
+        "last_admin": "Jsi poslední admin. Nejdřív jmenuj jiného admina.",
+        "deployment_owner": "Účet vlastníka nasazení smazat nejde."
+      }
+    },
+    "tabs": {
+      "label": "Části profilu",
+      "profile": "Profil",
+      "privacy": "Soukromí"
+    },
+    "privacy": {
+      "title": "Ochrana osobních údajů",
+      "summary": "Squire provozuje Petr Paščenko. Dotazy a žádosti o přístup, opravu, výmaz nebo námitku posílejte na privacy@hemasquire.eu.",
+      "readAll": "Celé zásady ochrany osobních údajů",
+      "termsAccepted": "Přijato {{date}}, verze {{version}}.",
+      "termsDue": "Přijmete je při příštím otevření konzole své akce.",
+      "termsRead": "Přečíst podmínky"
     }
   },
   "home": {
@@ -1902,14 +1947,15 @@
         {
           "title": "Po smazání účtu",
           "paragraphs": [
-            "Smazání účtu si vyžádáte na adrese privacy@hemasquire.eu. Smaže se e-mail, heslo a historie profilu a přihlášky na akce, které teprve budou, se zruší. Pořadatel takové akce dostane zprávu.",
-            "Na soupiskách akcí, které už proběhly, zůstane vaše jméno, ID HEMA Ratings, klub a národnost. Soupiska je úplný záznam sportovní akce a bez nich by neplatila. Tyto údaje nejsou anonymizované, zůstávají spojené s přihláškou. Proti jejich ponechání můžete podat námitku na adrese výše a posoudíme ji jednotlivě."
+            "Smazání účtu si vyžádáte v záložce Soukromí na stránce profilu heslem. Účet se smaže po 7 dnech a do té doby můžete žádost odvolat. Host bez účtu a osoba zapsaná pořadatelem o výmaz požádají na adrese privacy@hemasquire.eu.",
+            "Smaže se e-mail, heslo, historie profilu a vaše žádosti a adresa zmizí i z importovaných řádků, oprav pořadatele a záznamů o platbách, kde je uvedená celá. Přihlášky na akce, které teprve budou, se zruší a pořadatel dostane zprávu s tím, co bylo zaplaceno. Kopie, které si pořadatelé stáhli nebo poslali do Google Sheets, Squire smazat nemůže.",
+            "Na soupiskách akcí, které už proběhly, zůstane vaše jméno, ID HEMA Ratings, klub a národnost, bez údaje o platbě. Soupiska je úplný záznam sportovní akce a bez nich by neplatila. Tyto údaje nejsou anonymizované, zůstávají spojené s přihláškou. Pokud na žádné takové soupisce nejste, smaže se i jméno. Proti ponechání údajů můžete podat námitku na adrese výše a posoudíme ji jednotlivě."
           ]
         },
         {
           "title": "Vaše práva",
           "paragraphs": [
-            "Máte právo na přístup ke svým údajům, jejich opravu, výmaz, omezení zpracování a přenositelnost a právo vznést námitku proti zpracování založenému na oprávněném zájmu. Údaje svého účtu si můžete stáhnout na stránce profilu a opravit je tamtéž.",
+            "Máte právo na přístup ke svým údajům, jejich opravu, výmaz, omezení zpracování a přenositelnost a právo vznést námitku proti zpracování založenému na oprávněném zájmu. Údaje svého účtu si můžete stáhnout v záložce Soukromí na stránce profilu a opravit je tamtéž.",
             "Můžete podat stížnost u Úřadu pro ochranu osobních údajů (www.uoou.gov.cz)."
           ]
         },

@@ -3,6 +3,7 @@ import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { type AdminAccount, api, type Role } from "../api";
+import EraseIdentityDialog from "./EraseIdentityDialog";
 import SortHeader from "./SortHeader";
 import { adminMatches } from "./search";
 import { type SortValue, useSort } from "./useSort";
@@ -41,6 +42,7 @@ export default function PeopleTab({
   const { t } = useTranslation();
   const [busy, setBusy] = useState<number | null>(null);
   const [query, setQuery] = useState("");
+  const [erasing, setErasing] = useState<AdminAccount | null>(null);
 
   const matching = useMemo(
     () =>
@@ -112,7 +114,14 @@ export default function PeopleTab({
             {sorted.map((account) => (
               <tr key={account.id}>
                 <td>{account.email ?? "—"}</td>
-                <td>{account.display_name}</td>
+                <td>
+                  {account.display_name}
+                  {account.deleted && (
+                    <span className="tag tag-form-yellow hr-shared-badge">
+                      {t("admin.accounts.deleted")}
+                    </span>
+                  )}
+                </td>
                 <td>
                   {account.is_deployment_owner ? (
                     <span className="tag tag-file-blue">{t("admin.accounts.owner")}</span>
@@ -145,6 +154,19 @@ export default function PeopleTab({
                 <td>{account.has_pending_plea ? t("admin.accounts.pleaPending") : "—"}</td>
                 <td>{new Date(account.created_at).toLocaleDateString("cs")}</td>
                 <td className="col-actions">
+                  {/* a record without an address is no live account: an
+                      enrolled person or a deleted one, whose identity an
+                      Admin may erase on request (spec account-deletion) */}
+                  {account.email === null && (
+                    <button
+                      type="button"
+                      className="link-button"
+                      disabled={busy === account.id}
+                      onClick={() => setErasing(account)}
+                    >
+                      {t("admin.erase.open")}
+                    </button>
+                  )}
                   {account.hr_id !== null && (
                     <button
                       type="button"
@@ -161,6 +183,16 @@ export default function PeopleTab({
             ))}
           </tbody>
         </table>
+      )}
+      {erasing !== null && (
+        <EraseIdentityDialog
+          account={erasing}
+          onClose={() => setErasing(null)}
+          onErased={() => {
+            setErasing(null);
+            onChanged();
+          }}
+        />
       )}
     </section>
   );
