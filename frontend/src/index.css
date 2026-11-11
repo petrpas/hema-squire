@@ -5308,6 +5308,24 @@ tr.export-line td {
   content: "\202F\2197";
 }
 
+/* A nationality on a public roster, drawn as its flag at the flag's own
+   4:3, within the line. The hairline keeps a mostly white flag on the paper.
+   The flag's colors are the country's: the one carve-out from the single
+   saturated color (design-system, Global prohibitions). */
+.entrant-flag {
+  display: inline-block;
+  height: 12px;
+  width: 16px;
+  vertical-align: -1px;
+  border: var(--border-w) solid var(--hairline);
+  border-radius: var(--radius);
+}
+
+/* drawn without its colors, by the owner's decision (spec public-entrants) */
+.entrant-flag-mono {
+  filter: grayscale(1);
+}
+
 /* a member stands under the team it belongs to */
 .entrant-member {
   padding-left: 1.6rem;

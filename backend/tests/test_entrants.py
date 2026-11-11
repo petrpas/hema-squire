@@ -187,6 +187,39 @@ def test_the_organizers_correction_and_cancellation_reach_the_roster(client, aut
     assert [row["name"] for row in rosters(client)["LS"]["seated"]] == ["Jan Novák"]
 
 
+def test_a_nationality_is_read_as_a_country_for_its_flag(client, auth_headers):
+    """Whatever vocabulary a nationality is written in, the roster reads the
+    country once, for the flag; a spelling no country can be read from stands
+    as written (spec public-entrants, Nationality is stated as a flag)."""
+    organizer = auth_headers()
+    setup_tournament(client, organizer)
+    register(client, auth_headers(email="a@example.com", name="Adéla"))
+    register(client, auth_headers(email="b@example.com", name="Boris"))
+    rows = {
+        row["name"]: row["id"]
+        for row in client.get("/api/tournaments/cup/sheet", headers=organizer).json()["rows"]
+    }
+    for name, nationality in (("Adéla", "Czech Republic"), ("Boris", "Bohemia")):
+        response = client.post(
+            "/api/tournaments/cup/rules",
+            json={
+                "phase": "parsing",
+                "kind": "field_edit",
+                "target": rows[name],
+                "payload": {"field": "nationality", "value": nationality},
+            },
+            headers=organizer,
+        )
+        assert response.status_code == 201, response.text
+
+    stated = {
+        row["name"]: (row["nationality"], row["country"]) for row in rosters(client)["LS"]["seated"]
+    }
+
+    assert stated["Adéla"][1] == "CZ"
+    assert stated["Boris"] == ("Bohemia", None)
+
+
 def test_an_expired_reservation_is_gone(client, auth_headers):
     organizer = auth_headers()
     setup_tournament(client, organizer)
@@ -479,7 +512,12 @@ def test_a_team_is_listed_with_its_members_and_the_waitlist_below(client, auth_h
     team_id = enter_team(client, captain, "Draci")["teams"][0]["id"]
     response = client.put(
         f"/api/tournaments/cup/my-registration/teams/{team_id}/roster",
-        json={"members": [{"name": "Eva", "club": "Klub X"}, {"name": "Filip"}]},
+        json={
+            "members": [
+                {"name": "Eva", "club": "Klub X", "nationality": "England"},
+                {"name": "Filip"},
+            ]
+        },
         headers=captain,
     )
     assert response.status_code == 200, response.text
@@ -494,6 +532,8 @@ def test_a_team_is_listed_with_its_members_and_the_waitlist_below(client, auth_h
         ("Eva", "Klub X"),
         ("Filip", None),
     ]
+    # England is the United Kingdom's flag; a member with no nationality has none
+    assert [m["country"] for m in draci["members"]] == ["GB", None]
     (vlci,) = roster["queued"]
     assert (vlci["number"], vlci["name"], vlci["members"], vlci["paid"]) == (1, "Vlci", [], None)
 

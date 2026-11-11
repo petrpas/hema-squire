@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import type { EntrantTeam, Roster } from "../api";
+import NationalityCell from "./NationalityCell";
 import { CapacityLine, HrIdCell, PaidCell } from "./rosterCells";
 
 type TeamRosterData = Extract<Roster, { kind: "team" }>;
@@ -66,6 +67,15 @@ function shared(values: (string | null)[]): string | null {
   return values.every((value) => value === first) ? first : null;
 }
 
+/** The team row's Nat. cell: the nationality every member shares, drawn as
+ *  its flag where a country is read from it. Members agreeing on the
+ *  nationality agree on its country, so the first member's speaks for all. */
+function SharedNationality({ members }: { members: EntrantTeam["members"] }) {
+  const nationality = shared(members.map((member) => member.nationality));
+  const country = nationality === null ? null : (members[0]?.country ?? null);
+  return <NationalityCell nationality={nationality} country={country} />;
+}
+
 function TeamLines({ team }: { team: EntrantTeam }) {
   const [open, setOpen] = useState(false);
   const faded = team.faded ? "muted" : undefined;
@@ -92,7 +102,7 @@ function TeamLines({ team }: { team: EntrantTeam }) {
             <strong className="entrant-team">{team.name}</strong>
           )}
         </td>
-        <td>{shared(team.members.map((member) => member.nationality))}</td>
+        <SharedNationality members={team.members} />
         <td>{shared(team.members.map((member) => member.club))}</td>
         <td />
         <PaidCell paid={team.paid} />
@@ -103,7 +113,7 @@ function TeamLines({ team }: { team: EntrantTeam }) {
           <tr key={index} className={faded}>
             <td className="col-gutter" />
             <td className="entrant-member">{member.name}</td>
-            <td>{member.nationality}</td>
+            <NationalityCell nationality={member.nationality} country={member.country} />
             <td>{member.club}</td>
             <HrIdCell hrId={member.hr_id} />
             <td />

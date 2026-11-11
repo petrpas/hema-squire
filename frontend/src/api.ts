@@ -1043,6 +1043,9 @@ export interface EntrantRow {
   number: number;
   name: string;
   nationality: string | null;
+  /** the nationality as an ISO 3166 alpha-2 code, drawn as a flag; null
+   *  where no country is read from it */
+  country: string | null;
   club: string | null;
   hr_id: number | null;
   paid: "yes" | "no" | null;
@@ -1053,6 +1056,7 @@ export interface EntrantRow {
 export interface EntrantTeamMember {
   name: string;
   nationality: string | null;
+  country: string | null;
   club: string | null;
   hr_id: number | null;
 }

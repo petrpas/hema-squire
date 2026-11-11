@@ -2344,6 +2344,9 @@ class EntrantRowOut(BaseModel):
     number: int
     name: str
     nationality: str | None
+    # the nationality read as an ISO 3166 alpha-2 code, drawn as a flag; null
+    # where no country can be read and the nationality stands as text
+    country: str | None
     club: str | None
     hr_id: int | None
     # "yes"/"no" where Squire collects the money; "yes" or nothing where it
@@ -2360,6 +2363,7 @@ class EntrantTeamMemberOut(BaseModel):
 
     name: str
     nationality: str | None
+    country: str | None
     club: str | None
     hr_id: int | None
 

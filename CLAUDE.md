@@ -23,6 +23,11 @@ This list takes precedence over everything else. The implementation NEVER uses:
 - more than one saturated color (`--stamp` is the only one)
 - any hex value outside `tokens.css`
 
+One carve-out from the last two, by name: a national flag stating a nationality
+on the public entrants roster carries its country's colors (spec
+`public-entrants`). It is exempt from nothing else, and a flag anywhere else is
+a second saturated color.
+
 Everything else on this list binds both skins. The night skin is defined in
 `openspec/specs/design-system` (Requirement: Skins) and nowhere else.
 

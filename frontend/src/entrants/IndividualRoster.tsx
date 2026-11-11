@@ -1,6 +1,7 @@
 import { useTranslation } from "react-i18next";
 
 import type { EntrantRow, Roster } from "../api";
+import NationalityCell from "./NationalityCell";
 import { CapacityLine, HrIdCell, PaidCell } from "./rosterCells";
 
 type IndividualRosterData = Extract<Roster, { kind: "individual" | "event" }>;
@@ -63,7 +64,7 @@ function EntrantLine({ row }: { row: EntrantRow }) {
           </span>
         )}
       </td>
-      <td>{row.nationality}</td>
+      <NationalityCell nationality={row.nationality} country={row.country} />
       <td>{row.club}</td>
       <HrIdCell hrId={row.hr_id} />
       <PaidCell paid={row.paid} />

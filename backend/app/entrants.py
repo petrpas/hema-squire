@@ -25,6 +25,7 @@ from app.availability import (
     QUEUE_ORDER,
     live_registration,
 )
+from app.hr_index import country_code
 from app.models import (
     Discipline,
     DisciplineKind,
@@ -62,6 +63,14 @@ class EntrantRow:
     faded: bool
     conditional: bool
 
+    @property
+    def country(self) -> str | None:
+        """The nationality as an ISO 3166 alpha-2 code, for the roster's flag;
+        None where no country can be read from it, and the nationality is then
+        stated as written (spec public-entrants, Nationality is stated as a
+        flag)."""
+        return country_code(self.nationality)
+
 
 @dataclass(frozen=True)
 class TeamMemberRow:
@@ -69,6 +78,14 @@ class TeamMemberRow:
     nationality: str | None
     club: str | None
     hr_id: int | None
+
+    @property
+    def country(self) -> str | None:
+        """The nationality as an ISO 3166 alpha-2 code, for the roster's flag;
+        None where no country can be read from it, and the nationality is then
+        stated as written (spec public-entrants, Nationality is stated as a
+        flag)."""
+        return country_code(self.nationality)
 
 
 @dataclass(frozen=True)

@@ -120,6 +120,7 @@ const row = (number: number, name: string, over: Partial<EntrantRow> = {}): Entr
   number,
   name,
   nationality: "CZ",
+  country: "CZ",
   club: "Klub",
   hr_id: 100 + number,
   paid: "yes",
@@ -136,8 +137,18 @@ const ENTRANTS: Entrants = {
       name: "Longsword",
       kind: "individual",
       line: true,
-      seated: [row(1, "Adéla"), row(2, "Boris", { paid: "no", faded: true })],
-      queued: [row(1, "Cyril", { paid: null, conditional: true })],
+      seated: [
+        row(1, "Adéla"),
+        row(2, "Boris", { paid: "no", faded: true, nationality: "Russia", country: "RU" }),
+      ],
+      queued: [
+        row(1, "Cyril", {
+          paid: null,
+          conditional: true,
+          nationality: "Bohemia",
+          country: null,
+        }),
+      ],
     },
     {
       slug: "TM",
@@ -151,8 +162,8 @@ const ENTRANTS: Entrants = {
           paid: "yes",
           faded: false,
           members: [
-            { name: "Eva", nationality: "CZE", club: "Klub X", hr_id: null },
-            { name: "Jan", nationality: "SVK", club: "Klub X", hr_id: null },
+            { name: "Eva", nationality: "CZE", country: "CZ", club: "Klub X", hr_id: null },
+            { name: "Jan", nationality: "SVK", country: "SK", club: "Klub X", hr_id: null },
           ],
         },
         { number: 2, name: "Vlci", paid: "yes", faded: false, members: [] },
@@ -379,6 +390,31 @@ describe("an individual roster", () => {
     expect(queued[5]).toBe("");
   });
 
+  it("draws a nationality as its flag, named in the page's language", async () => {
+    detailApi();
+    const page = mount("/t/spring-open/entrants/LS");
+    await settle();
+    // a visitor without an account reads English; the name follows the page
+    // when its language changes
+    await act(() => i18n.changeLanguage("cs"));
+
+    const rows = [...page.querySelectorAll(".entrants-table tbody tr")];
+    const nat = (tr: Element | undefined) => tr?.querySelectorAll("td")[2];
+    const czech = nat(rows[0])?.querySelector("img");
+    expect(czech?.alt).toBe("Česko");
+    expect(czech?.title).toBe("Česko");
+    // the flag stands in place of the code, not beside it
+    expect(nat(rows[0])?.textContent).toBe("");
+    expect(czech?.classList.contains("entrant-flag-mono")).toBe(false);
+    // Russia's flag is drawn without its colors, and named as any other
+    const russian = nat(rows[1])?.querySelector("img");
+    expect(russian?.classList.contains("entrant-flag-mono")).toBe(true);
+    expect(russian?.alt).toBe("Rusko");
+    // no country read: the nationality stands as written
+    expect(nat(rows[3])?.querySelector("img")).toBeNull();
+    expect(nat(rows[3])?.textContent).toBe("Bohemia");
+  });
+
   it("leads an HRID to the fighter's HEMA Ratings profile", async () => {
     detailApi();
     const page = mount("/t/spring-open/entrants/LS");
@@ -432,6 +468,8 @@ describe("a team roster", () => {
       `2|Vlci||||${i18n.t("export.yes")}`,
       i18n.t("export.line.capacity"),
     ]);
+    // a team whose members disagree on the country draws no flag
+    expect(page.querySelectorAll(".entrants-table img")).toHaveLength(0);
     // a team nobody is named to has nothing to open
     expect(page.querySelectorAll(".entrant-team-toggle")).toHaveLength(1);
   });
@@ -446,12 +484,44 @@ describe("a team roster", () => {
     expect(toggle?.getAttribute("aria-expanded")).toBe("true");
     expect(rows(page).slice(0, 3)).toEqual([
       `1|Draci||Klub X||${i18n.t("export.yes")}`,
-      "|Eva|CZE|Klub X||",
-      "|Jan|SVK|Klub X||",
+      "|Eva||Klub X||",
+      "|Jan||Klub X||",
     ]);
+
+    // each member's nationality is drawn as their own flag
+    const flags = [...page.querySelectorAll<HTMLImageElement>(".entrants-table img")];
+    expect(flags.map((img) => img.alt)).toEqual(["Czechia", "Slovakia"]);
 
     click(toggle);
     expect(rows(page)).toHaveLength(3);
+  });
+
+  it("draws the flag on the team's row where its members share the country", async () => {
+    const member = (name: string) => ({
+      name,
+      nationality: "SK",
+      country: "SK",
+      club: null,
+      hr_id: null,
+    });
+    const team = {
+      number: 1,
+      name: "Tatry",
+      paid: "yes" as const,
+      faded: false,
+      members: [member("Eva"), member("Jan")],
+    };
+    detailApi({
+      as_of: null,
+      rosters: [
+        { slug: "TM", name: "Teams", kind: "team", line: false, seated: [team], queued: [] },
+      ],
+    });
+    const page = mount("/t/spring-open/entrants/TM");
+    await settle();
+
+    const flags = [...page.querySelectorAll<HTMLImageElement>(".entrants-table img")];
+    expect(flags.map((img) => img.alt)).toEqual(["Slovakia"]);
   });
 });
 
