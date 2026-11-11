@@ -4311,7 +4311,9 @@ label.checklist-row > input[type="checkbox"] {
    D8) */
 .team-row .roster-hrid {
   flex: none;
-  width: 3.5rem;
+  /* "HR 12345" on one line: the prefix and the number never part */
+  width: 5.5rem;
+  white-space: nowrap;
 }
 
 .team-add-row {
