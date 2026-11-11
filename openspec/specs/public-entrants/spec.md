@@ -182,8 +182,8 @@ claimed. A team's Paid cell SHALL state its entering registration under
 the rules of the Paid column, and an unpaid team SHALL be drawn faded where Squire
 collects the money and that registration's money is due.
 
-A team whose roster names nobody yet SHALL be listed by name, with one line stating that
-its members are not yet named, shown without folding since there is nothing to open.
+A team whose roster names nobody yet SHALL be listed by name alone, with nothing to
+open and no line beneath it.
 
 A team whose entering registration's row the organizer has taken out of the table SHALL
 NOT be listed, as an individual's removed row is not.
@@ -203,7 +203,7 @@ it SHALL list no waitlisted team and draw no line.
 
 #### Scenario: A team not yet composed
 - **WHEN** a team has been entered and its roster names nobody
-- **THEN** it is listed by name with a line stating its members are not yet named
+- **THEN** it is listed by name with no toggle and nothing beneath it
 
 #### Scenario: The team waitlist below the line
 - **WHEN** an automatic tournament's team discipline of capacity 8 holds 8 teams and 2 waitlisted

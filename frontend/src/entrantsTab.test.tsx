@@ -420,7 +420,7 @@ describe("a team roster", () => {
   const rows = (page: HTMLElement) =>
     [...page.querySelectorAll(".entrants-table tbody tr")].map((tr) => cells(tr).join("|"));
 
-  it("folds each team's members away, and says when none are named", async () => {
+  it("folds each team's members away; a team with none has no toggle", async () => {
     detailApi();
     const page = mount("/t/spring-open/entrants/TM");
     await settle();
@@ -430,7 +430,6 @@ describe("a team roster", () => {
     expect(rows(page)).toEqual([
       `1|Draci||Klub X||${i18n.t("export.yes")}`,
       `2|Vlci||||${i18n.t("export.yes")}`,
-      `|${i18n.t("entrants.membersPending")}`,
       i18n.t("export.line.capacity"),
     ]);
     // a team nobody is named to has nothing to open
@@ -452,7 +451,7 @@ describe("a team roster", () => {
     ]);
 
     click(toggle);
-    expect(rows(page)).toHaveLength(4);
+    expect(rows(page)).toHaveLength(3);
   });
 });
 

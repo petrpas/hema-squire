@@ -1844,8 +1844,7 @@
     "empty": "Zatím nikdo není přihlášen.",
     "conditional": "jen se všemi",
     "conditionalHint": "Přihlášen jen spolu se všemi svými podmíněnými disciplínami.",
-    "team": "Tým",
-    "membersPending": "členové zatím neuvedeni"
+    "team": "Tým"
   },
   "guest": {
     "entry": "Registrovat bez účtu",

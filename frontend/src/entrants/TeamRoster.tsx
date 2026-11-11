@@ -67,7 +67,6 @@ function shared(values: (string | null)[]): string | null {
 }
 
 function TeamLines({ team }: { team: EntrantTeam }) {
-  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const faded = team.faded ? "muted" : undefined;
   const composed = team.members.length > 0;
@@ -98,15 +97,7 @@ function TeamLines({ team }: { team: EntrantTeam }) {
         <td />
         <PaidCell paid={team.paid} />
       </tr>
-      {!composed ? (
-        <tr className="muted">
-          <td className="col-gutter" />
-          <td className="entrant-member" colSpan={COLUMNS - 1}>
-            {t("entrants.membersPending")}
-          </td>
-        </tr>
-      ) : (
-        open &&
+      {open &&
         team.members.map((member, index) => (
           // biome-ignore lint/suspicious/noArrayIndexKey: a read-only roster rebuilt from props; position is the only identity a member has
           <tr key={index} className={faded}>
@@ -117,8 +108,7 @@ function TeamLines({ team }: { team: EntrantTeam }) {
             <HrIdCell hrId={member.hr_id} />
             <td />
           </tr>
-        ))
-      )}
+        ))}
     </tbody>
   );
 }

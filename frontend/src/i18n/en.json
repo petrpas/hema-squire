@@ -1800,8 +1800,7 @@
     "empty": "Nobody is entered yet.",
     "conditional": "only with all",
     "conditionalHint": "Entered only together with all of their conditional disciplines.",
-    "team": "Team",
-    "membersPending": "members not yet named"
+    "team": "Team"
   },
   "guest": {
     "entry": "Register without signing up",
