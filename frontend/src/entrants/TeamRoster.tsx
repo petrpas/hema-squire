@@ -19,7 +19,18 @@ export default function TeamRoster({ roster }: { roster: TeamRosterData }) {
   }
   return (
     <div className="sheet-scroll entrants-scroll">
-      <table className="sheet-table entrants-table">
+      {/* Fixed layout over declared widths: opening a team adds rows whose
+          names and clubs would otherwise reshare the columns, and the table
+          would jump under the pointer that opened it. */}
+      <table className="sheet-table entrants-table entrants-team-table">
+        <colgroup>
+          <col className="col-w-gutter" />
+          <col />
+          <col className="col-w-nat" />
+          <col className="col-w-club" />
+          <col className="col-w-hr" />
+          <col className="col-w-paid" />
+        </colgroup>
         <thead>
           <tr>
             <th className="col-gutter" aria-label={t("export.column.position")} />
@@ -89,7 +100,7 @@ function TeamLines({ team }: { team: EntrantTeam }) {
       </tr>
       {!composed ? (
         <tr className="muted">
-          <td />
+          <td className="col-gutter" />
           <td className="entrant-member" colSpan={COLUMNS - 1}>
             {t("entrants.membersPending")}
           </td>
@@ -99,7 +110,7 @@ function TeamLines({ team }: { team: EntrantTeam }) {
         team.members.map((member, index) => (
           // biome-ignore lint/suspicious/noArrayIndexKey: a read-only roster rebuilt from props; position is the only identity a member has
           <tr key={index} className={faded}>
-            <td />
+            <td className="col-gutter" />
             <td className="entrant-member">{member.name}</td>
             <td>{member.nationality}</td>
             <td>{member.club}</td>

@@ -3,12 +3,13 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import type { ConsoleTeam, ConsoleTeamDiscipline } from "../api";
+import NoteMarker from "../NoteMarker";
 import PaidStamp from "../PaidStamp";
 import ConsoleRosterEditor from "./ConsoleRosterEditor";
 import RosterLog from "./RosterLog";
 
 /** The teams table's width, which an unfolded roster spans. */
-export const COLUMNS = 7;
+export const COLUMNS = 8;
 
 /** One team's row, and the panel it opens.
  *
@@ -47,7 +48,9 @@ export default function TeamTableRow({
     team.members.length >= discipline.team_min && team.members.length <= discipline.team_max;
 
   return (
-    <>
+    // one team is one row group, as on the public roster: the hairline falls
+    // between teams, not between a team and its unfolded roster
+    <tbody className="entrant-team-block">
       <tr>
         <td className="col-gutter">{position}</td>
         <td>
@@ -56,6 +59,25 @@ export default function TeamTableRow({
         </td>
         <td>{team.entering_fencer}</td>
         <td>{team.entering_email ?? ""}</td>
+        <td>
+          {team.items.join(", ")}
+          {/* Items belong to the registration, and one that entered two teams
+              cannot say whose they are: each of its teams states them all and
+              names the others it shares them with, until an item can be
+              bought for one team (owner decision 2026-11-11). */}
+          {team.items.length > 0 && team.items_shared_with.length > 0 && (
+            <>
+              {" "}
+              <NoteMarker
+                kind="shared"
+                text={t("teams.itemsShared", {
+                  count: team.items_shared_with.length,
+                  teams: team.items_shared_with.join(", "),
+                })}
+              />
+            </>
+          )}
+        </td>
         {/* The count alone: the organizer knows the size the discipline asks
             for, and a bound repeated on eighteen rows is eighteen readings of
             one fact. A count outside the bounds is marked instead, which is
@@ -100,54 +122,63 @@ export default function TeamTableRow({
 
       {open && (
         <tr>
-          <td colSpan={COLUMNS}>
-            {editing ? (
-              <ConsoleRosterEditor
-                slug={slug}
-                team={team}
-                discipline={discipline}
-                onSaved={(saved) => {
-                  onSaved(saved);
-                  setEditing(false);
-                }}
-                onClose={() => setEditing(false)}
-              />
-            ) : (
-              <>
-                {team.members.length === 0 ? (
-                  <p className="muted">{t("teams.rosterEmpty")}</p>
-                ) : (
-                  <ul className="detail-list">
-                    {team.members.map((member) => (
-                      <li key={member.id} className="muted">
-                        {member.name}
-                        {/* the identifier the requirement asks for here, as the
+          {/* the gutter runs on beside the roster, blank: the count is the
+              team's, on the row above */}
+          <td className="col-gutter" />
+          <td colSpan={COLUMNS - 1}>
+            {/* the panel takes the width the table already has and claims none:
+                a cell spanning the row would otherwise reshare the columns by
+                its content, and the chevron that opened it would move out
+                from under the pointer that is about to close it */}
+            <div className="roster-panel">
+              {editing ? (
+                <ConsoleRosterEditor
+                  slug={slug}
+                  team={team}
+                  discipline={discipline}
+                  onSaved={(saved) => {
+                    onSaved(saved);
+                    setEditing(false);
+                  }}
+                  onClose={() => setEditing(false)}
+                />
+              ) : (
+                <>
+                  {team.members.length === 0 ? (
+                    <p className="muted">{t("teams.rosterEmpty")}</p>
+                  ) : (
+                    <ul className="detail-list">
+                      {team.members.map((member) => (
+                        <li key={member.id} className="muted">
+                          {member.name}
+                          {/* the identifier the requirement asks for here, as the
                             public entrants roster already states it */}
-                        {member.hr_id !== null && ` · HR ${member.hr_id}`}
-                        {member.club && ` · ${member.club}`}
-                        {member.nationality && ` · ${member.nationality}`}
-                      </li>
-                    ))}
-                  </ul>
-                )}
-                <div className="detail-row">
-                  <button type="button" className="link-button" onClick={() => setEditing(true)}>
-                    {t("teams.editRoster")}
-                  </button>
-                  <button
-                    type="button"
-                    className="link-button"
-                    onClick={() => setShowLog(!showLog)}
-                  >
-                    {showLog ? t("teams.log.hide") : t("teams.log.show")}
-                  </button>
-                </div>
-              </>
-            )}
-            {showLog && <RosterLog entries={team.log} />}
+                          {member.hr_id !== null && ` · HR ${member.hr_id}`}
+                          {member.club && ` · ${member.club}`}
+                          {member.nationality && ` · ${member.nationality}`}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  <div className="detail-row">
+                    <button type="button" className="link-button" onClick={() => setEditing(true)}>
+                      {t("teams.editRoster")}
+                    </button>
+                    <button
+                      type="button"
+                      className="link-button"
+                      onClick={() => setShowLog(!showLog)}
+                    >
+                      {showLog ? t("teams.log.hide") : t("teams.log.show")}
+                    </button>
+                  </div>
+                </>
+              )}
+              {showLog && <RosterLog entries={team.log} />}
+            </div>
           </td>
         </tr>
       )}
-    </>
+    </tbody>
   );
 }

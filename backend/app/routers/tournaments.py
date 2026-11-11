@@ -56,6 +56,7 @@ from app.models import (
     PaymentMode,
     Registration,
     RegistrationDiscipline,
+    RegistrationExtra,
     RegistrationState,
     Role,
     Team,
@@ -1336,6 +1337,16 @@ def delete_discipline(
     session.commit()
 
 
+def _item_label(selection: RegistrationExtra) -> str:
+    """One bought item as the teams view states it: the name, the answer to its
+    option where it declares one, and the quantity where it is more than one —
+    the "x2" the fencer list's rentals cell writes."""
+    label = selection.item.name
+    if selection.option_value:
+        label = f"{label} ({selection.option_value})"
+    return f"{label} x{selection.qty}" if selection.qty > 1 else label
+
+
 def _console_team_out(
     session: Session, team: Team, *, waitlist_position: int | None, below_minimum: bool
 ) -> ConsoleTeamOut:
@@ -1347,6 +1358,12 @@ def _console_team_out(
         name=team.name,
         entering_fencer=team.registration.fencer.display_name,
         entering_email=emails.recipient(team.registration, team.registration.fencer),
+        items=[_item_label(selection) for selection in team.registration.extra_selections],
+        items_shared_with=[
+            other.name
+            for other in sorted(team.registration.teams, key=lambda other: other.id)
+            if other.id != team.id
+        ],
         paid=team.registration.settled,
         waitlisted=team.waitlisted,
         waitlist_position=waitlist_position,

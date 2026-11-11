@@ -65,22 +65,23 @@ export default function TeamsTable({
           <th>{t("teams.column.team")}</th>
           <th>{t("teams.column.enteringFencer")}</th>
           <th>{t("teams.column.email")}</th>
+          <th>{t("teams.column.items")}</th>
           <th className="col-center">{t("teams.column.members")}</th>
           <th className="col-center">{t("teams.column.paid")}</th>
           <th className="col-actions" />
         </tr>
       </thead>
-      <tbody>
-        {seated.map(row)}
-        {waiting.length > 0 && (
+      {seated.map(row)}
+      {waiting.length > 0 && (
+        <tbody>
           <tr className="export-line">
             <td colSpan={COLUMNS}>
               {t("export.line.queue")} · {t("teams.admittedOnQueue")}
             </td>
           </tr>
-        )}
-        {waiting.map(row)}
-      </tbody>
+        </tbody>
+      )}
+      {waiting.map(row)}
     </table>
   );
 }

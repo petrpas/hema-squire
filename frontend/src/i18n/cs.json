@@ -428,6 +428,7 @@
   },
   "marker": {
     "note": "Poznámka",
+    "shared": "Společné položky",
     "problem": "Problém parsování",
     "substitutedFor": "místo po {{name}}",
     "substituted": "Náhrada"
@@ -1389,6 +1390,10 @@
     "bounds": "Soupiska {{min}}–{{max}} členů",
     "noneEntered": "Zatím nepřihlášen žádný tým.",
     "memberCount": "{{count}}/{{min}}–{{max}} členů",
+    "itemsShared_one": "Položky jsou společné s týmem {{teams}} na téže registraci.",
+    "itemsShared_few": "Položky jsou společné s týmy {{teams}} na téže registraci.",
+    "itemsShared_many": "Položky jsou společné s týmy {{teams}} na téže registraci.",
+    "itemsShared_other": "Položky jsou společné s týmy {{teams}} na téže registraci.",
     "belowMinimum": "pod minimem",
     "enteredBy": "přihlásil/a {{name}}",
     "admittedOnQueue": "přijetí z čekací listiny je ve fázi Fronta",
@@ -1425,6 +1430,7 @@
       "discipline": "Disciplína",
       "enteringFencer": "Přihlásil",
       "email": "E-mail",
+      "items": "Položky",
       "members": "Soupiska",
       "paid": "Zaplaceno"
     },

@@ -1294,6 +1294,11 @@ export interface ConsoleTeam {
   /** Where mail about the entering registration goes; null for a row imported
    *  without an address. */
   entering_email: string | null;
+  /** What the entering registration bought, as "name (option) xN". Items
+   *  belong to the registration, not to one of its teams. */
+  items: string[];
+  /** The registration's other teams, which share those items. */
+  items_shared_with: string[];
   /** The payment standing of the registration this team was entered on: a team
    *  is paid for once, on that registration, and carries no money of its own. */
   paid: boolean;

@@ -2235,6 +2235,13 @@ class ConsoleTeamOut(BaseModel):
     # the organizer writes to the address Squire writes to; None for a row
     # imported without one
     entering_email: str | None = None
+    # the extra items the entering registration bought, each as "name (option)
+    # xN": items belong to the registration, not to one of its teams
+    items: list[str] = []
+    # the other teams the same registration entered, which share those items:
+    # until an item can be bought for one team, a registration holding two
+    # cannot say whose the items are (owner decision 2026-11-11)
+    items_shared_with: list[str] = []
     # the payment standing of the registration this team was entered on: a team
     # is paid for once, on that registration, and carries no money of its own
     paid: bool

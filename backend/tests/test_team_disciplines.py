@@ -1163,6 +1163,38 @@ def test_the_teams_view_states_where_the_entering_fencer_is_written_to(client, a
     assert console[0]["teams"][0]["entering_email"] == "f1@example.com"
 
 
+def test_the_teams_view_states_the_items_and_who_shares_them(client, auth_headers):
+    """Items belong to the registration, not to one of its teams. Every team
+    the registration entered states them, and names the teams it shares them
+    with, since nothing yet says whose they are (owner decision 2026-11-11)."""
+    organizer = auth_headers()
+    setup_team_tournament(client, organizer, capacity=4)
+    sword = client.post(
+        "/api/tournaments/cup/extra-items",
+        json={"name": "Meč", "category": "rental", "price": 200, "max_qty": 4},
+        headers=organizer,
+    ).json()
+    fencer = auth_headers(email="f1@example.com", name="F1")
+    two = register_team(
+        client,
+        fencer,
+        teams=[{"slug": "LS", "name": "Wolves"}, {"slug": "LS", "name": "Bears"}],
+        extras=[{"extra_item_id": sword["id"], "qty": 2}],
+    )
+    assert two.status_code == 201, two.text
+    alone = auth_headers(email="f2@example.com", name="F2")
+    register_team(client, alone, name="Hawks")
+
+    teams = client.get("/api/tournaments/cup/teams", headers=organizer).json()[0]["teams"]
+    by_name = {team["name"]: team for team in teams}
+    assert by_name["Wolves"]["items"] == ["Meč x2"]
+    assert by_name["Wolves"]["items_shared_with"] == ["Bears"]
+    assert by_name["Bears"]["items"] == ["Meč x2"]
+    assert by_name["Bears"]["items_shared_with"] == ["Wolves"]
+    assert by_name["Hawks"]["items"] == []
+    assert by_name["Hawks"]["items_shared_with"] == []
+
+
 @pytest.mark.parametrize("timezone", [FAR_EAST, FAR_WEST])
 def test_below_minimum_follows_the_tournaments_own_day(client, auth_headers, timezone):
     """The composition deadline is a whole day where the tournament is held, not

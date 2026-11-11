@@ -1184,8 +1184,9 @@ button.secondary:disabled {
   position: sticky;
   left: 0;
   z-index: 1;
-  width: 2.5rem;
-  padding-right: 0.6rem;
+  width: 2.25rem;
+  padding-left: 0.3rem;
+  padding-right: 0.5rem;
   background: var(--paper);
   color: var(--ink-faded);
   font-family: var(--font-data);
@@ -4654,6 +4655,14 @@ label.checklist-row > input[type="checkbox"] {
   outline-offset: 2px;
 }
 
+/* An unfolded roster spans the row without widening any column: its width
+   is taken as nothing when the table sizes its columns, then stretched to
+   the cell, so opening it leaves every column, and the chevron, in place. */
+.roster-panel {
+  width: 0;
+  min-width: 100%;
+}
+
 /* the discipline tabs hang under the heading, above the table they choose */
 .team-discipline-tabs {
   align-self: flex-start;
@@ -5197,6 +5206,35 @@ tr.export-line td {
   flex: none;
   overflow-x: auto;
   overflow-y: hidden;
+}
+
+/* A team roster's columns are declared rather than measured: members
+   unfolding beneath a team would otherwise reshare them, and the table would
+   jump under the pointer. Wider than a phone, it scrolls sideways in its
+   frame as before. */
+.entrants-team-table {
+  table-layout: fixed;
+  min-width: 34rem;
+}
+
+.entrants-team-table .col-w-gutter {
+  width: 2.25rem;
+}
+
+.entrants-team-table .col-w-nat {
+  width: 4.5rem;
+}
+
+.entrants-team-table .col-w-club {
+  width: 30%;
+}
+
+.entrants-team-table .col-w-hr {
+  width: 6rem;
+}
+
+.entrants-team-table .col-w-paid {
+  width: 7rem;
 }
 
 /* the participation condition, said in words beside the name */

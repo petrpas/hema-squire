@@ -414,6 +414,7 @@
   },
   "marker": {
     "note": "Note",
+    "shared": "Shared items",
     "problem": "Parse problem",
     "substitutedFor": "took over from {{name}}",
     "substituted": "Substitution"
@@ -1364,6 +1365,8 @@
     "bounds": "Roster {{min}}–{{max}} members",
     "noneEntered": "No team entered yet.",
     "memberCount": "{{count}}/{{min}}–{{max}} members",
+    "itemsShared_one": "The items are shared with team {{teams}} on the same registration.",
+    "itemsShared_other": "The items are shared with teams {{teams}} on the same registration.",
     "belowMinimum": "below minimum",
     "enteredBy": "entered by {{name}}",
     "admittedOnQueue": "admission from the waitlist is on the Queue phase",
@@ -1400,6 +1403,7 @@
       "discipline": "Discipline",
       "enteringFencer": "Entered by",
       "email": "Email",
+      "items": "Items",
       "members": "Members",
       "paid": "Paid"
     },

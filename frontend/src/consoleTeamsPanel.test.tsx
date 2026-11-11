@@ -20,6 +20,8 @@ function team(overrides: Partial<ConsoleTeam> = {}): ConsoleTeam {
     name: "Wolves",
     entering_fencer: "F1",
     entering_email: "f1@example.org",
+    items: [],
+    items_shared_with: [],
     paid: false,
     waitlisted: false,
     waitlist_position: null,
@@ -95,6 +97,7 @@ describe("the organizer's teams view", () => {
       i18n.t("teams.column.team"),
       i18n.t("teams.column.enteringFencer"),
       i18n.t("teams.column.email"),
+      i18n.t("teams.column.items"),
       i18n.t("teams.column.members"),
       i18n.t("teams.column.paid"),
       "",
@@ -104,11 +107,12 @@ describe("the organizer's teams view", () => {
     );
     // the count's cell carries the roster's toggle, named for assistive
     // technology alone
-    expect(first.slice(0, 6)).toEqual([
+    expect(first.slice(0, 7)).toEqual([
       "1",
       "Wolves",
       "F1",
       "f1@example.org",
+      "",
       `2${i18n.t("teams.roster.show")}`,
       i18n.t("export.no"),
     ]);
@@ -118,17 +122,45 @@ describe("the organizer's teams view", () => {
     const second = [...(page.querySelectorAll("tbody tr")[1]?.querySelectorAll("td") ?? [])].map(
       (td) => td.textContent,
     );
-    expect(second[5]).toBe(i18n.t("export.yes"));
+    expect(second[6]).toBe(i18n.t("export.yes"));
     // two of a minimum of three: the count alone, marked as outside the bounds
-    const count = page.querySelectorAll("tbody tr")[0]?.querySelector("td:nth-child(5) span");
+    const count = page.querySelectorAll("tbody tr")[0]?.querySelector("td:nth-child(6) span");
     expect(count?.className).toContain("member-count-off");
     // a count the bounds admit carries no mark
-    const okCount = page.querySelectorAll("tbody tr")[1]?.querySelector("td:nth-child(5) span");
+    const okCount = page.querySelectorAll("tbody tr")[1]?.querySelector("td:nth-child(6) span");
     expect(okCount?.textContent).toBe("3");
     expect(okCount?.className).not.toContain("member-count-off");
 
     // the roster is not printed under every row
     expect(page.textContent).not.toContain("Bound Person");
+  });
+
+  it("states what the entering registration bought, and whom it is shared with", async () => {
+    const page = await openPanel([
+      discipline([
+        team({ items: ["Meč x2", "Afterparty"], items_shared_with: ["Bears"] }),
+        team({
+          id: 6,
+          name: "Bears",
+          items: ["Meč x2", "Afterparty"],
+          items_shared_with: ["Wolves"],
+        }),
+        team({ id: 7, name: "Hawks", items: ["Afterparty"] }),
+      ]),
+    ]);
+
+    const itemCells = [...page.querySelectorAll("tbody tr")].map((tr) => tr.children[4]);
+    expect(itemCells[0]?.textContent).toContain("Meč x2, Afterparty");
+    // a registration that entered two teams cannot say whose the items are:
+    // each team says so behind a marker
+    const marker = itemCells[0]?.querySelector("button");
+    expect(marker?.textContent).toBe("[i]");
+    await act(async () => marker?.click());
+    expect(itemCells[0]?.textContent).toContain(
+      i18n.t("teams.itemsShared", { count: 1, teams: "Bears" }),
+    );
+    // a registration with one team has nothing to share
+    expect(itemCells[2]?.textContent).toBe("Afterparty");
   });
 
   it("chooses the discipline by a tab where there are two or more", async () => {
