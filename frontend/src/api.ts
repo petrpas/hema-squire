@@ -1460,6 +1460,31 @@ export interface RankedFencer {
   proposed: boolean;
   /** The organizer has already refused this fencer for this payment. */
   rejected: boolean;
+  /** What the lookup reaches besides the name: on a team tournament the money
+   *  comes from a club or under a team's name (spec name-assisted-matching). */
+  club?: string | null;
+  team_names?: string[];
+}
+
+/** One line of what a registration is made of, in the tournament's local
+ *  currency (spec payments-console, Every order unfolds into its priced
+ *  lines). `label` is the team's, the item's or the discount's own name; a
+ *  discipline line is named by its slug, a legacy flat fee by its kind. */
+export interface OrderLine {
+  kind: "team" | "discipline" | "item" | "discount" | "code" | "rental" | "afterparty";
+  label: string | null;
+  discipline_slug: string | null;
+  qty: number;
+  unit_price: number;
+  amount: number;
+  /** a placement waiting in a queue, counted in nothing */
+  queued: boolean;
+}
+
+export interface OrderLines {
+  registration_id: number;
+  currency: Currency;
+  lines: OrderLine[];
 }
 
 export interface TransactionRoster {
@@ -2241,6 +2266,8 @@ export const api = {
    *  done with it. One table where there were three: proposals, unresolved
    *  money and the money a check refused are one question with the answer to a
    *  second written beside it. */
+  orderLines: (slug: string) =>
+    request<OrderLines[]>(`/api/tournaments/${slug}/payments/order-lines`),
   uncreditedPayments: (slug: string) =>
     request<UncreditedPayment[]>(`/api/tournaments/${slug}/payments/uncredited`),
   confirmProposal: (slug: string, transactionId: number) =>

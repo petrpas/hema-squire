@@ -530,3 +530,49 @@ def test_a_refused_fencer_is_marked_in_the_roster(client, auth_headers, mailbox,
     vejda = next(f for f in body["fencers"] if f["name"] == "Josef Vejda")
     assert vejda["rejected"] is True
     assert vejda["proposed"] is False
+
+
+def test_the_roster_carries_the_club_and_teams_the_lookup_reaches(
+    client, auth_headers, mailbox, parser
+):
+    organizer = auth_headers()
+    setup(client, organizer)
+    enroll(client, auth_headers, "Josef Vejda")
+    upload(client, organizer, [{"ref": "1", "date": "2026-08-01", "amount": "1000"}])
+    session = db_session()
+    registration = session.scalars(select(Registration)).one()
+    registration.fencer.club = "Hema Praha"
+    session.commit()
+
+    body = client.get(
+        f"/api/tournaments/cup/payments/transactions/{transactions()[0].id}/roster",
+        headers=organizer,
+    ).json()
+    assert body["fencers"][0]["club"] == "Hema Praha"
+    assert body["fencers"][0]["team_names"] == []
+
+
+# ------------------------------------------------------- the order lines
+
+
+def test_order_lines_state_each_registration_and_sum_to_its_total(
+    client, auth_headers, mailbox, parser
+):
+    organizer = auth_headers()
+    setup(client, organizer)
+    enroll(client, auth_headers, "Josef Vejda")
+
+    body = client.get("/api/tournaments/cup/payments/order-lines", headers=organizer).json()
+    registration = db_session().scalars(select(Registration)).one()
+    assert [order["registration_id"] for order in body] == [registration.id]
+    assert body[0]["currency"] == "CZK"
+    assert sum(line["amount"] for line in body[0]["lines"]) == registration.total_amount
+
+
+def test_order_lines_are_the_organizers_alone(client, auth_headers, mailbox, parser):
+    organizer = auth_headers()
+    setup(client, organizer)
+    fencer, _ = enroll(client, auth_headers, "Josef Vejda")
+
+    response = client.get("/api/tournaments/cup/payments/order-lines", headers=fencer)
+    assert response.status_code == 403

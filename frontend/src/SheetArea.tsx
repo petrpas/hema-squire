@@ -1,17 +1,9 @@
-import {
-  IconArrowBackUp,
-  IconCoins,
-  IconMailForward,
-  IconTrash,
-  IconUserShare,
-  IconUserX,
-} from "@tabler/icons-react";
+import { Fragment, useState } from "react";
 import { useTranslation } from "react-i18next";
-import type { SheetRow, TournamentDetail } from "./api";
+import type { OrderLines, SheetRow, TournamentDetail } from "./api";
 import {
   absorbedInto,
   CellDisplay,
-  canSubstitute,
   editableHere,
   MARKER_COLUMNS,
   NUMERIC_COLUMNS,
@@ -19,14 +11,16 @@ import {
   type Phase,
   phaseRemovesRows,
   phaseSummary,
-  rowAction,
 } from "./Console";
 import EditableCell from "./EditableCell";
 import FencerNumber from "./FencerNumber";
 import { usesHRIdentity } from "./identity";
 import MatchCell from "./MatchCell";
 import PhaseSummary from "./PhaseSummary";
+import ContentsCell from "./payments/ContentsCell";
+import OrderLineRows from "./payments/OrderLineRows";
 import { useSheetVisible } from "./payments/PaymentTabs";
+import RowActionsCell from "./RowActionsCell";
 import SettledCell from "./SettledCell";
 import StateCell from "./StateCell";
 import type { FieldError } from "./validation";
@@ -80,6 +74,7 @@ export default function SheetArea({
   collects,
   onRecordPayment,
   settling,
+  orders,
 }: {
   phase: Phase;
   /** What this phase puts above the table — the payments phase's resolution
@@ -140,6 +135,9 @@ export default function SheetArea({
   onCancel: (row: SheetRow) => void;
   onRatify: (row: SheetRow) => void;
   onSearch: (row: SheetRow) => void;
+  /** What each registration is made of, read by the Contents column and the
+   *  lines it unfolds into. Payments alone carries it; null while it loads. */
+  orders?: Map<number, OrderLines> | null;
 }) {
   const { t } = useTranslation();
   const hrIdentity = usesHRIdentity(phase);
@@ -169,6 +167,33 @@ export default function SheetArea({
   // read from the rows this phase lists, so a count and the table beneath it
   // are two statements about the same thing
   const summary = phaseSummary(phase, visibleRows);
+  // which orders are unfolded; local to the table and not kept across visits
+  const [unfolded, setUnfolded] = useState<ReadonlySet<string>>(new Set());
+  function toggleUnfolded(id: string) {
+    setUnfolded((current) => {
+      const next = new Set(current);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+  const orderOf = (row: SheetRow) =>
+    typeof row.registration_id === "number" ? orders?.get(row.registration_id) : undefined;
+
+  /** The lines an unfolded order opens into, under its row; nothing for a row
+   *  that is folded or has no lines to show. */
+  function unfoldedLines(row: SheetRow) {
+    const order = orderOf(row);
+    if (!unfolded.has(row.id) || order === undefined) return null;
+    return (
+      <OrderLineRows
+        order={order}
+        issued={row.total_amount}
+        columns={columns}
+        trailing={rowActions ? 1 : 0}
+      />
+    );
+  }
 
   // The count down the left column: each standing row's position among the
   // rows that stand, so the last number read is how many fencers the list
@@ -241,172 +266,113 @@ export default function SheetArea({
               </thead>
               <tbody>
                 {visibleRows.map((row) => (
-                  <tr key={row.id} className={row._deleted ? "row-deleted" : ""}>
-                    {/* the count of fencers who stand, so a removed row takes
+                  <Fragment key={row.id}>
+                    <tr className={row._deleted ? "row-deleted" : ""}>
+                      {/* the count of fencers who stand, so a removed row takes
                         no place in it and leaves the rest of the count
                         unmoved */}
-                    <td className="col-gutter">{position.get(row.id) ?? ""}</td>
-                    <td className="col-index">
-                      <FencerNumber number={row.number} />
-                      {absorbedInto(row, rows) !== null && (
-                        <span className="row-absorbed" title={t("row.absorbed")}>
-                          {" \u2192 "}
-                          <FencerNumber number={absorbedInto(row, rows)} />
-                        </span>
-                      )}
-                    </td>
-                    {columns.map((column) => {
-                      const phaseOwned =
-                        PHASE_COLUMNS[phase].includes(column) || column === "settled";
-                      const editable = editableHere(column, phase, row) && !row._deleted;
-                      const isMatch = column === "match";
-                      return (
-                        <td
-                          key={column}
-                          className={`${phaseOwned ? "col-phase" : ""} ${
-                            isMatch ? "col-verdict" : ""
-                          } ${MARKER_COLUMNS.has(column) ? "col-marker" : ""} ${
-                            NUMERIC_COLUMNS.has(column) ? "col-number" : ""
-                          }`}
-                        >
-                          {column === "settled" && onToggleSettled ? (
-                            <SettledCell
-                              row={row}
-                              onToggle={onToggleSettled}
-                              busy={settling ?? false}
-                            />
-                          ) : column === "state" && collects && onToggleSettled ? (
-                            <StateCell
-                              row={row}
-                              onToggle={onToggleSettled}
-                              busy={settling ?? false}
-                            />
-                          ) : isMatch ? (
-                            <MatchCell
-                              row={row}
-                              onRatify={() => onRatify(row)}
-                              onSearch={() => onSearch(row)}
-                            />
-                          ) : editable ? (
-                            <EditableCell
-                              label={t(`column.${column}`)}
-                              display={
-                                <CellDisplay
-                                  row={row}
-                                  column={column}
-                                  timezone={timezone}
-                                  currency={currency}
-                                  hrIdentity={hrIdentity}
-                                  namesTeamDiscipline={namesTeamDiscipline}
-                                />
-                              }
-                              // a list is edited as the text it is shown as, so
-                              // the draft round-trips to itself when untouched
-                              value={
-                                column === "disciplines"
-                                  ? row.disciplines.join(", ")
-                                  : column === "weapon_rentals"
-                                    ? row.weapon_rentals.join(", ")
-                                    : row[column]
-                              }
-                              onSave={(raw) => onEdit(row, column, raw)}
-                              validate={(raw) => onValidate(column, raw)}
-                            />
-                          ) : (
-                            <CellDisplay
-                              row={row}
-                              column={column}
-                              timezone={timezone}
-                              currency={currency}
-                              hrIdentity={hrIdentity}
-                              namesTeamDiscipline={namesTeamDiscipline}
-                            />
-                          )}
-                        </td>
-                      );
-                    })}
-                    {rowActions && (
-                      <td className={actionsClass}>
-                        {/* Side by side and on one line: two actions at the end
-                          of a row are two decisions offered together, and
-                          stacked they read as one above the other. */}
-                        <div className="row-actions">
-                          {/* money that arrived where the feed does not reach.
-                          Sits with the row actions rather than in a column,
-                          because it is an action and not a value */}
-                          {onRecordPayment && typeof row.registration_id === "number" && (
-                            <button
-                              type="button"
-                              className="row-action"
-                              title={t("payments.record.action")}
-                              onClick={() => onRecordPayment(row)}
-                            >
-                              <IconCoins size={16} stroke={1.5} />
-                              <span className="visually-hidden">{t("payments.record.action")}</span>
-                            </button>
-                          )}
-                          {/* a seat handed on, beside the seat given up: two
-                          different decisions, both of them the roster's */}
-                          {onSubstitute && canSubstitute(row, phase) && (
-                            <button
-                              type="button"
-                              className="row-action"
-                              title={t("actions.substitute")}
-                              onClick={() => onSubstitute(row)}
-                            >
-                              <IconUserShare size={16} stroke={1.5} />
-                              <span className="visually-hidden">{t("actions.substitute")}</span>
-                            </button>
-                          )}
-                          {onResendLink && row.guest === true && (
-                            <button
-                              type="button"
-                              className="row-action"
-                              title={t("actions.resendLink")}
-                              onClick={() => onResendLink(row)}
-                            >
-                              <IconMailForward size={16} stroke={1.5} />
-                              <span className="visually-hidden">{t("actions.resendLink")}</span>
-                            </button>
-                          )}
-                          {rowAction(row, phase) === null ? null : rowAction(row, phase) ===
-                            "cancel" ? (
-                            // a person holding a seat: cancelled, not tidied
-                            // away (spec etl-console, Reversible row deletion)
-                            <button
-                              type="button"
-                              className="row-action"
-                              title={t("actions.cancelRegistration")}
-                              onClick={() => onCancel(row)}
-                            >
-                              <IconUserX size={16} stroke={1.5} />
-                              <span className="visually-hidden">
-                                {t("actions.cancelRegistration")}
-                              </span>
-                            </button>
-                          ) : rowAction(row, phase) === "restore" ? (
-                            <button
-                              type="button"
-                              className="row-action"
-                              title={t("actions.restore")}
-                              onClick={() => onRestore(row)}
-                            >
-                              <IconArrowBackUp size={16} stroke={1.5} />
-                            </button>
-                          ) : (
-                            <button
-                              type="button"
-                              className="row-action"
-                              title={t("actions.delete")}
-                              onClick={() => onDelete(row)}
-                            >
-                              <IconTrash size={16} stroke={1.5} />
-                            </button>
-                          )}
-                        </div>
+                      <td className="col-gutter">{position.get(row.id) ?? ""}</td>
+                      <td className="col-index">
+                        <FencerNumber number={row.number} />
+                        {absorbedInto(row, rows) !== null && (
+                          <span className="row-absorbed" title={t("row.absorbed")}>
+                            {" \u2192 "}
+                            <FencerNumber number={absorbedInto(row, rows)} />
+                          </span>
+                        )}
                       </td>
-                    )}
-                  </tr>
+                      {columns.map((column) => {
+                        const phaseOwned =
+                          PHASE_COLUMNS[phase].includes(column) || column === "settled";
+                        const editable = editableHere(column, phase, row) && !row._deleted;
+                        const isMatch = column === "match";
+                        return (
+                          <td
+                            key={column}
+                            className={`${phaseOwned ? "col-phase" : ""} ${
+                              isMatch ? "col-verdict" : ""
+                            } ${MARKER_COLUMNS.has(column) ? "col-marker" : ""} ${
+                              NUMERIC_COLUMNS.has(column) ? "col-number" : ""
+                            }`}
+                          >
+                            {column === "contents" ? (
+                              <ContentsCell
+                                order={orderOf(row)}
+                                open={unfolded.has(row.id)}
+                                onToggle={() => toggleUnfolded(row.id)}
+                              />
+                            ) : column === "settled" && onToggleSettled ? (
+                              <SettledCell
+                                row={row}
+                                onToggle={onToggleSettled}
+                                busy={settling ?? false}
+                              />
+                            ) : column === "state" && collects && onToggleSettled ? (
+                              <StateCell
+                                row={row}
+                                onToggle={onToggleSettled}
+                                busy={settling ?? false}
+                              />
+                            ) : isMatch ? (
+                              <MatchCell
+                                row={row}
+                                onRatify={() => onRatify(row)}
+                                onSearch={() => onSearch(row)}
+                              />
+                            ) : editable ? (
+                              <EditableCell
+                                label={t(`column.${column}`)}
+                                display={
+                                  <CellDisplay
+                                    row={row}
+                                    column={column}
+                                    timezone={timezone}
+                                    currency={currency}
+                                    hrIdentity={hrIdentity}
+                                    namesTeamDiscipline={namesTeamDiscipline}
+                                  />
+                                }
+                                // a list is edited as the text it is shown as, so
+                                // the draft round-trips to itself when untouched
+                                value={
+                                  column === "disciplines"
+                                    ? row.disciplines.join(", ")
+                                    : column === "weapon_rentals"
+                                      ? row.weapon_rentals.join(", ")
+                                      : row[column]
+                                }
+                                onSave={(raw) => onEdit(row, column, raw)}
+                                validate={(raw) => onValidate(column, raw)}
+                              />
+                            ) : (
+                              <CellDisplay
+                                row={row}
+                                column={column}
+                                timezone={timezone}
+                                currency={currency}
+                                hrIdentity={hrIdentity}
+                                namesTeamDiscipline={namesTeamDiscipline}
+                              />
+                            )}
+                          </td>
+                        );
+                      })}
+                      {rowActions && (
+                        <RowActionsCell
+                          row={row}
+                          phase={phase}
+                          className={actionsClass}
+                          onRecordPayment={onRecordPayment}
+                          onSubstitute={onSubstitute}
+                          onResendLink={onResendLink}
+                          onCancel={onCancel}
+                          onRestore={onRestore}
+                          onDelete={onDelete}
+                        />
+                      )}
+                    </tr>
+                    {unfoldedLines(row)}
+                  </Fragment>
                 ))}
               </tbody>
             </table>

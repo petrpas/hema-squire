@@ -97,7 +97,11 @@ async function settle() {
   });
 }
 
-beforeEach(() => void vi.restoreAllMocks());
+beforeEach(() => {
+  vi.restoreAllMocks();
+  // what each order holds; none unless a test says so
+  vi.spyOn(api, "orderLines").mockResolvedValue([]);
+});
 afterEach(() => {
   host?.remove();
   host = null;
@@ -307,4 +311,73 @@ it("keeps the symbol when the roster could not be read", async () => {
   await settle();
 
   expect(host?.querySelector(".link-entry")).not.toBeNull();
+});
+
+function search(value: string) {
+  const input = [...(host?.querySelectorAll("input") ?? [])].find(
+    (field) => (field as HTMLInputElement).placeholder === t("payments.link.search"),
+  ) as HTMLInputElement;
+  act(() => {
+    const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value")?.set;
+    setter?.call(input, value);
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+}
+
+it("finds an order by the team it entered", async () => {
+  // the money arrives under a team's name, and the holder's is in neither
+  // (spec name-assisted-matching, Found by the team's name)
+  withRoster([
+    ranked({
+      fencer_id: 1,
+      name: "Pavel Grussmann",
+      registration_id: 11,
+      team_names: ["Hema Praha"],
+    }),
+    ranked({ fencer_id: 2, name: "Kamil Hozák", registration_id: 12, team_names: ["Pardubice"] }),
+  ]);
+  render();
+  await settle();
+  search("hema praha");
+
+  expect(host?.textContent).toContain("Pavel Grussmann");
+  expect(host?.textContent).not.toContain("Kamil Hozák");
+});
+
+it("finds an order by its club", async () => {
+  withRoster([
+    ranked({ fencer_id: 1, name: "Pavel Grussmann", registration_id: 11, club: "Hema Praha" }),
+    ranked({ fencer_id: 2, name: "Kamil Hozák", registration_id: 12, club: "Pardubice" }),
+  ]);
+  render();
+  await settle();
+  search("pardub");
+
+  expect(host?.textContent).toContain("Kamil Hozák");
+  expect(host?.textContent).not.toContain("Pavel Grussmann");
+});
+
+it("states what each order holds beside its holder", async () => {
+  withRoster([ranked({ fencer_id: 1, name: "Pavel Grussmann", registration_id: 11 })]);
+  vi.spyOn(api, "orderLines").mockResolvedValue([
+    {
+      registration_id: 11,
+      currency: "CZK",
+      lines: [
+        {
+          kind: "team",
+          label: "Hema Praha",
+          discipline_slug: "SA",
+          qty: 1,
+          unit_price: 1200,
+          amount: 1200,
+          queued: false,
+        },
+      ],
+    },
+  ]);
+  render();
+  await settle();
+
+  expect(host?.textContent).toContain("Pavel Grussmann · Hema Praha");
 });

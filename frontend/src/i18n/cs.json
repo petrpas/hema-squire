@@ -445,6 +445,7 @@
     "hr_nationality": "HR_Nár.",
     "hr_club": "HR_Klub",
     "disciplines": "Disciplíny",
+    "contents": "Obsah",
     "vs": "VS",
     "state": "Stav",
     "match": "Match",
@@ -1575,7 +1576,7 @@
     },
     "tabs": {
       "label": "Platby turnaje",
-      "fencers": "Šermíři",
+      "registrations": "Registrace",
       "payments": "Platby",
       "credited": "Připsané",
       "uncredited": "Nepřipsané",
@@ -1586,6 +1587,24 @@
       "noteCredited": "připsáno {{total}}",
       "codes": "Slevové kódy",
       "label_event": "Platby akce"
+    },
+    "order": {
+      "teams_one": "{{count}} tým",
+      "teams_few": "{{count}} týmy",
+      "teams_many": "{{count}} týmu",
+      "teams_other": "{{count}} týmů",
+      "items_one": "{{count}} položka",
+      "items_few": "{{count}} položky",
+      "items_many": "{{count}} položky",
+      "items_other": "{{count}} položek",
+      "rental": "zápůjčka zbraně",
+      "afterparty": "afterparty",
+      "discount": "sleva",
+      "code": "slevový kód {{name}}",
+      "queued": "(ve frontě, nepočítá se)",
+      "difference": "rozdíl oproti vystavené částce",
+      "show": "rozbalit obsah",
+      "hide": "sbalit obsah"
     },
     "record": {
       "action": "Zadat platbu",

@@ -46,6 +46,7 @@ import PaymentTabs, { type PaymentTab, PaymentTabsProvider } from "./payments/Pa
 import RecordPaymentDialog from "./payments/RecordPaymentDialog";
 import UncreditedTable from "./payments/UncreditedTable";
 import { useDiscountRedemptions } from "./payments/useDiscountRedemptions";
+import { useOrderLines } from "./payments/useOrderLines";
 import { usePaymentTables } from "./payments/usePaymentTables";
 import QueuePhase from "./queue/QueuePhase";
 import RentalsCell from "./RentalsCell";
@@ -189,7 +190,9 @@ export const PHASE_COLUMNS: Record<Phase, string[]> = {
   matching: ["hr_id", "hr_name", "hr_nationality", "hr_club", "match"],
   // Deduplication shows candidate groups, not the fencer list (design D1)
   dedup: [],
-  payments: ["vs", "total_amount", "outstanding", "expires_at", "paid_at", "state"],
+  // Contents first: what an order holds is read before what it costs (spec
+  // payments-console, The registration table states what each order holds)
+  payments: ["contents", "vs", "total_amount", "outstanding", "expires_at", "paid_at", "state"],
   // Export shows a band of tables derived from the tournament rather than one
   // table of its own, and so declares no columns (spec export-tables)
   export: [],
@@ -208,7 +211,7 @@ export const PHASE_COLUMNS: Record<Phase, string[]> = {
  *  end of the row with the other row actions. What is owed is kept beside the
  *  mark deliberately: a hand-settled row reads as paid, and its balance says
  *  waived rather than showing a debt nobody has. */
-export const BONED_PAYMENTS_COLUMNS = ["total_amount", "outstanding", "settled"];
+export const BONED_PAYMENTS_COLUMNS = ["contents", "total_amount", "outstanding", "settled"];
 
 // Manual edits on these columns become field_edit rules. Notes are not among
 // them: a note is the fencer's words or the parser's, and a problem is the
@@ -398,11 +401,12 @@ function listsRemovedRow(row: SheetRow, phase: Phase): boolean {
  *  batch / Reversible row deletion). */
 export function rowsForPhase(rows: SheetRow[], phase: Phase): SheetRow[] {
   if (phase !== "import") {
-    // A registration whose whole content is team entries holds no fighter and
-    // is not on the start field — but its agenda is money and a seat, so
-    // Payments lists it as it lists every contract (spec etl-console, A fencer
-    // who entered a team but fights nothing).
-    const listed = phase === "payments" ? rows : rows.filter(fights);
+    // Payments reads orders, not the start field. A registration whose whole
+    // content is team entries holds no fighter, but its agenda is money and a
+    // seat, so it is listed there; a roster member holds no contract, so it is
+    // not (spec etl-console, A member row states no money).
+    const listed =
+      phase === "payments" ? rows.filter((row) => !isMemberRow(row)) : rows.filter(fights);
     return listed.filter((row) => !row._deleted || listsRemovedRow(row, phase));
   }
   // in arrival order, not that of the fencer list: the fencer list is ordered
@@ -924,6 +928,9 @@ export default function Console({
   // both loads live here rather than in the tables, which is what lets the line
   // beside the bands be computed in one place (design D3, D4)
   const tables = usePaymentTables(tournament.slug, queueReload, phase === "payments" && !boned);
+  // what each order holds, read on the registration table whether or not
+  // Squire collects: it is a fact about the order either way
+  const orders = useOrderLines(tournament.slug, queueReload, phase === "payments");
   // not held back where the phase is boned out: the codes are not money, and
   // a tournament Squire collects nothing for gives them all the same
   const redemptions = useDiscountRedemptions(tournament.slug, queueReload, phase === "payments");
@@ -1262,7 +1269,9 @@ export default function Console({
                               /* the reader asked for the money, not for a
                                particular table of it: whichever they last read
                                is where they left off */
-                              if (openTab === "fencers") setOpenTab(lastMoneyTab);
+                              if (openTab !== "credited" && openTab !== "uncredited") {
+                                setOpenTab(lastMoneyTab);
+                              }
                             }}
                             creditedCount={tables.credited.rows?.length ?? null}
                             uncreditedCount={tables.uncredited.rows?.length ?? null}
@@ -1319,6 +1328,7 @@ export default function Console({
                     settling={settling}
                     onRatify={ratifyMatch}
                     onSearch={setMatchRow}
+                    orders={phase === "payments" ? orders : undefined}
                   />
                 </PaymentTabsProvider>
               )}

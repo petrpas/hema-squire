@@ -646,10 +646,10 @@ describe("a registration that bought nothing but team entries", () => {
   const fighter = row("mem:1", { fights: true });
 
   it("is listed on Payments and on no phase that shows the fencer list", () => {
-    expect(rowsForPhase([entrant, fighter], "payments").map((r) => r.id)).toEqual([
-      "reg:9",
-      "mem:1",
-    ]);
+    // Payments lists orders: the entrant's registration, and not the member
+    // row, which holds no contract (spec etl-console, A member row is not
+    // listed on Payments)
+    expect(rowsForPhase([entrant, fighter], "payments").map((r) => r.id)).toEqual(["reg:9"]);
     for (const phase of ["fencers", "matching", "export"] as Phase[]) {
       expect(rowsForPhase([entrant, fighter], phase).map((r) => r.id)).toEqual(["mem:1"]);
     }

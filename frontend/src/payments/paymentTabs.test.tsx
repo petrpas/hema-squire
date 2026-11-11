@@ -55,7 +55,7 @@ function tabNamed(label: string) {
 it("shows one band until the money is being read", () => {
   tabs({ open: "fencers" });
   expect(bands()).toHaveLength(1);
-  expect(tabNamed(t("payments.tabs.fencers"))?.getAttribute("aria-selected")).toBe("true");
+  expect(tabNamed(t("payments.tabs.registrations"))?.getAttribute("aria-selected")).toBe("true");
 });
 
 it("shows the second band once the money is chosen", () => {
@@ -63,7 +63,7 @@ it("shows the second band once the money is chosen", () => {
   expect(bands()).toHaveLength(2);
   // the first band still offers the fencers, and reads as being on the payments
   expect(tabNamed(t("payments.tabs.payments"))?.getAttribute("aria-selected")).toBe("true");
-  expect(tabNamed(t("payments.tabs.fencers"))?.getAttribute("aria-selected")).toBe("false");
+  expect(tabNamed(t("payments.tabs.registrations"))?.getAttribute("aria-selected")).toBe("false");
 });
 
 it("states each money table's count, and none for the fencers", () => {
@@ -71,7 +71,7 @@ it("states each money table's count, and none for the fencers", () => {
   expect(tabNamed(t("payments.tabs.credited"))?.textContent).toContain("14");
   expect(tabNamed(t("payments.tabs.uncredited"))?.textContent).toContain("3");
   // a count means outstanding work; a roster size among them would read as more
-  expect(tabNamed(t("payments.tabs.fencers"))?.querySelector(".tab-count")).toBeNull();
+  expect(tabNamed(t("payments.tabs.registrations"))?.querySelector(".tab-count")).toBeNull();
 });
 
 it("keeps an empty table's tab, with its zero", () => {
@@ -121,4 +121,12 @@ it("moves between a band's tabs with the arrow keys", () => {
   });
 
   expect(onOpen).toHaveBeenCalledWith<[PaymentTab]>("uncredited");
+});
+
+it("names the first tab for the registrations, not the fencers", () => {
+  // the table lists orders, and on a team tournament many of its rows belong
+  // to holders who do not fight (spec payments-console, The first tab names
+  // registrations)
+  expect(i18n.getFixedT("cs")("payments.tabs.registrations")).toBe("Registrace");
+  expect(i18n.getFixedT("en")("payments.tabs.registrations")).toBe("Registrations");
 });

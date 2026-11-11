@@ -4663,6 +4663,31 @@ label.checklist-row > input[type="checkbox"] {
   min-width: 100%;
 }
 
+/* An unfolded order's lines under its row (spec payments-console, Every order
+   unfolds into its priced lines): set in from the identity columns, with no
+   rule between them, so they read as one order's detail rather than as more
+   orders. */
+.order-line td {
+  border-bottom: none;
+  padding-top: 0.1rem;
+  padding-bottom: 0.1rem;
+}
+
+.order-line td:nth-child(3) {
+  padding-left: 1.5rem;
+}
+
+.order-line-last td {
+  border-bottom: var(--border-w) solid var(--hairline);
+  padding-bottom: 0.4rem;
+}
+
+/* a placement in a queue: listed with its price, counted in nothing */
+.order-line-queued td {
+  font-style: italic;
+  color: var(--ink-faded);
+}
+
 /* the discipline tabs hang under the heading, above the table they choose */
 .team-discipline-tabs {
   align-self: flex-start;

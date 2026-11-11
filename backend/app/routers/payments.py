@@ -4,7 +4,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile
 from sqlalchemy import func, select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 from app import (
     bank,
@@ -16,6 +16,7 @@ from app import (
     nameresolve,
     operations,
     paymentsclear,
+    pricing,
     rules,
     scheduler,
     setup,
@@ -35,7 +36,10 @@ from app.models import (
     PaymentEvent,
     RefundState,
     Registration,
+    RegistrationDiscipline,
+    RegistrationExtra,
     RegistrationState,
+    Team,
     Tournament,
 )
 from app.outgoing import QueuedMailerDep
@@ -53,6 +57,8 @@ from app.schemas import (
     LinkIn,
     ManualPaymentIn,
     ManualPaymentOut,
+    OrderLineOut,
+    OrderLinesOut,
     PairedRegistrationOut,
     RankedFencerOut,
     TransactionOut,
@@ -466,6 +472,8 @@ def transaction_roster(
                 score=round(ranked.score, 4),
                 proposed=ranked.key == proposed_id,
                 rejected=ranked.key in refused,
+                club=registration.fencer.club,
+                team_names=[team.name for team in registration.teams],
             )
         )
     return TransactionRosterOut(transaction_id=transaction.id, query=query, fencers=fencers)
@@ -503,6 +511,38 @@ def _transaction_out(session, tournament, transaction: BankTransaction) -> Trans
     if transaction.proposed_fencer is not None:
         out.proposed_fencer_name = transaction.proposed_fencer.display_name
     return out
+
+
+@router.get("/order-lines", response_model=list[OrderLinesOut])
+def order_lines(
+    tournament: TournamentDep, session: SessionDep, fencer: FencerDep
+) -> list[OrderLinesOut]:
+    """What each of the tournament's registrations is made of, line by line, as
+    the Payments registration table unfolds it (design payments-roster-by-order
+    D3). Read-only and loaded with the phase: the lines are read there alone, so
+    they stay out of the console projection every phase shares."""
+    require_console_access(session, tournament, fencer)
+    registrations = session.scalars(
+        select(Registration)
+        .where(Registration.tournament_id == tournament.id)
+        .options(
+            selectinload(Registration.entries).selectinload(RegistrationDiscipline.discipline),
+            selectinload(Registration.teams).selectinload(Team.discipline),
+            selectinload(Registration.extra_selections).selectinload(RegistrationExtra.item),
+            selectinload(Registration.discount_code),
+        )
+    )
+    return [
+        OrderLinesOut(
+            registration_id=registration.id,
+            currency=tournament.local_currency,
+            lines=[
+                OrderLineOut(**line._asdict())
+                for line in pricing.registration_lines(registration, tournament)
+            ],
+        )
+        for registration in registrations
+    ]
 
 
 @router.get("/resettle")

@@ -2424,6 +2424,31 @@ class RankedFencerOut(BaseModel):
     proposed: bool
     # the organizer has already refused this fencer for this payment
     rejected: bool
+    # what the dialog's lookup also reaches: on a team tournament the money
+    # comes from a club or under a team's name, not from the holder (spec
+    # name-assisted-matching, The link dialog offers the ranked roster)
+    club: str | None = None
+    team_names: list[str] = []
+
+
+class OrderLineOut(BaseModel):
+    """One line of what a registration is made of, in the tournament's local
+    currency (spec payments-console, Every order unfolds into its priced
+    lines). `queued` marks a placement waiting in a queue, counted in nothing."""
+
+    kind: str
+    label: str | None
+    discipline_slug: str | None
+    qty: int
+    unit_price: int
+    amount: int
+    queued: bool
+
+
+class OrderLinesOut(BaseModel):
+    registration_id: int
+    currency: Currency
+    lines: list[OrderLineOut]
 
 
 class TransactionRosterOut(BaseModel):

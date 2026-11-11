@@ -709,6 +709,120 @@ def registration_breakdown(registration: Registration, tournament: Tournament) -
     return Breakdown(pieces, _whole_deductions(outcomes, gross - total, code))
 
 
+# kinds of an order line (spec payments-console, Every order unfolds into its
+# priced lines)
+LINE_TEAM = "team"
+LINE_DISCIPLINE = "discipline"
+LINE_ITEM = "item"
+LINE_DISCOUNT = "discount"
+LINE_CODE = "code"
+
+
+class OrderLine(NamedTuple):
+    """One line of what a registration is made of, in the local currency.
+
+    `label` is the team's, the item's or the discount's own name; a discipline
+    line is named by `discipline_slug` alone, and a legacy flat fee by its kind
+    (`LEGACY_RENTAL` / `LEGACY_AFTERPARTY`). `queued` marks a placement waiting
+    in a queue, priced as it would be and counted in nothing."""
+
+    kind: str
+    label: str | None
+    discipline_slug: str | None
+    qty: int
+    unit_price: int
+    amount: int
+    queued: bool
+
+
+def registration_lines(registration: Registration, tournament: Tournament) -> list[OrderLine]:
+    """The lines a registration's local total is made of, the queued placements
+    beside them (design payments-roster-by-order D2).
+
+    The counted lines are priced over the selection and the date
+    `registration_breakdown` prices, so they less the discounts are the total
+    `reprice` would store now. A team is a line of its own, named, rather than
+    a repetition of its discipline. Where every placement is queued nothing is
+    billed, the extras included, and every line comes back queued."""
+    seated = [e.discipline for e in registration.entries if not e.is_substitute]
+    waiting = [e.discipline for e in registration.entries if e.is_substitute]
+    seated_teams = [t for t in registration.teams if not t.waitlisted]
+    waiting_teams = [t for t in registration.teams if t.waitlisted]
+    billed = bool(seated or seated_teams or registration.items_only)
+    at = priced_on(registration, tournament)
+
+    def fee(discipline: Discipline) -> int:
+        return discipline_fee(tournament, discipline, at)
+
+    lines = [
+        OrderLine(LINE_TEAM, t.name, t.discipline.slug, 1, fee(t.discipline), fee(t.discipline), q)
+        for teams, q in ((seated_teams, not billed), (waiting_teams, True))
+        for t in teams
+    ]
+    lines += [
+        OrderLine(LINE_DISCIPLINE, None, d.slug, 1, fee(d), fee(d), q)
+        for disciplines, q in ((seated, not billed), (waiting, True))
+        for d in disciplines
+    ]
+    itemized = uses_itemized_pricing(tournament)
+    if itemized:
+        lines += [
+            OrderLine(
+                LINE_ITEM,
+                s.item.name,
+                None,
+                s.qty,
+                s.item.price or 0,
+                (s.item.price or 0) * s.qty,
+                not billed,
+            )
+            for s in registration.extra_selections
+        ]
+    else:
+        if registration.weapon_rentals:
+            rental = weapon_rental_fee(tournament, at)
+            count = len(registration.weapon_rentals)
+            lines.append(
+                OrderLine(LEGACY_RENTAL, None, None, count, rental, rental * count, not billed)
+            )
+        if registration.afterparty:
+            party = afterparty_fee(tournament, at)
+            lines.append(OrderLine(LEGACY_AFTERPARTY, None, None, 1, party, party, not billed))
+    if not billed:
+        return lines
+
+    code = registration.discount_code
+    total, outcomes = _selection_breakdown(
+        tournament,
+        seated,
+        [(s.item, s.qty) for s in registration.extra_selections],
+        registration.weapon_rentals,
+        registration.afterparty,
+        at,
+        "local",
+        [t.discipline for t in seated_teams],
+        code,
+    )
+    gross = sum(line.amount for line in lines if not line.queued)
+    taken: dict[tuple[int, int | None], int] = {}
+    for deduction in _whole_deductions(outcomes, gross - total, code):
+        key = (deduction.position, deduction.code_id)
+        taken[key] = taken.get(key, 0) + deduction.deducted
+    for (position, code_id), deducted in taken.items():
+        if not deducted:
+            continue
+        if code_id is not None:
+            name = code.name if code is not None else None
+            lines.append(OrderLine(LINE_CODE, name, None, 1, -deducted, -deducted, False))
+        else:
+            configured = (
+                tournament.discounts[position] if position < len(tournament.discounts) else {}
+            )
+            name = configured.get("name") if isinstance(configured, dict) else None
+            lines.append(OrderLine(LINE_DISCOUNT, name, None, 1, -deducted, -deducted, False))
+    return lines
+
+
 def registration_total(registration: Registration, tournament: Tournament) -> Totals:
     """Amount(s) due now for a persisted registration; delegates to
     `selection_totals`."""

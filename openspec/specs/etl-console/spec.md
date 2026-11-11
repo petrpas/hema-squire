@@ -8,9 +8,9 @@ The organizer console SHALL present phase tabs in the fixed order Setup, Import,
 
 **The Import tab SHALL show imported rows alone.** In-app registrations SHALL NOT appear there, whatever their state.
 
-**The Fencers tab and every processing tab after it that shows a fencer table SHALL show one and the same set of fencers** — every fencer who will fight, as **The fencer list is the tournament's start field** fixes: the fencers of in-app and imported registrations, those entered by hand, and every member of every team's roster — as that set stands at the moment of viewing, minus the rows a removal earlier in the phase order has already taken out of it (Reversible row deletion). A phase tab SHALL NOT present a state frozen as of some earlier operation; what distinguishes one from another is the columns it shows, the parameter panel of the operation it runs (general rules), the log of manual edits belonging to that phase, and the removals it stands after. A phase whose operation has already run and one whose operation has not therefore differ in what the rows say, never in which fencers are listed.
+**The Fencers tab and every processing tab after it that shows a fencer table SHALL show one and the same set of fencers** — every fencer who will fight, as **The fencer list is the tournament's start field** fixes: the fencers of in-app and imported registrations, those entered by hand, and every member of every team's roster — as that set stands at the moment of viewing, minus the rows a removal earlier in the phase order has already taken out of it (Reversible row deletion). **Payments is the one exception among the tabs that show a fencer table:** it SHALL list that same set without its roster member rows, together with every registration whose holder fights nothing, because what it reads is orders and a member row holds none (**The fencer list is the tournament's start field**). On a tournament with no team discipline the two sets are the same, so Payments lists exactly what Fencers lists. A phase tab SHALL NOT present a state frozen as of some earlier operation; what distinguishes one from another is the columns it shows, the parameter panel of the operation it runs (general rules), the log of manual edits belonging to that phase, and the removals it stands after. A phase whose operation has already run and one whose operation has not therefore differ in what the rows say, never in which fencers are listed.
 
-Deduplication is the one tab after Fencers whose population differs, and it differs because it shows candidate groups rather than the fencer table at all; which rows may become candidates is fixed by **The fencer list is the tournament's start field**.
+Deduplication is the other tab after Fencers whose population differs. It differs because it shows candidate groups rather than the fencer table at all; which rows may become candidates is fixed by **The fencer list is the tournament's start field**.
 
 A phase whose operation concerns a small and usually empty subset of the fencers SHALL NOT be given the fencer table for that reason: where the work is a handful of rows out of fifty, listing the fifty states the work in the one place it is hardest to see. Deduplication is such a phase and shows its candidates instead.
 
@@ -22,7 +22,7 @@ A phase the mode does not offer SHALL NOT be reachable by its URL either. Addres
 
 #### Scenario: Switching phases
 - **WHEN** the organizer switches from Matching on HR to Payments
-- **THEN** the table re-renders with payment columns and the Payments parameter panel and edits log, over the same fencer list, and the URL names the Payments phase
+- **THEN** the table re-renders with payment columns and the Payments parameter panel and edits log, over the same fencer list less its roster member rows, and the URL names the Payments phase
 
 #### Scenario: Import shows imported rows alone
 - **WHEN** a manual tournament has ten registrations entered by other roads and a five-row imported batch, and the organizer opens Import
@@ -91,6 +91,10 @@ A phase the mode does not offer SHALL NOT be reachable by its URL either. Addres
 #### Scenario: Export is a band of tables
 - **WHEN** the organizer opens Export
 - **THEN** a band of tables derived from the tournament is shown in place of the single fencer table, and the fencer list is one of its tabs
+
+#### Scenario: Payments lists orders on a team tournament
+- **WHEN** a tournament holds sixteen registrations, each entering one team, and the rosters of those teams hold fifty-nine members, among them the sixteen holders
+- **THEN** Fencers lists fifty-nine rows, and Payments lists sixteen rows, one per registration
 
 ### Requirement: Console addressed by tournament and phase
 The console SHALL be addressed by the URL `/organizer/:slug/console/:phase`, where `:slug`
@@ -1317,7 +1321,7 @@ and that team's discipline, and a fixed number of its own. It SHALL NOT state a
 variable symbol, a total, an outstanding balance, a payment state, an expiry, a
 seat or a queue place: a member holds no registration, and a cell that would
 state one SHALL read as absent in the idiom the list already uses for a row that
-has none.
+has none. **A member row SHALL NOT be listed on Payments at all**: that phase reads orders, and a member row is none. The money of the team the member fights for is read on the registration that entered it.
 
 A member row's Disciplines cell SHALL state its team's discipline, faded and never
 open for editing, so the start field reads a discipline on every fighter. The
@@ -1366,8 +1370,8 @@ nothing from what that phase shows.
 - **THEN** they occupy two rows: the registration's, stating its disciplines and money, and the roster's, stating the team
 
 #### Scenario: A member row states no money
-- **WHEN** the organizer reads a member row on the Payments phase
-- **THEN** its variable symbol, total, balance and payment state all read as absent, and no payment can be recorded against it
+- **WHEN** the organizer opens the Payments phase of a tournament whose rosters hold members
+- **THEN** no member row is listed there. Every money cell a member row would carry has nowhere to stand, and no payment can be recorded against a member
 
 #### Scenario: A member row offers no cancellation
 - **WHEN** the organizer opens the row actions of a member row
@@ -1427,3 +1431,4 @@ this view holds.
 #### Scenario: A removed row takes no position
 - **WHEN** a phase lists a deleted row struck through among the rows that stand
 - **THEN** that row states no position, the rows after it continue the count unbroken, and its own number is still shown
+

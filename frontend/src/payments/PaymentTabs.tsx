@@ -95,7 +95,7 @@ export default function PaymentTabs({
       {
         key: "fencers",
         opens: "fencers",
-        label: t("payments.tabs.fencers"),
+        label: t("payments.tabs.registrations"),
         active: open === "fencers",
       },
       ...(money

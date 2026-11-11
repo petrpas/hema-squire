@@ -4,6 +4,8 @@ import { ApiError, api, type IssuedSkip, type RankedFencer, type Transaction } f
 import Modal from "../Modal";
 import { formatTransactionAmount } from "../money";
 import { nameMatches } from "../nameSearch";
+import { orderSummary } from "./orderLines";
+import { useOrderLines } from "./useOrderLines";
 
 /** Linking a payment to the registrations it pays for.
  *
@@ -36,6 +38,8 @@ export default function LinkDialog({
 }) {
   const { t } = useTranslation();
   const [roster, setRoster] = useState<RankedFencer[] | null>(null);
+  // what each order holds, so the organizer sees which order the money goes to
+  const orders = useOrderLines(slug, 0, true);
   const [filter, setFilter] = useState("");
   const [chosen, setChosen] = useState<number[]>([]);
   const [typedVs, setTypedVs] = useState<number[]>([]);
@@ -68,14 +72,24 @@ export default function LinkDialog({
     const all = roster ?? [];
     if (!filter.trim()) return all;
     // folded: a Czech roster is not typed with its diacritics, and `pekarek`
-    // has to reach Pekárek (`nameSearch`)
-    return all.filter((fencer) => nameMatches(fencer.name, filter));
+    // has to reach Pekárek (`nameSearch`). The club and the teams too: on a
+    // team tournament the money comes from a club or under a team's name, and
+    // the holder's name is in neither (spec name-assisted-matching)
+    return all.filter((fencer) =>
+      [fencer.name, fencer.club ?? "", ...(fencer.team_names ?? [])].some(
+        (text) => text !== "" && nameMatches(text, filter),
+      ),
+    );
   }, [roster, filter]);
 
   const byId = useMemo(
     () => new Map((roster ?? []).map((fencer) => [fencer.registration_id, fencer])),
     [roster],
   );
+  const summaryOf = (registrationId: number): string | null => {
+    const order = orders?.get(registrationId);
+    return order ? orderSummary(order.lines, t) : null;
+  };
   // Whether a symbol can select anybody here at all. On a tournament whose
   // registrations the organizer keeps, none carries one — Squire told the payer
   // nothing to quote, so it mints nothing (`tournament-mode`) — and the endpoint
@@ -204,6 +218,9 @@ export default function LinkDialog({
                     onChange={() => toggle(fencer.registration_id)}
                   />
                   {fencer.name}
+                  {summaryOf(fencer.registration_id) && (
+                    <span className="muted"> · {summaryOf(fencer.registration_id)}</span>
+                  )}
                   {fencer.proposed && <span className="chip">{t("payments.link.strongest")}</span>}
                   {fencer.rejected && <span className="muted"> {t("payments.link.refused")}</span>}
                 </label>

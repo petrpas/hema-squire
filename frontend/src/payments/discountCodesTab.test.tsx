@@ -44,7 +44,7 @@ it("reading the codes opens no money band", () => {
 it("offers no money where Squire does not collect", () => {
   const html = tabs({ open: "codes", codes: true, money: false });
   expect(html).not.toContain(t("payments.tabs.payments"));
-  expect(html).toContain(t("payments.tabs.fencers"));
+  expect(html).toContain(t("payments.tabs.registrations"));
 });
 
 it("states uses against the limit, past it too, and alone without one", () => {

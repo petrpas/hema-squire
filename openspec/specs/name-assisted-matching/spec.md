@@ -155,7 +155,13 @@ well they match the payment, with the strongest marked, rather than requiring th
 organizer to know and type a variable symbol.
 
 The dialog SHALL also offer a text lookup over the whole roster, so a fencer the
-ranking placed poorly can be found by typing part of their name. Typing a
+ranking placed poorly can be found by typing part of their name. The lookup SHALL
+also reach the club the registration was made under and the names of the teams it
+entered, because on a team tournament the money arrives from a club or under a
+team's name, not from the holder. Each listed registration SHALL state the same
+contents summary the Payments registration table states (`payments-console`), so
+the organizer can see which order the payment is being attached to. The ranking
+itself is unchanged: neither the club nor a team name enters the score. Typing a
 variable symbol directly SHALL remain available, and one payment SHALL still be
 attachable to several registrations.
 
@@ -174,6 +180,14 @@ attachable to several registrations.
 #### Scenario: One payment covering several fencers
 - **WHEN** the organizer chooses more than one fencer for one payment
 - **THEN** the payment is linked to each of their registrations
+
+#### Scenario: Found by the team's name
+- **WHEN** a payment arrives from "HEMA PRAHA Z.S." and the organizer types "hema praha" into the lookup
+- **THEN** the registration that entered the team "Hema Praha" is listed, with its contents summary, although its holder's name contains neither word
+
+#### Scenario: Found by the club
+- **WHEN** the organizer types part of a club's name
+- **THEN** every registration made under that club is listed
 
 ### Requirement: A variable symbol is a shortcut, and the tail is resolved by hand
 A variable symbol SHALL be understood as a shortcut that resolves the majority of payments cheaply, and SHALL NOT be treated as a registration's identity. A payment that carries none, carries one that resolves to nothing, or carries one belonging to somebody other than the person its message names SHALL be an ordinary case with an expected share of the traffic, not an exception.

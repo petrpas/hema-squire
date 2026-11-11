@@ -431,6 +431,7 @@
     "hr_nationality": "HR_Nat",
     "hr_club": "HR_Club",
     "disciplines": "Disciplines",
+    "contents": "Contents",
     "vs": "VS",
     "state": "State",
     "match": "Match",
@@ -1538,7 +1539,7 @@
     },
     "tabs": {
       "label": "Tournament payments",
-      "fencers": "Fencers",
+      "registrations": "Registrations",
       "payments": "Payments",
       "credited": "Credited",
       "uncredited": "Uncredited",
@@ -1547,6 +1548,20 @@
       "noteCredited": "{{total}} credited",
       "codes": "Discount codes",
       "label_event": "Event payments"
+    },
+    "order": {
+      "teams_one": "{{count}} team",
+      "teams_other": "{{count}} teams",
+      "items_one": "{{count}} item",
+      "items_other": "{{count}} items",
+      "rental": "weapon rental",
+      "afterparty": "afterparty",
+      "discount": "discount",
+      "code": "discount code {{name}}",
+      "queued": "(queued, not counted)",
+      "difference": "difference from the issued amount",
+      "show": "show contents",
+      "hide": "hide contents"
     },
     "record": {
       "action": "Record a payment",
