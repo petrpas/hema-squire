@@ -325,6 +325,42 @@ describe("a refused arrow", () => {
   });
 });
 
+describe("the band", () => {
+  it("lists a team discipline once, as its team waitlist", async () => {
+    const tab = (key: string, teams: boolean): ExportBandTab => ({
+      kind: "discipline",
+      key,
+      label: key,
+      capacity: 2,
+      line: "queue",
+      teams,
+      count: 2,
+      queued: 0,
+    });
+    // Export gives a team discipline a discipline tab of its own; its seats
+    // are the team waitlist's, not a roster of fencers
+    vi.spyOn(api, "exportTabs").mockResolvedValue([tab("LS", false), tab("TM", true)]);
+    vi.spyOn(api, "queue").mockResolvedValue({
+      ...SUMMARY,
+      team_disciplines: [{ slug: "TM", name: "TM", capacity: 2, taken: 2, free: 0, queued: 0 }],
+    });
+    vi.spyOn(api, "exportTable").mockResolvedValue({ ...tab("LS", false), rows: [] } as never);
+    vi.spyOn(api, "queueTeams").mockResolvedValue([]);
+    const view = mount(
+      <QueuePhase
+        slug="cup"
+        timezone="Europe/Prague"
+        teams={true}
+        revision={0}
+        onChanged={() => {}}
+        renderRail={(panel) => <aside>{panel}</aside>}
+      />,
+    );
+    await flush();
+    expect(view.querySelectorAll(".stage-control-band button")).toHaveLength(2);
+  });
+});
+
 describe("the team roster", () => {
   function team(id: number, name: string, fields: Partial<QueueTeam> = {}): QueueTeam {
     return {

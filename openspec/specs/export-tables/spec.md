@@ -40,9 +40,9 @@ band in the console is, and the selected tab SHALL be kept visible in it.
 - **WHEN** a tournament offers a seminar and an item in the "other goods" category
 - **THEN** each has a tab of its own
 
-#### Scenario: A team discipline is not a tab
+#### Scenario: A team discipline has its tab
 - **WHEN** a tournament offers one individual and one team longsword discipline
-- **THEN** each has a tab of its own — this scenario's answer is reversed by this change, and its heading is kept because a modified requirement replaces its whole block and may drop nothing
+- **THEN** each has a tab of its own
 
 #### Scenario: Summary and Revenue close the band
 - **WHEN** a tournament offering one discipline and nothing else is exported

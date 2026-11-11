@@ -61,8 +61,10 @@ export default function QueuePhase({
   const [settled, setSettled] = useState<number | null>(null);
 
   const band: BandTab[] = [
+    // a team discipline's Export tab is a discipline tab too, holding teams;
+    // its seats are the team waitlist's, which has its own tab below
     ...exportTabs
-      .filter((tab) => tab.kind === "discipline")
+      .filter((tab) => tab.kind === "discipline" && !tab.teams)
       .map((tab): BandTab => ({ kind: "discipline", id: tabId(tab), tab })),
     ...(teams ? (summary?.team_disciplines ?? []) : []).map(
       (places): BandTab => ({ kind: "team", id: `team:${places.slug}`, places }),
