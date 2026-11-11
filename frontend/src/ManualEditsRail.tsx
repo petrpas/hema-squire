@@ -2,6 +2,7 @@ import { IconX } from "@tabler/icons-react";
 import { useTranslation } from "react-i18next";
 
 import type { NetChange, SheetRow } from "./api";
+import FencerNumber, { fencerNumberText } from "./FencerNumber";
 import { dayIn, registeredMoment } from "./momentText";
 
 /** The manual-edits log: what the phase's rules made the table differ from the
@@ -28,7 +29,19 @@ const VERDICT_KEYS: Record<string, string> = {
 export function rowText(target: unknown, rows: SheetRow[], t: Translate): string {
   const row = rows.find((candidate) => candidate.id === target);
   if (row === undefined) return t("rail.edit.unknownRow");
-  return t("rail.edit.row", { number: row.number ?? "—", name: row.name });
+  return t("rail.edit.row", { number: fencerNumberText(row.number), name: row.name });
+}
+
+/** The row an entry leads with, its number set as the table sets it. */
+function RowName({ target, rows }: { target: unknown; rows: SheetRow[] }) {
+  const { t } = useTranslation();
+  const row = rows.find((candidate) => candidate.id === target);
+  if (row === undefined) return <>{t("rail.edit.unknownRow")}</>;
+  return (
+    <>
+      <FencerNumber number={row.number} /> {row.name}
+    </>
+  );
 }
 
 /** One side of an assignment, formatted as the table's cell formats it. */
@@ -128,7 +141,11 @@ export default function ManualEditsRail({
           {entries.map((entry) => (
             <li key={`${entry.target}:${entry.field}`} className="edit-entry">
               <div className="edit-body">
-                <div>{entryText(entry, rows, timezone, t)}</div>
+                <div>
+                  <RowName target={entry.target} rows={rows} />
+                  {" — "}
+                  {changeText(entry, rows, timezone, t)}
+                </div>
                 <div className="edit-meta">
                   {t("rail.edit.meta", {
                     actor: entry.actor,

@@ -77,7 +77,7 @@ export default function TeamRoster({
       <table className="sheet-table">
         <thead>
           <tr>
-            <th className="col-index">{t("export.column.position")}</th>
+            <th className="col-gutter" aria-label={t("export.column.position")} />
             <th>{t("queue.column.team")}</th>
             <th>{t("queue.column.enteredBy")}</th>
             <th className="col-number">{t("queue.column.members")}</th>
@@ -94,7 +94,7 @@ export default function TeamRoster({
                 </tr>
               )}
               <tr>
-                <td className="col-index">{index + 1}</td>
+                <td className="col-gutter">{index + 1}</td>
                 <td>{row.name}</td>
                 <td>{row.entering_fencer}</td>
                 <td className="col-number">

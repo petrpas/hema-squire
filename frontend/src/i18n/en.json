@@ -107,7 +107,7 @@
       "other_action": "Other programme"
     },
     "column": {
-      "position": "#",
+      "position": "Pos.",
       "name": "Name",
       "nat": "Nat.",
       "club": "Club",
@@ -420,6 +420,7 @@
   },
   "column": {
     "position": "Pos.",
+    "number": "ID",
     "name": "Name",
     "nationality": "Nat.",
     "club": "Club",
@@ -493,7 +494,7 @@
     "manualEdits": "Manual edits",
     "noEdits": "No manual edits yet.",
     "edit": {
-      "row": "#{{number}} {{name}}",
+      "row": "{{number}} {{name}}",
       "entry": "{{row}} — {{change}}",
       "assignment": "{{field}}: {{before}} → {{after}}",
       "deleted": "row deleted",

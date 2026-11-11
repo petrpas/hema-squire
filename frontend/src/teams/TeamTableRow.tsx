@@ -8,7 +8,7 @@ import ConsoleRosterEditor from "./ConsoleRosterEditor";
 import RosterLog from "./RosterLog";
 
 /** The teams table's width, which an unfolded roster spans. */
-export const COLUMNS = 6;
+export const COLUMNS = 7;
 
 /** One team's row, and the panel it opens.
  *
@@ -22,12 +22,16 @@ export const COLUMNS = 6;
  *  says, because admission moves money and opens a payment window. */
 export default function TeamTableRow({
   slug,
+  position,
   team,
   discipline,
   onSaved,
   onCancel,
 }: {
   slug: string;
+  /** The row's count in the table's gutter: its place among the seated, or
+   *  below the line its place on the waitlist, as the public roster counts. */
+  position: number;
   team: ConsoleTeam;
   discipline: ConsoleTeamDiscipline;
   onSaved: (team: ConsoleTeam) => void;
@@ -45,6 +49,7 @@ export default function TeamTableRow({
   return (
     <>
       <tr>
+        <td className="col-gutter">{position}</td>
         <td>
           <strong>{team.name}</strong>
           {team.below_minimum && <PaidStamp id={team.id} label={t("teams.belowMinimum")} />}
@@ -118,7 +123,7 @@ export default function TeamTableRow({
                         {member.name}
                         {/* the identifier the requirement asks for here, as the
                             public entrants roster already states it */}
-                        {member.hr_id !== null && ` · #${member.hr_id}`}
+                        {member.hr_id !== null && ` · HR ${member.hr_id}`}
                         {member.club && ` · ${member.club}`}
                         {member.nationality && ` · ${member.nationality}`}
                       </li>

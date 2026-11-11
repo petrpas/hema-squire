@@ -22,7 +22,7 @@ export default function TeamRoster({ roster }: { roster: TeamRosterData }) {
       <table className="sheet-table entrants-table">
         <thead>
           <tr>
-            <th className="col-index">{t("export.column.position")}</th>
+            <th className="col-gutter" aria-label={t("export.column.position")} />
             <th>{t("entrants.team")}</th>
             <th>{t("export.column.nat")}</th>
             <th>{t("export.column.club")}</th>
@@ -66,7 +66,7 @@ function TeamLines({ team }: { team: EntrantTeam }) {
     // between a team and its own members
     <tbody className="entrant-team-block">
       <tr className={faded}>
-        <td className="col-index">{team.number}</td>
+        <td className="col-gutter">{team.number}</td>
         <td>
           {composed ? (
             <button

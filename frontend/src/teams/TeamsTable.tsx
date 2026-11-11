@@ -43,10 +43,13 @@ export default function TeamsTable({
   // fall seated-first, so the line can never stand between two seated teams
   const seated = entries.filter(({ team }) => !team.waitlisted);
   const waiting = entries.filter(({ team }) => team.waitlisted);
-  const row = ({ discipline, team }: TeamEntry) => (
+  // counted as the public roster counts: the seated from one, and below the
+  // line the waitlist from one again, which is each team's waitlist place
+  const row = ({ discipline, team }: TeamEntry, index: number) => (
     <TeamTableRow
       key={team.id}
       slug={slug}
+      position={index + 1}
       team={team}
       discipline={discipline}
       onSaved={(saved) => onSaved(discipline.slug, saved)}
@@ -58,6 +61,7 @@ export default function TeamsTable({
     <table className="sheet-table">
       <thead>
         <tr>
+          <th className="col-gutter" aria-label={t("column.position")} />
           <th>{t("teams.column.team")}</th>
           <th>{t("teams.column.enteringFencer")}</th>
           <th>{t("teams.column.email")}</th>

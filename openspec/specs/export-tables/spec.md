@@ -108,11 +108,13 @@ next read, without the organizer reopening the phase.
 - **THEN** the Fencers tab reads 40
 
 ### Requirement: Each tab states its own columns and order
-Every tab but Summary and Revenue SHALL open with a **position** column, headed `#`, numbering its rows
+Every tab but Summary and Revenue SHALL open with a **position** column numbering its rows
 from 1 in the order they are displayed — after the tab's filter and in the tab's
 own order. On a discipline tab the numbering SHALL run straight across the
 capacity line, so the first fencer below it states how far past capacity they
-stand; the line itself SHALL carry no number.
+stand; the line itself SHALL carry no number. On screen the position SHALL be drawn as the
+table's gutter, as **Position in the list** (`etl-console`) draws it, with no heading; the
+copy SHALL head it `Poř.` (`Pos.` in English), as the spreadsheet does.
 
 The **Fencers** tab SHALL list, after the position, name, nationality, club, HEMA
 Ratings identifier, disciplines and paid, in registration order.

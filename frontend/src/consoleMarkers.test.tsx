@@ -154,7 +154,7 @@ describe("the marker's disclosure", () => {
 
 describe("the leftmost number", () => {
   it("is the fencer's fixed number, whatever the row's place", () => {
-    expect(rowNumber(row({ number: 31 }))).toBe("31");
+    expect(rowNumber(row({ number: 31 }))).toBe("#31");
   });
 
   it("is that same number on Import, not the line the row arrived on", () => {
@@ -163,13 +163,13 @@ describe("the leftmost number", () => {
       number: 31,
       _source: { file: "regs.csv", row: 7 },
     });
-    expect(rowNumber(imported)).toBe("31");
+    expect(rowNumber(imported)).toBe("#31");
   });
 
   it("is shown for an imported row that has been issued a registration", () => {
     // such a row carries no _source: the registration stands in its place and
     // states no file. Numbering by the file's line showed it a dash
-    expect(rowNumber(row({ id: "imp:c1aa", number: 12 }))).toBe("12");
+    expect(rowNumber(row({ id: "imp:c1aa", number: 12 }))).toBe("#12");
   });
 
   it("shows a dash rather than a position where no number was allocated", () => {

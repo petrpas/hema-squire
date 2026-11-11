@@ -111,7 +111,7 @@
       "other_action": "Ostatní program"
     },
     "column": {
-      "position": "#",
+      "position": "Poř.",
       "name": "Jméno",
       "nat": "Nár.",
       "club": "Klub",
@@ -434,6 +434,7 @@
   },
   "column": {
     "position": "Poř.",
+    "number": "ID",
     "name": "Jméno",
     "nationality": "Nár.",
     "club": "Klub",
@@ -507,7 +508,7 @@
     "manualEdits": "Ruční úpravy",
     "noEdits": "Zatím žádné ruční úpravy.",
     "edit": {
-      "row": "#{{number}} {{name}}",
+      "row": "{{number}} {{name}}",
       "entry": "{{row}} — {{change}}",
       "assignment": "{{field}}: {{before}} → {{after}}",
       "deleted": "řádek smazán",

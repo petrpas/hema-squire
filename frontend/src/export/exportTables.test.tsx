@@ -174,7 +174,7 @@ describe("the copy action", () => {
   it("carries a header row and the values, in the order given", () => {
     const tsv = toTsv(FENCERS_COLUMNS(t), rows, (id) => t(`export.column.${id}`));
     const lines = tsv.split("\n");
-    expect(lines[0]).toBe("#\tName\tNat.\tClub\tHR_ID\tDisciplines\tPaid");
+    expect(lines[0]).toBe("Pos.\tName\tNat.\tClub\tHR_ID\tDisciplines\tPaid");
     expect(lines[1]).toBe("1\tJan Novák\tCZ\t\t10234\tLS\tYes");
     expect(lines[2]?.endsWith("No")).toBe(true);
   });
@@ -182,7 +182,7 @@ describe("the copy action", () => {
   it("renders headers and yes/no in English when the tick is on", () => {
     const tsv = toTsv(FENCERS_COLUMNS(en), rows, (id) => en(`export.column.${id}`));
     const lines = tsv.split("\n");
-    expect(lines[0]).toBe("#\tName\tNat.\tClub\tHR_ID\tDisciplines\tPaid");
+    expect(lines[0]).toBe("Pos.\tName\tNat.\tClub\tHR_ID\tDisciplines\tPaid");
     expect(lines[1]?.endsWith("Yes")).toBe(true);
   });
 
@@ -446,9 +446,7 @@ describe("the position column", () => {
         onRate={() => {}}
       />,
     );
-    const numbers = [...html.matchAll(/<td class="col-index col-number">(\d+)<\/td>/g)].map(
-      (m) => m[1],
-    );
+    const numbers = [...html.matchAll(/<td class="col-gutter">(\d+)<\/td>/g)].map((m) => m[1]);
     expect(line.after).toBe(2);
     expect(numbers).toEqual(["1", "2", "3"]);
   });
@@ -459,7 +457,7 @@ describe("the position column", () => {
       true,
     );
     const lines = toTsv(FENCERS_COLUMNS(en), rows, (id) => en(`export.column.${id}`)).split("\n");
-    expect(lines[0]?.split("\t")[0]).toBe("#");
+    expect(lines[0]?.split("\t")[0]).toBe(i18n.t("export.column.position"));
     expect(lines[1]?.split("\t").slice(0, 2)).toEqual(["1", "Paid Two"]);
   });
 });

@@ -7,7 +7,6 @@ import {
   IconUserX,
 } from "@tabler/icons-react";
 import { useTranslation } from "react-i18next";
-
 import type { SheetRow, TournamentDetail } from "./api";
 import {
   absorbedInto,
@@ -21,9 +20,9 @@ import {
   phaseRemovesRows,
   phaseSummary,
   rowAction,
-  rowNumber,
 } from "./Console";
 import EditableCell from "./EditableCell";
+import FencerNumber from "./FencerNumber";
 import { usesHRIdentity } from "./identity";
 import MatchCell from "./MatchCell";
 import PhaseSummary from "./PhaseSummary";
@@ -212,11 +211,12 @@ export default function SheetArea({
               <thead>
                 <tr>
                   {/* Two numbers, and they answer different questions: the
-                      count says how many fencers are listed, and "#" names a
-                      fencer and never moves (spec etl-console, Position in
-                      the list / Fixed fencer number). */}
-                  <th className="col-index col-position">{t("column.position")}</th>
-                  <th className="col-index">#</th>
+                      gutter counts the rows listed and is the table's own,
+                      so it carries no heading; `#23` names a fencer and
+                      never moves, and says so by its mark (spec etl-console,
+                      Position in the list / Fixed fencer number). */}
+                  <th className="col-gutter" aria-label={t("column.position")} />
+                  <th className="col-index">{t("column.number")}</th>
                   {columns.map((column) => (
                     <th
                       key={column}
@@ -245,13 +245,13 @@ export default function SheetArea({
                     {/* the count of fencers who stand, so a removed row takes
                         no place in it and leaves the rest of the count
                         unmoved */}
-                    <td className="col-index col-position">{position.get(row.id) ?? ""}</td>
+                    <td className="col-gutter">{position.get(row.id) ?? ""}</td>
                     <td className="col-index">
-                      {rowNumber(row)}
+                      <FencerNumber number={row.number} />
                       {absorbedInto(row, rows) !== null && (
                         <span className="row-absorbed" title={t("row.absorbed")}>
-                          {" \u2192 #"}
-                          {absorbedInto(row, rows)}
+                          {" \u2192 "}
+                          <FencerNumber number={absorbedInto(row, rows)} />
                         </span>
                       )}
                     </td>

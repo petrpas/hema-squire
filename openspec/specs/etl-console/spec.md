@@ -608,6 +608,13 @@ The number SHALL be allocated in the order rows enter the tournament, which is n
 
 Every view SHALL number its rows by this number, the Import view included. No view SHALL number rows by their line in an uploaded file: a line number describes a file, and the Import view describes what the tournament imported across every file it was given. Import's numbers SHALL therefore be those of the tournament, gaps and all, where rows of other populations were numbered between them.
 
+The number SHALL be written one way wherever it is shown — the fencer table, a duplicate
+group, the pointer from a merged row to the row that absorbed it, and the manual-edits
+log: as `#23`, in the data face and faded ink, so it reads as a name tag rather than a
+figure to compare. The table's column of it SHALL be headed `ID`. The mark `#` SHALL
+NOT be given to anything else: a position is headed `Poř.` or carries no heading, and a
+HEMA Ratings identifier is written `HR 4321`.
+
 #### Scenario: Deletion does not renumber
 - **WHEN** the organizer deletes the third row of a fifteen-row table
 - **THEN** the remaining rows keep the numbers they had, and no number moves up
@@ -1312,6 +1319,13 @@ seat or a queue place: a member holds no registration, and a cell that would
 state one SHALL read as absent in the idiom the list already uses for a row that
 has none.
 
+A member row's Disciplines cell SHALL state its team's discipline, faded and never
+open for editing, so the start field reads a discipline on every fighter. The
+statement SHALL be the cell's alone: what the row entered stays empty, so no export
+tab, count or rating reads the member as having entered the discipline itself. A
+registration row's cell SHALL NOT state the disciplines of the teams it entered, since
+entering a team is not fighting in it.
+
 **A row SHALL offer the actions its own registration gives it, and no others.**
 A row holding a live registration SHALL keep what it has today: correcting the
 disciplines and items that registration bought, cancelling it, and handing it to
@@ -1386,6 +1400,12 @@ late (**Fixed fencer number**). An organizer counting a start field of seventy n
 count, and counting it by hand down a column of numbers that skips is the work this
 column removes.
 
+The position SHALL be drawn as the table's gutter rather than as a column of data: it
+SHALL carry no heading, SHALL stay in place while the table scrolls sideways, and SHALL
+stand off the data behind a hairline. Every table that counts its own rows — the fencer
+table, the public entrants roster, the Queue's rosters and the Export tabs — SHALL draw
+its count this way.
+
 A row a removal has taken out of the table but which the phase still lists SHALL take no
 position: it is not a fencer the tournament has, and the positions of the rows around it
 SHALL read as though it were absent. Its own number SHALL stand, struck through with the
@@ -1398,7 +1418,7 @@ this view holds.
 
 #### Scenario: The count rises by one whatever the numbers
 - **WHEN** the organizer reads a fencer list whose rows are numbered seven, twelve and three
-- **THEN** the leftmost column reads one, two, three, and the numbers seven, twelve and three stand beside them
+- **THEN** the leftmost column reads one, two, three, and `#7`, `#12` and `#3` stand beside them under the heading `ID`
 
 #### Scenario: The last position is the size of the field
 - **WHEN** the organizer reads a fencer list of sixty-seven standing rows

@@ -19,8 +19,7 @@ import type { CapacityLine } from "./ordering";
  */
 function columnClass(column: ExportColumn): string | undefined {
   const classes = [
-    column.id === POSITION.id ? "col-index" : null,
-    column.numeric ? "col-number" : null,
+    column.id === POSITION.id ? "col-gutter" : column.numeric ? "col-number" : null,
   ].filter(Boolean);
   return classes.length > 0 ? classes.join(" ") : undefined;
 }
@@ -46,8 +45,15 @@ export default function ExportGrid({
         <thead>
           <tr>
             {columns.map((column) => (
-              <th key={column.id} className={columnClass(column)}>
-                {t(`export.column.${column.id}`)}
+              // the position is the table's count of its own rows, a gutter
+              // rather than a column of data, and carries no heading on screen;
+              // the copy still names it
+              <th
+                key={column.id}
+                className={columnClass(column)}
+                aria-label={column.id === POSITION.id ? t("export.column.position") : undefined}
+              >
+                {column.id === POSITION.id ? null : t(`export.column.${column.id}`)}
               </th>
             ))}
           </tr>

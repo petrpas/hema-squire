@@ -1134,8 +1134,11 @@ button.secondary:disabled {
   font-variant-numeric: tabular-nums;
 }
 
+/* The heading's strong rule is drawn by the cell rather than as its border:
+   in a collapsed table a border belongs to the table, so it scrolled away
+   while the sticky heading stayed. A bar inside the cell travels with it. */
 .sheet-table thead th {
-  border-bottom: 2px solid var(--rule-strong);
+  border-bottom: none;
   background: var(--paper-raised);
   position: sticky;
   top: 0;
@@ -1145,6 +1148,16 @@ button.secondary:disabled {
   letter-spacing: 0.12em;
   font-weight: 500;
   color: var(--ink-faded);
+}
+
+.sheet-table thead th::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 2px;
+  background: var(--rule-strong);
 }
 
 .sheet-table tbody tr {
@@ -1163,13 +1176,55 @@ button.secondary:disabled {
   font-family: var(--font-data);
 }
 
-/* The count of standing rows, left of the fencer's own number: narrower than
-   the number it precedes, since it is read to learn how many and not to find
-   a fencer, and faded a step further so the two columns are not mistaken for
-   one two-part figure. */
-.col-position {
+/* A table's count of its own rows: a gutter, not a column of data. It
+   carries no heading, stays in place while the table scrolls sideways, and
+   stands off the data behind a hairline, so it reads as the table's margin
+   and is never mistaken for a value a row holds. */
+.sheet-table .col-gutter {
+  position: sticky;
+  left: 0;
+  z-index: 1;
   width: 2.5rem;
+  padding-right: 0.6rem;
+  background: var(--paper);
   color: var(--ink-faded);
+  font-family: var(--font-data);
+  font-size: 12px;
+  text-align: right;
+}
+
+/* its hairline drawn by the cell, for the reason the heading's rule is: a
+   collapsed border would stay behind when the table scrolls sideways */
+.sheet-table .col-gutter::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  right: 0;
+  width: var(--border-w);
+  background: var(--hairline);
+}
+
+/* the heading's corner stands over both sticky edges: above the gutter cells
+   scrolling up beneath it and the heading cells sliding left beneath it */
+.sheet-table thead th.col-gutter {
+  z-index: 3;
+  background: var(--paper-raised);
+}
+
+/* A fencer's fixed number, `#23`, set one way wherever it stands: the data
+   face and faded ink, so it reads as a name tag rather than a figure to
+   compare (spec etl-console, Fixed fencer number). */
+.fencer-number {
+  font-family: var(--font-data);
+  color: var(--ink-faded);
+  white-space: nowrap;
+}
+
+/* in a table it is set at the gutter's size: a tag beside the row, quieter
+   than the data the row holds */
+.sheet-table .fencer-number {
+  font-size: 12px;
 }
 
 /* A column that states a number stands right-aligned, so a rating, an amount

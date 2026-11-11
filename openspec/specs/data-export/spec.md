@@ -85,7 +85,9 @@ Worksheet names SHALL be the same in every locale, since the export finds an
 existing worksheet by its name.
 
 Every worksheet but `Summary` and `Revenue` SHALL open, as every tab but Summary
-and Revenue does, with a position column headed `#`.
+and Revenue does, with a position column headed `Poř.` (`Pos.` in English). The
+mark `#` is reserved for the fencer's fixed number (`etl-console`) and SHALL NOT head
+a position.
 No worksheet SHALL carry a blank column left for numbering by hand. The position SHALL number the
 worksheet's rows 1 to n from the top as the worksheet stands after the export,
 rewritten on every export. Because a re-export keeps existing rows where they
@@ -128,7 +130,7 @@ otherwise.
 
 #### Scenario: The position numbers the sheet as it stands
 - **WHEN** the organizer re-exports after one fencer was deleted and another registered
-- **THEN** the deleted fencer's row is gone, the new fencer's row is appended, and the `#` column reads 1 to n down the worksheet with no gap
+- **THEN** the deleted fencer's row is gone, the new fencer's row is appended, and the position column reads 1 to n down the worksheet with no gap
 
 #### Scenario: A worksheet per tab
 - **WHEN** a tournament offering two individual disciplines, a rental item and a merch item is exported to Sheets

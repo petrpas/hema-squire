@@ -80,7 +80,7 @@ function RosterEditor({
                 onChange={(event) => renameMember(index, event.target.value)}
               />
               <span className="muted roster-hrid">
-                {member.hr_id !== null ? `#${member.hr_id}` : ""}
+                {member.hr_id !== null ? `HR ${member.hr_id}` : ""}
               </span>
               <span className="muted roster-club">{member.club ?? ""}</span>
               <button

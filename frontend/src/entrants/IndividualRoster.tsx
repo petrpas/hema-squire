@@ -20,7 +20,7 @@ export default function IndividualRoster({ roster }: { roster: IndividualRosterD
       <table className="sheet-table entrants-table">
         <thead>
           <tr>
-            <th className="col-index">{t("export.column.position")}</th>
+            <th className="col-gutter" aria-label={t("export.column.position")} />
             <th>{t("export.column.name")}</th>
             <th>{t("export.column.nat")}</th>
             <th>{t("export.column.club")}</th>
@@ -52,7 +52,7 @@ function EntrantLine({ row }: { row: EntrantRow }) {
   const { t } = useTranslation();
   return (
     <tr className={row.faded ? "muted" : undefined}>
-      <td className="col-index">{row.number}</td>
+      <td className="col-gutter">{row.number}</td>
       <td>
         {row.name}
         {/* a placement waiting for all of its conditional disciplines can stand

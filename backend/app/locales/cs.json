@@ -224,7 +224,7 @@
     "yes": "Ano",
     "no": "Ne",
     "column": {
-      "position": "#",
+      "position": "Poř.",
       "name": "Jméno",
       "nat": "Nár.",
       "club": "Klub",

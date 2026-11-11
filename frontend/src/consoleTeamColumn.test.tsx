@@ -160,6 +160,23 @@ describe("the fencer list's team column", () => {
     expect(cells).not.toContain("—");
   });
 
+  it("states a member's team discipline in the disciplines cell, and nobody else's", async () => {
+    const page = await openConsole(tournament(true, ["individual", "team"]), [
+      row("Jan Novák", [{ name: "Rudá růže", discipline: "LST" }], "mem:7"),
+      // the entering fencer does not fight in the team they entered: their
+      // cell states what they entered alone
+      { ...row("Eva Malá", [{ name: "Rudá růže", discipline: "LST" }]), disciplines: ["LS"] },
+    ]);
+
+    const at = headers(page).indexOf(i18n.t("column.disciplines"));
+    const cells = [...page.querySelectorAll(".sheet-table tbody tr")].map(
+      (tr) => [...tr.querySelectorAll("td")][at],
+    );
+    expect(cells.map((td) => td?.textContent)).toEqual(["LST", "LS"]);
+    // borrowed from the team, so faded, and never opened for editing
+    expect(cells[0]?.querySelector(".muted")).not.toBeNull();
+  });
+
   it("does not widen a tournament with no team discipline", async () => {
     const page = await openConsole(tournament(true, ["individual"]), [row("Jan Novák", [])]);
 

@@ -107,13 +107,15 @@ describe("the fencer list's counting column", () => {
     const page = await openConsole([row("A", 7), row("B", 12), row("C", 3)]);
 
     const labels = [...page.querySelectorAll(".sheet-table thead th")].map((th) => th.textContent);
-    expect(labels[0]).toBe(i18n.t("column.position"));
-    expect(labels[1]).toBe("#");
+    // the count is the table's gutter and carries no heading; the fixed
+    // number's column is headed ID and each number marked #
+    expect(labels[0]).toBe("");
+    expect(labels[1]).toBe(i18n.t("column.number"));
     // the count runs 1, 2, 3 whatever numbers the fencers carry
     expect(leading(page)).toEqual([
-      ["1", "7"],
-      ["2", "12"],
-      ["3", "3"],
+      ["1", "#7"],
+      ["2", "#12"],
+      ["3", "#3"],
     ]);
   });
 
@@ -127,9 +129,9 @@ describe("the fencer list's counting column", () => {
     // the struck-through row keeps its own number and takes no place in the
     // count: the last number read is how many fencers the tournament has
     expect(leading(page)).toEqual([
-      ["1", "1"],
-      ["", "2"],
-      ["2", "3"],
+      ["1", "#1"],
+      ["", "#2"],
+      ["2", "#3"],
     ]);
   });
 });

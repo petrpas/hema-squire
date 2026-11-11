@@ -54,7 +54,7 @@ export default function MatchDialog({
               <button type="button" onClick={() => onResolve(profile.hr_id, profile)}>
                 <strong>{profile.name}</strong>
                 <span className="muted">
-                  {profile.nationality ?? "—"} · {profile.club ?? "—"} · #{profile.hr_id}
+                  {profile.nationality ?? "—"} · {profile.club ?? "—"} · HR {profile.hr_id}
                 </span>
               </button>
             </li>

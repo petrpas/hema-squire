@@ -138,7 +138,7 @@ def test_export_writes_the_export_tables(client, auth_headers):
 
     fencers = sheets.worksheets["Fencers"]
     assert fencers[0] == [
-        "#",
+        "Poř.",
         "Jméno",
         "Nár.",
         "Klub",
@@ -154,7 +154,7 @@ def test_export_writes_the_export_tables(client, auth_headers):
     assert [row[0] for row in fencers[1:]] == list(range(1, len(fencers)))
 
     ls = sheets.worksheets["LS"]
-    assert ls[0] == ["#", "Jméno", "Nár.", "Klub", "HR_ID", "HRating", "HRank", "Zaplaceno"]
+    assert ls[0] == ["Poř.", "Jméno", "Nár.", "Klub", "HR_ID", "HRating", "HRank", "Zaplaceno"]
     assert grid_row(ls, "Jan Novák")[5:7] == [1250.5, 17]
     # imported SA fencers land on the SA tab only
     assert len(sheets.worksheets["SA"]) == 3
@@ -173,7 +173,7 @@ def test_an_english_export_carries_english_headers(client, auth_headers):
     assert response.status_code == 200, response.text
 
     fencers = sheets.worksheets["Fencers"]
-    assert fencers[0] == ["#", "Name", "Nat.", "Club", "HR_ID", "Disciplines", "Paid"]
+    assert fencers[0] == ["Pos.", "Name", "Nat.", "Club", "HR_ID", "Disciplines", "Paid"]
     assert grid_row(fencers, "Jan Novák")[6] == "No"
 
 
@@ -199,7 +199,7 @@ def test_an_item_category_gets_a_worksheet_and_an_empty_one_does_not(client, aut
     assert "Rentals" not in body["worksheets"]  # the tournament sells none
 
     merch = sheets.worksheets["Merch"]
-    assert merch[0] == ["#", "Jméno", "Nár.", "Klub", "Položky", "Zaplaceno"]
+    assert merch[0] == ["Poř.", "Jméno", "Nár.", "Klub", "Položky", "Zaplaceno"]
     # the item worksheet carries no hand-numbering column, only the position
     assert [row[:2] for row in merch[1:]] == [[1, "Buyer One"]]
     assert merch[1][4] == "t-shirt x2"
@@ -323,7 +323,7 @@ def test_an_old_format_sheet_keeps_what_remains(client, auth_headers):
     export(client, organizer)
 
     fencers = sheets.worksheets["Fencers"]
-    assert fencers[0] == ["#", "Jméno", "Nár.", "Klub", "HR_ID", "Disciplíny", "Zaplaceno"]
+    assert fencers[0] == ["Poř.", "Jméno", "Nár.", "Klub", "HR_ID", "Disciplíny", "Zaplaceno"]
     jan = grid_row(fencers, "Jan Novák")
     assert jan[3] == "Praha Sword Society"  # a non-blank cell is not clobbered
     assert len(jan) == 7  # Reg., Afterparty and Notes are gone; the position arrived

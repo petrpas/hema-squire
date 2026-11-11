@@ -92,7 +92,7 @@ export default function ConsoleRosterEditor({
                 }
               />
               <span className="muted roster-hrid">
-                {member.hr_id !== null ? `#${member.hr_id}` : ""}
+                {member.hr_id !== null ? `HR ${member.hr_id}` : ""}
               </span>
               <span className="muted roster-club">{member.club ?? ""}</span>
               <span className="muted roster-nationality">{member.nationality ?? ""}</span>
@@ -141,7 +141,7 @@ export default function ConsoleRosterEditor({
                 <div className="checklist-row team-row">
                   <span>
                     {gone.name}
-                    {gone.hr_id !== null && ` · #${gone.hr_id}`}
+                    {gone.hr_id !== null && ` · HR ${gone.hr_id}`}
                     {gone.club && ` · ${gone.club}`}
                   </span>
                   <span className="muted">

@@ -21,6 +21,7 @@ import CancelRegistrationDialog from "./CancelRegistrationDialog";
 import DedupPanel from "./dedup/DedupPanel";
 import DedupView from "./dedup/DedupView";
 import ExportTables from "./export/ExportTables";
+import { fencerNumberText } from "./FencerNumber";
 import ImportPanel from "./ImportPanel";
 import EventWording, { wordingI18n } from "./i18n/EventWording";
 import { IDENTITY_COLUMNS, identityValue, usesHRIdentity } from "./identity";
@@ -370,7 +371,7 @@ const AMENDABLE_FIELDS = new Set(["disciplines", "weapon_rentals"]);
  *  describes one upload, and what Import shows is what the tournament imported
  *  across all of them. */
 export function rowNumber(row: SheetRow): string {
-  return row.number === null || row.number === undefined ? "—" : String(row.number);
+  return fencerNumberText(row.number);
 }
 
 /** Whether a phase still lists a row a removal has taken out of the table.
@@ -644,6 +645,14 @@ export function CellDisplay({
     case "state":
       return <StateBadge id={row.id} state={row.state} />;
     case "disciplines":
+      // A member entered nothing, so its own disciplines are empty, and an
+      // empty cell read as missing data. It fights in its team's discipline,
+      // and says so here, faded as a fact borrowed from the team cell. Drawn
+      // only: the row's `disciplines` stay empty, since export tabs, counts and
+      // ratings read them as what a row entered (owner decision 2026-11-11).
+      if (isMemberRow(row)) {
+        return <span className="muted">{row.teams.map((team) => team.discipline).join(", ")}</span>;
+      }
       return (
         <>
           {row.disciplines.join(", ")}

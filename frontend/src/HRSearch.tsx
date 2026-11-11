@@ -116,7 +116,7 @@ export default function HRSearchPicker({
               <button type="button" onClick={() => onConfirm(profile)} disabled={disabled}>
                 <strong>{profile.name}</strong>
                 <span className="muted">
-                  {profile.club ?? "—"} · {profile.nationality ?? "—"} · #{profile.hr_id}
+                  {profile.club ?? "—"} · {profile.nationality ?? "—"} · HR {profile.hr_id}
                 </span>
                 {profile.claimed && (
                   <span className="hr-claimed-notice">{t("profile.hr.claimedNotice")}</span>

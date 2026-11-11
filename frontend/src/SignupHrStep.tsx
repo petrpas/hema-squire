@@ -62,7 +62,7 @@ export default function SignupHrStep({
         <h2>{t("signup.hr.confirmTitle")}</h2>
         <p className="hr-confirm-name">{pendingHr.name}</p>
         <p className="muted">
-          {pendingHr.club ?? "—"} · {pendingHr.nationality ?? "—"} · #{pendingHr.hr_id}
+          {pendingHr.club ?? "—"} · {pendingHr.nationality ?? "—"} · HR {pendingHr.hr_id}
         </p>
         <a
           className="hr-confirm-link"

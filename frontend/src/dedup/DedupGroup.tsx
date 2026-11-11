@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-
 import type { DedupGroup as Group } from "../api";
+import FencerNumber from "../FencerNumber";
 import { IDENTITY_COLUMNS, identityValue } from "../identity";
 import { registeredMoment } from "../momentText";
 import NoteMarker from "../NoteMarker";
@@ -86,7 +86,7 @@ export default function DedupGroup({
       <table className="sheet-table dedup-table">
         <thead>
           <tr>
-            <th className="col-index">#</th>
+            <th className="col-index">{t("column.number")}</th>
             {GROUP_COLUMNS.map((column) => (
               <th
                 key={column}
@@ -102,7 +102,9 @@ export default function DedupGroup({
         <tbody>
           {group.members.map((member) => (
             <tr key={member.id}>
-              <td className="col-index">{member.number ?? "—"}</td>
+              <td className="col-index">
+                <FencerNumber number={member.number} />
+              </td>
               {GROUP_COLUMNS.map((column) => {
                 if (IDENTITY_COLUMNS.includes(column)) {
                   const { text, declared } = identityValue(member, column, true);

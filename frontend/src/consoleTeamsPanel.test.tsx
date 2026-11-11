@@ -91,6 +91,7 @@ describe("the organizer's teams view", () => {
 
     const headers = [...page.querySelectorAll("thead th")].map((th) => th.textContent);
     expect(headers).toEqual([
+      "",
       i18n.t("teams.column.team"),
       i18n.t("teams.column.enteringFencer"),
       i18n.t("teams.column.email"),
@@ -103,7 +104,8 @@ describe("the organizer's teams view", () => {
     );
     // the count's cell carries the roster's toggle, named for assistive
     // technology alone
-    expect(first.slice(0, 5)).toEqual([
+    expect(first.slice(0, 6)).toEqual([
+      "1",
       "Wolves",
       "F1",
       "f1@example.org",
@@ -116,12 +118,12 @@ describe("the organizer's teams view", () => {
     const second = [...(page.querySelectorAll("tbody tr")[1]?.querySelectorAll("td") ?? [])].map(
       (td) => td.textContent,
     );
-    expect(second[4]).toBe(i18n.t("export.yes"));
+    expect(second[5]).toBe(i18n.t("export.yes"));
     // two of a minimum of three: the count alone, marked as outside the bounds
-    const count = page.querySelectorAll("tbody tr")[0]?.querySelector("td:nth-child(4) span");
+    const count = page.querySelectorAll("tbody tr")[0]?.querySelector("td:nth-child(5) span");
     expect(count?.className).toContain("member-count-off");
     // a count the bounds admit carries no mark
-    const okCount = page.querySelectorAll("tbody tr")[1]?.querySelector("td:nth-child(4) span");
+    const okCount = page.querySelectorAll("tbody tr")[1]?.querySelector("td:nth-child(5) span");
     expect(okCount?.textContent).toBe("3");
     expect(okCount?.className).not.toContain("member-count-off");
 
@@ -138,7 +140,7 @@ describe("the organizer's teams view", () => {
     const tabs = [...page.querySelectorAll("[role=tab]")];
     expect(tabs.map((tab) => tab.textContent)).toEqual(["Longsword1", "Sabre2"]);
     const names = () =>
-      [...page.querySelectorAll("tbody tr td:first-child strong")].map((n) => n.textContent);
+      [...page.querySelectorAll("tbody tr td:nth-child(2) strong")].map((n) => n.textContent);
     expect(names()).toEqual(["Wolves"]);
 
     await act(async () => (tabs[1] as HTMLButtonElement).click());
@@ -150,7 +152,7 @@ describe("the organizer's teams view", () => {
     await click(page, i18n.t("teams.roster.show"));
 
     const rows = [...page.querySelectorAll(".detail-list .muted")].map((li) => li.textContent);
-    expect(rows[0]).toBe("Bound Person · #4321 · Brno HEMA · CZ");
+    expect(rows[0]).toBe("Bound Person · HR 4321 · Brno HEMA · CZ");
     expect(rows[1]).toBe("Unknown Person");
   });
 
@@ -178,9 +180,12 @@ describe("the organizer's teams view", () => {
     ]);
 
     const rows = [...page.querySelectorAll("tbody tr")].map((tr) =>
-      tr.classList.contains("export-line") ? "line" : tr.querySelector("strong")?.textContent,
+      tr.classList.contains("export-line")
+        ? "line"
+        : `${tr.querySelector(".col-gutter")?.textContent} ${tr.querySelector("strong")?.textContent}`,
     );
-    expect(rows).toEqual(["Wolves", "line", "Hawks", "Owls"]);
+    // below the line the count starts again: each team's place on the waitlist
+    expect(rows).toEqual(["1 Wolves", "line", "1 Hawks", "2 Owls"]);
 
     host?.remove();
     const plain = await openPanel([discipline([team()])]);
@@ -222,7 +227,9 @@ describe("the organizer's teams view", () => {
     });
 
     expect(cancel).toHaveBeenCalledWith("cup", 5);
-    const names = [...page.querySelectorAll("tbody tr td:first-child")].map((td) => td.textContent);
+    const names = [...page.querySelectorAll("tbody tr td:nth-child(2)")].map(
+      (td) => td.textContent,
+    );
     expect(names).toEqual(["Bears"]);
   });
 
