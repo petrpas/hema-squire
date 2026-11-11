@@ -1,3 +1,5 @@
+import { IconChevronDown, IconChevronRight } from "@tabler/icons-react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import type { EntrantTeam, Roster } from "../api";
@@ -7,8 +9,9 @@ type TeamRosterData = Extract<Roster, { kind: "team" }>;
 
 const COLUMNS = 6;
 
-/** A team discipline's roster: each team by name with its members beneath
- *  it, and the waitlist below the capacity line (spec public-entrants). */
+/** A team discipline's roster: each team by name, folded, opening onto its
+ *  members beneath it, and the waitlist below the capacity line (spec
+ *  public-entrants). */
 export default function TeamRoster({ roster }: { roster: TeamRosterData }) {
   const { t } = useTranslation();
   if (roster.seated.length === 0 && roster.queued.length === 0) {
@@ -43,9 +46,21 @@ export default function TeamRoster({ roster }: { roster: TeamRosterData }) {
   );
 }
 
+/** The value every member shares, or nothing: a team row states a
+ *  nationality or club only where it speaks for the whole team. A member
+ *  with none recorded breaks the agreement. */
+function shared(values: (string | null)[]): string | null {
+  const first = values[0];
+  if (!first) return null;
+  return values.every((value) => value === first) ? first : null;
+}
+
 function TeamLines({ team }: { team: EntrantTeam }) {
   const { t } = useTranslation();
+  const [open, setOpen] = useState(false);
   const faded = team.faded ? "muted" : undefined;
+  const composed = team.members.length > 0;
+  const Chevron = open ? IconChevronDown : IconChevronRight;
   return (
     // one team is one row group: the hairline falls between teams, not
     // between a team and its own members
@@ -53,14 +68,26 @@ function TeamLines({ team }: { team: EntrantTeam }) {
       <tr className={faded}>
         <td className="col-index">{team.number}</td>
         <td>
-          <strong className="entrant-team">{team.name}</strong>
+          {composed ? (
+            <button
+              type="button"
+              className="entrant-team-toggle"
+              aria-expanded={open}
+              onClick={() => setOpen((was) => !was)}
+            >
+              <Chevron size={12} stroke={1.5} aria-hidden />
+              <strong className="entrant-team">{team.name}</strong>
+            </button>
+          ) : (
+            <strong className="entrant-team">{team.name}</strong>
+          )}
         </td>
-        <td />
-        <td />
+        <td>{shared(team.members.map((member) => member.nationality))}</td>
+        <td>{shared(team.members.map((member) => member.club))}</td>
         <td />
         <PaidCell paid={team.paid} />
       </tr>
-      {team.members.length === 0 ? (
+      {!composed ? (
         <tr className="muted">
           <td />
           <td className="entrant-member" colSpan={COLUMNS - 1}>
@@ -68,6 +95,7 @@ function TeamLines({ team }: { team: EntrantTeam }) {
           </td>
         </tr>
       ) : (
+        open &&
         team.members.map((member, index) => (
           // biome-ignore lint/suspicious/noArrayIndexKey: a read-only roster rebuilt from props; position is the only identity a member has
           <tr key={index} className={faded}>

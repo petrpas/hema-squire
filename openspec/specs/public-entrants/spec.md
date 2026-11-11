@@ -170,7 +170,11 @@ they were waiting.
 ### Requirement: A team roster names the team and its members
 A team discipline's roster SHALL list each team by its name, with its members beneath it
 in roster order, each member with nationality, club and HEMA Ratings identifier where
-the roster records them. A member's identifier SHALL be the one the console has settled,
+the roster records them. Each team SHALL open folded, its members hidden until the
+visitor opens it, and SHALL fold again on a second activation. A team's own row SHALL
+state a nationality where every member records the same one, and a club where every
+member records the same one; where they differ, or a member records none, that cell
+SHALL be empty. A member's identifier SHALL be the one the console has settled,
 not the one typed into the roster where the two differ: an identifier the organizer has
 ruled on is the tournament's answer, and an individual entrant's row already states it
 that way. Where no verdict has been given, the roster SHALL state the identifier as
@@ -179,7 +183,7 @@ the rules of the Paid column, and an unpaid team SHALL be drawn faded where Squi
 collects the money and that registration's money is due.
 
 A team whose roster names nobody yet SHALL be listed by name, with one line stating that
-its members are not yet named.
+its members are not yet named, shown without folding since there is nothing to open.
 
 A team whose entering registration's row the organizer has taken out of the table SHALL
 NOT be listed, as an individual's removed row is not.
@@ -191,7 +195,11 @@ it SHALL list no waitlisted team and draw no line.
 
 #### Scenario: A team with its members
 - **WHEN** a visitor opens the roster of a team discipline holding "Ostravští draci" with four members
-- **THEN** the team is listed by name with its four members beneath it, in roster order
+- **THEN** the team is listed by name, folded, and opening it shows its four members beneath it, in roster order
+
+#### Scenario: The team row states what its members share
+- **WHEN** a team's three members all fence for "Ostravští draci" and two are Czech, one Slovak
+- **THEN** the team's row states the club and leaves the nationality empty
 
 #### Scenario: A team not yet composed
 - **WHEN** a team has been entered and its roster names nobody

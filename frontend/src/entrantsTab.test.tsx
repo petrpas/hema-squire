@@ -150,7 +150,10 @@ const ENTRANTS: Entrants = {
           name: "Draci",
           paid: "yes",
           faded: false,
-          members: [{ name: "Eva", nationality: null, club: "Klub X", hr_id: null }],
+          members: [
+            { name: "Eva", nationality: "CZE", club: "Klub X", hr_id: null },
+            { name: "Jan", nationality: "SVK", club: "Klub X", hr_id: null },
+          ],
         },
         { number: 2, name: "Vlci", paid: "yes", faded: false, members: [] },
       ],
@@ -414,21 +417,42 @@ describe("an individual roster", () => {
 });
 
 describe("a team roster", () => {
-  it("lists each team with its members, and says when none are named", async () => {
+  const rows = (page: HTMLElement) =>
+    [...page.querySelectorAll(".entrants-table tbody tr")].map((tr) => cells(tr).join("|"));
+
+  it("folds each team's members away, and says when none are named", async () => {
     detailApi();
     const page = mount("/t/spring-open/entrants/TM");
     await settle();
 
-    const text = [...page.querySelectorAll(".entrants-table tbody tr")].map((tr) =>
-      cells(tr).join("|"),
-    );
-    expect(text).toEqual([
-      `1|Draci||||${i18n.t("export.yes")}`,
-      "|Eva||Klub X||",
+    // the team states the club all its members share, and no nationality,
+    // since theirs differ
+    expect(rows(page)).toEqual([
+      `1|Draci||Klub X||${i18n.t("export.yes")}`,
       `2|Vlci||||${i18n.t("export.yes")}`,
       `|${i18n.t("entrants.membersPending")}`,
       i18n.t("export.line.capacity"),
     ]);
+    // a team nobody is named to has nothing to open
+    expect(page.querySelectorAll(".entrant-team-toggle")).toHaveLength(1);
+  });
+
+  it("opens a team onto its members and folds it again", async () => {
+    detailApi();
+    const page = mount("/t/spring-open/entrants/TM");
+    await settle();
+
+    const toggle = page.querySelector(".entrant-team-toggle");
+    click(toggle);
+    expect(toggle?.getAttribute("aria-expanded")).toBe("true");
+    expect(rows(page).slice(0, 3)).toEqual([
+      `1|Draci||Klub X||${i18n.t("export.yes")}`,
+      "|Eva|CZE|Klub X||",
+      "|Jan|SVK|Klub X||",
+    ]);
+
+    click(toggle);
+    expect(rows(page)).toHaveLength(4);
   });
 });
 
