@@ -2231,6 +2231,10 @@ class ConsoleTeamOut(BaseModel):
     id: int
     name: str
     entering_fencer: str
+    # where mail about the entering registration goes (`emails.recipient`), so
+    # the organizer writes to the address Squire writes to; None for a row
+    # imported without one
+    entering_email: str | None = None
     # the payment standing of the registration this team was entered on: a team
     # is paid for once, on that registration, and carries no money of its own
     paid: bool

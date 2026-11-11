@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { api, type ConsoleTeam, type ConsoleTeamDiscipline } from "./api";
 import PhaseSummary from "./PhaseSummary";
 import CancelTeamDialog from "./teams/CancelTeamDialog";
+import TeamDisciplineTabs from "./teams/TeamDisciplineTabs";
 import TeamsTable, { type TeamEntry } from "./teams/TeamsTable";
 
 /** The Teams phase: the tournament's team entries as one table, carrying the
@@ -25,6 +26,9 @@ export default function TeamsPanel({ slug }: { slug: string }) {
   // the dialog lives here rather than on the row: a `dialog` element cannot
   // stand inside a table body
   const [cancelling, setCancelling] = useState<TeamEntry | null>(null);
+  // the discipline whose teams are listed, where there is more than one to
+  // choose from; falls back to the first when unset or no longer offered
+  const [chosen, setChosen] = useState<string | null>(null);
 
   useEffect(() => {
     api.consoleTeams(slug).then(setDisciplines, () => setDisciplines([]));
@@ -64,11 +68,12 @@ export default function TeamsPanel({ slug }: { slug: string }) {
 
   if (disciplines === null) return <p>{t("common.loading")}</p>;
 
-  // one table over the tournament's teams, in the tournament's discipline
-  // order and each discipline's own team order
-  const entries: TeamEntry[] = disciplines.flatMap((discipline) =>
-    discipline.teams.map((team) => ({ discipline, team })),
-  );
+  // the summary speaks for the whole tournament, the table for one discipline
+  const allTeams = disciplines.flatMap((discipline) => discipline.teams);
+  const shown =
+    disciplines.find((discipline) => discipline.slug === chosen) ?? disciplines[0] ?? null;
+  const entries: TeamEntry[] =
+    shown === null ? [] : shown.teams.map((team) => ({ discipline: shown, team }));
 
   return (
     <main className="sheet-area">
@@ -78,11 +83,14 @@ export default function TeamsPanel({ slug }: { slug: string }) {
             is entered, and it cannot compete as it stands */}
         <PhaseSummary
           text={t("console.summary.belowMinimum", {
-            count: entries.filter(({ team }) => team.below_minimum).length,
+            count: allTeams.filter((team) => team.below_minimum).length,
           })}
           onRefresh={() => setReload((n) => n + 1)}
         />
       </div>
+      {shown !== null && disciplines.length > 1 && (
+        <TeamDisciplineTabs disciplines={disciplines} active={shown.slug} onSelect={setChosen} />
+      )}
       <div className="sheet-scroll">
         {disciplines.length === 0 ? (
           <p className="sheet-empty">{t("teams.empty")}</p>

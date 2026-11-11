@@ -1291,6 +1291,9 @@ export interface ConsoleTeam {
   id: number;
   name: string;
   entering_fencer: string;
+  /** Where mail about the entering registration goes; null for a row imported
+   *  without an address. */
+  entering_email: string | null;
   /** The payment standing of the registration this team was entered on: a team
    *  is paid for once, on that registration, and carries no money of its own. */
   paid: boolean;

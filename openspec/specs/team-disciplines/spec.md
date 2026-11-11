@@ -509,21 +509,29 @@ stamp continues to mean that a message was sent.
 - **THEN** no reminder is sent and the team is not stamped as reminded
 
 ### Requirement: Organizer's teams view
-The console SHALL present, per team discipline, the teams entered into it: the team name, the entering fencer, the roster in order with each member's name and — where bound — HEMA Ratings identifier, club, and nationality, the member count, and the team's waitlist position where it is waitlisted. Teams marked below minimum after the composition deadline SHALL be distinguished.
+The console SHALL present, per team discipline, the teams entered into it: the team name, the entering fencer, the roster in order with each member's name and — where bound — HEMA Ratings identifier, club, and nationality, the member count, and which teams are waitlisted and in what order. Teams marked below minimum after the composition deadline SHALL be distinguished.
 
 The view SHALL be offered only while the tournament's team disciplines feature is on, as fixed by `tournament-features`. An organizer who has turned the feature off SHALL see no Teams phase; the teams, rosters and waitlist positions it would have shown SHALL be retained untouched and SHALL be shown again when the feature is turned back on. The entering fencer's own roster editor on the tournament detail page SHALL be unaffected by the feature, which governs the organizer's console alone.
 
 **The view SHALL let the organizer edit a roster**: add a member, remove one, restore a removed one, and correct a member's name, HEMA Ratings identifier, club or nationality. A team arrives at the tournament and the fencer who entered it cannot always reach their own editor; the organizer acting for them is the remedy, and it is a safe one — a roster edit moves no money, as **Roster editing changes no money** fixes. Every such edit SHALL be recorded as **Every roster change is recorded in one log** fixes, and the log SHALL be shown beside the roster.
 
-**The view SHALL be a table**, one row per team, read the way the fencer list is read: the team's name, its discipline, the fencer who entered it, its member count, its waitlist position where it is waitlisted, and the payment standing of the registration it was entered on. The count SHALL be stated as the number alone, without the bounds beside it — the organizer configured the discipline and knows the size it asks for, and a bound repeated on eighteen rows is eighteen readings of one fact. A count the bounds do not admit, short of the minimum or over the maximum, SHALL be distinguished from one they do, which is the comparison the bounds were there to make. The roster SHALL be reachable from its team's row rather than printed under every row, so that a tournament's teams can be read as a list. The phase SHALL stand immediately after Fencers (`etl-console`): Fencers lists who will fight, this lists the entries they fight under.
+**The view SHALL be a table**, one row per team, read the way the fencer list is read: the team's name, the fencer who entered it, the address mail about that registration goes to (`outgoing-mail`), its member count, and the payment standing of the registration it was entered on. The waitlisted teams SHALL stand below a capacity line, in waitlist order, as the public roster draws them; the line SHALL be drawn only where a team waits, and no column SHALL state a waitlist position, since the line says which teams wait and the rows' order says in what order. The member count and the payment standing SHALL be centred in their columns. The table SHALL list one team discipline at a time and SHALL NOT state the discipline as a column: where the tournament offers two or more team disciplines, tabs under the view's heading SHALL choose the discipline, each counting its teams; where it offers one, no tabs SHALL be drawn, since most tournaments hold a single team discipline. The count SHALL be stated as the number alone, without the bounds beside it — the organizer configured the discipline and knows the size it asks for, and a bound repeated on eighteen rows is eighteen readings of one fact. A count the bounds do not admit, short of the minimum or over the maximum, SHALL be distinguished from one they do, which is the comparison the bounds were there to make. The roster SHALL be reachable from its team's row rather than printed under every row, so that a tournament's teams can be read as a list: a disclosure control beside the member count SHALL unfold it beneath the row and fold it again. The phase SHALL stand immediately after Fencers (`etl-console`): Fencers lists who will fight, this lists the entries they fight under.
 
 **The view SHALL carry the agenda of a team entry**, since a registration that entered a team offers that agenda nowhere else: a fencer who entered a team and fights nothing is not on the fencer list at all (`etl-console`). The organizer SHALL be able to cancel one team of a registration, as **Cancelling one team** fixes.
 
-Admission from the waitlist and return to it remain the Queue phase's (`seating-queue`), and the view SHALL say so where it shows a waitlisted team: admission moves money and opens a payment window, and the phase that does that is the phase that shows the queue.
+Admission from the waitlist and return to it remain the Queue phase's (`seating-queue`), and the view SHALL say so on the capacity line above the waitlisted teams: admission moves money and opens a payment window, and the phase that does that is the phase that shows the queue.
 
 #### Scenario: Teams listed per discipline
 - **WHEN** an organizer opens the teams view for a team discipline holding six teams
 - **THEN** each team is listed with its name, entering fencer, ordered roster, and member count
+
+#### Scenario: Two team disciplines are chosen by tab
+- **WHEN** an organizer opens the teams view of a tournament offering a longsword team event and a sabre team event
+- **THEN** tabs under the heading name both with their team counts, and the table lists the teams of the chosen one with no discipline column
+
+#### Scenario: One team discipline draws no tabs
+- **WHEN** the tournament offers a single team discipline
+- **THEN** the view lists its teams with no tabs above the table
 
 #### Scenario: A bound member states its identifier here too
 - **WHEN** a listed roster holds a member bound to a HEMA Ratings profile

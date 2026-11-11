@@ -1363,7 +1363,6 @@
     "bounds": "Roster {{min}}–{{max}} members",
     "noneEntered": "No team entered yet.",
     "memberCount": "{{count}}/{{min}}–{{max}} members",
-    "waitlistPosition": "position {{position}}",
     "belowMinimum": "below minimum",
     "enteredBy": "entered by {{name}}",
     "admittedOnQueue": "admission from the waitlist is on the Queue phase",
@@ -1399,8 +1398,8 @@
       "team": "Team",
       "discipline": "Discipline",
       "enteringFencer": "Entered by",
+      "email": "Email",
       "members": "Members",
-      "waitlist": "Waitlist",
       "paid": "Paid"
     },
     "roster": {

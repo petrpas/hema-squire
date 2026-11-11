@@ -19,6 +19,7 @@ function team(overrides: Partial<ConsoleTeam> = {}): ConsoleTeam {
     id: 5,
     name: "Wolves",
     entering_fencer: "F1",
+    entering_email: "f1@example.org",
     paid: false,
     waitlisted: false,
     waitlist_position: null,
@@ -33,8 +34,8 @@ function team(overrides: Partial<ConsoleTeam> = {}): ConsoleTeam {
   };
 }
 
-function discipline(teams: ConsoleTeam[]): ConsoleTeamDiscipline {
-  return { slug: "LS", name: "Longsword", team_min: 3, team_max: 4, teams };
+function discipline(teams: ConsoleTeam[], slug = "LS", name = "Longsword"): ConsoleTeamDiscipline {
+  return { slug, name, team_min: 3, team_max: 4, teams };
 }
 
 let host: HTMLElement | null = null;
@@ -91,32 +92,57 @@ describe("the organizer's teams view", () => {
     const headers = [...page.querySelectorAll("thead th")].map((th) => th.textContent);
     expect(headers).toEqual([
       i18n.t("teams.column.team"),
-      i18n.t("teams.column.discipline"),
       i18n.t("teams.column.enteringFencer"),
+      i18n.t("teams.column.email"),
       i18n.t("teams.column.members"),
-      i18n.t("teams.column.waitlist"),
       i18n.t("teams.column.paid"),
       "",
     ]);
     const first = [...(page.querySelectorAll("tbody tr")[0]?.querySelectorAll("td") ?? [])].map(
       (td) => td.textContent,
     );
-    expect(first.slice(0, 6)).toEqual(["Wolves", "Longsword", "F1", "2", "—", i18n.t("export.no")]);
+    // the count's cell carries the roster's toggle, named for assistive
+    // technology alone
+    expect(first.slice(0, 5)).toEqual([
+      "Wolves",
+      "F1",
+      "f1@example.org",
+      `2${i18n.t("teams.roster.show")}`,
+      i18n.t("export.no"),
+    ]);
+    // one discipline: no tabs to choose it by
+    expect(page.querySelector("[role=tablist]")).toBeNull();
     // the second team's paid cell states its own registration's standing
     const second = [...(page.querySelectorAll("tbody tr")[1]?.querySelectorAll("td") ?? [])].map(
       (td) => td.textContent,
     );
-    expect(second[5]).toBe(i18n.t("export.yes"));
+    expect(second[4]).toBe(i18n.t("export.yes"));
     // two of a minimum of three: the count alone, marked as outside the bounds
-    const count = page.querySelectorAll("tbody tr")[0]?.querySelectorAll("td")[3];
+    const count = page.querySelectorAll("tbody tr")[0]?.querySelector("td:nth-child(4) span");
     expect(count?.className).toContain("member-count-off");
     // a count the bounds admit carries no mark
-    const okCount = page.querySelectorAll("tbody tr")[1]?.querySelectorAll("td")[3];
+    const okCount = page.querySelectorAll("tbody tr")[1]?.querySelector("td:nth-child(4) span");
     expect(okCount?.textContent).toBe("3");
     expect(okCount?.className).not.toContain("member-count-off");
 
     // the roster is not printed under every row
     expect(page.textContent).not.toContain("Bound Person");
+  });
+
+  it("chooses the discipline by a tab where there are two or more", async () => {
+    const page = await openPanel([
+      discipline([team()]),
+      discipline([team({ id: 7, name: "Hawks" }), team({ id: 8, name: "Owls" })], "SB", "Sabre"),
+    ]);
+
+    const tabs = [...page.querySelectorAll("[role=tab]")];
+    expect(tabs.map((tab) => tab.textContent)).toEqual(["Longsword1", "Sabre2"]);
+    const names = () =>
+      [...page.querySelectorAll("tbody tr td:first-child strong")].map((n) => n.textContent);
+    expect(names()).toEqual(["Wolves"]);
+
+    await act(async () => (tabs[1] as HTMLButtonElement).click());
+    expect(names()).toEqual(["Hawks", "Owls"]);
   });
 
   it("states a bound member's HEMA Ratings identifier and shows an unbound one plainly", async () => {
@@ -140,6 +166,25 @@ describe("the organizer's teams view", () => {
     );
     expect(rowControls).toEqual([i18n.t("teams.roster.show"), i18n.t("teams.cancel.action")]);
     expect(page.textContent).toContain(i18n.t("teams.admittedOnQueue"));
+  });
+
+  it("stands the waitlisted teams below the capacity line, and draws none without them", async () => {
+    const page = await openPanel([
+      discipline([
+        team({ id: 7, name: "Hawks", waitlisted: true, waitlist_position: 1 }),
+        team(),
+        team({ id: 8, name: "Owls", waitlisted: true, waitlist_position: 2 }),
+      ]),
+    ]);
+
+    const rows = [...page.querySelectorAll("tbody tr")].map((tr) =>
+      tr.classList.contains("export-line") ? "line" : tr.querySelector("strong")?.textContent,
+    );
+    expect(rows).toEqual(["Wolves", "line", "Hawks", "Owls"]);
+
+    host?.remove();
+    const plain = await openPanel([discipline([team()])]);
+    expect(plain.querySelector(".export-line")).toBeNull();
   });
 
   it("cancels one team through the console's own route and drops it from the table", async () => {

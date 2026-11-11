@@ -1,7 +1,7 @@
 import { useTranslation } from "react-i18next";
 
 import type { ConsoleTeam, ConsoleTeamDiscipline } from "../api";
-import TeamTableRow from "./TeamTableRow";
+import TeamTableRow, { COLUMNS } from "./TeamTableRow";
 
 /** One team per discipline, flattened: the row and the discipline it belongs
  *  to, since the table states both and the API nests one inside the other. */
@@ -10,15 +10,21 @@ export interface TeamEntry {
   team: ConsoleTeam;
 }
 
-/** The tournament's teams as one table, read the way the fencer list is read:
- *  a row per team stating its discipline, the fencer who entered it, its
- *  member count against the discipline's bounds, its waitlist position where
- *  it waits, and the payment standing of the registration it was entered on
- *  (spec team-disciplines, Organizer's teams view).
+/** One team discipline's teams as a table, read the way the fencer list is
+ *  read: a row per team stating the fencer who entered it and their address,
+ *  its member count, and the payment standing of the registration it was
+ *  entered on (spec team-disciplines, Organizer's teams view). The discipline
+ *  is the tab above, not a column.
  *
- *  The roster is reachable from its team's row rather than printed under every
- *  row: a tournament of eighteen teams is a list to be read, and a roster
- *  under each would make it four pages. */
+ *  The waitlisted teams stand below a capacity line, in waitlist order, as
+ *  the public roster draws them: the line says which teams wait, and the
+ *  rows' order says in what order. The line also says where admission is,
+ *  since the control is not here — admission moves money and opens a payment
+ *  window, and the phase that does that is the one showing the queue.
+ *
+ *  The roster unfolds beside its count rather than printed under every row: a
+ *  tournament of eighteen teams is a list to be read, and a roster under each
+ *  would make it four pages. */
 export default function TeamsTable({
   slug,
   entries,
@@ -33,31 +39,43 @@ export default function TeamsTable({
   onCancel: (entry: TeamEntry) => void;
 }) {
   const { t } = useTranslation();
+  // the server lists them in waitlist order; split rather than trusted to
+  // fall seated-first, so the line can never stand between two seated teams
+  const seated = entries.filter(({ team }) => !team.waitlisted);
+  const waiting = entries.filter(({ team }) => team.waitlisted);
+  const row = ({ discipline, team }: TeamEntry) => (
+    <TeamTableRow
+      key={team.id}
+      slug={slug}
+      team={team}
+      discipline={discipline}
+      onSaved={(saved) => onSaved(discipline.slug, saved)}
+      onCancel={() => onCancel({ discipline, team })}
+    />
+  );
 
   return (
     <table className="sheet-table">
       <thead>
         <tr>
           <th>{t("teams.column.team")}</th>
-          <th>{t("teams.column.discipline")}</th>
           <th>{t("teams.column.enteringFencer")}</th>
-          <th>{t("teams.column.members")}</th>
-          <th>{t("teams.column.waitlist")}</th>
-          <th>{t("teams.column.paid")}</th>
+          <th>{t("teams.column.email")}</th>
+          <th className="col-center">{t("teams.column.members")}</th>
+          <th className="col-center">{t("teams.column.paid")}</th>
           <th className="col-actions" />
         </tr>
       </thead>
       <tbody>
-        {entries.map(({ discipline, team }) => (
-          <TeamTableRow
-            key={team.id}
-            slug={slug}
-            team={team}
-            discipline={discipline}
-            onSaved={(saved) => onSaved(discipline.slug, saved)}
-            onCancel={() => onCancel({ discipline, team })}
-          />
-        ))}
+        {seated.map(row)}
+        {waiting.length > 0 && (
+          <tr className="export-line">
+            <td colSpan={COLUMNS}>
+              {t("export.line.queue")} · {t("teams.admittedOnQueue")}
+            </td>
+          </tr>
+        )}
+        {waiting.map(row)}
       </tbody>
     </table>
   );

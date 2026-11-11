@@ -4571,6 +4571,41 @@ label.checklist-row > input[type="checkbox"] {
    plus the italic: the figure is the problem, and the row states it where the
    organizer is already reading the counts (spec team-disciplines, Organizer's
    teams view). */
+/* a column whose cell is one short value read down the column: a count, a
+   yes or no */
+.sheet-table .col-center {
+  text-align: center;
+}
+
+/* the roster unfolds from its count: an outline chevron beside the figure,
+   no frame, so the cell still reads as the number it is */
+.roster-toggle {
+  display: inline-flex;
+  vertical-align: middle;
+  margin-left: 0.3em;
+  padding: 0.1rem;
+  border: none;
+  background: none;
+  color: var(--ink-faded);
+  cursor: pointer;
+}
+
+.roster-toggle:hover {
+  color: var(--ink);
+}
+
+.roster-toggle:focus-visible {
+  outline: var(--border-w) solid var(--stamp);
+  outline-offset: 2px;
+}
+
+/* the discipline tabs hang under the heading, above the table they choose */
+.team-discipline-tabs {
+  align-self: flex-start;
+  width: fit-content;
+  margin-bottom: 0.8rem;
+}
+
 .member-count-off {
   color: var(--stamp);
   font-style: italic;

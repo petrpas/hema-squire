@@ -1388,7 +1388,6 @@
     "bounds": "Soupiska {{min}}–{{max}} členů",
     "noneEntered": "Zatím nepřihlášen žádný tým.",
     "memberCount": "{{count}}/{{min}}–{{max}} členů",
-    "waitlistPosition": "v pořadí {{position}}",
     "belowMinimum": "pod minimem",
     "enteredBy": "přihlásil/a {{name}}",
     "admittedOnQueue": "přijetí z čekací listiny je ve fázi Fronta",
@@ -1424,8 +1423,8 @@
       "team": "Tým",
       "discipline": "Disciplína",
       "enteringFencer": "Přihlásil",
+      "email": "E-mail",
       "members": "Soupiska",
-      "waitlist": "Fronta",
       "paid": "Zaplaceno"
     },
     "roster": {

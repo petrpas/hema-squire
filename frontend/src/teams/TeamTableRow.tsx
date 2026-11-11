@@ -1,4 +1,4 @@
-import { IconUserX } from "@tabler/icons-react";
+import { IconChevronDown, IconChevronRight, IconUserX } from "@tabler/icons-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -7,17 +7,19 @@ import PaidStamp from "../PaidStamp";
 import ConsoleRosterEditor from "./ConsoleRosterEditor";
 import RosterLog from "./RosterLog";
 
+/** The teams table's width, which an unfolded roster spans. */
+export const COLUMNS = 6;
+
 /** One team's row, and the panel it opens.
  *
- *  The row states what a reader comparing teams needs — the name, the
- *  discipline, who entered it, the count against the bounds, the waitlist
- *  position, and whether the registration it was entered on is paid. The
- *  roster, its editor and its log are one click away rather than printed under
- *  every row (spec team-disciplines, Organizer's teams view).
+ *  The row states what a reader comparing teams needs — the name, who entered
+ *  it and where to write to them, the count against the bounds, and whether the registration it was entered on is paid. The
+ *  roster, its editor and its log unfold from the count rather than printed
+ *  under every row (spec team-disciplines, Organizer's teams view).
  *
  *  Two actions: the roster, and cancelling this one team. No admission — that
- *  is the Queue phase's, which a waitlisted row says, because admission moves
- *  money and opens a payment window. */
+ *  is the Queue phase's, which the capacity line above the waitlisted rows
+ *  says, because admission moves money and opens a payment window. */
 export default function TeamTableRow({
   slug,
   team,
@@ -47,33 +49,37 @@ export default function TeamTableRow({
           <strong>{team.name}</strong>
           {team.below_minimum && <PaidStamp id={team.id} label={t("teams.belowMinimum")} />}
         </td>
-        <td>{discipline.name || discipline.slug}</td>
         <td>{team.entering_fencer}</td>
+        <td>{team.entering_email ?? ""}</td>
         {/* The count alone: the organizer knows the size the discipline asks
             for, and a bound repeated on eighteen rows is eighteen readings of
             one fact. A count outside the bounds is marked instead, which is
             the comparison the reader wanted (spec team-disciplines,
             Organizer's teams view). */}
-        <td className={withinBounds ? undefined : "member-count-off"}>{team.members.length}</td>
-        <td>
-          {team.waitlisted ? (
-            <>
-              {t("teams.waitlistPosition", { position: team.waitlist_position })}
-              {/* said on the row that waits, since the control is not here:
-                  admission moves money and opens a payment window, and the
-                  phase that does that is the phase that shows the queue */}
-              <span className="muted"> · {t("teams.admittedOnQueue")}</span>
-            </>
-          ) : (
-            "—"
-          )}
-        </td>
-        <td>{t(team.paid ? "export.yes" : "export.no")}</td>
-        <td className="col-actions-pair">
-          <div className="row-actions">
-            <button type="button" className="link-button" onClick={() => setOpen(!open)}>
+        <td className="col-center">
+          <span className={withinBounds ? undefined : "member-count-off"}>
+            {team.members.length}
+          </span>
+          <button
+            type="button"
+            className="roster-toggle"
+            aria-expanded={open}
+            title={open ? t("teams.roster.hide") : t("teams.roster.show")}
+            onClick={() => setOpen(!open)}
+          >
+            {open ? (
+              <IconChevronDown size={14} stroke={1.5} aria-hidden />
+            ) : (
+              <IconChevronRight size={14} stroke={1.5} aria-hidden />
+            )}
+            <span className="visually-hidden">
               {open ? t("teams.roster.hide") : t("teams.roster.show")}
-            </button>
+            </span>
+          </button>
+        </td>
+        <td className="col-center">{t(team.paid ? "export.yes" : "export.no")}</td>
+        <td className="col-actions">
+          <div className="row-actions">
             <button
               type="button"
               className="row-action"
@@ -89,7 +95,7 @@ export default function TeamTableRow({
 
       {open && (
         <tr>
-          <td colSpan={7}>
+          <td colSpan={COLUMNS}>
             {editing ? (
               <ConsoleRosterEditor
                 slug={slug}

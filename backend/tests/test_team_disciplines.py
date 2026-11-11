@@ -1152,6 +1152,17 @@ def test_no_flag_before_deadline_or_without_one(client, auth_headers):
     assert console[0]["teams"][0]["below_minimum"] is False
 
 
+def test_the_teams_view_states_where_the_entering_fencer_is_written_to(client, auth_headers):
+    """The organizer writes to the address Squire writes to about that
+    registration (`emails.recipient`), not to whatever the roster holds."""
+    organizer = auth_headers()
+    setup_team_tournament(client, organizer)
+    fencer = auth_headers(email="f1@example.com", name="F1")
+    register_team(client, fencer, name="Wolves")
+    console = client.get("/api/tournaments/cup/teams", headers=organizer).json()
+    assert console[0]["teams"][0]["entering_email"] == "f1@example.com"
+
+
 @pytest.mark.parametrize("timezone", [FAR_EAST, FAR_WEST])
 def test_below_minimum_follows_the_tournaments_own_day(client, auth_headers, timezone):
     """The composition deadline is a whole day where the tournament is held, not

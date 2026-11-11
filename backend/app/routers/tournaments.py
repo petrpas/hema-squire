@@ -1346,6 +1346,7 @@ def _console_team_out(
         id=team.id,
         name=team.name,
         entering_fencer=team.registration.fencer.display_name,
+        entering_email=emails.recipient(team.registration, team.registration.fencer),
         paid=team.registration.settled,
         waitlisted=team.waitlisted,
         waitlist_position=waitlist_position,
