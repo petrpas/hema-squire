@@ -5,7 +5,26 @@ import { useTranslation } from "react-i18next";
  *  organizer has not ticked on a tournament Squire does not collect for. */
 export function PaidCell({ paid }: { paid: "yes" | "no" | null }) {
   const { t } = useTranslation();
-  return <td>{paid === null ? null : t(`export.${paid}`)}</td>;
+  return <td className="col-paid">{paid === null ? null : t(`export.${paid}`)}</td>;
+}
+
+/** A header in two lengths: the whole word, and the short one a phone shows
+ *  in its place (spec public-entrants, A roster fits a phone). */
+export function TwoLengthHeader({
+  wide,
+  narrow,
+  className,
+}: {
+  wide: string;
+  narrow: string;
+  className: string;
+}) {
+  return (
+    <th className={className}>
+      <span className="label-wide">{wide}</span>
+      <span className="label-narrow">{narrow}</span>
+    </th>
+  );
 }
 
 /** The capacity line, a row of the table with a rule above it, as the Export
@@ -33,18 +52,22 @@ export function CapacityLine({
   );
 }
 
-/** A HEMA Ratings identifier, leading to the fighter's profile there. */
+/** A HEMA Ratings identifier, leading to the fighter's profile there. A
+ *  phone shows the arrow alone; the identifier stays the link's name, so a
+ *  screen reader states it either way (spec public-entrants, A roster fits a
+ *  phone). */
 export function HrIdCell({ hrId }: { hrId: number | null }) {
   return (
-    <td className="col-number">
+    <td className="col-number col-hr">
       {hrId !== null && (
         <a
           className="external-link"
           href={`https://hemaratings.com/fighters/details/${hrId}/`}
           target="_blank"
           rel="noreferrer"
+          aria-label={`HR ${hrId}`}
         >
-          {hrId}
+          <span className="hr-number">{hrId}</span>
         </a>
       )}
     </td>

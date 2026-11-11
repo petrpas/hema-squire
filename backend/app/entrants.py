@@ -74,10 +74,11 @@ class EntrantRow:
 
 @dataclass(frozen=True)
 class TeamMemberRow:
+    # no HEMA Ratings identifier: a team roster states none (spec
+    # public-entrants, A team roster names the team and its members)
     name: str
     nationality: str | None
     club: str | None
-    hr_id: int | None
 
     @property
     def country(self) -> str | None:
@@ -334,11 +335,11 @@ def _individual(
 def _team(team: Team, number: int, paid: Paid, faded: bool, rows: dict[str, Row]) -> TeamRow:
     """One team with its roster beneath it.
 
-    A member's identity is read from the projection, as an individual
-    entrant's already is: an identifier the organizer has ruled on is the
-    tournament's answer, and the public would otherwise see the claim typed
-    into the roster where the console knows a different verdict (spec
-    public-entrants, A team roster names the team and its members). Where no
+    A member's name, nationality and club are read from the projection, as an
+    individual entrant's already are: the organizer's corrections are the
+    tournament's answer, and the public would otherwise see what was typed
+    into the roster where the console states otherwise (spec public-entrants,
+    A team roster names the team and its members). Where no
     row stands for a member — nothing projects one while the member is not on a
     live roster — the stored claim is what there is.
     """
@@ -350,7 +351,6 @@ def _team(team: Team, number: int, paid: Paid, faded: bool, rows: dict[str, Row]
                 name=row["name"] if row else member.name,
                 nationality=(row.get("nationality") if row else member.nationality),
                 club=row.get("club") if row else member.club,
-                hr_id=row.get("hr_id") if row else member.hr_id,
             )
         )
     return TeamRow(number=number, name=team.name, paid=paid, faded=faded, members=members)

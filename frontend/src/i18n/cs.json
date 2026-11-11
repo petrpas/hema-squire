@@ -1859,6 +1859,12 @@
     }
   },
   "entrants": {
+    "column": {
+      "paid": "Zapl.",
+      "paidShort": "Zap.",
+      "hr": "HRID",
+      "hrShort": "HR"
+    },
     "asOf": "Seznam podle stavu k {{moment}}.",
     "empty": "Zatím nikdo není přihlášen.",
     "conditional": "jen se všemi",

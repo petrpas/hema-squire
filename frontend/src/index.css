@@ -5235,33 +5235,62 @@ tr.export-line td {
   overflow-y: hidden;
 }
 
-/* A team roster's columns are declared rather than measured: members
-   unfolding beneath a team would otherwise reshare them, and the table would
-   jump under the pointer. Wider than a phone, it scrolls sideways in its
-   frame as before. */
-.entrants-team-table {
+/* A roster's columns are declared rather than measured, and the name has no
+   width of its own: it takes what the others leave. Measured columns let a
+   long club win the width a name needs, and members unfolding beneath a team
+   would reshare them under the pointer. The roster fits the screen; nothing
+   is reached sideways (spec public-entrants, A roster fits a phone). */
+.entrants-table {
   table-layout: fixed;
-  min-width: 34rem;
 }
 
-.entrants-team-table .col-w-gutter {
+.entrants-table .col-w-gutter {
   width: 2.25rem;
 }
 
-.entrants-team-table .col-w-nat {
-  width: 4.5rem;
+/* as wide as a flag, with room for its header */
+.entrants-table .col-w-nat {
+  width: 3.25rem;
 }
 
-.entrants-team-table .col-w-club {
+.entrants-table .col-w-club {
   width: 30%;
 }
 
-.entrants-team-table .col-w-hr {
-  width: 6rem;
+.entrants-table .col-w-hr {
+  width: 5.5rem;
 }
 
-.entrants-team-table .col-w-paid {
-  width: 7rem;
+.entrants-table .col-w-paid {
+  width: 4rem;
+}
+
+/* the position numbers sit 2px further left than the console's gutter */
+.entrants-table .col-gutter {
+  padding-right: calc(0.5rem + 2px);
+}
+
+/* flags and the paid word each read as one column on a shared axis */
+.entrants-table .col-nat,
+.entrants-table .col-paid {
+  padding-left: 6px;
+  padding-right: 6px;
+  text-align: center;
+}
+
+/* The club, and a nationality stated as text, keep to one line and are cut
+   short: a visitor knows the clubs, and the name is what the roster is read
+   for. */
+.entrants-table .col-club,
+.entrants-table td.col-nat {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* a header in two lengths shows the whole word until a phone */
+.entrants-table .label-narrow {
+  display: none;
 }
 
 /* the participation condition, said in words beside the name */
@@ -5276,12 +5305,18 @@ tr.export-line td {
   font-weight: 500;
 }
 
+/* Every team's name starts at one place, openable or not. The cell's left
+   padding holds the toggle's chevron, centred in it, so the chevron does not
+   push its name aside. */
+.entrants-table .col-team {
+  padding-left: 1.5rem;
+}
+
 /* A composed team folds its members away; the name is the button that opens
    them, drawn as the name it is with an outline chevron before it. */
 .entrant-team-toggle {
   display: inline-flex;
-  align-items: center;
-  gap: 0.3em;
+  align-items: flex-start;
   padding: 0;
   border: none;
   background: none;
@@ -5289,6 +5324,16 @@ tr.export-line td {
   color: inherit;
   text-align: left;
   cursor: pointer;
+}
+
+/* The chevron takes no width in the row: pulled back into the cell's padding
+   by its own width plus half the padding, so its centre is the padding's
+   centre, and level with the first line of a name that wraps. */
+.entrant-team-toggle svg {
+  flex: none;
+  margin-left: calc(-0.75rem - 6px);
+  margin-right: calc(0.75rem - 6px);
+  margin-top: calc((1lh - 12px) / 2);
 }
 
 .entrant-team-toggle:focus-visible {
@@ -5328,9 +5373,65 @@ tr.export-line td {
   filter: grayscale(1);
 }
 
-/* a member stands under the team it belongs to */
-.entrant-member {
-  padding-left: 1.6rem;
+/* On a phone every column stays on the screen: the cells close up, the
+   headers take their short words, and an identifier is its arrow alone, its
+   number kept as the link's name (spec public-entrants, A roster fits a
+   phone). */
+@media (max-width: 768px) {
+  .entrants-table th,
+  .entrants-table td {
+    padding-left: 6px;
+    padding-right: 6px;
+  }
+
+  .entrants-table .col-gutter {
+    padding-left: 0.2rem;
+    padding-right: calc(0.4rem + 2px);
+  }
+
+  .entrants-table .col-team {
+    padding-left: 1.5rem;
+  }
+
+  .entrants-table .col-w-gutter {
+    width: 1.9rem;
+  }
+
+  .entrants-table .col-w-nat {
+    width: 2.25rem;
+  }
+
+  /* less for the club than on a wide screen: the name comes first */
+  .entrants-table .col-w-club {
+    width: 24%;
+  }
+
+  .entrants-table .col-w-hr {
+    width: 2rem;
+  }
+
+  .entrants-table .col-w-paid {
+    width: 2.75rem;
+  }
+
+  .entrants-table .label-wide,
+  .entrants-table .hr-number {
+    display: none;
+  }
+
+  .entrants-table .label-narrow {
+    display: inline;
+  }
+
+  /* the arrow alone, without the space that set it off from the number */
+  .entrants-table a.external-link::after {
+    content: "\2197";
+  }
+}
+
+/* a member stands under the team it belongs to, set in from its name */
+.entrants-table .entrant-member {
+  padding-left: 2.35rem;
 }
 
 /* A team and its members are one block, so the hairline is drawn where one

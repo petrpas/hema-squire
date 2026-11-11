@@ -162,8 +162,8 @@ const ENTRANTS: Entrants = {
           paid: "yes",
           faded: false,
           members: [
-            { name: "Eva", nationality: "CZE", country: "CZ", club: "Klub X", hr_id: null },
-            { name: "Jan", nationality: "SVK", country: "SK", club: "Klub X", hr_id: null },
+            { name: "Eva", nationality: "CZE", country: "CZ", club: "Klub X" },
+            { name: "Jan", nationality: "SVK", country: "SK", club: "Klub X" },
           ],
         },
         { number: 2, name: "Vlci", paid: "yes", faded: false, members: [] },
@@ -415,6 +415,17 @@ describe("an individual roster", () => {
     expect(nat(rows[3])?.textContent).toBe("Bohemia");
   });
 
+  it("heads the Paid column with its short word, and a shorter one for a phone", async () => {
+    detailApi();
+    const page = mount("/t/spring-open/entrants/LS");
+    await settle();
+    await act(() => i18n.changeLanguage("cs"));
+
+    const paid = page.querySelector(".entrants-table th.col-paid");
+    expect(paid?.querySelector(".label-wide")?.textContent).toBe("Zapl.");
+    expect(paid?.querySelector(".label-narrow")?.textContent).toBe("Zap.");
+  });
+
   it("leads an HRID to the fighter's HEMA Ratings profile", async () => {
     detailApi();
     const page = mount("/t/spring-open/entrants/LS");
@@ -422,6 +433,8 @@ describe("an individual roster", () => {
 
     const link = page.querySelector<HTMLAnchorElement>(".entrants-table tbody a");
     expect(link?.textContent).toBe("101");
+    // a phone shows the arrow alone; the link's name still states the number
+    expect(link?.getAttribute("aria-label")).toBe("HR 101");
     expect(link?.href).toBe("https://hemaratings.com/fighters/details/101/");
     expect(link?.target).toBe("_blank");
   });
@@ -464,10 +477,14 @@ describe("a team roster", () => {
     // the team states the club all its members share, and no nationality,
     // since theirs differ
     expect(rows(page)).toEqual([
-      `1|Draci||Klub X||${i18n.t("export.yes")}`,
-      `2|Vlci||||${i18n.t("export.yes")}`,
+      `1|Draci||Klub X|${i18n.t("export.yes")}`,
+      `2|Vlci|||${i18n.t("export.yes")}`,
       i18n.t("export.line.capacity"),
     ]);
+    // a team roster states no identifier: no column for it, no link out
+    const headers = [...page.querySelectorAll(".entrants-table th")].map((th) => th.textContent);
+    expect(headers).not.toContain(i18n.t("entrants.column.hr"));
+    expect(page.querySelector(".entrants-table a")).toBeNull();
     // a team whose members disagree on the country draws no flag
     expect(page.querySelectorAll(".entrants-table img")).toHaveLength(0);
     // a team nobody is named to has nothing to open
@@ -483,9 +500,10 @@ describe("a team roster", () => {
     click(toggle);
     expect(toggle?.getAttribute("aria-expanded")).toBe("true");
     expect(rows(page).slice(0, 3)).toEqual([
-      `1|Draci||Klub X||${i18n.t("export.yes")}`,
-      "|Eva||Klub X||",
-      "|Jan||Klub X||",
+      `1|Draci||Klub X|${i18n.t("export.yes")}`,
+      // the club the team's row states is not repeated on its members' rows
+      "|Eva|||",
+      "|Jan|||",
     ]);
 
     // each member's nationality is drawn as their own flag
@@ -496,13 +514,59 @@ describe("a team roster", () => {
     expect(rows(page)).toHaveLength(3);
   });
 
+  it("states a member's club where the team's row states none", async () => {
+    const member = (name: string, club: string) => ({
+      name,
+      nationality: null,
+      country: null,
+      club,
+    });
+    detailApi({
+      as_of: null,
+      rosters: [
+        {
+          slug: "TM",
+          name: "Teams",
+          kind: "team",
+          line: false,
+          seated: [
+            {
+              number: 1,
+              name: "Smíšení",
+              paid: null,
+              faded: false,
+              members: [member("Eva", "Klub X"), member("Jan", "Klub Y")],
+            },
+          ],
+          queued: [],
+        },
+      ],
+    });
+    const page = mount("/t/spring-open/entrants/TM");
+    await settle();
+    click(page.querySelector(".entrant-team-toggle"));
+
+    expect(rows(page)).toEqual(["1|Smíšení|||", "|Eva||Klub X|", "|Jan||Klub Y|"]);
+  });
+
+  it("starts every team's name at one place, openable or not", async () => {
+    detailApi();
+    const page = mount("/t/spring-open/entrants/TM");
+    await settle();
+
+    // the chevron lives inside the name cell's padding, so the names share
+    // the cell's class and stand in the one column it sets
+    const names = [...page.querySelectorAll(".entrant-team")];
+    expect(names).toHaveLength(2);
+    expect(names.every((name) => name.closest("td")?.classList.contains("col-team"))).toBe(true);
+  });
+
   it("draws the flag on the team's row where its members share the country", async () => {
     const member = (name: string) => ({
       name,
       nationality: "SK",
       country: "SK",
       club: null,
-      hr_id: null,
     });
     const team = {
       number: 1,

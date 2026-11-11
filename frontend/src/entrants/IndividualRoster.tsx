@@ -2,7 +2,7 @@ import { useTranslation } from "react-i18next";
 
 import type { EntrantRow, Roster } from "../api";
 import NationalityCell from "./NationalityCell";
-import { CapacityLine, HrIdCell, PaidCell } from "./rosterCells";
+import { CapacityLine, HrIdCell, PaidCell, TwoLengthHeader } from "./rosterCells";
 
 type IndividualRosterData = Extract<Roster, { kind: "individual" | "event" }>;
 
@@ -18,15 +18,34 @@ export default function IndividualRoster({ roster }: { roster: IndividualRosterD
   }
   return (
     <div className="sheet-scroll entrants-scroll">
+      {/* Declared widths, the name taking what is left: measured columns let
+          a long club win the width a name needs (spec public-entrants, A
+          roster fits a phone). */}
       <table className="sheet-table entrants-table">
+        <colgroup>
+          <col className="col-w-gutter" />
+          <col />
+          <col className="col-w-nat" />
+          <col className="col-w-club" />
+          <col className="col-w-hr" />
+          <col className="col-w-paid" />
+        </colgroup>
         <thead>
           <tr>
             <th className="col-gutter" aria-label={t("export.column.position")} />
             <th>{t("export.column.name")}</th>
-            <th>{t("export.column.nat")}</th>
+            <th className="col-nat">{t("export.column.nat")}</th>
             <th>{t("export.column.club")}</th>
-            <th className="col-number">{t("export.column.hr_id")}</th>
-            <th>{t("export.column.paid")}</th>
+            <TwoLengthHeader
+              className="col-number col-hr"
+              wide={t("entrants.column.hr")}
+              narrow={t("entrants.column.hrShort")}
+            />
+            <TwoLengthHeader
+              className="col-paid"
+              wide={t("entrants.column.paid")}
+              narrow={t("entrants.column.paidShort")}
+            />
           </tr>
         </thead>
         <tbody>
@@ -65,7 +84,7 @@ function EntrantLine({ row }: { row: EntrantRow }) {
         )}
       </td>
       <NationalityCell nationality={row.nationality} country={row.country} />
-      <td>{row.club}</td>
+      <td className="col-club">{row.club}</td>
       <HrIdCell hrId={row.hr_id} />
       <PaidCell paid={row.paid} />
     </tr>

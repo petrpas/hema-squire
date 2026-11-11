@@ -2477,12 +2477,12 @@ def test_a_registration_squire_sends_nothing_to_is_not_written_to(client, auth_h
 
 
 # ---------------------------------------------------------------------------
-# The public roster states the identifier the console settled
-# (spec public-entrants, A team roster names the team and its members)
+# The public team roster states no identifier, but the console's verdict on who
+# a member is (spec public-entrants, A team roster names the team and its members)
 # ---------------------------------------------------------------------------
 
 
-def test_the_public_roster_states_the_settled_identifier(client, auth_headers):
+def test_the_public_team_roster_states_no_identifier(client, auth_headers):
     organizer = auth_headers()
     setup_team_tournament(client, organizer, capacity=5)
     fencer = auth_headers(email="f1@example.com", name="Entrant")
@@ -2514,13 +2514,11 @@ def test_the_public_roster_states_the_settled_identifier(client, auth_headers):
 
     roster = client.get("/api/tournaments/cup/entrants").json()["rosters"]
     listed = next(entry for entry in roster if entry["slug"] == "LS")
-    published = {m["name"]: m["hr_id"] for team in listed["seated"] for m in team["members"]}
-    # the organizer's verdict is the tournament's answer, and it is what the
-    # public sees — not the identifier typed into the roster
-    assert published["Anna Kowalska"] == 3340
-    assert "Claimed Wrong" not in published
-    # and a member nobody ruled on is published as claimed
-    assert published["Nobody Knows Me"] is None
+    published = [m for team in listed["seated"] for m in team["members"]]
+    # the organizer's verdict still decides who the member is
+    assert [m["name"] for m in published] == ["Anna Kowalska", "Nobody Knows Me"]
+    # but no member carries an identifier, bound or not
+    assert all("hr_id" not in m for m in published)
 
 
 # ---------------------------------------------------------------------------

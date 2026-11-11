@@ -4,11 +4,11 @@ import { useTranslation } from "react-i18next";
 
 import type { EntrantTeam, Roster } from "../api";
 import NationalityCell from "./NationalityCell";
-import { CapacityLine, HrIdCell, PaidCell } from "./rosterCells";
+import { CapacityLine, PaidCell, TwoLengthHeader } from "./rosterCells";
 
 type TeamRosterData = Extract<Roster, { kind: "team" }>;
 
-const COLUMNS = 6;
+const COLUMNS = 5;
 
 /** A team discipline's roster: each team by name, folded, opening onto its
  *  members beneath it, and the waitlist below the capacity line (spec
@@ -29,17 +29,19 @@ export default function TeamRoster({ roster }: { roster: TeamRosterData }) {
           <col />
           <col className="col-w-nat" />
           <col className="col-w-club" />
-          <col className="col-w-hr" />
           <col className="col-w-paid" />
         </colgroup>
         <thead>
           <tr>
             <th className="col-gutter" aria-label={t("export.column.position")} />
-            <th>{t("entrants.team")}</th>
-            <th>{t("export.column.nat")}</th>
+            <th className="col-team">{t("entrants.team")}</th>
+            <th className="col-nat">{t("export.column.nat")}</th>
             <th>{t("export.column.club")}</th>
-            <th className="col-number">{t("export.column.hr_id")}</th>
-            <th>{t("export.column.paid")}</th>
+            <TwoLengthHeader
+              className="col-paid"
+              wide={t("entrants.column.paid")}
+              narrow={t("entrants.column.paidShort")}
+            />
           </tr>
         </thead>
         {roster.seated.map((team) => (
@@ -81,13 +83,16 @@ function TeamLines({ team }: { team: EntrantTeam }) {
   const faded = team.faded ? "muted" : undefined;
   const composed = team.members.length > 0;
   const Chevron = open ? IconChevronDown : IconChevronRight;
+  // a club the team's row states is every member's; a member's row states
+  // one only where the team's row cannot (spec public-entrants)
+  const teamClub = shared(team.members.map((member) => member.club));
   return (
     // one team is one row group: the hairline falls between teams, not
     // between a team and its own members
     <tbody className="entrant-team-block">
       <tr className={faded}>
         <td className="col-gutter">{team.number}</td>
-        <td>
+        <td className="col-team">
           {composed ? (
             <button
               type="button"
@@ -103,8 +108,7 @@ function TeamLines({ team }: { team: EntrantTeam }) {
           )}
         </td>
         <SharedNationality members={team.members} />
-        <td>{shared(team.members.map((member) => member.club))}</td>
-        <td />
+        <td className="col-club">{teamClub}</td>
         <PaidCell paid={team.paid} />
       </tr>
       {open &&
@@ -114,9 +118,8 @@ function TeamLines({ team }: { team: EntrantTeam }) {
             <td className="col-gutter" />
             <td className="entrant-member">{member.name}</td>
             <NationalityCell nationality={member.nationality} country={member.country} />
-            <td>{member.club}</td>
-            <HrIdCell hrId={member.hr_id} />
-            <td />
+            <td className="col-club">{teamClub === null ? member.club : null}</td>
+            <td className="col-paid" />
           </tr>
         ))}
     </tbody>

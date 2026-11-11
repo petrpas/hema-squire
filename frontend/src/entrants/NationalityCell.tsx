@@ -25,13 +25,13 @@ export default function NationalityCell({
 }) {
   const { i18n } = useTranslation();
   const url = country ? flagUrl(country) : undefined;
-  if (!country || !url) return <td>{nationality}</td>;
+  if (!country || !url) return <td className="col-nat">{nationality}</td>;
   const name = countryName(country, i18n.language);
   const className = GREYSCALE_FLAGS.has(country)
     ? "entrant-flag entrant-flag-mono"
     : "entrant-flag";
   return (
-    <td>
+    <td className="col-nat">
       <img className={className} src={url} alt={name} title={name} />
     </td>
   );

@@ -1058,7 +1058,6 @@ export interface EntrantTeamMember {
   nationality: string | null;
   country: string | null;
   club: string | null;
-  hr_id: number | null;
 }
 
 export interface EntrantTeam {

@@ -2365,7 +2365,6 @@ class EntrantTeamMemberOut(BaseModel):
     nationality: str | None
     country: str | None
     club: str | None
-    hr_id: int | None
 
 
 class EntrantTeamOut(BaseModel):

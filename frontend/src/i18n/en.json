@@ -1811,6 +1811,12 @@
     }
   },
   "entrants": {
+    "column": {
+      "paid": "Paid",
+      "paidShort": "Paid",
+      "hr": "HRID",
+      "hrShort": "HR"
+    },
     "asOf": "List as of {{moment}}.",
     "empty": "Nobody is entered yet.",
     "conditional": "only with all",
