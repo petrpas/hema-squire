@@ -16,8 +16,10 @@ from schemathesis.specs.openapi.checks import response_schema_conformance
 from app.dedup import DedupLLM, MergeProposal, ThreeBands, default_merge, get_dedup_llm
 from app.hr_index import HRProfile
 from app.hr_match import HRMatcher, HRMatchResult, get_hr_matcher
+from app.hr_sync import HRFetcher, get_hr_fetcher
 from app.main import app
 from tests import contract_seed
+from tests.test_hr_integration import FIGHTERS, IndexFetcher, fighters_html
 
 # an automatic tournament's imported and hand-entered rows, made before
 # `manual-entry-registers`: the state these tests exercise is left as it is
@@ -77,7 +79,7 @@ class SilentDedup:
 
 
 @pytest.fixture
-def seeded(client, auth_headers, engine):
+def seeded(client, auth_headers, engine, monkeypatch):
     """One tournament with something of everything, built once per operation.
 
     A fixture rather than a call in the test body: the body runs once per
@@ -91,6 +93,12 @@ def seeded(client, auth_headers, engine):
     deduper: DedupLLM = SilentDedup()
     app.dependency_overrides[get_hr_matcher] = lambda: matcher
     app.dependency_overrides[get_dedup_llm] = lambda: deduper
+    # nor does it reach hemaratings.com: offline, the refresh answers its
+    # deliberate 502, which reads as a crash for the same reason. A listing
+    # the plausibility floor accepts lets the refresh run its whole path.
+    fetcher: HRFetcher = IndexFetcher(fighters_html(FIGHTERS))
+    app.dependency_overrides[get_hr_fetcher] = lambda: fetcher
+    monkeypatch.setattr("app.hr_sync.MIN_PLAUSIBLE_FIGHTERS", 2)
     return contract_seed.build(client, auth_headers, engine)
 
 
