@@ -39,6 +39,28 @@ from app.scheduler import scheduler_loop
 logger = logging.getLogger(__name__)
 
 
+def _configure_app_logging() -> None:
+    """Send the application's own INFO lines to stderr.
+
+    Uvicorn configures its own loggers and leaves the root at Python's default,
+    WARNING, so every `logger.info` under `app.` was dropped — among them the
+    retention pass's dry-run report, the one line its rollout is read from
+    (design data-retention, Migration Plan). The handler sits on `app` alone,
+    so libraries stay as quiet as they were; propagation stays on, so pytest's
+    log capture still sees these records.
+    """
+    app_logger = logging.getLogger("app")
+    if app_logger.handlers:
+        return
+    handler = logging.StreamHandler()
+    handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(name)s: %(message)s"))
+    app_logger.addHandler(handler)
+    app_logger.setLevel(logging.INFO)
+
+
+_configure_app_logging()
+
+
 def _refuse_dev_secret_key() -> None:
     """Refuse to serve tokens signed with the published development key.
 
