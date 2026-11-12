@@ -1063,6 +1063,17 @@
         "cancelInstead": "A real event is cancelled by its organizer, not deleted. Deleting cannot be undone and nobody is mailed.",
         "confirm": "Delete event",
         "failed": "The event could not be deleted. Try again."
+      },
+      "assignOwner": {
+        "action": "Assign owner",
+        "title": "Assign an owner",
+        "current": "It is now owned by {{name}}.",
+        "none": "The event has no owner now.",
+        "hint": "The account with this e-mail becomes the owner. The previous owner keeps console access only if they are on the team. Nobody is mailed.",
+        "placeholder": "Account e-mail",
+        "notFound": "No account has this e-mail.",
+        "failed": "The owner could not be assigned. Try again.",
+        "confirm": "Assign"
       }
     },
     "erase": {

@@ -4,7 +4,14 @@ import { createRoot } from "react-dom/client";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import App from "../App";
-import { type Account, type AdminAccount, type AdminTournament, api, setToken } from "../api";
+import {
+  type Account,
+  type AdminAccount,
+  type AdminTournament,
+  ApiError,
+  api,
+  setToken,
+} from "../api";
 import i18n from "../i18n";
 
 // The admin panel's tabs, search, sorting and tournament delete (spec
@@ -181,7 +188,7 @@ describe("deleting a tournament", () => {
     const remove = vi.spyOn(api, "adminDeleteTournament").mockResolvedValue(undefined);
     const page = await mount();
     await click(tab(page, "Akce"));
-    await click(page.querySelector("tbody .row-action"));
+    await click(page.querySelector('tbody .row-action[title="Smazat akci"]'));
     expect(remove).toHaveBeenCalledWith("empty", false);
     expect(document.querySelector("dialog")).toBeNull();
   });
@@ -191,7 +198,7 @@ describe("deleting a tournament", () => {
     const remove = vi.spyOn(api, "adminDeleteTournament").mockResolvedValue(undefined);
     const page = await mount();
     await click(tab(page, "Akce"));
-    await click(page.querySelector("tbody .row-action"));
+    await click(page.querySelector('tbody .row-action[title="Smazat akci"]'));
     expect(remove).not.toHaveBeenCalled();
     const dialog = document.querySelector("dialog");
     expect(dialog?.textContent).toContain("12 registrací");
@@ -199,6 +206,39 @@ describe("deleting a tournament", () => {
     expect(dialog?.textContent).toMatch(/3\s800/);
     await click(dialog?.querySelector(".btn-danger"));
     expect(remove).toHaveBeenCalledWith("cup", true);
+  });
+});
+
+describe("assigning a tournament's owner", () => {
+  async function openDialog() {
+    vi.spyOn(api, "adminTournaments").mockResolvedValue([tournament("cup", 3)]);
+    const page = await mount();
+    await click(tab(page, "Akce"));
+    await click(page.querySelector('tbody .row-action[title="Přiřadit vlastníka"]'));
+    const dialog = document.querySelector("dialog");
+    const input = dialog?.querySelector<HTMLInputElement>('input[type="email"]');
+    if (!dialog || !input) throw new Error("no assign dialog");
+    return { dialog, input };
+  }
+
+  it("assigns the named account and closes", async () => {
+    const assign = vi.spyOn(api, "assignOwner").mockResolvedValue({} as never);
+    const { dialog, input } = await openDialog();
+    expect(dialog.textContent).toContain("nemá vlastníka");
+    type(input, " new@example.com ");
+    await click(dialog.querySelector('button[type="submit"]'));
+    expect(assign).toHaveBeenCalledWith("cup", "new@example.com");
+    expect(document.querySelector("dialog")).toBeNull();
+  });
+
+  it("stays open and says so when no account has the address", async () => {
+    vi.spyOn(api, "assignOwner").mockRejectedValue(new ApiError(404, "account_not_found"));
+    const { dialog, input } = await openDialog();
+    type(input, "nobody@example.com");
+    await click(dialog.querySelector('button[type="submit"]'));
+    expect(document.querySelector("dialog")?.textContent).toContain(
+      "Účet s tímto e-mailem neexistuje.",
+    );
   });
 });
 

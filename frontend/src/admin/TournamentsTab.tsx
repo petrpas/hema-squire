@@ -1,8 +1,9 @@
-import { IconTrash } from "@tabler/icons-react";
+import { IconTrash, IconUserShare } from "@tabler/icons-react";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { type AdminTournament, ApiError, api } from "../api";
+import AssignOwnerDialog from "./AssignOwnerDialog";
 import DeleteTournamentDialog from "./DeleteTournamentDialog";
 import SortHeader from "./SortHeader";
 import { adminMatches } from "./search";
@@ -28,9 +29,10 @@ function columnValue(tournament: AdminTournament, column: Column): SortValue {
 }
 
 /** Every tournament, drafts and cancelled ones included, searchable and
- *  sortable, each with the admin's delete (spec user-roles, Admin panel; spec
- *  tournament-admin, Tournament deletion and cancellation). An empty
- *  tournament goes at once; one with registrations only through the dialog. */
+ *  sortable, each with the admin's owner assignment and delete (spec
+ *  user-roles, Admin panel; spec tournament-admin, Tournament ownership
+ *  transfer and Tournament deletion and cancellation). An empty tournament
+ *  goes at once; one with registrations only through the dialog. */
 export default function TournamentsTab({
   tournaments,
   onChanged,
@@ -45,6 +47,8 @@ export default function TournamentsTab({
   // refusal below refreshes it before the dialog opens
   const [confirmingSlug, setConfirmingSlug] = useState<string | null>(null);
   const confirming = tournaments.find((tournament) => tournament.slug === confirmingSlug);
+  const [assigningSlug, setAssigningSlug] = useState<string | null>(null);
+  const assigning = tournaments.find((tournament) => tournament.slug === assigningSlug);
 
   const matching = useMemo(
     () =>
@@ -119,7 +123,7 @@ export default function TournamentsTab({
               {header("owner", t("admin.tournaments.owner"))}
               {header("state", t("admin.tournaments.state"))}
               {header("registrations", t("admin.tournaments.registrations"), true)}
-              <th className="col-actions" />
+              <th className="col-actions col-actions-pair" />
             </tr>
           </thead>
           <tbody>
@@ -133,7 +137,15 @@ export default function TournamentsTab({
                 <td>{tournament.owner?.display_name ?? "—"}</td>
                 <td>{t(`admin.tournaments.states.${tournament.state}`)}</td>
                 <td className="col-number">{tournament.registration_count}</td>
-                <td className="col-actions">
+                <td className="col-actions col-actions-pair">
+                  <button
+                    type="button"
+                    className="row-action"
+                    title={t("admin.tournaments.assignOwner.action")}
+                    onClick={() => setAssigningSlug(tournament.slug)}
+                  >
+                    <IconUserShare size={16} stroke={1.5} />
+                  </button>
                   <button
                     type="button"
                     className="row-action"
@@ -148,6 +160,16 @@ export default function TournamentsTab({
             ))}
           </tbody>
         </table>
+      )}
+      {assigning && (
+        <AssignOwnerDialog
+          tournament={assigning}
+          onAssigned={() => {
+            setAssigningSlug(null);
+            onChanged();
+          }}
+          onClose={() => setAssigningSlug(null)}
+        />
       )}
       {confirming && (
         <DeleteTournamentDialog

@@ -1080,6 +1080,17 @@
         "cancelInstead": "Skutečnou akci má organizátor zrušit, ne smazat. Smazání nejde vrátit a nikomu nepřijde e-mail.",
         "confirm": "Smazat akci",
         "failed": "Akci se nepodařilo smazat. Zkuste to znovu."
+      },
+      "assignOwner": {
+        "action": "Přiřadit vlastníka",
+        "title": "Přiřadit vlastníka",
+        "current": "Teď ji vlastní {{name}}.",
+        "none": "Akce teď nemá vlastníka.",
+        "hint": "Vlastníkem se stane účet s tímto e-mailem. Dosavadní vlastník si přístup do konzole ponechá, jen pokud je členem týmu. Nikomu nepřijde e-mail.",
+        "placeholder": "E-mail účtu",
+        "notFound": "Účet s tímto e-mailem neexistuje.",
+        "failed": "Vlastníka se nepodařilo přiřadit. Zkuste to znovu.",
+        "confirm": "Přiřadit"
       }
     },
     "erase": {
