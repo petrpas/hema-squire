@@ -71,6 +71,26 @@ The document version SHALL be raised for this addition. Documents produced befor
 - **WHEN** a document produced before disciplines carried a classification is restored
 - **THEN** it loads, each discipline taking its old code as its slug and its classification parsed from that code, every discipline individual, and the deployment carries no teams and no composition deadline
 
+### Requirement: Restoring a document is Admin work
+Restoring a tournament from a canonical JSON document SHALL be open to an Admin and the
+deployment Owner only, and refused to every other account with a stated reason naming the
+role. A restore creates a tournament and rejoins accounts already present by their
+address, which is recovery work across the deployment rather than an organizer's work on
+one tournament.
+
+A restore SHALL read from the document only the fields an export writes. Any other key —
+on the tournament, such as an owner, a bank feed token or a publication moment, or on an
+account, such as a role or a password — SHALL be ignored: an account a restore creates
+carries the Fencer role and no password, and a restored tournament lands as a draft.
+
+#### Scenario: An organizer cannot restore
+- **WHEN** an account with the Fencer or the Organizer role posts a document to restore
+- **THEN** the restore is refused naming the role, and no tournament is created
+
+#### Scenario: A document cannot grant a role
+- **WHEN** an Admin restores a document whose account record carries a role and a password, and whose tournament carries an owner, a feed token and a publication moment
+- **THEN** the account is created as a Fencer with no password, and the tournament has no owner, no feed token and is a draft
+
 ### Requirement: Google Sheets export mirrors the export tables
 The Google Sheets export SHALL write one worksheet per export table: a `Fencers`
 worksheet, one worksheet per individual discipline named for the discipline's

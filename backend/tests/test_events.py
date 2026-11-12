@@ -12,7 +12,7 @@ from app.db import get_session
 from app.mail import get_mailer
 from app.main import app
 from app.models import Fencer, PaymentMode, Registration, RegistrationState, Tournament
-from tests.conftest import enable_payments, pay_registration, publish, set_features
+from tests.conftest import enable_payments, pay_registration, post_restore, publish, set_features
 
 URL = "/api/tournaments/cup"
 
@@ -326,7 +326,7 @@ def test_an_items_registration_round_trips_through_the_export(client, auth_heade
     document = client.get(f"{URL}/export/json", headers=organizer).json()
     document["tournament"].update(slug="cup-again", vs_year=2031, date="2031-12-05")
     document["registrations"][0]["vs"] = 3101001
-    restored = client.post("/api/tournaments/restore", json=document, headers=organizer)
+    restored = post_restore(client, organizer, document)
 
     assert restored.status_code == 201, restored.text
     session = db_session()

@@ -4,10 +4,14 @@ import io
 from decimal import Decimal
 
 import pytest
+from sqlalchemy import select
 
+from app.db import get_session
 from app.export_json import SCHEMA_VERSION
 from app.importer import get_import_parser
-from tests.conftest import enable_payments, publish
+from app.main import app
+from app.models import Fencer, Role, Tournament
+from tests.conftest import enable_payments, post_restore, publish
 from tests.test_import import CSV, FakeParser
 
 # an automatic tournament's imported and hand-entered rows, made before
@@ -146,7 +150,7 @@ def test_round_trip_reconstructs_fencer_table(client, auth_headers):
 
     app.dependency_overrides[get_session] = fresh_session
     new_organizer = auth_headers()  # same email/name, empty deployment
-    restore = client.post("/api/tournaments/restore", json=document, headers=new_organizer)
+    restore = post_restore(client, new_organizer, document)
     assert restore.status_code == 201, restore.text
 
     restored = normalized_sheet(client, new_organizer, "cup")
@@ -158,15 +162,59 @@ def test_restore_refuses_taken_slug_and_bad_version(client, auth_headers):
     setup(client, organizer)
 
     document = client.get("/api/tournaments/cup/export/json", headers=organizer).json()
-    assert (
-        client.post("/api/tournaments/restore", json=document, headers=organizer).status_code == 409
-    )
+    assert post_restore(client, organizer, document).status_code == 409
 
     document["tournament"]["slug"] = "other"
     document["schema_version"] = 99
-    assert (
-        client.post("/api/tournaments/restore", json=document, headers=organizer).status_code == 422
+    assert post_restore(client, organizer, document).status_code == 422
+
+
+@pytest.mark.parametrize("role", [Role.FENCER, Role.ORGANIZER])
+def test_restore_is_admin_only(client, auth_headers, role):
+    organizer = auth_headers()
+    setup(client, organizer)
+    document = client.get("/api/tournaments/cup/export/json", headers=organizer).json()
+    document["tournament"]["slug"] = "copy"
+
+    caller = auth_headers(email="caller@example.com", name="Caller", role=role)
+    response = client.post("/api/tournaments/restore", json=document, headers=caller)
+    assert response.status_code == 403
+    assert response.json()["detail"] == "insufficient_role"
+
+
+def test_restore_reads_only_the_fields_an_export_writes(client, auth_headers):
+    """A document cannot set what the format does not carry: an account's role
+    or password, a tournament's owner, feed token or publication."""
+    organizer = auth_headers()
+    setup(client, organizer)
+    document = client.get("/api/tournaments/cup/export/json", headers=organizer).json()
+    document["tournament"] |= {
+        "owner_id": 1,
+        "fio_token": "planted",
+        "published_at": "2026-01-01T00:00:00+00:00",
+    }
+    document["fencers"].append(
+        {
+            "ref": 999_999,
+            "email": "planted@example.com",
+            "display_name": "Planted",
+            "role": "admin",
+            "password_hash": "planted",
+        }
     )
+
+    new_organizer, restore_client = fresh_deployment(client, auth_headers)
+    restore = post_restore(restore_client, new_organizer, document)
+    assert restore.status_code == 201, restore.text
+
+    session = next(app.dependency_overrides[get_session]())
+    planted = session.scalars(select(Fencer).where(Fencer.email == "planted@example.com")).one()
+    assert planted.role == Role.FENCER
+    assert planted.password_hash is None
+    tournament = session.scalars(select(Tournament).where(Tournament.slug == "cup")).one()
+    assert tournament.owner_id is None
+    assert tournament.fio_token is None
+    assert tournament.published_at is None
 
 
 def test_restore_accepts_v1_organizer_names(client, auth_headers):
@@ -207,7 +255,7 @@ def test_restore_accepts_v1_organizer_names(client, auth_headers):
         "decisions": [],
         "rules": [],
     }
-    restore = client.post("/api/tournaments/restore", json=v1_document, headers=organizer)
+    restore = post_restore(client, organizer, v1_document)
     assert restore.status_code == 201, restore.text
 
     detail = client.get("/api/tournaments/legacy-2025", headers=organizer)
@@ -253,7 +301,7 @@ def test_restore_accepts_a_v2_document_without_currency_fields(client, auth_head
         for extra in registration["extras"]:
             extra.pop("option_value")
 
-    restore = client.post("/api/tournaments/restore", json=document, headers=organizer)
+    restore = post_restore(client, organizer, document)
     assert restore.status_code == 201, restore.text
 
     body = client.get("/api/tournaments/cup-v2", headers=organizer).json()
@@ -324,7 +372,7 @@ def test_v3_currency_and_option_fields_round_trip(client, auth_headers):
     # restore into an empty deployment: VS is globally unique, so a copy cannot
     # land beside its original
     new_organizer, restore_client = fresh_deployment(client, auth_headers)
-    restore = restore_client.post("/api/tournaments/restore", json=document, headers=new_organizer)
+    restore = post_restore(restore_client, new_organizer, document)
     assert restore.status_code == 201, restore.text
 
     body = restore_client.get("/api/tournaments/cup", headers=new_organizer).json()
@@ -386,7 +434,7 @@ def test_tiers_round_trip(client, auth_headers):
     assert by_slug["LS-B"]["capacity"] == 12
 
     new_organizer, restore_client = fresh_deployment(client, auth_headers)
-    restore = restore_client.post("/api/tournaments/restore", json=document, headers=new_organizer)
+    restore = post_restore(restore_client, new_organizer, document)
     assert restore.status_code == 201, restore.text
     detail = restore_client.get("/api/tournaments/tiers", headers=new_organizer).json()
     slugs = {d["slug"]: d for d in detail["disciplines"]}
@@ -441,7 +489,7 @@ def test_individual_and_team_in_one_weapon_round_trip(client, auth_headers):
 
     document = client.get("/api/tournaments/mixed/export/json", headers=organizer).json()
     new_organizer, restore_client = fresh_deployment(client, auth_headers)
-    restore = restore_client.post("/api/tournaments/restore", json=document, headers=new_organizer)
+    restore = post_restore(restore_client, new_organizer, document)
     assert restore.status_code == 201, restore.text
     publish(restore_client, new_organizer, "mixed")
     export2 = restore_client.get("/api/tournaments/mixed/export/json", headers=new_organizer).json()
@@ -491,7 +539,7 @@ def test_dangling_discipline_slug_rejected(client, auth_headers):
             "teams": [],
         }
     ]
-    response = client.post("/api/tournaments/restore", json=document, headers=organizer)
+    response = post_restore(client, organizer, document)
     assert response.status_code == 422
     assert "NO-SUCH-SLUG" in response.text
     # no partial registration created
@@ -559,7 +607,7 @@ def test_pre_version_document_restores_with_code_as_slug(client, auth_headers):
         "decisions": [],
         "rules": [],
     }
-    restore = client.post("/api/tournaments/restore", json=document, headers=organizer)
+    restore = post_restore(client, organizer, document)
     assert restore.status_code == 201, restore.text
     detail = client.get("/api/tournaments/legacy-classification", headers=organizer).json()
     discipline = detail["disciplines"][0]
@@ -606,9 +654,7 @@ def test_opening_moment_round_trips(client, auth_headers):
     assert document["tournament"]["timezone"] == "Europe/Prague"
 
     fresh_organizer, restore_client = fresh_deployment(client, auth_headers)
-    restore = restore_client.post(
-        "/api/tournaments/restore", json=document, headers=fresh_organizer
-    )
+    restore = post_restore(restore_client, fresh_organizer, document)
     assert restore.status_code == 201, restore.text
     after = restore_client.get("/api/tournaments/evening", headers=fresh_organizer).json()
     assert after["registration_opens_time"] == "18:00:00"
@@ -647,9 +693,7 @@ def test_document_without_an_opening_time_restores_with_the_default_zone(client,
     del document["tournament"]["timezone"]
 
     fresh_organizer, restore_client = fresh_deployment(client, auth_headers)
-    restore = restore_client.post(
-        "/api/tournaments/restore", json=document, headers=fresh_organizer
-    )
+    restore = post_restore(restore_client, fresh_organizer, document)
     assert restore.status_code == 201, restore.text
     after = restore_client.get("/api/tournaments/older", headers=fresh_organizer).json()
     assert after["registration_opens_time"] is None
@@ -696,7 +740,7 @@ def test_manual_rows_round_trip_with_their_numbers(client, auth_headers):
     original = normalized_sheet(client, organizer, "cup")
 
     new_organizer, _ = fresh_deployment(client, auth_headers)
-    restore = client.post("/api/tournaments/restore", json=document, headers=new_organizer)
+    restore = post_restore(client, new_organizer, document)
     assert restore.status_code == 201, restore.text
 
     assert normalized_sheet(client, new_organizer, "cup") == original
@@ -718,10 +762,7 @@ def test_document_without_manual_rows_restores(client, auth_headers):
     document["schema_version"] = 9
 
     new_organizer, _ = fresh_deployment(client, auth_headers)
-    assert (
-        client.post("/api/tournaments/restore", json=document, headers=new_organizer).status_code
-        == 201
-    )
+    assert post_restore(client, new_organizer, document).status_code == 201
 
 
 def test_arrival_order_numbers_a_numberless_document(client, auth_headers):
@@ -742,10 +783,7 @@ def test_arrival_order_numbers_a_numberless_document(client, auth_headers):
     document.pop("row_numbers")
 
     new_organizer, _ = fresh_deployment(client, auth_headers)
-    assert (
-        client.post("/api/tournaments/restore", json=document, headers=new_organizer).status_code
-        == 201
-    )
+    assert post_restore(client, new_organizer, document).status_code == 201
 
     rows = client.get("/api/tournaments/cup/sheet", headers=new_organizer).json()["rows"]
     numbered = {row["id"].split(":")[0]: row["number"] for row in rows}
@@ -801,7 +839,7 @@ def test_two_addressless_fencers_survive_a_round_trip(client, auth_headers):
 
     app.dependency_overrides[get_session] = fresh_session
     new_organizer = auth_headers()
-    restore = client.post("/api/tournaments/restore", json=document, headers=new_organizer)
+    restore = post_restore(client, new_organizer, document)
     assert restore.status_code == 201, restore.text
 
     with Session(fresh) as check:
@@ -835,7 +873,7 @@ def _restore_into_empty(client, auth_headers, document):
 
     app.dependency_overrides[get_session] = fresh_session
     organizer = auth_headers()
-    restore = client.post("/api/tournaments/restore", json=document, headers=organizer)
+    restore = post_restore(client, organizer, document)
     assert restore.status_code == 201, restore.text
     return organizer
 
@@ -978,7 +1016,7 @@ def test_a_pre_v14_document_carrying_credit_is_refused(client, auth_headers):
     document["registrations"][0]["amount_paid_cents"] = 100000
     document["tournament"]["slug"] = "cup2"  # the deployment already holds "cup"
 
-    restore = client.post("/api/tournaments/restore", json=document, headers=organizer)
+    restore = post_restore(client, organizer, document)
     assert restore.status_code == 422
     assert restore.json()["detail"] == "payment_state_not_restorable"
 
@@ -996,7 +1034,7 @@ def test_a_pre_v14_document_carrying_a_mark_is_refused(client, auth_headers):
     document["registrations"][0]["settled_by_hand_at"] = "2026-08-01T10:00:00+00:00"
     document["tournament"]["slug"] = "cup2"
 
-    restore = client.post("/api/tournaments/restore", json=document, headers=organizer)
+    restore = post_restore(client, organizer, document)
     assert restore.status_code == 422
     assert restore.json()["detail"] == "payment_state_not_restorable"
 
@@ -1054,7 +1092,7 @@ def _queued_registration_document(client, auth_headers):
 
 def _restored_entries(client, auth_headers, document) -> dict[str, dict]:
     new_organizer, restore_client = fresh_deployment(client, auth_headers)
-    restore = restore_client.post("/api/tournaments/restore", json=document, headers=new_organizer)
+    restore = post_restore(restore_client, new_organizer, document)
     assert restore.status_code == 201, restore.text
     # a restored tournament lands as a draft, which exports once published
     publish(restore_client, new_organizer, "cup")
@@ -1109,6 +1147,6 @@ def test_a_v17_document_restores_without_its_unpaid_list_choice(client, auth_hea
     document["tournament"]["unpaid_list_treatment"] = "hidden"
 
     new_organizer, restore_client = fresh_deployment(client, auth_headers)
-    restore = restore_client.post("/api/tournaments/restore", json=document, headers=new_organizer)
+    restore = post_restore(restore_client, new_organizer, document)
 
     assert restore.status_code == 201, restore.text

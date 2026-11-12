@@ -10,7 +10,7 @@ from app.db import get_session
 from app.main import app
 from app.models import ExtraItem, Fencer, Registration, RegistrationState
 from app.routers import registrations
-from tests.conftest import enable_payments, publish, set_features
+from tests.conftest import enable_payments, post_restore, publish, set_features
 
 ITEMS = "/api/tournaments/cup/extra-items"
 
@@ -279,7 +279,7 @@ def test_hand_entry_counts_and_may_overrun(client, auth_headers):
 
 def restored_capacities(client, organizer, document) -> list:
     client.delete("/api/tournaments/cup", headers=organizer)
-    response = client.post("/api/tournaments/restore", json=document, headers=organizer)
+    response = post_restore(client, organizer, document)
     assert response.status_code == 201, response.text
     session = db_session()
     return [item.capacity for item in session.scalars(select(ExtraItem))]

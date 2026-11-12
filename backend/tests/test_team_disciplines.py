@@ -32,6 +32,7 @@ from tests.conftest import (
     FAR_EAST,
     FAR_WEST,
     pay_registration,
+    post_restore,
     publish,
     set_features,
     today_in,
@@ -1368,7 +1369,7 @@ def test_v6_roundtrip_with_teams_and_rosters(client, auth_headers):
     assert doc["disciplines"][0]["team_min"] == 3
 
     new_organizer, restore_client = fresh_deployment(client, auth_headers)
-    restore = restore_client.post("/api/tournaments/restore", json=doc, headers=new_organizer)
+    restore = post_restore(restore_client, new_organizer, doc)
     assert restore.status_code == 201, restore.text
 
     # the document carries no publication record: what restore lands is a draft
@@ -1420,7 +1421,7 @@ def test_v22_roundtrip_carries_removed_members_and_the_roster_log(client, auth_h
     assert len(exported["roster_log"]) == 5
 
     new_organizer, restore_client = fresh_deployment(client, auth_headers)
-    restore = restore_client.post("/api/tournaments/restore", json=doc, headers=new_organizer)
+    restore = post_restore(restore_client, new_organizer, doc)
     assert restore.status_code == 201, restore.text
     publish(restore_client, new_organizer, "cup")
 
@@ -1464,7 +1465,7 @@ def test_restore_of_a_v21_document_has_live_members_and_no_history(client, auth_
     ]
 
     new_organizer, restore_client = fresh_deployment(client, auth_headers)
-    restore = restore_client.post("/api/tournaments/restore", json=doc, headers=new_organizer)
+    restore = post_restore(restore_client, new_organizer, doc)
     assert restore.status_code == 201, restore.text
     publish(restore_client, new_organizer, "cup")
 
@@ -1495,7 +1496,7 @@ def test_restore_reads_an_older_documents_country_name(client, auth_headers):
     doc["registrations"][0]["teams"][0]["members"][0]["nationality"] = "Czech Republic"
 
     new_organizer, restore_client = fresh_deployment(client, auth_headers)
-    restore = restore_client.post("/api/tournaments/restore", json=doc, headers=new_organizer)
+    restore = post_restore(restore_client, new_organizer, doc)
     assert restore.status_code == 201, restore.text
     publish(restore_client, new_organizer, "cup")
 
@@ -1560,7 +1561,7 @@ def test_v5_fixture_restores_with_no_teams(client, auth_headers):
         "decisions": [],
         "rules": [],
     }
-    restore = client.post("/api/tournaments/restore", json=v5_document, headers=organizer)
+    restore = post_restore(client, organizer, v5_document)
     assert restore.status_code == 201, restore.text
     detail = client.get("/api/tournaments/legacy-v5", headers=organizer).json()
     assert detail["disciplines"][0]["kind"] == "individual"

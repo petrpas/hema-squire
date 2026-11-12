@@ -112,6 +112,10 @@ _V3_TOURNAMENT_DEFAULTS = {
     "eur_rate": None,
 }
 
+# an account's fields as the document carries them; `deleted_at` travels
+# beside them in its own encoding
+_FENCER_FIELDS = ["email", "display_name", "hr_id", "nationality", "club"]
+
 _REGISTRATION_FIELDS = [
     "registered_at",
     "state",
@@ -370,7 +374,7 @@ def export_tournament(session: Session, tournament: Tournament) -> dict:
         "fencers": [
             {
                 "ref": f.id,
-                **_record(f, ["email", "display_name", "hr_id", "nationality", "club"]),
+                **_record(f, _FENCER_FIELDS),
                 # v23: a deleted account, whose row states no payment on a
                 # held roster; absent before, when none existed
                 "deleted_at": _plain(f.deleted_at),
@@ -616,6 +620,9 @@ def restore_tournament(session: Session, data: dict, actor: Fencer) -> Tournamen
         # shown faded on the public rosters (spec public-entrants), so a
         # document still carrying the choice restores without it
         doc.pop("unpaid_list_treatment", None)
+    # only what an export writes is read back: a key the format does not carry
+    # (an owner, a feed token, a publication moment) is not the document's to set
+    doc = {field: doc[field] for field in _TOURNAMENT_FIELDS if field in doc}
     if session.scalar(select(Tournament).where(Tournament.slug == doc["slug"])):
         raise HTTPException(status_code=409, detail="slug_taken")
 
@@ -697,12 +704,14 @@ def restore_tournament(session: Session, data: dict, actor: Fencer) -> Tournamen
     # schema 12 the address was the key, and a record without one could not be
     # restored at all; an older document is keyed by address as it was written.
     fencers: dict[object, Fencer] = {}
-    for entry in data.get("fencers", []):
-        entry = dict(entry)
-        key = entry.pop("ref", None)
+    for record in data.get("fencers", []):
+        key = record.get("ref")
         if key is None:
-            key = entry["email"]
-        entry["deleted_at"] = _parse_dt(entry.get("deleted_at"))
+            key = record["email"]
+        # an account is rebuilt from the fields an export writes and nothing
+        # else, so a document cannot hand it a role or a password
+        entry = {field: record[field] for field in _FENCER_FIELDS if field in record}
+        entry["deleted_at"] = _parse_dt(record.get("deleted_at"))
         # an address that exists still identifies an account, so a restore
         # rejoins one that is already here rather than making a second
         address = entry.get("email")

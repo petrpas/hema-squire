@@ -12,8 +12,9 @@ from app import (
     sheet,
     sheets_export,
 )
-from app.auth import require_console_access, require_published
+from app.auth import require_console_access, require_published, require_role
 from app.i18n import catalog
+from app.models import Role
 from app.routers.tournaments import FencerDep, SessionDep, TournamentDep
 from app.schemas import (
     ExportBandTabOut,
@@ -279,6 +280,8 @@ def export_sheet(
 @router.post("/restore", status_code=201)
 def restore_tournament(session: SessionDep, fencer: FencerDep, data: Annotated[dict, Body()]):
     """Recreate a tournament from a canonical JSON export; the caller becomes
-    its organizer."""
+    its organizer. Admin only: a restore rejoins existing accounts by address,
+    which is recovery work, not an organizer's."""
+    require_role(fencer, Role.ADMIN)
     tournament = export_json.restore_tournament(session, data, fencer)
     return {"slug": tournament.slug}

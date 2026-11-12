@@ -26,7 +26,7 @@ from app.models import (
     Registration,
     Tournament,
 )
-from tests.conftest import import_statement, outcome
+from tests.conftest import import_statement, outcome, post_restore
 from tests.test_export_json import fresh_deployment
 from tests.test_import import FakeParser, upload
 from tests.test_matching import db_session, enroll, make_csv, setup
@@ -205,9 +205,7 @@ def test_a_pruned_tournament_exports_and_restores(
 
     before = names(client, organizer)
     new_organizer, restore_client = fresh_deployment(client, auth_headers)
-    restored = restore_client.post(
-        "/api/tournaments/restore", json=response.json(), headers=new_organizer
-    )
+    restored = post_restore(restore_client, new_organizer, response.json())
     assert restored.status_code == 201, restored.text
     # a restore arrives as a draft, so the fencer list is what can be compared
     assert names(restore_client, new_organizer) == before

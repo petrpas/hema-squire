@@ -30,7 +30,7 @@ from app.models import (
     Tournament,
 )
 from app.ratelimit import limiter
-from tests.conftest import credit_registration, enable_payments, publish
+from tests.conftest import credit_registration, enable_payments, post_restore, publish
 
 CODES = "/api/tournaments/cup/discount-codes"
 
@@ -875,10 +875,7 @@ def test_codes_survive_the_document(client, auth_headers, engine):
     assert (entry["discount_code"], entry["code_covered"]) == ("trener", True)
 
     new_organizer = fresh_deployment(client, auth_headers)
-    assert (
-        client.post("/api/tournaments/restore", json=document, headers=new_organizer).status_code
-        == 201
-    )
+    assert post_restore(client, new_organizer, document).status_code == 201
     assert client.get(CODES, headers=new_organizer).json()[0]["uses"] == 1
     assert stored(db_session()).settled
 
@@ -895,10 +892,7 @@ def test_an_older_document_has_no_codes(client, auth_headers):
         del entry["code_covered"]
 
     new_organizer = fresh_deployment(client, auth_headers)
-    assert (
-        client.post("/api/tournaments/restore", json=document, headers=new_organizer).status_code
-        == 201
-    )
+    assert post_restore(client, new_organizer, document).status_code == 201
     assert client.get(CODES, headers=new_organizer).json() == []
 
 

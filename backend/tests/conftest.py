@@ -351,6 +351,20 @@ def auth_headers(client, engine):
     return make
 
 
+def post_restore(client, headers, document):
+    """POST a document to the restore endpoint as an Admin. A restore is Admin
+    only, and the caller is often a fresh deployment's account, so the role is
+    set in whichever database the app is pointed at right now."""
+    email = client.get("/api/account", headers=headers).json()["email"]
+    sessions = app.dependency_overrides[get_session]()
+    session = next(sessions)
+    fencer = session.scalars(select(Fencer).where(Fencer.email == email)).one()
+    fencer.role = Role.ADMIN
+    session.commit()
+    sessions.close()
+    return client.post("/api/tournaments/restore", json=document, headers=headers)
+
+
 def settle(client, headers, slug="cup", kind=None, timeout=10.0):
     """Wait out the tournament's running operation and return what concluded.
 

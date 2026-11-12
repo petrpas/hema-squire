@@ -17,6 +17,7 @@ from app.db import Base, get_session
 from app.mail import get_mailer
 from app.main import app
 from app.models import Registration
+from tests.conftest import post_restore
 from tests.test_matching import age_reserved, enroll, import_rows, setup
 
 
@@ -294,7 +295,7 @@ def test_restoring_a_pre_ledger_document_reads_as_uncredited(client, auth_header
     # into an empty one, as the export round-trip test does
     with fresh_deployment():
         new_organizer = auth_headers()
-        restore = client.post("/api/tournaments/restore", json=document, headers=new_organizer)
+        restore = post_restore(client, new_organizer, document)
         assert restore.status_code == 201, restore.text
         assert sheet_row(client, new_organizer, vs)["outstanding_amount"] == "1000.00"
 
