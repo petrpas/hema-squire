@@ -1,7 +1,7 @@
 # responsive-layout Specification
 
 ## Purpose
-TBD - created by archiving change add-mobile-fencer-layout. Update Purpose after archive.
+Make the interface work from a phone to a desktop: the one set of breakpoints, form controls and touch targets sized for touch, frames that respect the dynamic viewport and device insets, and where responsive rules are written.
 ## Requirements
 ### Requirement: One canonical breakpoint set, written as literals
 The implementation SHALL use exactly three viewport breakpoints — **480px**, **768px**

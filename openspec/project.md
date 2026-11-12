@@ -11,7 +11,7 @@ Decided by the owner (2026-07-17):
 - Backend: Python, FastAPI; pydantic domain models adaptable from the v1 repo.
 - Frontend: React + TypeScript (Vite) per the approved wireframe (direction B — top stepper, full-width sheet table, right operations rail).
 - Persistence: SQLAlchemy + Alembic on SQLite for now, PostgreSQL as the target RDBMS. Versioned JSON is the canonical export format.
-- LLM: Anthropic models via pydantic-ai, used only on the table-import path.
+- LLM: Anthropic models via pydantic-ai, used on the table-import path (parsing, HR matching, deduplication) and to read a bank statement that has no exact parser (any bank but Fio).
 - Integrations: hemaratings.com (fighters index, ratings), Fio bank REST API (+ CSV statement import), Google Sheets (export target), SPAYD QR generation, transactional email.
 
 ## Project Conventions
@@ -28,4 +28,4 @@ Decided by the owner (2026-07-17):
 - **Reservation** — an unpaid registration with a short validity window; expires automatically when unpaid.
 - **VS (variabilní symbol)** — unique numeric payment reference identifying a registration in bank transactions.
 - **Rule** — a persisted manual operation replayed on every rerun; removing it reverts its effect.
-- **Phase** — one step of the organizer console: Load, Parsing, Matching on HR, Deduplication, Payments, Export.
+- **Phase** — one step of the organizer console: Setup, Import, Fencers, Teams, Matching on HR, Deduplication, Payments, Queue, Export.

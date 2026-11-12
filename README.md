@@ -3,7 +3,8 @@
 An application for HEMA tournament agenda: fencer accounts, registration with
 payment lifecycle (VS matching, SPAYD QR, Fio bank integration), an organizer
 ETL console with a replayable rules engine, LLM table import and HR matching,
-and exports (canonical JSON, Google Sheets in the v1 format).
+and exports (canonical JSON, a Google Sheets workbook mirroring the export
+tables).
 
 Specs live in `openspec/specs/`; the project follows the OpenSpec workflow
 (`openspec/changes/` for work in flight, archive for history).
@@ -77,13 +78,13 @@ Notes for a full-feature run:
   seed backfills parse decisions so the console still shows parsed rows.
 - **Google Sheets export** needs `HEMA_SQUIRE_GOOGLE_CREDENTIALS_PATH`
   (service-account JSON) and an output-sheet URL set in the Export phase.
-- Outgoing e-mail lands as `.eml` files in `backend/outbox/` (no real
-  provider configured yet).
+- Outgoing e-mail lands as `.eml` files in `backend/outbox/` unless
+  `HEMA_SQUIRE_SMTP_HOST` is set; production sends through Scaleway TEM.
 
 ## Tests
 
 ```bash
-cd backend && uv run pytest     # 902 tests; ruff check . for lint
+cd backend && uv run pytest     # ruff check . and basedpyright for lint
 cd frontend && npm run build    # type-check + build
 ```
 

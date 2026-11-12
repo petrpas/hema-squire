@@ -27,8 +27,10 @@ reasoning here is worth publishing, the coordinates are not.
 
 **Update 2026-11-01:** the sections below are the August picture. Mail now runs
 through Scaleway TEM, the filled `.env` is in the password manager, and
-`litestream` replicates to Backblaze B2 (`eu-central-003`). Open: the restore
-drill (5.1), monitoring (5.2) and the deploy calendar rule (5.3). See tasks.md.
+`litestream` replicates to Backblaze B2 (`eu-central-003`). The restore drill
+(5.1) passed the same day from the B2 replica with the password-manager `.env`,
+so the "still owed" and "not the drill" passages below are history. Open:
+monitoring (5.2) and the deploy calendar rule (5.3). See tasks.md.
 
 ## Production host — live, bootstrapped, serving
 

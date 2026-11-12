@@ -47,7 +47,8 @@ class Settings(BaseSettings):
     # off in the test suite, where the app boots against the configured
     # database while the tests themselves run on an in-memory one
     operations_sweep_enabled: bool = True
-    # LLM is used only on the table-import path (parse, match, dedup)
+    # LLM reads imported tables (parse, match, dedup) and bank statements
+    # other than Fio's, which have an exact parser (app.bank)
     anthropic_api_key: str = ""
     # an identity-linked key acts inside one workspace and the API demands its
     # id on every request (app.llm); an organisation key needs no id

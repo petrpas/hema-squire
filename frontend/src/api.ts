@@ -1787,8 +1787,6 @@ export const api = {
     }),
   clearFioToken: (slug: string) =>
     request<FioTokenState>(`/api/tournaments/${slug}/fio-token`, { method: "DELETE" }),
-  getTournamentFlags: (slug: string) =>
-    request<TournamentFlags>(`/api/tournaments/${slug}/features`),
   // written as a whole, never one flag at a time, so the whole set goes in one
   // request (spec tournament-features)
   setTournamentFlags: (slug: string, flags: TournamentFlags) =>
@@ -2045,8 +2043,6 @@ export const api = {
       `/api/tournaments/${slug}/ratings/snapshot`,
       { method: "POST" },
     ),
-  ratingsLatest: (slug: string) =>
-    request<{ taken_at: string | null; ratings: number }>(`/api/tournaments/${slug}/ratings`),
   account: () => request<Account>("/api/account"),
   /** The account's own data, kept as a file by the Profile page (spec
    *  `privacy`). Its shape is the file's, read by the person, not the app. */

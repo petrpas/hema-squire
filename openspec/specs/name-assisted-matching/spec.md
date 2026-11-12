@@ -1,7 +1,7 @@
 # name-assisted-matching Specification
 
 ## Purpose
-TBD - created by archiving change add-name-assisted-payment-matching. Update Purpose after archive.
+Resolve a payment to a fencer from what its payer wrote about it: what the model extracts, how the roster is ranked by rule, when a single winner becomes a proposal that holds no money, and how the organizer works the remaining payments by hand.
 ## Requirements
 ### Requirement: The message names the fencer, the payer name does not
 A payment SHALL be resolved to a fencer from the text the payer wrote about the

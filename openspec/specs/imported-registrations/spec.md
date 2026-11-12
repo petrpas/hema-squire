@@ -1,7 +1,7 @@
 # imported-registrations Specification
 
 ## Purpose
-TBD - created by archiving change issue-imported-registrations. Update Purpose after archive.
+Turn fencer-list rows that only state who is competing into registrations that can be paid for, as the first step of every payment intake: when issuing runs, what an issued registration is worth, how it stands outside capacity and the clocks, and which rows can be issued at all.
 ## Requirements
 ### Requirement: Registrations are issued as a step of payment intake
 Rows that merely state who is competing SHALL be turned into registrations that
