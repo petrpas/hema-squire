@@ -227,6 +227,11 @@ def fio_poll(
     _refuse_while_duplicates_pending(session, tournament)
     if not tournament.fio_token:
         raise HTTPException(status_code=409, detail="fio_token_not_configured")
+    token = tournament.fio_token_plain
+    if token is None:
+        # on file, but sealed under a key this deployment no longer has: the
+        # organizer enters it again (design encrypt-fio-token D3)
+        raise HTTPException(status_code=409, detail="fio_token_unreadable")
     # today as the UTC day, not the process's: an operational boundary with
     # nobody's calendar behind it (design unify-day-boundary-clocks D1)
     date_from, date_to = setup.bank_poll_window(tournament, datetime.now(UTC).date())
@@ -241,7 +246,7 @@ def fio_poll(
             detail={"code": "poll_window_empty", "window_to": date_to.isoformat()},
         )
     try:
-        transactions = fio.fetch(tournament.fio_token, date_from, date_to)
+        transactions = fio.fetch(token, date_from, date_to)
     except bank.FioAuthorizationRequired as refusal:
         # not an error to report as one: the window is right, the token is
         # good, and the organizer can open the history themselves. The bank's

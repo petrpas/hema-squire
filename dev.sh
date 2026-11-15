@@ -18,6 +18,9 @@ export HEMA_SQUIRE_OWNER_EMAIL="${HEMA_SQUIRE_OWNER_EMAIL:-petr.pascenko@gmail.c
 # local work runs on the repository's published dev signing key, which the app
 # otherwise refuses to start on (app.main._refuse_dev_secret_key)
 export HEMA_SQUIRE_DEBUG="${HEMA_SQUIRE_DEBUG:-1}"
+# the published development feed-token key (app.config.DEV_FIO_TOKEN_KEY);
+# without one a Fio token cannot be recorded at all
+export HEMA_SQUIRE_FIO_TOKEN_KEY="${HEMA_SQUIRE_FIO_TOKEN_KEY:-RcNS2f16NRFQXsKxOLtNxuSXRxd8ZuV95hunoqMOXuQ=}"
 
 SEED=false
 [[ "${1:-}" == "--seed" ]] && SEED=true

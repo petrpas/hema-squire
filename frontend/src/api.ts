@@ -503,6 +503,9 @@ export interface TournamentDetail extends Tournament {
   /** Whether a Fio API token is on file, so the bank can be polled at all.
    *  Never the token itself — the console needs only this. */
   fio_token_configured: boolean;
+  /** False where a token is on file but this deployment's key no longer opens
+   *  it; it has to be entered again (spec tournament-admin). */
+  fio_token_readable: boolean;
   /** The date seating settles — a soft boundary inside registration_closes,
    *  not the hard close. Unset it resolves to the registration close, which
    *  itself resolves to the tournament date. */

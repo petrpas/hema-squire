@@ -8,6 +8,10 @@ dependencies = [
     # arrives as the `[anthropic]` extra of pydantic-ai-slim, but an extra of
     # another package is that package's promise, not a declaration of ours.
     "anthropic>=0.117.0",
+    # `app/secretbox.py` seals the bank feed token with Fernet (change
+    # encrypt-fio-token). It also arrives under other packages, which is their
+    # promise, not a declaration of ours.
+    "cryptography>=46.0.0",
     "email-validator>=2.3.0",
     "fastapi>=0.139.2",
     "gspread>=6.2.1",

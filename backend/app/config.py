@@ -5,6 +5,11 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 # (app.main); anyone who can read GitHub can otherwise forge any account's token.
 DEV_SECRET_KEY = "dev-only-secret-change-me-in-production!"  # noqa: S105 - see above
 
+# The feed-token key dev.sh and the test suite run on. Published like the one
+# above, so a token sealed under it is sealed in name only; a deployment sets
+# its own, and none is the default (design encrypt-fio-token D2).
+DEV_FIO_TOKEN_KEY = "RcNS2f16NRFQXsKxOLtNxuSXRxd8ZuV95hunoqMOXuQ="  # noqa: S105 - see above
+
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="HEMA_SQUIRE_", env_file=".env")
@@ -43,6 +48,12 @@ class Settings(BaseSettings):
     # first real run can be reviewed before anything is lost (design
     # data-retention, Migration Plan)
     retention_writes_enabled: bool = False
+    # The Fernet key a bank feed token is sealed under before it is stored
+    # (app.secretbox). Its own, not derived from secret_key, so replacing the
+    # signing key does not lose the feeds and replacing this one signs nobody
+    # out. Empty means this deployment cannot keep a feed token: recording one
+    # is refused rather than stored readable (design encrypt-fio-token D2)
+    fio_token_key: str = ""
     # startup recovery of operations a dead process left running (design D5);
     # off in the test suite, where the app boots against the configured
     # database while the tests themselves run on an in-memory one

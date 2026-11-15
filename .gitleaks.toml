@@ -38,3 +38,8 @@ paths = [
   # base64 PNG fixtures for the payment-slip QR codes
   '''frontend/src/paymentSlip\.test\.tsx''',
 ]
+# The development feed-token key (app.config.DEV_FIO_TOKEN_KEY), published
+# on purpose like DEV_SECRET_KEY; a deployment sets its own. Exactly this value.
+regexes = [
+  '''RcNS2f16NRFQXsKxOLtNxuSXRxd8ZuV95hunoqMOXuQ=''',
+]

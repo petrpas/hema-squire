@@ -36,7 +36,7 @@ from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import InstrumentedAttribute, Mapped, mapped_column, relationship
 from sqlalchemy.sql.elements import ColumnElement
 
-from app import constraints, taxonomy
+from app import constraints, secretbox, taxonomy
 from app.db import Base
 from app.logo_tint import CoverGround, LogoBand
 
@@ -592,13 +592,31 @@ class Tournament(Base):
     # figure needing extra precision (schemas.TournamentUpdate quantizes on write)
     eur_rate: Mapped[Decimal | None] = mapped_column(Numeric(12, 2))
 
-    fio_token: Mapped[str | None] = mapped_column(String(200))
+    # the bank feed token, sealed under the deployment's own key and never
+    # stored readable (app.secretbox; spec tournament-admin, A feed token is
+    # kept encrypted). Read through `fio_token_plain`, nowhere else
+    fio_token: Mapped[str | None] = mapped_column(String(400))
 
     @property
     def fio_token_configured(self) -> bool:
-        """Whether the bank API can be polled at all. The token itself never
-        leaves the server; the console needs only this."""
+        """Whether a token is on file. The token itself never leaves the
+        server; the console offers the poll action and deposit mode on this, so
+        a key going missing does not change the tournament's payment rules
+        behind the organizer's back (design encrypt-fio-token D3)."""
         return bool(self.fio_token)
+
+    @property
+    def fio_token_plain(self) -> str | None:
+        """The token as the bank wants it, or `None` where none is on file or
+        the deployment's key no longer opens the stored one."""
+        return secretbox.open_(self.fio_token) if self.fio_token else None
+
+    @property
+    def fio_token_readable(self) -> bool:
+        """Whether the token on file can be read: false where it was sealed
+        under a key this deployment no longer has, and has to be entered
+        again."""
+        return self.fio_token_plain is not None
 
     output_sheet_url: Mapped[str | None] = mapped_column(String(300))
     # taxonomy code (design discipline-identity D5) -> HR category keyword,

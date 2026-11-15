@@ -108,8 +108,11 @@ export default function IntakePanel({
         refusal !== null && typeof refusal === "object" && "code" in refusal
           ? (refusal as { code: string; groups?: number } & Partial<HistoryLock>)
           : null;
+      // on file, but sealed under a key this deployment no longer has; the
+      // bank is not asked, and the organizer enters the token again in Setup
+      if (refusal === "fio_token_unreadable") setError(t("payments.intake.pollTokenUnreadable"));
       // refused on the same ground as the import, and the bank is not asked
-      if (pending?.code === "dedup_pending")
+      else if (pending?.code === "dedup_pending")
         setError(t("payments.intake.dedupPending", { count: pending.groups ?? 0 }));
       // the bank's own refusal, and one the organizer can lift themselves. It
       // is a question rather than a message, because only they can answer it

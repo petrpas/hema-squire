@@ -585,12 +585,19 @@ def run_tournament_tick(
     fio_client: bank.FioClient | None = None,
 ) -> dict[str, int]:
     result: dict[str, int] = {}
-    if fio_client is not None and tournament.fio_token and tournament.feature_payments:
+    polls = fio_client is not None and tournament.fio_token and tournament.feature_payments
+    token = tournament.fio_token_plain if polls else None
+    if polls and token is None:
+        # sealed under a key this deployment no longer has. The feed is skipped
+        # and nothing else of the tournament is: every pass below still runs
+        # (design encrypt-fio-token D3)
+        logger.warning("fio token unreadable for %s", tournament.slug)
+    if fio_client is not None and token is not None:
         # an operational window with nobody's calendar behind it: fourteen days
         # back from the UTC day, so the same deployment answers the same
         # wherever its process runs (design unify-day-boundary-clocks D1)
         today = datetime.now(UTC).date()
-        transactions = fio_client.fetch(tournament.fio_token, today - timedelta(days=14), today)
+        transactions = fio_client.fetch(token, today - timedelta(days=14), today)
         ingested = bank.ingest(session, tournament, "fio_api", transactions)
         matched = matching.match_new_transactions(session, tournament, mailer)
         matching.apply_payment_links(session, tournament, mailer)

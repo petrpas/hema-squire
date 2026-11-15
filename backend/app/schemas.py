@@ -930,6 +930,9 @@ class TournamentOut(BaseModel):
     # whether a Fio API token is on file — never the token itself. The console
     # offers the poll action on this, and says so when it is false
     fio_token_configured: bool
+    # false where a token is on file but the deployment's key no longer opens
+    # it: Setup states it has to be entered again (design encrypt-fio-token D3)
+    fio_token_readable: bool
     expiry_grace_hours: int
     output_sheet_url: str | None
     hr_category_map: dict[str, str]

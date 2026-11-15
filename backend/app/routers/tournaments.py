@@ -22,6 +22,7 @@ from app import (
     money_bounds,
     roster,
     scheduler,
+    secretbox,
     setup,
     taxonomy,
     tournament_delete,
@@ -887,8 +888,14 @@ def set_fio_token(
     The account beside it is deliberately not consulted. The console offers this
     only on a Fio account, but it offers it against the account being *typed*,
     which may not be saved yet; checking the stored one here would refuse the
-    very case the console is designed to allow."""
+    very case the console is designed to allow.
+
+    A deployment with no key of its own for the token cannot keep one, and is
+    refused before the bank is asked: a token is stored sealed or not at all
+    (spec tournament-admin, A feed token is kept encrypted)."""
     require_console_access(session, tournament, fencer)
+    if not secretbox.can_seal():
+        raise HTTPException(status_code=409, detail="fio_token_key_missing")
     verified = True
     try:
         fio.verify(data.token)
@@ -896,7 +903,7 @@ def set_fio_token(
         raise HTTPException(status_code=422, detail="fio_token_rejected") from error
     except bank.FioUnreachable:
         verified = False
-    tournament.fio_token = data.token
+    tournament.fio_token = secretbox.seal(data.token)
     session.commit()
     return FioTokenOut(configured=True, verified=verified)
 

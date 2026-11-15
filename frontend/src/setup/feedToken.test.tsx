@@ -120,8 +120,16 @@ it("keeps the action on the account's own label line, so nothing reflows", () =>
 });
 
 it("says whether a token is recorded, without showing one", () => {
-  renderSection({ bank_account: FIO_IBAN, fio_token_configured: true });
+  renderSection({ bank_account: FIO_IBAN, fio_token_configured: true, fio_token_readable: true });
   expect(host?.textContent).toContain(t("setup.feedToken.state.recorded"));
+  expect(buttonNamed(t("setup.feedToken.reset"))).toBeDefined();
+});
+
+it("says a recorded token this server cannot read has to be entered again", () => {
+  renderSection({ bank_account: FIO_IBAN, fio_token_configured: true, fio_token_readable: false });
+  expect(host?.textContent).toContain(t("setup.feedToken.state.unreadable"));
+  expect(host?.textContent).not.toContain(t("setup.feedToken.state.recorded"));
+  // replacing it is the way back, so the action stays
   expect(buttonNamed(t("setup.feedToken.reset"))).toBeDefined();
 });
 
@@ -207,6 +215,18 @@ it("stays open on a refusal, with the reason at the field", async () => {
 
   expect(onClose).not.toHaveBeenCalled();
   expect(host?.textContent).toContain(t("setup.feedToken.error.fio_token_rejected"));
+});
+
+it("states that this server cannot keep a token at all", async () => {
+  vi.spyOn(api, "setFioToken").mockRejectedValue(new ApiError(409, "fio_token_key_missing"));
+  renderDialog(false);
+
+  typeInto(tokenField(), "a-token");
+  click(buttonNamed(t("setup.feedToken.save")));
+  await settle();
+
+  expect(host?.textContent).toContain(t("setup.feedToken.error.fio_token_key_missing"));
+  expect(host?.textContent).not.toContain(t("setup.feedToken.error.failed"));
 });
 
 it("states that an unverified token was stored, once the dialog closes", async () => {

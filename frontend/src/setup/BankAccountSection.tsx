@@ -185,9 +185,11 @@ export function BankAccountSection({
         />
         {fio && (
           <p className="rail-hint">
-            {detail.fio_token_configured
-              ? t("setup.feedToken.state.recorded")
-              : t("setup.feedToken.state.none")}
+            {!detail.fio_token_configured
+              ? t("setup.feedToken.state.none")
+              : detail.fio_token_readable
+                ? t("setup.feedToken.state.recorded")
+                : t("setup.feedToken.state.unreadable")}
           </p>
         )}
         {unchecked && <p className="rail-hint">{t("setup.feedToken.unchecked")}</p>}

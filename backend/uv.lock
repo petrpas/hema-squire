@@ -563,6 +563,7 @@ source = { virtual = "." }
 dependencies = [
     { name = "alembic" },
     { name = "anthropic" },
+    { name = "cryptography" },
     { name = "email-validator" },
     { name = "fastapi" },
     { name = "gspread" },
@@ -600,6 +601,7 @@ dev = [
 requires-dist = [
     { name = "alembic", specifier = ">=1.18.5" },
     { name = "anthropic", specifier = ">=0.117.0" },
+    { name = "cryptography", specifier = ">=46.0.0" },
     { name = "email-validator", specifier = ">=2.3.0" },
     { name = "fastapi", specifier = ">=0.139.2" },
     { name = "gspread", specifier = ">=6.2.1" },

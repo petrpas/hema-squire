@@ -812,7 +812,8 @@
       "fioOnly": "token pro výpisy: jen účty Fio",
       "state": {
         "recorded": "Token je uložen, banku lze pro tento účet dotazovat.",
-        "none": "Token není uložen. Platby se stále načtou importem výpisu."
+        "none": "Token není uložen. Platby se stále načtou importem výpisu.",
+        "unreadable": "Token je uložen, ale nejde přečíst: tento server už nemá klíč, kterým byl zašifrován. Zadej ho znovu."
       },
       "unchecked": "Token je uložen, ale banka neodpověděla, takže ho nebylo možné ověřit.",
       "title": "token pro výpisy z banky",
@@ -823,6 +824,7 @@
       "remove": "odstranit uložený token",
       "error": {
         "fio_token_rejected": "Banka s tímto tokenem účet nepřečetla. Zkontroluj ho v internetovém bankovnictví a zadej znovu.",
+        "fio_token_key_missing": "Tento server nemá klíč, kterým by token zašifroval, takže ho nemůže uložit. Platby se dál načtou importem výpisu.",
         "failed": "Token se nepodařilo uložit."
       }
     },
@@ -1551,6 +1553,7 @@
       "unsupportedFormat": "Tento soubor není CSV ani tabulka.",
       "importFailed": "Výpis se nepodařilo načíst.",
       "pollFailed": "Z banky se nepodařilo stáhnout.",
+      "pollTokenUnreadable": "Uložený token nejde přečíst, protože tento server už nemá klíč, kterým byl zašifrován. Zadejte ho znovu v Nastavení u bankovního účtu. Banka nebyla dotázána.",
       "pollUnreachable": "Banka neodpověděla. Zkuste to za chvíli znovu, nebo načtěte výpis ze souboru.",
       "lock": {
         "title": "Banka požaduje silnou autorizaci",

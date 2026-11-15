@@ -313,6 +313,17 @@ it("reports a refused poll on the duplicates rather than as a failure", async ()
   expect(host?.textContent).not.toContain(t("payments.intake.pollFailed"));
 });
 
+it("reports a token this server cannot read rather than a failed poll", async () => {
+  vi.spyOn(api, "fioPoll").mockRejectedValue(new ApiError(409, "fio_token_unreadable"));
+  render({ detail: detail(true) });
+
+  act(() => void buttonNamed(t("payments.intake.poll"))?.click());
+  await settle();
+
+  expect(host?.textContent).toContain(t("payments.intake.pollTokenUnreadable"));
+  expect(host?.textContent).not.toContain(t("payments.intake.pollFailed"));
+});
+
 const LOCKED = {
   code: "fio_authorization_required",
   since: "2026-06-12",

@@ -11,6 +11,9 @@ os.environ["HEMA_SQUIRE_DEBUG"] = "true"
 # the suite signs up and logs in far more often than a minute's throttle allows,
 # all from one address; test_auth_throttle enables the limiter deliberately
 os.environ["HEMA_SQUIRE_RATE_LIMIT_ENABLED"] = "false"
+# a feed token is refused on a deployment with no key; the suite runs on the
+# published development one (app.config.DEV_FIO_TOKEN_KEY)
+os.environ["HEMA_SQUIRE_FIO_TOKEN_KEY"] = "RcNS2f16NRFQXsKxOLtNxuSXRxd8ZuV95hunoqMOXuQ="
 
 import datetime
 import shutil

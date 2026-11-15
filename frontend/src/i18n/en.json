@@ -797,7 +797,8 @@
       "fioOnly": "feed token: Fio accounts only",
       "state": {
         "recorded": "A feed token is recorded, so the bank can be polled for this account.",
-        "none": "No feed token is recorded. Payments still arrive by importing a statement."
+        "none": "No feed token is recorded. Payments still arrive by importing a statement.",
+        "unreadable": "A feed token is recorded but cannot be read: this server no longer has the key it was encrypted with. Enter it again."
       },
       "unchecked": "The token is recorded, but the bank could not be reached to check it.",
       "title": "bank feed token",
@@ -808,6 +809,7 @@
       "remove": "remove the recorded token",
       "error": {
         "fio_token_rejected": "The bank would not read the account with this token. Check it in internet banking and enter it again.",
+        "fio_token_key_missing": "This server has no key to encrypt a feed token with, so it cannot keep one. Payments still arrive by importing a statement.",
         "failed": "The token could not be recorded."
       }
     },
@@ -1516,6 +1518,7 @@
       "unsupportedFormat": "That file is neither a CSV nor a spreadsheet.",
       "importFailed": "The statement could not be imported.",
       "pollFailed": "The bank could not be polled.",
+      "pollTokenUnreadable": "The recorded token cannot be read: this server no longer has the key it was encrypted with. Enter it again in Setup, beside the bank account. The bank was not asked.",
       "pollUnreachable": "The bank did not answer. Try again shortly, or import a statement file instead.",
       "lock": {
         "title": "The bank asks for a strong authorization",
