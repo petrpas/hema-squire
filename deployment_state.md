@@ -32,6 +32,15 @@ through Scaleway TEM, the filled `.env` is in the password manager, and
 so the "still owed" and "not the drill" passages below are history. Open:
 monitoring (5.2) and the deploy calendar rule (5.3). See tasks.md.
 
+**Update 2026-11-15:** retention writes are on in production
+(`HEMA_SQUIRE_RETENTION_WRITES_ENABLED=true` in the server's `deploy/.env`;
+the previous file kept beside it as `.env.bak-20261115`). The dry run before
+it, read from the app log at `f598834`, would have deleted 5 expired signups
+and nothing else: the outbox only holds mail from 2026-10-28 on, none of it
+30 days old yet, and no tournament is twelve months past its date. That
+closes data-retention tasks 3.2 and 3.3. The password-manager copy of `.env`
+must carry the new line too.
+
 ## Production host — live, bootstrapped, serving
 
 `<SERVER_IP>`, reachable as `ssh hemasquire` (an `~/.ssh/config` alias for
