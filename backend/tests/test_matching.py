@@ -846,3 +846,58 @@ def test_only_the_credits_of_a_mixed_statement_are_ingested(client, auth_headers
 
     listing = client.get("/api/tournaments/cup/payments/transactions", headers=organizer).json()
     assert [transaction["external_id"] for transaction in listing] == ["1"]
+
+
+def test_a_late_payment_is_announced_once_however_often_it_is_reevaluated(
+    client, auth_headers, mailbox
+):
+    """Every pass re-evaluates a flagged transaction, and on a tournament with
+    a Fio feed a pass runs every tick: the letter about a payment after expiry
+    goes out when it is flagged, not on every pass that finds it still flagged."""
+    organizer = auth_headers()
+    setup(client, organizer)
+    _fencer, vs = enroll(client, auth_headers)
+    force_expired(vs, hours_ago=72)  # past the 48h grace
+
+    import_rows(client, organizer, [f"1;01.08.2026;1 000,00;CZK;{vs};;;;;"])
+    sent = len(mailbox.sent)
+    for n in range(2, 5):
+        import_rows(client, organizer, [f"{n};02.08.2026;100,00;CZK;9999999;;;;;"])
+
+    assert len(mailbox.sent) == sent
+    assert event_kinds(vs).count("match_conflict") == 1
+
+
+def test_a_payment_in_a_currency_not_accepted_does_not_reinstate_in_grace(
+    client, auth_headers, mailbox
+):
+    organizer = auth_headers()
+    setup(client, organizer)
+    fencer, vs = enroll(client, auth_headers)
+    force_expired(vs, hours_ago=1)  # within the grace, with the place still free
+
+    import_rows(client, organizer, [f"1;01.08.2026;40,00;EUR;{vs};;;;;"])
+    sent = len(mailbox.sent)
+    import_rows(client, organizer, ["2;02.08.2026;100,00;CZK;9999999;;;;;"])
+
+    state = client.get("/api/tournaments/cup/my-registration", headers=fencer).json()
+    assert state["state"] == "expired"
+    assert "reinstated_in_grace" not in event_kinds(vs)
+    assert event_kinds(vs).count("currency_not_accepted") == 1
+    assert len(mailbox.sent) == sent
+
+
+def test_a_bare_token_of_the_wrong_amount_does_not_reinstate_in_grace(
+    client, auth_headers, mailbox
+):
+    organizer = auth_headers()
+    setup(client, organizer)
+    fencer, vs = enroll(client, auth_headers)
+    force_expired(vs, hours_ago=1)
+
+    result = import_rows(client, organizer, [f"1;01.08.2026;250,00;CZK;;;;platba {vs};;"])
+
+    assert result["unmatched"] == 1
+    state = client.get("/api/tournaments/cup/my-registration", headers=fencer).json()
+    assert state["state"] == "expired"
+    assert "reinstated_in_grace" not in event_kinds(vs)

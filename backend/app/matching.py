@@ -175,6 +175,19 @@ def _finish(transaction: BankTransaction, status: str, reason: str | None = None
     transaction.status_reason = reason
 
 
+def _flag(transaction: BankTransaction, reason: str) -> bool:
+    """Flag a transaction for the organizer, and say whether that is news.
+
+    Every pass re-evaluates a flagged transaction (`match_new_transactions`),
+    and on a tournament with a Fio feed a pass runs every tick. So the event
+    and any letter belong to the first time a transaction is flagged for a
+    reason, not to every pass that finds it still flagged for the same one:
+    the caller writes them only when this returns True."""
+    news = transaction.status != "flagged" or transaction.status_reason != reason
+    _finish(transaction, "flagged", reason)
+    return news
+
+
 def match_currency(transaction: BankTransaction, tournament: Tournament) -> MatchCurrency | None:
     """Which stored total a transaction should be compared against, purely by
     currency identity — never by conversion (design Decision 4). An unset
@@ -477,13 +490,13 @@ def _evaluate_transaction(
     # real person's balance; the gate keeps the row out of the database, this
     # keeps the amount out of the journal if one ever arrives another way.
     if transaction.amount_cents <= 0:
-        _finish(transaction, "flagged", "not_an_incoming_payment")
-        _event(
-            session,
-            transaction,
-            "not_an_incoming_payment",
-            f"{transaction.amount_cents} cents {transaction.currency}: not money arriving",
-        )
+        if _flag(transaction, "not_an_incoming_payment"):
+            _event(
+                session,
+                transaction,
+                "not_an_incoming_payment",
+                f"{transaction.amount_cents} cents {transaction.currency}: not money arriving",
+            )
         result.flagged += 1
         return
 
@@ -548,35 +561,31 @@ def _evaluate_single_vs(
         result.set_aside += 1
         return
 
-    reinstated = False
+    reinstate = False
     if registration.state == RegistrationState.EXPIRED:
         in_grace = within_expiry_grace(registration, tournament)
         if in_grace and seats_free(session, registration):
-            registration.state = RegistrationState.RESERVED
-            reinstated = True
-            _event(
-                session,
-                transaction,
-                "reinstated_in_grace",
-                f"VS {vs}: reinstated within {tournament.expiry_grace_hours}h grace",
-                registration,
-            )
-            # falls through to the normal tolerance comparison below; the
-            # fencer is told once, combining reinstatement and payment,
-            # only once the payment below is actually accepted
+            # Reinstated only below, once the currency and a bare token's
+            # amount have been accepted: a payment that cannot be credited
+            # must not bring the reservation back, or it holds a seat with
+            # no money and a window already past until the next expiry pass
+            # takes it again — with another expiry letter
+            reinstate = True
         else:
             reason = "expired_outside_grace" if not in_grace else "expired_seat_taken"
-            _finish(transaction, "flagged", reason)
-            _event(
-                session,
-                transaction,
-                "match_conflict",
-                f"VS {vs}: registration expired ({reason})",
-                registration,
-            )
             result.flagged += 1
-            session.flush()
-            emails.send_payment_after_expiry(mailer, tournament, registration.fencer, registration)
+            if _flag(transaction, reason):
+                _event(
+                    session,
+                    transaction,
+                    "match_conflict",
+                    f"VS {vs}: registration expired ({reason})",
+                    registration,
+                )
+                session.flush()
+                emails.send_payment_after_expiry(
+                    mailer, tournament, registration.fencer, registration
+                )
             return
     elif not _is_payable(registration):
         # a registration already settled — by money, or by a person's word —
@@ -585,14 +594,14 @@ def _evaluate_single_vs(
         # (spec payments). Two conditions since the paid state left the enum:
         # such a registration is `reserved` like any other
         reason = "paid" if registration.settled else registration.state.value
-        _finish(transaction, "flagged", f"registration_{reason}")
-        _event(
-            session,
-            transaction,
-            "match_conflict",
-            f"VS {vs}: registration is {registration.state.value}",
-            registration,
-        )
+        if _flag(transaction, f"registration_{reason}"):
+            _event(
+                session,
+                transaction,
+                "match_conflict",
+                f"VS {vs}: registration is {registration.state.value}",
+                registration,
+            )
         result.flagged += 1
         return
     elif registration.waiting_in_queue:
@@ -610,16 +619,16 @@ def _evaluate_single_vs(
         # either a currency the tournament does not price in, or (rarely)
         # a registration created before EUR pricing applied to it — either
         # way there is nothing to compare the transaction against
-        _finish(transaction, "flagged", "currency_not_accepted")
-        _event(
-            session,
-            transaction,
-            "currency_not_accepted",
-            f"VS {vs}: {transaction.amount_cents} cents in {transaction.currency}, "
-            f"tournament accepts {tournament.local_currency}"
-            + (" and EUR" if tournament.shows_eur else ""),
-            registration,
-        )
+        if _flag(transaction, "currency_not_accepted"):
+            _event(
+                session,
+                transaction,
+                "currency_not_accepted",
+                f"VS {vs}: {transaction.amount_cents} cents in {transaction.currency}, "
+                f"tournament accepts {tournament.local_currency}"
+                + (" and EUR" if tournament.shows_eur else ""),
+                registration,
+            )
         result.flagged += 1
         return
 
@@ -635,6 +644,18 @@ def _evaluate_single_vs(
             result.unmatched += 1
             return
 
+    if reinstate:
+        registration.state = RegistrationState.RESERVED
+        _event(
+            session,
+            transaction,
+            "reinstated_in_grace",
+            f"VS {vs}: reinstated within {tournament.expiry_grace_hours}h grace",
+            registration,
+        )
+        # the fencer is told once, combining reinstatement and payment, by
+        # `_settle` below
+
     paid_cents = transaction.amount_cents
     _credit(session, tournament, registration, transaction, paid_cents, CreditOrigin.AUTO_VS)
     transaction.matched_registration_id = registration.id
@@ -647,7 +668,7 @@ def _evaluate_single_vs(
         which,
         f"VS {vs}",
         paid_cents,
-        reinstated=reinstated,
+        reinstated=reinstate,
     )
     if outcome == "partial":
         _finish(transaction, "partial", "partial_payment")
@@ -848,15 +869,15 @@ def _evaluate_multi_vs(
     unmatched with every detected VS offered as a candidate."""
     which = match_currency(transaction, tournament)
     if which is None:
-        _finish(transaction, "flagged", "currency_not_accepted")
-        _event(
-            session,
-            transaction,
-            "currency_not_accepted",
-            f"multi-VS {own_tokens}: {transaction.amount_cents} cents in {transaction.currency}, "
-            f"tournament accepts {tournament.local_currency}"
-            + (" and EUR" if tournament.shows_eur else ""),
-        )
+        if _flag(transaction, "currency_not_accepted"):
+            _event(
+                session,
+                transaction,
+                "currency_not_accepted",
+                f"multi-VS {own_tokens}: {transaction.amount_cents} cents in "
+                f"{transaction.currency}, tournament accepts {tournament.local_currency}"
+                + (" and EUR" if tournament.shows_eur else ""),
+            )
         result.flagged += 1
         return
 
