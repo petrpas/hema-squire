@@ -5,8 +5,21 @@ reconstruct the fencer table on an empty deployment: source records
 (registrations, import batches), cached decisions, and the rule set. Fencers
 travel by email; registration ids are remapped on restore, and rule targets
 "reg:<id>" and "man:<id>" are rewritten accordingly (imp:* targets are
-content-stable).
-Password hashes never leave the deployment.
+content-stable), as is the fencer-list row an issued registration stands in for.
+
+Since v24 it also carries every setting that decides what Squire does with the
+tournament — its mode, payment mode, deposits, deadlines and features — so a
+restored tournament behaves as the exported one did once it is published again.
+A document older than that states no mode and restores manual, so nothing it
+restores can start a clock nobody decided on (design export-tournament-settings
+D2).
+
+What stays behind, by design: password hashes; the logo and the cover photo,
+which the organizer uploads again; and what belongs to the deployment rather
+than the tournament — the owner, the publication moment and author, the
+cancellation moment, the bank feed token, the export destination, the
+retention stamp, and the generation of guest links, so an old manage link does
+not open the restored registration.
 """
 
 import datetime
@@ -37,6 +50,7 @@ from app.models import (
     Registration,
     RegistrationDiscipline,
     RegistrationExtra,
+    RegistrationsKeptBy,
     RosterChange,
     RosterChangeKind,
     Rule,
@@ -48,7 +62,7 @@ from app.models import (
 )
 from app.routers.tournaments import _lowest_free_series
 
-SCHEMA_VERSION = 23
+SCHEMA_VERSION = 24
 
 _TOURNAMENT_FIELDS = [
     "slug",
@@ -88,7 +102,35 @@ _TOURNAMENT_FIELDS = [
     "queue_payment_seats",
     # v19: the account's holder, which a EUR code names (absent before: none)
     "bank_account_holder",
+    # v24: the settings that decide what Squire does with the tournament. A
+    # document before it states none of them; it restores manual and every
+    # other one takes the value a new tournament takes (_V23_TOURNAMENT_DEFAULTS)
+    "registrations_kept_by",
+    "payment_mode",
+    "deposit_amount",
+    "deposit_amount_eur",
+    "seating_deadline",
+    "seating_settled_at",
+    "amendments_close",
+    "expiry_grace_hours",
+    "external_registration_url",
+    "feature_payments",
+    "feature_teams",
+    "feature_extras",
+    "feature_schedule",
+    "subtitle",
+    "short_code",
+    "logo_tint",
+    "cover_tint",
+    "hr_category_map",
 ]
+
+# v24: a document written before the mode travelled cannot say whether Squire
+# kept the tournament's registrations. It restores as one the organizer keeps:
+# no lifecycle runs against it, no lifecycle mail goes out, and the
+# completeness rule refuses to publish it until it is given an external
+# registration address, which is the decision about its mode it could not state
+_V23_TOURNAMENT_DEFAULTS = {"registrations_kept_by": RegistrationsKeptBy.ORGANIZER.value}
 
 # v6 addition, defaulted when restoring an older file so a v1-v5 export lands
 # with no composition deadline (design team-disciplines D8)
@@ -137,6 +179,11 @@ _REGISTRATION_FIELDS = [
     "claim_total_eur",
     # v20: whether a discount code covered the total (absent before: none did)
     "code_covered",
+    # v24: dormancy by origin, the row an issued registration stands in for,
+    # and the seat's own address (absent before: clocks ran, no row, none)
+    "clocks_dormant",
+    "source_row_id",
+    "contact_email",
 ]
 
 # A payment the organizer recorded by hand. Removed ones are not exported:
@@ -620,9 +667,20 @@ def restore_tournament(session: Session, data: dict, actor: Fencer) -> Tournamen
         # shown faded on the public rosters (spec public-entrants), so a
         # document still carrying the choice restores without it
         doc.pop("unpaid_list_treatment", None)
+    if version < 24:
+        for field, default in _V23_TOURNAMENT_DEFAULTS.items():
+            doc.setdefault(field, default)
     # only what an export writes is read back: a key the format does not carry
-    # (an owner, a feed token, a publication moment) is not the document's to set
+    # (an owner, a feed token, a publication moment, a cancellation, the export
+    # destination, the retention stamp) is not the document's to set
     doc = {field: doc[field] for field in _TOURNAMENT_FIELDS if field in doc}
+    # The images stay behind, so neither value that only means something beside
+    # one may come back on its own: the logo's band is read from the logo and
+    # cleared with it, and the photo ground may be chosen only while a photo is
+    # stored. Without them the cover follows the chosen tint, else the slug
+    doc.pop("logo_tint", None)
+    if doc.get("cover_tint") == "photo":
+        doc["cover_tint"] = None
     if session.scalar(select(Tournament).where(Tournament.slug == doc["slug"])):
         raise HTTPException(status_code=409, detail="slug_taken")
 
@@ -638,6 +696,24 @@ def restore_tournament(session: Session, data: dict, actor: Fencer) -> Tournamen
         doc["vs_year"] = restore_year
         doc["vs_series"] = _lowest_free_series(session, restore_year)
         doc["vs_next_seq"] = 1
+    elif session.scalar(
+        select(Tournament.id).where(
+            Tournament.vs_year == doc["vs_year"], Tournament.vs_series == doc["vs_series"]
+        )
+    ):
+        # the series is unique across the deployment and taken here, as it is
+        # when a copy is restored beside its original. Matching resolves a VS
+        # whole and never parses the series out of it, so the restored
+        # registrations keep the symbols they were given and new ones are drawn
+        # from a fresh series (design export-tournament-settings D6)
+        doc["vs_series"] = _lowest_free_series(session, doc["vs_year"])
+        doc["vs_next_seq"] = 1
+    # a symbol is unique across the deployment too, and unlike a series it is
+    # one a fencer has been told to quote, so it is never renumbered: a
+    # document whose registrations hold one already held here is refused
+    symbols = {entry["vs"] for entry in data.get("registrations", []) if entry.get("vs")}
+    if symbols and session.scalar(select(Registration.id).where(Registration.vs.in_(symbols))):
+        raise HTTPException(status_code=409, detail="vs_taken")
 
     tournament = Tournament(
         **{
@@ -649,6 +725,11 @@ def restore_tournament(session: Session, data: dict, actor: Fencer) -> Tournamen
             "registration_opens_time": _parse_time(doc.get("registration_opens_time")),
             "registration_closes": _parse_date(doc.get("registration_closes")),
             "team_composition_deadline": _parse_date(doc.get("team_composition_deadline")),
+            "seating_deadline": _parse_date(doc.get("seating_deadline")),
+            "amendments_close": _parse_date(doc.get("amendments_close")),
+            # what the exported tournament held: settlement is one-shot, and a
+            # restore reproduces it rather than deciding it again
+            "seating_settled_at": _parse_dt(doc.get("seating_settled_at")),
         }
     )
     session.add(tournament)
@@ -723,6 +804,9 @@ def restore_tournament(session: Session, data: dict, actor: Fencer) -> Tournamen
     session.flush()
 
     reg_map: dict[int, Registration] = {}
+    # an issued registration standing in for a hand-entered row, by that row's
+    # id in the document; rewritten once the manual rows below have their ids
+    manual_sources: dict[Registration, int] = {}
     for entry in data.get("registrations", []):
         # total_eur arrived in v5; an older file's registrations priced in
         # local currency only.
@@ -746,7 +830,20 @@ def restore_tournament(session: Session, data: dict, actor: Fencer) -> Tournamen
         entry.setdefault("claim_total", None)
         entry.setdefault("claim_total_eur", None)
         entry.setdefault("code_covered", False)
+        # a document before v24 carries no origin: its clocks ran, it stood in
+        # for no row, and the account's address was the seat's. A manual
+        # tournament is a cause of dormancy of its own, so nothing needs
+        # marking for the pre-v24 restore to start no clock
+        entry.setdefault("clocks_dormant", False)
+        entry.setdefault("source_row_id", None)
+        entry.setdefault("contact_email", None)
         payload = {k: entry[k] for k in _REGISTRATION_FIELDS}
+        # an imported row's id is a fingerprint of its content and carries over
+        # as it stands; a manual one names a row that gets a new id below, and
+        # is left unset until then so no interim value can collide
+        source_row_id = payload["source_row_id"]
+        if isinstance(source_row_id, str) and source_row_id.startswith("man:"):
+            payload["source_row_id"] = None
         for field in (
             "registered_at",
             "expires_at",
@@ -764,6 +861,8 @@ def restore_tournament(session: Session, data: dict, actor: Fencer) -> Tournamen
         )
         session.add(registration)
         session.flush()
+        if isinstance(source_row_id, str) and source_row_id.startswith("man:"):
+            manual_sources[registration] = int(source_row_id.removeprefix("man:"))
         for item in entry["entries"]:
             # "code" is the pre-v7 key; a v7+ document carries "slug"
             slug = item.get("slug", item.get("code"))
@@ -989,6 +1088,11 @@ def restore_tournament(session: Session, data: dict, actor: Fencer) -> Tournamen
         session.add(row)
         session.flush()
         man_map[entry["ref"]] = row
+    # a registration whose manual row the document omits stands in for nothing,
+    # and is listed as its own row
+    for registration, ref in manual_sources.items():
+        if ref in man_map:
+            registration.source_row_id = f"man:{man_map[ref].id}"
     session.flush()
 
     if "row_numbers" in data:

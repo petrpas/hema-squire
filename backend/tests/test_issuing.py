@@ -80,23 +80,23 @@ def row(name, email, *, when="2026-04-01T10:00:00", disciplines="SA", borrow="",
     return f"{when},{name},{email},Klub,{disciplines},{borrow},{afterparty}\n"
 
 
-def setup(client, organizer, *, fee=800, early_fee=None, early_until=None):
+def setup(client, organizer, *, fee=800, early_fee=None, early_until=None, slug="cup"):
     client.post(
         "/api/tournaments",
-        json={"slug": "cup", "display_name": "Cup", "date": "2099-12-05"},
+        json={"slug": slug, "display_name": "Cup", "date": "2099-12-05"},
         headers=organizer,
     )
     body = {"slug": "SA", "weapon": "SA", "capacity": 20, "fee": fee}
     if early_fee is not None:
         body["fee_early"] = early_fee
-    client.post("/api/tournaments/cup/disciplines", json=body, headers=organizer)
+    client.post(f"/api/tournaments/{slug}/disciplines", json=body, headers=organizer)
     client.post(
-        "/api/tournaments/cup/disciplines",
+        f"/api/tournaments/{slug}/disciplines",
         json={"slug": "SB", "weapon": "SB", "capacity": 20, "fee": 500},
         headers=organizer,
     )
     client.patch(
-        "/api/tournaments/cup",
+        f"/api/tournaments/{slug}",
         json={
             "city": "Brno",
             "organizers": [{"name": "Cup Org", "link": None}],
@@ -109,24 +109,24 @@ def setup(client, organizer, *, fee=800, early_fee=None, early_until=None):
     )
     if early_until is not None:
         client.patch(
-            "/api/tournaments/cup",
+            f"/api/tournaments/{slug}",
             json={"early_bird_until": early_until},
             headers=organizer,
         )
     # issuing waits for publication (spec imported-registrations, Issuing waits
     # for publication): every roster on this file needs a published tournament
-    publish(client, organizer, "cup")
+    publish(client, organizer, slug)
     app.dependency_overrides[get_import_parser] = lambda: RosterParser()
 
 
-def import_roster(client, organizer, rows):
+def import_roster(client, organizer, rows, slug="cup"):
     content = (HEADER + "".join(rows)).encode()
     client.post(
-        "/api/tournaments/cup/import",
+        f"/api/tournaments/{slug}/import",
         files={"file": ("roster.csv", io.BytesIO(content), "text/csv")},
         headers=organizer,
     )
-    return outcome(client, organizer, "cup", "parse")
+    return outcome(client, organizer, slug, "parse")
 
 
 # a Fio export carrying no movements: enough for the intake path to run, and it
@@ -216,6 +216,27 @@ def test_issuing_shows_one_row_per_fencer_not_two(client, auth_headers, mailbox)
     assert after[0]["id"] == row_id
     assert after[0]["number"] == number
     assert after[0]["vs"] is not None
+
+
+def test_the_same_row_issued_in_two_tournaments_makes_two_registrations(
+    client, auth_headers, mailbox
+):
+    """A row's id is unique within its tournament only: an imported key is a
+    fingerprint of the row's content, so the same file imported into two
+    tournaments yields the same ids in both (design export-tournament-settings
+    D3)."""
+    organizer = auth_headers()
+    for slug in ("cup", "spring"):
+        setup(client, organizer, slug=slug)
+        import_roster(client, organizer, [row("Jan", "jan@example.com")], slug=slug)
+
+    assert issue(client, organizer, "cup")["issued"] == 1
+    assert issue(client, organizer, "spring")["issued"] == 1
+
+    issued = registrations()
+    assert len(issued) == 2
+    assert len({r.tournament_id for r in issued}) == 2
+    assert len({r.source_row_id for r in issued}) == 1
 
 
 def test_a_fencer_record_is_created_without_an_account(client, auth_headers, mailbox):

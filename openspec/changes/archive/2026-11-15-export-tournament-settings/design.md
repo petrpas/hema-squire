@@ -84,6 +84,22 @@ organizer resends the link from the console.
 It is the organizer's own override of the derived monogram, not an identifier,
 and is not unique, so it carries over as it stands.
 
+### D6. A taken series is replaced; a taken symbol refuses
+
+Found during implementation (owner decision 2026-11-15). The document carries
+the tournament's `(vs_year, vs_series)`, which is unique across the deployment,
+so a copy restored beside its original collided on it. Where the series is
+taken, the restore takes the lowest free series of that year with
+`vs_next_seq = 1`, as a pre-v4 document already does. Matching resolves a VS
+whole and never parses the series out of it, so the restored registrations keep
+the symbols they were given.
+
+A registration's VS is unique across the deployment too, and is what a fencer
+was told to quote, so it is never renumbered. A document whose registrations
+hold a symbol the deployment already holds is refused with `409 vs_taken`
+rather than failing on the constraint. A manual tournament issues no symbols,
+so its copy restores; an automatic one with registrations does not.
+
 ## Risks / Trade-offs
 
 - [A document written before this change still restores automatic-looking

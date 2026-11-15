@@ -841,7 +841,19 @@ class Registration(Base):
     """One fencer's entry to one tournament; starts life as a reservation."""
 
     __tablename__ = "registrations"
-    __table_args__ = (UniqueConstraint("tournament_id", "fencer_id"),)
+    __table_args__ = (
+        UniqueConstraint("tournament_id", "fencer_id"),
+        # one registration per fencer-list row of a tournament: the backstop
+        # that makes issuing idempotent. Per tournament, because a row's id is
+        # only unique within it — an `imp:` key is a content fingerprint, and
+        # two tournaments importing the same row, or a restored copy beside its
+        # original, carry the same one (design export-tournament-settings D3).
+        # Named, because the convention would give it the name the constraint
+        # above already holds
+        UniqueConstraint(
+            "tournament_id", "source_row_id", name="uq_registrations_tournament_id_source_row_id"
+        ),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True)
     tournament_id: Mapped[int] = mapped_column(ForeignKey("tournaments.id"))
@@ -908,8 +920,9 @@ class Registration(Base):
     # row's place in the fencer list under this id, so the fencer keeps the
     # fixed number they were given when the row was born (spec etl-console,
     # Fixed fencer number) and the list does not show them twice, once as a row
-    # and once as a registration.
-    source_row_id: Mapped[str | None] = mapped_column(String(80), unique=True)
+    # and once as a registration. Unique within the tournament (see
+    # `__table_args__`).
+    source_row_id: Mapped[str | None] = mapped_column(String(80))
     # The seat's own address, where it differs from the address of the account
     # holding it. Written by a substitution that kept the address the seat came
     # with: a club that entered three people under one address keeps that

@@ -15,7 +15,8 @@ naming a manual row SHALL be rewritten to the restored manual row, as a rule
 target is; one naming an imported row SHALL carry over as it stands.
 
 The document SHALL NOT carry the logo or the cover photo; a restored tournament
-has neither until the organizer uploads them. Nor SHALL it carry what belongs to
+has neither until the organizer uploads them, and so restores without the
+logo's hue band and without a cover ground of "photo". Nor SHALL it carry what belongs to
 the deployment rather than the tournament: the owner, the publication moment and
 author, the cancellation moment, the bank feed token, the export destination,
 the retention stamp, and the generation of guest links. A guest's link from the
@@ -43,7 +44,8 @@ other setting such a document lacks SHALL take the value a new tournament takes.
 
 #### Scenario: Images stay behind
 - **WHEN** a tournament with a logo and a cover photo is exported and restored
-- **THEN** the restored tournament has the same tints, subtitle and short code and has no logo and no cover photo
+- **THEN** the restored tournament has the same chosen cover tint, subtitle and short code and has no logo and no cover photo
+- **AND** neither the logo's hue band nor a cover ground of "photo" comes back, since each means something only beside an image that did not travel
 
 #### Scenario: A guest's address comes back
 - **WHEN** a registration entered as a guest, with a contact address of its own, is exported and restored
@@ -53,6 +55,16 @@ other setting such a document lacks SHALL take the value a new tournament takes.
 - **WHEN** a document of version 23 or earlier is restored
 - **THEN** the restored tournament is manual, no reminder, expiry or demotion is ever run against its registrations, and publishing it is refused until an external registration address is set
 
+A restore SHALL NOT fail because the tournament's variable-symbol series is
+already held on the deployment: it SHALL take a free series of the same year
+instead, and the restored registrations SHALL keep the symbols they were given.
+A symbol is never renumbered, so a document whose registrations hold a symbol
+the deployment already holds SHALL be refused, and nothing of it restored.
+
 #### Scenario: A copy restores beside its original
-- **WHEN** a tournament with registrations issued from an imported fencer list is exported and restored on the same deployment under another slug
-- **THEN** the restore succeeds and each tournament keeps its own registrations standing in for its own rows
+- **WHEN** a manual tournament with registrations issued from an imported fencer list is exported and restored on the same deployment under another slug
+- **THEN** the restore succeeds, the copy draws from a series of its own, and each tournament keeps its own registrations standing in for its own rows
+
+#### Scenario: A copy whose symbols are taken is refused
+- **WHEN** a document whose registrations hold variable symbols already held on the deployment is restored
+- **THEN** the restore is refused as a conflict and no tournament is created
