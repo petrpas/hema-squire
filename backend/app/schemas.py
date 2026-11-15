@@ -756,9 +756,6 @@ class TournamentUpdate(BaseModel):
     refundable_until: datetime.date | None = None
     bank_account: BankAccountStr | None = None
     bank_account_holder: BankAccountHolderStr | None = None
-    # hours after expiry a VS-matched payment may still reinstate a
-    # reservation, subject to capacity; 0 disables automatic reinstatement
-    expiry_grace_hours: int | None = Field(default=None, ge=0)
     output_sheet_url: OutputSheetUrlStr | None = None
     hr_category_map: dict[HrCategoryKeyStr, HrCategoryValueStr] | None = None
     early_bird_until: datetime.date | None = None
@@ -804,6 +801,17 @@ class TournamentUpdate(BaseModel):
     @classmethod
     def _token_has_its_own_endpoint(cls, value: Any) -> Any:
         raise FieldValueError("fio_token", "recorded_on_its_own_endpoint", {})
+
+    # The expiry grace is fixed at 48 hours and is not the organizer's to set
+    # (spec tournament-admin). The column stays, and matching reads it, so the
+    # period can be offered again without a migration; until then a write is
+    # refused by name rather than ignored, so a caller learns it did not take
+    expiry_grace_hours: Any = None
+
+    @field_validator("expiry_grace_hours")
+    @classmethod
+    def _grace_is_fixed(cls, value: Any) -> Any:
+        raise FieldValueError("expiry_grace_hours", "fixed_by_squire", {})
 
     # accepts either form and stores the canonical IBAN (design Decision 1);
     # runs after the field alias's length/shape bound, which only catches

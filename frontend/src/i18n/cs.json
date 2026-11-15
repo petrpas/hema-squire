@@ -479,7 +479,6 @@
     "refundable_until": "Vratné do",
     "bank_account": "Účet (IBAN)",
     "bank_account_holder": "Majitel účtu",
-    "expiry_grace_hours": "Tolerance po vypršení (hodiny)",
     "amendments_close": "Úpravy registrace do",
     "output_sheet_url": "URL výstupní Google tabulky",
     "display_name": "Název akce",

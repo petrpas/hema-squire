@@ -18,7 +18,7 @@ from sqlalchemy import select
 from app.db import get_session
 from app.mail import get_mailer
 from app.main import app
-from app.models import PaymentEvent, RefundState, Registration, RegistrationState
+from app.models import PaymentEvent, RefundState, Registration, RegistrationState, Tournament
 from tests.conftest import (
     AcceptingFio,
     credit_registration,
@@ -652,7 +652,14 @@ def test_amendments_close_after_registration_closes_rejected(client, auth_header
 
 def test_expiry_grace_hours_zero_disables_automatic_reinstatement(client, auth_headers, fio):
     organizer = auth_headers()
-    setup_tournament(client, organizer, capacity=10, expiry_grace_hours=0)
+    setup_tournament(client, organizer, capacity=10)
+    # the grace is not the organizer's to set; a stored value other than 48 is
+    # still honoured, so it is written where only Squire writes it
+    session = db_session()
+    tournament = session.scalar(select(Tournament).where(Tournament.slug == "cup"))
+    assert tournament is not None
+    tournament.expiry_grace_hours = 0
+    session.commit()
     fencer = auth_headers(email="f1@example.com", name="F1")
     initial = register(client, fencer).json()
     # 1 hour past expiry: well within the default 48h grace, but grace is 0 here
@@ -741,3 +748,17 @@ def test_a_full_reinstatement_states_the_amount_received(client, auth_headers, f
     assert "Rezervace obnovena, platba přijata" in message["Subject"]
     assert "platba 1000 Kč" in _body(message)
     assert "potvrzena" in _body(message)
+
+
+def test_organizer_cannot_set_the_expiry_grace(client, auth_headers):
+    """spec tournament-admin, Grace period is not an organizer parameter: a
+    write is refused by name rather than stored or silently ignored."""
+    organizer = auth_headers()
+    setup_tournament(client, organizer)
+    response = client.patch(
+        "/api/tournaments/cup", json={"expiry_grace_hours": 500}, headers=organizer
+    )
+    assert response.status_code == 422
+    assert "expiry_grace_hours" in response.text
+    detail = client.get("/api/tournaments/cup", headers=organizer).json()
+    assert detail["expiry_grace_hours"] == 48

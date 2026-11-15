@@ -87,7 +87,6 @@ export const FIELD_CONSTRAINTS: Record<string, FieldConstraint> = {
       "^([A-Z]{2}[0-9]{2}(?: ?[A-Za-z0-9]){10,30}|[0-9]{1,6}(?: ?- ?)?[0-9]{2,10} ?/ ?[0-9]{4})$",
   },
   "TournamentUpdate.bank_account_holder": { "maxLength": 70 },
-  "TournamentUpdate.expiry_grace_hours": { "minimum": 0 },
   "FioTokenIn.token": { "maxLength": 200 },
   "TournamentUpdate.output_sheet_url": { "maxLength": 500 },
   "TournamentUpdate.weapon_rental_fee": { "minimum": 0 },

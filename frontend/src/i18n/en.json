@@ -465,7 +465,6 @@
     "refundable_until": "Refundable until",
     "bank_account": "Account (IBAN)",
     "bank_account_holder": "Account holder",
-    "expiry_grace_hours": "Grace period after expiry (hours)",
     "amendments_close": "Amendments close",
     "output_sheet_url": "Output Google Sheet URL",
     "display_name": "Event name",
