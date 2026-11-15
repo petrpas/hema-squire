@@ -41,6 +41,16 @@ and nothing else: the outbox only holds mail from 2026-10-28 on, none of it
 closes data-retention tasks 3.2 and 3.3. The password-manager copy of `.env`
 must carry the new line too.
 
+**Update 2026-11-15, later:** the Fio feed tokens are encrypted at rest
+(change encrypt-fio-token, deployed at `cabb14a`). The key,
+`HEMA_SQUIRE_FIO_TOKEN_KEY`, was generated on the host with `openssl` and
+appended to the server's `deploy/.env`; it never touched the build machine.
+Migration `b5e9c3d7f2a1` sealed both stored tokens (2 of 2 Fernet-shaped
+afterwards), the scheduler logged no unreadable token over its first passes,
+and an organizer poll answered "0 new, 0 matched". Losing the key costs only
+re-entering the tokens, but the password-manager copy of `.env` must carry
+this line as well.
+
 ## Production host — live, bootstrapped, serving
 
 `<SERVER_IP>`, reachable as `ssh hemasquire` (an `~/.ssh/config` alias for

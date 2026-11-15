@@ -32,6 +32,6 @@
 ## 6. Deploy
 
 - [x] 6.1 `deploy/.env.example` names `HEMA_SQUIRE_FIO_TOKEN_KEY` and how to generate it
-- [ ] 6.2 Key into the server `.env` and the password manager, then deploy (design Migration Plan)
-- [ ] 6.3 After deploy: no unreadable-token warning in the log, one poll succeeds
-- [ ] 6.4 Mark S4 done in the drift map and `deployment_state.md`
+- [x] 6.2 Key into the server `.env` and the password manager, then deploy (design Migration Plan)
+- [x] 6.3 After deploy: no unreadable-token warning in the log, one poll succeeds
+- [x] 6.4 Mark S4 done in the drift map and `deployment_state.md`
