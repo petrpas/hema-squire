@@ -89,7 +89,7 @@ of a symbol as the absence of a registration.
 - **THEN** no registration is created and no variable symbol is allocated
 
 #### Scenario: The lifecycle passes issue nothing
-- **WHEN** the organizer runs the payment lifecycle passes by hand
+- **WHEN** the scheduler runs the payment lifecycle passes
 - **THEN** no registration is issued
 
 #### Scenario: A manual tournament's roster carries no symbols
@@ -228,8 +228,8 @@ reminder or an expiry notice.
 
 Its dormancy SHALL NOT depend on the tournament's configuration and SHALL NOT be
 lifted by any later change to it. Turning the payments feature on or off,
-changing the payment mode, setting or moving the seating deadline, and running
-the lifecycle passes by hand SHALL all leave an issued registration seated and
+changing the payment mode, and setting or moving the seating deadline SHALL all
+leave an issued registration seated and
 silent.
 
 Its total SHALL still be computed, stored and presented — as a statement of what
@@ -241,8 +241,8 @@ money.
 - **WHEN** the lifecycle passes run against a tournament holding issued registrations long after any configured payment window would have closed
 - **THEN** none of them expires, no capacity is freed, and no expiry notice or reminder is sent
 
-#### Scenario: Running the lifecycle by hand sends nothing
-- **WHEN** the organizer runs the lifecycle passes from the console against a roster of unpaid issued registrations
+#### Scenario: The lifecycle sends nothing
+- **WHEN** the lifecycle passes run against a roster of unpaid issued registrations
 - **THEN** no mail is sent to any of them
 
 #### Scenario: Configuration changes do not wake the clocks

@@ -1945,10 +1945,6 @@ export const api = {
       `/api/tournaments/${slug}/payments/fio-poll${since ? `?since=${since}` : ""}`,
       { method: "POST" },
     ),
-  /** Run the payment lifecycle passes now — expiries, reminders and
-   *  holding-payment events — rather than waiting for the scheduler. */
-  processLifecycle: (slug: string) =>
-    request<unknown>(`/api/tournaments/${slug}/payments/process`, { method: "POST" }),
   /** Hard, total and final: everything the tournament ever imported. The
    *  console confirms before calling (spec table-import, Clearing is warned
    *  about and irreversible). */

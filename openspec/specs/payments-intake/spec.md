@@ -53,7 +53,7 @@ Interpreting a statement SHALL be recorded as an operation of the tournament, st
 - **THEN** the console states which work is under way instead of failing the import
 
 ### Requirement: Every intake action is reachable from the console
-The Payments phase SHALL offer the organizer the statement import, a way to poll the bank's API where one is configured, and a way to run the payment lifecycle passes now. Each action SHALL state plainly when it is unavailable rather than offering a control that fails when used.
+The Payments phase SHALL offer the organizer the statement import and a way to poll the bank's API where one is configured. The payment lifecycle passes — expiries, reminders and holding-payment events — SHALL run on the scheduler alone and SHALL NOT be offered as a console action: in manual mode they decide nothing, every registration being dormant, while still able to settle seating. Each action SHALL state plainly when it is unavailable rather than offering a control that fails when used.
 
 Each action SHALL also state, before it runs, what it will do that the organizer cannot undo. The one such thing an intake does is spend variable symbols: where Squire keeps the tournament's registrations, the console SHALL state how many rows the intake will issue registrations for and that their symbols are allocated and never reclaimed. This SHALL be stated in place, ahead of the action, rather than as a confirmation the organizer dismisses: the organizer reads it while deciding to act, not after having decided.
 
@@ -63,9 +63,9 @@ Where an intake would issue nothing, no such statement SHALL be made. Nor SHALL 
 - **WHEN** the tournament has no Fio token
 - **THEN** the poll action is not offered, and the card says the tournament has no token configured
 
-#### Scenario: Lifecycle run on the organizer's say-so
-- **WHEN** the organizer runs the lifecycle passes after importing a statement
-- **THEN** expiries, reminders and holding-payment events are applied immediately rather than at the scheduler's next sweep
+#### Scenario: No lifecycle action in the console
+- **WHEN** the organizer opens the Payments phase
+- **THEN** no control runs the lifecycle passes, and expiries and reminders apply at the scheduler's next sweep
 
 #### Scenario: A statement that credits a waiting registration
 - **WHEN** the organizer imports a statement carrying a payment for a reserved registration
