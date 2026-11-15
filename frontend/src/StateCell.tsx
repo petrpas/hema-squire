@@ -36,7 +36,7 @@ export default function StateCell({
   const waived = row.settled_by_hand === true;
   const offered = typeof row.registration_id === "number" && (waived || row.state === "reserved");
 
-  if (!offered) return <StateBadge id={row.id} state={row.state} />;
+  if (!offered) return <StateBadge id={row.id} state={row.state} row={row} />;
 
   return (
     <>

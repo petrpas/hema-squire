@@ -440,6 +440,20 @@ def base_rows(
         # registration when it did
         settled_on = ledger.paid_at(registration, tournament)
         waived = _money(remaining) if registration.waived and credited else None
+        # money a lapsed reservation still holds: the scheduler recorded it as
+        # an expiry holding a payment, and the console states it on the row so
+        # the organizer tells it from an ordinary expiry (spec payments, Expiry
+        # holding money is recorded distinctly). The balance's own lane first,
+        # the other where only it was paid into
+        expiry_held: tuple[int, Currency] | None = None
+        if registration.state is RegistrationState.EXPIRED:
+            for lane, currency in (
+                ("local", tournament.local_currency),
+                ("eur", Currency.EUR),
+            ):
+                cents = registration.credited_in(lane)
+                if cents and (expiry_held is None or currency == balance_currency):
+                    expiry_held = (cents, currency)
         rows[row_id] = {
             "id": row_id,
             "name": registration.fencer.display_name,
@@ -535,6 +549,8 @@ def base_rows(
             "outstanding_amount": _money(balance),
             "outstanding_currency": balance_currency,
             "expires_at": _instant(registration.expires_at) if registration.expires_at else None,
+            "held_amount": _money(expiry_held[0]) if expiry_held else None,
+            "held_currency": expiry_held[1] if expiry_held else None,
             "paid_at": settled_on.isoformat() if settled_on else None,
             "weapon_rentals": registration.weapon_rentals or extra_rentals,
             # of those, the ones this tournament lends nothing by that name and

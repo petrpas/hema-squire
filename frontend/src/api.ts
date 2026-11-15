@@ -750,6 +750,12 @@ export interface SheetRow {
   /** Provenance of an imported row: the file it came from and its line there. */
   _source?: { file: string; row: number };
   expires_at: string | null;
+  /** What a lapsed reservation still holds credited, as a decimal string, and
+   *  the currency it is in. Null unless the registration expired with money
+   *  against it (spec `payments`, Expiry holding money is recorded
+   *  distinctly); absent on a row with no registration behind it. */
+  held_amount?: string | null;
+  held_currency?: Currency | null;
   paid_at: string | null;
   weapon_rentals: string[];
   /** Of those, the ones this tournament lends nothing by that name and so
@@ -1648,19 +1654,6 @@ export interface ManualPaymentInput {
   note?: string | null;
 }
 
-/** A reservation that lapsed while holding money credited to it. The payment
- *  matched, so it is in neither transaction queue — this is the only view of
- *  it. */
-export interface ExpiredHolding {
-  registration_id: number;
-  fencer_name: string;
-  vs: number | null;
-  /** A decimal string, as every credited amount the API states is. */
-  credited_amount: string;
-  credited_eur_amount: string | null;
-  expired_at: string;
-}
-
 /** A persisted manual operation as the rules API states it. Payment links are
  *  the `payment_link` kind: they replay opaquely and so never reach the edits
  *  log, which is why the payments phase lists them itself. */
@@ -1900,8 +1893,6 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ transaction_id, vs, registration_ids }),
     }),
-  expiredHolding: (slug: string) =>
-    request<ExpiredHolding[]>(`/api/tournaments/${slug}/payments/expired-holding`),
   recordManualPayment: (slug: string, data: ManualPaymentInput) =>
     request<ManualPayment>(`/api/tournaments/${slug}/payments/manual`, {
       method: "POST",

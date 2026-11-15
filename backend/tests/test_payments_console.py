@@ -462,3 +462,42 @@ def test_a_refused_payment_states_its_reason_in_the_same_table(client, auth_head
     (refused,) = [row for row in rows if row["disposition"] == "refused"]
     assert refused["external_id"] == "2"
     assert refused["status_reason"] == "registration_paid"
+
+
+def test_fencer_table_states_what_an_expiry_holds(client, auth_headers, mailbox):
+    """The row tells an expiry holding money from an ordinary one, which is how
+    the console shows it apart (spec payments, Expiry holding money is recorded
+    distinctly)."""
+    organizer = auth_headers()
+    setup(client, organizer)
+    _, vs = enroll(client, auth_headers)
+    expire_holding_payment(client, organizer, vs)
+
+    row = sheet_row(client, organizer, vs)
+    assert row["state"] == "expired"
+    assert row["held_amount"] == "600.00"
+    assert row["held_currency"] == "CZK"
+
+
+def test_fencer_table_states_nothing_held_by_an_ordinary_expiry(client, auth_headers, mailbox):
+    organizer = auth_headers()
+    setup(client, organizer)
+    _, vs = enroll(client, auth_headers)
+    age_reserved(vs, expires_in_hours=-1)
+    client.post("/api/tournaments/cup/payments/process", headers=organizer)
+
+    row = sheet_row(client, organizer, vs)
+    assert row["state"] == "expired"
+    assert row["held_amount"] is None
+
+
+def test_reinstated_registration_holds_nothing_on_the_fencer_table(client, auth_headers, mailbox):
+    organizer = auth_headers()
+    setup(client, organizer)
+    _, vs = enroll(client, auth_headers)
+    expire_holding_payment(client, organizer, vs)
+    import_rows(client, organizer, [f"2;02.08.2026;400,00;CZK;{vs};;;;;"])
+
+    row = sheet_row(client, organizer, vs)
+    assert row["state"] != "expired"
+    assert row["held_amount"] is None

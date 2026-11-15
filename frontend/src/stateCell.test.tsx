@@ -182,3 +182,34 @@ it("keeps the dialog open and states a refusal", async () => {
   // and what was typed survives, so the organizer is not made to type it again
   expect((host!.querySelector(".modal input") as HTMLInputElement).value).toBe("volná účast");
 });
+
+it("tells an expiry holding money from an ordinary one", () => {
+  // spec payments, Expiry holding money is recorded distinctly: the organizer
+  // owes this fencer an answer about the money, and the row says so
+  mount(
+    <StateCell
+      row={row({
+        state: "expired",
+        held_amount: "600.00",
+        held_currency: "CZK",
+        expires_at: "2026-08-05T10:00:00+00:00",
+      })}
+      onToggle={vi.fn().mockResolvedValue(undefined)}
+      busy={false}
+    />,
+  );
+  const badge = host?.querySelector(".state-text");
+  expect(badge?.textContent).toBe(t("console.expiredHolding.label"));
+  expect(badge?.getAttribute("title")).toContain("600");
+});
+
+it("states an ordinary expiry as expired", () => {
+  mount(
+    <StateCell
+      row={row({ state: "expired", held_amount: null, held_currency: null })}
+      onToggle={vi.fn().mockResolvedValue(undefined)}
+      busy={false}
+    />,
+  );
+  expect(host?.textContent).toBe(t("registration.state.expired"));
+});

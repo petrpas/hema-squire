@@ -347,6 +347,11 @@
     "waived_all": "odpuštěno vše",
     "waived_amount": "odpuštěno {{amount}}",
     "overpaid": "přeplatek {{amount}}",
+    "expiredHolding": {
+      "label": "Vypršela s platbou",
+      "title": "Rezervace vypršela {{day}} a drží připsaných {{amount}}. Squire peníze sám nevrací, domluv se se šermířem, co s nimi.",
+      "titleUndated": "Rezervace vypršela a drží připsaných {{amount}}. Squire peníze sám nevrací, domluv se se šermířem, co s nimi."
+    },
     "waiver": {
       "title": "Označit zaplaceno bez platby",
       "meaning": "Zaznamená, že tato registrace nic nedluží a že na ni nedorazily žádné peníze. Nic se nepřipisuje, takže se nezmění žádný součet přijatých částek.",

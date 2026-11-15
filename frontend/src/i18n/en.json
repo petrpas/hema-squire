@@ -341,6 +341,11 @@
     "waived_all": "all waived",
     "waived_amount": "{{amount}} waived",
     "overpaid": "{{amount}} over",
+    "expiredHolding": {
+      "label": "Expired holding money",
+      "title": "The reservation expired on {{day}} holding {{amount}} credited. Squire returns nothing by itself; agree with the fencer what happens to it.",
+      "titleUndated": "The reservation expired holding {{amount}} credited. Squire returns nothing by itself; agree with the fencer what happens to it."
+    },
     "waiver": {
       "title": "Settle without a payment",
       "meaning": "Records that this registration owes nothing and that no money arrived for it. Nothing is credited, so no total of what the tournament received moves.",
