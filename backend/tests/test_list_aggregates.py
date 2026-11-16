@@ -8,7 +8,7 @@ from datetime import timedelta
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models import Fencer, Rule, Tournament
+from app.models import Fencer, Rule, Team, TeamMember, Tournament
 from tests.conftest import publish, set_features, today_utc
 
 
@@ -222,3 +222,99 @@ def test_a_tournament_ignores_its_seminar(client, auth_headers, engine):
     entry = cup_entry(client)
     assert entry["entrant_count"] == 2
     assert entry["program_meters"] == []
+
+
+def add_team_discipline(client, organizer, capacity):
+    response = client.post(
+        "/api/tournaments/cup/disciplines",
+        json={
+            "slug": "LS-T",
+            "weapon": "LS",
+            "kind": "team",
+            "team_min": 1,
+            "team_max": 4,
+            "capacity": capacity,
+            "fee": 1000,
+        },
+        headers=organizer,
+    )
+    assert response.status_code == 201, response.text
+
+
+def roster(engine, team_name, members):
+    """Writes `members` — (name, club, HR id) — onto the named team's roster."""
+    with Session(engine) as session:
+        team = session.scalars(select(Team).where(Team.name == team_name)).one()
+        for ordinal, (name, club, hr_id) in enumerate(members):
+            session.add(
+                TeamMember(team_id=team.id, ordinal=ordinal, name=name, club=club, hr_id=hr_id)
+            )
+        session.commit()
+
+
+def test_a_teams_members_count_once_and_a_waitlisted_team_not(client, auth_headers, engine):
+    organizer = auth_headers()
+    make_cup(client, organizer)
+    add_team_discipline(client, organizer, capacity=1)
+    captain = fencer_with_club(auth_headers, engine, "cap@example.com", "Klub A")
+    with Session(engine) as session:
+        row = session.scalars(select(Fencer).where(Fencer.email == "cap@example.com")).one()
+        row.hr_id = 7
+        session.commit()
+    response = client.post(
+        "/api/tournaments/cup/register",
+        json={"disciplines": ["SB"], "teams": [{"slug": "LS-T", "name": "Wolves"}]},
+        headers=captain,
+    )
+    assert response.status_code == 201, response.text
+    late = fencer_with_club(auth_headers, engine, "late@example.com", "Klub L")
+    response = client.post(
+        "/api/tournaments/cup/register",
+        json={"teams": [{"slug": "LS-T", "name": "Bears"}]},
+        headers=late,
+    )
+    assert response.status_code == 201, response.text
+    roster(
+        engine,
+        "Wolves",
+        [
+            # the captain, seated alone too: one fencer by the shared profile
+            ("Someone Else Typed", "Klub A", 7),
+            ("Jan Novák", "Klub J", None),
+            # the same unbound name twice on one roster is one person
+            ("jan  NOVAK", "Klub J", None),
+            ("Eva Malá", None, 9),
+        ],
+    )
+    roster(engine, "Bears", [("Waiting Member", "Klub W", None)])
+
+    entry = cup_entry(client)
+    assert (entry["entrant_count"], entry["club_count"]) == (3, 2)
+
+
+def test_a_team_only_tournament_states_its_members(client, auth_headers, engine):
+    organizer = auth_headers()
+    date = today_utc() + timedelta(days=30)
+    client.post(
+        "/api/tournaments",
+        json={"slug": "cup", "display_name": "Cup", "date": str(date)},
+        headers=organizer,
+    )
+    client.patch(
+        "/api/tournaments/cup",
+        json={"city": "Brno", "organizers": [{"name": "Org", "link": None}]},
+        headers=organizer,
+    )
+    add_team_discipline(client, organizer, capacity=4)
+    publish(client, organizer, "cup")
+    captain = fencer_with_club(auth_headers, engine, "cap@example.com", "Klub A")
+    response = client.post(
+        "/api/tournaments/cup/register",
+        json={"teams": [{"slug": "LS-T", "name": "Wolves"}]},
+        headers=captain,
+    )
+    assert response.status_code == 201, response.text
+    roster(engine, "Wolves", [("A One", "Klub A", None), ("B Two", "Klub B", None)])
+
+    entry = cup_entry(client)
+    assert (entry["entrant_count"], entry["club_count"]) == (2, 2)

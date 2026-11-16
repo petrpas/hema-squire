@@ -1,6 +1,7 @@
 """Who a signed-in fencer might know at a listed tournament (spec
 public-browsing, A signed-in caller is shown familiar entrants): seated
-clubmates first, and where there are none, compatriots.
+clubmates first, and where there are none, compatriots — fencers seated alone
+and the members of seated teams alike.
 
 Everything here is already stated by the public rosters; the selection only
 brings the few names that matter to one caller onto the list. Computed for a
@@ -14,7 +15,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.hr_index import country_code
-from app.list_counts import SeatedEntrant, normalize_club
+from app.list_counts import SeatedEntrant, normalize_club, same_person
 from app.models import (
     DisciplineKind,
     Fencer,
@@ -120,6 +121,14 @@ def _ratings(
     return ratings
 
 
+def _is_caller(entrant: SeatedEntrant, caller: Fencer) -> bool:
+    """The caller's own placement, or a team roster naming them: a member has
+    no account, so it is the caller where it names the same person."""
+    if entrant.fencer_id is not None:
+        return entrant.fencer_id == caller.id
+    return same_person(entrant.name, entrant.hr_id, caller.display_name, caller.hr_id)
+
+
 def familiar_entrants(
     session: Session,
     tournaments: Sequence[Tournament],
@@ -135,7 +144,7 @@ def familiar_entrants(
     ratings = _ratings(session, tournaments, hr_ids)
     answer: dict[int, Familiar] = {}
     for tournament in tournaments:
-        others = [e for e in seated.get(tournament.id, []) if e.fencer_id != caller.id]
+        others = [e for e in seated.get(tournament.id, []) if not _is_caller(e, caller)]
         basis: Literal["club", "country"] = "club"
         matched = [e for e in others if normalize_club(e.club) == club] if club is not None else []
         if not matched and country is not None:

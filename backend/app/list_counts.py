@@ -3,6 +3,10 @@ how many fencers are seated and from how many clubs, and on an event the fill
 of its capped program items (spec public-browsing, A list entry states its
 public aggregates).
 
+A tournament's fencers include the members of its seated teams, as its team
+rosters name them; one person entered both alone and on a team, or on two
+teams, is one fencer (`same_person`).
+
 An event has no discipline to be seated in, so its fencers are those its
 side-event rosters list: the people holding a place at a seminar or other
 program item (spec public-entrants).
@@ -28,6 +32,8 @@ from app.models import (
     Registration,
     RegistrationDiscipline,
     RegistrationExtra,
+    Team,
+    TeamMember,
     Tournament,
 )
 
@@ -43,13 +49,51 @@ def normalize_club(club: str | None) -> str | None:
     return normalized or None
 
 
+def _folded_name(name: str) -> str:
+    return " ".join(fold(name).split())
+
+
+class _Listed:
+    """Who a tournament already lists, as a team member is told apart from
+    them: one person where both are bound to the same hemaratings profile,
+    and where either is bound to none, by name (folded, whitespace
+    collapsed). A team member has no account, so this is the best identity a
+    roster offers. Two profiles that differ are two people whatever their
+    names."""
+
+    def __init__(self) -> None:
+        self._hr_ids: set[int] = set()
+        # folded name → whether some entrant of that name has no profile
+        self._names: dict[str, bool] = {}
+
+    def add(self, name: str, hr_id: int | None) -> None:
+        if hr_id is not None:
+            self._hr_ids.add(hr_id)
+        key = _folded_name(name)
+        self._names[key] = self._names.get(key, False) or hr_id is None
+
+    def holds(self, name: str, hr_id: int | None) -> bool:
+        if hr_id is not None and hr_id in self._hr_ids:
+            return True
+        unbound = self._names.get(_folded_name(name))
+        return unbound is not None and (hr_id is None or unbound)
+
+
+def same_person(a_name: str, a_hr_id: int | None, b_name: str, b_hr_id: int | None) -> bool:
+    """`_Listed`'s identity for one pair."""
+    if a_hr_id is not None and b_hr_id is not None:
+        return a_hr_id == b_hr_id
+    return _folded_name(a_name) == _folded_name(b_name)
+
+
 @dataclass(frozen=True)
 class SeatedEntrant:
-    """One fencer seated in at least one of a tournament's individual
-    disciplines, as the public rosters list them."""
+    """One fencer seated in a tournament, as the public rosters list them: in
+    an individual discipline, or on a seated team's roster. A team member has
+    no account, so its `fencer_id` is None."""
 
     registration_id: int
-    fencer_id: int
+    fencer_id: int | None
     name: str
     club: str | None
     nationality: str | None
@@ -57,7 +101,7 @@ class SeatedEntrant:
 
 
 # tournament id, registration id, fencer id, name, club, nationality, HR id
-_EntrantRow = tuple[int, int, int, str, str | None, str | None, int | None]
+_EntrantRow = tuple[int, int, int | None, str, str | None, str | None, int | None]
 
 
 def seated_entrants(
@@ -65,15 +109,17 @@ def seated_entrants(
     tournaments: Sequence[Tournament],
     removed: Mapping[int, set[int]],
 ) -> dict[int, list[SeatedEntrant]]:
-    """Each tournament's seated individual placements, one per fencer: live,
-    not queued, and not taken off the public table (`removed`, by tournament
-    id). A fencer seated in two disciplines is one registration and appears
-    once. Team disciplines are left out: a team member has no account to be
-    told apart by, and the team rosters state teams, not fencers.
+    """Each tournament's seated fencers: live, not queued, and not taken off
+    the public table (`removed`, by tournament id). A fencer seated in two
+    disciplines is one registration and appears once. The members of a seated
+    team follow the individual entrants, each left out where they are already
+    listed (`same_person`) — the team's own fencer seated alone, a member on
+    two teams.
 
     An event's entrants are instead the registrations holding a place at one
     of its publicly rostered items, once each however many they hold. One
-    query for the tournaments of the list and one for its events."""
+    query each for the tournaments' individuals, their team members, and the
+    list's events."""
     seated: dict[int, list[SeatedEntrant]] = {tournament.id: [] for tournament in tournaments}
     tournament_ids = [t.id for t in tournaments if not t.is_event]
     event_ids = [t.id for t in tournaments if t.is_event]
@@ -88,6 +134,24 @@ def seated_entrants(
         seated[tournament_id].append(
             SeatedEntrant(registration_id, fencer_id, name, club, nationality, hr_id)
         )
+    if tournament_ids:
+        listed: dict[int, _Listed] = {}
+        for tournament_id in tournament_ids:
+            listed[tournament_id] = _Listed()
+            for entrant in seated[tournament_id]:
+                listed[tournament_id].add(entrant.name, entrant.hr_id)
+        for tournament_id, registration_id, _, name, club, nationality, hr_id in _team_members(
+            session, tournament_ids
+        ):
+            if registration_id in removed.get(tournament_id, set()):
+                continue
+            known = listed[tournament_id]
+            if known.holds(name, hr_id):
+                continue
+            known.add(name, hr_id)
+            seated[tournament_id].append(
+                SeatedEntrant(registration_id, None, name, club, nationality, hr_id)
+            )
     return seated
 
 
@@ -114,6 +178,35 @@ def _discipline_entrants(session: Session, ids: list[int]) -> Sequence[_EntrantR
             )
             .distinct()
             .order_by(Registration.id)
+        )
+        .tuples()
+        .all()
+    )
+
+
+def _team_members(session: Session, ids: list[int]) -> Sequence[_EntrantRow]:
+    """The live members of the seated teams, as stored on their rosters, in
+    entry order."""
+    return (
+        session.execute(
+            select(
+                Registration.tournament_id,
+                Registration.id,
+                Registration.fencer_id,
+                TeamMember.name,
+                TeamMember.club,
+                TeamMember.nationality,
+                TeamMember.hr_id,
+            )
+            .join(Team, Team.registration_id == Registration.id)
+            .join(TeamMember, TeamMember.team_id == Team.id)
+            .where(
+                Registration.tournament_id.in_(ids),
+                Team.waitlisted.is_(False),
+                TeamMember.removed_at.is_(None),
+                live_registration(),
+            )
+            .order_by(Team.id, TeamMember.ordinal)
         )
         .tuples()
         .all()

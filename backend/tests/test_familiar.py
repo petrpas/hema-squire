@@ -8,7 +8,14 @@ from datetime import timedelta
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models import Fencer, HRRatingSnapshot, HRSnapshotRating, Tournament
+from app.models import (
+    Fencer,
+    HRRatingSnapshot,
+    HRSnapshotRating,
+    Team,
+    TeamMember,
+    Tournament,
+)
 from tests.conftest import publish, set_features, today_utc
 
 
@@ -176,3 +183,49 @@ def test_clubmates_at_an_events_seminar_are_found_unranked(client, auth_headers,
     assert found["total"] == 2
     assert found["ranked"] is False
     assert [p["label"] for p in found["people"]] == ["Adam V.", "Zdeněk M."]
+
+
+def test_clubmates_on_a_team_roster_are_found_without_the_caller(client, auth_headers, engine):
+    organizer = auth_headers()
+    client.post(
+        "/api/tournaments",
+        json={"slug": "cup", "display_name": "Cup", "date": str(today_utc() + timedelta(days=30))},
+        headers=organizer,
+    )
+    client.patch(
+        "/api/tournaments/cup",
+        json={"city": "Brno", "organizers": [{"name": "Org", "link": None}]},
+        headers=organizer,
+    )
+    client.post(
+        "/api/tournaments/cup/disciplines",
+        json={
+            "slug": "LS-T",
+            "weapon": "LS",
+            "kind": "team",
+            "team_min": 1,
+            "team_max": 4,
+            "capacity": 4,
+            "fee": 1000,
+        },
+        headers=organizer,
+    )
+    publish(client, organizer, "cup")
+    me = fencer(auth_headers, engine, "me@example.com", "Petr Novák", "Klub A", "CZ")
+    response = client.post(
+        "/api/tournaments/cup/register",
+        json={"teams": [{"slug": "LS-T", "name": "Wolves"}]},
+        headers=me,
+    )
+    assert response.status_code == 201, response.text
+    with Session(engine) as session:
+        team = session.scalars(select(Team).where(Team.name == "Wolves")).one()
+        for ordinal, (name, club) in enumerate(
+            [("petr  NOVAK", "Klub A"), ("Eva Malá", "klub a"), ("Jan Kos", "Klub A")]
+        ):
+            session.add(TeamMember(team_id=team.id, ordinal=ordinal, name=name, club=club))
+        session.commit()
+
+    found = familiar(client, me)
+    assert (found["basis"], found["total"], found["ranked"]) == ("club", 2, False)
+    assert [p["label"] for p in found["people"]] == ["Eva M.", "Jan K."]

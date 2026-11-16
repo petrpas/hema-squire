@@ -255,6 +255,8 @@ Each entry of the tournament list SHALL carry three facts that do not depend on 
 - `entrant_count`: the number of distinct seated fencers across the tournament's disciplines. A fencer seated in two disciplines SHALL count once; a fencer only queued, a cancelled registration, and an entry the organizer took off the public table SHALL NOT count.
 - `club_count`: the number of distinct clubs among those fencers, clubs compared after normalization (case and diacritics folded, whitespace collapsed and trimmed), an empty club counting as none.
 
+In a team discipline the seated fencers SHALL be the live members of its seated teams, as their rosters name them, each with the club and nationality the roster states for that member; a waitlisted team's members, and the members of a team whose entering registration is cancelled or taken off the public table, SHALL NOT count. A member has no account, so a member SHALL count as the same fencer as another entrant where both are bound to the same hemaratings profile, or, where either is bound to none, where their names are equal after the same folding as clubs. Two different profiles are two fencers whatever their names. A fencer seated alone and on a team, or on two teams, SHALL count once.
+
 On an event (`discipline-less-events`), which has no discipline to be seated in, the fencers counted SHALL instead be those listed on its side-event rosters (`public-entrants`, Side events have rosters, the afterparty does not): live registrations holding a place at a seminar or other program item, whose row the organizer has not taken off the public table. A fencer holding places at two such items SHALL count once. Registrations holding only an afterparty or goods SHALL NOT count. A tournament's figures SHALL NOT include side-event attendees.
 
 An event's entry SHALL also carry `program_meters`: one meter for each seminar or other program item the event offers that has a capacity, in the order the items were offered, each stating the item's name, the number of fencers its roster lists, and its capacity. An uncapped item SHALL have no meter. A tournament's entry SHALL carry `program_meters` empty.
@@ -264,6 +266,14 @@ These are aggregates of what the public rosters already state, and disclose noth
 #### Scenario: A fencer in two disciplines
 - **WHEN** a tournament has one fencer seated in both its longsword and its sabre discipline, and two others seated in one each
 - **THEN** its entry states three fencers
+
+#### Scenario: A team-only tournament counts its members
+- **WHEN** a tournament's only discipline is a team discipline, with one seated team of three members from two clubs and one waitlisted team
+- **THEN** its entry states three fencers and two clubs
+
+#### Scenario: A fencer alone and on a team counts once
+- **WHEN** a fencer bound to hemaratings profile 7 is seated in the individual discipline and a team roster lists a member bound to profile 7
+- **THEN** that fencer counts once
 
 #### Scenario: Clubs compared loosely
 - **WHEN** the three fencers name their clubs `Šermířský klub Brno`, `sermirsky klub brno ` and an empty club
@@ -300,7 +310,7 @@ These are aggregates of what the public rosters already state, and disclose noth
 ### Requirement: A signed-in caller is shown familiar entrants
 A list entry answered for a signed-in caller SHALL carry `familiar` when the selection below finds anyone, and SHALL omit it otherwise. It SHALL be absent from every entry of a payload answered without a credential, for the same reason the other bond fields are (`An anonymous payload carries no bond`).
 
-The selection is made per tournament, among its seated entrants — not queued, not cancelled, not taken off the public table — excluding the caller. On an event, the entrants selected among SHALL be the same fencers its `entrant_count` counts (`A list entry states its public aggregates`):
+The selection is made per tournament, among its seated entrants — not queued, not cancelled, not taken off the public table — excluding the caller. The seated entrants include the members of seated teams, told apart and deduplicated as `entrant_count` counts them; a team member is the caller where the two name the same person by that rule. On an event, the entrants selected among SHALL be the same fencers its `entrant_count` counts (`A list entry states its public aggregates`):
 
 1. **Club.** The caller's club is the club of the hemaratings profile bound to the account, falling back to the account's own club where no profile is bound or the profile names none. Entrants whose club equals it after normalization (case and diacritics folded, whitespace collapsed and trimmed) match. `basis` is `club`.
 2. **Country**, only when step 1 matched nobody: entrants whose nationality names the same country as the caller's, both read as ISO 3166 alpha-2 codes whatever vocabulary they were written in, the caller's taken from the bound profile and falling back to the account's own. `country` carries that code. `basis` is `country`. A caller with no nationality stops here.
@@ -317,6 +327,10 @@ The selection SHALL be computed for all entries of a response together, not with
 #### Scenario: Country fallback
 - **WHEN** no clubmate is seated but four fencers of the caller's nationality are
 - **THEN** `familiar` has basis `country`, total 4 and the three highest-rated of them
+
+#### Scenario: Clubmates on a team
+- **WHEN** a signed-in fencer reads a team-only tournament where a seated team lists two members of the caller's club and the caller themselves
+- **THEN** `familiar` has basis `club`, total 2, and the caller is not among the people
 
 #### Scenario: The caller is not their own acquaintance
 - **WHEN** the caller is seated in the tournament themselves
