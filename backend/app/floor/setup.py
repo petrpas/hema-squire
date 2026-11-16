@@ -50,6 +50,8 @@ class Tournament:
     id: int
     date: date
     disciplines: tuple[FloorDiscipline, ...]
+    # the IANA zone its wall-clock times are read in
+    timezone: str = "Europe/Prague"
 
 
 def _clock(value: time) -> str:

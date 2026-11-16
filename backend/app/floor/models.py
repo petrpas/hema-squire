@@ -9,9 +9,21 @@ no foreign key: a key names a replay row, not a table row.
 without importing this module.
 """
 
-from datetime import date, time
+from datetime import date, datetime, time
 
-from sqlalchemy import JSON, Date, ForeignKey, Integer, String, Time, UniqueConstraint
+from sqlalchemy import (
+    JSON,
+    Boolean,
+    Date,
+    DateTime,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    Time,
+    UniqueConstraint,
+    text,
+)
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db import Base
@@ -111,3 +123,79 @@ class FloorSettings(Base):
 
     tournament_id: Mapped[int] = mapped_column(ForeignKey("tournaments.id"), primary_key=True)
     params: Mapped[dict[str, object]] = mapped_column(JSON, default=dict)
+
+
+class FloorPlan(Base):
+    """One version of the tournament's plan (spec floor-plan, A plan is a
+    stored version): at most one working, at most one published, the earlier
+    published ones kept as history."""
+
+    __tablename__ = "floor_plans"
+    __table_args__ = (
+        UniqueConstraint("tournament_id", "version"),
+        Index(
+            "uq_floor_plans_working",
+            "tournament_id",
+            unique=True,
+            sqlite_where=text("status = 'working'"),
+        ),
+        Index(
+            "uq_floor_plans_published",
+            "tournament_id",
+            unique=True,
+            sqlite_where=text("status = 'published'"),
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    tournament_id: Mapped[int] = mapped_column(ForeignKey("tournaments.id"), index=True)
+    version: Mapped[int] = mapped_column(Integer)
+    # working | published | history
+    status: Mapped[str] = mapped_column(String(16))
+    # [{"discipline_id", "k", "day": "YYYY-MM-DD"}]
+    variant: Mapped[list[dict[str, object]]] = mapped_column(JSON, default=list)
+    metrics: Mapped[dict[str, object]] = mapped_column(JSON, default=dict)
+    exclusions: Mapped[list[dict[str, object]]] = mapped_column(JSON, default=list)
+    collisions: Mapped[list[dict[str, object]]] = mapped_column(JSON, default=list)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    # the account that made it, by id; no foreign key into the office, and no
+    # text that would need redacting when the account goes
+    created_by: Mapped[int | None] = mapped_column(Integer)
+
+
+class FloorPlanActivity(Base):
+    __tablename__ = "floor_plan_activities"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    plan_id: Mapped[int] = mapped_column(ForeignKey("floor_plans.id"), index=True)
+    # the engine's deterministic id, "LS:pool:3", by which versions are compared
+    activity_id: Mapped[str] = mapped_column(String(80))
+    discipline_id: Mapped[int] = mapped_column(Integer)
+    kind: Mapped[str] = mapped_column(String(8))
+    ordinal: Mapped[int] = mapped_column(Integer)
+    round: Mapped[int] = mapped_column(Integer)
+    piste_id: Mapped[int] = mapped_column(Integer)
+    starts_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    ends_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    final: Mapped[bool] = mapped_column(Boolean, default=False)
+    # a pool's participants
+    size: Mapped[int] = mapped_column(Integer, default=0)
+
+
+class FloorPin(Base):
+    """A decision the planner does not move (spec floor-plan, Decisions are
+    pinned and unpinned). `gate` names the gate that added it; such a pin goes
+    only by reopening that gate."""
+
+    __tablename__ = "floor_pins"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    tournament_id: Mapped[int] = mapped_column(ForeignKey("tournaments.id"), index=True)
+    # day | k | place | sequence
+    kind: Mapped[str] = mapped_column(String(16))
+    # what it fixes: a discipline id, or an activity id
+    target: Mapped[str] = mapped_column(String(80))
+    value: Mapped[dict[str, object]] = mapped_column(JSON, default=dict)
+    gate: Mapped[str | None] = mapped_column(String(40))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    created_by: Mapped[int | None] = mapped_column(Integer)
