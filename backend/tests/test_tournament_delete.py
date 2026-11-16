@@ -18,8 +18,11 @@ from app.floor.models import (
     FloorFormat,
     FloorOfficial,
     FloorOfficialDay,
+    FloorPin,
     FloorPiste,
     FloorPisteDay,
+    FloorPlan,
+    FloorPlanActivity,
     FloorSettings,
 )
 from app.main import app
@@ -242,6 +245,23 @@ def populate(session, tournament: Tournament, registration: Registration, actor:
         )
     )
     session.add(FloorSettings(tournament_id=tid, params={}))
+    plan = FloorPlan(tournament_id=tid, version=1, status="working", created_at=now)
+    session.add(plan)
+    session.flush()
+    session.add(
+        FloorPlanActivity(
+            plan_id=plan.id,
+            activity_id="LS:pool:1",
+            discipline_id=discipline.id,
+            kind="pool",
+            ordinal=1,
+            round=0,
+            piste_id=piste.id,
+            starts_at=now,
+            ends_at=now,
+        )
+    )
+    session.add(FloorPin(tournament_id=tid, kind="k", target="1", value={"k": 2}, created_at=now))
     session.commit()
 
 

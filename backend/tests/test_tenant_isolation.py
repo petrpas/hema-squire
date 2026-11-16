@@ -35,6 +35,12 @@ BODIES: dict[tuple[str, str], object] = {
     ("PUT", "/api/tournaments/{slug}/floor/setup/pistes"): [],
     ("PUT", "/api/tournaments/{slug}/floor/setup/formats"): [],
     ("PUT", "/api/tournaments/{slug}/floor/setup/officials"): [],
+    ("POST", "/api/tournaments/{slug}/floor/plan/choose"): {"key": "1:2@0"},
+    ("POST", "/api/tournaments/{slug}/floor/plan/pins"): {
+        "kind": "k",
+        "target": "1",
+        "value": {"k": 2},
+    },
     ("POST", "/api/tournaments/{slug}/discount-codes"): {
         "name": "Trainers",
         "code": "trainers",
@@ -127,6 +133,7 @@ PATH_PARAMS = {
     "payment_id": "1",
     "fencer_id": "1",
     "fmt": "pdf",
+    "pin_id": "1",
 }
 
 

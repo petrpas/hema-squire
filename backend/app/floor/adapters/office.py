@@ -97,7 +97,10 @@ def has_floor(tournament: Tournament) -> bool:
 def setup_facts(tournament: Tournament) -> SetupTournament:
     """What floor Setup reads of the tournament, without a replay."""
     return SetupTournament(
-        id=tournament.id, date=tournament.date, disciplines=_disciplines(tournament)
+        id=tournament.id,
+        date=tournament.date,
+        disciplines=_disciplines(tournament),
+        timezone=setup.zone_for(tournament).key,
     )
 
 
