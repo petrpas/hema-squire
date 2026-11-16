@@ -21,7 +21,13 @@ export const SCHEDULE_TAB = "schedule";
 export type FloorBarTab = FloorTab | typeof SCHEDULE_TAB;
 
 /** The tabs whose change has landed. The rest say so in one line. */
-export const IMPLEMENTED: ReadonlySet<FloorTab> = new Set(["setup", "data", "plan"]);
+export const IMPLEMENTED: ReadonlySet<FloorTab> = new Set([
+  "setup",
+  "data",
+  "plan",
+  "today",
+  "checkin",
+]);
 
 export function isFloorTab(value: string | undefined): value is FloorTab {
   return value !== undefined && (FLOOR_TABS as readonly string[]).includes(value);

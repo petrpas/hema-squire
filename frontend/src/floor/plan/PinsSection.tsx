@@ -29,6 +29,7 @@ export function PinsSection({
     const name = names.get(pin.target) ?? pin.target;
     if (pin.kind === "day") return t("floor.plan.pins.day", { name, day: String(pin.value.day) });
     if (pin.kind === "k") return t("floor.plan.pins.k", { name, k: String(pin.value.k) });
+    if (pin.kind === "n") return t("floor.plan.pins.n", { name, n: String(pin.value.n) });
     if (pin.kind === "place") {
       return t("floor.plan.pins.place", {
         activity: pin.target,
@@ -60,7 +61,7 @@ export function PinsSection({
               {describe(pin)}{" "}
               {pin.gate !== null ? (
                 <span className="muted">
-                  {t("floor.plan.pins.gate", { gate: t(`floor.tabs.${pin.gate}`) })}
+                  {t("floor.plan.pins.gate", { gate: t(`floor.tabs.${pin.gate.split(":")[0]}`) })}
                 </span>
               ) : (
                 <button

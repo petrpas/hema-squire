@@ -19,13 +19,13 @@
 
 ## 4. Frontend
 
-- [ ] 4.1 `routes.ts`: `floorPath(slug, phase?, discipline?)`. Add the route in `App.tsx`.
-- [ ] 4.2 `frontend/src/floor/checkin/`: search, person rows, a tick, withdrawals, the lineup editor, and the close and reopen dialogs with their impact and invalidations.
-- [ ] 4.3 `frontend/src/floor/today/`: the matrix, slip, the waiting list, and the quiet 15-second refresh with its "aktualizováno v" text.
-- [ ] 4.4 Add tests and the i18n strings.
+- [x] 4.1 `routes.ts`: `floorPath(slug, phase?, discipline?)`. Add the route in `App.tsx`.
+- [x] 4.2 `frontend/src/floor/checkin/`: search, person rows, a tick, withdrawals, the lineup editor, and the close and reopen dialogs with their impact and invalidations.
+- [x] 4.3 `frontend/src/floor/today/`: the matrix, slip, the waiting list, and the quiet 15-second refresh with its "aktualizováno v" text.
+- [x] 4.4 Add tests and the i18n strings.
 
 ## 5. Acceptance
 
-- [ ] 5.1 `pytest tests/floor -q` passes. `ruff`, `basedpyright` and the boundary test pass.
-- [ ] 5.2 `npm run typecheck`, `npm run check` and `npm test` pass.
-- [ ] 5.3 `openspec validate add-floor-checkin --strict` passes.
+- [x] 5.1 `pytest tests/floor -q` passes. `ruff`, `basedpyright` and the boundary test pass.
+- [x] 5.2 `npm run typecheck`, `npm run check` and `npm test` pass.
+- [x] 5.3 `openspec validate add-floor-checkin --strict` passes.

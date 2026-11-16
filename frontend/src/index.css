@@ -5907,3 +5907,43 @@ tr.export-line td {
     padding: 1rem 16px;
   }
 }
+
+/* ----- floor check-in and overview (add-floor-checkin) ----- */
+
+.floor-gates {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.floor-gate {
+  flex: 1 1 14rem;
+}
+
+.floor-search {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  max-width: 24rem;
+  font-size: var(--label-size);
+}
+
+.floor-entries {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+/* arrived and withdrawn are stated in words; these only repeat it */
+.floor-desk tr.floor-arrived th {
+  font-weight: var(--weight-display);
+}
+
+.floor-withdrawn {
+  color: var(--ink-faded);
+  text-decoration: line-through;
+}
+
+.floor-matrix td a {
+  color: var(--ink);
+}

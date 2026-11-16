@@ -82,9 +82,13 @@ export function consolePath(slug: string, phase?: Phase): string {
 }
 
 /** The tournament-day console, at one of its tabs or, naming none, at the
- *  default one (spec floor-console). */
-export function floorPath(slug: string, tab?: FloorTab): string {
-  return tab ? `/organizer/${slug}/floor/${tab}` : `/organizer/${slug}/floor`;
+ *  default one (spec floor-console); a step's tab at one discipline, by slug
+ *  (spec floor-today). */
+export function floorPath(slug: string, tab?: FloorTab, discipline?: string): string {
+  if (!tab) return `/organizer/${slug}/floor`;
+  return discipline
+    ? `/organizer/${slug}/floor/${tab}/${discipline}`
+    : `/organizer/${slug}/floor/${tab}`;
 }
 
 export function admin(): string {

@@ -2307,7 +2307,8 @@
         "kindK": "počet skupin",
         "discipline": "Disciplína",
         "pools": "Skupin",
-        "add": "Připnout"
+        "add": "Připnout",
+        "n": "{{name}}: N = {{n}}"
       },
       "sensitivity": {
         "title": "Citlivost",
@@ -2330,6 +2331,85 @@
           "officials": "Den omezují rozhodčí."
         }
       }
+    },
+    "today": {
+      "discipline": "Disciplína",
+      "slip": "Skluz",
+      "waiting": "Co čeká",
+      "nothing": "Nic nečeká.",
+      "failed": "Přehled se nepodařilo načíst.",
+      "fresh": "aktualizováno v {{time}}",
+      "stale": "Obnovení se nezdařilo; aktualizováno v {{time}}",
+      "behind_one": "{{count}} minuta skluz",
+      "behind_few": "{{count}} minuty skluz",
+      "behind_many": "{{count}} minuty skluz",
+      "behind_other": "{{count}} minut skluz",
+      "ahead_one": "{{count}} minuta napřed",
+      "ahead_few": "{{count}} minuty napřed",
+      "ahead_many": "{{count}} minuty napřed",
+      "ahead_other": "{{count}} minut napřed",
+      "state": {
+        "open": "otevřená",
+        "closed": "uzavřená",
+        "waiting": "čeká"
+      },
+      "codes": {
+        "days": "Nastavení: chybí dny turnaje",
+        "pistes": "Nastavení: chybí planše",
+        "format": "Nastavení: {{discipline}} nemá formát",
+        "staffing": "Nastavení: {{discipline}} nemá obsazení planše",
+        "publish": "Plán: pracovní verze čeká na publikování",
+        "checkin_open": "Prezence: {{discipline}} je otevřená a první skupina se blíží"
+      }
+    },
+    "checkin": {
+      "failed": "Prezenci se nepodařilo načíst.",
+      "search": "Hledat jméno nebo klub",
+      "arrived": "Přišel",
+      "entries": "Přihlášky",
+      "tick": "{{name}} přišel",
+      "local": "(jen na místě)",
+      "paid": "zaplaceno",
+      "unpaid": "nezaplaceno",
+      "withdrawn": "odhlášen",
+      "withdraw": "Odhlásit",
+      "undoWithdraw": "Vrátit",
+      "counts": "Přítomno {{present}} z {{entered}}.",
+      "closedAt": "Prezence uzavřena, N = {{n}}.",
+      "close": "Uzavřít prezenci",
+      "reopen": "Znovu otevřít",
+      "closeTitle": "Uzavřít prezenci: {{name}}",
+      "reopenTitle": "Znovu otevřít prezenci: {{name}}",
+      "invalidates": "Znovuotevření zruší:",
+      "invalidated": {
+        "n_pin": "pin N pro plánovač",
+        "snapshot": "zmrazený seznam šermířů",
+        "draw": "los skupin"
+      },
+      "reopenRefused": "Nelze znovu otevřít: už jsou zapsané zápasy ({{items}}).",
+      "impact": {
+        "infeasible": "N = {{n}} se nevejde do rozsahu skupin {{range}}.",
+        "pools": "vychází {{k}} skupin ({{sizes}})",
+        "poolsInstead": "vychází {{k}} skupin místo {{was}}",
+        "earlier_one": "konec o {{count}} minutu dřív",
+        "earlier_few": "konec o {{count}} minuty dřív",
+        "earlier_many": "konec o {{count}} minuty dřív",
+        "earlier_other": "konec o {{count}} minut dřív",
+        "later_one": "konec o {{count}} minutu později",
+        "later_few": "konec o {{count}} minuty později",
+        "later_many": "konec o {{count}} minuty později",
+        "later_other": "konec o {{count}} minut později"
+      },
+      "teamPresent": "přítomen",
+      "teamShort_one": "chybí {{count}}",
+      "teamShort_few": "chybí {{count}}",
+      "teamShort_many": "chybí {{count}}",
+      "teamShort_other": "chybí {{count}}",
+      "lineup": "Sestava ({{min}}–{{max}})",
+      "here": "je tu",
+      "substitute": "Náhradník (jméno)",
+      "addSubstitute": "Přidat do sestavy",
+      "lineupRefused": "Sestavu se nepodařilo uložit; zkontroluj její velikost a zda člen není v jiné sestavě."
     }
   }
 }

@@ -53,6 +53,7 @@ export default function App() {
         <Route path="organizer/:slug/console/:phase" element={<ConsoleRoute />} />
         <Route path="organizer/:slug/floor" element={<FloorRoute />} />
         <Route path="organizer/:slug/floor/:tab" element={<FloorRoute />} />
+        <Route path="organizer/:slug/floor/:tab/:discipline" element={<FloorRoute />} />
         <Route path="admin" element={<AdminPanel />} />
         <Route path="profile" element={<ProfilePage />} />
       </Route>

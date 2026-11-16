@@ -27,7 +27,7 @@ function failure(error: unknown): "terms" | "missing" | "failed" {
 export default function FloorRoute() {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { slug = "", tab } = useParams();
+  const { slug = "", tab, discipline } = useParams();
   const [loaded, setLoaded] = useState<Loaded | null | "missing" | "failed" | "terms">(null);
 
   const load = useCallback(() => {
@@ -59,6 +59,7 @@ export default function FloorRoute() {
       tournament={loaded.tournament}
       summary={loaded.summary}
       tab={tab}
+      discipline={discipline}
       onChanged={() =>
         floorApi
           .summary(slug)
