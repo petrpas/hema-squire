@@ -117,8 +117,13 @@ code, so an absent key reads as its default.
 - **`alembic/env.py`.** Registers `app.floor.models` beside `app.models`. `alembic/` is
   outside the boundary checker's scope (it checks `app/`), and the checker is not
   changed.
-- **The office console header** gets a link to `floorPath(slug)`. This is a frontend
-  edit, and the import boundary governs only the backend.
+- **The office console header.** Its "Turnaj" stage, until now a disabled placeholder
+  beside "Před turnajem", becomes a link to `floorPath(slug)`. The floor console draws
+  the same header with "Turnaj" current and "Před turnajem" leading back. This is a
+  frontend edit, and the import boundary governs only the backend.
+- **A discipline's deletion.** `floor_formats.discipline_id` is `ON DELETE CASCADE`
+  (SQLite runs with `foreign_keys=ON`). So the office's discipline delete takes the
+  format along, with no knowledge of the floor.
 
 ### D5. Imports that cross the floor boundary
 **New in this change:**
@@ -171,6 +176,11 @@ allows.
 **The floor's two additions.** Two registration-backed rows are never joined, as the
 office never joins them either. Two members of one team are never joined, which the
 office count has no need for but a lineup does.
+
+**Which identifier counts.** The identifier a row's own record stores: a confirmed match.
+A matcher's proposal is not stored, and the office's count does not read it either. A
+member joins the first person, in anchor order, whose every row it is the same person
+as, so no person ends up holding two different identifiers.
 
 **Keys.** A name edit on a member row can now change a join, and with it which key a
 member row resolves to. The anchor rule keeps a registration-backed person's key

@@ -5,6 +5,7 @@ import ConfirmEmail from "./ConfirmEmail";
 import ConsoleRoute from "./ConsoleRoute";
 import FencerHome from "./FencerHome";
 import FencerLayout from "./FencerLayout";
+import FloorRoute from "./floor/FloorRoute";
 import NotFound from "./NotFound";
 import PrivacyPage from "./PrivacyPage";
 import ProfilePage from "./ProfilePage";
@@ -50,6 +51,8 @@ export default function App() {
         <Route path="organizer" element={<TournamentPicker />} />
         <Route path="organizer/:slug/console" element={<ConsoleRoute />} />
         <Route path="organizer/:slug/console/:phase" element={<ConsoleRoute />} />
+        <Route path="organizer/:slug/floor" element={<FloorRoute />} />
+        <Route path="organizer/:slug/floor/:tab" element={<FloorRoute />} />
         <Route path="admin" element={<AdminPanel />} />
         <Route path="profile" element={<ProfilePage />} />
       </Route>

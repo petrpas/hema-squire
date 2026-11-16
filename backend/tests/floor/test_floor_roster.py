@@ -12,7 +12,7 @@ from collections import Counter
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app import entrants, hr_match
+from app import entrants, hr_match, list_counts
 from app.db import get_session
 from app.floor.adapters import office
 from app.floor.roster import Roster
@@ -215,7 +215,7 @@ def test_a_waitlisted_team_and_a_removed_registrations_team_are_not_listed(clien
 # ------------------------------------------------------------ who is one person
 
 
-def individual_and_team(client, auth_headers, member: dict):
+def individual_and_team(client, auth_headers, member: dict, other: dict | None = None):
     """Adéla fences Longsword Open and is a member of her own team."""
     organizer = auth_headers()
     setup_tournament(client, organizer, payments=False)
@@ -234,13 +234,13 @@ def individual_and_team(client, auth_headers, member: dict):
     )
     captain = auth_headers(email="a@example.com", name="Adéla")
     team_id = register(client, captain, teams=[{"slug": "TM", "name": "Draci"}])["teams"][0]["id"]
-    save_roster(client, captain, team_id, [member, {"name": "Filip"}])
+    save_roster(client, captain, team_id, [member, other or {"name": "Filip"}])
     return assert_floor_matches_public()
 
 
-def test_an_individual_on_a_team_with_one_confirmed_id_is_one_person(client, auth_headers):
+def test_an_individual_on_a_team_with_one_identifier_is_one_person(client, auth_headers):
     floor = individual_and_team(client, auth_headers, {"name": "Adéla Nováková", "hr_id": 123})
-    # the member's id is confirmed, the fencer's not stated: two persons
+    # the member states 123, the fencer nothing, and their names differ: two persons
     assert len(floor.persons) == 3
     set_hr_id("a@example.com", 123)
 
@@ -256,22 +256,45 @@ def test_an_individual_on_a_team_with_one_confirmed_id_is_one_person(client, aut
     assert (adela.name, adela.hr_id) == ("Adéla", 123)
 
 
-def test_a_proposed_id_does_not_join(client, auth_headers):
+def test_a_member_without_an_identifier_joins_by_folded_name(client, auth_headers):
+    individual_and_team(client, auth_headers, {"name": "  adela ", "club": None})
+    set_hr_id("a@example.com", 123)
+
+    floor = assert_floor_matches_public()
+
+    (individual,) = floor.individuals
+    (team,) = floor.teams
+    assert team.members[0] == individual.person
+    assert len(floor.persons) == 2
+
+
+def test_a_proposed_identifier_is_no_identifier(client, auth_headers):
+    """A matcher's proposal is not stored on the member, so the member still
+    joins by name — as the public count joins it."""
     individual_and_team(client, auth_headers, {"name": "Adéla", "club": None})
     session = db_session()
     found = tournament(session)
-    store_decision(session, found, "hr_match", hr_match.identity_key("Adéla", None), {"hr_id": 123})
+    store_decision(session, found, "hr_match", hr_match.identity_key("Adéla", None), {"hr_id": 456})
     session.commit()
     set_hr_id("a@example.com", 123)
 
     floor = assert_floor_matches_public()
 
-    member = next(p for p in floor.persons if p.key.startswith("mem:") and p.name == "Adéla")
-    assert member.hr_id == 123
+    assert len(floor.persons) == 2
+
+
+def test_two_identifiers_are_two_people(client, auth_headers):
+    individual_and_team(client, auth_headers, {"name": "Adéla", "hr_id": 456})
+    set_hr_id("a@example.com", 123)
+
+    floor = assert_floor_matches_public()
+
     assert len(floor.persons) == 3
+    (team,) = floor.teams
+    assert team.members[0].startswith("mem:")
 
 
-def test_two_registrations_sharing_an_id_join_nothing(client, auth_headers):
+def test_two_registrations_sharing_an_identifier_stay_two(client, auth_headers):
     individual_and_team(client, auth_headers, {"name": "Adéla", "hr_id": 123})
     register(client, auth_headers(email="b@example.com", name="Adéla Dvojnice"))
     set_hr_id("a@example.com", 123)
@@ -279,10 +302,49 @@ def test_two_registrations_sharing_an_id_join_nothing(client, auth_headers):
 
     floor = assert_floor_matches_public()
 
-    assert len(floor.persons) == 4
-    assert all(not entry.person.startswith("mem:") for entry in floor.individuals)
+    assert len(floor.persons) == 3
+    assert all(entry.person.startswith("reg:") for entry in floor.individuals)
     (team,) = floor.teams
-    assert team.members[0].startswith("mem:")
+    # the member joins the first of them
+    assert team.members[0] == f"reg:{registration_of('a@example.com').id}"
+
+
+def test_namesakes_on_one_team_stay_two(client, auth_headers):
+    floor = individual_and_team(
+        client, auth_headers, {"name": "Petr Svoboda"}, {"name": "petr  svoboda"}
+    )
+
+    (team,) = floor.teams
+    assert len(set(team.members)) == 2
+
+
+def test_the_floor_counts_the_people_the_public_list_counts(client, auth_headers):
+    individual_and_team(client, auth_headers, {"name": "adéla", "club": None})
+    register(client, auth_headers(email="b@example.com", name="Filip"))
+    session = db_session()
+    found = tournament(session)
+
+    floor = office.roster(session, found)
+    seated = list_counts.seated_entrants(session, [found], {})
+    ((fencers, _),) = list_counts.entrant_counts(seated).values()
+
+    # Adéla alone and on her team, Filip alone and Filip on the team
+    assert len(floor.persons) == fencers == 2
+
+
+# ------------------------------------------------------------ day facts
+
+
+def test_disciplines_carry_their_id_and_the_day_is_stated(client, auth_headers):
+    setup_tournament(client, auth_headers())
+    session = db_session()
+    found = tournament(session)
+
+    floor = office.roster(session, found)
+
+    assert [d.id for d in floor.disciplines] == [d.id for d in found.disciplines]
+    assert floor.date == found.date
+    assert floor.timezone == (found.timezone or "Europe/Prague")
 
 
 # ------------------------------------------------------------ it reads only

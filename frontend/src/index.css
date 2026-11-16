@@ -5607,3 +5607,186 @@ tr.export-line td {
 .deletion-pending {
   margin-top: 12px;
 }
+
+/* ===== floor console (tournament day) =====
+   The office console's frame and band, the work beside the schedule panel
+   (spec floor-console). Tokens only; the badge is the shared .tab-mark. */
+
+.floor-tabs {
+  flex: none;
+  padding: 0.5rem 1.4rem;
+  border-bottom: var(--border-w) solid var(--hairline);
+  background: var(--paper);
+}
+
+/* the tablist is its own element only for its role; the band lays out its
+   buttons as if they were its own */
+.floor-tablist {
+  display: contents;
+}
+
+.floor-tabs button {
+  position: relative;
+}
+
+.floor-workspace {
+  min-width: 0;
+}
+
+.floor-work {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.floor-work[hidden] {
+  display: none;
+}
+
+.floor-schedule {
+  flex: none;
+  width: 18rem;
+  padding: 1rem 1.2rem;
+  border-left: var(--border-w) solid var(--hairline);
+  background: var(--paper-raised);
+  overflow-y: auto;
+}
+
+.floor-schedule h2 {
+  font-size: var(--body-size);
+  margin: 0 0 0.5rem;
+}
+
+.floor-not-yet {
+  padding: 1.4rem;
+}
+
+.floor-section h3 {
+  font-size: var(--body-size);
+  margin: 0.8rem 0 0.4rem;
+}
+
+.floor-section-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 1rem;
+  margin-top: 0.8rem;
+}
+
+.floor-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.6rem 1rem;
+  padding: 0.6rem 0;
+  border-bottom: var(--border-w) solid var(--hairline);
+}
+
+.floor-row label,
+.floor-format-fields label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  font-size: var(--label-size);
+}
+
+.floor-row label.floor-check,
+.floor-format-fields label.floor-check,
+.floor-ticks label {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.floor-row input[type="number"],
+.floor-format-fields input[type="number"],
+.floor-params input[type="number"] {
+  width: 5rem;
+}
+
+.floor-breaks,
+.floor-break,
+.floor-row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.floor-ticks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 0.9rem;
+  border: none;
+  margin: 0;
+  padding: 0;
+}
+
+.floor-ticks legend {
+  font-size: var(--label-size);
+  margin-bottom: 0.2rem;
+}
+
+.floor-format {
+  padding: 0.4rem 0 0.8rem;
+  border-bottom: var(--border-w) solid var(--hairline);
+}
+
+.floor-format-fields {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem 1.6rem;
+}
+
+.floor-format-fields fieldset {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.6rem;
+  border: var(--border-w) solid var(--hairline);
+  border-radius: var(--radius);
+  padding: 0.5rem 0.8rem 0.7rem;
+  margin: 0;
+}
+
+.floor-format-fields fieldset > p {
+  flex-basis: 100%;
+  margin: 0;
+}
+
+/* what Setup names missing: in words beside the field, never in a colour of
+   its own */
+.floor-missing {
+  font-size: var(--label-size);
+  color: var(--ink);
+  font-style: italic;
+}
+
+.floor-data {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1rem 1.4rem;
+}
+
+.floor-team-row th {
+  text-align: left;
+}
+
+@media (max-width: 768px) {
+  .floor-tabs {
+    padding: 0.4rem 16px;
+  }
+
+  .floor-data {
+    padding: 1rem 16px;
+  }
+
+  .floor-schedule {
+    width: auto;
+    flex: 1;
+    border-left: none;
+  }
+}

@@ -6,6 +6,7 @@ from sqlalchemy import engine_from_config, pool
 from app import models  # noqa: F401  # registers tables on Base.metadata
 from app.config import settings
 from app.db import Base
+from app.floor import models as floor_models  # noqa: F401  # and the floor's
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

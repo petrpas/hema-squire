@@ -1122,16 +1122,24 @@ export default function Console({
             <span className="logo">{t("app.title")}</span>
           </Link>
           <nav className="stage-control">
-            {STAGES.map((stage) => (
-              <button
-                type="button"
-                key={stage}
-                className={stage === "pre" ? "active" : ""}
-                disabled={stage !== "pre"}
-              >
-                {t(`stage.${stage}`)}
-              </button>
-            ))}
+            {STAGES.map((stage) =>
+              /* the tournament day is its own console, wherever there is one:
+               a discipline-less event has no floor (spec floor-console) */
+              stage === "in" && !isEvent ? (
+                <Link key={stage} to={routes.floorPath(tournament.slug)}>
+                  {t("stage.in")}
+                </Link>
+              ) : (
+                <button
+                  type="button"
+                  key={stage}
+                  className={stage === "pre" ? "active" : ""}
+                  disabled={stage !== "pre"}
+                >
+                  {t(`stage.${stage}`)}
+                </button>
+              ),
+            )}
           </nav>
           <div className="tournament-info">
             <div className="tournament-name">{tournament.display_name}</div>

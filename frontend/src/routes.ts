@@ -1,5 +1,6 @@
 import type { Phase } from "./Console";
 import type { HomeTab } from "./FencerShell";
+import type { FloorTab } from "./floor/tabs";
 
 /** The tournament list. A named tab is spelled out; the bare URL means "the
  *  default tab", resolved from what there is to show (spec `fencer-home`).
@@ -78,6 +79,12 @@ export function picker(): string {
 
 export function consolePath(slug: string, phase?: Phase): string {
   return phase ? `/organizer/${slug}/console/${phase}` : `/organizer/${slug}/console`;
+}
+
+/** The tournament-day console, at one of its tabs or, naming none, at the
+ *  default one (spec floor-console). */
+export function floorPath(slug: string, tab?: FloorTab): string {
+  return tab ? `/organizer/${slug}/floor/${tab}` : `/organizer/${slug}/floor`;
 }
 
 export function admin(): string {

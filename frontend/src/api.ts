@@ -89,7 +89,7 @@ async function uploadImage(path: string, file: File): Promise<TournamentDetail> 
   return response.json();
 }
 
-async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
+export async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const token = getToken();
   const response = await fetch(path, {
     ...options,

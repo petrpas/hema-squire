@@ -30,6 +30,11 @@ from app.main import app
 # endpoint with a required body therefore fails this test until it is listed
 # here — deliberately: that failure is the reminder.
 BODIES: dict[tuple[str, str], object] = {
+    # floor Setup saves a whole section; an empty one is a valid body
+    ("PUT", "/api/tournaments/{slug}/floor/setup/days"): [],
+    ("PUT", "/api/tournaments/{slug}/floor/setup/pistes"): [],
+    ("PUT", "/api/tournaments/{slug}/floor/setup/formats"): [],
+    ("PUT", "/api/tournaments/{slug}/floor/setup/officials"): [],
     ("POST", "/api/tournaments/{slug}/discount-codes"): {
         "name": "Trainers",
         "code": "trainers",

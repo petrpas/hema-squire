@@ -2026,5 +2026,148 @@
     "invalid": "This link no longer works. You can ask for the change again on the Profile page.",
     "taken": "Another record in Squire has started using this address in the meantime, so the account's address was not changed.",
     "failed": "The address could not be confirmed."
+  },
+  "floor": {
+    "tabs": {
+      "label": "Tournament day steps",
+      "setup": "Setup",
+      "data": "Data",
+      "plan": "Plan",
+      "today": "Overview",
+      "checkin": "Check-in",
+      "pools": "Pools",
+      "bracket": "Bracket",
+      "results": "Results",
+      "schedule": "Schedule",
+      "waiting": "something waits here"
+    },
+    "notYet": "This step is not available yet.",
+    "schedule": {
+      "title": "Schedule",
+      "none": "No plan has been made yet.",
+      "later": "The schedule appears here with the planner."
+    },
+    "roles": {
+      "referee": "Referee",
+      "judge": "Judge",
+      "table": "Table official"
+    },
+    "errors": {
+      "invalid": "This value was not accepted.",
+      "duplicate": "Already listed above.",
+      "end_not_after_start": "The end must come after the start.",
+      "break_outside_day": "A break must lie inside its day.",
+      "breaks_overlap": "The breaks overlap.",
+      "unknown_day": "This day is not among the saved days.",
+      "not_found": "This row no longer exists; reload the page.",
+      "unknown_discipline": "This discipline is not in the tournament.",
+      "unknown_person": "This person is not on the roster.",
+      "above_max": "The minimum is above the maximum.",
+      "referee_required": "A piste needs at least one referee.",
+      "required": "Please fill this in.",
+      "too_small": "The value is too small.",
+      "too_large": "The value is too large."
+    },
+    "setup": {
+      "save": "Save",
+      "saving": "Saving…",
+      "saveFailed": "Saving failed. Please try again.",
+      "loadFailed": "Setup could not be loaded.",
+      "remove": "Remove",
+      "moveDown": "Move down",
+      "days": {
+        "title": "Days",
+        "offered": "No day is saved yet. The tournament's date from 9:00 to 19:00 is offered; save it or change it.",
+        "date": "Date",
+        "start": "Start",
+        "end": "End",
+        "break": "Break",
+        "breakStart": "Break start",
+        "breakEnd": "Break end",
+        "addBreak": "Add a break",
+        "addDay": "Add a day",
+        "removeDay": "Remove the day"
+      },
+      "pistes": {
+        "title": "Pistes",
+        "planned_one": "The planner uses {{count}} piste.",
+        "planned_other": "The planner uses {{count}} pistes.",
+        "held_one": "{{count}} is held for re-planning.",
+        "held_other": "{{count}} are held for re-planning.",
+        "name": "Name",
+        "tag": "Tag",
+        "tagHint": "e.g. finals",
+        "reserve": "Reserve",
+        "days": "Days it is available",
+        "add": "Add a piste"
+      },
+      "formats": {
+        "title": "Discipline formats",
+        "missing": {
+          "format": "No format is saved yet.",
+          "staffing": "The piste staffing is not stated yet."
+        },
+        "pools": "Pools",
+        "pool_min": "Smallest pool",
+        "pool_max": "Largest pool",
+        "elimination": "Elimination",
+        "teamStages": "Team members fence individual pools, followed by a team elimination.",
+        "advanceAll": "Everyone advances",
+        "advance": "Advancing",
+        "thirdPlace": "Third-place bout",
+        "staffing": "Piste staffing",
+        "stateStaffing": "State the staffing",
+        "slots": "Lengths (minutes)",
+        "slot_pool_bout": "Pool bout",
+        "slot_elim_bout": "Elimination bout",
+        "slot_pool_overhead": "Changeover between pools",
+        "slot_team_match": "Team match"
+      },
+      "officials": {
+        "title": "Officials",
+        "none": "No officials yet.",
+        "name": "Name",
+        "person": "Fences as",
+        "noPerson": "does not fence",
+        "lostOption": "person no longer on the roster",
+        "linkLost": "The linked person is no longer on the roster.",
+        "roles": "Roles",
+        "disciplines": "Disciplines",
+        "days": "Days they are available",
+        "add": "Add an official"
+      },
+      "params": {
+        "title": "Parameters",
+        "pool_sizes_even": "Pools of one discipline differ by at most 1",
+        "always": "always",
+        "finals_last": "Finals after everything else of their day",
+        "prefer_larger_pools": "Prefer larger pools",
+        "club_weight": "Draw weight of club separation",
+        "nationality_weight": "Draw weight of nationality spread",
+        "min_rest_minutes": "Minimum rest between bouts (minutes)",
+        "kind": {
+          "rule": "rule",
+          "preference": "preference",
+          "estimate": "estimate"
+        }
+      }
+    },
+    "data": {
+      "fromImport": "Entrants come from the table imported in the office.",
+      "toImport": "Open Import",
+      "fromRegistrations": "Entrants come from the office's registrations.",
+      "draft": "The tournament is not published yet, so it has no entrants.",
+      "loadFailed": "The roster could not be loaded.",
+      "count_one": "{{count}} entrant",
+      "count_other": "{{count}} entrants",
+      "empty": "Nobody yet.",
+      "name": "Name",
+      "club": "Club",
+      "nationality": "Nationality",
+      "rating": "Rating",
+      "paid": "Paid",
+      "yes": "yes"
+    },
+    "loadFailed": "The tournament-day console could not be loaded. Try reloading the page."
   }
 }

@@ -14,7 +14,7 @@ This change builds both. It plans nothing yet.
 **Context:** floor. It touches the office in four places:
 - `tournament_delete.py`, so a tournament's floor rows go with it;
 - `account_deletion.py`, so floor columns are classified;
-- the office console's header, which gets a link to the floor;
+- the office console's header, whose "Turnaj" stage becomes a link to the floor;
 - `alembic/env.py`, so the floor tables are registered.
 
 None of these imports `app.floor`. Without them a floor table would block a tournament's
@@ -52,9 +52,10 @@ deletion and break the classification test.
 - **First floor tables**, in `app/floor/models.py` with migration `floor_0001`:
   `floor_days`, `floor_pistes`, `floor_piste_days`, `floor_formats`, `floor_officials`,
   `floor_official_days`, `floor_settings`.
-- **A "Den turnaje" link** in the office console's header. It is shown to the
-  organizer of a tournament that has at least one discipline. A discipline-less event
-  has no floor.
+- **The header's "Turnaj" stage becomes a link.** The office console's header already
+  names the stages "Před turnajem", "Turnaj" and "Po turnaji", with only the first
+  enabled. "Turnaj" now leads to the floor console on a tournament that has at least
+  one discipline. A discipline-less event has no floor.
 
 ## Capabilities
 
@@ -90,6 +91,6 @@ deletion and break the classification test.
   - new `frontend/src/floor/` with `FloorConsole.tsx` and one directory per tab;
   - `routes.ts` gains `floorPath(slug, phase?)`;
   - `App.tsx` gains two routes;
-  - the office console header gains the link.
+  - the office console header's "Turnaj" stage becomes the link.
 - **API:** `GET/PUT /api/tournaments/{slug}/floor/setup/*`, all behind the console gate.
 - **Out of scope:** no planner, check-in, pools or results.
