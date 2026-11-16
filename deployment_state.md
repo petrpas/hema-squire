@@ -171,6 +171,12 @@ mail instead of sending it), the Anthropic key (LLM table import), the Google
 service-account JSON over an empty `deploy/secrets/` (Sheets export), and the
 replica. Each disables a feature; none breaks one.
 
+*2026-11-16:* the Sheets export is on. `deploy/secrets/google-credentials.json`
+(`chmod 600`) holds the `fiore-898@fiore-416114.iam.gserviceaccount.com` service
+account, the same one local development uses, and `.env` points
+`HEMA_SQUIRE_GOOGLE_CREDENTIALS_PATH` at `/secrets/google-credentials.json`;
+the previous `.env` is kept beside it as `.env.bak-2026-11-16`.
+
 ### The one thing still owed from the deploy
 
 `deploy/.env` exists on the server, `chmod 600`, with the signing key generated
