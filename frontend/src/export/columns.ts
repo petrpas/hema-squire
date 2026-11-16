@@ -150,33 +150,17 @@ export function teamPaidColumn(t: TFunction): ExportColumn {
   };
 }
 
-/** The name cell of a team discipline's tab. A fighter states its own name; a
- *  team states its name with the fencer who entered it and how many it names
- *  against the discipline's bounds.
- *
- *  One cell rather than columns of their own, because the three belong to the
- *  team and a fighter's row has nothing to put under them — and because what
- *  leaves the tab by the clipboard then carries them too (spec export-tables,
- *  Each tab states its own columns and order). */
-export function teamNameColumn(t: TFunction): ExportColumn {
-  return {
-    id: "name",
-    value: (row) => {
-      const team = row._team;
-      if (team === undefined) return text(row.name);
-      const count = t("export.team.members", {
-        count: team.members,
-        min: team.team_min,
-        max: team.team_max,
-      });
-      return `${text(row.name)} · ${t("export.team.enteredBy", { name: team.entering_fencer })} · ${count}`;
-    },
-  };
-}
+/** The name cell of a team discipline's tab on screen: a fighter's name, or
+ *  the team's name alone. Who entered the team is a hint over the name, drawn
+ *  by `TeamRosterTable`, and the member count is not stated — the roster
+ *  beneath the team shows who is on it (spec export-tables, Each tab states its
+ *  own columns and order). The copy and the printout read the flat rows of
+ *  `teamFlat` instead. */
+export const TEAM_NAME: ExportColumn = { id: "name", value: (row) => text(row.name) };
 
 /** A team discipline's tab: the same columns as an individual one, read by two
- *  kinds of row. A team states its number, its name, who entered it with its
- *  member count, and paid; a fighter states its name, nationality, club,
+ *  kinds of row. A team states its number, its name and paid; a fighter
+ *  states its name, nationality, club,
  *  identifier, rating and rank, and no paid of its own. */
 export const TEAM_COLUMNS = (
   t: TFunction,
@@ -184,7 +168,7 @@ export const TEAM_COLUMNS = (
   numbers: Map<string, number>,
 ): ExportColumn[] => [
   teamPositionColumn(numbers),
-  teamNameColumn(t),
+  TEAM_NAME,
   NATIONALITY,
   CLUB,
   HR_ID,

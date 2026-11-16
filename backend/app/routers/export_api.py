@@ -7,6 +7,7 @@ from app import (
     exportrevenue,
     exportsummary,
     exporttables,
+    hr_sync,
     rosterprint,
     rules,
     sheet,
@@ -14,7 +15,7 @@ from app import (
 )
 from app.auth import require_console_access, require_published, require_role
 from app.i18n import catalog
-from app.models import Role
+from app.models import DisciplineKind, Role
 from app.routers.tournaments import FencerDep, SessionDep, TournamentDep
 from app.schemas import (
     ExportBandTabOut,
@@ -97,11 +98,25 @@ def export_table(
     replayed, _ = rules.replay(
         base, rules.active_rules(session, tournament), sheet.rating_lookup(session, tournament)
     )
+    rows = exporttables.table_rows(
+        list(replayed.values()), tab, exporttables.team_entries(session, tournament)
+    )
+    if tab.kind != exporttables.DISCIPLINE:
+        return ExportTableOut(**tab.__dict__, rows=rows)
+    # counted over the tab's fighters as listed, unfiltered — the switch is the
+    # reader's and never reaches a count — and once per profile, so a fighter
+    # on two teams is one fighter waiting
+    bound = {
+        hr_id
+        for row in rows
+        if row.get("_team") is None and (hr_id := row.get("hr_id")) is not None
+    }
+    coverage = hr_sync.snapshot_coverage(session, tournament)
     return ExportTableOut(
         **tab.__dict__,
-        rows=exporttables.table_rows(
-            list(replayed.values()), tab, exporttables.team_entries(session, tournament)
-        ),
+        rows=rows,
+        ratings_fetched_at=coverage.taken_at,
+        ratings_missing=coverage.missing(bound),
     )
 
 
@@ -157,6 +172,7 @@ def export_revenue(
 
 # the roster's columns, in the template's order (spec roster-print)
 _ROSTER_HEADERS = ("position", "name", "nat", "club", "hr_id", "rank", "paid")
+_TEAM_ROSTER_HEADERS = ("position", "team", "name", "nat", "club", "hr_id", "rank", "paid")
 _ROSTER_MEDIA = {"pdf": "application/pdf", "png": "image/png"}
 
 
@@ -184,8 +200,14 @@ def export_roster(
     )
     if discipline is None:
         raise HTTPException(status_code=404, detail="unknown_export_table")
+    is_team = discipline.kind is DisciplineKind.TEAM
+    keys = _TEAM_ROSTER_HEADERS if is_team else _ROSTER_HEADERS
+    # a stale client sending the other kind's width would misprint every
+    # column after the first; refuse it rather than typeset it
+    if any(len(row) != len(keys) for row in body.rows):
+        raise HTTPException(status_code=422, detail="roster_width")
     locale = "en" if body.english else fencer.language
-    headers = [catalog.translate(f"export.roster.{key}", locale) for key in _ROSTER_HEADERS]
+    headers = [catalog.translate(f"export.roster.{key}", locale) for key in keys]
     # with no capacity line the rule falls under the last row, as hema-agent
     # drew it where no limit was set
     last_in = body.line_after if body.line_after is not None else len(body.rows)
@@ -195,6 +217,8 @@ def export_roster(
         body.rows,
         last_in,
         fmt,
+        template="team" if is_team else "discipline",
+        team_starts=body.team_starts if is_team else None,
     )
     filename = f"{tournament.slug}-{discipline.slug}.{fmt}"
     return Response(

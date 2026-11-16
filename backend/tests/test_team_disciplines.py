@@ -1638,12 +1638,11 @@ def test_a_team_discipline_reaches_the_sheets_export(client, auth_headers):
         # the spreadsheet mirrors the export tables, and the band carries a tab
         # per discipline — individual and team alike (spec export-tables)
         assert response.json()["worksheets"] == ["Fencers", "LS", "SA", "Summary"]
-        # the team's worksheet is the team with its fighters beneath it
-        team_rows = [row[1] for row in sheets.worksheets["SA"][1:]]
-        assert team_rows == [
-            "Wolves · přihlásil Jan Novák · 1/3–4 na soupisce",
-            "Roster Member Not A Fencer",
-        ]
+        # the team's worksheet is flat: one row per fighter, the team's number,
+        # name and paid on it (spec data-export, A team discipline's worksheet
+        # is flat)
+        team_rows = [row[:3] for row in sheets.worksheets["SA"][1:]]
+        assert team_rows == [[1, "Wolves", "Roster Member Not A Fencer"]]
         # and the Fencers worksheet is the fencer list, which the roster member
         # is on: it is a start list, which is what a tournament needs (design D8)
         fencers_rows = [row[1] for row in sheets.worksheets["Fencers"][1:]]
@@ -2645,8 +2644,9 @@ def test_the_fencers_tab_follows_the_fencer_list(client, auth_headers):
 
 
 def test_roster_print_typesets_a_team_tab(client, auth_headers):
-    """Roster print needs no change: it typesets the rows the tab sends, and a
-    team discipline is one of the tournament's disciplines like any other."""
+    """A team tab prints flat from its own template: the rows the tab sends,
+    eight cells each (spec roster-print, A team discipline prints as a flat
+    roster)."""
     organizer = auth_headers()
     setup_team_tournament(client, organizer, capacity=5)
     fencer = auth_headers(email="f1@example.com", name="Entrant")
@@ -2657,11 +2657,9 @@ def test_roster_print_typesets_a_team_tab(client, auth_headers):
         "/api/tournaments/cup/export/roster.pdf",
         json={
             "discipline": "LS",
-            "rows": [
-                ["1", "Wolves · entered by Entrant · 1/3–4", "", "", "", "", "No"],
-                ["", "A One", "CZ", "", "", "", ""],
-            ],
-            "line_after": 2,
+            "rows": [["1", "Wolves", "A One", "CZ", "", "", "", "No"]],
+            "line_after": 1,
+            "team_starts": [0],
             "english": True,
         },
         headers=organizer,

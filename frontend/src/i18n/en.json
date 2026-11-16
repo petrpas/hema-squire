@@ -89,6 +89,12 @@
     "fetchRatings": "Fetch HR ratings",
     "ratingsDone": "Ratings fetched · {{ratings}} values for {{fencers}} fencers.",
     "ratingsFailed": "Ratings fetch failed (index/page format?).",
+    "ratingsState": {
+      "fetched": "Ratings fetched {{moment}}",
+      "never": "Ratings not fetched yet",
+      "missing_one": "{{count}} fencer with an HR ID has no fetched rating yet",
+      "missing_other": "{{count}} fencers with an HR ID have no fetched rating yet"
+    },
     "runSheets": "Export to Google Sheets",
     "downloadJson": "Download JSON",
     "done": "Done · {{fencers}} fencers exported.",
@@ -109,6 +115,7 @@
     },
     "column": {
       "position": "Pos.",
+      "team": "Team",
       "name": "Name",
       "nat": "Nat.",
       "club": "Club",
@@ -196,8 +203,7 @@
     "png": "PNG",
     "printFailed": "The roster could not be typeset.",
     "team": {
-      "enteredBy": "entered by {{name}}",
-      "members": "{{count}}/{{min}}–{{max}} members"
+      "enteredBy": "Entered by {{name}}"
     }
   },
   "dedup": {

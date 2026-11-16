@@ -1,6 +1,7 @@
 """A discipline roster typeset to PDF and PNG (spec roster-print)."""
 
 import io
+import re
 
 from PIL import Image
 
@@ -60,6 +61,20 @@ def test_a_long_roster_is_one_image(client, auth_headers):
     assert image.height > 1.5 * image.width
 
 
+def test_a_long_roster_prints_on_a4_pages(client, auth_headers):
+    organizer = organizer_with_tournament(client, auth_headers)
+
+    response = print_roster(client, organizer, "pdf", rows=roster_rows(90), line_after=24)
+
+    assert response.status_code == 200, response.text
+    boxes = re.findall(rb"/MediaBox\s*\[([^\]]*)\]", response.content)
+    # several pages, every one of them A4 (595 x 842 pt)
+    assert len(boxes) > 1
+    for box in boxes:
+        width, height = (float(n) for n in box.split()[2:4])
+        assert (round(width), round(height)) == (595, 842)
+
+
 def test_english_changes_the_printed_headers(client, auth_headers):
     # a Czech-speaking organizer: the console's language is what English replaces
     organizer = organizer_with_tournament(
@@ -73,8 +88,7 @@ def test_english_changes_the_printed_headers(client, auth_headers):
     assert english.content != czech.content
 
 
-def test_a_team_discipline_prints(client, auth_headers):
-    organizer = organizer_with_tournament(client, auth_headers)
+def add_team_discipline(client, organizer):
     client.post(
         "/api/tournaments/cup/disciplines",
         json={
@@ -89,13 +103,63 @@ def test_a_team_discipline_prints(client, auth_headers):
         headers=organizer,
     )
 
-    # it typesets what the tab shows, and a team discipline's tab is one of the
-    # band's: the rows arrive from the client either way, and the server checks
-    # only that the discipline is one of this tournament's
-    response = print_roster(client, organizer, discipline="LS-T")
+
+def team_rows(team="Wolves"):
+    return [
+        ["1", team, "Šermíř 1", "CZE", "Klub", "10234", "12", "Ano"],
+        ["", "", "Šermíř 2", "CZE", "Klub", "", "", ""],
+        ["2", "Bears", "Šermíř 3", "CZE", "Klub", "", "", "Ne"],
+    ]
+
+
+def test_a_team_discipline_prints_flat_from_its_own_template(client, auth_headers):
+    organizer = organizer_with_tournament(client, auth_headers)
+    add_team_discipline(client, organizer)
+
+    for fmt, signature in (("pdf", b"%PDF"), ("png", PNG_SIGNATURE)):
+        response = print_roster(
+            client,
+            organizer,
+            fmt,
+            discipline="LS-T",
+            rows=team_rows(),
+            line_after=2,
+            team_starts=[0, 2],
+            english=True,
+        )
+        assert response.status_code == 200, response.text
+        assert response.content.startswith(signature)
+
+
+def test_typst_syntax_in_a_team_name_is_text(client, auth_headers):
+    organizer = organizer_with_tournament(client, auth_headers)
+    add_team_discipline(client, organizer)
+
+    response = print_roster(
+        client,
+        organizer,
+        "png",
+        discipline="LS-T",
+        rows=team_rows(team="#set page(width: 1cm)"),
+        team_starts=[0, 2],
+    )
 
     assert response.status_code == 200, response.text
-    assert response.content[:4] == b"%PDF"
+    image = Image.open(io.BytesIO(response.content))
+    # the page keeps its 48em width: the name never became a set rule
+    assert image.width > 1000
+
+
+def test_a_roster_of_the_other_kinds_width_is_refused(client, auth_headers):
+    organizer = organizer_with_tournament(client, auth_headers)
+    add_team_discipline(client, organizer)
+
+    team_as_individual = print_roster(client, organizer, discipline="LS-T")
+    individual_as_team = print_roster(client, organizer, rows=team_rows())
+
+    assert team_as_individual.status_code == 422
+    assert team_as_individual.json()["detail"] == "roster_width"
+    assert individual_as_team.status_code == 422
 
 
 def test_a_foreign_organizer_is_refused(client, auth_headers):

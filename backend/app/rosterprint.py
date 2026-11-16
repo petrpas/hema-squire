@@ -13,7 +13,10 @@ from typing import Literal
 import typst
 
 _TYPST_DIR = Path(__file__).parent / "typst"
-_TEMPLATE = _TYPST_DIR / "templates" / "discipline_roster.typ"
+_TEMPLATES = {
+    "discipline": _TYPST_DIR / "templates" / "discipline_roster.typ",
+    "team": _TYPST_DIR / "templates" / "team_roster.typ",
+}
 _FONTS = _TYPST_DIR / "fonts"
 
 # hema-agent rendered at the binding's default of 144; 200 keeps the text crisp
@@ -21,6 +24,9 @@ _FONTS = _TYPST_DIR / "fonts"
 _PNG_PPI = 200
 
 RosterFormat = Literal["pdf", "png"]
+# an individual discipline's seven columns, or a team discipline's flat eight
+# (design team-export-layouts D1)
+RosterTemplate = Literal["discipline", "team"]
 
 
 def render(
@@ -29,15 +35,29 @@ def render(
     rows: list[list[str]],
     last_in: int,
     fmt: RosterFormat,
+    template: RosterTemplate = "discipline",
+    team_starts: list[int] | None = None,
 ) -> bytes:
     """The roster as one document of `fmt`.
 
-    `last_in` is the 1-based row the heavier rule falls under. The page is as
-    tall as its content, so a PNG is one image however long the roster; should
-    the binding still split it, the first page is what is returned."""
-    roster = json.dumps({"title": title, "headers": headers, "rows": rows, "last_in": last_in})
+    `last_in` is the 1-based row the heavier rule falls under; `team_starts`,
+    on a team roster, the 0-based rows a team begins at. A PDF is set on A4
+    pages, its header row repeated on each, since it is printed; a PNG on one
+    page as tall as its content, so it is one image however long the roster.
+    Should the binding still split a PNG, the first page is what is
+    returned."""
+    roster = json.dumps(
+        {
+            "title": title,
+            "headers": headers,
+            "rows": rows,
+            "last_in": last_in,
+            "team_starts": team_starts or [],
+            "paper": "a4" if fmt == "pdf" else "long",
+        }
+    )
     result = typst.compile(
-        str(_TEMPLATE),
+        str(_TEMPLATES[template]),
         format=fmt,
         font_paths=[str(_FONTS)],
         ignore_system_fonts=True,

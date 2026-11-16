@@ -26,6 +26,7 @@ export default function TableOperations({
   onRefreshRatings,
   refreshing,
   ratingsMessage,
+  ratingsState,
   message,
 }: {
   title: string;
@@ -46,6 +47,9 @@ export default function TableOperations({
   /** What the last ratings fetch did — stated beside the fetch, so a tab
    *  that offers none does not carry it. */
   ratingsMessage: string | null;
+  /** When the ratings were fetched and whose are still missing, stated beside
+   *  the refresh so an empty rating cell explains itself. */
+  ratingsState?: string | null;
   message: string | null;
 }) {
   const { t } = useTranslation();
@@ -123,6 +127,7 @@ export default function TableOperations({
             );
           })}
       </div>
+      {ratingsState && onRefreshRatings && <p className="rail-hint">{ratingsState}</p>}
       {ratingsMessage && onRefreshRatings && <p className="rail-hint">{ratingsMessage}</p>}
       {message && <p className="rail-hint">{message}</p>}
     </section>

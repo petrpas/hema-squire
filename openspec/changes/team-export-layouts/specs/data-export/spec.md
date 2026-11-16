@@ -46,9 +46,9 @@ console states it, including a binding an organizer's match resolution, merge or
 substitution made. A correction the organizer typed SHALL outlive a later change
 of that binding: it belongs to the row, not to the profile.
 
-A roster member SHALL NOT appear in the `Fencers` worksheet — they hold no
-registration, so they have no row there. They appear only in their team
-discipline's worksheet.
+A roster member SHALL appear in the `Fencers` worksheet as the Fencers tab lists
+them — that worksheet is the tournament's start list (`etl-console`) — and in its
+team discipline's worksheet under its team.
 
 The export SHALL write English column headers and English yes/no values when the
 organizer has asked for an English export, and the organizer's own language
@@ -84,7 +84,7 @@ otherwise.
 
 #### Scenario: A team discipline has its worksheet
 - **WHEN** a tournament with an individual and a team longsword discipline, slugs `LS` and `LS-T`, is exported to Sheets
-- **THEN** a worksheet `LS-T` is written listing its teams' fighters, no roster member appears in the Fencers worksheet, and the Summary worksheet has no line for the team discipline
+- **THEN** a worksheet `LS-T` is written listing its teams' fighters, the roster members stand in the Fencers worksheet as the Fencers tab lists them, and the Summary worksheet has no line for the team discipline
 
 #### Scenario: An English sheet from a Czech console
 - **WHEN** a Czech-speaking organizer ticks the English export and writes to Sheets

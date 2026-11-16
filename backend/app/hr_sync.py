@@ -9,6 +9,7 @@ network boundary; tests substitute canned HTML.
 import html as html_mod
 import re
 import time
+from dataclasses import dataclass
 from datetime import datetime
 from typing import Protocol
 
@@ -284,7 +285,9 @@ def take_snapshot(
     missing: list[int] = []
     collected: list[HRSnapshotRating] = []
 
-    snapshot = HRRatingSnapshot(tournament_id=tournament.id, fencer_count=len(hr_ids))
+    snapshot = HRRatingSnapshot(
+        tournament_id=tournament.id, fencer_count=len(hr_ids), hr_ids=list(hr_ids)
+    )
     for hr_id in hr_ids:
         page = fetcher.fighter_page(hr_id)
         if page is None:
@@ -332,6 +335,45 @@ def take_snapshot(
         "ratings": len(collected),
         "missing": missing,
     }
+
+
+@dataclass(frozen=True)
+class SnapshotCoverage:
+    """Whom the latest snapshot covers, for a tab to state whose ratings are
+    not fetched (spec export-tables, A discipline tab states whose ratings are
+    not fetched). `asked` is None on a snapshot taken before it was recorded;
+    `rated` holds the identifiers it found any rating for."""
+
+    taken_at: datetime | None
+    asked: frozenset[int] | None
+    rated: frozenset[int]
+
+    def missing(self, hr_ids: set[int]) -> int:
+        """How many of `hr_ids` no snapshot holds a fetch for. With no snapshot,
+        all of them; with one that did not record whom it asked, those it found
+        no rating for at all — the best the old record answers."""
+        if self.taken_at is None:
+            return len(hr_ids)
+        known = self.asked if self.asked is not None else self.rated
+        return len(hr_ids - known)
+
+
+def snapshot_coverage(session: Session, tournament: Tournament) -> SnapshotCoverage:
+    snapshot = session.scalars(
+        select(HRRatingSnapshot)
+        .where(HRRatingSnapshot.tournament_id == tournament.id)
+        .order_by(HRRatingSnapshot.id.desc())
+        .limit(1)
+    ).first()
+    if snapshot is None:
+        return SnapshotCoverage(taken_at=None, asked=None, rated=frozenset())
+    rated = frozenset(
+        session.scalars(
+            select(HRSnapshotRating.hr_id).where(HRSnapshotRating.snapshot_id == snapshot.id)
+        )
+    )
+    asked = frozenset(snapshot.hr_ids) if snapshot.hr_ids is not None else None
+    return SnapshotCoverage(taken_at=snapshot.taken_at, asked=asked, rated=rated)
 
 
 def latest_ratings(

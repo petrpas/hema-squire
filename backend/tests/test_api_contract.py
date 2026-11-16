@@ -49,6 +49,14 @@ pytestmark = pytest.mark.usefixtures("before_manual_entry_registers")
 CONTRACT_CHECKS = [not_a_server_error, response_schema_conformance]
 
 schema = schemathesis.openapi.from_asgi("/openapi.json", app)
+# Off: schemathesis 4.26 harvests literals from every module the app imports
+# and substitutes them into generated values. A float landing on a decimal
+# field's string pattern crashes inside Hypothesis (`'float' object has no
+# attribute 'endswith'`, reported as FlakyStrategyDefinition) — the tool's own
+# error, not the app's. Which operation trips it moves with any new module: a
+# migration that does nothing was enough to make PATCH /api/tournaments/{slug}
+# fail. Generation from the schema alone asks the same two questions.
+schema.config.analysis.constants.enabled = False
 
 
 class SilentMatcher:

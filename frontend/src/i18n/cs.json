@@ -93,6 +93,14 @@
     "fetchRatings": "Stáhnout HR ratingy",
     "ratingsDone": "Ratingy staženy · {{ratings}} hodnot pro {{fencers}} šermířů.",
     "ratingsFailed": "Stažení ratingů se nezdařilo (index/formát stránky?).",
+    "ratingsState": {
+      "fetched": "Ratingy staženy {{moment}}",
+      "never": "Ratingy zatím nestaženy",
+      "missing_one": "{{count}} šermíř s HR ID zatím bez staženého ratingu",
+      "missing_few": "{{count}} šermíři s HR ID zatím bez staženého ratingu",
+      "missing_many": "{{count}} šermíře s HR ID zatím bez staženého ratingu",
+      "missing_other": "{{count}} šermířů s HR ID zatím bez staženého ratingu"
+    },
     "runSheets": "Export do Google Sheets",
     "downloadJson": "Stáhnout JSON",
     "done": "Hotovo · {{fencers}} šermířů exportováno.",
@@ -113,6 +121,7 @@
     },
     "column": {
       "position": "Poř.",
+      "team": "Tým",
       "name": "Jméno",
       "nat": "Nár.",
       "club": "Klub",
@@ -200,8 +209,7 @@
     "png": "PNG",
     "printFailed": "Soupisku se nepodařilo vysázet.",
     "team": {
-      "enteredBy": "přihlásil {{name}}",
-      "members": "{{count}}/{{min}}–{{max}} na soupisce"
+      "enteredBy": "Přihlásil/a {{name}}"
     }
   },
   "dedup": {

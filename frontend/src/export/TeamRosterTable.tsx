@@ -4,6 +4,7 @@ import type { SheetRow } from "../api";
 import EditableCell from "../EditableCell";
 import { type ExportColumn, ratingOf, TEAM_COLUMNS } from "./columns";
 import ExportGrid from "./ExportGrid";
+import HintedAction from "./HintedAction";
 import { teamOrder } from "./ordering";
 import { validateRating } from "./rating";
 
@@ -45,7 +46,18 @@ export default function TeamRosterTable({
     if (isTeam) {
       // the rating cell does not open on a team row: a team has no rating, and
       // a correction typed there would be a figure of nobody's
-      return column.id === "name" ? <strong>{column.value(row, index)}</strong> : null;
+      if (column.id !== "name") return null;
+      // who entered the team is the console's to know, not the row's to state
+      // (spec export-tables, Each tab states its own columns and order)
+      return (
+        <HintedAction hint={t("export.team.enteredBy", { name: row._team?.entering_fencer ?? "" })}>
+          {(hintId) => (
+            <strong className="team-name" aria-describedby={hintId}>
+              {column.value(row, index)}
+            </strong>
+          )}
+        </HintedAction>
+      );
     }
     if (!column.editable) return null;
     const display = column.value(row, index);

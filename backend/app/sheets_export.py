@@ -67,6 +67,9 @@ class Column:
 
 
 POSITION = Column("position", refreshed=True, numeric=True)
+# a team discipline's worksheet only: the team a fighter's row belongs to,
+# refreshed because it identifies the row and is the console's to state
+TEAM = Column("team", refreshed=True)
 NAME = Column("name")
 NATIONALITY = Column("nat")
 CLUB = Column("club")
@@ -87,6 +90,9 @@ TO_PAY = Column("to_pay")
 
 FENCERS_COLUMNS = [POSITION, NAME, NATIONALITY, CLUB, HR_ID, DISCIPLINES, PAID]
 DISCIPLINE_COLUMNS = [POSITION, NAME, NATIONALITY, CLUB, HR_ID, RATING, RANK, PAID]
+# flat: one row per fighter, the team's number (as the position), name and paid
+# on every row (spec data-export, A team discipline's worksheet is flat)
+TEAM_DISCIPLINE_COLUMNS = [POSITION, TEAM, NAME, NATIONALITY, CLUB, HR_ID, RATING, RANK, PAID]
 CATEGORY_COLUMNS = [POSITION, NAME, NATIONALITY, CLUB, ITEMS, PAID]
 
 
@@ -111,6 +117,14 @@ def _fold(text: str) -> str:
 
 def _identity(name: str, hr_id: str) -> str:
     return f"hr:{hr_id}" if hr_id else f"name:{_fold(name)}"
+
+
+def _team_identity(team: str, name: str, hr_id: str) -> str:
+    """A team worksheet's row: its team with its fighter, so a fighter named
+    on two teams is two rows. A team whose roster names nobody is its one
+    empty row (design team-export-layouts D4)."""
+    fighter = _identity(name, hr_id) if (name or hr_id) else "empty"
+    return f"team:{_fold(team)}|{fighter}"
 
 
 def _yes_no(value: bool, locale: str) -> str:
@@ -153,30 +167,22 @@ def _discipline_values(row: Row, slug: str, locale: str) -> dict[str, str]:
     }
 
 
-def _team_fighter_values(row: Row, slug: str, locale: str) -> dict[str, str]:
-    """A row of a team discipline's worksheet: the team row, or one of its
-    fighters.
+def _team_values(row: Row, slug: str, locale: str) -> dict[str, str]:
+    """A row of a team discipline's flat worksheet: one fighter with the
+    team's number, name and paid, or a team with no fighter yet.
 
-    A fighter holds no registration, so its paid cell is blank — a team is paid
-    for once, on the row of the team. A team's name cell carries the fencer who
-    entered it and how many it names against the discipline's bounds, as the tab
-    states them: the three belong to the team, and a fighter's row has nothing
-    to put under columns of their own.
+    A fighter holds no registration, so the paid is the team's, entered once
+    and stated on every one of its rows. The fencer who entered the team and
+    its member count are the console's and are not written (spec data-export,
+    A team discipline's worksheet is flat).
     """
-    values = _discipline_values(row, slug, locale)
-    team = row.get("_team")
-    if team is None:
-        values[PAID.id] = ""
-        return values
-    entered = catalog.translate("export.team.enteredBy", locale, name=team["entering_fencer"])
-    counted = catalog.translate(
-        "export.team.members",
-        locale,
-        members=team["members"],
-        min=team["team_min"],
-        max=team["team_max"],
-    )
-    values[NAME.id] = f"{values[NAME.id]} · {entered} · {counted}"
+    cells = row["_team_cells"]
+    values = {column.id: "" for column in TEAM_DISCIPLINE_COLUMNS}
+    if row.get("name"):
+        values.update(_discipline_values(row, slug, locale))
+    values[POSITION.id] = str(cells["number"])
+    values[TEAM.id] = cells["name"]
+    values[PAID.id] = _yes_no(cells["paid"], locale)
     return values
 
 
@@ -237,11 +243,22 @@ def typed_grid(grid: list[list[str]], columns: list[Column]) -> list[list[Cell]]
     ]
 
 
+def _fencer_identity(cells: dict[str, str]) -> str:
+    return _identity(cells.get(NAME.id, ""), cells.get(HR_ID.id, ""))
+
+
+def _team_row_identity(cells: dict[str, str]) -> str:
+    return _team_identity(cells.get(TEAM.id, ""), cells.get(NAME.id, ""), cells.get(HR_ID.id, ""))
+
+
 def merge_grid(
     existing: list[list[str]] | None,
     columns: list[Column],
     roster: list[tuple[str, dict[str, str]]],
     locale: str,
+    identity: Callable[[dict[str, str]], str] = _fencer_identity,
+    refreshed: frozenset[str] | None = None,
+    renumber: bool = True,
 ) -> list[list[str]]:
     """Merge the roster into the existing grid.
 
@@ -260,7 +277,15 @@ def merge_grid(
     order: the merge keeps old rows where they are, so after a re-export the
     two can differ, and a column that skipped numbers down the sheet would
     serve nobody reading it.
+
+    `identity` reads a row's identity from its cells by column id — the same
+    function the roster's identities were made with. `refreshed` names the
+    columns written afresh on this worksheet, where it differs from the
+    columns' own flags; `renumber` is off where the position is a value of the
+    export's rather than the sheet's numbering (a team worksheet's team
+    number, design team-export-layouts D4).
     """
+    fresh = refreshed if refreshed is not None else frozenset(c.id for c in columns if c.refreshed)
     header = header_for(columns, locale)
     old_header = existing[0] if existing else header
     old_rows = existing[1:] if existing else []
@@ -279,33 +304,49 @@ def merge_grid(
             return ""
         return str(row[position])
 
-    values_by_identity = {identity: {**values, POSITION.id: ""} for identity, values in roster}
+    values_by_identity = {
+        key: values if not renumber else {**values, POSITION.id: ""} for key, values in roster
+    }
     merged: list[list[str]] = [header]
     seen: set[str] = set()
     for old_row in old_rows:
-        identity = _identity(cell(old_row, NAME), cell(old_row, HR_ID))
-        values = values_by_identity.get(identity)
-        if values is None or identity in seen:
+        key = identity({column.id: cell(old_row, column) for column in columns})
+        values = values_by_identity.get(key)
+        if values is None or key in seen:
             continue  # withdrawn, deleted, or duplicate — gone from the export
-        seen.add(identity)
+        seen.add(key)
         merged.append(
             [
                 values[column.id]
-                if column.refreshed or not cell(old_row, column).strip()
+                if column.id in fresh or not cell(old_row, column).strip()
                 else cell(old_row, column)
                 for column in columns
             ]
         )
-    for identity, _ in roster:
-        if identity in seen:
+    for key, _ in roster:
+        if key in seen:
             continue
-        values = values_by_identity[identity]
+        values = values_by_identity[key]
         merged.append([values[column.id] for column in columns])
-    if POSITION in columns:
+    if renumber and POSITION in columns:
         index = columns.index(POSITION)
         for number, row in enumerate(merged[1:], start=1):
             row[index] = str(number)
     return merged
+
+
+def _team_grid(existing: list[list[str]] | None) -> list[list[str]] | None:
+    """A team worksheet as the merge may read it. One still in the shape that
+    listed team rows with their fighters beneath — recognised by carrying no
+    team column in any language — has no row that can be told by its team, so
+    it is written whole, once (spec data-export, Repeat-export preservation
+    semantics)."""
+    if not existing:
+        return existing
+    labels = _labels(TEAM)
+    if any(label in labels for label in existing[0]):
+        return existing
+    return None
 
 
 def _roster(rows: list[Row], values: Callable[[Row], dict[str, str]]):
@@ -492,10 +533,28 @@ def export_to_sheets(
             name, columns = FENCERS_SHEET, FENCERS_COLUMNS
             roster = _roster(table, lambda row: _fencer_values(row, locale))
             fencers = len(roster)
+        elif tab.kind == exporttables.DISCIPLINE and tab.teams:
+            name, columns = tab.key, TEAM_DISCIPLINE_COLUMNS
+            flat = exporttables.team_fighter_rows(table)
+            roster = [
+                (_team_row_identity(values), values)
+                for values in (_team_values(row, tab.key, locale) for row in flat)
+            ]
+            merged = merge_grid(
+                _team_grid(client.read(name)),
+                columns,
+                roster,
+                locale,
+                identity=_team_row_identity,
+                refreshed=frozenset({POSITION.id, TEAM.id, RATING.id, RANK.id, PAID.id}),
+                renumber=False,
+            )
+            client.write(name, typed_grid(merged, columns))
+            written.append(name)
+            continue
         elif tab.kind == exporttables.DISCIPLINE:
             name, columns = tab.key, DISCIPLINE_COLUMNS
-            values = _team_fighter_values if tab.teams else _discipline_values
-            roster = _roster(table, lambda row, slug=tab.key, f=values: f(row, slug, locale))
+            roster = _roster(table, lambda row, slug=tab.key: _discipline_values(row, slug, locale))
         else:
             name, columns = CATEGORY_SHEETS[ExtraCategory(tab.key)], CATEGORY_COLUMNS
             roster = _roster(

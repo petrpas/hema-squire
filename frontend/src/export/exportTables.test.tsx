@@ -22,6 +22,7 @@ import { rosterPrint } from "./roster";
 import TableOperations from "./TableOperations";
 import TeamRosterTable from "./TeamRosterTable";
 import { tabCount, tabLabel } from "./tabs";
+import { flatTeamRows, teamCopyTsv } from "./teamFlat";
 
 // The Export phase's tables: what each lists, the order it lists it in, where
 // the capacity line falls, and what leaves by the clipboard (spec
@@ -513,28 +514,53 @@ describe("a team discipline's tab", () => {
     expect(line).toEqual({ after: 3, kind: "capacity" });
   });
 
-  it("states each team with its entering fencer and its count, and its fighters' ratings", () => {
+  it("states a team by its name alone on screen, and its fighters' ratings", () => {
     const { numbers } = teamOrder(rows, "capacity");
     const columns = TEAM_COLUMNS(t, "LS", numbers);
     const header = (id: string) => t(`export.column.${id}`);
     const tsv = toTsv(columns, rows, header).split("\n");
-    expect(tsv[1]).toBe(
-      [
-        "1",
-        `Wolves · ${t("export.team.enteredBy", { name: "F1" })} · ${t("export.team.members", { count: 2, min: 3, max: 4 })}`,
-        "",
-        "",
-        "",
-        "",
-        "",
-        t("export.yes"),
-      ].join("\t"),
-    );
+    // no entering fencer and no member count in the row (spec export-tables,
+    // Each tab states its own columns and order)
+    expect(tsv[1]).toBe(["1", "Wolves", "", "", "", "", "", t("export.yes")].join("\t"));
     // a fighter states its own identity and rating, and no paid of its own: it
     // holds no registration, and a team is paid for once
     expect(tsv[2]).toBe(["", "Fighter One", "CZ", "", "10234", "1400", "7", ""].join("\t"));
     // and a fighter with no rating states the absence rather than a figure
     expect(tsv[3]).toBe(["", "Fighter Two", "CZ", "", "10234", "", "", ""].join("\t"));
+  });
+
+  it("copies flat, the team's cells on every row", () => {
+    const { rows: ordered, numbers, line } = teamOrder(rows, "capacity");
+    const flat = flatTeamRows(ordered, numbers, line).rows;
+    const tsv = teamCopyTsv(t, "LS", flat, (id) => t(`export.column.${id}`)).split("\n");
+    expect(tsv[0]?.split("\t").slice(0, 3)).toEqual([
+      t("export.column.position"),
+      t("export.column.team"),
+      t("export.column.name"),
+    ]);
+    expect(tsv.slice(1)).toEqual([
+      ["1", "Wolves", "Fighter One", "CZ", "", "10234", "1400", "7", t("export.yes")].join("\t"),
+      ["1", "Wolves", "Fighter Two", "CZ", "", "10234", "", "", t("export.yes")].join("\t"),
+      ["2", "Bears", "Fighter Three", "CZ", "", "10234", "1100", "7", t("export.no")].join("\t"),
+    ]);
+    expect(tsv.join("\n")).not.toContain("F1");
+  });
+
+  it("copies only the paid team's fighters under the active-only switch", () => {
+    const { rows: ordered, numbers, line } = teamOrder(activeTeamsOnly(rows, true), "capacity");
+    const flat = flatTeamRows(ordered, numbers, line).rows;
+    expect(flat.map((r) => [r.number, r.fighter?.name])).toEqual([
+      [1, "Fighter One"],
+      [1, "Fighter Two"],
+    ]);
+  });
+
+  it("states an empty team as one row", () => {
+    const lonely = [teamRow("team:LS:Owls", "Owls", false), ...rows];
+    const { rows: ordered, numbers, line } = teamOrder(lonely, "capacity");
+    const flat = flatTeamRows(ordered, numbers, line).rows;
+    expect(flat[0]).toMatchObject({ fighter: null, number: 1, first: true });
+    expect(flat[1]?.team.name).toBe("Wolves");
   });
 
   it("narrows by the team under the active-only switch, fighters following it", () => {
@@ -558,12 +584,17 @@ describe("a team discipline's tab", () => {
         onRate={() => {}}
       />,
     );
-    expect(html).toContain("<strong>Wolves");
+    expect(html).toContain(">Wolves</strong>");
+    // who entered the team is a hint over its name, not a part of the row
+    expect(html).toContain(t("export.team.enteredBy", { name: "F1" }));
+    expect(html).toContain('role="tooltip"');
     expect(html).toContain("Fighter One");
+    // the fighters' ratings are on screen
+    expect(html).toContain(">1400<");
     expect(html).toContain(t("export.line.capacity"));
   });
 
-  it("prints what it shows: the teams numbered, the fighters beneath", () => {
+  it("prints flat: the teams numbered on their first row, the fighters beside", () => {
     const print = rosterPrint(
       t,
       rows,
@@ -578,9 +609,15 @@ describe("a team discipline's tab", () => {
       false,
       false,
     );
-    expect(print.rows[0]?.[0]).toBe("1");
-    expect(print.rows[1]?.[0]).toBe("");
-    expect(print.rows[1]?.[1]).toBe("Fighter One");
-    expect(print.line_after).toBe(3);
+    // flat, eight cells a row, the team's cells on its first row only
+    expect(print.rows).toEqual([
+      ["1", "Wolves", "Fighter One", "CZ", "", "10234", "7", t("export.yes")],
+      ["", "", "Fighter Two", "CZ", "", "10234", "", ""],
+      ["2", "Bears", "Fighter Three", "CZ", "", "10234", "7", t("export.no")],
+    ]);
+    expect(print.team_starts).toEqual([0, 2]);
+    // the line falls under the last fighter of the last team above it
+    expect(print.line_after).toBe(2);
+    expect(JSON.stringify(print)).not.toContain("F1");
   });
 });

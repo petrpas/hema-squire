@@ -9,11 +9,16 @@
 //   headers  the seven column headers
 //   rows     arrays of seven strings: No., Fencer, Nat., Club, HRID, Rank, Paid
 //   last_in  1-based row the heavier rule falls under
-
-#set page(margin: 0.7cm, height: auto, width: 48em)
-#set text(font: "GFS Neohellenic", size: 12pt)
+//   paper    "a4" for the printed PDF, "long" for the one-image PNG
 
 #let input = json(bytes(sys.inputs.roster))
+
+// The PDF is printed: A4 pages, the header row repeated on each. The PNG is
+// posted: one page as tall as its content, so one image however long.
+#let a4 = input.at("paper", default: "long") == "a4"
+#set page(margin: 0.7cm, height: auto, width: 48em) if not a4
+#set page(paper: "a4", margin: 0.7cm) if a4
+#set text(font: "GFS Neohellenic", size: 12pt)
 #let data = input.rows
 
 #place(

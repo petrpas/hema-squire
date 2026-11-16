@@ -168,6 +168,8 @@ describe("the summary tab", () => {
     vi.spyOn(api, "exportTable").mockImplementation(async (_slug, kind, key) => ({
       ...(BAND.find((tab) => tab.kind === kind && tab.key === key) ?? BAND[0]!),
       rows: [],
+      ratings_fetched_at: null,
+      ratings_missing: 0,
     }));
     vi.spyOn(api, "exportSummary").mockResolvedValue({ lines: LINES });
     vi.spyOn(api, "exportSheetConfig").mockResolvedValue({

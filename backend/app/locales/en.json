@@ -233,6 +233,7 @@
     "no": "No",
     "column": {
       "position": "Pos.",
+      "team": "Team",
       "name": "Name",
       "nat": "Nat.",
       "club": "Club",
@@ -285,6 +286,7 @@
     },
     "roster": {
       "position": "No.",
+      "team": "Team",
       "name": "Fencer",
       "nat": "Nat.",
       "club": "Club",

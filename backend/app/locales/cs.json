@@ -233,6 +233,7 @@
     "no": "Ne",
     "column": {
       "position": "Poř.",
+      "team": "Tým",
       "name": "Jméno",
       "nat": "Nár.",
       "club": "Klub",
@@ -285,6 +286,7 @@
     },
     "roster": {
       "position": "Č.",
+      "team": "Tým",
       "name": "Šermíř",
       "nat": "Nár.",
       "club": "Klub",

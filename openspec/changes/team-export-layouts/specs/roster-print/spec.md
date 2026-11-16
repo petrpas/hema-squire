@@ -27,9 +27,11 @@ written.
 ### Requirement: The roster keeps its established look
 The roster SHALL be typeset by Typst from a template carried in Squire, set in GFS
 Neohellenic from font files carried in Squire, in the layout the organizer's
-existing `disciplines.typ` fixes: a page as tall as its content, a bold title above
-a framed table, and horizontal rules only under the header, under the last row in
-and under the last row. A team discipline SHALL be typeset from a template of its
+existing `disciplines.typ` fixes: a bold title above a framed table, and
+horizontal rules only under the header, under the last row in and under the last
+row. The PDF SHALL be set on A4 pages, since it is printed, with the table's header
+row repeated at the top of every page. The PNG SHALL be set on one page as tall as
+its content, since it is posted. A team discipline SHALL be typeset from a template of its
 own in the same layout, which adds a thin rule between one team and the next. The
 output SHALL NOT depend on fonts installed on the host.
 
@@ -50,6 +52,10 @@ The PNG SHALL be one image, however long the roster.
 #### Scenario: A long roster is one image
 - **WHEN** a discipline lists 60 fencers and the organizer downloads its PNG
 - **THEN** one PNG holds all 60 rows
+
+#### Scenario: A long roster prints on A4 pages
+- **WHEN** a discipline lists 90 fencers and the organizer downloads its PDF
+- **THEN** the PDF holds A4 pages, each opening with the header row
 
 #### Scenario: The same on every host
 - **WHEN** the roster is rendered on a host with no GFS Neohellenic installed

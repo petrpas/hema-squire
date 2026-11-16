@@ -1830,6 +1830,10 @@ class HRRatingSnapshot(Base):
     tournament_id: Mapped[int] = mapped_column(ForeignKey("tournaments.id"))
     taken_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     fencer_count: Mapped[int]
+    # the identifiers this snapshot fetched pages for, so a fighter asked and
+    # unrated in a category is told from one never asked (design
+    # team-export-layouts D8); None on a snapshot taken before it was recorded
+    hr_ids: Mapped[list[int] | None] = mapped_column(JSON)
 
     ratings: Mapped[list[HRSnapshotRating]] = relationship(back_populates="snapshot")
 

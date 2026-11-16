@@ -283,6 +283,40 @@ def team_table(rows: list[Row], tab: Tab, teams: Sequence[TeamEntry]) -> list[Ro
     return table
 
 
+def team_fighter_rows(table: list[Row]) -> list[Row]:
+    """A team discipline's tab flattened for the spreadsheet: one row per
+    fighter, each carrying its team's number, name and paid under
+    `_team_cells` (spec data-export, A team discipline's worksheet is flat).
+
+    `table` is `team_table`'s, a team row followed by its fighters. Teams are
+    numbered in that order, straight across the capacity line, as the tab
+    numbers them. A team whose roster names nobody is one row with no fighter
+    in it, so the team is still stated (design team-export-layouts D3).
+    """
+    flat: list[Row] = []
+    number = 0
+    cells: dict | None = None
+    fighters = 0
+
+    def close() -> None:
+        if cells is not None and fighters == 0:
+            flat.append({"id": f"empty:{cells['number']}", "_team_cells": cells})
+
+    for row in table:
+        if row.get("_team") is not None:
+            close()
+            number += 1
+            cells = {"number": number, "name": row.get("name") or "", "paid": bool(row["paid"])}
+            fighters = 0
+            continue
+        if cells is None:
+            continue
+        fighters += 1
+        flat.append({**row, "_team_cells": cells})
+    close()
+    return flat
+
+
 def table_rows(rows: list[Row], tab: Tab, teams: Sequence[TeamEntry] = ()) -> list[Row]:
     """The rows of one table: the replayed fencer table narrowed to what the
     tab is of, in the tab's own order.

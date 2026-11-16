@@ -12,12 +12,13 @@ import {
 } from "../api";
 import ExportPanel, { offersEnglishTick } from "../ExportPanel";
 import { useTabBand } from "../useTabBand";
-import { FENCERS_COLUMNS, ITEM_COLUMNS, ROSTER_COLUMNS, TEAM_COLUMNS, toTsv } from "./columns";
+import { FENCERS_COLUMNS, ITEM_COLUMNS, ROSTER_COLUMNS, toTsv } from "./columns";
 import FencersTable from "./FencersTable";
 import ItemsTable from "./ItemsTable";
 import { activeOnly, activeTeamsOnly, rosterOrder, teamOrder } from "./ordering";
 import RevenueTable from "./RevenueTable";
 import RosterTable from "./RosterTable";
+import { ratingsState } from "./ratingsState";
 import { revenueLineCount, revenueTsv } from "./revenue";
 import { rosterPrint, saveBlob } from "./roster";
 import SummaryTable from "./SummaryTable";
@@ -25,6 +26,7 @@ import { summaryTsv } from "./summary";
 import TableOperations from "./TableOperations";
 import TeamRosterTable from "./TeamRosterTable";
 import { tabCount, tabId, tabLabel } from "./tabs";
+import { flatTeamRows, teamCopyTsv } from "./teamFlat";
 
 /** The Export phase: a band of tables derived from the tournament, in place of
  *  the single fencer table.
@@ -64,6 +66,11 @@ export default function ExportTables({
   const [tabs, setTabs] = useState<ExportBandTab[]>([]);
   const [selected, setSelected] = useState<string>("fencers:");
   const [rows, setRows] = useState<SheetRow[]>([]);
+  // the open discipline's ratings statement, read with its rows
+  const [ratings, setRatings] = useState<{ fetchedAt: string | null; missing: number }>({
+    fetchedAt: null,
+    missing: 0,
+  });
   const [summary, setSummary] = useState<ExportSummaryLine[]>([]);
   const [revenue, setRevenue] = useState<ExportRevenue | null>(null);
   // the Include finances tick: held here rather than with the English tick in
@@ -99,7 +106,10 @@ export default function ExportTables({
       void api.exportRevenue(slug).then(setRevenue);
       return;
     }
-    void api.exportTable(slug, tab.kind, tab.key).then((table) => setRows(table.rows));
+    void api.exportTable(slug, tab.kind, tab.key).then((table) => {
+      setRows(table.rows);
+      setRatings({ fetchedAt: table.ratings_fetched_at, missing: table.ratings_missing });
+    });
   }, [slug, tab]);
 
   useEffect(reload, [reload, revision]);
@@ -159,21 +169,25 @@ export default function ExportTables({
       return;
     }
     // the copy follows the order on screen, and the line is not part of it
-    const teams = tab.teams ? teamOrder(listed, tab.line ?? "capacity") : null;
+    if (tab.teams) {
+      // flat, the team's cells on every row (spec export-tables, A table
+      // leaves by the clipboard)
+      const teams = teamOrder(listed, tab.line ?? "capacity");
+      const flat = flatTeamRows(teams.rows, teams.numbers, teams.line).rows;
+      void navigator.clipboard.writeText(teamCopyTsv(locale, tab.key, flat, header));
+      setMessage(t("export.copied", { count: flat.length }));
+      return;
+    }
     const columns =
       tab.kind === "fencers"
         ? FENCERS_COLUMNS(locale)
-        : teams !== null
-          ? TEAM_COLUMNS(locale, tab.key, teams.numbers)
-          : tab.kind === "discipline"
-            ? ROSTER_COLUMNS(locale, tab.key)
-            : ITEM_COLUMNS(locale, tab.key);
-    const ordered =
-      teams !== null
-        ? teams.rows
         : tab.kind === "discipline"
-          ? rosterOrder(listed, tab.key, tab.capacity, tab.line ?? "capacity", seeded).rows
-          : listed;
+          ? ROSTER_COLUMNS(locale, tab.key)
+          : ITEM_COLUMNS(locale, tab.key);
+    const ordered =
+      tab.kind === "discipline"
+        ? rosterOrder(listed, tab.key, tab.capacity, tab.line ?? "capacity", seeded).rows
+        : listed;
     void navigator.clipboard.writeText(toTsv(columns, ordered, header));
     setMessage(t("export.copied", { count: ordered.length }));
   }
@@ -301,6 +315,11 @@ export default function ExportTables({
               onRefreshRatings={tab.kind === "discipline" ? () => void refreshRatings() : undefined}
               refreshing={busy}
               ratingsMessage={ratingsMessage}
+              ratingsState={
+                tab.kind === "discipline"
+                  ? ratingsState(t, i18n.language, ratings.fetchedAt, ratings.missing)
+                  : null
+              }
               message={message}
             />
           )}

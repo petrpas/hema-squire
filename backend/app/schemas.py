@@ -2147,6 +2147,12 @@ class ExportBandTabOut(ExportTabOut):
 
 class ExportTableOut(ExportTabOut):
     rows: list[dict]
+    # a discipline tab's ratings statement (spec export-tables, A discipline
+    # tab states whose ratings are not fetched): when the latest snapshot was
+    # taken, null where none was, and how many of the tab's bound fighters it
+    # holds no fetch for. Zero and null on every other tab.
+    ratings_fetched_at: datetime.datetime | None = None
+    ratings_missing: int = 0
 
 
 class ExportSummaryLineOut(BaseModel):
@@ -2212,10 +2218,12 @@ class ExportRevenueOut(BaseModel):
     reconciliation: list[ExportReconciliationLineOut]
 
 
-# No., Fencer, Nat., Club, HRID, Rank, Paid: one cell each, formatted as the
-# tab shows it (design roster-print D1)
+# One cell each, formatted as the tab shows it (design roster-print D1): No.,
+# Fencer, Nat., Club, HRID, Rank, Paid for an individual discipline, with Team
+# after No. for a team one. The width a discipline's kind expects is the
+# route's to check (design team-export-layouts D1).
 RosterRowIn = Annotated[
-    list[Annotated[str, Field(max_length=200)]], Field(min_length=7, max_length=7)
+    list[Annotated[str, Field(max_length=200)]], Field(min_length=7, max_length=8)
 ]
 
 
@@ -2230,6 +2238,9 @@ class ExportRosterIn(BaseModel):
     # them; None where the tab draws none
     line_after: int | None = Field(default=None, ge=0)
     english: bool = False
+    # a team discipline's flat rows: the 0-based index of each team's first
+    # row, above which the roster draws a rule between teams
+    team_starts: list[Annotated[int, Field(ge=0)]] = Field(default_factory=list, max_length=1000)
 
 
 class ExportSheetConfigOut(BaseModel):

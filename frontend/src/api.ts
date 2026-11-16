@@ -916,18 +916,26 @@ export interface ExportSummaryLine {
 export type RosterFormat = "pdf" | "png";
 
 /** A discipline roster to typeset (spec roster-print): the rows the tab
- *  displays, each as its seven cells No., Fencer, Nat., Club, HRID, Rank and
- *  Paid, already formatted. `line_after` is how many rows stand above the
- *  capacity line, null where the tab draws none. */
+ *  displays, already formatted — seven cells No., Fencer, Nat., Club, HRID,
+ *  Rank and Paid for an individual discipline, eight with Team after No. for a
+ *  team one. `line_after` is how many rows stand above the capacity line, null
+ *  where the tab draws none; `team_starts` the rows a team begins at. */
 export interface RosterPrint {
   discipline: string;
   rows: string[][];
   line_after: number | null;
+  team_starts?: number[];
   english: boolean;
 }
 
 export interface ExportTable extends ExportTab {
   rows: SheetRow[];
+  /** On a discipline tab: when the latest ratings snapshot was taken, null
+   *  where none was, and how many of the tab's bound fighters it holds no
+   *  fetch for (spec export-tables, A discipline tab states whose ratings are
+   *  not fetched). */
+  ratings_fetched_at: string | null;
+  ratings_missing: number;
 }
 
 /** What the Export rail needs before a first export can be run: whether this

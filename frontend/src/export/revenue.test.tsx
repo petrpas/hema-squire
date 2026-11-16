@@ -180,7 +180,12 @@ describe("the revenue tab", () => {
 
   async function mount() {
     vi.spyOn(api, "exportTabs").mockResolvedValue(BAND);
-    vi.spyOn(api, "exportTable").mockResolvedValue({ ...BAND[0]!, rows: [] });
+    vi.spyOn(api, "exportTable").mockResolvedValue({
+      ...BAND[0]!,
+      rows: [],
+      ratings_fetched_at: null,
+      ratings_missing: 0,
+    });
     vi.spyOn(api, "exportRevenue").mockResolvedValue(REVENUE);
     vi.spyOn(api, "exportSheetConfig").mockResolvedValue({
       configured: true,
