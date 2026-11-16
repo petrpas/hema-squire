@@ -42,12 +42,15 @@ function discipline(teams: ConsoleTeam[], slug = "LS", name = "Longsword"): Cons
 
 let host: HTMLElement | null = null;
 
-async function openPanel(disciplines: ConsoleTeamDiscipline[]): Promise<HTMLElement> {
+async function openPanel(
+  disciplines: ConsoleTeamDiscipline[],
+  automatic = true,
+): Promise<HTMLElement> {
   vi.spyOn(api, "consoleTeams").mockResolvedValue(disciplines as never);
   host = document.createElement("div");
   document.body.append(host);
   const root = createRoot(host);
-  act(() => root.render(<TeamsPanel slug="cup" />));
+  act(() => root.render(<TeamsPanel slug="cup" automatic={automatic} />));
   await act(async () => {
     await Promise.resolve();
     await Promise.resolve();
@@ -263,6 +266,17 @@ describe("the organizer's teams view", () => {
       (td) => td.textContent,
     );
     expect(names).toEqual(["Bears"]);
+  });
+
+  it("promises the entrant no letter on a manual tournament", async () => {
+    const page = await openPanel([discipline([team()])], false);
+    const button = [...page.querySelectorAll<HTMLButtonElement>("tbody tr button")].find(
+      (candidate) => candidate.title === i18n.t("teams.cancel.action"),
+    );
+    await act(async () => button?.click());
+
+    expect(document.body.textContent).toContain(i18n.t("teams.cancel.irreversible"));
+    expect(document.body.textContent).not.toContain(i18n.t("teams.cancel.mail"));
   });
 
   it("saves a roster through the console's own route and keeps the log beside it", async () => {

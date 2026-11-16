@@ -19,6 +19,7 @@ from app.models import (
     PaymentMode,
     PendingSignup,
     Registration,
+    RegistrationsKeptBy,
     Tournament,
 )
 from app.setup import local_date
@@ -352,6 +353,20 @@ def _entered_by_hand(registration: Registration) -> bool:
     """Dormant by origin and issued for no source row: a hand entry on an
     automatic tournament (design manual-entry-registers D2)."""
     return registration.clocks_dormant and registration.source_row_id is None
+
+
+def _organizer_writes_instead(tournament: Tournament, registration: Registration) -> bool:
+    """Whether an organizer's action on a seat is left for the organizer to tell.
+
+    A manual tournament is one Squire runs nothing against (spec
+    tournament-mode), so none of its seats is written to, whatever their
+    origin. There the hand entry is a source row `man:N` like any imported
+    one, which is why `_entered_by_hand` alone cannot see it (design
+    silence-manual-organizer-cancel). On an automatic tournament a hand entry
+    is still the organizer's to tell."""
+    return tournament.registrations_kept_by is not RegistrationsKeptBy.SQUIRE or _entered_by_hand(
+        registration
+    )
 
 
 def _send_confirmation_without_payment(
@@ -1427,12 +1442,12 @@ def send_team_cancelled(
     state.
 
     Sent under the rule every organizer action on a seat follows, the one
-    `send_cancelled_by_organizer` keeps: a seat the organizer entered by hand
-    is sent nothing, the organizer being the one in contact, and a seat with no
-    address has nowhere to be sent. Returns whether a message went out, which
-    is what the console is told.
+    `send_cancelled_by_organizer` keeps: a manual tournament is sent nothing,
+    a seat the organizer entered by hand is sent nothing, the organizer being
+    the one in contact, and a seat with no address has nowhere to be sent.
+    Returns whether a message went out, which is what the console is told.
     """
-    if _entered_by_hand(registration):
+    if _organizer_writes_instead(tournament, registration):
         return False
     to = recipient(registration, registration.fencer)
     if not to:
@@ -1471,11 +1486,12 @@ def send_cancelled_by_organizer(
     (spec registration, An organizer may cancel a registration).
 
     Sent under the rule every organizer action on a seat follows, the one
-    `send_substitution` keeps: a seat the organizer entered by hand is sent
-    nothing, the organizer being the one in contact, and a seat with no address
-    has nowhere to be sent. Money already paid is not promised back: the
-    refund is the organizer's to settle, and the mail says so and no more."""
-    if _entered_by_hand(registration):
+    `send_substitution` keeps: a manual tournament is sent nothing, a seat the
+    organizer entered by hand is sent nothing, the organizer being the one in
+    contact, and a seat with no address has nowhere to be sent. Money already
+    paid is not promised back: the refund is the organizer's to settle, and the
+    mail says so and no more."""
+    if _organizer_writes_instead(tournament, registration):
         return
     to = recipient(registration, registration.fencer)
     if not to:

@@ -12,7 +12,7 @@ import i18n from "./i18n";
 
 let host: HTMLElement | null = null;
 
-function mount(paid: boolean, onConfirm: (note: string | null) => Promise<void>) {
+function mount(paid: boolean, onConfirm: (note: string | null) => Promise<void>, automatic = true) {
   host = document.createElement("div");
   document.body.append(host);
   const root = createRoot(host);
@@ -21,6 +21,7 @@ function mount(paid: boolean, onConfirm: (note: string | null) => Promise<void>)
       <CancelRegistrationDialog
         name="Jan Novák"
         paid={paid}
+        automatic={automatic}
         onConfirm={onConfirm}
         onClose={() => {}}
       />,
@@ -78,5 +79,17 @@ describe("the cancellation dialog", () => {
     });
     await act(async () => confirmButton(page).click());
     expect(onConfirm).toHaveBeenLastCalledWith("duplicitní přihláška");
+  });
+
+  it("on a manual tournament promises no mail and asks for no note", async () => {
+    const onConfirm = vi.fn().mockResolvedValue(undefined);
+    const page = mount(true, onConfirm, false);
+
+    expect(page.textContent).toContain(i18n.t("console.cancelRegistration.meaning"));
+    expect(page.textContent).toContain(i18n.t("console.cancelRegistration.refund"));
+    expect(page.textContent).not.toContain(i18n.t("console.cancelRegistration.mail"));
+    expect(page.querySelector("textarea")).toBeNull();
+    await act(async () => confirmButton(page).click());
+    expect(onConfirm).toHaveBeenLastCalledWith(null);
   });
 });

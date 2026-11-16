@@ -16,10 +16,15 @@ import Modal from "./Modal";
 export default function CancelRegistrationDialog({
   name,
   paid,
+  automatic,
   onConfirm,
   onClose,
 }: {
   name: string | null;
+  /** Whether the tournament is automatic. A manual one writes to nobody
+   *  (spec registration), so the dialog then promises no mail and asks for no
+   *  note that nothing would carry. */
+  automatic: boolean;
   /** Whether money stands against the registration, which the fencer is
    *  told the organizer will settle. */
   paid: boolean;
@@ -37,7 +42,7 @@ export default function CancelRegistrationDialog({
     setBusy(true);
     setFailed(null);
     try {
-      await onConfirm(note.trim() || null);
+      await onConfirm(automatic ? note.trim() || null : null);
     } catch (error) {
       const detail = error instanceof ApiError ? error.detail : null;
       setFailed(typeof detail === "string" ? detail : "failed");
@@ -52,18 +57,20 @@ export default function CancelRegistrationDialog({
         <h2>{t("console.cancelRegistration.title")}</h2>
         {name && <p className="muted link-context">{name}</p>}
         <p className="rail-hint">{t("console.cancelRegistration.meaning")}</p>
-        <p className="rail-hint">{t("console.cancelRegistration.mail")}</p>
+        {automatic && <p className="rail-hint">{t("console.cancelRegistration.mail")}</p>}
         {paid && <p className="rail-hint">{t("console.cancelRegistration.refund")}</p>}
-        <label className="form-field">
-          <span>{t("console.cancelRegistration.note")}</span>
-          <textarea
-            value={note}
-            maxLength={500}
-            rows={2}
-            placeholder={t("console.cancelRegistration.notePlaceholder")}
-            onChange={(event) => setNote(event.target.value)}
-          />
-        </label>
+        {automatic && (
+          <label className="form-field">
+            <span>{t("console.cancelRegistration.note")}</span>
+            <textarea
+              value={note}
+              maxLength={500}
+              rows={2}
+              placeholder={t("console.cancelRegistration.notePlaceholder")}
+              onChange={(event) => setNote(event.target.value)}
+            />
+          </label>
+        )}
         {failed && (
           <p className="login-error">
             {t(`console.cancelRegistration.error.${failed}`, {

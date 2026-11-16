@@ -2484,6 +2484,36 @@ def test_a_registration_squire_sends_nothing_to_is_not_written_to(client, auth_h
     assert mailer.sent == []
 
 
+def test_a_manual_tournaments_team_cancel_writes_to_nobody(client, auth_headers):
+    """A manual tournament is sent nothing, and its hand entry is a source row
+    like any imported one, which the hand-entry rule alone would miss (spec
+    team-disciplines, A manual tournament's entrant is not told). The mode is
+    written straight to the table: the console freezes it at publication."""
+    from app.models import Registration, RegistrationsKeptBy, Tournament
+
+    organizer = auth_headers()
+    setup_team_tournament(client, organizer, capacity=5)
+    with_teams_phase(client, organizer)
+    fencer = auth_headers(email="f1@example.com", name="Entrant")
+    team_id = register_team(client, fencer, name="Wolves").json()["teams"][0]["id"]
+    session = db_session()
+    tournament = session.scalars(select(Tournament)).one()
+    tournament.registrations_kept_by = RegistrationsKeptBy.ORGANIZER
+    registration = session.scalars(select(Registration)).one()
+    registration.clocks_dormant = True
+    registration.source_row_id = "man:1"
+    session.commit()
+
+    mailer = mailbox_fixture()
+    try:
+        response = cancel_team(client, organizer, team_id)
+        assert response.status_code == 200, response.text
+        assert response.json()["notified"] is False
+    finally:
+        app.dependency_overrides.pop(get_mailer, None)
+    assert mailer.sent == []
+
+
 # ---------------------------------------------------------------------------
 # The public team roster states no identifier, but the console's verdict on who
 # a member is (spec public-entrants, A team roster names the team and its members)

@@ -1039,12 +1039,17 @@ registers again, or is entered again by the organizer.
 Nobody SHALL be promoted by it. A freed seat waits for the organizer's promotion from the
 queue, as it does after the fencer's own cancellation.
 
-The fencer SHALL be told by mail that the organizer has cancelled their registration,
-naming the tournament and what the registration held, with the organizer's note where one
-was given, and, where money had been credited, that a refund is the organizer's to
-settle. The mail follows the rule every message about a seat follows: a registration
-entered by hand is sent nothing, and so is one with no address. The cancellation SHALL
-take effect whether or not a mail is sent.
+On an automatic tournament the fencer SHALL be told by mail that the organizer has
+cancelled their registration, naming the tournament and what the registration held, with
+the organizer's note where one was given, and, where money had been credited, that a
+refund is the organizer's to settle. The mail follows the rule every message about a seat
+follows: a registration entered by hand is sent nothing, and so is one with no address.
+
+On a manual tournament **no mail SHALL be sent**, whatever the registration's origin or
+address, in keeping with Squire running nothing against such a tournament. The
+confirmation SHALL then say nothing about mail and SHALL NOT offer a note for the fencer.
+
+The cancellation SHALL take effect whether or not a mail is sent.
 
 #### Scenario: The seat is freed
 - **WHEN** the organizer cancels a reserved registration seated in a full discipline of capacity 32
@@ -1065,6 +1070,14 @@ take effect whether or not a mail is sent.
 #### Scenario: A hand-entered seat is not mailed
 - **WHEN** the organizer cancels a registration they entered by hand
 - **THEN** it is cancelled and no mail is sent
+
+#### Scenario: A manual tournament mails nobody
+- **WHEN** on a manual tournament the organizer cancels one registration issued from the imported list and one they entered by hand, both carrying an address
+- **THEN** both are cancelled and no mail is sent
+
+#### Scenario: A manual tournament's confirmation promises no mail
+- **WHEN** the organizer opens the cancellation of a registration on a manual tournament
+- **THEN** the confirmation states what the cancellation does to the seat and the money, says nothing about mail, and offers no note
 
 #### Scenario: Not undone
 - **WHEN** the organizer has cancelled a registration

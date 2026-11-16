@@ -15,11 +15,15 @@ import Modal from "../Modal";
 export default function CancelTeamDialog({
   team,
   discipline,
+  automatic,
   onConfirm,
   onClose,
 }: {
   team: ConsoleTeam;
   discipline: ConsoleTeamDiscipline;
+  /** Whether the tournament is automatic; a manual one writes to nobody, so
+   *  the letter is not promised (spec team-disciplines). */
+  automatic: boolean;
   /** Resolves when the team is cancelled. The dialog stays open until it does
    *  and states a refusal rather than closing on one. */
   onConfirm: () => Promise<void>;
@@ -53,7 +57,7 @@ export default function CancelTeamDialog({
         <p className="rail-hint">{t("teams.cancel.meaning")}</p>
         <p className="rail-hint">{t("teams.cancel.roster", { count: team.members.length })}</p>
         {!team.waitlisted && <p className="rail-hint">{t("teams.cancel.place")}</p>}
-        <p className="rail-hint">{t("teams.cancel.mail")}</p>
+        {automatic && <p className="rail-hint">{t("teams.cancel.mail")}</p>}
         {failed && (
           <p className="login-error">
             {t(`teams.cancel.error.${failed}`, { defaultValue: t("teams.cancel.error.failed") })}

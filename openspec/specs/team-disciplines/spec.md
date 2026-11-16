@@ -6,9 +6,7 @@ team is entered and priced through its entrant's registration, how a roster of
 named members is composed and edited without touching money, how the optional
 composition deadline checks (but never enforces) roster completeness, and the
 organizer's read-only view of teams.
-
 ## Requirements
-
 ### Requirement: A discipline is individual or team
 Every discipline SHALL carry a kind: individual or team. An individual discipline is
 entered by one fencer and behaves exactly as disciplines behave today. A team discipline
@@ -470,6 +468,7 @@ organizer opens the view, nor on the deployment's timezone.
 #### Scenario: The deadline's last hours are local
 - **WHEN** a tournament held in a zone ahead of UTC has a composition deadline of the 20th, and the organizer opens the teams view after midnight UTC on the 21st but before midnight where the tournament is held
 - **THEN** no team is marked as below minimum, because the deadline has not passed
+
 ### Requirement: Composition reminder to the entering fencer
 When a tournament has a composition deadline, the system SHALL remind the entering fencer,
 once, ahead of that deadline, of every team of theirs whose roster is still below its
@@ -605,8 +604,8 @@ The organizer SHALL confirm it, and the confirmation SHALL state in plain words 
 cancellation does before it is taken: that it cannot be undone, that the team's fee leaves
 what the registration pays while its other teams and entries stand, that the roster goes
 with the team and its members leave the fencer list, that the place is freed and nobody
-moves up from the waitlist by itself, and that the entering fencer is written to. No part
-of it SHALL be stated in the vocabulary of the pricing machinery: the reader is an
+moves up from the waitlist by itself, and, on an automatic tournament, that the entering
+fencer is written to. No part of it SHALL be stated in the vocabulary of the pricing machinery: the reader is an
 organizer cancelling a team, not a reader of the repricing rules.
 
 It SHALL be refused on a registration that is cancelled or expired, and on a tournament
@@ -616,6 +615,9 @@ untouched.
 The entering fencer SHALL be told, naming the team and the discipline and stating what
 the registration now owes or is owed, unless it is a registration Squire sends nothing
 to. This is money changing hands and is not the silent correction a roster edit is.
+
+On a manual tournament Squire sends nothing to any registration, so **no mail SHALL be
+sent** there, and the confirmation SHALL NOT state that the entering fencer is written to.
 
 #### Scenario: The confirmation says what will happen
 - **WHEN** the organizer opens the cancellation of a seated team of four
@@ -636,6 +638,10 @@ to. This is money changing hands and is not the silent correction a roster edit 
 #### Scenario: The entrant is told
 - **WHEN** the organizer cancels a team on a paid registration
 - **THEN** the entering fencer receives one message naming the team and the discipline and stating the resulting balance
+
+#### Scenario: A manual tournament's entrant is not told
+- **WHEN** the organizer cancels a team on a manual tournament, on a registration carrying an address
+- **THEN** the team is cancelled, no mail is sent, and the confirmation said nothing about one
 
 #### Scenario: Refused on a dead registration
 - **WHEN** the organizer attempts to cancel a team on a cancelled registration
@@ -667,3 +673,4 @@ snapshot without being reported as a failure, on the same terms as an individual
 #### Scenario: A team carries no rating of its own
 - **WHEN** a snapshot has been taken for a tournament with a team discipline
 - **THEN** each matched roster member carries a rating and a rank, and no team carries either
+

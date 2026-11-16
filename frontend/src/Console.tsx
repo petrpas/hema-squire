@@ -1175,7 +1175,10 @@ export default function Console({
              reachable, still in its place, and still at its own address */
             <AwaitsPublication />
           ) : phase === "teams" ? (
-            <TeamsPanel slug={tournament.slug} />
+            <TeamsPanel
+              slug={tournament.slug}
+              automatic={(detail ?? tournament).registrations_kept_by === "squire"}
+            />
           ) : phase === "queue" ? (
             /* a band of discipline rosters with the two arrows that change who
              holds a seat; the settle action is in the rail beside them (spec
@@ -1343,6 +1346,7 @@ export default function Console({
                 <CancelRegistrationDialog
                   name={cancelling.name}
                   paid={cancelling.paid}
+                  automatic={(detail ?? tournament).registrations_kept_by === "squire"}
                   onConfirm={async (note) => {
                     // narrowed above; read again here because the closure
                     // outlives the render that narrowed it

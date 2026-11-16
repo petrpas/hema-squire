@@ -294,8 +294,8 @@ def test_a_row_deleted_before_the_rule_is_restored_and_cancelled(client, auth_he
 # ------------------------------------------------------------ manual mode
 
 
-def test_a_cancelled_issued_registration_is_not_reissued(client, auth_headers, mailbox):
-    organizer = auth_headers()
+def manual_cup(client, organizer) -> None:
+    """A published manual tournament with one sabre discipline."""
     client.post(
         "/api/tournaments",
         json={"slug": "cup", "display_name": "Cup", "date": "2099-12-05"},
@@ -323,6 +323,11 @@ def test_a_cancelled_issued_registration_is_not_reissued(client, auth_headers, m
     )
     assert response.status_code == 200, response.text
     publish(client, organizer, "cup")
+
+
+def test_a_cancelled_issued_registration_is_not_reissued(client, auth_headers, mailbox):
+    organizer = auth_headers()
+    manual_cup(client, organizer)
     app.dependency_overrides[get_import_parser] = lambda: RosterParser()
     # the second fencer gave no address: a new fencer record every time, which
     # is how a reissue would go unnoticed
@@ -347,3 +352,32 @@ def test_a_cancelled_issued_registration_is_not_reissued(client, auth_headers, m
         .all()
     )
     assert len(live) == 1
+
+
+def test_a_manual_tournament_mails_nobody_on_cancel(client, auth_headers, mailbox):
+    """Squire runs nothing against a manual tournament, so its organizer's
+    cancellation tells nobody — an imported fencer or one entered by hand,
+    though both gave an address (spec registration, A manual tournament mails
+    nobody). The hand entry is a source row there, which the hand-entry rule
+    alone cannot see."""
+    organizer = auth_headers()
+    manual_cup(client, organizer)
+    app.dependency_overrides[get_import_parser] = lambda: RosterParser()
+    import_roster(client, organizer, [row("Jan", "jan@example.com")])
+    entered = client.post(
+        "/api/tournaments/cup/manual-rows",
+        json={"name": "Door Fencer", "email": "door@example.com", "disciplines": ["SA"]},
+        headers=organizer,
+    )
+    assert entered.status_code == 201, entered.text
+    assert issue(client, organizer)["issued"] == 2
+    issued = db_session().scalars(select(Registration)).all()
+    assert len(issued) == 2
+    assert all(r.source_row_id is not None for r in issued)
+    mailbox.sent.clear()
+
+    for each in issued:
+        assert cancel(client, organizer, each.id, note="moved").status_code == 200
+
+    assert all(registration(r.id).state is RegistrationState.CANCELLED for r in issued)
+    assert mailbox.sent == []

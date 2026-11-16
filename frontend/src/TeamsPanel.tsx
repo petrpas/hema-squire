@@ -19,7 +19,15 @@ import TeamsTable, { type TeamEntry } from "./teams/TeamsTable";
  *  Admission from the waitlist is not here. It moves money and opens a payment
  *  window, and the phase that does that is the Queue, which a waitlisted row
  *  says. */
-export default function TeamsPanel({ slug }: { slug: string }) {
+export default function TeamsPanel({
+  slug,
+  automatic,
+}: {
+  slug: string;
+  /** Whether the tournament is automatic, which decides whether cancelling a
+   *  team writes to its entrant. */
+  automatic: boolean;
+}) {
   const { t } = useTranslation();
   const [disciplines, setDisciplines] = useState<ConsoleTeamDiscipline[] | null>(null);
   const [reload, setReload] = useState(0);
@@ -110,6 +118,7 @@ export default function TeamsPanel({ slug }: { slug: string }) {
         <CancelTeamDialog
           team={cancelling.team}
           discipline={cancelling.discipline}
+          automatic={automatic}
           onConfirm={async () => {
             await api.cancelTeam(slug, cancelling.team.id);
             setCancelling(null);
