@@ -110,8 +110,10 @@ The PNG SHALL be one image, however long the roster.
 A team discipline's roster SHALL carry the columns No., Team, Fencer, Nat., Club,
 HRID, Rank and Paid, and SHALL list one row per fighter on a team's roster, in the
 tab's order of teams and each team's roster order. A team's number, its name and
-its paid cell SHALL stand on its first row only; the rows of its other fighters
-leave those three cells empty. A team with no fighter on its roster SHALL be one
+its paid cell SHALL each be one cell spanning all of the team's rows, so a team
+name too long for one line wraps within the team's height rather than stretching
+its first row. On the A4 PDF a team SHALL NOT be split across pages: a team that
+does not fit moves to the next page whole. A team with no fighter on its roster SHALL be one
 row stating its number, name and paid, with the fighter cells empty.
 
 No. SHALL number teams as the tab numbers them, not fighters. Paid SHALL read the
@@ -127,7 +129,15 @@ team above the line, and a thin rule SHALL separate each team from the next.
 
 #### Scenario: A team's cells on its first row
 - **WHEN** the organizer prints a team discipline whose first team, Wolves, names four fighters and has paid
-- **THEN** the first row reads 1, Wolves, its first fighter's cells and Ano, and the next three rows state only their fighters
+- **THEN** 1, Wolves and Ano each stand in one cell spanning the four rows, beside each fighter's own cells
+
+#### Scenario: A long team name does not stretch a row
+- **WHEN** a team of three is named `Duelanti od Svatého Rocha`, which wraps onto two lines
+- **THEN** the name wraps within the team's three rows and each fighter's row keeps its single-line height
+
+#### Scenario: A team is not split across pages
+- **WHEN** the PDF's page ends partway through a team's rows
+- **THEN** the whole team starts the next page, below the repeated header
 
 #### Scenario: Teams are numbered, fighters are not
 - **WHEN** a team discipline lists three teams of four
