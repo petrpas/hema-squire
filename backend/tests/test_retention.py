@@ -22,6 +22,7 @@ from app.models import (
     ManualRow,
     OutgoingMail,
     PasswordReset,
+    PendingEmailChange,
     PendingSignup,
     Registration,
     Tournament,
@@ -306,6 +307,16 @@ def test_expired_signups_and_resets_go(client, writes, auth_headers):
             expires_at=NOW - timedelta(minutes=1),
         )
     )
+    # an address change nobody confirmed, and the address it named with it
+    session.add(
+        PendingEmailChange(
+            fencer_id=fencer_id,
+            new_email="never-confirmed@example.com",
+            key_hash="d" * 64,
+            created_at=NOW - timedelta(days=1),
+            expires_at=NOW - timedelta(minutes=1),
+        )
+    )
     session.commit()
 
     retention.run_pass(db_session(), NOW)
@@ -313,6 +324,7 @@ def test_expired_signups_and_resets_go(client, writes, auth_headers):
     session = db_session()
     assert list(session.scalars(select(PendingSignup.email))) == ["b@example.com"]
     assert session.scalar(select(func.count()).select_from(PasswordReset)) == 0
+    assert session.scalar(select(func.count()).select_from(PendingEmailChange)) == 0
 
 
 # --------------------------------------------------------------- the scrub

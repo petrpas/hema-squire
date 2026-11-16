@@ -321,6 +321,35 @@ def follow_signup(client, body: dict):
     return client.post("/api/auth/verify", json={"key": verification_key(catcher.sent[-1])})
 
 
+def change_email(client, headers: dict, new_email: str, password="correct-horse") -> dict:
+    """Change an account's address the only way there is: ask with the current
+    password, then follow the link mailed to the new address (spec
+    profile-page, Address change). The link ends every earlier session, so
+    the headers of the browser that followed it are returned."""
+    from app.mail import get_mailer
+
+    catcher = _VerificationCatcher()
+    previous = app.dependency_overrides.get(get_mailer)
+    app.dependency_overrides[get_mailer] = lambda: catcher
+    try:
+        asked = client.post(
+            "/api/account/email",
+            json={"current_password": password, "new_email": new_email},
+            headers=headers,
+        )
+        assert asked.status_code == 202, asked.text
+        link = catcher.sent[-1].get_body(preferencelist=("plain",)).get_content()
+        key = link.split("/confirm-email#", 1)[1].split()[0]
+        confirmed = client.post("/api/account/email/confirm", json={"key": key})
+        assert confirmed.status_code == 200, confirmed.text
+    finally:
+        if previous is None:
+            app.dependency_overrides.pop(get_mailer, None)
+        else:
+            app.dependency_overrides[get_mailer] = previous
+    return {"Authorization": f"Bearer {confirmed.json()['token']}"}
+
+
 def signup_verified(client, body: dict) -> str:
     """A verified account's session token."""
     response = follow_signup(client, body)

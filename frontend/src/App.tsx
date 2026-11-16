@@ -1,6 +1,7 @@
 import { Route, Routes } from "react-router-dom";
 
 import AdminPanel from "./AdminPanel";
+import ConfirmEmail from "./ConfirmEmail";
 import ConsoleRoute from "./ConsoleRoute";
 import FencerHome from "./FencerHome";
 import FencerLayout from "./FencerLayout";
@@ -36,6 +37,9 @@ export default function App() {
         <Route path="verify" element={<VerifyScreen />} />
         {/* following a reset link; public, since the visitor cannot sign in */}
         <Route path="reset" element={<ResetPassword />} />
+        {/* following an address-change link; public, since it may be opened
+            on a device that is not signed in */}
+        <Route path="confirm-email" element={<ConfirmEmail />} />
         {/* the privacy notice: public, since it is owed before an account
             exists (spec privacy) */}
         <Route path="privacy" element={<PrivacyPage />} />

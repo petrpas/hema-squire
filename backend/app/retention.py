@@ -29,6 +29,7 @@ from app.models import (
     ManualRow,
     OutgoingMail,
     PasswordReset,
+    PendingEmailChange,
     PendingSignup,
     Registration,
     Rule,
@@ -93,6 +94,10 @@ def prune_by_age(session: Session, now: datetime) -> Counter[str]:
         ),
         ("signups", delete(PendingSignup).where(PendingSignup.expires_at <= now)),
         ("resets", delete(PasswordReset).where(PasswordReset.expires_at <= now)),
+        (
+            "email_changes",
+            delete(PendingEmailChange).where(PendingEmailChange.expires_at <= now),
+        ),
     ):
         # a DML statement returns a CursorResult, which `execute` types as the
         # plain Result; read the count the way app.outgoing does

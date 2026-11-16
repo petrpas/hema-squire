@@ -105,6 +105,8 @@ def _sends_that_bypass_letter() -> list[str]:
         "send_signup_verification",
         "send_password_reset",
         "send_password_changed",
+        "send_email_change_link",
+        "send_email_changed_notice",
     }
     tree = ast.parse(inspect.getsource(emails))
     offenders = []

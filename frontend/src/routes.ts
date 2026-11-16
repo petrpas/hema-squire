@@ -48,6 +48,13 @@ export function resetPassword(key: string): string {
   return `/reset#${key}`;
 }
 
+/** An address-change link, its key in the fragment like a reset's (spec
+ *  `profile-page`, Address change). The backend builds the same address for
+ *  the mail. */
+export function confirmEmail(key: string): string {
+  return `/confirm-email#${key}`;
+}
+
 /** A signup's return path that resumes on the registration tab: what a
  *  verification link carries when the signup was raised by Register, so
  *  following it on another device still lands on the form (design D10). */

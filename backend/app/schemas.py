@@ -157,6 +157,21 @@ class PasswordChangeIn(BaseModel):
     new_password: str = Field(min_length=constraints.PASSWORD_MIN_LENGTH)
 
 
+class EmailChangeIn(BaseModel):
+    current_password: str
+    new_email: EmailStr
+
+
+class EmailChangeOut(BaseModel):
+    """The address a change link was mailed to, or that a live link names."""
+
+    email: str
+
+
+class EmailChangeKeyIn(BaseModel):
+    key: str = Field(max_length=200)
+
+
 class ResendVerificationIn(BaseModel):
     email: EmailStr
     password: str

@@ -27,7 +27,7 @@ from app.models import (
     Tournament,
     TournamentOrganizer,
 )
-from tests.conftest import credit_registration, enable_payments, publish
+from tests.conftest import change_email, credit_registration, enable_payments, publish
 
 PASSWORD = "correct-horse"
 
@@ -277,7 +277,7 @@ def test_every_address_is_taken_out_of_the_copies(client, auth_headers, engine):
     make_cup(client, organizer)
     me = auth_headers(email="old@example.com", name="Mover", role=Role.FENCER)
     register(client, me)
-    client.patch("/api/account", json={"email": "new@example.com"}, headers=me)
+    me = change_email(client, me, "new@example.com")
     other = auth_headers(email="other@example.com", name="Other", role=Role.FENCER)
     register(client, other)
     with Session(engine) as session:

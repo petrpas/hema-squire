@@ -151,6 +151,14 @@
       "subject": "Heslo k HEMA Squire bylo změněno",
       "body": "Ahoj {name},\n\nheslo k tvému účtu v HEMA Squire bylo právě změněno a všechna ostatní přihlášená zařízení byla odhlášena.\n\nPokud jsi to nebyl(a) ty, nastav si nové heslo přes „Zapomenuté heslo“ na přihlašovací obrazovce.\n\nHEMA Squire"
     },
+    "emailChangeLink": {
+      "subject": "Potvrzení nové adresy v HEMA Squire",
+      "body": "Ahoj {name},\n\nnovou adresu {email} pro svůj účet v HEMA Squire potvrdíš otevřením tohoto odkazu:\n{link}\n\nOdkaz platí hodinu a jen jednou. Dokud ho neotevřeš, účet používá dosavadní adresu. Pokud jsi o změnu nežádal(a), tento e-mail ignoruj.\n\nHEMA Squire"
+    },
+    "emailChanged": {
+      "subject": "Adresa účtu v HEMA Squire byla změněna",
+      "body": "Ahoj {name},\n\nadresa tvého účtu v HEMA Squire byla právě změněna na {email}. Na tuhle adresu už nic dalšího nepřijde a všechna přihlášená zařízení byla odhlášena.\n\nPokud jsi to nebyl(a) ty, napiš nám na privacy@hemasquire.eu.\n\nHEMA Squire"
+    },
     "manageLinkResent": {
       "subject": "Odkaz na tvou přihlášku — {tournament}",
       "body": "Ahoj {name},\n\npořadatel turnaje {tournament} ti znovu posílá odkaz na tvou přihlášku.",

@@ -1115,7 +1115,6 @@
       "email": "E-mail",
       "displayName": "Full name",
       "language": "Preferred language",
-      "emailTaken": "That e-mail is already in use.",
       "saveFailed": "Save failed."
     },
     "role": {
@@ -1174,6 +1173,20 @@
       "readAll": "The full privacy notice",
       "termsAccepted": "Accepted on {{date}}, version {{version}}.",
       "termsDue": "You will accept them the next time you open your event's console."
+    },
+    "email": {
+      "open": "Change the address",
+      "title": "Change the e-mail address",
+      "intro": "We send a link to the new address. The address changes when you open it; until then the current one stands.",
+      "new": "New address",
+      "submit": "Send the link",
+      "submitting": "Sending…",
+      "sent": "The link was sent to {{email}}. It works for one hour. The account's address changes when you open it.",
+      "close": "Close",
+      "wrong": "The current password does not match.",
+      "taken": "Another record in Squire already uses this address.",
+      "unchanged": "That is the account's current address.",
+      "failed": "The link could not be sent."
     }
   },
   "home": {
@@ -1990,5 +2003,14 @@
       "action": "Download my data (JSON)",
       "failed": "The data could not be downloaded."
     }
+  },
+  "confirmEmail": {
+    "title": "New account address",
+    "meaning": "Confirming changes the account's address to {{email}}. Every other session ends, and the previous address receives a notice.",
+    "confirm": "Confirm the address",
+    "confirming": "Confirming…",
+    "invalid": "This link no longer works. You can ask for the change again on the Profile page.",
+    "taken": "Another record in Squire has started using this address in the meantime, so the account's address was not changed.",
+    "failed": "The address could not be confirmed."
   }
 }

@@ -291,6 +291,43 @@ def send_password_changed(mailer: Mailer, fencer: Fencer) -> None:
     )
 
 
+def send_email_change_link(mailer: Mailer, fencer: Fencer, new_email: str, key: str) -> None:
+    """The link that confirms a new address (spec `profile-page`, Address
+    change). To the new address, since following it is the proof that mailbox
+    belongs to the account holder; in the account's language."""
+    lang = fencer.language
+    link = f"{settings.public_base_url}/confirm-email#{key}"
+    mailer.send(
+        build_message(
+            new_email,
+            settings.email_sender,
+            t("email.emailChangeLink.subject", lang),
+            t(
+                "email.emailChangeLink.body",
+                lang,
+                name=fencer.display_name,
+                email=new_email,
+                link=link,
+            ),
+        )
+    )
+
+
+def send_email_changed_notice(mailer: Mailer, fencer: Fencer, old_email: str) -> None:
+    """The notice to the address an account has just left (spec `profile-page`,
+    Address change). A reset would now go to the new address, so the way back
+    it names is the operator's contact, not Forgot password."""
+    lang = fencer.language
+    mailer.send(
+        build_message(
+            old_email,
+            settings.email_sender,
+            t("email.emailChanged.subject", lang),
+            t("email.emailChanged.body", lang, name=fencer.display_name, email=fencer.email),
+        )
+    )
+
+
 def _payment_mail_suppressed(
     tournament: Tournament,
     registration: Registration | None = None,

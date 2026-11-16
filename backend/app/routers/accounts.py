@@ -1,3 +1,6 @@
+import hashlib
+import secrets
+from datetime import UTC, datetime, timedelta
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -5,13 +8,20 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from app import account_deletion, emails, privacy
-from app.auth import current_fencer, is_deployment_owner, set_password, verify_password
+from app.auth import (
+    current_fencer,
+    end_earlier_sessions,
+    is_deployment_owner,
+    set_password,
+    verify_password,
+)
 from app.db import get_session
 from app.hr_index import HRIndex, HRProfile, get_hr_index
 from app.models import (
     Fencer,
     FencerProfileAudit,
     OrganizerRequest,
+    PendingEmailChange,
     RequestState,
     Tournament,
     TournamentOrganizer,
@@ -27,6 +37,9 @@ from app.schemas import (
     DeletionCreditOut,
     DeletionImpactOut,
     DeletionIn,
+    EmailChangeIn,
+    EmailChangeKeyIn,
+    EmailChangeOut,
     HRBindIn,
     PasswordChangeIn,
     PleaIn,
@@ -187,11 +200,10 @@ def audit_change(session: Session, fencer: Fencer, field: str, new_value: str | 
 def update_account(data: AccountUpdate, session: SessionDep, fencer: FencerDep):
     updates = data.model_dump(exclude_unset=True)
     if "email" in updates:
-        taken = session.scalar(
-            select(Fencer.id).where(Fencer.email == updates["email"], Fencer.id != fencer.id)
-        )
-        if taken:
-            raise HTTPException(status_code=409, detail="email_already_registered")
+        # the address moves only through a link its new mailbox follows (spec
+        # profile-page, Address change); refused whole rather than ignored, so
+        # no client believes it saved, and nothing else in the request applies
+        raise HTTPException(status_code=422, detail="email_change_needs_confirmation")
     for field, value in updates.items():
         audit_change(session, fencer, field, value)
     session.commit()
@@ -223,6 +235,122 @@ def change_password(
     token = set_password(session, fencer, data.new_password)
     session.commit()
     emails.send_password_changed(mailer, fencer)
+    return TokenOut(token=token)
+
+
+# how long an address-change link works, as a reset link does (spec
+# profile-page, Address change)
+EMAIL_CHANGE_TTL = timedelta(hours=1)
+
+
+def _key_hash(key: str) -> str:
+    return hashlib.sha256(key.encode()).hexdigest()
+
+
+def _address_held_elsewhere(session: Session, email: str, fencer: Fencer) -> bool:
+    """Whether another fencer record holds the address. Any record counts, one
+    without credentials too: the address is unique to one record, and merging
+    a guest's or a roster record into an account is not what an address change
+    does (design confirm-email-change D2)."""
+    return (
+        session.scalar(select(Fencer.id).where(Fencer.email == email, Fencer.id != fencer.id))
+        is not None
+    )
+
+
+@router.post("/api/account/email", response_model=EmailChangeOut, status_code=202)
+@limiter.limit("5/minute")
+def request_email_change(
+    request: Request,
+    data: EmailChangeIn,
+    session: SessionDep,
+    fencer: FencerDep,
+    mailer: QueuedMailerDep,
+):
+    """Mail a link to the new address; the account's own address stays as it is
+    until the link is followed (spec profile-page, Address change).
+
+    The current password is the proof a session alone does not give, and the
+    link is the proof that the new mailbox is the account holder's. Both are
+    needed because Squire grants by address: a console team, an ownership
+    transfer, the deployment Owner, a reset link. Rate-limited as the password
+    change is, since it too would otherwise let a session guess the password.
+    A wrong password is 403, not 401, for the reason the password change gives."""
+    if fencer.password_hash is None or not verify_password(
+        data.current_password, fencer.password_hash
+    ):
+        raise HTTPException(status_code=403, detail="wrong_password")
+    new_email = str(data.new_email)
+    if new_email == fencer.email:
+        raise HTTPException(status_code=422, detail="email_unchanged")
+    if _address_held_elsewhere(session, new_email, fencer):
+        raise HTTPException(status_code=409, detail="email_already_registered")
+    # one row per account, the latest request winning: every earlier link dies
+    change = session.scalar(
+        select(PendingEmailChange).where(PendingEmailChange.fencer_id == fencer.id)
+    )
+    if change is None:
+        change = PendingEmailChange(fencer_id=fencer.id)
+        session.add(change)
+    key = secrets.token_urlsafe(32)
+    change.new_email = new_email
+    change.key_hash = _key_hash(key)
+    change.created_at = datetime.now(UTC)
+    change.expires_at = change.created_at + EMAIL_CHANGE_TTL
+    session.commit()
+    emails.send_email_change_link(mailer, fencer, new_email, key)
+    return EmailChangeOut(email=new_email)
+
+
+def _live_change(session: Session, key: str) -> PendingEmailChange:
+    """The change a mailed key names while it still works. A key never issued,
+    replaced, used or expired is refused alike, as a reset key is."""
+    change = session.scalar(
+        select(PendingEmailChange).where(PendingEmailChange.key_hash == _key_hash(key))
+    )
+    if change is None:
+        raise HTTPException(status_code=410, detail="email_change_invalid")
+    expires_at = change.expires_at
+    if expires_at.tzinfo is None:  # SQLite hands it back naive; it was written in UTC
+        expires_at = expires_at.replace(tzinfo=UTC)
+    if expires_at <= datetime.now(UTC):
+        raise HTTPException(status_code=410, detail="email_change_invalid")
+    return change
+
+
+@router.post("/api/account/email/inspect", response_model=EmailChangeOut)
+@limiter.limit("10/minute")
+def inspect_email_change(request: Request, data: EmailChangeKeyIn, session: SessionDep):
+    """The address a live link would set, consuming nothing, so the screen can
+    state a dead link before anything is confirmed."""
+    return EmailChangeOut(email=_live_change(session, data.key).new_email)
+
+
+@router.post("/api/account/email/confirm", response_model=TokenOut)
+@limiter.limit("10/minute")
+def confirm_email_change(
+    request: Request, data: EmailChangeKeyIn, session: SessionDep, mailer: QueuedMailerDep
+):
+    """Set the address, end every earlier session, sign this browser in and tell
+    the old address (spec profile-page, Address change). The browser following
+    the link need not be the one that asked; following it is what proves the
+    mailbox, as following a reset link is.
+
+    A record that took the address after the link was mailed keeps it: the link
+    then changes nothing, and says so."""
+    change = _live_change(session, data.key)
+    fencer = change.fencer
+    if _address_held_elsewhere(session, change.new_email, fencer):
+        session.delete(change)
+        session.commit()
+        raise HTTPException(status_code=409, detail="email_taken")
+    old_email = fencer.email
+    audit_change(session, fencer, "email", change.new_email)
+    token = end_earlier_sessions(fencer)
+    session.delete(change)
+    session.commit()
+    if old_email is not None:
+        emails.send_email_changed_notice(mailer, fencer, old_email)
     return TokenOut(token=token)
 
 

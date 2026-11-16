@@ -35,7 +35,13 @@ def mailbox():
     app.dependency_overrides.pop(get_mailer, None)
 
 
-ACCOUNT_MAIL = {"send_signup_verification", "send_password_reset", "send_password_changed"}
+ACCOUNT_MAIL = {
+    "send_signup_verification",
+    "send_password_reset",
+    "send_password_changed",
+    "send_email_change_link",
+    "send_email_changed_notice",
+}
 
 TOURNAMENT_SENDS = sorted(
     name

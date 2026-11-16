@@ -1748,6 +1748,30 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ current_password: currentPassword, new_password: newPassword }),
     }),
+  /** Mails a confirmation link to the new address; the account's own address
+   *  stays until it is followed (spec `profile-page`, Address change). A wrong
+   *  current password is `403 wrong_password`, an address another record
+   *  holds `409`. */
+  requestEmailChange: (currentPassword: string, newEmail: string) =>
+    request<{ email: string }>("/api/account/email", {
+      method: "POST",
+      body: JSON.stringify({ current_password: currentPassword, new_email: newEmail }),
+    }),
+  /** The address a live change link would set, consuming nothing; `410` for a
+   *  link that no longer works. */
+  inspectEmailChange: (key: string) =>
+    request<{ email: string }>("/api/account/email/inspect", {
+      method: "POST",
+      body: JSON.stringify({ key }),
+    }),
+  /** Sets the address and ends every earlier session; the token returned signs
+   *  this browser in. `409 email_taken` where another record took the address
+   *  meanwhile. */
+  confirmEmailChange: (key: string) =>
+    request<{ token: string }>("/api/account/email/confirm", {
+      method: "POST",
+      body: JSON.stringify({ key }),
+    }),
   /** Whether an address may register without an account: refused with
    *  `email_has_account` where it belongs to one. */
   guestCheck: (email: string) =>
@@ -2045,12 +2069,9 @@ export const api = {
     }),
   withdrawDeletion: () => request<Account>("/api/account/deletion/withdraw", { method: "POST" }),
   acceptOrganizerTerms: () => request<Account>("/api/account/organizer-terms", { method: "POST" }),
-  updateAccount: (patch: {
-    email?: string;
-    display_name?: string;
-    club?: string;
-    language?: string;
-  }) =>
+  /** The address is not among these: it changes only through
+   *  `requestEmailChange` and its mailed link. */
+  updateAccount: (patch: { display_name?: string; club?: string; language?: string }) =>
     request<Account>("/api/account", {
       method: "PATCH",
       body: JSON.stringify(patch),

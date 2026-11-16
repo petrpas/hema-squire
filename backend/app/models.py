@@ -317,6 +317,30 @@ class PasswordReset(Base):
     fencer: Mapped[Fencer] = relationship()
 
 
+class PendingEmailChange(Base):
+    """An address change asked for on the Profile page and not yet confirmed
+    from the new mailbox (spec `profile-page`, Address change).
+
+    Shaped as `PasswordReset` is: one row per account, so a newer request
+    replaces the key, and only the key's hash is kept. The account's own
+    address does not move until the link is followed, because every grant
+    Squire makes by address — a console team, an ownership transfer, the
+    deployment Owner, a reset link — would otherwise reach a mailbox nobody
+    has shown is theirs."""
+
+    __tablename__ = "pending_email_changes"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    fencer_id: Mapped[int] = mapped_column(ForeignKey("fencers.id"), unique=True)
+    new_email: Mapped[str] = mapped_column(String(320))
+    # SHA-256 of the mailed key; the key itself is never stored
+    key_hash: Mapped[str] = mapped_column(String(64), unique=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+    fencer: Mapped[Fencer] = relationship()
+
+
 class OutgoingMail(Base):
     """A message waiting for the transport, or the record that it went (spec
     `outgoing-mail`, design fix-email-findings D8).

@@ -134,6 +134,14 @@
       "subject": "Your HEMA Squire password was changed",
       "body": "Hi {name},\n\nthe password of your HEMA Squire account was just changed, and every other signed-in device was signed out.\n\nIf you did not do this, set a new password through \"Forgot password\" on the sign-in screen.\n\nHEMA Squire"
     },
+    "emailChangeLink": {
+      "subject": "Confirm your new HEMA Squire address",
+      "body": "Hi {name},\n\nopen this link to confirm {email} as the address of your HEMA Squire account:\n{link}\n\nThe link works once, for one hour. Until it is opened, the account keeps its current address. If you did not ask for this, ignore this message.\n\nHEMA Squire"
+    },
+    "emailChanged": {
+      "subject": "Your HEMA Squire address was changed",
+      "body": "Hi {name},\n\nthe address of your HEMA Squire account was just changed to {email}. Nothing more will be sent to this address, and every signed-in device was signed out.\n\nIf you did not do this, write to privacy@hemasquire.eu.\n\nHEMA Squire"
+    },
     "manageLinkResent": {
       "subject": "The link to your registration — {tournament}",
       "body": "Hi {name},\n\nthe organizer of {tournament} is sending you the link to your registration again.",

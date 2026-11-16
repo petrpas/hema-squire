@@ -2,10 +2,9 @@
 
 ## Purpose
 Define the periods after which personal data ages out: finished mail and expired tokens by age, and a tournament's bank text, contact addresses and free-text details twelve months after its date, while money stays reconcilable and rosters are kept without a period.
-
 ## Requirements
 ### Requirement: Finished mail and expired tokens are deleted
-A scheduler pass SHALL delete an outgoing message 30 days after it was sent or given up on, an expired pending signup, and an expired password reset. A message still waiting for delivery SHALL NOT be deleted.
+A scheduler pass SHALL delete an outgoing message 30 days after it was sent or given up on, an expired pending signup, an expired password reset, and an expired address change. A message still waiting for delivery SHALL NOT be deleted.
 
 #### Scenario: Sent message ages out
 - **WHEN** a pass runs 31 days after a message was sent
@@ -14,6 +13,10 @@ A scheduler pass SHALL delete an outgoing message 30 days after it was sent or g
 #### Scenario: Waiting message stays
 - **WHEN** a message has not finished delivery
 - **THEN** it stays and keeps being retried
+
+#### Scenario: An expired address change goes
+- **WHEN** a pass runs after an address-change link has expired unfollowed
+- **THEN** the pending change, with the address it named, no longer exists
 
 ### Requirement: Bank text is removed 12 months after the tournament
 Twelve months after a tournament's date, its bank transactions SHALL lose payer name, payer account, message and every other free-text field. Amount, currency, date, variable symbol, matching status, matched registration and the bank's transaction id SHALL remain, and every balance and revenue figure SHALL read as before. A statement imported again SHALL NOT re-create a pruned transaction.
@@ -39,3 +42,4 @@ No retention period SHALL remove a name, HR ID, club or nationality from a roste
 #### Scenario: Ten years later
 - **WHEN** a tournament is ten years old
 - **THEN** its rosters still list their entrants
+

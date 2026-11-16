@@ -1134,7 +1134,6 @@
       "email": "E-mail",
       "displayName": "Celé jméno",
       "language": "Preferovaný jazyk",
-      "emailTaken": "Tento e-mail už je použitý.",
       "saveFailed": "Uložení se nezdařilo."
     },
     "role": {
@@ -1194,6 +1193,20 @@
       "readAll": "Celé zásady ochrany osobních údajů",
       "termsAccepted": "Přijato {{date}}, verze {{version}}.",
       "termsDue": "Přijmete je při příštím otevření konzole své akce."
+    },
+    "email": {
+      "open": "Změnit adresu",
+      "title": "Změna e-mailové adresy",
+      "intro": "Na novou adresu pošleme odkaz. Adresa se změní, až ho otevřeš; do té doby platí současná.",
+      "new": "Nová adresa",
+      "submit": "Poslat odkaz",
+      "submitting": "Posílám…",
+      "sent": "Odkaz jsme poslali na {{email}}. Platí hodinu. Adresa účtu se změní, až ho otevřeš.",
+      "close": "Zavřít",
+      "wrong": "Současné heslo nesouhlasí.",
+      "taken": "Tuto adresu už ve Squire používá jiný záznam.",
+      "unchanged": "To je současná adresa účtu.",
+      "failed": "Odkaz se nepodařilo poslat."
     }
   },
   "home": {
@@ -2040,5 +2053,14 @@
       "action": "Stáhnout údaje (JSON)",
       "failed": "Údaje se nepodařilo stáhnout."
     }
+  },
+  "confirmEmail": {
+    "title": "Nová adresa účtu",
+    "meaning": "Potvrzením se adresa účtu změní na {{email}}. Všechna ostatní přihlášení skončí a na původní adresu přijde oznámení.",
+    "confirm": "Potvrdit adresu",
+    "confirming": "Potvrzuji…",
+    "invalid": "Tento odkaz už neplatí. O změnu adresy můžeš požádat znovu na stránce profilu.",
+    "taken": "Tuto adresu mezitím začal ve Squire používat jiný záznam, takže se adresa účtu nezměnila.",
+    "failed": "Adresu se nepodařilo potvrdit."
   }
 }

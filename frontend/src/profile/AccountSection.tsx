@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { type Account, ApiError, api } from "../api";
+import { type Account, api } from "../api";
 import FieldError, { invalidProps } from "../FieldError";
 import i18n from "../i18n";
 import { useFieldValidation } from "../useFieldValidation";
 import { apiErrors, checkString } from "../validation";
+import EmailChangeDialog from "./EmailChangeDialog";
 import PasswordDialog from "./PasswordDialog";
 
 const IMPLEMENTED_LANGUAGES = Object.keys(i18n.options.resources ?? {});
@@ -18,7 +19,6 @@ export default function AccountSection({
   onUpdated: (account: Account) => void;
 }) {
   const { t } = useTranslation();
-  const [email, setEmail] = useState(account.email);
   const [displayName, setDisplayName] = useState(account.display_name);
   const [language, setLanguage] = useState(account.language);
   const [dirty, setDirty] = useState(false);
@@ -27,10 +27,10 @@ export default function AccountSection({
   // a quiet link rather than a section of its own: hardly anyone changes it
   const [changingPassword, setChangingPassword] = useState(false);
   const [passwordChanged, setPasswordChanged] = useState(false);
+  const [changingEmail, setChangingEmail] = useState(false);
   const validation = useFieldValidation();
 
   useEffect(() => {
-    setEmail(account.email);
     setDisplayName(account.display_name);
     setLanguage(account.language);
     validation.clearAll();
@@ -48,7 +48,7 @@ export default function AccountSection({
     setBusy(true);
     setError(null);
     try {
-      const updated = await api.updateAccount({ email, display_name: displayName, language });
+      const updated = await api.updateAccount({ display_name: displayName, language });
       onUpdated(updated);
       void i18n.changeLanguage(updated.language);
       setDirty(false);
@@ -57,11 +57,7 @@ export default function AccountSection({
       if (fieldErrors.length > 0) {
         validation.applyApiErrors(fieldErrors);
       } else {
-        setError(
-          err instanceof ApiError && err.status === 409
-            ? t("profile.account.emailTaken")
-            : t("profile.account.saveFailed"),
-        );
+        setError(t("profile.account.saveFailed"));
       }
     } finally {
       setBusy(false);
@@ -85,17 +81,19 @@ export default function AccountSection({
         </button>
       </div>
       <div className="param-fields">
-        <label className="param-field">
-          <span>{t("profile.account.email")}</span>
-          <input
-            type="email"
-            value={email}
-            onChange={(event) => {
-              setEmail(event.target.value);
-              setDirty(true);
-            }}
-          />
-        </label>
+        {/* a div rather than a label: the change link is interactive
+            content, which a label may not wrap. The address is read-only and
+            moves only through the link mailed to the new one (spec
+            profile-page, Address change) */}
+        <div className="param-field">
+          <div className="field-label-row">
+            <label htmlFor="account-email">{t("profile.account.email")}</label>
+            <button type="button" className="link-button" onClick={() => setChangingEmail(true)}>
+              {t("profile.email.open")}
+            </button>
+          </div>
+          <input id="account-email" type="email" value={account.email} readOnly />
+        </div>
         <label className="param-field">
           <span>{t("profile.account.displayName")}</span>
           <input
@@ -138,6 +136,9 @@ export default function AccountSection({
       </button>
       {passwordChanged && (
         <p className="rail-hint password-changed">{t("profile.password.changed")}</p>
+      )}
+      {changingEmail && (
+        <EmailChangeDialog email={account.email} onClose={() => setChangingEmail(false)} />
       )}
       {changingPassword && (
         <PasswordDialog

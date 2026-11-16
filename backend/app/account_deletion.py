@@ -45,6 +45,7 @@ from app.models import (
     PaymentCredit,
     PaymentEvent,
     PaymentWaiver,
+    PendingEmailChange,
     Registration,
     Role,
     Rule,
@@ -415,6 +416,7 @@ def _apply(session: Session, fencer: Fencer) -> list[tuple[Registration, list[tu
     _redact_copies(session, fencer, addresses)
     session.execute(delete(FencerProfileAudit).where(FencerProfileAudit.fencer_id == fencer.id))
     session.execute(delete(PasswordReset).where(PasswordReset.fencer_id == fencer.id))
+    session.execute(delete(PendingEmailChange).where(PendingEmailChange.fencer_id == fencer.id))
     session.execute(delete(OrganizerRequest).where(OrganizerRequest.fencer_id == fencer.id))
     session.execute(delete(TournamentOrganizer).where(TournamentOrganizer.fencer_id == fencer.id))
 
@@ -601,6 +603,8 @@ COLUMN_HANDLING: dict[str, tuple[str, str]] = {
     "organizer_requests.message": ("removed", "the request is deleted"),
     "organizer_requests.state": ("removed", "the request is deleted"),
     "password_resets.key_hash": ("removed", "the reset is deleted"),
+    "pending_email_changes.new_email": ("removed", "the change is deleted"),
+    "pending_email_changes.key_hash": ("removed", "the change is deleted"),
     "tournaments.slug": ("none", "the event"),
     "tournaments.display_name": ("none", "the event"),
     "tournaments.subtitle": ("none", "the event"),

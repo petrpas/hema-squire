@@ -81,10 +81,17 @@ def set_password(session: Session, fencer: Fencer, password: str) -> str:
     Audited without the password: the trail records that it changed, never the
     hash — the hash is the credential the trail would otherwise hand out."""
     fencer.password_hash = hash_password(password)
+    session.add(FencerProfileAudit(fencer_id=fencer.id, field="password"))
+    return end_earlier_sessions(fencer)
+
+
+def end_earlier_sessions(fencer: Fencer) -> str:
+    """Refuse every session token issued before now and return a fresh one for
+    the browser making the change — what a password change and a confirmed
+    address change both do (spec password-reset, profile-page)."""
     # truncated to the second, so the token issued below — stamped in whole
     # seconds within the same instant — is never earlier than it
     fencer.sessions_valid_from = datetime.now(UTC).replace(microsecond=0)
-    session.add(FencerProfileAudit(fencer_id=fencer.id, field="password"))
     return create_token(fencer)
 
 
