@@ -84,6 +84,8 @@ def _disciplines(tournament: Tournament) -> tuple[FloorDiscipline, ...]:
             slug=discipline.slug,
             name=discipline.name,
             kind="team" if discipline.kind is DisciplineKind.TEAM else "individual",
+            team_min=discipline.team_min,
+            team_max=discipline.team_max,
         )
         for discipline in tournament.disciplines
     )

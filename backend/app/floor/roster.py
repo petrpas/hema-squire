@@ -20,6 +20,9 @@ class FloorDiscipline:
     slug: str
     name: str
     kind: DisciplineKind
+    # a team discipline's lineup bounds; None for an individual one
+    team_min: int | None = None
+    team_max: int | None = None
 
 
 @dataclass(frozen=True)

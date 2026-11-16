@@ -5,14 +5,16 @@ writes are refused there, as every write of a tournament's data is
 (`require_published`). A discipline-less event has no floor and answers 404.
 """
 
+import hashlib
 from dataclasses import asdict
 from datetime import UTC, datetime
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request, Response
+from pydantic import BaseModel
 
 from app.auth import require_console_access, require_published
 from app.errors import FieldValidationError
-from app.floor import planning, setup
+from app.floor import checkin, people, planning, setup, steps
 from app.floor.adapters.office import (
     FencerDep,
     SessionDep,
@@ -23,9 +25,13 @@ from app.floor.adapters.office import (
 )
 from app.floor.engine.model import Result
 from app.floor.models import FloorPin
+from app.floor.roster import FloorDiscipline
 from app.floor.schemas import (
     ChooseIn,
+    CloseImpactOut,
     DayIO,
+    DeskOut,
+    EntryKeyIn,
     FloorPersonRefOut,
     FloorPlanStateOut,
     FloorRosterOut,
@@ -33,11 +39,18 @@ from app.floor.schemas import (
     FloorSetupOut,
     FloorSummaryOut,
     FormatIn,
+    LineupIn,
+    LocalPersonIn,
+    LocalPersonOut,
     OfficialIn,
     ParamsIO,
+    PersonKeyIn,
     PinIn,
     PinOut,
     PisteIn,
+    ReopenPreviewOut,
+    RowId,
+    TodayOut,
     VariantsOut,
 )
 
@@ -157,6 +170,7 @@ def floor_summary(
     published = planning.published(session, tournament.id) is not None
     # a working version waits to be published
     badges["plan"] = planning.working(session, tournament.id) is not None
+    badges["checkin"] = bool(checkin.waiting(session, setup_facts(tournament), datetime.now(UTC)))
     return FloorSummaryOut(plan_published=published, badges=badges, setup_missing=missing)
 
 
@@ -174,7 +188,9 @@ def _context(session: SessionDep, tournament: TournamentDep) -> planning.Context
 
 
 def _pin_out(row: FloorPin) -> PinOut:
-    return PinOut(id=row.id, kind=row.kind, target=row.target, value=row.value, gate=row.gate)  # pyright: ignore[reportArgumentType]  # kind is one of PinIn's four: only this API writes it
+    return PinOut.model_validate(
+        {"id": row.id, "kind": row.kind, "target": row.target, "value": row.value, "gate": row.gate}
+    )
 
 
 @router.get("/{slug}/floor/plan", response_model=FloorPlanStateOut)
@@ -323,7 +339,7 @@ def floor_plan_pin(
 
 @router.delete("/{slug}/floor/plan/pins/{pin_id}", status_code=204)
 def floor_plan_unpin(
-    pin_id: int, tournament: TournamentDep, session: SessionDep, fencer: FencerDep
+    pin_id: RowId, tournament: TournamentDep, session: SessionDep, fencer: FencerDep
 ) -> None:
     """A gate's pin is not removed here: reopening its gate removes it."""
     require_console_access(session, tournament, fencer)
@@ -335,3 +351,231 @@ def floor_plan_unpin(
         raise HTTPException(status_code=409, detail="pin_from_gate")
     session.delete(row)
     session.commit()
+
+
+# ------------------------------------------------------------ check-in and today
+# (specs floor-checkin, floor-today)
+
+
+def _cached(request: Request, model: BaseModel) -> Response:
+    """The answer with an `ETag`; an unchanged one costs a 304 (design
+    add-floor-checkin D6)."""
+    body = model.model_dump_json()
+    tag = '"' + hashlib.sha256(body.encode()).hexdigest()[:32] + '"'
+    if request.headers.get("if-none-match") == tag:
+        return Response(status_code=304, headers={"ETag": tag})
+    return Response(content=body, media_type="application/json", headers={"ETag": tag})
+
+
+def _refused(error: checkin.Refused) -> HTTPException:
+    if error.detail is not None:
+        return HTTPException(status_code=409, detail={"reason": error.code, "items": error.detail})
+    return HTTPException(status_code=409, detail=error.code)
+
+
+def _discipline(tournament: TournamentDep, discipline_id: int) -> FloorDiscipline:
+    found = next((d for d in setup_facts(tournament).disciplines if d.id == discipline_id), None)
+    if found is None:
+        raise HTTPException(status_code=404, detail="discipline_not_found")
+    return found
+
+
+@router.get("/{slug}/floor/checkin", response_model=DeskOut)
+def floor_checkin(
+    request: Request, tournament: TournamentDep, session: SessionDep, fencer: FencerDep
+) -> Response:
+    require_console_access(session, tournament, fencer)
+    _floor(tournament)
+    desk = checkin.desk(session, tournament.id, roster(session, tournament))
+    return _cached(request, DeskOut.model_validate(desk))
+
+
+@router.post("/{slug}/floor/checkin/arrivals", status_code=204)
+def floor_arrive(
+    data: PersonKeyIn, tournament: TournamentDep, session: SessionDep, fencer: FencerDep
+) -> None:
+    require_console_access(session, tournament, fencer)
+    facts = _writable(tournament)
+    known = people.persons(session, facts.id, roster(session, tournament))
+    if data.person_key not in known:
+        raise HTTPException(status_code=404, detail="person_not_found")
+    checkin.arrive(session, facts.id, data.person_key, fencer.id, datetime.now(UTC))
+    session.commit()
+
+
+@router.delete("/{slug}/floor/checkin/arrivals/{person_key}", status_code=204)
+def floor_leave(
+    person_key: str, tournament: TournamentDep, session: SessionDep, fencer: FencerDep
+) -> None:
+    require_console_access(session, tournament, fencer)
+    checkin.leave(session, _writable(tournament).id, person_key)
+    session.commit()
+
+
+@router.post("/{slug}/floor/checkin/withdrawals", status_code=204)
+def floor_withdraw(
+    data: EntryKeyIn, tournament: TournamentDep, session: SessionDep, fencer: FencerDep
+) -> None:
+    require_console_access(session, tournament, fencer)
+    facts = _writable(tournament)
+    try:
+        checkin.withdraw(
+            session,
+            facts.id,
+            roster(session, tournament),
+            data.entry_key,
+            fencer.id,
+            datetime.now(UTC),
+        )
+    except checkin.Refused as error:
+        raise _refused(error) from None
+    session.commit()
+
+
+@router.delete("/{slug}/floor/checkin/withdrawals/{entry_key}", status_code=204)
+def floor_undo_withdrawal(
+    entry_key: str, tournament: TournamentDep, session: SessionDep, fencer: FencerDep
+) -> None:
+    require_console_access(session, tournament, fencer)
+    facts = _writable(tournament)
+    try:
+        checkin.undo_withdrawal(session, facts.id, roster(session, tournament), entry_key)
+    except checkin.Refused as error:
+        raise _refused(error) from None
+    session.commit()
+
+
+@router.put("/{slug}/floor/checkin/lineups/{team_key}", status_code=204)
+def floor_lineup(
+    team_key: str,
+    data: LineupIn,
+    tournament: TournamentDep,
+    session: SessionDep,
+    fencer: FencerDep,
+) -> None:
+    require_console_access(session, tournament, fencer)
+    facts = _writable(tournament)
+    errors = checkin.lineup_errors(
+        session, facts.id, roster(session, tournament), team_key, data.person_keys
+    )
+    if errors:
+        raise FieldValidationError(errors)
+    checkin.set_lineup(session, facts.id, team_key, data.person_keys)
+    session.commit()
+
+
+@router.post("/{slug}/floor/checkin/locals", response_model=LocalPersonOut, status_code=201)
+def floor_local_person(
+    data: LocalPersonIn, tournament: TournamentDep, session: SessionDep, fencer: FencerDep
+) -> LocalPersonOut:
+    """A person who exists only on the floor, such as a substitute named at
+    the desk. Never written to the office."""
+    require_console_access(session, tournament, fencer)
+    facts = _writable(tournament)
+    key = checkin.add_local(
+        session, facts.id, data.name, data.club or None, data.nationality or None
+    )
+    session.commit()
+    return LocalPersonOut(key=key)
+
+
+@router.get("/{slug}/floor/checkin/{discipline_id}/close", response_model=CloseImpactOut)
+def floor_close_impact(
+    discipline_id: RowId, tournament: TournamentDep, session: SessionDep, fencer: FencerDep
+) -> CloseImpactOut:
+    require_console_access(session, tournament, fencer)
+    _floor(tournament)
+    discipline = _discipline(tournament, discipline_id)
+    found = checkin.impact(
+        session, setup_facts(tournament), roster(session, tournament), discipline
+    )
+    return CloseImpactOut.model_validate(found)
+
+
+@router.post("/{slug}/floor/checkin/{discipline_id}/close", status_code=204)
+def floor_close(
+    discipline_id: RowId, tournament: TournamentDep, session: SessionDep, fencer: FencerDep
+) -> None:
+    require_console_access(session, tournament, fencer)
+    facts = _writable(tournament)
+    discipline = _discipline(tournament, discipline_id)
+    try:
+        checkin.close(
+            session, facts.id, roster(session, tournament), discipline, fencer.id, datetime.now(UTC)
+        )
+    except checkin.Refused as error:
+        raise _refused(error) from None
+    session.commit()
+
+
+@router.get("/{slug}/floor/checkin/{discipline_id}/reopen", response_model=ReopenPreviewOut)
+def floor_reopen_preview(
+    discipline_id: RowId, tournament: TournamentDep, session: SessionDep, fencer: FencerDep
+) -> ReopenPreviewOut:
+    require_console_access(session, tournament, fencer)
+    _floor(tournament)
+    _discipline(tournament, discipline_id)
+    return ReopenPreviewOut.model_validate(
+        checkin.reopen_preview(session, tournament.id, discipline_id)
+    )
+
+
+@router.post("/{slug}/floor/checkin/{discipline_id}/reopen", status_code=204)
+def floor_reopen(
+    discipline_id: RowId, tournament: TournamentDep, session: SessionDep, fencer: FencerDep
+) -> None:
+    require_console_access(session, tournament, fencer)
+    facts = _writable(tournament)
+    _discipline(tournament, discipline_id)
+    try:
+        checkin.reopen(session, facts.id, discipline_id)
+    except checkin.Refused as error:
+        raise _refused(error) from None
+    session.commit()
+
+
+def _waiting(session: SessionDep, tournament: TournamentDep) -> list[dict[str, object]]:
+    """Everything that waits on the organizer, from every tab's badge
+    conditions, each with where it is resolved."""
+    facts = setup_facts(tournament)
+    slugs = {d.id: d.slug for d in facts.disciplines}
+    out: list[dict[str, object]] = []
+    for code in setup.setup_missing(session, facts):
+        _, _, target = code.partition(":")
+        out.append(
+            {
+                "tab": "setup",
+                "discipline": slugs.get(int(target)) if target.isdigit() else None,
+                "code": code.split(":")[0],
+            }
+        )
+    if planning.working(session, facts.id) is not None:
+        out.append({"tab": "plan", "discipline": None, "code": "publish"})
+    for discipline_id in checkin.waiting(session, facts, datetime.now(UTC)):
+        out.append(
+            {"tab": "checkin", "discipline": slugs.get(discipline_id), "code": "checkin_open"}
+        )
+    return out
+
+
+@router.get("/{slug}/floor/today", response_model=TodayOut)
+def floor_today(
+    request: Request, tournament: TournamentDep, session: SessionDep, fencer: FencerDep
+) -> Response:
+    """Discipline × step, the slip, and what waits (spec floor-today)."""
+    require_console_access(session, tournament, fencer)
+    _floor(tournament)
+    facts = setup_facts(tournament)
+    rows = [
+        {
+            "discipline_id": d.id,
+            "slug": d.slug,
+            "name": d.name,
+            "steps": steps.states(session, facts.id, d.id),
+            "slip": None,
+        }
+        for d in facts.disciplines
+    ]
+    return _cached(
+        request, TodayOut.model_validate({"rows": rows, "waiting": _waiting(session, tournament)})
+    )
