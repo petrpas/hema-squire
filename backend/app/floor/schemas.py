@@ -3,7 +3,7 @@
 from datetime import date, datetime
 from typing import Annotated, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, StringConstraints
+from pydantic import AfterValidator, BaseModel, ConfigDict, Field, StringConstraints
 
 
 class FloorDisciplineOut(BaseModel):
@@ -11,6 +11,8 @@ class FloorDisciplineOut(BaseModel):
     slug: str
     name: str
     kind: Literal["individual", "team"]
+    team_min: int | None = None
+    team_max: int | None = None
 
 
 class FloorPersonOut(BaseModel):
@@ -46,10 +48,26 @@ class FloorRosterOut(BaseModel):
     teams: list[FloorTeamEntryOut]
 
 
+# A stored row's id in a path: bounded, so an out-of-range number answers 422
+# rather than overflowing SQLite's integer (as `app.fieldtypes.RowId`, which the
+# floor boundary keeps out of reach).
+RowId = Annotated[int, Field(ge=1, le=2_147_483_647)]
+
+
 # ------------------------------------------------------------ floor Setup
 # (spec floor-setup). Times are wall-clock "HH:MM" in the tournament's zone.
 
-Clock = Annotated[str, StringConstraints(pattern=r"^([01]\d|2[0-3]):[0-5]\d$")]
+
+def _clock(value: str) -> str:
+    hours, _, mins = value.partition(":")
+    if not (hours.isdigit() and mins.isdigit() and int(hours) < 24 and int(mins) < 60):
+        raise ValueError("invalid_time")
+    return value
+
+
+# "HH:MM", checked by the validator rather than a pattern: the contract
+# fuzzer filters a pattern-bound field too often to fill a list of days
+Clock = Annotated[str, StringConstraints(min_length=5, max_length=5), AfterValidator(_clock)]
 Minutes = Annotated[int, Field(ge=1, le=600)]
 Role = Literal["referee", "judge", "table"]
 
@@ -288,8 +306,12 @@ class PinIn(BaseModel):
     value: dict[str, object]
 
 
-class PinOut(PinIn):
+class PinOut(BaseModel):
     id: int
+    # "n" is check-in's own pin: a closed discipline's N, added by its gate
+    kind: Literal["day", "k", "place", "sequence", "n"]
+    target: str
+    value: dict[str, object]
     # the gate that added it; removed only by reopening that gate
     gate: str | None
 
@@ -332,3 +354,129 @@ class FloorPlanStateOut(BaseModel):
     sensitivity: SensitivityOut | None
     # Setup's waiting conditions where the planner cannot run yet
     setup_missing: list[str]
+
+
+# ------------------------------------------------------------ check-in and today
+# (specs floor-checkin, floor-today)
+
+
+class DeskEntryOut(BaseModel):
+    entry_key: str
+    discipline_id: int
+    # the team's name where this is a team's entry
+    team: str | None
+    paid: bool
+    withdrawn: bool
+
+
+class DeskPersonOut(BaseModel):
+    key: str
+    name: str
+    club: str | None
+    nationality: str | None
+    # a floor-only person, named at the desk
+    local: bool
+    arrived: bool
+    entries: list[DeskEntryOut]
+
+
+class DeskDisciplineOut(BaseModel):
+    id: int
+    slug: str
+    name: str
+    kind: Literal["individual", "team"]
+    team_min: int | None
+    team_max: int | None
+    closed: bool
+    closed_at: datetime | None
+    entered: int
+    present: int
+    n: int | None
+
+
+class DeskTeamOut(BaseModel):
+    key: str
+    discipline_id: int
+    name: str
+    members: list[str]
+    lineup: list[str]
+    present: bool
+    short_by: int
+    withdrawn: bool
+
+
+class DeskOut(BaseModel):
+    persons: list[DeskPersonOut]
+    disciplines: list[DeskDisciplineOut]
+    teams: list[DeskTeamOut]
+
+
+class PersonKeyIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    person_key: Annotated[str, StringConstraints(min_length=1, max_length=80)]
+
+
+class EntryKeyIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    entry_key: Annotated[str, StringConstraints(min_length=1, max_length=120)]
+
+
+class LineupIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    person_keys: list[Annotated[str, StringConstraints(min_length=1, max_length=80)]]
+
+
+class LocalPersonIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    name: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=200)]
+    club: Annotated[str, StringConstraints(strip_whitespace=True, max_length=200)] | None = None
+    nationality: Annotated[str, StringConstraints(strip_whitespace=True, max_length=80)] | None = (
+        None
+    )
+
+
+class LocalPersonOut(BaseModel):
+    key: str
+
+
+class CloseImpactOut(BaseModel):
+    n: int
+    n_pool: int
+    feasible: bool
+    k: int | None = None
+    sizes: list[int] = []
+    published_k: int | None = None
+    # the format's range, where no k fits the new N
+    range: list[int] | None = None
+    day: str | None = None
+    # minutes; negative is earlier; None without a published plan to compare
+    end_change: int | None = None
+
+
+class ReopenPreviewOut(BaseModel):
+    invalidated: list[str]
+    refusals: list[str]
+
+
+class TodayRowOut(BaseModel):
+    discipline_id: int
+    slug: str
+    name: str
+    steps: dict[str, str]
+    # minutes behind (positive) or ahead of the published plan; None until progress exists
+    slip: int | None
+
+
+class WaitingOut(BaseModel):
+    tab: str
+    discipline: str | None
+    code: str
+
+
+class TodayOut(BaseModel):
+    rows: list[TodayRowOut]
+    waiting: list[WaitingOut]

@@ -199,3 +199,89 @@ class FloorPin(Base):
     gate: Mapped[str | None] = mapped_column(String(40))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     created_by: Mapped[int | None] = mapped_column(Integer)
+
+
+# ------------------------------------------------------------ check-in
+# (spec floor-checkin; design add-floor-checkin D1). State is rows over roster
+# keys; undoing deletes the row. Nothing here is written to the office.
+
+
+class FloorArrival(Base):
+    __tablename__ = "floor_arrivals"
+    __table_args__ = (UniqueConstraint("tournament_id", "person_key"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    tournament_id: Mapped[int] = mapped_column(ForeignKey("tournaments.id"), index=True)
+    person_key: Mapped[str] = mapped_column(String(80))
+    at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    by: Mapped[int | None] = mapped_column(Integer)
+
+
+class FloorWithdrawal(Base):
+    __tablename__ = "floor_withdrawals"
+    __table_args__ = (UniqueConstraint("tournament_id", "entry_key"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    tournament_id: Mapped[int] = mapped_column(ForeignKey("tournaments.id"), index=True)
+    # "<person key>@<discipline id>", or a team's "team:<id>"
+    entry_key: Mapped[str] = mapped_column(String(120))
+    at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    by: Mapped[int | None] = mapped_column(Integer)
+
+
+class FloorLineup(Base):
+    """The day's lineup of a team; absent means the roster's members."""
+
+    __tablename__ = "floor_lineups"
+    __table_args__ = (UniqueConstraint("tournament_id", "team_key", "person_key"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    tournament_id: Mapped[int] = mapped_column(ForeignKey("tournaments.id"), index=True)
+    team_key: Mapped[str] = mapped_column(String(80))
+    person_key: Mapped[str] = mapped_column(String(80))
+    ordinal: Mapped[int] = mapped_column(Integer)
+
+
+class FloorLocalPerson(Base):
+    """A person who exists only on the floor: a substitute named at the desk.
+    Keyed `local:<id>`, a prefix the office never issues."""
+
+    __tablename__ = "floor_local_persons"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    tournament_id: Mapped[int] = mapped_column(ForeignKey("tournaments.id"), index=True)
+    name: Mapped[str] = mapped_column(String(200))
+    club: Mapped[str | None] = mapped_column(String(200))
+    nationality: Mapped[str | None] = mapped_column(String(80))
+
+
+class FloorSnapshot(Base):
+    """A discipline's entrants as check-in closed on them."""
+
+    __tablename__ = "floor_snapshots"
+    __table_args__ = (UniqueConstraint("tournament_id", "discipline_id"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    tournament_id: Mapped[int] = mapped_column(ForeignKey("tournaments.id"), index=True)
+    discipline_id: Mapped[int] = mapped_column(ForeignKey("disciplines.id", ondelete="CASCADE"))
+    closed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    closed_by: Mapped[int | None] = mapped_column(Integer)
+    n: Mapped[int] = mapped_column(Integer)
+
+
+class FloorSnapshotEntrant(Base):
+    __tablename__ = "floor_snapshot_entrants"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    snapshot_id: Mapped[int] = mapped_column(ForeignKey("floor_snapshots.id"), index=True)
+    entrant_key: Mapped[str] = mapped_column(String(80))
+    # person | team
+    kind: Mapped[str] = mapped_column(String(8))
+    name: Mapped[str] = mapped_column(String(200))
+    club: Mapped[str | None] = mapped_column(String(200))
+    nationality: Mapped[str | None] = mapped_column(String(80))
+    hr_id: Mapped[int | None] = mapped_column(Integer)
+    rating: Mapped[float | None] = mapped_column()
+    rank: Mapped[int | None] = mapped_column(Integer)
+    # a team's arrived lineup, person keys in order
+    members: Mapped[list[str]] = mapped_column(JSON, default=list)

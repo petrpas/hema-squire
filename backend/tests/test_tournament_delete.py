@@ -14,8 +14,11 @@ from sqlalchemy import Table, func, select
 
 from app.db import get_session
 from app.floor.models import (
+    FloorArrival,
     FloorDay,
     FloorFormat,
+    FloorLineup,
+    FloorLocalPerson,
     FloorOfficial,
     FloorOfficialDay,
     FloorPin,
@@ -24,6 +27,9 @@ from app.floor.models import (
     FloorPlan,
     FloorPlanActivity,
     FloorSettings,
+    FloorSnapshot,
+    FloorSnapshotEntrant,
+    FloorWithdrawal,
 )
 from app.main import app
 from app.models import (
@@ -262,6 +268,16 @@ def populate(session, tournament: Tournament, registration: Registration, actor:
         )
     )
     session.add(FloorPin(tournament_id=tid, kind="k", target="1", value={"k": 2}, created_at=now))
+    session.add(FloorArrival(tournament_id=tid, person_key="reg:1", at=now))
+    session.add(FloorWithdrawal(tournament_id=tid, entry_key="reg:1@1", at=now))
+    session.add(FloorLineup(tournament_id=tid, team_key="team:1", person_key="reg:1", ordinal=1))
+    session.add(FloorLocalPerson(tournament_id=tid, name="Local"))
+    snapshot = FloorSnapshot(tournament_id=tid, discipline_id=discipline.id, closed_at=now, n=1)
+    session.add(snapshot)
+    session.flush()
+    session.add(
+        FloorSnapshotEntrant(snapshot_id=snapshot.id, entrant_key="reg:1", kind="person", name="A")
+    )
     session.commit()
 
 

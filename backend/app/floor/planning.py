@@ -14,7 +14,7 @@ from zoneinfo import ZoneInfo
 from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
 
-from app.floor import progress
+from app.floor import people, progress
 from app.floor.engine.model import (
     Activity,
     Break,
@@ -91,25 +91,31 @@ def _minutes(value: time) -> int:
     return value.hour * 60 + value.minute
 
 
-def _clock_minutes(clock: str) -> int:
+def clock_minutes(clock: str) -> int:
     hours, mins = clock.split(":")
     return int(hours) * 60 + int(mins)
 
 
-def _counts(roster: Roster) -> tuple[dict[str, int], dict[str, int], dict[str, set[str]]]:
-    """Per discipline slug: pool participants, bracket entrants, and who."""
+def _counts(
+    session: Session, tid: int, tournament: Tournament, roster: Roster
+) -> tuple[dict[str, int], dict[str, int], dict[str, set[str]]]:
+    """Per discipline slug: pool participants, bracket entrants, and who.
+    Read through `people.entrants`: the roster before a discipline's
+    check-in closes, its snapshot after (spec floor-planner, Which N)."""
     n_pool: dict[str, int] = {}
     n_bracket: dict[str, int] = {}
-    people: dict[str, set[str]] = {}
-    for entry in roster.individuals:
-        n_pool[entry.discipline] = n_pool.get(entry.discipline, 0) + 1
-        n_bracket[entry.discipline] = n_bracket.get(entry.discipline, 0) + 1
-        people.setdefault(entry.discipline, set()).add(entry.person)
-    for team in roster.teams:
-        n_pool[team.discipline] = n_pool.get(team.discipline, 0) + len(team.members)
-        n_bracket[team.discipline] = n_bracket.get(team.discipline, 0) + 1
-        people.setdefault(team.discipline, set()).update(team.members)
-    return n_pool, n_bracket, people
+    who: dict[str, set[str]] = {}
+    for discipline in tournament.disciplines:
+        found = people.entrants(session, tid, roster, discipline)
+        if discipline.kind == "team":
+            members = [key for team in found for key in team.members]
+            n_pool[discipline.slug] = len(members)
+            who[discipline.slug] = set(members)
+        else:
+            n_pool[discipline.slug] = len(found)
+            who[discipline.slug] = {e.key for e in found}
+        n_bracket[discipline.slug] = len(found)
+    return n_pool, n_bracket, who
 
 
 def _format(row: FloorFormat) -> Format:
@@ -145,9 +151,12 @@ def _pins(session: Session, tid: int, ctx_dates: Sequence[date]) -> tuple[Pin, .
                         activity=row.target,
                         piste=int(str(value["piste"])),
                         day=list(ctx_dates).index(when),
-                        start=_clock_minutes(str(value["start"])),
+                        start=clock_minutes(str(value["start"])),
                     )
                 )
+        elif row.kind == "n":
+            # check-in's pin: N is read from the snapshot itself
+            continue
         elif row.kind == "sequence":
             when = date.fromisoformat(str(value["day"]))
             listed = value.get("disciplines")
@@ -210,7 +219,7 @@ def build(
             index=i,
             start=_minutes(day.start),
             end=_minutes(day.end),
-            breaks=tuple(Break(_clock_minutes(a), _clock_minutes(b)) for a, b in day.breaks),
+            breaks=tuple(Break(clock_minutes(a), clock_minutes(b)) for a, b in day.breaks),
         )
         for i, day in enumerate(day_rows)
     )
@@ -231,7 +240,7 @@ def build(
         for p in piste_rows
     )
 
-    n_pool, n_bracket, people = _counts(roster)
+    n_pool, n_bracket, who = _counts(session, tid, tournament, roster)
     facts: list[DisciplineFacts] = []
     empty: list[int] = []
     for discipline in tournament.disciplines:
@@ -252,7 +261,7 @@ def build(
     shared: list[tuple[int, int, int]] = []
     for i, a in enumerate(facts):
         for b in facts[i + 1 :]:
-            both = len(people.get(slug_of[a.id], set()) & people.get(slug_of[b.id], set()))
+            both = len(who.get(slug_of[a.id], set()) & who.get(slug_of[b.id], set()))
             if both:
                 shared.append((min(a.id, b.id), max(a.id, b.id), both))
 
