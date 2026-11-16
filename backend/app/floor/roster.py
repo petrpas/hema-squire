@@ -6,6 +6,7 @@ shape through it. `adapters/office.py` is what fills it.
 """
 
 from dataclasses import dataclass
+from datetime import date
 from typing import Literal
 
 DisciplineKind = Literal["individual", "team"]
@@ -13,6 +14,9 @@ DisciplineKind = Literal["individual", "team"]
 
 @dataclass(frozen=True)
 class FloorDiscipline:
+    # the discipline's stable id: floor tables refer to it, never to the slug,
+    # which stays editable until someone enters (design add-floor-console D2)
+    id: int
     slug: str
     name: str
     kind: DisciplineKind
@@ -59,6 +63,9 @@ class Roster:
     """A tournament's seated entrants. The order of the tuples carries no
     meaning: seeding belongs to the floor."""
 
+    # the tournament's date and IANA timezone, for the day's wall-clock times
+    date: date
+    timezone: str
     disciplines: tuple[FloorDiscipline, ...]
     persons: tuple[Person, ...]
     individuals: tuple[IndividualEntry, ...]

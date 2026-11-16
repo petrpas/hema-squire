@@ -11,11 +11,17 @@ delete-orphan, so every child table is named and deleted explicitly, children
 before parents, in the caller's transaction. A table added later that refers to
 a tournament or to one of its registrations has to be added here too; the
 metadata-driven test in `tests/test_tournament_delete.py` fails until it is.
+
+The floor's tables are the exception: the office may not import `app.floor`, so
+they are found by their `floor_` prefix on the shared metadata and deleted
+children first (design add-floor-console D4). A floor table added later needs
+nothing here.
 """
 
-from sqlalchemy import delete, select
+from sqlalchemy import Table, delete, select
 from sqlalchemy.orm import Session
 
+from app.db import Base
 from app.models import (
     BankTransaction,
     Discipline,
@@ -74,11 +80,33 @@ def _delete_registrations(session: Session, tid: int) -> None:
     session.execute(delete(DiscountCode).where(DiscountCode.tournament_id == tid))
 
 
+def _floor_scope(table: Table, tid: int):
+    """The condition selecting a floor table's rows of this tournament: by its
+    own `tournament_id`, else through the floor parent that carries one."""
+    if "tournament_id" in table.c:
+        return table.c.tournament_id == tid
+    for fk in table.foreign_keys:
+        parent = fk.column.table
+        if parent.name.startswith("floor_") and "tournament_id" in parent.c:
+            owned = select(fk.column).where(parent.c.tournament_id == tid)
+            return fk.parent.in_(owned)
+    raise LookupError(f"{table.name} cannot be scoped to a tournament")
+
+
+def _delete_floor(session: Session, tid: int) -> None:
+    """Every `floor_` table's rows of the tournament, children before parents."""
+    for table in reversed(Base.metadata.sorted_tables):
+        if table.name.startswith("floor_"):
+            session.execute(delete(table).where(_floor_scope(table, tid)))
+
+
 def delete_tournament(session: Session, tournament: Tournament) -> None:
     """Remove the tournament and every row recorded under it. Accounts are
     untouched: a fencer registered for it, or an organizer of it, keeps theirs.
     Does not commit."""
     tid = tournament.id
+    # first: floor rows refer to the tournament's disciplines
+    _delete_floor(session, tid)
     _delete_registrations(session, tid)
     snapshot_ids = select(HRRatingSnapshot.id).where(HRRatingSnapshot.tournament_id == tid)
     session.execute(delete(HRSnapshotRating).where(HRSnapshotRating.snapshot_id.in_(snapshot_ids)))

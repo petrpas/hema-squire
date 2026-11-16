@@ -2070,5 +2070,154 @@
     "invalid": "Tento odkaz už neplatí. O změnu adresy můžeš požádat znovu na stránce profilu.",
     "taken": "Tuto adresu mezitím začal ve Squire používat jiný záznam, takže se adresa účtu nezměnila.",
     "failed": "Adresu se nepodařilo potvrdit."
+  },
+  "floor": {
+    "tabs": {
+      "label": "Kroky dne turnaje",
+      "setup": "Nastavení",
+      "data": "Data",
+      "plan": "Plán",
+      "today": "Přehled",
+      "checkin": "Prezence",
+      "pools": "Skupiny",
+      "bracket": "Pavouk",
+      "results": "Výsledky",
+      "schedule": "Rozvrh",
+      "waiting": "něco tu čeká"
+    },
+    "notYet": "Tento krok zatím není k dispozici.",
+    "schedule": {
+      "title": "Rozvrh",
+      "none": "Plán zatím nebyl sestaven.",
+      "later": "Rozvrh se zde objeví s plánovačem."
+    },
+    "roles": {
+      "referee": "Rozhodčí",
+      "judge": "Postranní rozhodčí",
+      "table": "Zapisovatel"
+    },
+    "errors": {
+      "invalid": "Tato hodnota neprošla.",
+      "duplicate": "Už je uvedeno výše.",
+      "end_not_after_start": "Konec musí být po začátku.",
+      "break_outside_day": "Přestávka musí ležet uvnitř dne.",
+      "breaks_overlap": "Přestávky se překrývají.",
+      "unknown_day": "Tento den není uložen mezi dny turnaje.",
+      "not_found": "Tento řádek už neexistuje; načti stránku znovu.",
+      "unknown_discipline": "Tato disciplína v turnaji není.",
+      "unknown_person": "Tato osoba na soupisce není.",
+      "above_max": "Minimum je větší než maximum.",
+      "referee_required": "Planš potřebuje aspoň jednoho rozhodčího.",
+      "required": "Vyplň prosím.",
+      "too_small": "Hodnota je příliš malá.",
+      "too_large": "Hodnota je příliš velká."
+    },
+    "setup": {
+      "save": "Uložit",
+      "saving": "Ukládám…",
+      "saveFailed": "Uložení se nezdařilo. Zkus to prosím znovu.",
+      "loadFailed": "Nastavení se nepodařilo načíst.",
+      "remove": "Odebrat",
+      "moveDown": "Posunout níž",
+      "days": {
+        "title": "Dny",
+        "offered": "Zatím není uložen žádný den. Nabízíme den turnaje od 9 do 19 hodin; ulož ho, nebo uprav.",
+        "date": "Datum",
+        "start": "Začátek",
+        "end": "Konec",
+        "break": "Přestávka",
+        "breakStart": "Začátek přestávky",
+        "breakEnd": "Konec přestávky",
+        "addBreak": "Přidat přestávku",
+        "addDay": "Přidat den",
+        "removeDay": "Odebrat den"
+      },
+      "pistes": {
+        "title": "Planše",
+        "planned_one": "Plánovač použije {{count}} planš.",
+        "planned_few": "Plánovač použije {{count}} planše.",
+        "planned_other": "Plánovač použije {{count}} planší.",
+        "held_one": "{{count}} je v záloze pro přeplánování.",
+        "held_few": "{{count}} jsou v záloze pro přeplánování.",
+        "held_other": "{{count}} je v záloze pro přeplánování.",
+        "name": "Název",
+        "tag": "Štítek",
+        "tagHint": "např. finálová",
+        "reserve": "Záložní",
+        "days": "Dny, kdy je k dispozici",
+        "add": "Přidat planš",
+        "planned_many": "Plánovač použije {{count}} planše.",
+        "held_many": "{{count}} planše je v záloze pro přeplánování."
+      },
+      "formats": {
+        "title": "Formáty disciplín",
+        "missing": {
+          "format": "Formát zatím není uložen.",
+          "staffing": "Obsazení planše zatím není stanoveno."
+        },
+        "pools": "Skupiny",
+        "pool_min": "Nejmenší skupina",
+        "pool_max": "Největší skupina",
+        "elimination": "Vyřazovací část",
+        "teamStages": "Členové týmů šermují v individuálních skupinách, pak následuje týmová eliminace.",
+        "advanceAll": "Postupují všichni",
+        "advance": "Počet postupujících",
+        "thirdPlace": "Zápas o třetí místo",
+        "staffing": "Obsazení planše",
+        "stateStaffing": "Stanovit obsazení",
+        "slots": "Délky (minuty)",
+        "slot_pool_bout": "Zápas ve skupině",
+        "slot_elim_bout": "Zápas v eliminaci",
+        "slot_pool_overhead": "Přechod mezi skupinami",
+        "slot_team_match": "Týmový zápas"
+      },
+      "officials": {
+        "title": "Rozhodčí",
+        "none": "Zatím žádní rozhodčí.",
+        "name": "Jméno",
+        "person": "Šermuje jako",
+        "noPerson": "nešermuje",
+        "lostOption": "osoba už na soupisce není",
+        "linkLost": "Propojená osoba už na soupisce není.",
+        "roles": "Role",
+        "disciplines": "Disciplíny",
+        "days": "Dny, kdy je k dispozici",
+        "add": "Přidat rozhodčího"
+      },
+      "params": {
+        "title": "Parametry",
+        "pool_sizes_even": "Skupiny jedné disciplíny se liší nejvýš o 1",
+        "always": "vždy",
+        "finals_last": "Finále až po všem ostatním daného dne",
+        "prefer_larger_pools": "Dávat přednost větším skupinám",
+        "club_weight": "Váha oddělení klubů při losu",
+        "nationality_weight": "Váha rozložení národností při losu",
+        "min_rest_minutes": "Nejkratší odpočinek mezi zápasy (minuty)",
+        "kind": {
+          "rule": "pravidlo",
+          "preference": "preference",
+          "estimate": "odhad"
+        }
+      }
+    },
+    "data": {
+      "fromImport": "Šermíři přicházejí z tabulky importované v kanceláři.",
+      "toImport": "Otevřít Import",
+      "fromRegistrations": "Šermíři přicházejí z registrací v kanceláři.",
+      "draft": "Turnaj ještě není zveřejněn, takže nemá žádné šermíře.",
+      "loadFailed": "Soupisku se nepodařilo načíst.",
+      "count_one": "{{count}} přihlášený",
+      "count_few": "{{count}} přihlášení",
+      "count_other": "{{count}} přihlášených",
+      "empty": "Zatím nikdo.",
+      "name": "Jméno",
+      "club": "Klub",
+      "nationality": "Národnost",
+      "rating": "Rating",
+      "paid": "Zapl.",
+      "yes": "ano",
+      "count_many": "{{count}} přihlášeného"
+    },
+    "loadFailed": "Konzoli dne turnaje se nepodařilo načíst. Zkus stránku načíst znovu."
   }
 }

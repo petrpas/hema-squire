@@ -41,11 +41,11 @@ drift apart.
   them, and a duplicate is the office's dedup to resolve.
 - Two member rows of one team. A team's lineup needs every member as a distinct person.
 
-**The joined person** takes its key, name, club and nationality from its anchor row,
-and carries the identifier any of its rows states. The anchor is the
+**The joined person** takes its key, name, club, nationality and HEMA Ratings
+identifier from its anchor row, as the public roster states that row. The anchor is the
 registration-backed row, or the member row with the lowest member id when there is
-none. A member row that matches several persons joins the one whose anchor comes
-first in that order.
+none. A member row that matches several persons joins the first, in that order, whose
+every row it is the same person as. So no person joins two different identifiers.
 
 #### Scenario: A fencer in two disciplines is one person
 - **WHEN** a fencer is seated in Longsword Open and Sabre Open

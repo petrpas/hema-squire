@@ -12,13 +12,15 @@ office console refuses them.
 **What has no floor.** A discipline-less event has no floor. Its floor address SHALL end
 at the not-found screen (`routing`).
 
-**The link from the office console.** The office console's header SHALL carry a link
-labelled "Den turnaje" ("Tournament day") to the floor console, wherever the floor exists.
+**The link from the office console.** The office console's header already names three
+stages: "Před turnajem", "Turnaj" and "Po turnaji". Wherever the floor exists, "Turnaj"
+SHALL be a link to the floor console. In the floor console, "Před turnajem" SHALL lead
+back to the office console, and "Turnaj" is the current stage.
 
 **Addresses.** Every floor address SHALL be built from `floorPath` in `routes.ts`.
 
 #### Scenario: An organizer opens the floor
-- **WHEN** a team member follows "Den turnaje" from the office console of a tournament with disciplines
+- **WHEN** a team member follows "Turnaj" in the office console's header of a tournament with disciplines
 - **THEN** the floor console opens on its default tab
 
 #### Scenario: An event has no floor
