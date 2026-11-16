@@ -2037,7 +2037,18 @@
     "schedule": {
       "title": "Schedule",
       "none": "No plan has been made yet.",
-      "later": "The schedule appears here with the planner."
+      "later": "The schedule appears here with the planner.",
+      "version": "Version",
+      "published": "Published",
+      "working": "Working",
+      "day": "Day",
+      "empty": "Nothing runs on this day.",
+      "reserve": "reserve",
+      "change": {
+        "moved": "moved",
+        "added": "new",
+        "removed": "removed"
+      }
     },
     "roles": {
       "referee": "Referee",
@@ -2160,6 +2171,95 @@
       "paid": "Paid",
       "yes": "yes"
     },
-    "loadFailed": "The tournament-day console could not be loaded. Try reloading the page."
+    "loadFailed": "The tournament-day console could not be loaded. Try reloading the page.",
+    "plan": {
+      "title": "Plan",
+      "loadFailed": "The plan could not be loaded.",
+      "failed": "That did not work. Please try again.",
+      "setupMissing": "The planner needs days, pistes, and every discipline's format and piste staffing. Complete them in Setup.",
+      "variants": {
+        "title": "Variants",
+        "ask": "Propose variants",
+        "working": "Computing…",
+        "number": "Variant {{number}}",
+        "default": "default",
+        "choose": "Choose as working version",
+        "pools_one": "{{count}} pool ({{sizes}})",
+        "pools_other": "{{count}} pools ({{sizes}})",
+        "ends": "{{day}} ends at {{end}}",
+        "load_one": "{{count}} fencer kept out of a parallel wave",
+        "load_other": "{{count}} fencers kept out of a parallel wave",
+        "collisions_one": "{{count}} possible bracket collision",
+        "collisions_other": "{{count}} possible bracket collisions",
+        "shortage_one": "{{count}} fencer does not fit outside the parallel wave",
+        "shortage_other": "{{count}} fencers do not fit outside the parallel wave",
+        "empty": "Nobody entered, so left out of the plan: {{names}}.",
+        "capped": "There were too many variants; the pool count was fixed for: {{names}}."
+      },
+      "infeasible": {
+        "structure": "{{name}} does not fit its format ({{detail}}). Change the pool size range.",
+        "overrun": "No variant fits the day; the best one runs {{minutes}} min over.",
+        "rule": "No variant exists because of the rule: {{rule}}.",
+        "pin": {
+          "day": "No variant exists because {{name}} is pinned to {{day}}.",
+          "k": "No variant exists because {{name}} is pinned to {{k}} pools.",
+          "place": "No variant exists because of the placement pin on {{name}}.",
+          "sequence": "No variant exists because of the discipline order pin.",
+          "other": "No variant exists because of the pin on {{name}}."
+        }
+      },
+      "rules": {
+        "finals_last": "finals at the end of the day",
+        "rest": "rest between bouts",
+        "officials": "the number of officials"
+      },
+      "working": {
+        "title": "Working version",
+        "none": "None yet. Propose variants and choose one.",
+        "version": "Working version {{version}}.",
+        "published": "Version {{version}} is published.",
+        "publish": "Publish the plan",
+        "replan": "Re-plan",
+        "confirmTitle": "Publish the plan",
+        "confirmBody": "The working version becomes the published one. The tournament's public programme follows it."
+      },
+      "obstacles": {
+        "format": "{{name}} has no format.",
+        "noPiste": "There is no piste on {{day}}.",
+        "shortage": "{{a}} and {{b}}: the shared fencers do not fit outside the parallel wave."
+      },
+      "pins": {
+        "title": "Pins",
+        "none": "Nothing is pinned.",
+        "day": "{{name}}: day {{day}}",
+        "k": "{{name}}: {{k}} pools",
+        "place": "{{activity}} starts at {{start}}",
+        "sequence": "Discipline order",
+        "gate": "added by the {{gate}} step; reopening it removes it",
+        "kind": "What to pin",
+        "kindDay": "a discipline's day",
+        "kindK": "the pool count",
+        "discipline": "Discipline",
+        "pools": "Pools",
+        "add": "Pin"
+      },
+      "sensitivity": {
+        "title": "Sensitivity",
+        "threshold": "{{name}}: the pools change at {{below}} or {{above}} entrants",
+        "fewer": "one piste fewer",
+        "more": "one piste more",
+        "twoMore": "two more",
+        "nothing": "nothing",
+        "unplannable": "cannot be planned",
+        "earlier_one": "{{count}} minute earlier",
+        "earlier_other": "{{count}} minutes earlier",
+        "later_one": "{{count}} minute later",
+        "later_other": "{{count}} minutes later",
+        "limit": {
+          "pistes": "The pistes limit the day.",
+          "officials": "The officials limit the day."
+        }
+      }
+    }
   }
 }

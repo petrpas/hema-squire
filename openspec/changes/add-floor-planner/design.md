@@ -155,6 +155,39 @@ activity spans its columns. It uses no chart library and no SVG animation.
 **Narrow screens.** On a narrow screen the grid scrolls horizontally inside its own
 band (`responsive-layout`, A tab control too wide…, applied to the grid).
 
+### D10. Decisions made during implementation (made by me; for the owner's review)
+These were open in the proposal. I decided them on 2026-11-17, while the owner was away,
+as the owner asked:
+- **Officials cap by role, not by piste count.** At every moment, the sum of each running
+  discipline's template per role stays within that day's officials of the role. This
+  generalises `floor(officials / template)` to days where disciplines with different
+  templates run together.
+- **No officials entered means no cap.** An empty officials list is "not counted yet".
+  It is not "nobody". Once any official is entered, a role nobody fills counts as zero.
+- **An official counts toward every role they can fill.** That is an upper bound. The
+  officials assignment (`add-floor-officials`) settles who does what.
+- **A sequence pin orders non-final activities.** With "finals last" on, every final
+  still waits for the whole day. Otherwise sequence and finals-last would contradict
+  each other.
+- **Rest between two disciplines sharing persons** is enforced only where a sequence pin
+  puts one after the other. Disciplines running side by side are kept apart by the
+  draw's exclusion sets instead.
+- **Waves are piste-sequence indexes.** A pool's wave is the number of pools of its
+  discipline its piste ran before it, from 1. They are not derived from start times.
+- **A shortage is counted per pair** as the smaller of the two directions' deficits,
+  since either discipline can take the shared persons.
+- **Disciplines with nobody entered are left out of the plan** and listed as such,
+  rather than failing the whole tournament's planning before registration opens.
+- **Variants are not stored.** Choosing one runs the planner again and takes the
+  variant of that key, which determinism makes safe. A changed state answers 409
+  `variant_gone`.
+- **Re-planning stores its first variant** as the working version. A discipline that
+  has started keeps its published k.
+- **Plan authors are stored as account ids** (`created_by`), not as labels, so account
+  deletion has no text to redact.
+- **The enumeration cap fixes days too**, after k, if fixing k alone does not bring the
+  space under 2,000. The result names every discipline it fixed.
+
 ## Risks / Trade-offs
 
 - **[List scheduling can miss a better plan an exact solver would find.]** → The plan is

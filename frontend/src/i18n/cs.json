@@ -2089,7 +2089,18 @@
     "schedule": {
       "title": "Rozvrh",
       "none": "Plán zatím nebyl sestaven.",
-      "later": "Rozvrh se zde objeví s plánovačem."
+      "later": "Rozvrh se zde objeví s plánovačem.",
+      "version": "Verze",
+      "published": "Zveřejněná",
+      "working": "Pracovní",
+      "day": "Den",
+      "empty": "Tento den nic neprobíhá.",
+      "reserve": "rezerva",
+      "change": {
+        "moved": "posunuto",
+        "added": "nové",
+        "removed": "zrušeno"
+      }
     },
     "roles": {
       "referee": "Rozhodčí",
@@ -2218,6 +2229,107 @@
       "yes": "ano",
       "count_many": "{{count}} přihlášeného"
     },
-    "loadFailed": "Konzoli dne turnaje se nepodařilo načíst. Zkus stránku načíst znovu."
+    "loadFailed": "Konzoli dne turnaje se nepodařilo načíst. Zkus stránku načíst znovu.",
+    "plan": {
+      "title": "Plán",
+      "loadFailed": "Plán se nepodařilo načíst.",
+      "failed": "Akce se nezdařila. Zkus to prosím znovu.",
+      "setupMissing": "Plánovač potřebuje dny, planše a u každé disciplíny formát i obsazení planše. Doplň je v Nastavení.",
+      "variants": {
+        "title": "Varianty",
+        "ask": "Navrhnout varianty",
+        "working": "Počítám…",
+        "number": "Varianta {{number}}",
+        "default": "výchozí",
+        "choose": "Zvolit jako pracovní verzi",
+        "pools_one": "{{count}} skupina ({{sizes}})",
+        "pools_few": "{{count}} skupiny ({{sizes}})",
+        "pools_many": "{{count}} skupiny ({{sizes}})",
+        "pools_other": "{{count}} skupin ({{sizes}})",
+        "ends": "{{day}} končí v {{end}}",
+        "load_one": "{{count}} šermíř mimo souběžnou vlnu",
+        "load_few": "{{count}} šermíři mimo souběžnou vlnu",
+        "load_many": "{{count}} šermíře mimo souběžnou vlnu",
+        "load_other": "{{count}} šermířů mimo souběžnou vlnu",
+        "collisions_one": "{{count}} možná kolize v pavoucích",
+        "collisions_few": "{{count}} možné kolize v pavoucích",
+        "collisions_many": "{{count}} možné kolize v pavoucích",
+        "collisions_other": "{{count}} možných kolizí v pavoucích",
+        "shortage_one": "{{count}} šermíř se nevejde mimo souběžnou vlnu",
+        "shortage_few": "{{count}} šermíři se nevejdou mimo souběžnou vlnu",
+        "shortage_many": "{{count}} šermíře se nevejde mimo souběžnou vlnu",
+        "shortage_other": "{{count}} šermířů se nevejde mimo souběžnou vlnu",
+        "empty": "Bez přihlášených, a proto mimo plán: {{names}}.",
+        "capped": "Variant bylo příliš mnoho; počet skupin byl pevně zvolen u: {{names}}."
+      },
+      "infeasible": {
+        "structure": "{{name}} se nevejde do formátu ({{detail}}). Uprav rozsah skupin.",
+        "overrun": "Žádná varianta se nevejde do dne; nejlepší přetahuje o {{minutes}} min.",
+        "rule": "Varianta neexistuje kvůli pravidlu: {{rule}}.",
+        "pin": {
+          "day": "Varianta neexistuje kvůli pinu {{name}} na den {{day}}.",
+          "k": "Varianta neexistuje kvůli pinu {{name}} na {{k}} skupin.",
+          "place": "Varianta neexistuje kvůli pinu umístění {{name}}.",
+          "sequence": "Varianta neexistuje kvůli pinu pořadí disciplín.",
+          "other": "Varianta neexistuje kvůli pinu {{name}}."
+        }
+      },
+      "rules": {
+        "finals_last": "finále až na konci dne",
+        "rest": "odpočinek mezi zápasy",
+        "officials": "počet rozhodčích"
+      },
+      "working": {
+        "title": "Pracovní verze",
+        "none": "Zatím žádná. Navrhni varianty a jednu zvol.",
+        "version": "Pracovní verze {{version}}.",
+        "published": "Zveřejněná je verze {{version}}.",
+        "publish": "Publikovat plán",
+        "replan": "Přeplánovat",
+        "confirmTitle": "Publikovat plán",
+        "confirmBody": "Pracovní verze se stane zveřejněnou. Program turnaje se podle ní zobrazí i veřejně."
+      },
+      "obstacles": {
+        "format": "{{name}} nemá formát.",
+        "noPiste": "Na den {{day}} není žádná planš.",
+        "shortage": "{{a}} a {{b}}: sdílení šermíři se nevejdou mimo souběžnou vlnu."
+      },
+      "pins": {
+        "title": "Piny",
+        "none": "Nic není připnuto.",
+        "day": "{{name}}: den {{day}}",
+        "k": "{{name}}: {{k}} skupin",
+        "place": "{{activity}} začíná v {{start}}",
+        "sequence": "Pořadí disciplín",
+        "gate": "přidal krok {{gate}}; odebere ho až jeho znovuotevření",
+        "kind": "Co připnout",
+        "kindDay": "den disciplíny",
+        "kindK": "počet skupin",
+        "discipline": "Disciplína",
+        "pools": "Skupin",
+        "add": "Připnout"
+      },
+      "sensitivity": {
+        "title": "Citlivost",
+        "threshold": "{{name}}: skupiny se změní při {{below}} nebo {{above}} přihlášených",
+        "fewer": "o planš méně",
+        "more": "o planš víc",
+        "twoMore": "o dvě víc",
+        "nothing": "nic",
+        "unplannable": "nelze naplánovat",
+        "earlier_one": "o {{count}} minutu dřív",
+        "earlier_few": "o {{count}} minuty dřív",
+        "earlier_many": "o {{count}} minuty dřív",
+        "earlier_other": "o {{count}} minut dřív",
+        "later_one": "o {{count}} minutu později",
+        "later_few": "o {{count}} minuty později",
+        "later_many": "o {{count}} minuty později",
+        "later_other": "o {{count}} minut později",
+        "limit": {
+          "pistes": "Den omezují planše.",
+          "officials": "Den omezují rozhodčí."
+        }
+      }
+    }
   }
 }
