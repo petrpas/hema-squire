@@ -45,13 +45,13 @@
 
 ## 5. Frontend
 
-- [ ] 5.1 `frontend/src/floor/plan/`: variants side by side, pins list, sensitivity and the publish gate, with each section in its own file.
-- [ ] 5.2 `frontend/src/floor/schedule/SchedulePanel.tsx`: the piste × time grid for a chosen day, with diff marks and reserve pistes last.
-- [ ] 5.3 Add tests for the variant choice, the publish gate obstacles and the diff marks. Add the i18n strings.
+- [x] 5.1 `frontend/src/floor/plan/`: variants side by side, pins list, sensitivity and the publish gate, with each section in its own file.
+- [x] 5.2 `frontend/src/floor/schedule/SchedulePanel.tsx`: the piste × time grid for a chosen day, with diff marks and reserve pistes last.
+- [x] 5.3 Add tests for the variant choice, the publish gate obstacles and the diff marks. Add the i18n strings.
 
 ## 6. Acceptance
 
-- [ ] 6.1 `pytest tests/floor -q` passes, and the engine tests use the Hypothesis `dev` profile and no database.
-- [ ] 6.2 `ruff`, `basedpyright` and the boundary test pass. `engine/` imports only the standard library.
-- [ ] 6.3 `npm run typecheck`, `npm run check` and `npm test` pass.
-- [ ] 6.4 `openspec validate add-floor-planner --strict` passes.
+- [x] 6.1 `pytest tests/floor -q` passes, and the engine tests use the Hypothesis `dev` profile and no database.
+- [x] 6.2 `ruff`, `basedpyright` and the boundary test pass. `engine/` imports only the standard library.
+- [x] 6.3 `npm run typecheck`, `npm run check` and `npm test` pass.
+- [x] 6.4 `openspec validate add-floor-planner --strict` passes.

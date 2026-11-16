@@ -7,7 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { type Account, api, type TournamentDetail } from "../api";
 import i18n from "../i18n";
 import FloorRoute from "./FloorRoute";
-import { type FloorSetup, type FloorSummary, floorApi } from "./floorApi";
+import { type FloorSetup, type FloorSummary, floorApi, planApi } from "./floorApi";
 
 // The floor console's band (spec floor-console): eight tabs in a fixed order,
 // the default tab following publication, a badge meaning "waiting", and the
@@ -67,6 +67,7 @@ async function open(path: string, answer: FloorSummary = summary()) {
   vi.spyOn(floorApi, "summary").mockResolvedValue(answer);
   vi.spyOn(floorApi, "setup").mockResolvedValue(setup);
   vi.spyOn(floorApi, "roster").mockRejectedValue(new Error("not under test"));
+  vi.spyOn(planApi, "state").mockRejectedValue(new Error("not under test"));
   host = document.createElement("div");
   document.body.append(host);
   root = createRoot(host);

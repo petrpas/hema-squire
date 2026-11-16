@@ -5790,3 +5790,120 @@ tr.export-line td {
     border-left: none;
   }
 }
+
+/* ----- floor plan and schedule (add-floor-planner) ----- */
+
+.floor-plan {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1rem 1.4rem;
+}
+
+.floor-variants {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-top: 0.8rem;
+}
+
+.floor-variant {
+  flex: 1 1 16rem;
+  border: var(--border-w) solid var(--hairline);
+  border-radius: var(--radius);
+  padding: 0.6rem 0.8rem 0.8rem;
+}
+
+.floor-variant h3 {
+  font-size: var(--body-size);
+  margin: 0 0 0.4rem;
+}
+
+.floor-variant ul,
+.floor-diff,
+.floor-obstacles,
+.floor-pins {
+  margin: 0.4rem 0;
+  padding-left: 1.1rem;
+}
+
+.floor-choice {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  border: none;
+  margin: 0 0 0.6rem;
+  padding: 0;
+}
+
+.floor-choice button.active {
+  border-color: var(--ink);
+}
+
+.floor-grid-band {
+  overflow-x: auto;
+  max-width: 100%;
+}
+
+.floor-grid {
+  display: grid;
+  grid-auto-rows: 2.2rem;
+  min-width: 36rem;
+  font-size: var(--label-size);
+  border-top: var(--border-w) solid var(--hairline);
+}
+
+.floor-grid-hour {
+  grid-row: 1;
+  border-left: var(--border-w) solid var(--hairline);
+  padding-left: 0.2rem;
+  color: var(--ink-soft);
+}
+
+.floor-grid-corner {
+  grid-row: 1;
+  grid-column: 1;
+}
+
+.floor-grid-piste {
+  grid-column: 1;
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  border-bottom: var(--border-w) solid var(--hairline);
+}
+
+.floor-grid-activity {
+  margin: 0.2rem 0.05rem;
+  padding: 0 0.25rem;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  border: var(--border-w) solid var(--hairline-strong);
+  border-radius: var(--radius);
+  background: var(--paper);
+  display: flex;
+  align-items: center;
+}
+
+/* a change is stated in words; the outline only repeats it */
+.floor-grid-moved,
+.floor-grid-added {
+  border-color: var(--stamp);
+}
+
+.floor-grid-removed {
+  border-style: dashed;
+  color: var(--ink-faded);
+  text-decoration: line-through;
+}
+
+.floor-grid-mark {
+  font-style: italic;
+}
+
+@media (max-width: 768px) {
+  .floor-plan {
+    padding: 1rem 16px;
+  }
+}

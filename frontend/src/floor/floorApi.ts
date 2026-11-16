@@ -130,3 +130,114 @@ export const floorApi = {
       body: JSON.stringify(body),
     }),
 };
+
+// ------------------------------------------------------------ the plan
+
+export interface PlanChoice {
+  discipline_id: number;
+  k: number;
+  day: string;
+  sizes: number[];
+}
+
+export interface PlanActivity {
+  id: string;
+  discipline_id: number;
+  kind: "pool" | "bout";
+  ordinal: number;
+  round: number;
+  piste_id: number;
+  day: string;
+  start: string;
+  end: string;
+  final: boolean;
+  size: number;
+}
+
+export interface PlanMetrics {
+  last_end: Record<string, string>;
+  exclusion_load: number;
+  collisions: number;
+  shortage: number;
+  average_pool: number;
+}
+
+export interface Variant {
+  key: string;
+  choices: PlanChoice[];
+  metrics: PlanMetrics;
+  activities: PlanActivity[];
+}
+
+export interface Infeasible {
+  reason: "structure" | "pin" | "rule" | "overrun";
+  subject: string | { kind: string; target: string; day?: string; k?: number };
+  minutes: number;
+  detail: string;
+}
+
+export interface Variants {
+  variants: Variant[];
+  infeasible: Infeasible | null;
+  capped: number[];
+  empty: number[];
+}
+
+export interface StoredPlan {
+  version: number;
+  status: "working" | "published" | "history";
+  created_at: string;
+  choices: PlanChoice[];
+  metrics: PlanMetrics;
+  activities: PlanActivity[];
+}
+
+export interface Pin {
+  id: number;
+  kind: "day" | "k" | "place" | "sequence";
+  target: string;
+  value: Record<string, unknown>;
+  gate: string | null;
+}
+
+export interface Change {
+  activity: string;
+  kind: "moved" | "added" | "removed";
+  before: [number, string, string] | null;
+  after: [number, string, string] | null;
+}
+
+export interface Sensitivity {
+  thresholds: { discipline_id: number; below: number | null; above: number | null }[];
+  days: {
+    day: string;
+    one_fewer: number | null;
+    one_more: number | null;
+    two_more: number | null;
+    limit: "pistes" | "officials" | "none";
+  }[];
+}
+
+export interface PlanState {
+  working: StoredPlan | null;
+  published: StoredPlan | null;
+  history: number[];
+  diff: Change[];
+  pins: Pin[];
+  obstacles: string[];
+  sensitivity: Sensitivity | null;
+  setup_missing: string[];
+}
+
+export const planApi = {
+  state: (slug: string) => request<PlanState>(`${base(slug)}/plan`),
+  variants: (slug: string) => request<Variants>(`${base(slug)}/plan/variants`, { method: "POST" }),
+  choose: (slug: string, key: string) =>
+    request<void>(`${base(slug)}/plan/choose`, { method: "POST", body: JSON.stringify({ key }) }),
+  publish: (slug: string) => request<void>(`${base(slug)}/plan/publish`, { method: "POST" }),
+  replan: (slug: string) => request<Variants>(`${base(slug)}/plan/replan`, { method: "POST" }),
+  pin: (slug: string, pin: Omit<Pin, "id" | "gate">) =>
+    request<Pin>(`${base(slug)}/plan/pins`, { method: "POST", body: JSON.stringify(pin) }),
+  unpin: (slug: string, id: number) =>
+    request<void>(`${base(slug)}/plan/pins/${id}`, { method: "DELETE" }),
+};

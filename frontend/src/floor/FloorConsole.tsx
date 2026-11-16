@@ -11,7 +11,8 @@ import DataTab from "./data/DataTab";
 import { FloorTabBar } from "./FloorTabBar";
 import type { FloorSummary } from "./floorApi";
 import NotYet from "./NotYet";
-import SchedulePanel from "./SchedulePanel";
+import PlanTab from "./plan/PlanTab";
+import SchedulePanel from "./schedule/SchedulePanel";
 import FloorSetupTab from "./setup/FloorSetupTab";
 import { barTabs, type FloorBarTab, type FloorTab, IMPLEMENTED, SCHEDULE_TAB } from "./tabs";
 import { useNarrow } from "./useNarrow";
@@ -42,6 +43,13 @@ export default function FloorConsole({
   const [scheduleOpen, setScheduleOpen] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [pending, setPending] = useState<FloorTab | null>(null);
+  // bumped when a plan changes, so the schedule panel reads it again
+  const [revision, setRevision] = useState(0);
+
+  function changed() {
+    setRevision((r) => r + 1);
+    onChanged();
+  }
 
   useEffect(() => {
     api.account().then(setAccount, () => setAccount(null));
@@ -111,7 +119,9 @@ export default function FloorConsole({
           hidden={scheduleOpen}
         >
           {tab === "setup" ? (
-            <FloorSetupTab slug={slug} onSaved={onChanged} onDirtyChange={setDirty} />
+            <FloorSetupTab slug={slug} onSaved={changed} onDirtyChange={setDirty} />
+          ) : tab === "plan" ? (
+            <PlanTab slug={slug} onChanged={changed} />
           ) : tab === "data" ? (
             <DataTab
               slug={slug}
@@ -122,7 +132,7 @@ export default function FloorConsole({
           )}
         </div>
         {(besideWork || scheduleOpen) && (
-          <SchedulePanel planPublished={summary.plan_published} asTabPanel={scheduleOpen} />
+          <SchedulePanel slug={slug} revision={revision} asTabPanel={scheduleOpen} />
         )}
       </div>
 
