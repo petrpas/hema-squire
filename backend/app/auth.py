@@ -19,6 +19,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app import privacy
 from app.config import settings
 from app.db import get_session
 from app.models import Fencer, FencerProfileAudit, Role, Tournament, TournamentOrganizer
@@ -154,18 +155,29 @@ def require_role(fencer: Fencer, minimum: Role) -> None:
         raise HTTPException(status_code=403, detail="insufficient_role")
 
 
-def require_console_access(session: Session, tournament: Tournament, fencer: Fencer) -> None:
-    """Tournament Owner or team member; no global role bypasses this."""
+def has_console_access(session: Session, tournament: Tournament, fencer: Fencer) -> bool:
+    """Tournament Owner or team member; no global role counts."""
     if tournament.owner_id == fencer.id:
-        return
+        return True
     member = session.scalar(
         select(TournamentOrganizer.id).where(
             TournamentOrganizer.tournament_id == tournament.id,
             TournamentOrganizer.fencer_id == fencer.id,
         )
     )
-    if member is None:
+    return member is not None
+
+
+def require_console_access(session: Session, tournament: Tournament, fencer: Fencer) -> None:
+    """Tournament Owner or team member; no global role bypasses this.
+
+    An owner who has not accepted the current organizer data terms is refused
+    until they do, here rather than only in the console's dialog, so that no
+    request skirts the dialog (spec privacy). A team member is never asked."""
+    if not has_console_access(session, tournament, fencer):
         raise HTTPException(status_code=403, detail="not_an_organizer")
+    if tournament.owner_id == fencer.id and privacy.organizer_terms_due(session, fencer):
+        raise HTTPException(status_code=403, detail="organizer_terms_due")
 
 
 def require_tournament_owner(tournament: Tournament, fencer: Fencer) -> None:

@@ -31,6 +31,10 @@ The owner of a tournament SHALL accept the current organizer data terms before u
 - **WHEN** an owner who has not accepted the current version opens a console
 - **THEN** the terms are shown in a dialog and the console is usable only after acceptance
 
+#### Scenario: The server holds the owner to the terms
+- **WHEN** an owner who has not accepted the current version makes any request of that tournament's console, by the console or otherwise
+- **THEN** it is refused as owing the terms, and the console shows the terms in place of itself until they are accepted
+
 #### Scenario: Team member is not asked
 - **WHEN** a console team member who owns no tournament opens the console
 - **THEN** no terms are shown

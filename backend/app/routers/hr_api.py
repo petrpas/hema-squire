@@ -1,11 +1,13 @@
+from datetime import UTC, datetime, timedelta
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from app import hr_sync, rules, sheet
 from app.auth import require_console_access, require_published
-from app.models import Tournament, TournamentOrganizer
+from app.models import HRIndexRefresh, Tournament, TournamentOrganizer
 from app.routers.tournaments import FencerDep, SessionDep, TournamentDep
 
 router = APIRouter(prefix="/api/hr", tags=["hr"])
@@ -29,9 +31,35 @@ def status(session: SessionDep, fencer: FencerDep):
     return hr_sync.index_status(session)
 
 
+# The index is one for the deployment and every refresh downloads HEMA
+# Ratings' whole fighters page, so the brake is global rather than per caller:
+# however many organizers press the button, the source sees at most one
+# successful refresh per window (spec hr-integration, Fighters index).
+REFRESH_COOLDOWN = timedelta(minutes=15)
+
+
+def _refuse_within_cooldown(session: Session) -> None:
+    last_ok = session.scalar(
+        select(HRIndexRefresh.fetched_at)
+        .where(HRIndexRefresh.status == "ok")
+        .order_by(HRIndexRefresh.id.desc())
+        .limit(1)
+    )
+    if last_ok is None:
+        return
+    # SQLite hands the server default back naive; it was written in UTC
+    at = last_ok if last_ok.tzinfo is not None else last_ok.replace(tzinfo=UTC)
+    if datetime.now(UTC) - at < REFRESH_COOLDOWN:
+        raise HTTPException(
+            status_code=429,
+            detail={"code": "hr_refresh_cooldown", "last_refresh": at.isoformat()},
+        )
+
+
 @router.post("/refresh")
 def refresh(session: SessionDep, fencer: FencerDep, fetcher: FetcherDep):
     _require_any_organizer(session, fencer)
+    _refuse_within_cooldown(session)
     outcome = hr_sync.refresh_fighters(session, fetcher)
     if outcome["status"] != "ok":
         # previous index kept; diagnostics for the operator (drift policy)

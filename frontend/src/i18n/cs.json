@@ -65,6 +65,7 @@
     "indexStatus": "{{fighters}} šermířů v indexu.",
     "indexRefresh": "Obnovit index",
     "indexRefreshFailed": "Obnovení odmítnuto — původní index zachován (podezření na změnu formátu stránky).",
+    "indexRefreshTooSoon": "Index byl obnoven před méně než 15 minutami. Další obnovení zkuste později.",
     "verdict": {
       "confirmed": "potvrzeno",
       "found": "nalezená shoda",

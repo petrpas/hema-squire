@@ -1,6 +1,8 @@
 """Task 1.4 — fighters index: refresh, drift detection, DB-backed search,
 rating snapshots with the per-tournament category mapping."""
 
+from datetime import timedelta
+
 import pytest
 
 from app.db import get_session
@@ -51,6 +53,13 @@ def use_real_index(client):
 def plausibility_floor(monkeypatch):
     """The real floor is 1000 fighters; tests work with a handful."""
     monkeypatch.setattr("app.hr_sync.MIN_PLAUSIBLE_FIGHTERS", 2)
+
+
+@pytest.fixture(autouse=True)
+def no_refresh_cooldown(monkeypatch):
+    """Most tests refresh twice in a row to watch the index change; the
+    cooldown has its own test, which puts it back."""
+    monkeypatch.setattr("app.routers.hr_api.REFRESH_COOLDOWN", timedelta(0))
 
 
 def wire_fetcher(fetcher):
@@ -139,6 +148,30 @@ def test_drift_rejected_keeps_previous_index(client, auth_headers, use_real_inde
     status = client.get("/api/hr/status", headers=organizer).json()
     assert status["fighters"] == 3
     assert status["last_refresh"]["status"] == "rejected"
+
+
+def test_a_refresh_waits_out_the_cooldown_whoever_asks(
+    client, auth_headers, use_real_index, monkeypatch
+):
+    """The index is one for the deployment and each refresh downloads the
+    source's whole fighters page, so a second organizer is braked by the first
+    organizer's refresh — and a refused refresh does not touch the source."""
+    monkeypatch.setattr("app.routers.hr_api.REFRESH_COOLDOWN", timedelta(minutes=15))
+    organizer = make_organizer(client, auth_headers)
+    fetcher = IndexFetcher(fighters_html(FIGHTERS))
+    wire_fetcher(fetcher)
+    assert client.post("/api/hr/refresh", headers=organizer).status_code == 200
+
+    other = auth_headers(email="other@example.com", name="Other")
+    client.post(
+        "/api/tournaments",
+        json={"slug": "other-cup", "display_name": "Other", "date": "2099-12-05"},
+        headers=other,
+    )
+    refused = client.post("/api/hr/refresh", headers=other)
+    assert refused.status_code == 429
+    assert refused.json()["detail"]["code"] == "hr_refresh_cooldown"
+    assert fetcher.calls == 1
 
 
 def test_refresh_requires_organizer(client, auth_headers, use_real_index):

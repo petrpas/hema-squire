@@ -342,6 +342,72 @@ def test_fencer_detail_is_not_found_for_what_is_not_public(client, auth_headers,
     assert refused.json()["detail"] == "tournament_not_found"
 
 
+# a path with no body is a GET, one with a body a POST
+PRICED_READS = [
+    ("availability", None),
+    ("item-availability", None),
+    ("price-preview", {"disciplines": []}),
+    ("price-preview/code", {"disciplines": [], "discount_code": "X"}),
+]
+
+
+@pytest.mark.parametrize(("path", "body"), PRICED_READS)
+@pytest.mark.parametrize("slug", ["draft", "gone", "no-such-tournament"])
+def test_the_registration_reads_are_not_found_for_what_is_not_public(
+    client, auth_headers, slug, path, body
+):
+    """Capacities and prices are what a draft is still deciding; a stranger
+    reads them no more than the detail (spec public-browsing)."""
+    organizer = auth_headers()
+    client.post(
+        "/api/tournaments",
+        json={
+            "slug": "draft",
+            "display_name": "Draft",
+            "date": str(today_utc() + timedelta(days=30)),
+        },
+        headers=organizer,
+    )
+    make_published(client, organizer, "gone")
+    client.post("/api/tournaments/gone/cancel", headers=organizer)
+    stranger = auth_headers(email="stranger@example.com", name="Stranger", role=Role.FENCER)
+
+    for headers in ({}, stranger):
+        url = f"/api/tournaments/{slug}/{path}"
+        refused = (
+            client.get(url, headers=headers)
+            if body is None
+            else client.post(url, json=body, headers=headers)
+        )
+        assert refused.status_code == 404, (url, headers)
+        assert refused.json()["detail"] == "tournament_not_found"
+
+
+@pytest.mark.parametrize(("path", "body"), PRICED_READS)
+def test_the_setup_preview_reads_its_own_draft(client, auth_headers, path, body):
+    """The preview tab shows the draft as it will be read, so its organizers
+    are answered before publication (spec setup-preview)."""
+    organizer = auth_headers()
+    client.post(
+        "/api/tournaments",
+        json={
+            "slug": "draft",
+            "display_name": "Draft",
+            "date": str(today_utc() + timedelta(days=30)),
+        },
+        headers=organizer,
+    )
+    url = f"/api/tournaments/draft/{path}"
+    answered = (
+        client.get(url, headers=organizer)
+        if body is None
+        else client.post(url, json=body, headers=organizer)
+    )
+    # past the gate: a made-up code is then refused on its own terms (422)
+    assert answered.status_code in (200, 422), answered.text
+    assert "tournament_not_found" not in answered.text
+
+
 def test_the_console_detail_needs_console_access(client, auth_headers):
     organizer = auth_headers()
     make_published(client, organizer, "cup")

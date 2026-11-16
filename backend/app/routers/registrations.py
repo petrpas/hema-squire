@@ -67,6 +67,7 @@ from app.routers.tournaments import (
     SessionDep,
     TournamentDep,
     require_public,
+    require_public_or_console,
 )
 from app.schemas import (
     AmendmentPlacementOut,
@@ -261,7 +262,8 @@ def registration_out(session, registration: Registration, tournament: Tournament
 
 
 @router.get("/availability", response_model=list[AvailabilityOut])
-def availability(tournament: TournamentDep, session: SessionDep):
+def availability(tournament: TournamentDep, session: SessionDep, fencer: OptionalFencerDep):
+    require_public_or_console(session, tournament, fencer)
     removed = entrants.removed_registration_ids(session, tournament)
     result = []
     for discipline in tournament.disciplines:
@@ -297,7 +299,8 @@ def availability(tournament: TournamentDep, session: SessionDep):
 
 
 @router.get("/item-availability", response_model=list[ItemAvailabilityOut])
-def item_availability(tournament: TournamentDep, session: SessionDep):
+def item_availability(tournament: TournamentDep, session: SessionDep, fencer: OptionalFencerDep):
+    require_public_or_console(session, tournament, fencer)
     result = []
     for item in tournament.extra_items:
         if item.capacity is None:
@@ -446,9 +449,12 @@ def _code_out(breakdown: pricing.DiscountBreakdown | None) -> DiscountBreakdownO
 
 
 @router.post("/price-preview", response_model=PricePreviewOut)
-def price_preview(data: PricePreviewIn, tournament: TournamentDep):
+def price_preview(
+    data: PricePreviewIn, tournament: TournamentDep, session: SessionDep, fencer: OptionalFencerDep
+):
     """Takes no code, so that it can stay unthrottled while a form calls it on
     every change; `/price-preview/code` is the route that does."""
+    require_public_or_console(session, tournament, fencer)
     # the early-bird date and the date discount condition are dates the
     # organizer entered, so the preview asks which day it is where the
     # tournament is held (design unify-day-boundary-clocks D5)
@@ -462,10 +468,12 @@ def price_preview_with_code(
     data: CodePreviewIn,
     tournament: TournamentDep,
     session: SessionDep,
+    fencer: OptionalFencerDep,
 ):
     """The preview with a code in it: an answer to whether a string is a code,
     so it is the one that is throttled, generously enough for a live form
     behind a club's shared address (design add-discount-codes D6)."""
+    require_public_or_console(session, tournament, fencer)
     code = discount_codes.find_usable(session, tournament, data.discount_code)
     return _priced_preview(data, tournament, setup.local_date(tournament, _now()), code)
 

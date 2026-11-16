@@ -30,6 +30,7 @@ from app import (
 from app import familiar as familiar_mod
 from app.auth import (
     current_fencer,
+    has_console_access,
     optional_fencer,
     require_console_access,
     require_published,
@@ -136,6 +137,19 @@ def require_public(tournament: Tournament) -> None:
     so the URL discloses nothing about which tournaments exist."""
     if tournament.published_at is None or tournament.cancelled_at is not None:
         raise HTTPException(status_code=404, detail="tournament_not_found")
+
+
+def require_public_or_console(
+    session: Session, tournament: Tournament, fencer: Fencer | None
+) -> None:
+    """A public read the Setup preview also makes before publication: the
+    tournament's own organizers read their draft through it, and everyone else
+    is answered exactly as `require_public` answers (spec public-browsing)."""
+    if tournament.published_at is not None and tournament.cancelled_at is None:
+        return
+    if fencer is not None and has_console_access(session, tournament, fencer):
+        return
+    raise HTTPException(status_code=404, detail="tournament_not_found")
 
 
 FioClientDep = Annotated[bank.FioClient, Depends(bank.get_fio_client)]

@@ -4,11 +4,15 @@
 Integrate with HEMA Ratings: maintain a cached fighters index, detect source format drift, snapshot ratings per discipline, and apply canonical HR naming.
 ## Requirements
 ### Requirement: Fighters index
-The system SHALL maintain a cached index of HEMA Ratings fighters (hr_id, canonical name, nationality, club), refreshable on demand, serving account-creation search and import matching.
+The system SHALL maintain a cached index of HEMA Ratings fighters (hr_id, canonical name, nationality, club), refreshable on demand, serving account-creation search and import matching. The index is one for the deployment and a refresh downloads the source's whole fighters page, so on-demand refreshes SHALL be at least 15 minutes after the last successful one, counted across all organizers.
 
 #### Scenario: Index refresh
 - **WHEN** the organizer triggers an index refresh
 - **THEN** newly registered HR fighters become findable in account creation and matching
+
+#### Scenario: A refresh soon after another waits
+- **WHEN** any organizer asks for an index refresh within 15 minutes of the last successful one, whoever made it
+- **THEN** nothing is fetched from HEMA Ratings, the current index stands, and the organizer is told it was refreshed less than 15 minutes ago
 
 ### Requirement: Source format drift detection
 WHEN the HEMA Ratings page format changes and parsing yields an implausible result, the system SHALL fail loudly with actionable diagnostics rather than store a degraded index.

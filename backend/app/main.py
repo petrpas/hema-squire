@@ -9,7 +9,7 @@ from fastapi.openapi.utils import get_openapi
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
-from app.config import DEV_SECRET_KEY, settings
+from app.config import DEV_FIO_TOKEN_KEY, DEV_SECRET_KEY, settings
 from app.errors import (
     FieldValidationError,
     ValidationErrorResponse,
@@ -61,18 +61,28 @@ def _configure_app_logging() -> None:
 _configure_app_logging()
 
 
-def _refuse_dev_secret_key() -> None:
-    """Refuse to serve tokens signed with the published development key.
+def _refuse_dev_secrets() -> None:
+    """Refuse to run on either key this repository publishes.
 
     A missing HEMA_SQUIRE_SECRET_KEY is silent by nature: everything works, and
     the only symptom is that anyone can mint a token for any account, Owner
-    included. So it is a refusal to start rather than a warning, and debug mode
-    — dev.sh and the test suite — is the single explicit exemption.
+    included. The feed-token key is the same kind of silence: a Fio token
+    sealed under the published key reads as encrypted and is not. So both are
+    a refusal to start rather than a warning, and debug mode — dev.sh and the
+    test suite — is the single explicit exemption.
     """
-    if settings.secret_key == DEV_SECRET_KEY and not settings.debug:
+    if settings.debug:
+        return
+    if settings.secret_key == DEV_SECRET_KEY:
         raise RuntimeError(
             "HEMA_SQUIRE_SECRET_KEY is still the published development default. "
             "Set it (openssl rand -hex 32), or set HEMA_SQUIRE_DEBUG=1 for local work."
+        )
+    if settings.fio_token_key == DEV_FIO_TOKEN_KEY:
+        raise RuntimeError(
+            "HEMA_SQUIRE_FIO_TOKEN_KEY is the published development key. Set a key "
+            "of the deployment's own (Fernet.generate_key()), or set HEMA_SQUIRE_DEBUG=1 "
+            "for local work."
         )
 
 
@@ -150,7 +160,7 @@ def _sweep_interrupted_operations() -> None:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    _refuse_dev_secret_key()
+    _refuse_dev_secrets()
     _refuse_real_mail_without_origin()
     _warn_when_owner_unmatched()
     if settings.operations_sweep_enabled:

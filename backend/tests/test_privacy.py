@@ -111,7 +111,7 @@ def test_the_export_needs_an_account(client):
 
 
 def test_the_terms_are_due_from_an_owner_once_per_version(client, auth_headers, engine):
-    owner = auth_headers()
+    owner = auth_headers(accept_terms=False)
     assert client.get("/api/account", headers=owner).json()["organizer_terms_due"] is False
 
     client.post(
@@ -143,10 +143,37 @@ def test_a_team_member_owning_nothing_is_not_asked(client, auth_headers):
         json={"slug": "cup", "display_name": "Cup", "date": "2099-12-05"},
         headers=owner,
     )
-    helper = auth_headers(email="helper@example.com", name="Helper")
+    helper = auth_headers(email="helper@example.com", name="Helper", accept_terms=False)
     client.post("/api/tournaments/cup/team", json={"email": "helper@example.com"}, headers=owner)
 
     assert client.get("/api/account", headers=helper).json()["organizer_terms_due"] is False
+    assert client.get("/api/tournaments/cup", headers=helper).status_code == 200
+
+
+def test_the_server_holds_an_owner_to_the_terms(client, auth_headers, engine):
+    """The dialog is the console's; the refusal is the server's, so no request
+    reaches the tournament's data around it (spec privacy)."""
+    owner = auth_headers(accept_terms=False)
+    client.post(
+        "/api/tournaments",
+        json={"slug": "cup", "display_name": "Cup", "date": "2099-12-05"},
+        headers=owner,
+    )
+    for path in ("/api/tournaments/cup", "/api/tournaments/cup/sheet"):
+        refused = client.get(path, headers=owner)
+        assert refused.status_code == 403, path
+        assert refused.json()["detail"] == "organizer_terms_due"
+
+    client.post("/api/account/organizer-terms", headers=owner)
+    assert client.get("/api/tournaments/cup", headers=owner).status_code == 200
+
+    with Session(engine) as session:
+        fencer = session.scalars(
+            select(Fencer).where(Fencer.email == "organizer@example.com")
+        ).one()
+        fencer.organizer_terms_version = "2000-01-01"
+        session.commit()
+    assert client.get("/api/tournaments/cup", headers=owner).status_code == 403
 
 
 def test_an_audit_entry_of_another_account_stays_out(client, auth_headers, engine):

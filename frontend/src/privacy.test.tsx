@@ -3,8 +3,8 @@ import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { MemoryRouter, Outlet, Route, Routes } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { type Account, api, type Sheet, type TournamentDetail } from "./api";
-import Console from "./Console";
+import { type Account, ApiError, api, type Sheet, type TournamentDetail } from "./api";
+import ConsoleRoute from "./ConsoleRoute";
 import i18n from "./i18n";
 import PrivacyPage from "./PrivacyPage";
 import { privacy } from "./routes";
@@ -85,7 +85,7 @@ describe("the organizer data terms", () => {
     return render(
       <Routes>
         <Route element={<Outlet context={{ onLogout: () => {} }} />}>
-          <Route path={path} element={<Console tournament={tournament} phase="fencers" />} />
+          <Route path="/organizer/:slug/console/:phase" element={<ConsoleRoute />} />
         </Route>
       </Routes>,
       path,
@@ -98,14 +98,18 @@ describe("the organizer data terms", () => {
     vi.spyOn(api, "operations").mockResolvedValue({ running: null, concluded: [] } as never);
   });
 
-  it("are put to the owner, and accepting lets the console be used", async () => {
-    vi.spyOn(api, "account").mockResolvedValue(account(5, true));
+  it("are put to the owner the server holds to them, and accepting loads the console", async () => {
+    vi.spyOn(api, "account").mockResolvedValue(account(5, false));
+    vi.spyOn(api, "consoleTournament")
+      .mockRejectedValueOnce(new ApiError(403, "organizer_terms_due"))
+      .mockResolvedValue(tournament);
     const accept = vi.spyOn(api, "acceptOrganizerTerms").mockResolvedValue(account(5, false));
     const page = mountConsole();
     await settle();
 
     const dialog = page.querySelector("dialog .modal");
     expect(dialog?.textContent).toContain(i18n.t("privacy.terms.title"));
+    expect(page.querySelector(".stepper")).toBeNull();
     const agree = [...(dialog?.querySelectorAll("button") ?? [])].find(
       (button) => button.textContent === i18n.t("privacy.terms.accept"),
     );
@@ -114,10 +118,13 @@ describe("the organizer data terms", () => {
 
     expect(accept).toHaveBeenCalledOnce();
     expect(page.querySelector("dialog .modal")).toBeNull();
+    expect(page.querySelector(".stepper")).not.toBeNull();
   });
 
-  it("are not put to a team member, even one owing them for a tournament of their own", async () => {
+  it("are not put where the server lets the console through", async () => {
+    // a team member, even one owing the terms for a tournament of their own
     vi.spyOn(api, "account").mockResolvedValue(account(6, true));
+    vi.spyOn(api, "consoleTournament").mockResolvedValue(tournament);
     const page = mountConsole();
     await settle();
 

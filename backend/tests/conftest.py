@@ -35,6 +35,7 @@ from app.db import Base, apply_sqlite_pragmas, get_session
 from app.hr_index import get_hr_index, stub_index
 from app.main import app
 from app.models import Fencer, Role
+from app.privacy import accept_organizer_terms
 
 # Hypothesis budgets, named as CLAUDE.md's test guidance already refers to them.
 # `dev` is what an edit loop wants: enough inputs to catch a shape error, few
@@ -334,9 +335,19 @@ def auth_headers(client, engine):
     plain fencer. `language` is the account's UI language; it defaults to
     Czech rather than to signup's English because the suite's mail is asserted
     in Czech, and mail follows its recipient's language — as a tournament
-    follows its creator's (spec `localization`)."""
+    follows its creator's (spec `localization`). The account has accepted the
+    current organizer data terms, which a tournament's owner must have before
+    its console answers (spec `privacy`); pass accept_terms=False to meet the
+    terms as an owner who has not, or None to skip the account write entirely
+    (the role too) for a signup that landed on another engine."""
 
-    def make(email="organizer@example.com", name="Organizer", role=Role.ORGANIZER, language="cs"):
+    def make(
+        email="organizer@example.com",
+        name="Organizer",
+        role=Role.ORGANIZER,
+        language="cs",
+        accept_terms=True,
+    ):
         body = {
             "email": email,
             "password": "correct-horse",
@@ -344,10 +355,14 @@ def auth_headers(client, engine):
             "language": language,
         }
         token = signup_verified(client, body)
-        if role != Role.FENCER:
+        # None skips the write altogether, for a test whose signup landed on
+        # an engine of its own
+        if accept_terms is not None:
             with Session(engine) as session:
                 fencer = session.scalars(select(Fencer).where(Fencer.email == email)).one()
                 fencer.role = role
+                if accept_terms:
+                    accept_organizer_terms(fencer)
                 session.commit()
         return {"Authorization": f"Bearer {token}"}
 

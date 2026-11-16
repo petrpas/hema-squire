@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { api, type HRStatus } from "./api";
+import { ApiError, api, type HRStatus } from "./api";
 import { conclusionText, kindName } from "./operationText";
 import type { OperationsView } from "./useOperations";
 
@@ -25,7 +25,9 @@ export default function MatchPanel({
   // deployment, not to this tournament — so it keeps its own state and is not
   // subject to the one-at-a-time lock.
   const [refreshing, setRefreshing] = useState(false);
-  const [refreshError, setRefreshError] = useState(false);
+  // "failed" is a rejected or failed fetch; "soon" is the deployment-wide
+  // cooldown, which fetched nothing (spec hr-integration)
+  const [refreshError, setRefreshError] = useState<"failed" | "soon" | null>(null);
 
   const loadStatus = useCallback(() => {
     api.hrStatus().then(setHrStatus, () => setHrStatus(null));
@@ -35,12 +37,12 @@ export default function MatchPanel({
 
   async function refreshIndex() {
     setRefreshing(true);
-    setRefreshError(false);
+    setRefreshError(null);
     try {
       await api.hrRefresh();
       loadStatus();
-    } catch {
-      setRefreshError(true);
+    } catch (error) {
+      setRefreshError(error instanceof ApiError && error.status === 429 ? "soon" : "failed");
       loadStatus(); // rejected refreshes still update the diagnostics line
     } finally {
       setRefreshing(false);
@@ -106,7 +108,11 @@ export default function MatchPanel({
       >
         {refreshing ? t("common.loading") : t("match.indexRefresh")}
       </button>
-      {refreshError && <p className="login-error">{t("match.indexRefreshFailed")}</p>}
+      {refreshError !== null && (
+        <p className="login-error">
+          {t(refreshError === "soon" ? "match.indexRefreshTooSoon" : "match.indexRefreshFailed")}
+        </p>
+      )}
     </section>
   );
 }

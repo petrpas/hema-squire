@@ -28,6 +28,7 @@ from app.models import (
     TeamMember,
     Tournament,
 )
+from app.privacy import accept_organizer_terms
 from tests.conftest import (
     FAR_EAST,
     FAR_WEST,
@@ -1332,12 +1333,18 @@ def fresh_deployment(client, auth_headers):
             yield session
 
     app.dependency_overrides[get_session] = fresh_session
-    # role=FENCER sidesteps auth_headers' role-promotion step, which targets
-    # the *original* engine via a fixture closure and would crash here (the
-    # signup itself already lands on the fresh engine via the override
-    # above); restore() grants console access via TournamentOrganizer
-    # regardless of the caller's global Role, so no promotion is needed
-    new_organizer = auth_headers(email="new-owner@example.com", name="New Owner", role=Role.FENCER)
+    # auth_headers' own write targets the *original* engine via a fixture
+    # closure and would crash here (the signup itself already lands on the
+    # fresh engine via the override above), so it is skipped and the terms
+    # the restored tournament's owner needs are accepted on the fresh engine;
+    # restore() grants console access regardless of the caller's global Role
+    new_organizer = auth_headers(
+        email="new-owner@example.com", name="New Owner", role=Role.FENCER, accept_terms=None
+    )
+    with OrmSession(fresh) as session:
+        owner = session.scalars(select(Fencer).where(Fencer.email == "new-owner@example.com")).one()
+        accept_organizer_terms(owner)
+        session.commit()
     return new_organizer, client
 
 

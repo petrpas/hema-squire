@@ -8,7 +8,7 @@ holding the published repository key can forge a token for any account.
 import pytest
 from fastapi.testclient import TestClient
 
-from app.config import DEV_SECRET_KEY, settings
+from app.config import DEV_FIO_TOKEN_KEY, DEV_SECRET_KEY, settings
 from app.main import app
 
 
@@ -29,6 +29,17 @@ def test_dev_secret_key_boots_in_debug(monkeypatch):
 
 def test_production_secret_boots_without_debug(monkeypatch):
     monkeypatch.setattr(settings, "secret_key", "a" * 64)
+    monkeypatch.setattr(settings, "fio_token_key", "")
     monkeypatch.setattr(settings, "debug", False)
     with TestClient(app) as client:
         assert client.get("/api/health").status_code == 200
+
+
+def test_dev_fio_token_key_refuses_to_boot(monkeypatch):
+    """A token sealed under the published key is sealed in name only."""
+    monkeypatch.setattr(settings, "secret_key", "a" * 64)
+    monkeypatch.setattr(settings, "fio_token_key", DEV_FIO_TOKEN_KEY)
+    monkeypatch.setattr(settings, "debug", False)
+    with pytest.raises(RuntimeError, match="FIO_TOKEN_KEY"):
+        with TestClient(app):
+            pass

@@ -23,7 +23,16 @@ authenticated and SHALL be refused with 401 without a credential.
 Publication SHALL remain the only line. A draft, a cancelled tournament, and a
 tournament whose setup is incomplete SHALL be absent from the public list and
 SHALL yield a not-found answer on the public detail, for an anonymous visitor
-exactly as for an authenticated one.
+exactly as for an authenticated one. The same SHALL hold for the reads the
+registration form makes beside the detail — discipline and item availability and
+the price preview, with or without a code — except that the tournament's own
+organizers (its owner and team) SHALL be answered on a draft, since the Setup
+preview reads it through them.
+
+#### Scenario: A draft's capacities and prices stay unread
+- **WHEN** a visitor, signed in or not and with no bond to it, asks for a draft's availability or a price preview
+- **THEN** the answer is the same not-found an unknown slug gets
+- **AND** the draft's own organizer asking the same is answered
 
 #### Scenario: Upcoming list without a credential
 - **WHEN** the upcoming tournament list is requested with no credential while two published upcoming tournaments exist
