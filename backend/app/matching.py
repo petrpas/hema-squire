@@ -638,7 +638,11 @@ def _evaluate_single_vs(
         # outstanding balance within tolerance. A shortfall stays uncredited
         # and surfaces only as a pre-filled candidate; a bare token can never
         # itself create a partial payment.
-        tolerance = due_cents * tournament.amount_tolerance_percent / 100
+        # the tolerance every other comparison uses, of the total rather than
+        # of what is still owed: a top-up is not held to a narrower window for
+        # quoting its symbol without a label (spec payments, A bare token is
+        # judged against the same tolerance)
+        tolerance = _tolerance_cents(registration, tournament, which)
         if abs(transaction.amount_cents - due_cents) > tolerance:
             _finish(transaction, "unmatched", "bare_vs_amount_mismatch")
             result.unmatched += 1

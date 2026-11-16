@@ -97,9 +97,8 @@ def undecided(
     the (tournament, kind, key) uniqueness refuses mid-batch.
 
     Collapsing them here decides nothing about the money — the caller still
-    walks every row, and the second one's transaction collides with the first
-    on `external_id` at ingestion and counts duplicate, which is the same
-    answer by design (bank.to_transaction, design D2).
+    walks every row, and gives the second its occurrence ordinal, so two
+    identical payments are two transactions (bank.to_transaction).
     """
     seen: set[str] = set()
     pending = []
@@ -142,10 +141,12 @@ def parse(
         commit(session, len(group))
 
     transactions = []
+    occurrences: dict[str, int] = {}
     for raw in rows:
-        decision = importer.get_decision(
-            session, tournament, DECISION_KIND, importer.row_fingerprint(raw)
-        )
+        fingerprint = importer.row_fingerprint(raw)
+        # identical rows share one reading but are each a payment
+        occurrences[fingerprint] = occurrences.get(fingerprint, 0) + 1
+        decision = importer.get_decision(session, tournament, DECISION_KIND, fingerprint)
         if decision is None:
             continue
         row = bank.ParsedStatementRow.model_validate(decision.payload)
@@ -154,7 +155,9 @@ def parse(
         # the three intake paths; the drop is `bank.ingest`'s, where all three
         # meet (spec payments-intake, Only money arriving is ingested as a
         # payment)
-        transactions.append(bank.to_transaction(row, raw))
+        transactions.append(
+            bank.to_transaction(row, raw, tournament.local_currency, occurrences[fingerprint])
+        )
     return transactions
 
 

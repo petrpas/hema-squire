@@ -249,7 +249,9 @@ class ParsedStatementRow(BaseModel):
     external_id: str | None = None
     date: datetime.date
     amount_cents: int
-    currency: str = "CZK"
+    # None where the row states none: the caller reads it in the tournament's
+    # local currency, which a parser with no tournament in view cannot know
+    currency: str | None = None
     vs: int | None = None
     message: str | None = None
     payer_name: str | None = None
@@ -290,7 +292,8 @@ Rules:
    the row does not carry them.
 7. external_id: the bank's own identifier for the movement, if the row has
    one. Null if it does not — do not invent one, and never use the row number.
-8. currency: the ISO code (CZK, EUR). Default to CZK only if nothing states it.
+8. currency: the ISO code (CZK, EUR) the row states. Null if nothing in the row
+   states it — do not assume one.
 9. named_person: the person this payment is FOR, as the row's own text names
    them. Take it from the message and the other free-text fields. It is often
    written beside a discipline list or a tournament prefix — "NaDuel26: Jan Sax
@@ -356,20 +359,39 @@ def is_fio_export(data: bytes) -> bool:
     return any("ID pohybu" in line for line in text.splitlines())
 
 
-def to_transaction(row: ParsedStatementRow, raw: dict[str, str]) -> IncomingTransaction:
+def to_transaction(
+    row: ParsedStatementRow,
+    raw: dict[str, str],
+    local_currency: str,
+    occurrence: int = 1,
+) -> IncomingTransaction:
     """A parsed row as the ingest interface takes it.
 
     Where the bank supplied no id, the row's own fingerprint becomes one.
     Ingestion dedupes on `external_id`, so the same row read twice collides
     with itself and is counted duplicate — which is what keeps import
-    idempotent on a bank that numbers nothing (design D2)."""
+    idempotent on a bank that numbers nothing (design D2).
+
+    `occurrence` is how many identical rows this statement has held up to and
+    including this one. Two identical payments are two payments, so the second
+    carries its ordinal; the first keeps the bare fingerprint, which is what
+    every row ingested before the ordinal existed was given, so a re-import
+    still collides with it (spec payments-intake, Identical payments in one
+    statement are distinct).
+
+    A row stating no currency is in the tournament's own (spec
+    payments-intake, A row stating no currency is in the tournament's
+    currency)."""
     from app.importer import row_fingerprint
 
+    derived = f"row:{row_fingerprint(raw)}"
+    if occurrence > 1:
+        derived = f"{derived}:{occurrence}"
     return IncomingTransaction(
-        external_id=row.external_id or f"row:{row_fingerprint(raw)}",
+        external_id=row.external_id or derived,
         date=row.date,
         amount_cents=row.amount_cents,
-        currency=row.currency or "CZK",
+        currency=row.currency or local_currency,
         vs=row.vs,
         message=row.message,
         payer_name=row.payer_name,

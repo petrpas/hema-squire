@@ -901,3 +901,20 @@ def test_a_bare_token_of_the_wrong_amount_does_not_reinstate_in_grace(
     state = client.get("/api/tournaments/cup/my-registration", headers=fencer).json()
     assert state["state"] == "expired"
     assert "reinstated_in_grace" not in event_kinds(vs)
+
+
+def test_a_bare_symbol_top_up_is_judged_against_the_totals_tolerance(client, auth_headers, mailbox):
+    """A registration totalling 1000 has paid 500; a top-up of 470 quoting the
+    symbol bare is 30 short of what is owed. Against 5 % of what is owed (25)
+    it was refused; against 5 % of the total (50), as every other path judges
+    it, it settles (spec payments, A bare token is judged against the same
+    tolerance)."""
+    organizer = auth_headers()
+    setup(client, organizer)
+    fencer, vs = enroll(client, auth_headers)
+    import_rows(client, organizer, [f"1;01.08.2026;500,00;CZK;{vs};;;;;"])
+
+    import_rows(client, organizer, [f"2;02.08.2026;470,00;CZK;;;;doplatek {vs};;"])
+
+    state = client.get("/api/tournaments/cup/my-registration", headers=fencer).json()
+    assert state["state"] == "paid"

@@ -50,7 +50,8 @@ class FakeStatementParser:
                     external_id=raw.get("Reference") or None,
                     date=raw["Date"],
                     amount_cents=int(round(float(amount) * 100)),
-                    currency=raw.get("Currency") or "CZK",
+                    # null where the row states none, as the model is told
+                    currency=raw.get("Currency") or None,
                     vs=int(raw["Payment ref"]) if raw.get("Payment ref") else None,
                     message=raw.get("Note") or None,
                     payer_name=raw.get("Counterparty") or None,
@@ -178,23 +179,52 @@ def test_a_statement_that_repeats_a_row_exactly(client, auth_headers, mailbox, p
     """Two identical payments on one day from a bank that numbers nothing leave
     two byte-identical lines. Both key the same decision, so interpreting each
     of them stored one key twice and the import died on the uniqueness of
-    (tournament, kind, key) partway through the batch."""
+    (tournament, kind, key) partway through the batch. They are one thing to
+    interpret and two payments (spec payments-intake, Identical payments in
+    one statement are distinct)."""
     organizer = auth_headers()
     setup(client, organizer)
     fencer, vs = enroll(client, auth_headers)
 
-    row = f"2026-08-12,Jan Novák,1000.00,CZK,{vs},entry fee"
+    row = f"2026-08-12,Jan Novák,500.00,CZK,{vs},entry fee"
     assert upload(client, organizer, foreign_csv([row, row])).status_code == 202
 
     concluded = settle(client, organizer, kind="statement")
     assert concluded["status"] == "done"
     # asked once, not twice: the identical row is one thing to interpret
     assert parser.calls == 1
-    # and the repeat collides with the first on external_id, as a re-read of
-    # the same row does — the money is credited once (design D2)
-    assert concluded["outcome"]["new"] == 1
-    assert concluded["outcome"]["duplicate"] == 1
+    # and both are money: two halves of the fee settle the registration
+    assert concluded["outcome"]["new"] == 2
+    state = client.get("/api/tournaments/cup/my-registration", headers=fencer).json()
+    assert state["state"] == "paid"
 
+    # the same statement again collides row for row
+    assert upload(client, organizer, foreign_csv([row, row])).status_code == 202
+    again = settle(client, organizer, kind="statement")
+    assert again["outcome"]["new"] == 0
+    assert again["outcome"]["duplicate"] == 2
+
+
+def test_a_row_stating_no_currency_is_in_the_tournaments(client, auth_headers, mailbox, parser):
+    """A EUR tournament's statement from a bank that prints no currency column
+    was read as CZK, and every payment on it refused as an unaccepted currency
+    (spec payments-intake, A row stating no currency is in the tournament's
+    currency)."""
+    organizer = auth_headers()
+    setup(client, organizer)
+    euro = client.patch(
+        "/api/tournaments/cup",
+        json={"local_currency": "EUR", "bank_account_holder": "TJ Šerm Praha"},
+        headers=organizer,
+    )
+    assert euro.status_code == 200, euro.text
+    fencer, vs = enroll(client, auth_headers)
+
+    rows = [f"2026-08-12,Jan Novák,1000.00,,{vs},entry fee"]
+    assert upload(client, organizer, foreign_csv(rows)).status_code == 202
+
+    concluded = settle(client, organizer, kind="statement")
+    assert concluded["outcome"]["matched"] == 1
     state = client.get("/api/tournaments/cup/my-registration", headers=fencer).json()
     assert state["state"] == "paid"
 
