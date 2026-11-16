@@ -675,6 +675,7 @@ COLUMN_HANDLING: dict[str, tuple[str, str]] = {
     "rules.payload": ("redacted", "an organizer's correction may write the address"),
     "sheet_row_numbers.row_id": ("none", "a row id"),
     "hr_snapshot_ratings.discipline_code": ("none", "a category code"),
+    "hr_rating_snapshots.hr_ids": ("kept", "HEMA Ratings' public IDs the snapshot asked about"),
     "imported_rows.key": ("none", "a hash of a row"),
     "imported_rows.raw": ("redacted", "the imported table's cells"),
     "registrations.state": ("none", "lifecycle"),
