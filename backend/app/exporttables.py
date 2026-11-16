@@ -175,6 +175,9 @@ class TeamEntry:
     """
 
     team_id: int
+    # the registration that entered the team, by which a team whose entering
+    # row the organizer took out of the table is left off the public roster
+    registration_id: int
     discipline: str
     name: str
     entering_fencer: str
@@ -210,6 +213,7 @@ def team_entries(session: Session, tournament: Tournament) -> list[TeamEntry]:
                 waiting += 1
             entry = TeamEntry(
                 team_id=team.id,
+                registration_id=team.registration_id,
                 discipline=discipline.slug,
                 name=team.name,
                 entering_fencer=team.registration.fencer.display_name,

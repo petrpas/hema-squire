@@ -191,7 +191,7 @@ def _paid(conduct: _Conduct, settled: bool, window_running: bool) -> tuple[Paid,
     return None, False
 
 
-def _live_registration_ids(session: Session, tournament: Tournament) -> set[int]:
+def live_registration_ids(session: Session, tournament: Tournament) -> set[int]:
     return set(
         session.scalars(
             select(Registration.id).where(
@@ -458,7 +458,7 @@ def rosters(session: Session, tournament: Tournament) -> list[Roster]:
         base, rules.active_rules(session, tournament), sheet.rating_lookup(session, tournament)
     )
     rows = list(replayed.values())
-    live = _live_registration_ids(session, tournament)
+    live = live_registration_ids(session, tournament)
     removed = removed_registration_ids(session, tournament)
     disciplines = [
         _individual(session, discipline, rows, live, conduct)
