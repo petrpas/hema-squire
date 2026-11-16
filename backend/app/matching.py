@@ -999,6 +999,20 @@ def _is_payable(registration: Registration) -> bool:
     return registration.state is RegistrationState.RESERVED and not registration.settled
 
 
+def link_refusal(
+    session: Session, tournament: Tournament, transaction: BankTransaction, payload: dict
+) -> str | None:
+    """Why a link with this payload would credit nothing, or None where it
+    would credit something. Asked before the rule is written, so that a link
+    which could only mark its transaction matched with nothing credited is
+    never recorded (spec payments, Manual matching)."""
+    if match_currency(transaction, tournament) is None:
+        return "currency_not_accepted"
+    if not any(_is_payable(r) for r in linked_registrations(session, tournament, payload)):
+        return "nothing_payable"
+    return None
+
+
 def apply_payment_links(session: Session, tournament: Tournament, mailer: Mailer) -> int:
     """Re-assert active payment_link rules. Idempotent: an already-matched
     transaction is skipped, so reruns and re-ingestion converge on the same
@@ -1007,7 +1021,10 @@ def apply_payment_links(session: Session, tournament: Tournament, mailer: Mailer
     A link distributes the transaction across the registrations it covers —
     each its own outstanding balance in the transaction's own currency lane,
     in VS order, capped by what remains of the transaction (design Decision
-    7) — rather than crediting the full amount to every one of them. Each
+    7) — rather than crediting the full amount to every one of them. The last
+    registration able to take money takes whatever remains, so no part of a
+    matched transaction stands outside the journal; a rule that finds nothing
+    payable leaves its transaction uncredited (design account-link-remainder). Each
     amount it credits is a journal entry naming this rule, so withdrawing the
     rule reverses exactly the entries it wrote."""
     bank.require_payments_enabled(tournament)
@@ -1018,12 +1035,24 @@ def apply_payment_links(session: Session, tournament: Tournament, mailer: Mailer
             continue
         registrations = linked_registrations(session, tournament, rule.payload)
         which = match_currency(transaction, tournament)
+        payable = [registration for registration in registrations if _is_payable(registration)]
+        if which is None or not payable:
+            # a link that credits nothing does not resolve its transaction: it
+            # stays among the uncredited, where somebody can still see the
+            # money (spec payments, Manual matching)
+            continue
         remaining = transaction.amount_cents
-        for registration in registrations:
-            if which is None or remaining <= 0 or not _is_payable(registration):
-                continue
-            due = registration.outstanding_in(which)
-            amount = max(0, min(due, remaining))
+        for index, registration in enumerate(payable):
+            if remaining <= 0:
+                break
+            # the last registration that can take money takes all that is
+            # left, so what a link credits always adds up to the transaction;
+            # beyond tolerance `_settle` routes it to refund as it would a VS
+            # overpayment
+            last = index == len(payable) - 1
+            amount = (
+                remaining if last else max(0, min(registration.outstanding_in(which), remaining))
+            )
             if amount <= 0:
                 continue
             remaining -= amount

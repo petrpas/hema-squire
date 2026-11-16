@@ -1498,6 +1498,8 @@
       "noneSelected": "Nothing selected yet.",
       "remove": "Remove",
       "unknownVs": "No registration has VS {{values}}.",
+      "nothing_payable": "None of the chosen registrations can take this payment: each is already paid, expired or cancelled. The payment stays uncredited.",
+      "currency_not_accepted": "The tournament does not take payments in this currency, so the link cannot credit it.",
       "failed": "The link could not be created.",
       "confirm": "Link",
       "roster": "Who is this payment for?",

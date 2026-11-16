@@ -164,7 +164,11 @@ def test_removing_link_rule_reverts(client, auth_headers, mailbox):
     assert queue[0]["status_reason"] == "manual_unlink"
 
 
-def test_auto_matched_registration_not_reverted_by_unlink(client, auth_headers, mailbox):
+def test_a_link_to_a_registration_already_paid_is_refused(client, auth_headers, mailbox):
+    """The organizer mistakenly links an unrelated donation to a fencer whom a
+    VS match has already paid. Nothing could take it, so the link is refused
+    and the donation stays uncredited, rather than being marked matched with
+    nothing credited (spec payments, Manual matching)."""
     organizer = auth_headers()
     setup(client, organizer)
     fencer_a, vs_a = enroll(client, auth_headers, "a@example.com", "Adéla")
@@ -182,17 +186,17 @@ def test_auto_matched_registration_not_reverted_by_unlink(client, auth_headers, 
     )
     assert state_of(client, fencer_a) == "paid"  # auto-matched via VS
 
-    # organizer mistakenly links the unrelated donation to the same VS, then removes it
     transaction_id = unmatched_transaction_id(client, organizer)
-    rule_id = client.post(
+    response = client.post(
         "/api/tournaments/cup/payments/link",
         json={"transaction_id": transaction_id, "vs": [vs_a]},
         headers=organizer,
-    ).json()["rule_id"]
-    client.delete(f"/api/tournaments/cup/rules/{rule_id}", headers=organizer)
+    )
 
-    # the auto-match keeps the registration paid
+    assert response.status_code == 409
+    assert response.json()["detail"] == "nothing_payable"
     assert state_of(client, fencer_a) == "paid"
+    assert unmatched_transaction_id(client, organizer) == transaction_id
 
 
 def test_manual_link_distributes_without_overpaying(client, auth_headers, mailbox):

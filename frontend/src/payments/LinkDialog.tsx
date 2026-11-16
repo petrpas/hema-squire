@@ -25,6 +25,17 @@ import { useOrderLines } from "./useOrderLines";
  *  Selection is a list, not a single value: one transfer covering several
  *  fencers is what the endpoint's arrays exist for.
  */
+
+const LINK_REFUSALS = ["nothing_payable", "currency_not_accepted"] as const;
+type LinkRefusal = (typeof LINK_REFUSALS)[number];
+
+/** Why the endpoint refused a link that could credit nothing, or null for any
+ *  other failure — a 409 that is not one of these is a concurrent match. */
+function linkRefusal(error: unknown): LinkRefusal | null {
+  if (!(error instanceof ApiError) || error.status !== 409) return null;
+  return LINK_REFUSALS.find((reason) => reason === error.detail) ?? null;
+}
+
 export default function LinkDialog({
   slug,
   transaction,
@@ -46,6 +57,7 @@ export default function LinkDialog({
   const [typed, setTyped] = useState("");
   const [unknown, setUnknown] = useState<number[]>([]);
   const [failed, setFailed] = useState(false);
+  const [refused, setRefused] = useState<LinkRefusal | null>(null);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -141,12 +153,14 @@ export default function LinkDialog({
     setBusy(true);
     setUnknown([]);
     setFailed(false);
+    setRefused(null);
     try {
       await api.linkTransaction(slug, transaction.id, typedVs, chosen);
       onLinked();
       onClose();
     } catch (error) {
-      // the endpoint distinguishes the two: a VS that resolves to nothing is
+      // the endpoint distinguishes three: a VS that resolves to nothing, or a
+      // link that could credit nothing (spec payments, Manual matching), is
       // the organizer's to correct, so the dialog stays open with the entry
       // intact; a transaction matched by a concurrent poll is already resolved,
       // so the dialog closes and the queue refreshes (design D3)
@@ -155,8 +169,11 @@ export default function LinkDialog({
         detail && typeof detail === "object" && "unknown_vs" in detail
           ? (detail as { unknown_vs: number[] }).unknown_vs
           : null;
+      const refusal = linkRefusal(error);
       if (values) {
         setUnknown(values);
+      } else if (refusal !== null) {
+        setRefused(refusal);
       } else if (error instanceof ApiError && error.status === 409) {
         onLinked();
         onClose();
@@ -304,6 +321,7 @@ export default function LinkDialog({
             {t("payments.link.unknown", { values: unknown.join(", ") })}
           </p>
         )}
+        {refused !== null && <p className="login-error">{t(`payments.link.${refused}`)}</p>}
         {failed && <p className="login-error">{t("payments.link.failed")}</p>}
 
         <div className="modal-actions">

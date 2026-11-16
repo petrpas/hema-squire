@@ -181,6 +181,22 @@ it("closes and refreshes when a concurrent poll matched the transaction first", 
   expect(onLinked).toHaveBeenCalled();
 });
 
+it("says why a link that could credit nothing was refused, and stays open", async () => {
+  vi.spyOn(api, "linkTransaction").mockRejectedValue(new ApiError(409, "nothing_payable"));
+  const onLinked = vi.fn();
+  const onClose = vi.fn();
+  render(transaction(), { onLinked, onClose });
+
+  click(buttonNamed("2601001"));
+  click(buttonNamed(t("payments.link.confirm")));
+  await settle();
+
+  // the payment is still uncredited and still the organizer's to place
+  expect(host?.textContent).toContain(t("payments.link.nothing_payable"));
+  expect(onClose).not.toHaveBeenCalled();
+  expect(onLinked).not.toHaveBeenCalled();
+});
+
 it("creates no link when dismissed", () => {
   const link = vi.spyOn(api, "linkTransaction");
   const onClose = vi.fn();

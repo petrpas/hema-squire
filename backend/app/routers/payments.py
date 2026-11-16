@@ -333,6 +333,9 @@ def link_transaction(
     payload = {"vs": data.vs}
     if data.registration_ids:
         payload["registration_ids"] = data.registration_ids
+    refusal = matching.link_refusal(session, tournament, transaction, payload)
+    if refusal is not None:
+        raise HTTPException(status_code=409, detail=refusal)
     rule = rules.create_rule(
         session,
         tournament,
@@ -387,6 +390,12 @@ def confirm_proposal(
 
     # addressed by id, not by symbol: the proposal named a person, and on a
     # tournament whose organizer keeps the roster there is no symbol to name
+    payload = {"vs": [], "registration_ids": [registration.id]}
+    # the manual-link path, refusal included: a person already paid in full
+    # is not something the link may resolve this payment against
+    refusal = matching.link_refusal(session, tournament, transaction, payload)
+    if refusal is not None:
+        raise HTTPException(status_code=409, detail=refusal)
     rule = rules.create_rule(
         session,
         tournament,
@@ -394,7 +403,7 @@ def confirm_proposal(
         phase="payments",
         kind="payment_link",
         target=f"txn:{transaction.external_id}",
-        payload={"vs": [], "registration_ids": [registration.id]},
+        payload=payload,
     )
     applied = matching.apply_payment_links(session, tournament, mailer)
     return {"rule_id": rule.id, "applied": applied}

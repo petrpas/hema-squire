@@ -378,15 +378,16 @@ def uncredited(client, headers, slug="cup"):
     return client.get(f"/api/tournaments/{slug}/payments/uncredited", headers=headers)
 
 
-def test_a_pairing_that_credited_nothing_is_work_and_not_a_result(client, auth_headers, mailbox):
-    """The hole the two tables close.
+def test_a_pairing_that_could_credit_nothing_is_refused_and_stays_work(
+    client, auth_headers, mailbox
+):
+    """The hole the two tables close, closed at the pairing too.
 
-    `apply_payment_links` marks a transaction `matched` even where it credited
-    nothing — here because the registration is cancelled between the pairing
-    and the pass. Filtering by status, as the queues did, put such a payment in
-    none of them while the pairing view showed it as done: money on the account
-    and a console reading finished. Asked of the journal it is uncredited money,
-    which is what it is.
+    `apply_payment_links` used to mark a transaction `matched` even where it
+    credited nothing — here because the registration is cancelled before the
+    organizer pairs the payment. Such a pairing is now refused before it is
+    written (spec payments, Manual matching), and the payment stays what the
+    journal says it is: uncredited money, with no pairing claiming it.
     """
     organizer = auth_headers()
     setup(client, organizer)
@@ -402,15 +403,13 @@ def test_a_pairing_that_credited_nothing_is_work_and_not_a_result(client, auth_h
         json={"transaction_id": transaction["id"], "vs": [vs]},
         headers=organizer,
     )
-    assert linked.status_code == 201, linked.text
+    assert linked.status_code == 409
+    assert linked.json()["detail"] == "nothing_payable"
 
-    # nothing was credited, so the payment is still work — and it says whose
-    # pairing left it there
     assert credited(client, organizer).json() == []
     (row,) = uncredited(client, organizer).json()
-    assert row["disposition"] == "paired_uncredited"
-    assert [named["vs"] for named in row["paired_registrations"]] == [vs]
-    assert [named["fencer_name"] for named in row["paired_registrations"]] == ["Jan"]
+    assert row["id"] == transaction["id"]
+    assert row["disposition"] == "none"
 
 
 def test_a_partial_payment_is_credited_money_not_work(client, auth_headers, mailbox):

@@ -1531,6 +1531,8 @@
       "noneSelected": "Zatím nic vybráno.",
       "remove": "Odebrat",
       "unknownVs": "Žádná registrace nemá VS {{values}}.",
+      "nothing_payable": "Žádná z vybraných registrací tuhle platbu nemůže přijmout: každá je už zaplacená, propadlá nebo zrušená. Platba zůstává nepřipsaná.",
+      "currency_not_accepted": "Turnaj platby v této měně nepřijímá, odkaz ji proto připsat nemůže.",
       "failed": "Platbu se nepodařilo přiřadit.",
       "confirm": "Přiřadit",
       "roster": "Za koho ta platba je?",
