@@ -362,9 +362,11 @@ def _cached(request: Request, model: BaseModel) -> Response:
     add-floor-checkin D6)."""
     body = model.model_dump_json()
     tag = '"' + hashlib.sha256(body.encode()).hexdigest()[:32] + '"'
+    # no-cache: a browser revalidates on every poll instead of serving its copy
+    headers = {"ETag": tag, "Cache-Control": "no-cache"}
     if request.headers.get("if-none-match") == tag:
-        return Response(status_code=304, headers={"ETag": tag})
-    return Response(content=body, media_type="application/json", headers={"ETag": tag})
+        return Response(status_code=304, headers=headers)
+    return Response(content=body, media_type="application/json", headers=headers)
 
 
 def _refused(error: checkin.Refused) -> HTTPException:

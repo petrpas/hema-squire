@@ -194,7 +194,8 @@ export interface StoredPlan {
 
 export interface Pin {
   id: number;
-  kind: "day" | "k" | "place" | "sequence";
+  /** "n" is check-in's own: a closed discipline's N, added by its gate */
+  kind: "day" | "k" | "place" | "sequence" | "n";
   target: string;
   value: Record<string, unknown>;
   gate: string | null;
@@ -236,8 +237,123 @@ export const planApi = {
     request<void>(`${base(slug)}/plan/choose`, { method: "POST", body: JSON.stringify({ key }) }),
   publish: (slug: string) => request<void>(`${base(slug)}/plan/publish`, { method: "POST" }),
   replan: (slug: string) => request<Variants>(`${base(slug)}/plan/replan`, { method: "POST" }),
-  pin: (slug: string, pin: Omit<Pin, "id" | "gate">) =>
+  pin: (slug: string, pin: Omit<Pin, "id" | "gate" | "kind"> & { kind: "day" | "k" }) =>
     request<Pin>(`${base(slug)}/plan/pins`, { method: "POST", body: JSON.stringify(pin) }),
   unpin: (slug: string, id: number) =>
     request<void>(`${base(slug)}/plan/pins/${id}`, { method: "DELETE" }),
+};
+
+// ------------------------------------------------------------ check-in and today
+
+export interface DeskEntry {
+  entry_key: string;
+  discipline_id: number;
+  team: string | null;
+  paid: boolean;
+  withdrawn: boolean;
+}
+
+export interface DeskPerson {
+  key: string;
+  name: string;
+  club: string | null;
+  nationality: string | null;
+  local: boolean;
+  arrived: boolean;
+  entries: DeskEntry[];
+}
+
+export interface DeskDiscipline {
+  id: number;
+  slug: string;
+  name: string;
+  kind: "individual" | "team";
+  team_min: number | null;
+  team_max: number | null;
+  closed: boolean;
+  closed_at: string | null;
+  entered: number;
+  present: number;
+  n: number | null;
+}
+
+export interface DeskTeam {
+  key: string;
+  discipline_id: number;
+  name: string;
+  members: string[];
+  lineup: string[];
+  present: boolean;
+  short_by: number;
+  withdrawn: boolean;
+}
+
+export interface Desk {
+  persons: DeskPerson[];
+  disciplines: DeskDiscipline[];
+  teams: DeskTeam[];
+}
+
+export interface CloseImpact {
+  n: number;
+  n_pool: number;
+  feasible: boolean;
+  k: number | null;
+  sizes: number[];
+  published_k: number | null;
+  range: number[] | null;
+  day: string | null;
+  end_change: number | null;
+}
+
+export interface Today {
+  rows: {
+    discipline_id: number;
+    slug: string;
+    name: string;
+    steps: Record<string, string>;
+    slip: number | null;
+  }[];
+  waiting: { tab: string; discipline: string | null; code: string }[];
+}
+
+const enc = encodeURIComponent;
+
+export const checkinApi = {
+  desk: (slug: string) => request<Desk>(`${base(slug)}/checkin`),
+  arrive: (slug: string, key: string) =>
+    request<void>(`${base(slug)}/checkin/arrivals`, {
+      method: "POST",
+      body: JSON.stringify({ person_key: key }),
+    }),
+  leave: (slug: string, key: string) =>
+    request<void>(`${base(slug)}/checkin/arrivals/${enc(key)}`, { method: "DELETE" }),
+  withdraw: (slug: string, entry: string) =>
+    request<void>(`${base(slug)}/checkin/withdrawals`, {
+      method: "POST",
+      body: JSON.stringify({ entry_key: entry }),
+    }),
+  undoWithdrawal: (slug: string, entry: string) =>
+    request<void>(`${base(slug)}/checkin/withdrawals/${enc(entry)}`, { method: "DELETE" }),
+  lineup: (slug: string, team: string, keys: string[]) =>
+    request<void>(`${base(slug)}/checkin/lineups/${enc(team)}`, {
+      method: "PUT",
+      body: JSON.stringify({ person_keys: keys }),
+    }),
+  local: (slug: string, name: string) =>
+    request<{ key: string }>(`${base(slug)}/checkin/locals`, {
+      method: "POST",
+      body: JSON.stringify({ name }),
+    }),
+  impact: (slug: string, discipline: number) =>
+    request<CloseImpact>(`${base(slug)}/checkin/${discipline}/close`),
+  close: (slug: string, discipline: number) =>
+    request<void>(`${base(slug)}/checkin/${discipline}/close`, { method: "POST" }),
+  reopenPreview: (slug: string, discipline: number) =>
+    request<{ invalidated: string[]; refusals: string[] }>(
+      `${base(slug)}/checkin/${discipline}/reopen`,
+    ),
+  reopen: (slug: string, discipline: number) =>
+    request<void>(`${base(slug)}/checkin/${discipline}/reopen`, { method: "POST" }),
+  today: (slug: string) => request<Today>(`${base(slug)}/today`),
 };

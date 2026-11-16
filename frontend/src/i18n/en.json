@@ -2249,7 +2249,8 @@
         "kindK": "the pool count",
         "discipline": "Discipline",
         "pools": "Pools",
-        "add": "Pin"
+        "add": "Pin",
+        "n": "{{name}}: N = {{n}}"
       },
       "sensitivity": {
         "title": "Sensitivity",
@@ -2268,6 +2269,75 @@
           "officials": "The officials limit the day."
         }
       }
+    },
+    "today": {
+      "discipline": "Discipline",
+      "slip": "Slip",
+      "waiting": "What waits",
+      "nothing": "Nothing waits.",
+      "failed": "The overview could not be loaded.",
+      "fresh": "updated at {{time}}",
+      "stale": "The refresh failed; updated at {{time}}",
+      "behind_one": "{{count}} minute behind",
+      "behind_other": "{{count}} minutes behind",
+      "ahead_one": "{{count}} minute ahead",
+      "ahead_other": "{{count}} minutes ahead",
+      "state": {
+        "open": "open",
+        "closed": "closed",
+        "waiting": "waiting"
+      },
+      "codes": {
+        "days": "Setup: the tournament's days are missing",
+        "pistes": "Setup: the pistes are missing",
+        "format": "Setup: {{discipline}} has no format",
+        "staffing": "Setup: {{discipline}} has no piste staffing",
+        "publish": "Plan: a working version waits to be published",
+        "checkin_open": "Check-in: {{discipline}} is still open and its first pool is near"
+      }
+    },
+    "checkin": {
+      "failed": "Check-in could not be loaded.",
+      "search": "Search a name or club",
+      "arrived": "Here",
+      "entries": "Entries",
+      "tick": "{{name}} is here",
+      "local": "(on the day only)",
+      "paid": "paid",
+      "unpaid": "unpaid",
+      "withdrawn": "withdrawn",
+      "withdraw": "Withdraw",
+      "undoWithdraw": "Undo",
+      "counts": "{{present}} of {{entered}} here.",
+      "closedAt": "Check-in closed, N = {{n}}.",
+      "close": "Close check-in",
+      "reopen": "Reopen",
+      "closeTitle": "Close check-in: {{name}}",
+      "reopenTitle": "Reopen check-in: {{name}}",
+      "invalidates": "Reopening discards:",
+      "invalidated": {
+        "n_pin": "the planner's N pin",
+        "snapshot": "the frozen list of entrants",
+        "draw": "the pools' draw"
+      },
+      "reopenRefused": "Cannot reopen: bouts are already recorded ({{items}}).",
+      "impact": {
+        "infeasible": "N = {{n}} does not fit the pool range {{range}}.",
+        "pools": "{{k}} pools ({{sizes}})",
+        "poolsInstead": "{{k}} pools instead of {{was}}",
+        "earlier_one": "ends {{count}} minute earlier",
+        "earlier_other": "ends {{count}} minutes earlier",
+        "later_one": "ends {{count}} minute later",
+        "later_other": "ends {{count}} minutes later"
+      },
+      "teamPresent": "present",
+      "teamShort_one": "{{count}} short",
+      "teamShort_other": "{{count}} short",
+      "lineup": "Lineup ({{min}}–{{max}})",
+      "here": "here",
+      "substitute": "Substitute (name)",
+      "addSubstitute": "Add to the lineup",
+      "lineupRefused": "The lineup could not be saved; check its size and that no member is in another lineup."
     }
   }
 }

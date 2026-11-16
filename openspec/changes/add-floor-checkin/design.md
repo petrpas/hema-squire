@@ -107,6 +107,24 @@ None new.
   `app.floor.planning` (for the impact), `app.db` and `app.errors`.
 - The roster arrives through the existing adapter.
 
+### D8. Decisions made during implementation (made by me; for the owner's review)
+Decided on 2026-11-17 while the owner was away, as asked:
+- **The N pin is a pin of its own kind, `n`.** It is listed on the Plan tab with its
+  gate, as every gate's pin is. The planner reads N from the snapshot, so the engine
+  needs no N pin of its own.
+- **The close impact keeps the published k where the new N allows it.** Otherwise it
+  takes the feasible k nearest to it. The day's end is the published variant scheduled
+  again with the new N.
+- **A team discipline's N is its present teams.** Its pool participants are their
+  arrived lineup members. A team with no stated lineup fields its roster members.
+- **Check-in team bounds come from the port.** `FloorDiscipline` gains `team_min` and
+  `team_max`, filled by the adapter from objects it already reads.
+- **Desk authors are account ids**, as plan authors are (`add-floor-planner` D10).
+- **Polling uses `Cache-Control: no-cache` with the `ETag`.** The browser then
+  revalidates on every poll instead of serving its own copy, and the 304 stays cheap.
+- **Lineups are saved as each tick is made.** The lineup is not a draft with a save
+  button, because a lineup is set at the desk while the captain stands there.
+
 ## Risks / Trade-offs
 
 - **[Two desks tick the same person at once.]** → `floor_arrivals` is unique per person,
