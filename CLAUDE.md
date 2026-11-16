@@ -49,8 +49,8 @@ Default invocation inside an agent loop:
 
     pytest <scope> -q --maxfail=3 --tb=short --show-capture=no
 
-- Scope to what changed (`tests/payments`, `tests/registration`). The full suite belongs to CI
-  and the pre-push hook, not to a per-edit hook.
+- Scope to what changed (`tests/test_payment_ledger.py`, `tests/test_registrations.py`,
+  `tests/floor`). The full suite belongs to CI and the pre-push hook, not to a per-edit hook.
 - Never pass `--cov` during the loop. Coverage reports are for CI.
 - On failure: triage with `--tb=line`, then re-run the single failing test with `--tb=long`.
   Do not dump multiple full tracebacks at once.
@@ -146,6 +146,24 @@ right without a human reading the answer:
 `deptry` runs in CI's non-blocking `audit` job, so a dependency change that
 does not match the imports is visible without breaking a deploy. `vulture` runs
 nowhere but by hand — after deleting a feature is when it has something to say.
+
+# Floor module (tournament day)
+
+`backend/app/floor/` has a hard boundary, enforced by
+`tests/floor/test_floor_boundary.py`.
+
+- `app.floor` imports from the rest of `app` only: `db`, `auth`, `errors`,
+  `i18n`, `config`.
+- The one exception is `app/floor/adapters/office.py`, the only floor file that
+  reads office modules. Floor code gets entrants through `app.floor.roster`
+  and never queries `Registration`, `Team` or any payment table.
+- Nothing outside `app.floor` imports it, except `main.py` mounting its router.
+- `app.floor.engine` is pure: standard library only, no I/O, no clock. Inputs
+  and outputs are frozen dataclasses.
+- Floor tables are prefixed `floor_` and live in `app/floor/models.py`. No
+  floor column is added to `Tournament`, `Discipline` or `Registration`.
+- Test scope for floor work is `tests/floor`. Engine tests use Hypothesis and
+  no database.
 
 # Openspec
 
