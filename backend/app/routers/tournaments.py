@@ -54,6 +54,7 @@ from app.models import (
     DisciplineKind,
     ExtraItem,
     Fencer,
+    PaymentCredit,
     PaymentMode,
     Registration,
     RegistrationDiscipline,
@@ -727,6 +728,43 @@ def _apply_opening_moment_rules(tournament: Tournament, updates: dict) -> None:
         raise HTTPException(status_code=422, detail="opening_time_does_not_exist")
 
 
+# the settings a registration's paid reading is derived from: the tolerance it
+# is judged within, and which currencies have a lane for its credit to count in
+_SETTLEMENT_FIELDS = frozenset(
+    {"amount_tolerance_percent", "eur_payments_enabled", "local_currency", "feature_payments"}
+)
+
+
+def _settled_registrations(session: Session, tournament: Tournament) -> list[Registration]:
+    return list(
+        session.scalars(
+            select(Registration).where(
+                Registration.tournament_id == tournament.id,
+                Registration.state == RegistrationState.RESERVED,
+                Registration.settled,
+            )
+        )
+    )
+
+
+def _refuse_orphaning_eur_credit(session: Session, tournament: Tournament) -> None:
+    """Refuse a change that leaves live EUR credit with no lane to count in
+    (spec payments, EUR payments cannot be withdrawn from under EUR money).
+
+    Every fencer who paid in euros would read as owing in full, with nothing
+    left to settle against the money they sent. Raised before the commit, so
+    nothing in the update is saved."""
+    holders = session.scalar(
+        select(func.count(func.distinct(PaymentCredit.registration_id))).where(
+            PaymentCredit.tournament_id == tournament.id,
+            PaymentCredit.currency == Currency.EUR,
+            PaymentCredit.reversed_at.is_(None),
+        )
+    )
+    if holders:
+        raise HTTPException(status_code=409, detail=f"eur_credits_present: {holders}")
+
+
 @router.patch("/{slug}", response_model=TournamentOut)
 def update_tournament(
     data: TournamentUpdate, tournament: TournamentDep, session: SessionDep, fencer: FencerDep
@@ -768,6 +806,16 @@ def update_tournament(
     # tournament-admin, The organizer chooses the cover ground)
     if updates.get("cover_tint") == "photo" and not tournament.has_cover_photo:
         raise HTTPException(status_code=422, detail="cover_photo_missing")
+    took_eur = tournament.takes_eur
+    # what was paid before the settings moved, so that whoever they unsettle
+    # is put under a fresh window rather than the long-passed one (spec
+    # payments, Losing the paid reading opens a fresh payment window). Read
+    # only where a field that weighs in the derivation is touched
+    paid_before = (
+        _settled_registrations(session, tournament)
+        if _SETTLEMENT_FIELDS.intersection(updates)
+        else []
+    )
     for field, value in updates.items():
         setattr(tournament, field, value)
     # reopening clears any previously recorded criteria (design D7)
@@ -828,6 +876,10 @@ def update_tournament(
             ),
         )
     _apply_currency_invariants(tournament)
+    if took_eur and not tournament.takes_eur:
+        _refuse_orphaning_eur_credit(session, tournament)
+    for registration in paid_before:
+        setup.reopen_window(tournament, registration, was_settled=True)
     # local-currency money: ceiling resolved from the currency now in effect
     # (design 2.4a); checked only for fields this request actually touches —
     # an untouched stored value is never re-validated (design Risks)

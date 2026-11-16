@@ -70,3 +70,12 @@ it("reports a failure it cannot read by status", () => {
   const message = saveFailureMessage(new ApiError(503, "unavailable"), [], MODE, t);
   expect(message).toBe(t("setup.saveBar.genericError", { status: 503 }));
 });
+
+it("says why EUR cannot be switched off, with how many paid in euros", () => {
+  const err = new ApiError(409, "eur_credits_present: 2");
+  expect(saveFailureMessage(err, [], MODE, t)).toBe(
+    t("setup.saveBar.eurCreditsPresent", { count: 2 }),
+  );
+  const cs = i18n.getFixedT("cs");
+  expect(saveFailureMessage(err, [], MODE, cs)).toContain("2 registrace zaplatily");
+});

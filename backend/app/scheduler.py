@@ -107,6 +107,32 @@ def process_reminders(session: Session, tournament: Tournament, mailer: Mailer) 
     return len(due)
 
 
+def close_settled_windows(session: Session, tournament: Tournament) -> None:
+    """Close the payment window of every reserved registration that reads as
+    paid (spec payments, A paid registration is under no payment window).
+
+    Here rather than at each route to settlement — a credit, a waiver, a
+    widened tolerance, a discount code, an amendment down — because paid is a
+    reading, and a window left on a paid registration is overdue the moment
+    anything takes the reading away. With it closed, a path that unsettles and
+    forgot `setup.reopen_window` leaves a debt without a deadline rather than
+    an expiry. It also closes the windows registrations settled before this
+    existed still carry, so no migration does.
+
+    Reserved only: an expired registration's window is what the grace for a
+    late payment is measured from."""
+    for registration in session.scalars(
+        select(Registration).where(
+            Registration.tournament_id == tournament.id,
+            Registration.state == RegistrationState.RESERVED,
+            Registration.settled,
+            Registration.expires_at.is_not(None),
+        )
+    ):
+        registration.expires_at = None
+    session.flush()
+
+
 def process_expiries(session: Session, tournament: Tournament, mailer: Mailer) -> int:
     """Expire unpaid reservations past their window, freeing capacity.
 
@@ -141,6 +167,7 @@ def process_expiries(session: Session, tournament: Tournament, mailer: Mailer) -
     were returned to the queue, that being what a lapse then does in place of
     expiring. A registration demoted before settlement is not counted, because
     it still exists and nothing it held was a promotion."""
+    close_settled_windows(session, tournament)
     now = _now()
     overdue = session.scalars(
         select(Registration).where(

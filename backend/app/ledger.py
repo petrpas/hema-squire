@@ -140,10 +140,16 @@ def reverse(
     have done it. Crediting the same source afresh afterwards is a new row.
     """
     if entry.reversed_at is None:
+        registration = entry.registration
+        was_settled = registration.settled
         entry.reversed_at = datetime.now(UTC)
         entry.reversed_by = by
         entry.reversed_reason = reason
         session.flush()
+        # here, where money is taken back, rather than at each caller, for the
+        # reason `clear_promotion_marks` lives beside the writes: a route that
+        # forgot would leave a fencer who paid to the next expiry pass
+        setup.reopen_window(registration.tournament, registration, was_settled)
     return entry
 
 
@@ -271,9 +277,11 @@ def revoke_waiver(
     entry = registration.active_waiver
     if entry is None:
         return None
+    was_settled = registration.settled
     entry.revoked_at = datetime.now(UTC)
     entry.revoked_by = revoked_by
     session.flush()
+    setup.reopen_window(registration.tournament, registration, was_settled)
     return entry
 
 

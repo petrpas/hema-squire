@@ -1306,11 +1306,12 @@ def resettle_within_tolerance(session: Session, tournament: Tournament, mailer: 
     transaction the tolerance did not decide, and it never reaches a payment
     nobody has looked at.
 
-    **It only ever loosens.** A tightened tolerance leaves what is already
-    settled alone. Symmetry would say a registration outside the new tolerance
-    should go back to owing money, but Squire has told that fencer they are
-    paid, by mail; taking it back is not something a percentage field does on
-    its own (spec `payments`, Re-deciding a short payment).
+    **It only ever loosens.** Tightening needs no pass: paid is derived, so a
+    registration outside the new tolerance reads as owing the moment the
+    setting is saved. What the tournament update does about it is put such a
+    registration under a fresh payment window (`setup.reopen_window`), so it is
+    not expired against the window it was registered under (spec `payments`,
+    Losing the paid reading opens a fresh payment window).
 
     Returns how many registrations were settled."""
     bank.require_payments_enabled(tournament)

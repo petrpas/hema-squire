@@ -556,7 +556,8 @@ def resettleable_payments(
 ) -> dict[str, int]:
     """How many short payments the tolerance as it stands would now let
     through. Read by the tolerance card so the number is stated before the
-    organizer commits to it (spec payments, Re-deciding a short payment)."""
+    organizer commits to it (spec payment-ledger, The paid date is the day of the
+    credit that completed the balance)."""
     require_console_access(session, tournament, fencer)
     bank.require_payments_enabled(tournament)
     return {"resettleable": matching.resettleable(session, tournament)}

@@ -162,7 +162,20 @@ export function saveFailureMessage(
         })
       : t("setup.saveBar.incompleteErrorNoTab", { items: items.join("; ") });
   }
+  const eurHolders = eurCreditHolders(err);
+  if (eurHolders !== null) return t("setup.saveBar.eurCreditsPresent", { count: eurHolders });
   return t("setup.saveBar.genericError", { status: err instanceof ApiError ? err.status : "?" });
+}
+
+/** How many registrations hold euro money, where the save was refused for
+ *  switching EUR off from under it (spec payments, EUR payments cannot be
+ *  withdrawn from under EUR money); null for any other failure. */
+function eurCreditHolders(err: unknown): number | null {
+  if (!(err instanceof ApiError) || err.status !== 409 || typeof err.detail !== "string") {
+    return null;
+  }
+  const match = /^eur_credits_present: (\d+)$/.exec(err.detail);
+  return match?.[1] === undefined ? null : Number(match[1]);
 }
 
 // Fixed flush/registration order, independent of effect-firing order (D7).

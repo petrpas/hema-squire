@@ -15,6 +15,7 @@ from app.models import (
     PaymentMode,
     Registration,
     RegistrationsKeptBy,
+    RegistrationState,
     Tournament,
 )
 
@@ -513,6 +514,36 @@ def payment_window(tournament: Tournament, now: datetime.datetime) -> datetime.d
         tournament.date + datetime.timedelta(days=1), datetime.time.min, tzinfo=datetime.UTC
     )
     return min(window, end_of_tournament)
+
+
+def reopen_window(tournament: Tournament, registration: Registration, was_settled: bool) -> None:
+    """Put a registration that has just stopped reading as paid under a fresh
+    payment window (spec payments, Losing the paid reading opens a fresh
+    payment window).
+
+    Paid is derived, so more things can take it away than were written knowing
+    that: an amendment upward, a reversed credit, a removed link or recorded
+    payment, a revoked waiver, a tightened tolerance. A paid registration
+    carries no window (the tick closes it), and without this one it would carry
+    none at all, or — before the tick ran — the one it was registered under,
+    usually long past, and the next expiry pass would take the seat of a fencer
+    who paid. One rule for every such path, so they cannot drift.
+
+    The reminder is re-armed rather than a mail sent here: the flip is often a
+    step in a correction (remove a recorded payment, record it right), and the
+    fencer hears about a real debt before the new window closes.
+
+    No window where the clocks do not run or where the registration sits
+    entirely in the queue, which owes nothing; `payment_window` itself answers
+    None with payments off."""
+    if not was_settled or registration.settled:
+        return
+    if registration.state != RegistrationState.RESERVED:
+        return
+    if not clocks_run(tournament, registration) or registration.fully_queued:
+        return
+    registration.expires_at = payment_window(tournament, datetime.datetime.now(datetime.UTC))
+    registration.reminded_at = None
 
 
 def bank_poll_window(

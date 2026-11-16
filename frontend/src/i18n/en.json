@@ -539,6 +539,8 @@
       "save": "Save changes ({{count}})",
       "nothingToSave": "Nothing to save",
       "partial": "{{written}} of {{total}} changes written, {{pending}} still unsaved",
+      "eurCreditsPresent_one": "EUR payments cannot be switched off: {{count}} registration has paid in euros. Reverse or remove that payment first.",
+      "eurCreditsPresent_other": "EUR payments cannot be switched off: {{count}} registrations have paid in euros. Reverse or remove those payments first.",
       "genericError": "The change could not be saved (error {{status}}).",
       "incompleteError": "A published tournament refuses every save while something mandatory is missing: {{items}}. Fix it on the {{tabs}} tab, then save again.",
       "incompleteErrorNoTab": "A published tournament refuses every save while something mandatory is missing: {{items}}.",

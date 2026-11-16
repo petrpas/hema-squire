@@ -277,14 +277,13 @@ def apply_amendment(
     # It then carries the deadline it was registered under, which has usually
     # long passed, and the next expiry pass would take a seat from a fencer who
     # had paid — over a correction they may not even have asked for. Money
-    # newly requested gets a window to be paid in, exactly as a promotion out
-    # of the queue opens one, and the same function decides both.
+    # newly requested gets a window to be paid in, by the one rule every path
+    # that takes the paid reading away shares (`setup.reopen_window`).
     #
     # Only where the registration was settled and no longer is. `expires_at`
     # otherwise stays read-only through this path: amending must not renew the
     # hold of a registration that was already owing (Decision 3).
-    if was_paid and not registration.settled and setup.clocks_run(tournament, registration):
-        registration.expires_at = setup.payment_window(tournament, _now())
+    setup.reopen_window(tournament, registration, was_paid)
 
     session.add(
         PaymentEvent(
