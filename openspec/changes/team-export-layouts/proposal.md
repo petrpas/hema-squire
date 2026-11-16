@@ -30,8 +30,15 @@ disagree.
   on two teams has a row under each.
 - A team with no fighter on its roster yet is one row, its fighter cells empty.
 - The `data-export` spec states the team worksheet instead of denying it.
-- The console's team tab on screen is unchanged: teams with their fighters
-  beneath them, the entering fencer and the member count in the team's row.
+- The console's team tab on screen keeps its shape, teams with their fighters
+  beneath them, but a team's row states only its number, name and paid. The
+  fencer who entered it moves to a hint over the team's name, and the member
+  count against the bounds goes.
+- A discipline tab's rail card states when ratings were last fetched and how
+  many of its bound fighters have none fetched yet, beside the refresh. Ratings
+  do reach team members already, but only through the refresh an organizer
+  starts, and a member bound after the last snapshot has none. Nothing said so,
+  so empty rating cells looked like a fault.
 
 ## Capabilities
 
@@ -42,7 +49,9 @@ disagree.
 - `roster-print`: a team discipline prints from its own template, with its own
   columns, and without the entering fencer or the member count.
 - `export-tables`: a team discipline tab's clipboard copy is flat, one row per
-  fighter with the team's cells repeated. The screen keeps its team rows.
+  fighter with the team's cells repeated. The screen keeps its team rows but
+  states only name and paid in them, with the entering fencer as a hint. A
+  discipline tab states whose ratings are not fetched yet.
 - `data-export`: the Sheets export writes a team discipline's worksheet, flat
   and identified by team and fighter. A worksheet still in the mixed shape is
   rewritten once.
@@ -57,9 +66,13 @@ disagree.
   the one-time rewrite of an old-shape worksheet.
   `backend/app/exporttables.py` gets a flat team-fighter row view.
 - `frontend/src/export/roster.ts` and `frontend/src/export/columns.ts`: the
-  team print columns and the flat team copy columns. `TeamRosterTable` and the
-  on-screen `TEAM_COLUMNS` are unchanged.
+  team print columns and the flat team copy columns.
 - i18n: a `Team` header in `cs`/`en` for both the frontend and the backend
   catalog.
-- No migration, no API shape change beyond the roster print body's row width
-  for a team discipline.
+- `frontend/src/export/TeamRosterTable.tsx` and `columns.ts`: the team row's
+  name cell, with a hint for the entering fencer. The rail card of a discipline
+  tab gains the ratings statement.
+- `HRRatingSnapshot` gains `hr_ids` (JSON, nullable), the identifiers a snapshot
+  asked for, with one Alembic migration. `ExportTableOut` gains
+  `ratings_fetched_at` and `ratings_missing`.
+- The roster print body's rows widen to eight cells for a team discipline.

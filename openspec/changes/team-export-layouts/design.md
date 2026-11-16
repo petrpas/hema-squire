@@ -40,9 +40,15 @@ row. A worksheet in the old shape is rewritten once.
 - One flat shape shared by Sheets and the copy.
 - Specs that state what the code does.
 
+- A console team tab whose team rows state only what the organizer seeds by.
+- Empty rating cells that explain themselves.
+
 **Non-Goals:**
-- Changing the on-screen team tab, its ordering, its active-only filter or its
+- Changing the on-screen team tab's shape, ordering, active-only filter or
   capacity line.
+- Fetching ratings without the organizer asking. A snapshot fetches one page
+  per fighter at the fetcher's pace (about 20 s for 60 fighters), too slow to
+  run on opening a tab.
 - Team lines in the Summary (`export-summary` keeps none) or the Revenue.
 - Per-team identity stable across a team's rename (see Risks).
 - Seeding order on a team tab.
@@ -132,6 +138,39 @@ and for the print headers via `export.roster.team`, and `export.column.team` in
 `frontend/src/i18n/{cs,en}.json` for the copy header. `export.team.enteredBy` and
 `export.team.members` remain in use only by the screen.
 
+### D7 — The screen's team row: name and paid, the entering fencer as a hint
+
+The on-screen `TEAM_COLUMNS` keep their columns. Their name cell on a team row
+becomes the bare team name, in bold as now, wrapped in the console's hint
+element so that pointing at it states `export.team.enteredBy`. It is not a
+`title` attribute, which would draw the browser's own tooltip rather than the
+console's. `export.team.members` is no longer used by the export and is removed
+if nothing else reads it. Because `teamNameColumn` also fed the old copy and
+print, it splits: the screen keeps a cell renderer in `TeamRosterTable`, and the
+copy and print use the flat columns from D2/D3.
+
+### D8 — Which bound fighters have no fetched rating
+
+`take_snapshot` already receives every bound identifier of the replayed list,
+members included, but stores only the ratings it found. A fighter asked and
+unrated in the category is therefore indistinguishable from one never asked. Add
+`HRRatingSnapshot.hr_ids: list[int] | None` (JSON), written by `take_snapshot`
+with the identifiers it asked for. An Alembic migration adds it nullable; an old
+snapshot reads `None`.
+
+`export_table` computes, for a discipline tab, over its fighter rows in the
+replayed list (unfiltered, so the switch does not change it):
+`ratings_missing` = rows with an `hr_id` not in the latest snapshot's `hr_ids`,
+and `ratings_fetched_at` = that snapshot's `taken_at`. With no snapshot every
+bound row is missing and the moment is null. With an old snapshot whose `hr_ids`
+is `None`, a bound row counts as missing only where the snapshot holds no rating
+for it in any code. That is the best the old data can answer, and the next
+refresh makes it exact.
+
+The rail card renders the statement under the refresh icon, in the card's hint
+style: `Ratingy načteny 10. 11. 2026 · 3 šermíři bez ratingu`, or `Ratingy zatím
+nenačteny · 56 šermířů čeká`, in the console's language.
+
 ## Risks / Trade-offs
 
 - [A team renamed between exports loses its rows' hand-written cells, since its
@@ -148,7 +187,7 @@ and for the print headers via `export.roster.team`, and `export.column.team` in
 
 ## Migration Plan
 
-No data migration. Deploying the backend and frontend together is the normal
+One additive Alembic migration (D8, nullable column, no backfill). Deploying the backend and frontend together is the normal
 path, and the width check covers a cached old client. Rollback is a plain revert.
 A team worksheet already rewritten flat would then be merged by the old code,
 which would append its rows. That is acceptable for a rollback.
