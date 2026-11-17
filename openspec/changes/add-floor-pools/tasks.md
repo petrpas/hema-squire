@@ -1,10 +1,10 @@
 ## 1. Engine ports
 
-- [ ] 1.1 Record fixtures by running `hema-agent`'s `solver.solve` and `compute_pool_stats` offline on real inputs (NaDuel 2026 SA and SB). Check them in as JSON under `tests/floor/fixtures/`.
-- [ ] 1.2 `app/floor/engine/hungarian.py`: a standard-library assignment solver. Hypothesis property: its result costs no more than brute force on n ≤ 6.
-- [ ] 1.3 `app/floor/engine/draw.py`: port tiers, snake distance, penalties, the wave constraint, construction and improvement. Seeded `Random` for unrated fencers.
-- [ ] 1.4 `app/floor/engine/pool_stats.py`: port `compute_pool_stats` and the `calc_pools` checks. Add `engine/pool_order.py` with bout orders for sizes 3–10.
-- [ ] 1.5 `tests/floor/test_floor_draw_port.py` and `tests/floor/test_floor_pool_stats.py`: the ports reproduce the fixtures exactly; plus the `floor-draw` scenarios.
+- [x] 1.1 Record fixtures by running `hema-agent`'s `solver.solve` and `compute_pool_stats` offline on real inputs (NaDuel 2026 SA and SB). Check them in as JSON under `tests/floor/fixtures/`.
+- [x] 1.2 `app/floor/engine/hungarian.py`: a standard-library assignment solver. Hypothesis property: its result costs no more than brute force on n ≤ 6.
+- [x] 1.3 `app/floor/engine/draw.py`: port tiers, snake distance, penalties, the wave constraint, construction and improvement. Seeded `Random` for unrated fencers.
+- [x] 1.4 `app/floor/engine/pool_stats.py`: port `compute_pool_stats` and the `calc_pools` checks. Add `engine/pool_order.py` with bout orders for sizes 3–10.
+- [x] 1.5 `tests/floor/test_floor_draw_port.py` and `tests/floor/test_floor_pool_stats.py`: the ports reproduce the fixtures exactly; plus the `floor-draw` scenarios.
 
 ## 2. Storage and service
 
