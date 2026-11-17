@@ -51,7 +51,7 @@ class FloorRosterOut(BaseModel):
 # A stored row's id in a path: bounded, so an out-of-range number answers 422
 # rather than overflowing SQLite's integer (as `app.fieldtypes.RowId`, which the
 # floor boundary keeps out of reach).
-RowId = Annotated[int, Field(ge=1, le=2_147_483_647)]
+RowId = Annotated[int, Field(ge=1, le=2**63 - 1)]
 
 
 # ------------------------------------------------------------ floor Setup
