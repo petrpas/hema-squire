@@ -14,9 +14,7 @@ slug edit made before anyone has entered.
 - **WHEN** the organizer saves a format for "LS" and then renames the slug to "LSO" before anyone has entered
 - **THEN** the floor roster states the discipline under "LSO" with the same id, and its format is still found
 
-## MODIFIED Requirements
-
-### Requirement: A person is one human, decided by row and by confirmed HEMA Ratings identity
+### Requirement: A person is one human, decided by row and by the office's identity rule
 The floor roster SHALL list each person once. A person states a key, a name, a club, a
 nationality and a HEMA Ratings identifier. Only persons holding at least one listed
 entry are listed.
@@ -70,3 +68,12 @@ every row it is the same person as. So no person joins two different identifiers
 #### Scenario: Namesakes on one team stay two
 - **WHEN** one team lists two members both named "Petr Svoboda" without identifiers
 - **THEN** the floor roster lists them as two persons
+
+## REMOVED Requirements
+
+### Requirement: A person is one human, decided by row and by confirmed HEMA Ratings identity
+**Reason**: The owner chose the office's identity rule on 2026-11-16: a member joins by
+equal identifier, or by folded name where either has none. The confirmed-identifier-only
+join, and its "no row is merged by name", no longer hold.
+**Migration**: Replaced by "A person is one human, decided by row and by the office's
+identity rule". Person keys of registration-backed rows are unchanged.
