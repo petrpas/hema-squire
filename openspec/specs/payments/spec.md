@@ -557,6 +557,8 @@ The organizer SHALL be able to remove a recorded payment, and removal SHALL subt
 
 Recording SHALL be refused on a tournament whose payments Squire does not handle, with a stated reason. There Squire tracks no amounts at all, and a tournament that needs them tracked wants Squire handling its payments.
 
+The amount SHALL be more than zero and SHALL NOT exceed the ceiling one price is held to: 10 000 in CZK, 1 000 in EUR. A larger figure SHALL be refused with a stated reason and nothing credited. A sum above it is entered as several payments.
+
 #### Scenario: Cash at the desk settles a reservation
 - **WHEN** the organizer records a cash payment for the full amount a reservation owes
 - **THEN** the registration becomes paid, its credited amount rises by that amount, the fencer receives the same confirmation a bank credit would have sent, and the action is recorded against the organizer
@@ -580,6 +582,10 @@ Recording SHALL be refused on a tournament whose payments Squire does not handle
 #### Scenario: Refused where Squire collects nothing
 - **WHEN** an organizer attempts to record a payment on a tournament whose payments Squire does not handle
 - **THEN** the attempt is refused with a stated reason and nothing is credited
+
+#### Scenario: One payment is held to the price ceiling
+- **WHEN** an organizer records 10 000.01 CZK, or 1 000.01 EUR, against a registration
+- **THEN** the attempt is refused as too large and nothing is credited
 
 ### Requirement: A registration has one outstanding balance
 A registration SHALL state one outstanding balance and the currency it is in,

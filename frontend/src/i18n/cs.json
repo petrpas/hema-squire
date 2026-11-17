@@ -1676,6 +1676,7 @@
         "currency_not_accepted": "Turnaj v této měně nic neúčtuje.",
         "registration_not_live": "Na tuto registraci nelze platbu připsat.",
         "amount_not_positive": "Částka musí být větší než nula.",
+        "amount_too_large": "Částka je příliš vysoká: jedna platba může být nejvýš 10 000 Kč nebo 1 000 €.",
         "payments_disabled": "Platby tohoto turnaje Squire neřeší.",
         "currency_not_accepted_event": "Akce v této měně nic neúčtuje.",
         "payments_disabled_event": "Platby této akce Squire neřeší."

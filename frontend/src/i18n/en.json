@@ -1629,6 +1629,7 @@
         "currency_not_accepted": "This tournament does not price in that currency.",
         "registration_not_live": "This registration can take no payment.",
         "amount_not_positive": "The amount must be more than nothing.",
+        "amount_too_large": "The amount is too high: one payment may be at most 10,000 CZK or 1,000 EUR.",
         "payments_disabled": "Squire does not handle this tournament's payments.",
         "currency_not_accepted_event": "This event does not price in that currency.",
         "payments_disabled_event": "Squire does not handle this event's payments."
