@@ -14,7 +14,7 @@ from pydantic import BaseModel
 
 from app.auth import require_console_access, require_published
 from app.errors import FieldValidationError
-from app.floor import checkin, people, planning, progress, setup, steps
+from app.floor import checkin, officiating, people, planning, progress, setup, steps
 from app.floor.adapters.office import (
     FencerDep,
     SessionDep,
@@ -169,7 +169,10 @@ def floor_summary(
     badges["setup"] = bool(missing)
     published = planning.published(session, tournament.id) is not None
     # a working version waits to be published
-    badges["plan"] = planning.working(session, tournament.id) is not None
+    badges["plan"] = (
+        planning.working(session, tournament.id) is not None
+        or officiating.unfilled(session, tournament.id) > 0
+    )
     badges["checkin"] = bool(checkin.waiting(session, setup_facts(tournament), datetime.now(UTC)))
     return FloorSummaryOut(plan_published=published, badges=badges, setup_missing=missing)
 
@@ -289,6 +292,8 @@ def floor_plan_publish(tournament: TournamentDep, session: SessionDep, fencer: F
     if found:
         raise HTTPException(status_code=409, detail={"reason": "obstacles", "obstacles": found})
     planning.publish(session, facts.id)
+    # a new published version: officials are assigned to its blocks
+    officiating.run(session, facts, roster(session, tournament), datetime.now(UTC))
     session.commit()
 
 

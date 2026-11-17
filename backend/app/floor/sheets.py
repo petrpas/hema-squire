@@ -6,6 +6,7 @@ they are filled here and compiled from source. The fonts are the office's
 bundled ones, read by path.
 """
 
+import json
 import tempfile
 from pathlib import Path
 
@@ -98,4 +99,17 @@ def bracket_sheet(
         result = typst.compile(
             str(filled), format="pdf", font_paths=[str(_FONTS)], ignore_system_fonts=True
         )
+    return _first_page(result)
+
+
+def table_pdf(title: str, subtitle: str, headers: list[str], rows: list[list[str]]) -> bytes:
+    """A titled table on A4: an official's rozpis or a piste's sheet."""
+    payload = json.dumps({"title": title, "subtitle": subtitle, "headers": headers, "rows": rows})
+    result = typst.compile(
+        str(_TEMPLATES / "table.typ"),
+        format="pdf",
+        font_paths=[str(_FONTS)],
+        ignore_system_fonts=True,
+        sys_inputs={"table": payload},
+    )
     return _first_page(result)

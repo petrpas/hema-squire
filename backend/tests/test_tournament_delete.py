@@ -15,6 +15,7 @@ from sqlalchemy import Table, func, select
 from app.db import get_session
 from app.floor.models import (
     FloorArrival,
+    FloorAssignment,
     FloorBout,
     FloorBracket,
     FloorBracketSlot,
@@ -315,6 +316,17 @@ def populate(session, tournament: Tournament, registration: Registration, actor:
     session.add(bracket)
     session.flush()
     session.add(FloorBracketSlot(bracket_id=bracket.id, round=0, position=0, entrant_key="reg:1"))
+    session.add(
+        FloorAssignment(
+            tournament_id=tid,
+            plan_id=plan.id,
+            block_key="1:LS:pool:1",
+            role="referee",
+            slot=0,
+            official_id=official.id,
+            created_at=now,
+        )
+    )
     session.commit()
 
 

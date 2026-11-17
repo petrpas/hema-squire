@@ -12,7 +12,7 @@ from fastapi import APIRouter, Header, HTTPException, Request, Response
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints
 
 from app.auth import require_console_access, require_published
-from app.floor import bracket, people, poolbouts, pools, ring, sheets
+from app.floor import bracket, officiating, people, poolbouts, pools, ring, sheets
 from app.floor.adapters.office import (
     FencerDep,
     SessionDep,
@@ -213,6 +213,10 @@ def floor_announce(
         pools.announce(session, tournament.id, discipline, fencer.id, datetime.now(UTC))
     except pools.Refused as error:
         raise _refused(error) from None
+    # the draw reveals clubs and who fences where: officials are assigned again
+    officiating.run(
+        session, setup_facts(tournament), roster(session, tournament), datetime.now(UTC)
+    )
     session.commit()
 
 
@@ -674,4 +678,113 @@ def floor_bracket_sheet(
         )
     except sheets.NoTemplate:
         raise HTTPException(status_code=409, detail="no_template") from None
+    return Response(content=pdf, media_type="application/pdf")
+
+
+# ------------------------------------------------------------ officials on blocks
+# (spec floor-officials)
+
+
+class SeatIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    official_id: RowId | None
+    pinned: bool = False
+
+
+class SeatSwapIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    a: RowId
+    b: RowId
+
+
+def _officials_refused(error: officiating.Refused) -> HTTPException:
+    status = 404 if error.code.endswith("_not_found") else 409
+    return HTTPException(status_code=status, detail=error.code)
+
+
+@router.get("/{slug}/floor/officials")
+def floor_officials(
+    tournament: TournamentDep, session: SessionDep, fencer: FencerDep
+) -> dict[str, object]:
+    """Blocks × roles with names, the unfilled seats, club conflicts and pins
+    whose block is gone."""
+    require_console_access(session, tournament, fencer)
+    if not has_floor(tournament):
+        raise HTTPException(status_code=404, detail="floor_not_found")
+    return officiating.view(session, setup_facts(tournament), roster(session, tournament))
+
+
+@router.post("/{slug}/floor/officials/run", status_code=204)
+def floor_officials_run(tournament: TournamentDep, session: SessionDep, fencer: FencerDep) -> None:
+    require_console_access(session, tournament, fencer)
+    if not has_floor(tournament):
+        raise HTTPException(status_code=404, detail="floor_not_found")
+    require_published(tournament)
+    officiating.run(
+        session, setup_facts(tournament), roster(session, tournament), datetime.now(UTC)
+    )
+    session.commit()
+
+
+@router.put("/{slug}/floor/officials/seats/{seat_id}", status_code=204)
+def floor_officials_seat(
+    seat_id: RowId, data: SeatIn, tournament: TournamentDep, session: SessionDep, fencer: FencerDep
+) -> None:
+    """Put an official on a seat, pinned or not; a hard rule refuses it."""
+    require_console_access(session, tournament, fencer)
+    if not has_floor(tournament):
+        raise HTTPException(status_code=404, detail="floor_not_found")
+    require_published(tournament)
+    try:
+        officiating.set_seat(
+            session,
+            setup_facts(tournament),
+            roster(session, tournament),
+            seat_id,
+            data.official_id,
+            data.pinned,
+        )
+    except officiating.Refused as error:
+        raise _officials_refused(error) from None
+    session.commit()
+
+
+@router.post("/{slug}/floor/officials/swap", status_code=204)
+def floor_officials_swap(
+    data: SeatSwapIn, tournament: TournamentDep, session: SessionDep, fencer: FencerDep
+) -> None:
+    require_console_access(session, tournament, fencer)
+    if not has_floor(tournament):
+        raise HTTPException(status_code=404, detail="floor_not_found")
+    require_published(tournament)
+    try:
+        officiating.swap(
+            session, setup_facts(tournament), roster(session, tournament), data.a, data.b
+        )
+    except officiating.Refused as error:
+        raise _officials_refused(error) from None
+    session.commit()
+
+
+@router.get("/{slug}/floor/officials/print/{kind}/{subject_id}")
+def floor_officials_print(
+    kind: Annotated[str, StringConstraints(pattern="^(official|piste)$")],
+    subject_id: RowId,
+    tournament: TournamentDep,
+    session: SessionDep,
+    fencer: FencerDep,
+) -> Response:
+    """An official's rozpis, or a piste's sheet, as PDF."""
+    require_console_access(session, tournament, fencer)
+    if not has_floor(tournament):
+        raise HTTPException(status_code=404, detail="floor_not_found")
+    pistes = {p.id: p.name for p in read_pistes(session, tournament.id) if p.id is not None}
+    title, headers, rows = officiating.print_rows(
+        session, setup_facts(tournament), roster(session, tournament), kind, subject_id, pistes
+    )
+    if not rows:
+        raise HTTPException(status_code=404, detail="nothing_to_print")
+    pdf = sheets.table_pdf(title, tournament.display_name, headers, rows)
     return Response(content=pdf, media_type="application/pdf")

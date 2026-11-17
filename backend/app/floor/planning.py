@@ -385,6 +385,11 @@ def _activities(session: Session, plan: FloorPlan | None, context: Context) -> l
     return out
 
 
+def activities_of(session: Session, plan: FloorPlan, context: Context) -> list[Activity]:
+    """A stored version's activities, back in engine minutes and day indexes."""
+    return _activities(session, plan, context)
+
+
 def store(
     session: Session, tid: int, context: Context, chosen: Plan, author: int | None, now: datetime
 ) -> FloorPlan:

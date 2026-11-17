@@ -51,6 +51,8 @@ BODIES: dict[tuple[str, str], object] = {
         "version": 0,
     },
     ("PUT", "/api/tournaments/{slug}/floor/pools/{discipline_id}/sheet"): {"bouts": []},
+    ("PUT", "/api/tournaments/{slug}/floor/officials/seats/{seat_id}"): {"official_id": None},
+    ("POST", "/api/tournaments/{slug}/floor/officials/swap"): {"a": 1, "b": 2},
     ("PUT", "/api/tournaments/{slug}/floor/bracket/{discipline_id}/bouts/{bout_id}"): {
         "score_a": 15,
         "score_b": 9,
@@ -165,6 +167,9 @@ PATH_PARAMS = {
     "piste_id": "1",
     "number": "1",
     "bout_id": "1",
+    "seat_id": "1",
+    "kind": "official",
+    "subject_id": "1",
 }
 
 
