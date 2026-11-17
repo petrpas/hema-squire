@@ -1,20 +1,12 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { getToken } from "../../api";
 import Modal from "../../Modal";
 import { poolsApi, type StatsRow } from "../floorApi";
+import { openPdf } from "../pdf";
 import type { ViewProps } from "./DrawView";
 import { PoolSheet } from "./PoolSheet";
 import { StatsTable } from "./StatsTable";
-
-/** Opens a sheet's PDF: fetched with the console's credential, shown as a blob. */
-async function openPdf(url: string) {
-  const token = getToken();
-  const response = await fetch(url, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
-  if (!response.ok) return;
-  window.open(URL.createObjectURL(await response.blob()), "_blank", "noopener");
-}
 
 /** The pools while they run and once complete: each pool's sheet and
  *  standings, the warnings, the call list, printing, and the close gate

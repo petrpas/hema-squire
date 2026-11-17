@@ -2377,6 +2377,12 @@
           "running": "běží",
           "complete": "dokončeny",
           "closed": "uzavřeny"
+        },
+        "bracket": {
+          "waiting": "čeká",
+          "seeded": "nasazen",
+          "running": "běží",
+          "closed": "uzavřen"
         }
       }
     },
@@ -2497,7 +2503,40 @@
       "minus": "Ubrat bod: {{name}}",
       "plus": "Přidat bod: {{name}}",
       "record": "Zapsat",
-      "correct": "Opravit"
+      "correct": "Opravit",
+      "elimination": "Eliminace"
+    },
+    "bracket": {
+      "poolsOpen": "Pavouk čeká na uzavřené skupiny.",
+      "none": "Do pavouka nikdo nepostupuje.",
+      "proposal": "Návrh pavouka: {{advancing}} postupujících, {{size}} míst",
+      "bye": "volný los",
+      "confirm": "Potvrdit postup",
+      "reopen": "Zrušit potvrzení postupu",
+      "print": "Tisk pavouka",
+      "final": "Finále",
+      "third": "O 3. místo",
+      "semifinal": "Semifinále {{n}}",
+      "round": "Kolo {{size}}, zápas {{n}}",
+      "walkover": "Nezápaseno",
+      "fenced": "zápas proběhl",
+      "didNotFence": "nenastoupil: {{name}}",
+      "note": "Poznámka (např. zranění)",
+      "state": {
+        "waiting": "Čeká",
+        "seeded": "Nasazen",
+        "running": "Běží",
+        "closed": "Uzavřen"
+      },
+      "refusals": {
+        "winner_required": "Zápas v eliminaci potřebuje vítěze.",
+        "draw_refused": "Remíza v eliminaci není možná.",
+        "walkover_note": "Ke kontumaci patří poznámka.",
+        "next_recorded": "Výsledek už navazujícího zápasu je zapsaný; nejdřív oprav ten.",
+        "stale_version": "Výsledek mezitím někdo změnil; načti ho znovu.",
+        "not_this_piste": "Tento zápas neprobíhá na této planši.",
+        "failed": "Akce se nezdařila."
+      }
     }
   }
 }

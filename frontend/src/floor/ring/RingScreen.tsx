@@ -49,11 +49,15 @@ export default function RingScreen() {
     );
   }
   const pool = work.pool;
+  // a pool's bouts, the next unrecorded first; or, where no pool runs, the
+  // piste's next elimination bout
   const bouts = pool
     ? [...pool.bouts].sort(
         (x, y) => Number(x.score_a !== null) - Number(y.score_a !== null) || x.ordinal - y.ordinal,
       )
-    : [];
+    : work.bout
+      ? [{ ...work.bout, ordinal: 1, outcome_a: null, outcome_b: null }]
+      : [];
 
   function bump(id: number, side: 0 | 1, by: number, start: [number, number]) {
     const current = scores[id] ?? start;
@@ -82,11 +86,13 @@ export default function RingScreen() {
   return (
     <main className="floor-ring">
       <h1>{t("floor.ring.piste", { name: work.piste })}</h1>
-      {pool === null ? (
+      {bouts.length === 0 ? (
         <p>{t("floor.ring.nothing")}</p>
       ) : (
         <>
-          <h2>{t("floor.pools.pool", { number: pool.number })}</h2>
+          <h2>
+            {pool ? t("floor.pools.pool", { number: pool.number }) : t("floor.ring.elimination")}
+          </h2>
           <ol className="floor-ring-bouts">
             {bouts.map((bout) => {
               const start: [number, number] = [bout.score_a ?? 0, bout.score_b ?? 0];

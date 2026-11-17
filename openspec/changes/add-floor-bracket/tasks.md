@@ -24,11 +24,11 @@
 
 ## 3. Frontend
 
-- [ ] 3.1 `frontend/src/floor/bracket/`: the proposed bracket and confirm, the bracket view with recording and correction, team matches and the print link.
-- [ ] 3.2 Add tests and the i18n strings.
+- [x] 3.1 `frontend/src/floor/bracket/`: the proposed bracket and confirm, the bracket view with recording and correction, team matches and the print link.
+- [x] 3.2 Add tests and the i18n strings.
 
 ## 4. Acceptance
 
-- [ ] 4.1 `pytest tests/floor -q` passes. `ruff`, `basedpyright` and the boundary test pass.
-- [ ] 4.2 `npm run typecheck`, `npm run check` and `npm test` pass.
-- [ ] 4.3 `openspec validate add-floor-bracket --strict` passes.
+- [x] 4.1 `pytest tests/floor -q` passes. `ruff`, `basedpyright` and the boundary test pass.
+- [x] 4.2 `npm run typecheck`, `npm run check` and `npm test` pass.
+- [x] 4.3 `openspec validate add-floor-bracket --strict` passes.

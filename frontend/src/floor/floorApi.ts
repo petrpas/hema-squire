@@ -491,6 +491,16 @@ export const poolsApi = {
 
 export interface RingWork {
   piste: string;
+  /** where no pool runs: the piste's next elimination bout */
+  bout?: {
+    id: number;
+    round: number;
+    a: string;
+    b: string;
+    score_a: number | null;
+    score_b: number | null;
+    version: number;
+  } | null;
   pool: {
     discipline_id: number | null;
     number: number;
@@ -518,4 +528,62 @@ export const ringApi = {
       body: JSON.stringify(result),
       headers: { "X-Floor-Ring-Key": key },
     }),
+};
+
+// ------------------------------------------------------------ the bracket
+
+export interface BracketBout {
+  id: number;
+  round: number;
+  position: number;
+  a: string;
+  b: string;
+  score_a: number | null;
+  score_b: number | null;
+  outcome_a: Outcome | null;
+  outcome_b: Outcome | null;
+  note: string | null;
+  piste_id: number | null;
+  version: number;
+}
+
+export interface BracketView {
+  state: "waiting" | "seeded" | "running" | "closed";
+  pools_closed: boolean;
+  names: Record<string, string>;
+  proposal: {
+    size: number;
+    advancing: number;
+    slots: { position: number; seed: number | null; key: string | null }[];
+  } | null;
+  bracket: {
+    size: number;
+    advancing: number;
+    third_place: boolean;
+    closed_at: string | null;
+    slots: {
+      round: number;
+      position: number;
+      key: string | null;
+      seed: number | null;
+      bye: boolean;
+    }[];
+    bouts: BracketBout[];
+  } | null;
+}
+
+const brackets = (slug: string, discipline: number) => `${base(slug)}/bracket/${discipline}`;
+
+export const bracketApi = {
+  view: (slug: string, discipline: number) => request<BracketView>(brackets(slug, discipline)),
+  confirm: (slug: string, discipline: number) =>
+    request<void>(`${brackets(slug, discipline)}/confirm`, { method: "POST" }),
+  reopen: (slug: string, discipline: number) =>
+    request<void>(`${brackets(slug, discipline)}/reopen`, { method: "POST" }),
+  record: (slug: string, discipline: number, bout: number, result: ResultIn) =>
+    request<void>(`${brackets(slug, discipline)}/bouts/${bout}`, {
+      method: "PUT",
+      body: JSON.stringify(result),
+    }),
+  sheetUrl: (slug: string, discipline: number) => `${brackets(slug, discipline)}/sheet`,
 };
