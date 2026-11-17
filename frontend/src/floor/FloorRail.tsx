@@ -1,7 +1,7 @@
 import type { KeyboardEvent } from "react";
 import { useTranslation } from "react-i18next";
 
-import { type FloorBarTab, TAB_ICONS } from "./tabs";
+import { type FloorTab, TAB_ICONS } from "./tabs";
 
 /** The floor console's tabs as a rail of icons down the left edge (spec
  *  floor-console, The tabs are a rail of icons on the left). A tab's name is
@@ -15,12 +15,12 @@ export function FloorRail({
   dirty,
   onSelect,
 }: {
-  tabs: FloorBarTab[];
-  tab: FloorBarTab;
+  tabs: FloorTab[];
+  tab: FloorTab;
   badges: Record<string, boolean>;
   /** The tab holding unsaved changes, marked as Setup marks its own. */
-  dirty: FloorBarTab | null;
-  onSelect: (tab: FloorBarTab) => void;
+  dirty: FloorTab | null;
+  onSelect: (tab: FloorTab) => void;
 }) {
   const { t } = useTranslation();
 

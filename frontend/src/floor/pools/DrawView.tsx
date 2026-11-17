@@ -17,8 +17,9 @@ export interface ViewProps {
 }
 
 /** Before the draw is announced: pool by pool with each fencer's seed, the
- *  score broken down, swaps (pick two), a redraw, and "Vyhlásit los" (spec
- *  floor-draw). */
+ *  score broken down, and swaps, picked two at a time in the pools (spec
+ *  floor-draw). Drawing, redrawing and announcing are the tab's operations
+ *  (DrawActions). */
 export function DrawView({ slug, discipline, view, name, pistes, schedule, onChanged }: ViewProps) {
   const { t } = useTranslation();
   const [picked, setPicked] = useState<string | null>(null);
@@ -51,13 +52,7 @@ export function DrawView({ slug, discipline, view, name, pistes, schedule, onCha
     <section className="rail-card">
       <h2>{t("floor.pools.drawTitle")}</h2>
       {draw === null ? (
-        <button
-          type="button"
-          className="btn-primary"
-          onClick={() => void act(() => poolsApi.draw(slug, discipline))}
-        >
-          {t("floor.pools.draw")}
-        </button>
+        <p className="muted">{t("floor.pools.notDrawn")}</p>
       ) : (
         <>
           <ScoreLine label={t("floor.pools.score")} score={draw.score} waves={schedule} />
@@ -98,22 +93,6 @@ export function DrawView({ slug, discipline, view, name, pistes, schedule, onCha
               </article>
             ))}
           </div>
-          <div className="floor-row-actions">
-            <button
-              type="button"
-              className="secondary"
-              onClick={() => void act(() => poolsApi.draw(slug, discipline))}
-            >
-              {t("floor.pools.redraw")}
-            </button>
-            <button
-              type="button"
-              className="btn-primary"
-              onClick={() => void act(() => poolsApi.announce(slug, discipline))}
-            >
-              {t("floor.pools.announce")}
-            </button>
-          </div>
         </>
       )}
       {refusal !== null && (
@@ -134,5 +113,60 @@ function ScoreLine({ label, score, waves }: { label: string; score: DrawScore; w
       {score.nationality.toFixed(1)}
       {waves && `, ${t("floor.pools.waveScore")} ${score.wave.toFixed(1)}`})
     </p>
+  );
+}
+
+/** The draw's operations, in the panel: draw, or redraw and "Vyhlásit los". */
+export function DrawActions({ slug, discipline, view, onChanged }: ViewProps) {
+  const { t } = useTranslation();
+  const [refusal, setRefusal] = useState<string | null>(null);
+
+  async function act(action: () => Promise<unknown>) {
+    setRefusal(null);
+    try {
+      await action();
+    } catch (error) {
+      setRefusal(
+        error instanceof ApiError && typeof error.detail === "string" ? error.detail : "failed",
+      );
+    }
+    onChanged();
+  }
+
+  return (
+    <section className="rail-card">
+      <h2>{t("floor.pools.drawTitle")}</h2>
+      {view.draw === null ? (
+        <button
+          type="button"
+          className="btn-primary"
+          onClick={() => void act(() => poolsApi.draw(slug, discipline))}
+        >
+          {t("floor.pools.draw")}
+        </button>
+      ) : (
+        <div className="floor-row-actions">
+          <button
+            type="button"
+            className="secondary"
+            onClick={() => void act(() => poolsApi.draw(slug, discipline))}
+          >
+            {t("floor.pools.redraw")}
+          </button>
+          <button
+            type="button"
+            className="btn-primary"
+            onClick={() => void act(() => poolsApi.announce(slug, discipline))}
+          >
+            {t("floor.pools.announce")}
+          </button>
+        </div>
+      )}
+      {refusal !== null && (
+        <p className="floor-missing" role="alert">
+          {t(`floor.pools.refusals.${refusal}`, { defaultValue: t("floor.plan.failed") })}
+        </p>
+      )}
+    </section>
   );
 }

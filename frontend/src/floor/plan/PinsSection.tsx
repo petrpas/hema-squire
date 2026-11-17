@@ -3,11 +3,11 @@ import { useTranslation } from "react-i18next";
 
 import { type FloorSetup, type Pin, planApi } from "../floorApi";
 
-/** Pinned decisions: what each fixes, removable unless a gate added it, and
- *  a form for a discipline's k (spec floor-plan, Decisions are pinned and
+/** Pinned decisions in the work: what each fixes, each removable in its own
+ *  row unless a gate added it (spec floor-plan, Decisions are pinned and
  *  unpinned). A discipline's day is Setup's, not a pin. A gate's pin goes by
  *  reopening its gate. */
-export function PinsSection({
+export function PinList({
   slug,
   pins,
   setup,
@@ -19,8 +19,6 @@ export function PinsSection({
   onChanged: () => void;
 }) {
   const { t } = useTranslation();
-  const [discipline, setDiscipline] = useState(String(setup.disciplines[0]?.id ?? ""));
-  const [k, setK] = useState("2");
   const [failed, setFailed] = useState(false);
   const names = new Map(setup.disciplines.map((d) => [String(d.id), d.name]));
 
@@ -74,7 +72,44 @@ export function PinsSection({
           ))}
         </ul>
       )}
-      <div className="floor-row">
+      {failed && (
+        <p className="save-bar-error" role="alert">
+          {t("floor.plan.failed")}
+        </p>
+      )}
+    </section>
+  );
+}
+
+/** Pinning a discipline's k: the Plan tab's operation, in its panel. */
+export function PinForm({
+  slug,
+  setup,
+  onChanged,
+}: {
+  slug: string;
+  setup: FloorSetup;
+  onChanged: () => void;
+}) {
+  const { t } = useTranslation();
+  const [discipline, setDiscipline] = useState(String(setup.disciplines[0]?.id ?? ""));
+  const [k, setK] = useState("2");
+  const [failed, setFailed] = useState(false);
+
+  async function run(action: () => Promise<unknown>) {
+    setFailed(false);
+    try {
+      await action();
+      onChanged();
+    } catch {
+      setFailed(true);
+    }
+  }
+
+  return (
+    <section className="rail-card">
+      <h2>{t("floor.plan.pins.add")}</h2>
+      <div className="floor-row floor-rail-form">
         <label>
           {t("floor.plan.pins.discipline")}
           <select value={discipline} onChange={(event) => setDiscipline(event.target.value)}>

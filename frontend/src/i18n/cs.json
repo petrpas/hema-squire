@@ -2562,7 +2562,8 @@
         "touches_asymmetric": "Skupina {{pool}}: zásahy nesedí (dané {{expected}}, obdržené {{found}}).",
         "unknown_fencer": "Neznámý šermíř ve výsledcích: {{name}}."
       },
-      "takenOver": "Disciplína nešermuje vlastní skupiny, přebírá výsledky z {{name}}:"
+      "takenOver": "Disciplína nešermuje vlastní skupiny, přebírá výsledky z {{name}}:",
+      "notDrawn": "Los zatím nebyl proveden."
     },
     "ring": {
       "title": "Odkazy pro planše",
@@ -2659,6 +2660,19 @@
       "slip_many": "skluz {{count}} minuty",
       "slip_other": "skluz {{count}} minut",
       "itinerary": "Tvůj den"
+    },
+    "ops": {
+      "open": "Operace",
+      "close": "Zavřít",
+      "all": "Všichni",
+      "disciplines": "Disciplíny",
+      "idle": {
+        "checkinOpen": "Losovat lze až po uzavření prezence.",
+        "takenOver": "Skupiny této disciplíny se nelosují, přebírá je jiná.",
+        "poolsOpen": "Pavouk lze potvrdit až po uzavření skupin.",
+        "bracketOpen": "Výsledky lze zveřejnit až po uzavření pavouka.",
+        "running": "Skupiny lze uzavřít, až budou všechny zápasy zapsané."
+      }
     }
   }
 }

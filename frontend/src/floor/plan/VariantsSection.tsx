@@ -4,19 +4,17 @@ import { useTranslation } from "react-i18next";
 import { planApi, type Variant, type Variants } from "../floorApi";
 import { InfeasibleText } from "./InfeasibleText";
 
-/** The planner's variants side by side: per discipline k, pool sizes and
- *  day; per day the last end; the exclusion load and the collisions. The
- *  first is the default. Choosing one makes it the working version. */
-export function VariantsSection({
-  slug,
-  names,
-  onChosen,
-}: {
-  slug: string;
-  names: Map<number, string>;
-  onChosen: () => void;
-}) {
-  const { t, i18n } = useTranslation();
+export interface VariantsState {
+  found: Variants | null;
+  busy: boolean;
+  failed: boolean;
+  ask: () => Promise<void>;
+  choose: (variant: Variant) => Promise<void>;
+}
+
+/** The variants asked for, shared by the panel that asks and the work that
+ *  shows them. */
+export function useVariants(slug: string, onChosen: () => void): VariantsState {
   const [found, setFound] = useState<Variants | null>(null);
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState(false);
@@ -45,6 +43,47 @@ export function VariantsSection({
     }
   }
 
+  return { found, busy, failed, ask, choose };
+}
+
+/** Asking the planner for variants: the Plan tab's operation, in its panel. */
+export function VariantsAsk({ state }: { state: VariantsState }) {
+  const { t } = useTranslation();
+  return (
+    <section className="rail-card">
+      <h2>{t("floor.plan.variants.title")}</h2>
+      <button
+        type="button"
+        className="btn-primary"
+        disabled={state.busy}
+        onClick={() => void state.ask()}
+      >
+        {state.busy ? t("floor.plan.variants.working") : t("floor.plan.variants.ask")}
+      </button>
+      {state.failed && (
+        <p className="save-bar-error" role="alert">
+          {t("floor.plan.failed")}
+        </p>
+      )}
+    </section>
+  );
+}
+
+/** The planner's variants side by side in the work: per discipline k, pool
+ *  sizes and day; per day the last end; the exclusion load and the
+ *  collisions. The first is the default. Each carries its own choice, which
+ *  makes it the working version. Nothing is drawn until variants are asked
+ *  for. */
+export function VariantsSection({
+  state,
+  names,
+}: {
+  state: VariantsState;
+  names: Map<number, string>;
+}) {
+  const { t, i18n } = useTranslation();
+  const { found, busy, choose } = state;
+
   const dayLabel = (day: string) =>
     new Date(`${day}T12:00:00`).toLocaleDateString(i18n.language, {
       weekday: "short",
@@ -52,35 +91,27 @@ export function VariantsSection({
       month: "numeric",
     });
 
+  if (found === null) return null;
+
   return (
     <section className="rail-card">
       <h2>{t("floor.plan.variants.title")}</h2>
-      <button type="button" className="btn-primary" disabled={busy} onClick={() => void ask()}>
-        {busy ? t("floor.plan.variants.working") : t("floor.plan.variants.ask")}
-      </button>
-      {failed && (
-        <p className="save-bar-error" role="alert">
-          {t("floor.plan.failed")}
-        </p>
-      )}
-      {found !== null && found.infeasible !== null && (
-        <InfeasibleText infeasible={found.infeasible} names={names} />
-      )}
-      {found !== null && found.empty.length > 0 && (
+      {found.infeasible !== null && <InfeasibleText infeasible={found.infeasible} names={names} />}
+      {found.empty.length > 0 && (
         <p className="muted">
           {t("floor.plan.variants.empty", {
             names: found.empty.map((id) => names.get(id) ?? id).join(", "),
           })}
         </p>
       )}
-      {found !== null && found.capped.length > 0 && (
+      {found.capped.length > 0 && (
         <p className="muted">
           {t("floor.plan.variants.capped", {
             names: found.capped.map((id) => names.get(id) ?? id).join(", "),
           })}
         </p>
       )}
-      {found !== null && found.variants.length > 0 && (
+      {found.variants.length > 0 && (
         <div className="floor-variants">
           {found.variants.map((variant, index) => (
             <article key={variant.key} className="floor-variant">

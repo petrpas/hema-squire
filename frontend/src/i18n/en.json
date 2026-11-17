@@ -2480,7 +2480,8 @@
         "touches_asymmetric": "Pool {{pool}}: touches do not balance (scored {{expected}}, received {{found}}).",
         "unknown_fencer": "An unknown fencer in the results: {{name}}."
       },
-      "takenOver": "This discipline fences no pools of its own; it takes over the results of {{name}}:"
+      "takenOver": "This discipline fences no pools of its own; it takes over the results of {{name}}:",
+      "notDrawn": "Not drawn yet."
     },
     "ring": {
       "title": "Piste links",
@@ -2573,6 +2574,19 @@
       "slip_one": "{{count}} minute behind",
       "slip_other": "{{count}} minutes behind",
       "itinerary": "Your day"
+    },
+    "ops": {
+      "open": "Operations",
+      "close": "Close",
+      "all": "Everyone",
+      "disciplines": "Disciplines",
+      "idle": {
+        "checkinOpen": "The draw can be made once check-in is closed.",
+        "takenOver": "This discipline draws no pools of its own; another takes them over.",
+        "poolsOpen": "The bracket can be confirmed once the pools are closed.",
+        "bracketOpen": "Results can be published once the bracket is closed.",
+        "running": "The pools can be closed once every bout is recorded."
+      }
     }
   }
 }

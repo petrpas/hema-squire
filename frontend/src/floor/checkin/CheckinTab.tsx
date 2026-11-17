@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
+import { DisciplineStrip } from "../DisciplineStrip";
+import { FloorLayout } from "../FloorLayout";
 import { checkinApi } from "../floorApi";
 import { usePolled } from "../usePolled";
 import { DisciplineGate } from "./DisciplineGate";
@@ -15,9 +17,10 @@ function fold(text: string): string {
 }
 
 /** The desk (spec floor-checkin): every person once, searchable by name and
- *  club, a tick for arrival, withdrawals per entry, team lineups, and each
- *  discipline's close gate. At a discipline's address only its entrants are
- *  listed. */
+ *  club, a tick for arrival, withdrawals per entry, team lineups. The strip
+ *  chooses a discipline, "Všichni" first; at a discipline only its entrants
+ *  are listed. The close gate of the discipline, or of each under "Všichni",
+ *  is the tab's operation, in its panel (spec floor-console). */
 export default function CheckinTab({ slug, discipline }: { slug: string; discipline?: string }) {
   const { t, i18n } = useTranslation();
   const { data, failed, freshAt, reload } = usePolled(() => checkinApi.desk(slug));
@@ -26,9 +29,11 @@ export default function CheckinTab({ slug, discipline }: { slug: string; discipl
 
   if (data === null) {
     return (
-      <p className="floor-not-yet muted">
-        {failed ? t("floor.checkin.failed") : t("common.loading")}
-      </p>
+      <FloorLayout tab="checkin">
+        <p className="floor-not-yet muted">
+          {failed ? t("floor.checkin.failed") : t("common.loading")}
+        </p>
+      </FloorLayout>
     );
   }
 
@@ -52,20 +57,27 @@ export default function CheckinTab({ slug, discipline }: { slug: string; discipl
     reload();
   }
 
-  return (
-    <div className="floor-data floor-checkin">
-      <div className="floor-gates">
-        {data.disciplines
-          .filter((d) => selected === undefined || d.id === selected.id)
-          .map((d) => (
-            <DisciplineGate key={d.id} slug={slug} discipline={d} onChanged={reload} />
-          ))}
-      </div>
-
+  const head = (
+    <>
+      <DisciplineStrip
+        slug={slug}
+        tab="checkin"
+        disciplines={data.disciplines}
+        current={selected?.slug ?? null}
+        all
+      />
       <label className="floor-search">
         {t("floor.checkin.search")}
         <input type="search" value={search} onChange={(event) => setSearch(event.target.value)} />
       </label>
+    </>
+  );
+  const rail = data.disciplines
+    .filter((d) => selected === undefined || d.id === selected.id)
+    .map((d) => <DisciplineGate key={d.id} slug={slug} discipline={d} onChanged={reload} />);
+
+  return (
+    <FloorLayout tab="checkin" className="floor-data floor-checkin" head={head} rail={rail}>
       {error && (
         <p className="save-bar-error" role="alert">
           {t("floor.plan.failed")}
@@ -123,6 +135,6 @@ export default function CheckinTab({ slug, discipline }: { slug: string; discipl
           })}
         </p>
       )}
-    </div>
+    </FloorLayout>
   );
 }

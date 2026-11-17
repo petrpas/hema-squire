@@ -1,17 +1,22 @@
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
+import { FloorLayout } from "../FloorLayout";
 import { type FloorSetup, floorApi, type PlanState, planApi } from "../floorApi";
-import { AssignmentSection } from "./AssignmentSection";
-import { PinsSection } from "./PinsSection";
+import { AssignmentActions, AssignmentSection, useAssignments } from "./AssignmentSection";
+import { PinForm, PinList } from "./PinsSection";
 import { PreferencesSection } from "./PreferencesSection";
 import { SensitivitySection } from "./SensitivitySection";
-import { VariantsSection } from "./VariantsSection";
-import { WorkingSection } from "./WorkingSection";
+import { useVariants, VariantsAsk, VariantsSection } from "./VariantsSection";
+import { PublishGate, WorkingDiff } from "./WorkingSection";
 
-/** The Plan tab (spec floor-plan): the plan's preferences, variants side by
- *  side, the working version with its difference and the publish gate, the
- *  referees where they are planned, pins, sensitivity. */
+/** The Plan tab (spec floor-plan), framed as the office's phases are: in
+ *  the work, the working version's difference, the variants each with its
+ *  own choice, the referees' seats where they are planned, the pins and the
+ *  sensitivity; in the operations panel, the preferences, asking for
+ *  variants, the publish gate and re-planning, pinning, and Obsazení's re-run
+ *  and prints (spec floor-console, A tab's operations stand in a panel on
+ *  the right). */
 // a preference left unsaved is not guarded when leaving the tab: it only
 // orders the next variants
 function ignoreDirty() {}
@@ -20,6 +25,7 @@ export default function PlanTab({ slug, onChanged }: { slug: string; onChanged: 
   const { t } = useTranslation();
   const [plan, setPlan] = useState<PlanState | null | "error">(null);
   const [setup, setSetup] = useState<FloorSetup | null>(null);
+  const assignments = useAssignments(slug);
 
   const load = useCallback(() => {
     planApi.state(slug).then(setPlan, () => setPlan("error"));
@@ -30,13 +36,29 @@ export default function PlanTab({ slug, onChanged }: { slug: string; onChanged: 
 
   function changed() {
     load();
+    assignments.load();
     onChanged();
   }
 
-  if (plan === "error") return <p className="floor-not-yet muted">{t("floor.plan.loadFailed")}</p>;
-  if (plan === null || setup === null) return <p>{t("common.loading")}</p>;
+  const variants = useVariants(slug, changed);
+
+  if (plan === "error") {
+    return (
+      <FloorLayout tab="plan">
+        <p className="floor-not-yet muted">{t("floor.plan.loadFailed")}</p>
+      </FloorLayout>
+    );
+  }
+  if (plan === null || setup === null) {
+    return (
+      <FloorLayout tab="plan">
+        <p>{t("common.loading")}</p>
+      </FloorLayout>
+    );
+  }
 
   const names = new Map(setup.disciplines.map((d) => [d.id, d.name]));
+  const officials = setup.scope.plan_officials && setup.scope.plan_schedule;
   const preferences = (
     <PreferencesSection
       key={JSON.stringify(setup.preferences)}
@@ -49,32 +71,46 @@ export default function PlanTab({ slug, onChanged }: { slug: string; onChanged: 
 
   if (plan.setup_missing.length > 0) {
     return (
-      <div className="floor-plan">
+      <FloorLayout tab="plan" className="floor-plan" rail={preferences}>
         <section className="rail-card">
           <h2>{t("floor.plan.title")}</h2>
           <p>{t("floor.plan.setupMissing")}</p>
         </section>
-        {preferences}
-      </div>
+      </FloorLayout>
     );
   }
 
-  return (
-    <div className="floor-plan">
-      {preferences}
-      <WorkingSection
-        slug={slug}
-        plan={plan}
-        names={names}
-        pistes={setup.pistes}
-        onChanged={changed}
-      />
-      <VariantsSection slug={slug} names={names} onChosen={changed} />
-      {setup.scope.plan_officials && setup.scope.plan_schedule && (
-        <AssignmentSection slug={slug} setup={setup} />
+  const rail = (
+    <>
+      <VariantsAsk state={variants} />
+      <PublishGate slug={slug} plan={plan} names={names} onChanged={changed} />
+      <PinForm slug={slug} setup={setup} onChanged={changed} />
+      {officials && (
+        <AssignmentActions
+          slug={slug}
+          setup={setup}
+          data={assignments.data}
+          load={assignments.load}
+        />
       )}
-      <PinsSection slug={slug} pins={plan.pins} setup={setup} onChanged={changed} />
+      {preferences}
+    </>
+  );
+
+  return (
+    <FloorLayout tab="plan" className="floor-plan" rail={rail}>
+      <WorkingDiff plan={plan} pistes={setup.pistes} />
+      <VariantsSection state={variants} names={names} />
+      {officials && (
+        <AssignmentSection
+          slug={slug}
+          setup={setup}
+          data={assignments.data}
+          load={assignments.load}
+        />
+      )}
+      <PinList slug={slug} pins={plan.pins} setup={setup} onChanged={changed} />
       {plan.sensitivity && <SensitivitySection sensitivity={plan.sensitivity} names={names} />}
-    </div>
+    </FloorLayout>
   );
 }

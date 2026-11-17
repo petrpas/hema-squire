@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-
+import { FloorLayout } from "../FloorLayout";
 import {
   type Assignments,
   type FloorSetup,
@@ -11,20 +11,12 @@ import {
 } from "../floorApi";
 import { ScheduleGrid } from "./ScheduleGrid";
 
-/** The schedule beside the work, or the narrow screen's last tab (spec
- *  floor-plan, The schedule panel draws piste × time): the published version
- *  where there is one, the working version where it is asked for or alone,
- *  with its changes marked against the published one. */
-export default function SchedulePanel({
-  slug,
-  revision,
-  asTabPanel,
-}: {
-  slug: string;
-  /** Bumped when a plan was chosen or published, to read it again. */
-  revision: number;
-  asTabPanel: boolean;
-}) {
+/** Rozvrh, a tab of its own at the full width with no operations panel
+ *  (spec floor-plan, Rozvrh draws piste × time): the published version where
+ *  there is one, the working version where it is asked for or alone, with
+ *  its changes marked against the published one. Read on every open, so what
+ *  Plán chose or published is what it draws. */
+export default function ScheduleTab({ slug }: { slug: string }) {
   const { t, i18n } = useTranslation();
   const [plan, setPlan] = useState<PlanState | null>(null);
   const [setup, setSetup] = useState<FloorSetup | null>(null);
@@ -33,11 +25,10 @@ export default function SchedulePanel({
   const [assigned, setAssigned] = useState<Assignments | null>(null);
 
   useEffect(() => {
-    void revision;
     planApi.state(slug).then(setPlan, () => setPlan(null));
     floorApi.setup(slug).then(setSetup, () => setSetup(null));
     officialsApi.view(slug).then(setAssigned, () => setAssigned(null));
-  }, [slug, revision]);
+  }, [slug]);
 
   const both = plan?.working != null && plan.published != null;
   const shown =
@@ -46,16 +37,7 @@ export default function SchedulePanel({
   const chosenDay = day !== null && days.includes(day) ? day : (days[0] ?? null);
 
   return (
-    <aside
-      className="floor-schedule"
-      {...(asTabPanel
-        ? {
-            role: "tabpanel",
-            id: "floor-tabpanel-schedule",
-            "aria-labelledby": "floor-tab-schedule",
-          }
-        : { "aria-label": t("floor.schedule.title") })}
-    >
+    <FloorLayout tab="schedule" className="floor-schedule">
       <h2>{t("floor.schedule.title")}</h2>
       {shown === null || setup === null ? (
         <p className="muted">{t("floor.schedule.none")}</p>
@@ -120,7 +102,7 @@ export default function SchedulePanel({
           )}
         </>
       )}
-    </aside>
+    </FloorLayout>
   );
 }
 

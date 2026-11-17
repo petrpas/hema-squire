@@ -10,22 +10,22 @@ import * as routes from "../routes";
 import BracketTab from "./bracket/BracketTab";
 import CheckinTab from "./checkin/CheckinTab";
 import DataTab from "./data/DataTab";
+import { FloorLayout } from "./FloorLayout";
 import { FloorRail } from "./FloorRail";
 import type { FloorSummary } from "./floorApi";
 import NotYet from "./NotYet";
 import PlanTab from "./plan/PlanTab";
 import PoolsTab from "./pools/PoolsTab";
 import ResultsTab from "./results/ResultsTab";
-import SchedulePanel from "./schedule/SchedulePanel";
+import ScheduleTab from "./schedule/ScheduleTab";
 import FloorSetupTab from "./setup/FloorSetupTab";
-import { barTabs, type FloorBarTab, type FloorTab, IMPLEMENTED, SCHEDULE_TAB } from "./tabs";
+import { barTabs, type FloorTab, IMPLEMENTED, STEP_TABS } from "./tabs";
 import TodayTab from "./today/TodayTab";
-import { useNarrow } from "./useNarrow";
 
 /** The tournament-day console: the office console's bar across the top, the
- *  eight tabs as a rail of icons on the left, and the schedule beside the work
- *  where a schedule is planned (spec floor-console). A thin orchestrator;
- *  each tab is its own directory. */
+ *  tabs as a rail of icons on the left, and each tab's work with its
+ *  operations panel beside it, as in the office (spec floor-console). A thin
+ *  orchestrator; each tab is its own directory and draws its own frame. */
 export default function FloorConsole({
   tournament,
   summary,
@@ -45,49 +45,39 @@ export default function FloorConsole({
   const navigate = useNavigate();
   const { onLogout } = useAuth();
   const [account, setAccount] = useState<Account | null>(null);
-  const narrow = useNarrow();
-  // the schedule tab is the bar's, not the address's: selecting it leaves the
-  // tab in the address as it was, which is where the console returns when the
-  // window widens and the schedule goes back beside the work
-  const [scheduleOpen, setScheduleOpen] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [pending, setPending] = useState<FloorTab | null>(null);
-  // bumped when a plan changes, so the schedule panel reads it again
-  const [revision, setRevision] = useState(0);
-
-  function changed() {
-    setRevision((r) => r + 1);
-    onChanged();
-  }
+  // the discipline last chosen on a step tab, carried to the next step tab
+  // opened from the rail, through any detour; for the session only (spec
+  // floor-console, Step tabs choose their discipline by tabs, kept across
+  // the console)
+  const [kept, setKept] = useState<string | null>(null);
 
   useEffect(() => {
     api.account().then(setAccount, () => setAccount(null));
   }, []);
 
   useEffect(() => {
-    if (!narrow) setScheduleOpen(false);
-  }, [narrow]);
+    if (STEP_TABS.has(tab) && discipline !== undefined) setKept(discipline);
+  }, [tab, discipline]);
 
   const slug = tournament.slug;
 
-  // Leaving Setup with unsaved changes is confirmed, as in the office console
-  // (spec floor-setup, Floor Setup saves as office Setup does).
-  function select(next: FloorBarTab) {
-    if (next === SCHEDULE_TAB) {
-      setScheduleOpen(true);
-      return;
-    }
-    setScheduleOpen(false);
-    if (next === tab) return;
-    if (tab === "setup" && dirty) setPending(next);
-    else navigate(routes.floorPath(slug, next));
+  /** Where the rail leads: a step tab at the kept discipline. */
+  function pathTo(next: FloorTab): string {
+    return routes.floorPath(slug, next, STEP_TABS.has(next) ? (kept ?? undefined) : undefined);
   }
 
-  const shown: FloorBarTab = scheduleOpen ? SCHEDULE_TAB : tab;
+  // Leaving Setup with unsaved changes is confirmed, as in the office console
+  // (spec floor-setup, Floor Setup saves as office Setup does).
+  function select(next: FloorTab) {
+    if (next === tab) return;
+    if (tab === "setup" && dirty) setPending(next);
+    else navigate(pathTo(next));
+  }
+
   const planned = summary.plan_schedule !== false;
-  // beside every tab but Setup, where the screen is wide enough and a
-  // schedule is planned at all
-  const besideWork = planned && !narrow && tab !== "setup";
+  const fallback = kept ?? undefined;
 
   return (
     <div className="app">
@@ -115,51 +105,55 @@ export default function FloorConsole({
 
       <div className="floor-body">
         <FloorRail
-          tabs={barTabs(narrow, planned)}
-          tab={shown}
+          tabs={barTabs(planned)}
+          tab={tab}
           badges={summary.badges}
           dirty={dirty ? "setup" : null}
           onSelect={select}
         />
 
-        <div className="workspace floor-workspace">
-          <div
-            className="floor-work"
-            role="tabpanel"
-            id={`floor-tabpanel-${tab}`}
-            aria-labelledby={`floor-tab-${tab}`}
-            hidden={scheduleOpen}
-          >
-            {tab === "setup" ? (
+        <div
+          className="workspace floor-workspace"
+          role="tabpanel"
+          id={`floor-tabpanel-${tab}`}
+          aria-labelledby={`floor-tab-${tab}`}
+        >
+          {tab === "setup" ? (
+            <FloorLayout tab="setup">
               <FloorSetupTab
                 slug={slug}
                 missing={summary.setup_missing}
-                onSaved={changed}
+                onSaved={onChanged}
                 onDirtyChange={setDirty}
               />
-            ) : tab === "today" ? (
+            </FloorLayout>
+          ) : tab === "today" ? (
+            <FloorLayout tab="today">
               <TodayTab slug={slug} />
-            ) : tab === "results" ? (
-              <ResultsTab slug={slug} />
-            ) : tab === "bracket" ? (
-              <BracketTab slug={slug} discipline={discipline} />
-            ) : tab === "pools" ? (
-              <PoolsTab slug={slug} discipline={discipline} />
-            ) : tab === "checkin" ? (
-              <CheckinTab slug={slug} discipline={discipline} />
-            ) : tab === "plan" ? (
-              <PlanTab slug={slug} onChanged={changed} />
-            ) : tab === "data" ? (
-              <DataTab
-                slug={slug}
-                keptByOrganizer={tournament.registrations_kept_by === "organizer"}
-              />
-            ) : (
-              !IMPLEMENTED.has(tab) && <NotYet />
-            )}
-          </div>
-          {(besideWork || (planned && scheduleOpen)) && (
-            <SchedulePanel slug={slug} revision={revision} asTabPanel={scheduleOpen} />
+            </FloorLayout>
+          ) : tab === "schedule" ? (
+            <ScheduleTab slug={slug} />
+          ) : tab === "results" ? (
+            <ResultsTab slug={slug} discipline={discipline} fallback={fallback} />
+          ) : tab === "bracket" ? (
+            <BracketTab slug={slug} discipline={discipline} fallback={fallback} />
+          ) : tab === "pools" ? (
+            <PoolsTab slug={slug} discipline={discipline} fallback={fallback} />
+          ) : tab === "checkin" ? (
+            <CheckinTab slug={slug} discipline={discipline} />
+          ) : tab === "plan" ? (
+            <PlanTab slug={slug} onChanged={onChanged} />
+          ) : tab === "data" ? (
+            <DataTab
+              slug={slug}
+              keptByOrganizer={tournament.registrations_kept_by === "organizer"}
+            />
+          ) : (
+            !IMPLEMENTED.has(tab) && (
+              <FloorLayout tab={tab}>
+                <NotYet />
+              </FloorLayout>
+            )
           )}
         </div>
       </div>
@@ -178,7 +172,7 @@ export default function FloorConsole({
                 className="btn-primary"
                 onClick={() => {
                   setDirty(false);
-                  navigate(routes.floorPath(slug, pending));
+                  navigate(pathTo(pending));
                   setPending(null);
                 }}
               >

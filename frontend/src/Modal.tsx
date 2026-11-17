@@ -13,7 +13,18 @@ import { type ReactNode, useLayoutEffect, useRef, useState } from "react";
  *  be told apart from a click on the frame around it, and so the dialog's own
  *  padding is not a dismissal target. The dim is `::backdrop`.
  */
-export default function Modal({ onClose, children }: { onClose: () => void; children: ReactNode }) {
+export default function Modal({
+  onClose,
+  children,
+  placement = "center",
+}: {
+  onClose: () => void;
+  children: ReactNode;
+  /** Where the dialog's content sits: centred, or as a drawer against the
+   *  right edge over the page, as the floor console's operations panel on a
+   *  narrow screen (spec floor-console). Neither moves as it opens. */
+  placement?: "center" | "drawer";
+}) {
   const ref = useRef<HTMLDialogElement>(null);
   const [open, setOpen] = useState(false);
 
@@ -38,7 +49,7 @@ export default function Modal({ onClose, children }: { onClose: () => void; chil
     // biome-ignore lint/a11y/useKeyWithClickEvents: Escape arrives as `cancel`, handled below
     <dialog
       ref={ref}
-      className="modal-backdrop"
+      className={placement === "drawer" ? "modal-backdrop modal-drawer" : "modal-backdrop"}
       // Escape reaches the dialog as `cancel`; the close is the caller's to
       // make, so that a dialog holding unsaved work can still refuse it.
       onCancel={(event) => {

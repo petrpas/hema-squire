@@ -144,6 +144,9 @@ describe("the Plan tab", () => {
     );
     expect(chooseButtons).toHaveLength(2);
     expect(host?.textContent).toContain(t("floor.plan.variants.default"));
+    // asking is the tab's operation, in its panel; choosing stays with each variant
+    expect(button(t("floor.plan.variants.ask"))?.closest("aside.rail")).not.toBeNull();
+    for (const choice of chooseButtons) expect(choice.closest(".floor-work")).not.toBeNull();
 
     act(() => chooseButtons[1]?.click());
     await settle();
@@ -168,6 +171,9 @@ describe("the Plan tab", () => {
       t("floor.plan.obstacles.shortage", { a: "Longsword", b: "Sabre" }),
     );
     expect(publish?.disabled).toBe(true);
+    expect(publish?.closest("aside.rail")?.getAttribute("aria-label")).toBe(
+      `${t("rail.operations")} · ${t("floor.tabs.plan")}`,
+    );
   });
 
   it("names the pin that leaves no variant", async () => {

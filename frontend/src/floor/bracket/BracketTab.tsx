@@ -1,19 +1,30 @@
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 
 import * as routes from "../../routes";
+import { DisciplineStrip } from "../DisciplineStrip";
+import { FloorLayout } from "../FloorLayout";
 import { type BracketView, bracketApi, type FloorSetup, floorApi } from "../floorApi";
 import { openPdf } from "../pdf";
 import { usePolled } from "../usePolled";
 import { BracketBoutRow } from "./BracketBoutRow";
 
-/** Pavouk: the proposed bracket and "Potvrdit postup", then its rounds with
- *  every bout recorded and corrected, the third place, and printing (spec
- *  floor-bracket). */
-export default function BracketTab({ slug, discipline }: { slug: string; discipline?: string }) {
+/** Pavouk: the proposed bracket, then its rounds with every bout recorded
+ *  and corrected and the third place, in the work; "Potvrdit postup",
+ *  printing and reopening in the operations panel (spec floor-bracket, spec
+ *  floor-console). */
+export default function BracketTab({
+  slug,
+  discipline,
+  fallback,
+}: {
+  slug: string;
+  discipline?: string;
+  /** The discipline kept across the console, for an address naming none. */
+  fallback?: string;
+}) {
   const { t } = useTranslation();
-  const navigate = useNavigate();
   const [setup, setSetup] = useState<FloorSetup | null>(null);
 
   useEffect(() => {
@@ -21,7 +32,10 @@ export default function BracketTab({ slug, discipline }: { slug: string; discipl
   }, [slug]);
 
   const selected =
-    setup?.disciplines.find((d) => d.slug === discipline) ?? setup?.disciplines[0] ?? null;
+    setup?.disciplines.find((d) => d.slug === discipline) ??
+    setup?.disciplines.find((d) => d.slug === fallback) ??
+    setup?.disciplines[0] ??
+    null;
   const fetchView = useCallback(
     (): Promise<BracketView | null> =>
       selected === null ? Promise.resolve(null) : bracketApi.view(slug, selected.id),
@@ -29,7 +43,13 @@ export default function BracketTab({ slug, discipline }: { slug: string; discipl
   );
   const { data, failed, reload } = usePolled(fetchView, selected?.id);
 
-  if (setup === null || selected === null) return <p>{t("common.loading")}</p>;
+  if (setup === null || selected === null) {
+    return (
+      <FloorLayout tab="bracket">
+        <p>{t("common.loading")}</p>
+      </FloorLayout>
+    );
+  }
   const name = (key: string) => data?.names[key] ?? key;
 
   function roundLabel(round: number, position: number, rounds: number): string {
@@ -39,22 +59,60 @@ export default function BracketTab({ slug, discipline }: { slug: string; discipl
     return t("floor.bracket.round", { size: 2 ** (rounds - round), n: position + 1 });
   }
 
-  return (
-    <div className="floor-data floor-bracket">
-      <label className="floor-search">
-        {t("floor.pools.discipline")}
-        <select
-          value={selected.slug}
-          onChange={(event) => navigate(routes.floorPath(slug, "bracket", event.target.value))}
-        >
-          {setup.disciplines.map((d) => (
-            <option key={d.id} value={d.slug}>
-              {d.name}
-            </option>
-          ))}
-        </select>
-      </label>
+  const rail =
+    data === null ? null : data.bracket === null ? (
+      data.pools_closed && data.proposal !== null ? (
+        <section className="rail-card">
+          <h2>{t("floor.bracket.confirm")}</h2>
+          <button
+            type="button"
+            className="btn-primary"
+            onClick={() => void bracketApi.confirm(slug, selected.id).then(reload)}
+          >
+            {t("floor.bracket.confirm")}
+          </button>
+        </section>
+      ) : (
+        <p className="rail-hint">{t("floor.ops.idle.poolsOpen")}</p>
+      )
+    ) : (
+      <section className="rail-card">
+        <h2>{t(`floor.bracket.state.${data.state}`)}</h2>
+        <div className="floor-row-actions">
+          <button
+            type="button"
+            className="secondary"
+            onClick={() => void openPdf(bracketApi.sheetUrl(slug, selected.id))}
+          >
+            {t("floor.bracket.print")}
+          </button>
+          {data.state === "seeded" && (
+            <button
+              type="button"
+              className="secondary"
+              onClick={() => void bracketApi.reopen(slug, selected.id).then(reload)}
+            >
+              {t("floor.bracket.reopen")}
+            </button>
+          )}
+        </div>
+      </section>
+    );
 
+  return (
+    <FloorLayout
+      tab="bracket"
+      className="floor-data floor-bracket"
+      head={
+        <DisciplineStrip
+          slug={slug}
+          tab="bracket"
+          disciplines={setup.disciplines}
+          current={selected.slug}
+        />
+      }
+      rail={rail}
+    >
       {data === null ? (
         <p className="muted">{failed ? t("floor.pools.failed") : t("common.loading")}</p>
       ) : data.bracket === null ? (
@@ -101,13 +159,6 @@ export default function BracketTab({ slug, discipline }: { slug: string; discipl
                 })}
               </p>
             )}
-            <button
-              type="button"
-              className="btn-primary"
-              onClick={() => void bracketApi.confirm(slug, selected.id).then(reload)}
-            >
-              {t("floor.bracket.confirm")}
-            </button>
           </section>
         )
       ) : (
@@ -120,16 +171,7 @@ export default function BracketTab({ slug, discipline }: { slug: string; discipl
           }
           return (
             <section className="rail-card">
-              <h2>
-                {t(`floor.bracket.state.${data.state}`)}{" "}
-                <button
-                  type="button"
-                  className="secondary"
-                  onClick={() => void openPdf(bracketApi.sheetUrl(slug, selected.id))}
-                >
-                  {t("floor.bracket.print")}
-                </button>
-              </h2>
+              <h2>{t(`floor.bracket.state.${data.state}`)}</h2>
               {[...byRound.entries()]
                 .sort(([x], [y]) => x - y)
                 .map(([round, bouts]) => (
@@ -147,19 +189,10 @@ export default function BracketTab({ slug, discipline }: { slug: string; discipl
                     ))}
                   </ul>
                 ))}
-              {data.state === "seeded" && (
-                <button
-                  type="button"
-                  className="secondary"
-                  onClick={() => void bracketApi.reopen(slug, selected.id).then(reload)}
-                >
-                  {t("floor.bracket.reopen")}
-                </button>
-              )}
             </section>
           );
         })()
       )}
-    </div>
+    </FloorLayout>
   );
 }
