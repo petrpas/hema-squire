@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session, selectinload
 
 from app import (
     bank,
+    constraints,
     dedup,
     importer,
     issuing,
@@ -1182,6 +1183,10 @@ def record_manual_payment(
     amount_cents = int((data.amount * 100).quantize(Decimal("1"), rounding=ROUND_HALF_UP))
     if amount_cents <= 0:
         raise HTTPException(status_code=422, detail="amount_not_positive")
+    # one payment is held to the ceiling one price is (owner decision
+    # 2026-11-17): 10 000 CZK, 1 000 EUR
+    if amount_cents > constraints.MONEY_MAX[str(data.currency)] * 100:
+        raise HTTPException(status_code=422, detail="amount_too_large")
 
     payment = ManualPayment(
         tournament_id=tournament.id,

@@ -399,6 +399,19 @@ def test_a_zero_amount_is_not_a_payment(client, auth_headers, mailbox):
     assert record(client, organizer, registration_by_vs(vs).id, amount="0.00").status_code == 422
 
 
+def test_one_payment_is_held_to_the_price_ceiling(client, auth_headers, mailbox):
+    organizer = auth_headers()
+    make_tournament(client, organizer, fee_eur=40, eur_payments_enabled=True, eur_rate="25.0")
+    _, vs = enroll(client, auth_headers)
+    rid = registration_by_vs(vs).id
+
+    assert record(client, organizer, rid, amount="10000.00").status_code == 201
+    for amount, currency in (("10000.01", "CZK"), ("1000.01", "EUR"), ("92233720368547758", "CZK")):
+        refused = record(client, organizer, rid, amount=amount, currency=currency)
+        assert refused.status_code == 422
+        assert refused.json()["detail"] == "amount_too_large"
+
+
 # ------------------------------------------------- when a statement follows
 
 
