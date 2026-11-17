@@ -13,6 +13,7 @@ import { FloorTabBar } from "./FloorTabBar";
 import type { FloorSummary } from "./floorApi";
 import NotYet from "./NotYet";
 import PlanTab from "./plan/PlanTab";
+import PoolsTab from "./pools/PoolsTab";
 import SchedulePanel from "./schedule/SchedulePanel";
 import FloorSetupTab from "./setup/FloorSetupTab";
 import { barTabs, type FloorBarTab, type FloorTab, IMPLEMENTED, SCHEDULE_TAB } from "./tabs";
@@ -127,6 +128,8 @@ export default function FloorConsole({
             <FloorSetupTab slug={slug} onSaved={changed} onDirtyChange={setDirty} />
           ) : tab === "today" ? (
             <TodayTab slug={slug} />
+          ) : tab === "pools" ? (
+            <PoolsTab slug={slug} discipline={discipline} />
           ) : tab === "checkin" ? (
             <CheckinTab slug={slug} discipline={discipline} />
           ) : tab === "plan" ? (

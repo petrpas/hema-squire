@@ -5947,3 +5947,89 @@ tr.export-line td {
 .floor-matrix td a {
   color: var(--ink);
 }
+
+/* ----- floor pools and the piste screen (add-floor-pools) ----- */
+
+.floor-pool-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.floor-pool {
+  flex: 1 1 16rem;
+}
+
+.floor-pool h3 {
+  font-size: var(--body-size);
+  margin: 0 0 0.4rem;
+}
+
+.floor-pool ol {
+  margin: 0;
+  padding-left: 1.2rem;
+}
+
+.floor-bouts input[type="number"] {
+  width: 3.5rem;
+}
+
+.floor-recorded th,
+.floor-recorded td {
+  color: var(--ink-soft);
+}
+
+.floor-ring-issued {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem;
+  margin: 0.4rem 0;
+}
+
+.floor-ring {
+  min-height: 100dvh;
+  padding: 1rem 16px;
+  background: var(--paper);
+  color: var(--ink);
+}
+
+.floor-ring-bouts {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+}
+
+.floor-ring-bouts > li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.8rem 1.4rem;
+  padding: 0.8rem;
+  border: var(--border-w) solid var(--hairline);
+  border-radius: var(--radius-card);
+}
+
+.floor-ring-side {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  min-width: 9rem;
+}
+
+.floor-ring-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  font-size: var(--title-size);
+}
+
+/* a touch target: at least 44px either way */
+.floor-ring-controls button,
+.floor-ring-bouts .btn-primary {
+  min-width: 2.75rem;
+  min-height: 2.75rem;
+}

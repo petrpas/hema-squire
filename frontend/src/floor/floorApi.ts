@@ -357,3 +357,165 @@ export const checkinApi = {
     request<void>(`${base(slug)}/checkin/${discipline}/reopen`, { method: "POST" }),
   today: (slug: string) => request<Today>(`${base(slug)}/today`),
 };
+
+// ------------------------------------------------------------ pools and pistes
+
+export type Outcome = "win" | "loss" | "draw" | "no";
+
+export interface PoolBout {
+  id: number;
+  ordinal: number;
+  a: string;
+  b: string;
+  score_a: number | null;
+  score_b: number | null;
+  outcome_a: Outcome | null;
+  outcome_b: Outcome | null;
+  note: string | null;
+  recorded_by: string | null;
+  version: number;
+}
+
+export interface DrawPool {
+  number: number;
+  wave: number;
+  piste_id: number | null;
+  planned_start: string | null;
+  members: { key: string; seed: number }[];
+  bouts: PoolBout[];
+}
+
+export interface DrawScore {
+  snake: number;
+  club: number;
+  nationality: number;
+  wave: number;
+  total: number;
+}
+
+export interface StatsRow {
+  key: string;
+  v: number;
+  m: number;
+  vm: number;
+  ts: number;
+  tr: number;
+  ind: number;
+}
+
+export interface PoolsView {
+  state: "waiting" | "running" | "complete" | "closed";
+  checkin_closed: boolean;
+  names: Record<string, string>;
+  draw: {
+    score: DrawScore;
+    previous_score: DrawScore | null;
+    announced_at: string | null;
+    closed_at: string | null;
+    pools: DrawPool[];
+  } | null;
+  standings?: {
+    pools: { number: number; stats: StatsRow[] }[];
+    ranking: StatsRow[];
+    warnings: {
+      pool: number | null;
+      code: string;
+      subject: string;
+      expected: number;
+      found: number;
+    }[];
+  };
+  call_list?: {
+    pool: number;
+    wave: number;
+    piste_id: number | null;
+    planned_start: string | null;
+    members: string[];
+  }[];
+}
+
+export interface ResultIn {
+  score_a: number;
+  score_b: number;
+  outcome_a: Outcome;
+  outcome_b: Outcome;
+  note?: string | null;
+  version: number;
+}
+
+const pools = (slug: string, discipline: number) => `${base(slug)}/pools/${discipline}`;
+
+export const poolsApi = {
+  view: (slug: string, discipline: number) => request<PoolsView>(pools(slug, discipline)),
+  draw: (slug: string, discipline: number) =>
+    request<void>(`${pools(slug, discipline)}/draw`, { method: "POST" }),
+  swap: (slug: string, discipline: number, a: string, b: string) =>
+    request<void>(`${pools(slug, discipline)}/swap`, {
+      method: "POST",
+      body: JSON.stringify({ a, b }),
+    }),
+  announce: (slug: string, discipline: number) =>
+    request<void>(`${pools(slug, discipline)}/announce`, { method: "POST" }),
+  reopenPreview: (slug: string, discipline: number) =>
+    request<{ invalidated: string[]; refusals: string[] }>(`${pools(slug, discipline)}/reopen`),
+  reopen: (slug: string, discipline: number) =>
+    request<void>(`${pools(slug, discipline)}/reopen`, { method: "POST" }),
+  record: (slug: string, bout: number, result: ResultIn) =>
+    request<void>(`${base(slug)}/pools/bouts/${bout}`, {
+      method: "PUT",
+      body: JSON.stringify(result),
+    }),
+  transcribe: (slug: string, discipline: number, bouts: (ResultIn & { id: number })[]) =>
+    request<void>(`${pools(slug, discipline)}/sheet`, {
+      method: "PUT",
+      body: JSON.stringify({ bouts }),
+    }),
+  closePreview: (slug: string, discipline: number) =>
+    request<{ ranking: StatsRow[]; advance: number }>(`${pools(slug, discipline)}/close`),
+  close: (slug: string, discipline: number) =>
+    request<void>(`${pools(slug, discipline)}/close`, { method: "POST" }),
+  reopenPools: (slug: string, discipline: number) =>
+    request<void>(`${pools(slug, discipline)}/reopen-pools`, { method: "POST" }),
+  sheetUrl: (slug: string, discipline: number, number: number) =>
+    `${pools(slug, discipline)}/sheets/${number}`,
+  ringKeys: (slug: string) =>
+    request<{ piste_id: number; name: string; issued_at: string | null }[]>(`${base(slug)}/ring`),
+  issue: (slug: string, piste: number) =>
+    request<{ key: string; qr_png_base64: string }>(`${base(slug)}/ring/${piste}`, {
+      method: "POST",
+      body: JSON.stringify({ origin: window.location.origin }),
+    }),
+  revoke: (slug: string, piste: number) =>
+    request<void>(`${base(slug)}/ring/${piste}`, { method: "DELETE" }),
+};
+
+export interface RingWork {
+  piste: string;
+  pool: {
+    discipline_id: number | null;
+    number: number;
+    members: { key: string; name: string }[];
+    bouts: {
+      id: number;
+      ordinal: number;
+      a: string;
+      b: string;
+      score_a: number | null;
+      score_b: number | null;
+      outcome_a: Outcome | null;
+      outcome_b: Outcome | null;
+      version: number;
+    }[];
+  } | null;
+}
+
+export const ringApi = {
+  current: (key: string) =>
+    request<RingWork>("/api/floor/ring/current", { headers: { "X-Floor-Ring-Key": key } }),
+  record: (key: string, bout: number, result: ResultIn) =>
+    request<void>(`/api/floor/ring/bouts/${bout}`, {
+      method: "PUT",
+      body: JSON.stringify(result),
+      headers: { "X-Floor-Ring-Key": key },
+    }),
+};

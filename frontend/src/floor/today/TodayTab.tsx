@@ -44,7 +44,9 @@ export default function TodayTab({ slug }: { slug: string }) {
               {COLUMNS.map((step) => (
                 <td key={step}>
                   <Link to={routes.floorPath(slug, step, row.slug)}>
-                    {t(`floor.today.state.${row.steps[step] ?? "waiting"}`)}
+                    {t(`floor.today.steps.${step}.${row.steps[step] ?? "waiting"}`, {
+                      defaultValue: t(`floor.today.state.${row.steps[step] ?? "waiting"}`),
+                    })}
                   </Link>
                 </td>
               ))}

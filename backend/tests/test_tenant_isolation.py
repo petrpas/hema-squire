@@ -51,6 +51,7 @@ BODIES: dict[tuple[str, str], object] = {
         "version": 0,
     },
     ("PUT", "/api/tournaments/{slug}/floor/pools/{discipline_id}/sheet"): {"bouts": []},
+    ("POST", "/api/tournaments/{slug}/floor/ring/{piste_id}"): {"origin": "https://example.com"},
     ("PUT", "/api/tournaments/{slug}/floor/checkin/lineups/{team_key}"): {"person_keys": []},
     ("POST", "/api/tournaments/{slug}/floor/plan/pins"): {
         "kind": "k",

@@ -91,6 +91,12 @@ export function floorPath(slug: string, tab?: FloorTab, discipline?: string): st
     : `/organizer/${slug}/floor/${tab}`;
 }
 
+/** A piste screen, its key in the fragment as a guest link's is: the
+ *  browser sends a fragment to no server (spec floor-ring). */
+export function ringPath(piste: number, key: string): string {
+  return `/floor/ring/${piste}#${key}`;
+}
+
 export function admin(): string {
   return "/admin";
 }

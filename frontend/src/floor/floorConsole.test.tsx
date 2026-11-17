@@ -140,7 +140,7 @@ describe("the floor console's tabs", () => {
   });
 
   it("states that a step has not landed rather than hiding it", async () => {
-    await open("/organizer/cup/floor/pools");
+    await open("/organizer/cup/floor/bracket");
 
     expect(host?.querySelector(".floor-not-yet")?.textContent).toBe(t("floor.notYet"));
   });

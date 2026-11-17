@@ -109,6 +109,33 @@ the screen says so.
 - `engine/draw.py`, `engine/pool_stats.py` and `engine/pool_order.py` use the standard
   library only. `random` is used only through a seeded `Random` instance.
 
+### D8. Decisions made during implementation (made by me; for the owner's review)
+Decided on 2026-11-17 while the owner was away, as asked:
+- **The fixtures.** The saved alchemy state holds Sabre only (Sabre's own config and
+  two other k, with and without a parallel wave), so the Sabre runs are joined by
+  twelve seeded synthetic sets and eight statistics cases. Names are replaced by codes
+  and HEMA Ratings ids dropped before check-in. The port reproduces all of them exactly.
+- **Foreign nationalities are summed in sorted order.** The original iterates a set,
+  whose order varies between runs. The engine's must not vary.
+- **Bout orders for 3, 9 and 10.** The adopted templates print pools of 4 to 8 only.
+  The other sizes use a deterministic round-robin by the circle method, and their sheets
+  answer `no_template` until templates exist.
+- **Outcomes from the scores.** The console and the piste screen derive Win, Loss or Draw
+  from the scores, and "not fenced" sets No on both sides. The adopted statistics count
+  a victory by score, as the original does.
+- **The draw requires the published plan and a closed check-in.** It reads the pools,
+  waves and pistes from the plan, and its fencers from the snapshot.
+- **A dual-discipline fencer** is one who also fences a discipline the plan's exclusion
+  sets name beside this one.
+- **The draw gate's pin** is a pin of its own kind, `pools`, as check-in's N pin is.
+- **The piste keys' controls are on the Skupiny tab** (task 4.3). The QR code is drawn
+  by the server at issue, from the console's origin, because the server already holds
+  the key at that moment. It reuses the backend's existing `qrcode` dependency.
+- **The pool and bracket templates moved** from `app/typst/templates/` to
+  `app/floor/typst/`. They are the floor's, and the office uses none of them.
+- **Deletion scopes floor tables at any depth.** A pool's members hang from a pool,
+  which hangs from a draw. `tournament_delete` follows floor parents recursively.
+
 ## Risks / Trade-offs
 
 - **[The port can differ from the original in an edge case.]** → Recorded inputs from

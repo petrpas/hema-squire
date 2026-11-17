@@ -6,7 +6,11 @@ import { useCallback, useEffect, useRef, useState } from "react";
  *  keeps the last data and reports when it was last fresh. */
 export const POLL_MS = 15_000;
 
-export function usePolled<T>(fetch: () => Promise<T>): {
+export function usePolled<T>(
+  fetch: () => Promise<T>,
+  /** What is shown: a change reads at once instead of at the next tick. */
+  key: unknown = null,
+): {
   data: T | null;
   failed: boolean;
   freshAt: Date | null;
@@ -30,10 +34,12 @@ export function usePolled<T>(fetch: () => Promise<T>): {
   }, []);
 
   useEffect(() => {
+    void key;
+    setData(null);
     reload();
     const timer = window.setInterval(reload, POLL_MS);
     return () => window.clearInterval(timer);
-  }, [reload]);
+  }, [reload, key]);
 
   return { data, failed, freshAt, reload };
 }
