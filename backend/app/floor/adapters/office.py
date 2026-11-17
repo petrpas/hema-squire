@@ -10,15 +10,23 @@ It also hands `api.py` the request dependencies that resolve a tournament from
 its slug, so that the router names no office module.
 """
 
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app import entrants, exporttables, rules, setup, sheet
+from app.availability import live_registration
 from app.floor.roster import FloorDiscipline, IndividualEntry, Person, Roster, TeamEntry
 from app.floor.setup import Tournament as SetupTournament
 from app.list_counts import same_person
-from app.models import DisciplineKind, Tournament
+from app.models import DisciplineKind, Fencer, Registration, Tournament
 from app.ratelimit import limiter
-from app.routers.tournaments import FencerDep, SessionDep, TournamentDep
+from app.routers.tournaments import (
+    FencerDep,
+    OptionalFencerDep,
+    SessionDep,
+    TournamentDep,
+    require_public,
+)
 from app.rules import Row
 
 __all__ = [
@@ -26,7 +34,10 @@ __all__ = [
     "SessionDep",
     "TournamentDep",
     "has_floor",
+    "OptionalFencerDep",
     "limiter",
+    "person_key_for",
+    "require_public",
     "roster",
     "roster_of",
     "setup_facts",
@@ -114,6 +125,22 @@ def setup_facts(tournament: Tournament) -> SetupTournament:
         disciplines=_disciplines(tournament),
         timezone=setup.zone_for(tournament).key,
     )
+
+
+def person_key_for(session: Session, tournament: Tournament, fencer: Fencer) -> str | None:
+    """The floor person a signed-in fencer is: their live registration's
+    replay row id, which the roster issues as the person's key (design
+    add-floor-results D2). It builds no entrant answer."""
+    registration = session.scalar(
+        select(Registration).where(
+            Registration.tournament_id == tournament.id,
+            Registration.fencer_id == fencer.id,
+            live_registration(),
+        )
+    )
+    if registration is None:
+        return None
+    return registration.source_row_id or f"reg:{registration.id}"
 
 
 def roster_of(session: Session, tournament_id: int) -> Roster | None:
