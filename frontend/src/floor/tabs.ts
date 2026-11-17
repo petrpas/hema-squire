@@ -13,11 +13,13 @@ import {
 
 /** The tournament-day console's tabs, in their fixed order (spec
  *  floor-console, Eight tabs in a fixed order). No setting adds, removes or
- *  reorders one; what a setting changes is a tab's content. */
+ *  reorders one, with one named exception: "Rozvrh" exists only where a
+ *  schedule is planned. What a setting changes otherwise is a tab's content. */
 export const FLOOR_TABS = [
   "setup",
   "data",
   "plan",
+  "schedule",
   "today",
   "checkin",
   "pools",
@@ -27,17 +29,17 @@ export const FLOOR_TABS = [
 
 export type FloorTab = (typeof FLOOR_TABS)[number];
 
-/** The narrow screen's last tab, where the schedule panel goes when it no
- *  longer fits beside the work. Never part of an address. */
-export const SCHEDULE_TAB = "schedule";
-
-export type FloorBarTab = FloorTab | typeof SCHEDULE_TAB;
+/** The tabs that work on one discipline at a time and choose it from a
+ *  strip of discipline tabs, the choice kept across them (spec
+ *  floor-console, Step tabs choose their discipline by tabs). */
+export const STEP_TABS: ReadonlySet<FloorTab> = new Set(["checkin", "pools", "bracket", "results"]);
 
 /** The tabs whose change has landed. The rest say so in one line. */
 export const IMPLEMENTED: ReadonlySet<FloorTab> = new Set([
   "setup",
   "data",
   "plan",
+  "schedule",
   "today",
   "checkin",
 ]);
@@ -52,15 +54,15 @@ export function defaultTab(planPublished: boolean): FloorTab {
   return planPublished ? "today" : "setup";
 }
 
-/** The tabs the rail offers: the eight, and on a narrow screen the schedule
- *  last, where a schedule is planned at all. */
-export function barTabs(narrow: boolean, schedule = true): FloorBarTab[] {
-  return narrow && schedule ? [...FLOOR_TABS, SCHEDULE_TAB] : [...FLOOR_TABS];
+/** The tabs the rail offers: all of them where a schedule is planned, and
+ *  every one but "Rozvrh" where none is. The same on every width. */
+export function barTabs(schedule: boolean): FloorTab[] {
+  return schedule ? [...FLOOR_TABS] : FLOOR_TABS.filter((tab) => tab !== "schedule");
 }
 
 /** Each rail tab's outline icon, beside the order so the two cannot drift
  *  apart (design rework-floor-setup D1). */
-export const TAB_ICONS: Record<FloorBarTab, Icon> = {
+export const TAB_ICONS: Record<FloorTab, Icon> = {
   setup: IconSettings,
   data: IconDatabase,
   plan: IconCalendarCog,

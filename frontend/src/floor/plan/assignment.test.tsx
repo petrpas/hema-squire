@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ApiError } from "../../api";
 import i18n from "../../i18n";
 import { type Assignments, type FloorSetup, officialsApi } from "../floorApi";
-import { AssignmentSection } from "./AssignmentSection";
+import { AssignmentSection, useAssignments } from "./AssignmentSection";
 
 // Obsazení (spec floor-officials): a seat is set and pinned here, and a hard
 // rule refuses it by name.
@@ -64,6 +64,13 @@ const data: Assignments = {
   conflicts: [],
 };
 
+/** The section with its data read as the Plan tab reads it, shared with
+ *  the operations beside it. */
+function Harness() {
+  const { data: view, load } = useAssignments("cup");
+  return <AssignmentSection slug="cup" setup={setup} data={view} load={load} />;
+}
+
 let host: HTMLElement | null = null;
 let root: Root | null = null;
 
@@ -79,7 +86,7 @@ async function mount() {
   host = document.createElement("div");
   document.body.append(host);
   root = createRoot(host);
-  act(() => root?.render(<AssignmentSection slug="cup" setup={setup} />));
+  act(() => root?.render(<Harness />));
   await settle();
 }
 

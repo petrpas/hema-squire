@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 
 import { ApiError } from "../../api";
 import * as routes from "../../routes";
+import { FloorLayout } from "../FloorLayout";
 import { type FloorPerson, type FloorRoster, floorApi } from "../floorApi";
 
 /** Who the floor will work with: the floor roster, read live on every open,
@@ -27,23 +28,36 @@ export default function DataTab({
       );
   }, [slug]);
 
-  const source = keptByOrganizer ? (
-    <p className="muted">
-      {t("floor.data.fromImport")}{" "}
+  // the entrants of an organizer-kept tournament are changed in the office's
+  // Import phase: the tab's one operation, in its panel (spec floor-console)
+  const rail = keptByOrganizer ? (
+    <section className="rail-card">
+      <p>{t("floor.data.fromImport")}</p>
       <Link to={routes.consolePath(slug, "import")}>{t("floor.data.toImport")}</Link>
-    </p>
-  ) : (
+    </section>
+  ) : undefined;
+  const source = keptByOrganizer ? null : (
     <p className="muted">{t("floor.data.fromRegistrations")}</p>
   );
 
-  if (roster === null) return <p>{t("common.loading")}</p>;
-  if (roster === "draft") return <p className="muted">{t("floor.data.draft")}</p>;
-  if (roster === "error") return <p className="muted">{t("floor.data.loadFailed")}</p>;
+  if (roster === null || roster === "draft" || roster === "error") {
+    return (
+      <FloorLayout tab="data" className="floor-data" rail={rail}>
+        {roster === null ? (
+          <p>{t("common.loading")}</p>
+        ) : (
+          <p className="muted">
+            {roster === "draft" ? t("floor.data.draft") : t("floor.data.loadFailed")}
+          </p>
+        )}
+      </FloorLayout>
+    );
+  }
 
   const persons = new Map(roster.persons.map((person) => [person.key, person]));
 
   return (
-    <div className="floor-data">
+    <FloorLayout tab="data" className="floor-data" rail={rail}>
       {source}
       {roster.disciplines.map((discipline) => {
         const individuals = roster.individuals.filter((e) => e.discipline === discipline.slug);
@@ -88,7 +102,7 @@ export default function DataTab({
           </section>
         );
       })}
-    </div>
+    </FloorLayout>
   );
 }
 

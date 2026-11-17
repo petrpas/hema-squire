@@ -4,27 +4,61 @@ import { useTranslation } from "react-i18next";
 import Modal from "../../Modal";
 import { type FloorPiste, type PlanState, planApi } from "../floorApi";
 
-/** The working version: its difference against the published one, the
- *  publish gate with its obstacles, and re-planning, which is only ever
- *  asked for (spec floor-plan). */
-export function WorkingSection({
+/** The working version and its difference against the published one, in
+ *  the work (spec floor-plan, The working plan is compared with the
+ *  published one). */
+export function WorkingDiff({ plan, pistes }: { plan: PlanState; pistes: FloorPiste[] }) {
+  const { t } = useTranslation();
+  const pisteName = new Map(pistes.map((p) => [p.id, p.name]));
+  const where = (place: [number, string, string] | null) =>
+    place === null ? "—" : `${pisteName.get(place[0]) ?? place[0]}, ${place[2]}`;
+
+  return (
+    <section className="rail-card">
+      <h2>{t("floor.plan.working.title")}</h2>
+      {plan.published && (
+        <p className="muted">
+          {t("floor.plan.working.published", { version: plan.published.version })}
+        </p>
+      )}
+      {plan.working === null ? (
+        <p className="muted">{t("floor.plan.working.none")}</p>
+      ) : (
+        <>
+          <p>{t("floor.plan.working.version", { version: plan.working.version })}</p>
+          {plan.diff.length > 0 && (
+            <ul className="floor-diff">
+              {plan.diff.map((change) => (
+                <li key={change.activity}>
+                  <strong>{change.activity}</strong> {t(`floor.schedule.change.${change.kind}`)}
+                  {change.kind === "moved" && `: ${where(change.before)} → ${where(change.after)}`}
+                </li>
+              ))}
+            </ul>
+          )}
+        </>
+      )}
+    </section>
+  );
+}
+
+/** The publish gate with its obstacles, and re-planning, which is only ever
+ *  asked for: the Plan tab's operations (spec floor-plan). */
+export function PublishGate({
   slug,
   plan,
   names,
-  pistes,
   onChanged,
 }: {
   slug: string;
   plan: PlanState;
   names: Map<number, string>;
-  pistes: FloorPiste[];
   onChanged: () => void;
 }) {
   const { t } = useTranslation();
   const [confirming, setConfirming] = useState(false);
   const [failed, setFailed] = useState(false);
   const [busy, setBusy] = useState(false);
-  const pisteName = new Map(pistes.map((p) => [p.id, p.name]));
 
   function obstacle(code: string): string {
     const [kind, a = "", b = ""] = code.split(":");
@@ -54,32 +88,15 @@ export function WorkingSection({
     }
   }
 
-  const where = (place: [number, string, string] | null) =>
-    place === null ? "—" : `${pisteName.get(place[0]) ?? place[0]}, ${place[2]}`;
+  if (plan.working === null && !plan.published) return null;
 
   return (
     <section className="rail-card">
-      <h2>{t("floor.plan.working.title")}</h2>
-      {plan.published && (
-        <p className="muted">
-          {t("floor.plan.working.published", { version: plan.published.version })}
-        </p>
-      )}
+      <h2>{t("floor.plan.working.publish")}</h2>
       {plan.working === null ? (
-        <p className="muted">{t("floor.plan.working.none")}</p>
+        <p className="rail-hint">{t("floor.plan.working.none")}</p>
       ) : (
         <>
-          <p>{t("floor.plan.working.version", { version: plan.working.version })}</p>
-          {plan.diff.length > 0 && (
-            <ul className="floor-diff">
-              {plan.diff.map((change) => (
-                <li key={change.activity}>
-                  <strong>{change.activity}</strong> {t(`floor.schedule.change.${change.kind}`)}
-                  {change.kind === "moved" && `: ${where(change.before)} → ${where(change.after)}`}
-                </li>
-              ))}
-            </ul>
-          )}
           {plan.obstacles.length > 0 && (
             <ul className="floor-obstacles">
               {plan.obstacles.map((code) => (

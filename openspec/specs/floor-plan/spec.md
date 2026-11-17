@@ -31,7 +31,9 @@ discipline, k and the pool sizes.
 
 **The default.** The first variant SHALL be marked as the default.
 
-**Choosing.** Choosing a variant makes it the working version.
+**Choosing.** Choosing a variant makes it the working version. Each variant carries its
+own choice in the work. Asking for variants is an action of the tab's operations panel
+(`floor-console`, A tab's operations stand in a panel on the right).
 
 **When there are none.** Where the planner returns no variant, the tab SHALL show the
 planner's explanation in place of the variants.
@@ -44,7 +46,7 @@ following:
 
 #### Scenario: Choosing a variant
 - **WHEN** the organizer chooses the second variant
-- **THEN** it becomes the working version, and the schedule panel draws it
+- **THEN** it becomes the working version, and the `schedule` tab draws it
 
 #### Scenario: Choosing pool counts only
 - **WHEN** "Plánovat rozvrh" is off and the organizer chooses a variant
@@ -102,19 +104,24 @@ difference:
 - activities added;
 - activities removed.
 
-The schedule panel SHALL mark the moved, added and removed activities without colour
-beyond the design tokens. When a schedule hangs printed on the wall, "what changed since
-the version on the wall" is the output that matters most.
+The `plan` tab states the difference in its work. The `schedule` tab, showing the
+working version, SHALL mark the moved, added and removed activities without colour
+beyond the design tokens. When a schedule hangs printed on the wall, "what changed
+since the version on the wall" is the output that matters most.
 
 #### Scenario: A moved pool is stated
 - **WHEN** re-planning moves Sabre pool 3 from piste 2 at 10:40 to piste 5 at 10:20
 - **THEN** the difference lists that pool with both placements
 
+#### Scenario: The change is marked on Rozvrh
+- **WHEN** the organizer opens `schedule` and switches it to the working version after that re-plan
+- **THEN** Sabre pool 3 is drawn on piste 5 marked as moved, and its old placement is marked as removed
+
 ### Requirement: Re-planning is asked for and never automatic
 The floor console SHALL never change the working or published plan on its own.
 
 **What starts it.** "Přeplánovat" SHALL build a new working version from the current
-state. The current state is:
+state. It is an action of the `plan` tab's operations panel. The current state is:
 - the existing pins;
 - every activity that has started, frozen where it stands;
 - Setup as it now stands.
@@ -127,7 +134,7 @@ discipline in Setup and re-plans.
 version. It reaches the floor only when published.
 
 **Slip.** Slip between the published plan and the activities' actual progress SHALL be
-shown in the schedule panel once activities report progress (`floor-pools`,
+shown on the `schedule` tab once activities report progress (`floor-pools`,
 `floor-bracket`).
 
 #### Scenario: Re-planning freezes the past
@@ -137,23 +144,6 @@ shown in the schedule panel once activities report progress (`floor-pools`,
 #### Scenario: A free piste joins by Setup
 - **WHEN** piste 6 serves no discipline, and the organizer assigns it to Sabre as regular and re-plans
 - **THEN** the new working version may place Sabre's remaining activities on piste 6
-
-### Requirement: The schedule panel draws piste × time
-With a schedule planned, the schedule panel SHALL draw the plan for one chosen day as
-piste × time:
-- the published version where there is one, otherwise the working version;
-- each activity labelled with its discipline and pool number or round.
-
-**Time and pistes.** Times are wall-clock times in the tournament's timezone. The panel
-draws every piste that serves a discipline of that day. Its reserve pistes are marked
-as reserve.
-
-**Drawing.** The panel SHALL be static markup, with no animation, and SHALL obey the
-`design-system` prohibitions.
-
-#### Scenario: The panel shows the day chosen
-- **WHEN** the organizer chooses Sunday in the schedule panel
-- **THEN** only Sunday's activities are drawn, on the pistes serving Sunday's disciplines
 
 ### Requirement: The plan's preferences are edited on the Plan tab
 The `plan` tab SHALL hold the plan's preferences, above the variants, with one save:
@@ -180,3 +170,39 @@ the draw (`floor-draw`). A draw already announced keeps the weights it was drawn
 #### Scenario: Weights are not on the pools tab
 - **WHEN** the organizer opens the `pools` tab
 - **THEN** it offers no field for a draw weight, and the draw uses the weights saved on the `plan` tab
+
+### Requirement: Rozvrh draws piste × time
+With a schedule planned, the `schedule` tab ("Rozvrh") SHALL draw the plan for one
+chosen day as piste × time. It is the whole of the tab's work, at the full width, with
+no operations panel.
+
+**What is drawn.**
+- **The version.** It draws the published version where there is one, otherwise the
+  working version.
+- **The other version.** Where both exist, a choice at the head of the work switches to
+  the working version, with its changes marked against the published one.
+- **The day.** Where the plan spans more than one day, a choice of day stands at the
+  head of the work, and the first day is chosen until another is.
+- **Each activity.** Each activity is labelled with its discipline and pool number or
+  round.
+
+**Until a plan exists.** The tab states in one line that no plan has been made.
+
+**Time and pistes.** Times are wall-clock times in the tournament's timezone. The tab
+draws every piste that serves a discipline of that day. Its reserve pistes are marked
+as reserve.
+
+**Fresh on arrival.** The tab SHALL read the plan again each time it is opened, so a
+version chosen or published on `plan` is what it draws.
+
+**Drawing.** The grid SHALL be static markup, with no animation, and SHALL obey the
+`design-system` prohibitions.
+
+#### Scenario: The tab shows the day chosen
+- **WHEN** the organizer chooses Sunday on the `schedule` tab
+- **THEN** only Sunday's activities are drawn, on the pistes serving Sunday's disciplines
+
+#### Scenario: A published plan is drawn on arrival
+- **WHEN** the organizer publishes on `plan` and then follows the rail to `schedule`
+- **THEN** the published version is drawn, and no operations panel stands beside it
+

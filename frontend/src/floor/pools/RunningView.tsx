@@ -9,34 +9,16 @@ import { PoolSheet } from "./PoolSheet";
 import { StatsTable } from "./StatsTable";
 
 /** The pools while they run and once complete: each pool's sheet and
- *  standings, the warnings, the call list, printing, and the close gate
- *  (spec floor-pools). */
+ *  standings, its print beside it, and the warnings (spec floor-pools). The
+ *  call list and the close gate are the tab's operations (RunningActions). */
 export function RunningView({ slug, discipline, view, name, pistes, onChanged }: ViewProps) {
   const { t } = useTranslation();
-  const [closing, setClosing] = useState<{ ranking: StatsRow[]; advance: number } | null>(null);
   const draw = view.draw;
   if (draw === null) return null;
   const standings = view.standings;
 
   return (
     <>
-      {view.call_list && view.call_list.length > 0 && (
-        <section className="rail-card">
-          <h2>{t("floor.pools.callList")}</h2>
-          <ul>
-            {view.call_list.map((call) => (
-              <li key={call.pool}>
-                {t("floor.pools.pool", { number: call.pool })}
-                {call.piste_id !== null && `, ${pistes.get(call.piste_id) ?? call.piste_id}`}
-                {call.planned_start !== null &&
-                  `, ${new Date(call.planned_start).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`}
-                : {call.members.map(name).join(", ")}
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
-
       {standings && standings.warnings.length > 0 && (
         <ul className="floor-obstacles">
           {standings.warnings.map((w) => (
@@ -83,47 +65,80 @@ export function RunningView({ slug, discipline, view, name, pistes, onChanged }:
           )}
         </section>
       ))}
+    </>
+  );
+}
 
-      {view.state === "complete" && (
-        <button
-          type="button"
-          className="btn-primary"
-          onClick={() => void poolsApi.closePreview(slug, discipline).then(setClosing)}
-        >
-          {t("floor.pools.close")}
-        </button>
+/** The running pools' operations, in the panel: the call list, and the
+ *  close gate once every bout is recorded. */
+export function RunningActions({ slug, discipline, view, name, pistes, onChanged }: ViewProps) {
+  const { t } = useTranslation();
+  const [closing, setClosing] = useState<{ ranking: StatsRow[]; advance: number } | null>(null);
+
+  return (
+    <>
+      {view.call_list && view.call_list.length > 0 && (
+        <section className="rail-card">
+          <h2>{t("floor.pools.callList")}</h2>
+          <ul>
+            {view.call_list.map((call) => (
+              <li key={call.pool}>
+                {t("floor.pools.pool", { number: call.pool })}
+                {call.piste_id !== null && `, ${pistes.get(call.piste_id) ?? call.piste_id}`}
+                {call.planned_start !== null &&
+                  `, ${new Date(call.planned_start).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`}
+                : {call.members.map(name).join(", ")}
+              </li>
+            ))}
+          </ul>
+        </section>
       )}
 
-      {closing !== null && (
-        <Modal onClose={() => setClosing(null)}>
-          <div className="modal">
-            <h2>{t("floor.pools.close")}</h2>
-            <p>
-              {t("floor.pools.advanceCount", {
-                count: closing.advance,
-                total: closing.ranking.length,
-              })}
-            </p>
-            <StatsTable rows={closing.ranking} name={name} cut={closing.advance} />
-            <div className="modal-actions">
-              <button type="button" className="secondary" onClick={() => setClosing(null)}>
-                {t("common.cancel")}
-              </button>
-              <button
-                type="button"
-                className="btn-primary"
-                onClick={() =>
-                  void poolsApi.close(slug, discipline).then(() => {
-                    setClosing(null);
-                    onChanged();
-                  })
-                }
-              >
-                {t("floor.pools.close")}
-              </button>
-            </div>
-          </div>
-        </Modal>
+      {view.state === "complete" ? (
+        <section className="rail-card">
+          <h2>{t("floor.pools.close")}</h2>
+          <button
+            type="button"
+            className="btn-primary"
+            onClick={() => void poolsApi.closePreview(slug, discipline).then(setClosing)}
+          >
+            {t("floor.pools.close")}
+          </button>
+
+          {closing !== null && (
+            <Modal onClose={() => setClosing(null)}>
+              <div className="modal">
+                <h2>{t("floor.pools.close")}</h2>
+                <p>
+                  {t("floor.pools.advanceCount", {
+                    count: closing.advance,
+                    total: closing.ranking.length,
+                  })}
+                </p>
+                <StatsTable rows={closing.ranking} name={name} cut={closing.advance} />
+                <div className="modal-actions">
+                  <button type="button" className="secondary" onClick={() => setClosing(null)}>
+                    {t("common.cancel")}
+                  </button>
+                  <button
+                    type="button"
+                    className="btn-primary"
+                    onClick={() =>
+                      void poolsApi.close(slug, discipline).then(() => {
+                        setClosing(null);
+                        onChanged();
+                      })
+                    }
+                  >
+                    {t("floor.pools.close")}
+                  </button>
+                </div>
+              </div>
+            </Modal>
+          )}
+        </section>
+      ) : (
+        <p className="rail-hint">{t("floor.ops.idle.running")}</p>
       )}
     </>
   );

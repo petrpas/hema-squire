@@ -47,8 +47,9 @@ export default function FloorRoute() {
   }
   if (loaded === null) return <p>{t("common.loading")}</p>;
 
-  // no tab, or one that does not exist, lands on the default one
-  if (!isFloorTab(tab)) {
+  // no tab, or one that does not exist, lands on the default one; "Rozvrh"
+  // does not exist where no schedule is planned (spec floor-console)
+  if (!isFloorTab(tab) || (tab === "schedule" && loaded.summary.plan_schedule === false)) {
     return (
       <Navigate to={routes.floorPath(slug, defaultTab(loaded.summary.plan_published))} replace />
     );

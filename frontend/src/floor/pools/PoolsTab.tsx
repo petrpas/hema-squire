@@ -1,22 +1,33 @@
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 
 import * as routes from "../../routes";
+import { DisciplineStrip } from "../DisciplineStrip";
+import { FloorLayout } from "../FloorLayout";
 import { type FloorSetup, floorApi, type PoolsView, poolsApi } from "../floorApi";
 import { usePolled } from "../usePolled";
-import { ClosedView } from "./ClosedView";
-import { DrawView } from "./DrawView";
+import { ClosedActions, ClosedView } from "./ClosedView";
+import { DrawActions, DrawView } from "./DrawView";
 import { RingKeys } from "./RingKeys";
-import { RunningView } from "./RunningView";
+import { RunningActions, RunningView } from "./RunningView";
 
 /** Skupiny: the selected discipline in its state — the draw, the pools
- *  running or complete, or closed — and the piste screens' links (spec
- *  floor-pools). Refreshed every fifteen seconds, as results come in from
+ *  running or complete, or closed — in the work, and the state's operations
+ *  with the piste screens' links in the panel (spec floor-pools, spec
+ *  floor-console). Refreshed every fifteen seconds, as results come in from
  *  the pistes. */
-export default function PoolsTab({ slug, discipline }: { slug: string; discipline?: string }) {
+export default function PoolsTab({
+  slug,
+  discipline,
+  fallback,
+}: {
+  slug: string;
+  discipline?: string;
+  /** The discipline kept across the console, for an address naming none. */
+  fallback?: string;
+}) {
   const { t } = useTranslation();
-  const navigate = useNavigate();
   const [setup, setSetup] = useState<FloorSetup | null>(null);
 
   useEffect(() => {
@@ -24,7 +35,10 @@ export default function PoolsTab({ slug, discipline }: { slug: string; disciplin
   }, [slug]);
 
   const selected =
-    setup?.disciplines.find((d) => d.slug === discipline) ?? setup?.disciplines[0] ?? null;
+    setup?.disciplines.find((d) => d.slug === discipline) ??
+    setup?.disciplines.find((d) => d.slug === fallback) ??
+    setup?.disciplines[0] ??
+    null;
   const fetchView = useCallback(
     (): Promise<PoolsView | null> =>
       selected === null ? Promise.resolve(null) : poolsApi.view(slug, selected.id),
@@ -32,7 +46,13 @@ export default function PoolsTab({ slug, discipline }: { slug: string; disciplin
   );
   const { data, failed, reload } = usePolled(fetchView, selected?.id);
 
-  if (setup === null || selected === null) return <p>{t("common.loading")}</p>;
+  if (setup === null || selected === null) {
+    return (
+      <FloorLayout tab="pools">
+        <p>{t("common.loading")}</p>
+      </FloorLayout>
+    );
+  }
 
   const pistes = new Map(setup.pistes.map((p) => [p.id ?? 0, p.name]));
   // a discipline that takes over fences no pools of its own (spec floor-pools)
@@ -50,22 +70,39 @@ export default function PoolsTab({ slug, discipline }: { slug: string; disciplin
     onChanged: reload,
   };
 
-  return (
-    <div className="floor-data floor-pools">
-      <label className="floor-search">
-        {t("floor.pools.discipline")}
-        <select
-          value={selected.slug}
-          onChange={(event) => navigate(routes.floorPath(slug, "pools", event.target.value))}
-        >
-          {setup.disciplines.map((d) => (
-            <option key={d.id} value={d.slug}>
-              {d.name}
-            </option>
-          ))}
-        </select>
-      </label>
+  const head = (
+    <DisciplineStrip
+      slug={slug}
+      tab="pools"
+      disciplines={setup.disciplines}
+      current={selected.slug}
+    />
+  );
+  const actions =
+    source !== undefined ? (
+      <p className="rail-hint">{t("floor.ops.idle.takenOver")}</p>
+    ) : data === null ? null : !data.checkin_closed ? (
+      <p className="rail-hint">{t("floor.ops.idle.checkinOpen")}</p>
+    ) : data.state === "waiting" ? (
+      <DrawActions {...common} view={data} />
+    ) : data.state === "closed" ? (
+      <ClosedActions {...common} view={data} />
+    ) : (
+      <RunningActions {...common} view={data} />
+    );
 
+  return (
+    <FloorLayout
+      tab="pools"
+      className="floor-data floor-pools"
+      head={head}
+      rail={
+        <>
+          {actions}
+          <RingKeys slug={slug} />
+        </>
+      }
+    >
       {source !== undefined ? (
         <p>
           {t("floor.pools.takenOver", { name: source.name })}{" "}
@@ -87,8 +124,6 @@ export default function PoolsTab({ slug, discipline }: { slug: string; disciplin
       ) : (
         <RunningView {...common} view={data} />
       )}
-
-      <RingKeys slug={slug} />
-    </div>
+    </FloorLayout>
   );
 }

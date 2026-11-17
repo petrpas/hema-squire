@@ -5623,8 +5623,9 @@ tr.export-line td {
 
 /* ===== floor console (tournament day) =====
    The office console's top bar across the full width, the tabs as a rail of
-   outline icons down the left edge, the work beside the schedule panel (spec
-   floor-console). Tokens only; no shadow, no transition. */
+   outline icons down the left edge, the work beside the tab's operations
+   panel, the office's `.rail` (spec floor-console). Tokens only; no shadow,
+   no transition. */
 
 .floor-body {
   display: flex;
@@ -5726,22 +5727,120 @@ tr.export-line td {
   overflow-y: auto;
 }
 
-.floor-work[hidden] {
-  display: none;
-}
-
+/* Rozvrh, a tab of its own at the full width (spec floor-plan) */
 .floor-schedule {
-  flex: none;
-  width: 18rem;
-  padding: 1rem 1.2rem;
-  border-left: var(--border-w) solid var(--hairline);
-  background: var(--paper-raised);
-  overflow-y: auto;
+  padding: 1rem 1.4rem;
 }
 
 .floor-schedule h2 {
   font-size: var(--body-size);
   margin: 0 0 0.5rem;
+}
+
+/* the head of the work: the discipline strip and a search, and on a narrow
+   screen the control opening the operations drawer */
+.floor-head {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.6rem 1rem;
+}
+
+.floor-head-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.floor-ops-open {
+  flex: none;
+  min-height: 44px;
+}
+
+.floor-ops-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+}
+
+/* a form in the 300px panel stacks a field to a line */
+.floor-row.floor-rail-form {
+  flex-direction: column;
+  align-items: stretch;
+  border-bottom: none;
+}
+
+/* a parameter table in the 300px panel: each row wraps, its kind stated
+   under the field rather than in a third column off the edge */
+.floor-ops .floor-params,
+.floor-ops .floor-params tbody,
+.floor-ops .floor-params tr {
+  display: block;
+}
+
+.floor-ops .floor-params tr {
+  padding: 0.4rem 0;
+  border-bottom: var(--border-w) solid var(--hairline);
+}
+
+.floor-ops .floor-params th,
+.floor-ops .floor-params td {
+  display: block;
+  padding: 0.15rem 0;
+  border: none;
+  text-align: left;
+}
+
+/* A step tab's disciplines as tabs (spec floor-console). The current one is
+   ruled and inked, never coloured; a strip too long for the width scrolls
+   within itself and the page does not. */
+.floor-strip {
+  display: flex;
+  overflow-x: auto;
+  border-bottom: var(--border-w) solid var(--hairline);
+  max-width: 100%;
+}
+
+.floor-strip button {
+  flex: none;
+  min-height: 44px;
+  padding: 0 0.9rem;
+  border: none;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: var(--ink-faded);
+  white-space: nowrap;
+  font: inherit;
+}
+
+.floor-strip button:hover {
+  color: var(--ink);
+  background: var(--paper-shade);
+}
+
+.floor-strip button.active {
+  color: var(--ink);
+  border-bottom-color: var(--ink);
+}
+
+.floor-strip button:focus-visible {
+  outline: var(--focus);
+  outline-offset: -2px;
+}
+
+/* The operations panel as a drawer on a narrow screen: the native dialog,
+   its content against the right edge over the work, at once and with no
+   shadow; the dim is the dialogs' own backdrop (spec floor-console). */
+.modal-drawer {
+  justify-content: flex-end;
+  align-items: stretch;
+}
+
+.modal-drawer .rail {
+  width: min(300px, calc(100vw - 3rem));
+  height: 100dvh;
 }
 
 .floor-not-yet {
@@ -6149,9 +6248,7 @@ tr.export-line td {
   }
 
   .floor-schedule {
-    width: auto;
-    flex: 1;
-    border-left: none;
+    padding: 1rem 16px;
   }
 }
 

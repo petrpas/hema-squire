@@ -7,13 +7,22 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { type Account, api, type TournamentDetail } from "../api";
 import i18n from "../i18n";
 import FloorRoute from "./FloorRoute";
-import { type FloorSetup, type FloorSummary, floorApi, planApi } from "./floorApi";
+import {
+  bracketApi,
+  checkinApi,
+  type FloorSetup,
+  type FloorSummary,
+  floorApi,
+  planApi,
+  poolsApi,
+} from "./floorApi";
 
-// The floor console's rail (spec floor-console): eight tabs in a fixed order,
-// each an icon named only in its hint, the default tab following publication,
-// a badge meaning "waiting" said in words, and the schedule panel becoming
-// the rail's last tab below the canonical breakpoint, where a schedule is
-// planned at all.
+// The floor console's rail and frame (spec floor-console): the tabs in a fixed
+// order, "Rozvrh" after Plán only where a schedule is planned, each an icon
+// named only in its hint, the default tab following publication, a badge
+// meaning "waiting" said in words; each tab's operations in a panel on the
+// right, a drawer on a narrow screen; and the discipline chosen on a step tab
+// kept across the console.
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -27,8 +36,16 @@ const tournament = {
   is_event: false,
 } as unknown as TournamentDetail;
 
+const keptByOrganizer = {
+  ...tournament,
+  registrations_kept_by: "organizer",
+} as unknown as TournamentDetail;
+
 const setup: FloorSetup = {
-  disciplines: [{ id: 1, slug: "LS", name: "Longsword", kind: "individual" }],
+  disciplines: [
+    { id: 1, slug: "LS", name: "Longsword", kind: "individual" },
+    { id: 2, slug: "SB", name: "Sabre", kind: "individual" },
+  ],
   persons: [],
   scope: { plan_schedule: true, multi_day: false, plan_officials: false },
   days: {
@@ -62,13 +79,21 @@ function stubViewport(narrow: boolean) {
 let host: HTMLElement | null = null;
 let root: Root | null = null;
 
-async function open(path: string, answer: FloorSummary = summary()) {
-  vi.spyOn(api, "consoleTournament").mockResolvedValue(tournament);
+async function open(
+  path: string,
+  answer: FloorSummary = summary(),
+  detail: TournamentDetail = tournament,
+) {
+  vi.spyOn(api, "consoleTournament").mockResolvedValue(detail);
   vi.spyOn(api, "account").mockResolvedValue({ id: 1 } as unknown as Account);
   vi.spyOn(floorApi, "summary").mockResolvedValue(answer);
   vi.spyOn(floorApi, "setup").mockResolvedValue(setup);
   vi.spyOn(floorApi, "roster").mockRejectedValue(new Error("not under test"));
   vi.spyOn(planApi, "state").mockRejectedValue(new Error("not under test"));
+  vi.spyOn(checkinApi, "today").mockRejectedValue(new Error("not under test"));
+  vi.spyOn(poolsApi, "view").mockRejectedValue(new Error("not under test"));
+  vi.spyOn(poolsApi, "ringKeys").mockResolvedValue([]);
+  vi.spyOn(bracketApi, "view").mockRejectedValue(new Error("not under test"));
   host = document.createElement("div");
   document.body.append(host);
   root = createRoot(host);
@@ -79,6 +104,7 @@ async function open(path: string, answer: FloorSummary = summary()) {
           <Route element={<Outlet context={{ onLogout: () => {} }} />}>
             <Route path="organizer/:slug/floor" element={<FloorRoute />} />
             <Route path="organizer/:slug/floor/:tab" element={<FloorRoute />} />
+            <Route path="organizer/:slug/floor/:tab/:discipline" element={<FloorRoute />} />
           </Route>
         </Routes>
       </MemoryRouter>,
@@ -93,6 +119,26 @@ async function open(path: string, answer: FloorSummary = summary()) {
 
 function tabs(): HTMLButtonElement[] {
   return [...(host?.querySelectorAll<HTMLButtonElement>(".floor-rail [role=tab]") ?? [])];
+}
+
+function click(element: Element | null | undefined) {
+  act(() => void element?.dispatchEvent(new MouseEvent("click", { bubbles: true })));
+}
+
+async function settle() {
+  for (let i = 0; i < 4; i++) {
+    await act(async () => {
+      await Promise.resolve();
+    });
+  }
+}
+
+function railTab(id: string): HTMLButtonElement | undefined {
+  return tabs().find((tab) => tab.id === `floor-tab-${id}`);
+}
+
+function strip(): string | undefined {
+  return host?.querySelector(".floor-strip [aria-selected=true]")?.textContent ?? undefined;
 }
 
 function selected(): string | undefined {
@@ -113,8 +159,8 @@ afterEach(() => {
 });
 
 describe("the floor console's tabs", () => {
-  it("offers all eight in their fixed order", async () => {
-    await open("/organizer/cup/floor/data");
+  it("offers eight in their fixed order where no schedule is planned", async () => {
+    await open("/organizer/cup/floor/data", summary({ plan_schedule: false }));
 
     expect(tabs().map((tab) => tab.getAttribute("aria-label"))).toEqual([
       t("floor.tabs.setup"),
@@ -128,8 +174,15 @@ describe("the floor console's tabs", () => {
     ]);
   });
 
+  it("offers Rozvrh right after Plán where a schedule is planned", async () => {
+    await open("/organizer/cup/floor/data", summary({ plan_schedule: true }));
+
+    expect(tabs()).toHaveLength(9);
+    expect(tabs()[3]?.getAttribute("aria-label")).toBe(t("floor.tabs.schedule"));
+  });
+
   it("draws an icon and names the tab only in its hint", async () => {
-    await open("/organizer/cup/floor/data");
+    await open("/organizer/cup/floor/data", summary({ plan_schedule: false }));
 
     const today = tabs()[3];
     expect(today?.querySelector("svg")).not.toBeNull();
@@ -158,35 +211,83 @@ describe("the floor console's tabs", () => {
     );
   });
 
-  it("draws the schedule beside the work on a wide screen", async () => {
-    await open("/organizer/cup/floor/data");
+  it("lands on the default tab from Rozvrh where no schedule is planned", async () => {
+    await open("/organizer/cup/floor/schedule", summary({ plan_schedule: false }));
 
-    expect(tabs()).toHaveLength(8);
-    expect(host?.querySelector(".floor-schedule")).not.toBeNull();
+    expect(selected()).toBe("floor-tab-setup");
+    expect(host?.querySelector(".floor-schedule")).toBeNull();
   });
 
-  it("makes the schedule the last tab on a narrow screen", async () => {
+  it("keeps the same tabs on a narrow screen", async () => {
     stubViewport(true);
-    await open("/organizer/cup/floor/data");
+    await open("/organizer/cup/floor/data", summary({ plan_schedule: true }));
 
-    const last = tabs()[tabs().length - 1];
     expect(tabs()).toHaveLength(9);
-    expect(last?.getAttribute("aria-label")).toBe(t("floor.tabs.schedule"));
-    expect(host?.querySelector(".floor-schedule")).toBeNull();
-
-    act(() => void last?.dispatchEvent(new MouseEvent("click", { bubbles: true })));
-
-    expect(selected()).toBe("floor-tab-schedule");
-    expect(host?.querySelector(".floor-schedule")).not.toBeNull();
-    expect(host?.querySelector<HTMLElement>(".floor-work")?.hidden).toBe(true);
+    expect(tabs()[3]?.getAttribute("aria-label")).toBe(t("floor.tabs.schedule"));
   });
 
-  it("draws no schedule without one being planned", async () => {
-    stubViewport(true);
-    await open("/organizer/cup/floor/data", summary({ plan_schedule: false }));
+  it("draws no operations panel on Přehled, and the matrix takes the width", async () => {
+    await open("/organizer/cup/floor/today");
 
-    expect(tabs()).toHaveLength(8);
-    expect(host?.querySelector(".floor-schedule")).toBeNull();
+    expect(host?.querySelector("aside.rail")).toBeNull();
+  });
+
+  it("puts a tab's operations in a panel titled after it", async () => {
+    await open("/organizer/cup/floor/data", summary(), keptByOrganizer);
+
+    const panel = host?.querySelector("aside.rail");
+    expect(panel?.getAttribute("aria-label")).toBe(
+      `${t("rail.operations")} · ${t("floor.tabs.data")}`,
+    );
+    expect(panel?.textContent).toContain(t("floor.data.toImport"));
+  });
+
+  it("opens the operations as a drawer on a narrow screen", async () => {
+    stubViewport(true);
+    await open("/organizer/cup/floor/data", summary(), keptByOrganizer);
+    expect(host?.querySelector("aside.rail")).toBeNull();
+    const opener = host?.querySelector<HTMLButtonElement>(".floor-ops-open");
+    expect(opener?.textContent).toBe(t("floor.ops.open"));
+
+    click(opener);
+
+    const drawer = host?.querySelector("dialog.modal-drawer");
+    expect(drawer?.querySelector("aside.rail")?.textContent).toContain(t("floor.data.toImport"));
+  });
+
+  it("offers no drawer control where a tab has no operations", async () => {
+    stubViewport(true);
+    await open("/organizer/cup/floor/today");
+
+    expect(host?.querySelector(".floor-ops-open")).toBeNull();
+  });
+
+  it("keeps the discipline chosen on a step tab through a detour", async () => {
+    await open("/organizer/cup/floor/pools/SB", summary({ plan_published: true }));
+    expect(strip()).toBe("Sabre");
+
+    click(railTab("today"));
+    await settle();
+    click(railTab("bracket"));
+    await settle();
+
+    expect(selected()).toBe("floor-tab-bracket");
+    expect(strip()).toBe("Sabre");
+  });
+
+  it("chooses a step tab's discipline from a strip of tabs, not a drop-down", async () => {
+    await open("/organizer/cup/floor/pools");
+
+    expect(host?.querySelector(".floor-work select")).toBeNull();
+    expect(strip()).toBe("Longsword");
+    click(
+      [...(host?.querySelectorAll(".floor-strip [role=tab]") ?? [])].find(
+        (tab) => tab.textContent === "Sabre",
+      ),
+    );
+    await settle();
+
+    expect(strip()).toBe("Sabre");
   });
 
   it("asks before leaving Setup with an unsaved piste", async () => {

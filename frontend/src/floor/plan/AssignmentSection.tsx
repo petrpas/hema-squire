@@ -10,15 +10,19 @@ import { openPdf } from "../pdf";
  *  whose block is gone; a seat is set (and pinned) here, refused with the
  *  broken rule named; each official's rozpis and each piste's sheet print
  *  (spec floor-officials). */
-export function AssignmentSection({ slug, setup }: { slug: string; setup: FloorSetup }) {
+export function AssignmentSection({
+  slug,
+  setup,
+  data,
+  load,
+}: {
+  slug: string;
+  setup: FloorSetup;
+  data: Assignments | null;
+  load: () => void;
+}) {
   const { t } = useTranslation();
-  const [data, setData] = useState<Assignments | null>(null);
   const [refusal, setRefusal] = useState<string | null>(null);
-
-  const load = useCallback(() => {
-    officialsApi.view(slug).then(setData, () => setData(null));
-  }, [slug]);
-  useEffect(load, [load]);
 
   if (data === null || !data.published) return null;
   const names = new Map(setup.disciplines.map((d) => [d.id, d.name]));
@@ -38,16 +42,7 @@ export function AssignmentSection({ slug, setup }: { slug: string; setup: FloorS
 
   return (
     <section className="rail-card">
-      <h2>
-        {t("floor.officials.title")}{" "}
-        <button
-          type="button"
-          className="secondary"
-          onClick={() => void officialsApi.run(slug).then(load)}
-        >
-          {t("floor.officials.rerun")}
-        </button>
-      </h2>
+      <h2>{t("floor.officials.title")}</h2>
       {refusal !== null && (
         <p className="floor-missing" role="alert">
           {t(`floor.officials.rules.${refusal}`, { defaultValue: t("floor.plan.failed") })}
@@ -120,7 +115,47 @@ export function AssignmentSection({ slug, setup }: { slug: string; setup: FloorS
           ))}
         </tbody>
       </table>
-      <div className="floor-row-actions">
+    </section>
+  );
+}
+
+/** The assignment, read once and shared by the table in the work and the
+ *  operations beside it. */
+export function useAssignments(slug: string): { data: Assignments | null; load: () => void } {
+  const [data, setData] = useState<Assignments | null>(null);
+  const load = useCallback(() => {
+    officialsApi.view(slug).then(setData, () => setData(null));
+  }, [slug]);
+  useEffect(load, [load]);
+  return { data, load };
+}
+
+/** Obsazení's operations, in the Plan tab's panel: a re-run, and each
+ *  official's rozpis and each piste's sheet to print (spec floor-officials). */
+export function AssignmentActions({
+  slug,
+  setup,
+  data,
+  load,
+}: {
+  slug: string;
+  setup: FloorSetup;
+  data: Assignments | null;
+  load: () => void;
+}) {
+  const { t } = useTranslation();
+  if (data === null || !data.published) return null;
+  return (
+    <section className="rail-card">
+      <h2>{t("floor.officials.title")}</h2>
+      <button
+        type="button"
+        className="secondary"
+        onClick={() => void officialsApi.run(slug).then(load)}
+      >
+        {t("floor.officials.rerun")}
+      </button>
+      <div className="floor-row-actions floor-prints">
         <span>{t("floor.officials.print")}</span>
         {setup.officials.map((o) =>
           o.id === null ? null : (

@@ -149,6 +149,16 @@ describe("the desk", () => {
     expect(host?.textContent).toContain(t("floor.checkin.unpaid"));
   });
 
+  it("leads the strip with everybody, and lists everyone there", async () => {
+    vi.spyOn(checkinApi, "desk").mockResolvedValue(desk);
+    await render(<CheckinTab slug="cup" />);
+
+    const strip = [...(host?.querySelectorAll(".floor-strip [role=tab]") ?? [])];
+    expect(strip[0]?.textContent).toBe(t("floor.ops.all"));
+    expect(strip[0]?.getAttribute("aria-selected")).toBe("true");
+    expect(host?.querySelectorAll(".floor-desk tbody th").length).toBeGreaterThan(1);
+  });
+
   it("states the close gate's impact before confirming", async () => {
     vi.spyOn(checkinApi, "desk").mockResolvedValue(desk);
     vi.spyOn(checkinApi, "impact").mockResolvedValue({
@@ -167,6 +177,8 @@ describe("the desk", () => {
     const close = [...(host?.querySelectorAll("button") ?? [])].find(
       (b) => b.textContent === t("floor.checkin.close"),
     );
+    // the gate is the tab's operation, in its panel, not in the list
+    expect(close?.closest("aside.rail")).not.toBeNull();
     act(() => close?.click());
     await settle();
 
