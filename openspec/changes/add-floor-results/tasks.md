@@ -21,9 +21,9 @@
 
 ## 4. Frontend
 
-- [ ] 4.1 `frontend/src/floor/results/`: the standing, export and print, and the publish gate.
-- [ ] 4.2 `TournamentDetail.tsx`: the Program and Výsledky tabs from the floor's public summary, and the itinerary block for a signed-in fencer. Add the routes in `routes.ts`.
-- [ ] 4.3 Add tests and the i18n strings.
+- [x] 4.1 `frontend/src/floor/results/`: the standing, export and print, and the publish gate.
+- [x] 4.2 `TournamentDetail.tsx`: the Program and Výsledky tabs from the floor's public summary, and the itinerary block for a signed-in fencer. The tabs are state, not addresses (design D6).
+- [x] 4.3 Add tests and the i18n strings.
 
 ## 5. Retention
 
@@ -31,6 +31,6 @@
 
 ## 6. Acceptance
 
-- [ ] 6.1 `pytest tests/floor -q` passes, and so do the public-browsing tests. `ruff`, `basedpyright` and the boundary test pass.
-- [ ] 6.2 `npm run typecheck`, `npm run check` and `npm test` pass.
-- [ ] 6.3 `openspec validate add-floor-results --strict` passes.
+- [x] 6.1 `pytest tests/floor -q` passes, and so do the public-browsing tests. `ruff`, `basedpyright` and the boundary test pass.
+- [x] 6.2 `npm run typecheck`, `npm run check` and `npm test` pass.
+- [x] 6.3 `openspec validate add-floor-results --strict` passes.

@@ -628,3 +628,66 @@ export const officialsApi = {
   printUrl: (slug: string, kind: "official" | "piste", id: number) =>
     `${base(slug)}/officials/print/${kind}/${id}`,
 };
+
+// ------------------------------------------------------------ results and the public floor
+
+export interface StandingRow {
+  place: number;
+  key?: string;
+  name: string;
+  club: string | null;
+  nationality: string | null;
+}
+
+export interface DisciplineResults {
+  discipline_id: number;
+  slug: string;
+  name: string;
+  standing: StandingRow[] | null;
+  published_at: string | null;
+}
+
+export const resultsApi = {
+  list: (slug: string) => request<DisciplineResults[]>(`${base(slug)}/results`),
+  publish: (slug: string, discipline: number) =>
+    request<void>(`${base(slug)}/results/${discipline}/publish`, { method: "POST" }),
+  withdraw: (slug: string, discipline: number) =>
+    request<void>(`${base(slug)}/results/${discipline}/publish`, { method: "DELETE" }),
+  exportUrl: (slug: string, discipline: number, fmt: "csv" | "pdf") =>
+    `${base(slug)}/results/${discipline}/${fmt}`,
+};
+
+export interface ProgramItem {
+  kind: "pool" | "bout";
+  round: number;
+  ordinal: number;
+  final: boolean;
+  day: string;
+  start: string;
+  end: string;
+  piste: string;
+}
+
+export const publicFloorApi = {
+  summary: (slug: string) =>
+    request<{ program: boolean; results: boolean }>(`${base(slug)}/public`),
+  program: (slug: string) =>
+    request<{ discipline: string; slug: string; slip: number | null; items: ProgramItem[] }[]>(
+      `${base(slug)}/public/program`,
+    ),
+  results: (slug: string) =>
+    request<{ discipline: string; slug: string; standing: StandingRow[] }[]>(
+      `${base(slug)}/public/results`,
+    ),
+  itinerary: (slug: string) =>
+    request<
+      {
+        discipline: string;
+        kind: "pool" | "bout";
+        number: number;
+        piste: string;
+        day: string;
+        start: string;
+      }[]
+    >(`${base(slug)}/public/itinerary`),
+};

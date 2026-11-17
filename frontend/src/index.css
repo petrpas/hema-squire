@@ -6068,3 +6068,20 @@ tr.export-line td {
 .floor-grid-officials {
   color: var(--ink-soft);
 }
+
+/* ----- the public floor (add-floor-results) ----- */
+
+.floor-public {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.floor-public h2 {
+  font-size: var(--body-size);
+  margin: 0 0 0.4rem;
+}
+
+.floor-itinerary {
+  margin-bottom: 1rem;
+}

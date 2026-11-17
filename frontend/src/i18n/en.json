@@ -1266,7 +1266,9 @@
       "registered": "Registered",
       "teams": "Teams",
       "entrants": "Entrants",
-      "tournament_event": "Event"
+      "tournament_event": "Event",
+      "program": "Programme",
+      "results": "Results"
     },
     "close": "Close",
     "otherActions": "Other actions",
@@ -2301,6 +2303,10 @@
           "seeded": "seeded",
           "running": "running",
           "closed": "closed"
+        },
+        "results": {
+          "waiting": "waiting",
+          "published": "published"
         }
       }
     },
@@ -2466,6 +2472,25 @@
         "fencing": "The official fences then.",
         "failed": "That did not work."
       }
+    },
+    "results": {
+      "published": "published",
+      "waiting": "waiting",
+      "bracketOpen": "The standing comes once the bracket closes.",
+      "place": "Place",
+      "csv": "Export CSV",
+      "print": "Print",
+      "publish": "Publish the results",
+      "withdraw": "Withdraw publication",
+      "withdrawHint": "Withdrawing changes the public page at once."
+    },
+    "public": {
+      "pool": "pool {{number}}",
+      "final": "final",
+      "round": "round {{round}}",
+      "slip_one": "{{count}} minute behind",
+      "slip_other": "{{count}} minutes behind",
+      "itinerary": "Your day"
     }
   }
 }
