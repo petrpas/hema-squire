@@ -1,15 +1,15 @@
 ## 1. Engine
 
-- [ ] 1.1 `app/floor/engine/bracket.py`: seeding order, byes, advancement targets, the third place and the team seeding rule: average place of the best k members (D3).
-- [ ] 1.2 `tests/floor/test_floor_bracket_engine.py`:
+- [x] 1.1 `app/floor/engine/bracket.py`: seeding order, byes, advancement targets, the third place and the team seeding rule: average place of the best k members (D3).
+- [x] 1.2 `tests/floor/test_floor_bracket_engine.py`:
   - the order matches the adopted templates for every supported size;
   - Hypothesis: seeds 1 and 2 are always in opposite halves, and the byes are exactly
     the top P − A seeds.
 
 ## 2. Storage and service
 
-- [ ] 2.1 `app/floor/models.py`: `floor_brackets` and `floor_bracket_slots`, plus the bracket columns on `floor_bouts`. Add migration `floor_0005` and the classifications.
-- [ ] 2.2 `app/floor/bracket.py`:
+- [x] 2.1 `app/floor/models.py`: `floor_brackets` and `floor_bracket_slots`, plus the bracket columns on `floor_bouts`. Add migration `floor_0005` and the classifications.
+- [x] 2.2 `app/floor/bracket.py`:
   - propose and confirm (gate);
   - record with advancement in one transaction;
   - walkovers;
@@ -17,10 +17,10 @@
   - the correction refusal;
   - the third place;
   - closing.
-- [ ] 2.3 Register the Pavouk step states, the gate hooks and the progress.
-- [ ] 2.4 The ring screen serves elimination bouts: extend `ring.py`'s current-work query.
-- [ ] 2.5 Bracket PDF and PNG through Typst from the adopted templates.
-- [ ] 2.6 `tests/floor/test_floor_bracket.py`: one test per `floor-bracket` scenario.
+- [x] 2.3 Register the Pavouk step states, the gate hooks and the progress.
+- [x] 2.4 The ring screen serves elimination bouts: extend `ring.py`'s current-work query.
+- [x] 2.5 Bracket PDF and PNG through Typst from the adopted templates.
+- [x] 2.6 `tests/floor/test_floor_bracket.py`: one test per `floor-bracket` scenario.
 
 ## 3. Frontend
 

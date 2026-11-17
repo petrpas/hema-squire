@@ -16,6 +16,8 @@ from app.db import get_session
 from app.floor.models import (
     FloorArrival,
     FloorBout,
+    FloorBracket,
+    FloorBracketSlot,
     FloorDay,
     FloorDraw,
     FloorFormat,
@@ -307,6 +309,12 @@ def populate(session, tournament: Tournament, registration: Registration, actor:
         )
     )
     session.add(FloorRingKey(tournament_id=tid, piste_id=piste.id, key_hash="h", issued_at=now))
+    bracket = FloorBracket(
+        tournament_id=tid, discipline_id=discipline.id, size=2, advancing=2, confirmed_at=now
+    )
+    session.add(bracket)
+    session.flush()
+    session.add(FloorBracketSlot(bracket_id=bracket.id, round=0, position=0, entrant_key="reg:1"))
     session.commit()
 
 

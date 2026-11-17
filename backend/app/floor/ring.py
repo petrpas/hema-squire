@@ -93,12 +93,42 @@ def _when(pool: FloorPool) -> datetime:
     return start if start.tzinfo is not None else start.replace(tzinfo=UTC)
 
 
+def current_bout(session: Session, tid: int, piste: int) -> FloorBout | None:
+    """Where no pool runs: the piste's earliest elimination bout without a
+    result, of the bracket's earliest round."""
+    return session.scalar(
+        select(FloorBout)
+        .where(
+            FloorBout.tournament_id == tid,
+            FloorBout.bracket_id.is_not(None),
+            FloorBout.piste_id == piste,
+            FloorBout.recorded_at.is_(None),
+        )
+        .order_by(FloorBout.round, FloorBout.position)
+    )
+
+
 def work(session: Session, key: FloorRingKey, names: dict[str, str]) -> dict[str, object]:
     """What the piste screen shows: the piste, and its current pool's bouts."""
     piste = session.get(FloorPiste, key.piste_id)
     pool = current_pool(session, key.tournament_id, key.piste_id)
     if pool is None:
-        return {"piste": piste.name if piste else "", "pool": None}
+        bout = current_bout(session, key.tournament_id, key.piste_id)
+        return {
+            "piste": piste.name if piste else "",
+            "pool": None,
+            "bout": None
+            if bout is None
+            else {
+                "id": bout.id,
+                "round": bout.round,
+                "a": names.get(bout.a_key, bout.a_key),
+                "b": names.get(bout.b_key, bout.b_key),
+                "score_a": bout.score_a,
+                "score_b": bout.score_b,
+                "version": bout.version,
+            },
+        }
     draw = session.get(FloorDraw, pool.draw_id)
     bouts = session.scalars(
         select(FloorBout).where(FloorBout.pool_id == pool.id).order_by(FloorBout.ordinal)

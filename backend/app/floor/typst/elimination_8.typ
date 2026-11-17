@@ -140,4 +140,15 @@
       )
     }
   }
+  // Recorded winners in later rounds, filled by the floor (Squire): one array
+  // per round after the first, `none` where nobody has advanced yet.
+  for r in range(1, advanced.len() + 1) {
+    let names = advanced.at(r - 1)
+    for i in range(0, names.len()) {
+      let name = names.at(i)
+      if name != none {
+        place(top + left, dx: x_start(r) + 0.05cm, dy: line_y(r, i) - 1em, text[#name])
+      }
+    }
+  }
 })
