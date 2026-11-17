@@ -2295,6 +2295,12 @@
           "running": "running",
           "complete": "complete",
           "closed": "closed"
+        },
+        "bracket": {
+          "waiting": "waiting",
+          "seeded": "seeded",
+          "running": "running",
+          "closed": "closed"
         }
       }
     },
@@ -2407,7 +2413,40 @@
       "minus": "Take a point: {{name}}",
       "plus": "Add a point: {{name}}",
       "record": "Record",
-      "correct": "Correct"
+      "correct": "Correct",
+      "elimination": "Elimination"
+    },
+    "bracket": {
+      "poolsOpen": "The bracket waits for the pools to close.",
+      "none": "Nobody advances into a bracket.",
+      "proposal": "Proposed bracket: {{advancing}} advance, {{size}} places",
+      "bye": "bye",
+      "confirm": "Confirm the advancement",
+      "reopen": "Withdraw the confirmation",
+      "print": "Print the bracket",
+      "final": "Final",
+      "third": "Third place",
+      "semifinal": "Semifinal {{n}}",
+      "round": "Round of {{size}}, bout {{n}}",
+      "walkover": "Not fenced",
+      "fenced": "fenced",
+      "didNotFence": "did not fence: {{name}}",
+      "note": "Note (e.g. medical)",
+      "state": {
+        "waiting": "Waiting",
+        "seeded": "Seeded",
+        "running": "Running",
+        "closed": "Closed"
+      },
+      "refusals": {
+        "winner_required": "An elimination bout needs a winner.",
+        "draw_refused": "A draw is not possible in the elimination.",
+        "walkover_note": "A walkover needs its note.",
+        "next_recorded": "The bout this one fed is already recorded; correct that one first.",
+        "stale_version": "Someone changed this result meanwhile; read it again.",
+        "not_this_piste": "This bout is not on this piste.",
+        "failed": "That did not work."
+      }
     }
   }
 }

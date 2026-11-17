@@ -7,6 +7,7 @@ import { type Account, api, type TournamentDetail } from "../api";
 import Modal from "../Modal";
 import { useAuth } from "../RequireAuth";
 import * as routes from "../routes";
+import BracketTab from "./bracket/BracketTab";
 import CheckinTab from "./checkin/CheckinTab";
 import DataTab from "./data/DataTab";
 import { FloorTabBar } from "./FloorTabBar";
@@ -128,6 +129,8 @@ export default function FloorConsole({
             <FloorSetupTab slug={slug} onSaved={changed} onDirtyChange={setDirty} />
           ) : tab === "today" ? (
             <TodayTab slug={slug} />
+          ) : tab === "bracket" ? (
+            <BracketTab slug={slug} discipline={discipline} />
           ) : tab === "pools" ? (
             <PoolsTab slug={slug} discipline={discipline} />
           ) : tab === "checkin" ? (

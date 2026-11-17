@@ -66,6 +66,25 @@ function, so changing it changes one place.
 ### D5. Imports that cross the floor boundary
 None new. `typst` is imported as in `add-floor-pools`.
 
+### D6. Decisions made during implementation (made by me; for the owner's review)
+Decided on 2026-11-17 while the owner was away, as asked:
+- **The order matches every template.** The engine's order equals the seed order the
+  adopted templates hold for 8, 16, 32 and 64, which a test reads from the templates.
+- **Printing as recorded so far.** The 8, 16 and 32 templates gained a loop that
+  draws an `advanced` array, one per later round, filled by the floor. The 64 template,
+  printed as two half pages, still draws the first round and the byes only.
+- **A walkover's other side wins.** The side marked No loses and the other advances.
+  The note is required, and both sides No is refused.
+- **The third place is the last round's bout at position 1.** It is created once both
+  semifinals are recorded, and a semifinal correction is refused once the third-place
+  bout is recorded.
+- **Unconfirming the bracket** is offered while no bout has a result. It discards the
+  bracket, as reopening the pools does.
+- **Elimination bouts take their piste from the published plan's activity** of the same
+  round and order, so the piste screen can serve them once no pool runs there.
+- **Slip is reported by the pools only.** The bracket reports started bouts to the
+  planner for re-planning, not slip.
+
 ## Risks / Trade-offs
 
 - **[The template's slot order and the engine's order disagree for some size.]** → The
