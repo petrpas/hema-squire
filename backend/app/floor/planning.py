@@ -14,13 +14,12 @@ from zoneinfo import ZoneInfo
 from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
 
-from app.floor import people, progress
+from app.floor import people, progress, setup
 from app.floor.engine.model import (
     Activity,
     Break,
     Choice,
     Day,
-    DayPin,
     DisciplineFacts,
     Format,
     KPin,
@@ -30,8 +29,8 @@ from app.floor.engine.model import (
     PlacePin,
     Plan,
     Problem,
+    Referees,
     Result,
-    Role,
     SequencePin,
 )
 from app.floor.engine.sensitivity import Sensitivity, sensitivity
@@ -40,19 +39,17 @@ from app.floor.engine.variants import evaluate
 from app.floor.engine.variants import plan as run_planner
 from app.floor.models import (
     FloorDay,
+    FloorDraw,
     FloorFormat,
-    FloorOfficial,
-    FloorOfficialDay,
     FloorPin,
     FloorPiste,
-    FloorPisteDay,
     FloorPlan,
     FloorPlanActivity,
+    FloorPool,
+    FloorPoolMember,
 )
 from app.floor.roster import Roster
-from app.floor.setup import Tournament, read_params
-
-ROLES: tuple[Role, ...] = ("referee", "judge", "table")
+from app.floor.setup import Tournament, read_params, read_preferences
 
 
 class SetupIncomplete(Exception):
@@ -118,18 +115,17 @@ def _counts(
     return n_pool, n_bracket, who
 
 
-def _format(row: FloorFormat) -> Format:
-    staffing = row.staffing or {}
+def _format(row: FloorFormat, officials: bool) -> Format:
     return Format(
         pool_min=row.pool_min,
         pool_max=row.pool_max,
         advance=row.advance,
         third_place=row.third_place,
-        staffing=tuple((role, int(staffing.get(role, 0))) for role in ROLES),
         slot_pool_bout=row.slot_pool_bout,
         slot_elim_bout=row.slot_elim_bout,
-        slot_pool_overhead=row.slot_pool_overhead,
+        pause=row.pause_between_pools,
         slot_team_match=row.slot_team_match,
+        referees=(row.referees_pool, row.referees_elim) if officials else (0, 0),
     )
 
 
@@ -137,11 +133,7 @@ def _pins(session: Session, tid: int, ctx_dates: Sequence[date]) -> tuple[Pin, .
     out: list[Pin] = []
     for row in pins(session, tid):
         value = row.value
-        if row.kind == "day":
-            when = date.fromisoformat(str(value["day"]))
-            if when in ctx_dates:
-                out.append(DayPin(discipline=int(row.target), day=list(ctx_dates).index(when)))
-        elif row.kind == "k":
+        if row.kind == "k":
             out.append(KPin(discipline=int(row.target), k=int(str(value["k"]))))
         elif row.kind == "place":
             when = date.fromisoformat(str(value["day"]))
@@ -183,34 +175,17 @@ def build(
     *,
     replan_at: datetime | None = None,
 ) -> Context:
-    """The engine's `Problem` for this tournament as it stands. Re-planning
-    freezes what has started and lets reserve pistes in."""
+    """The engine's `Problem` for this tournament as it stands, from Setup's
+    effective view. Re-planning freezes what has started."""
     tid = tournament.id
     zone = ZoneInfo(tournament.timezone)
-    day_rows = list(
-        session.scalars(
-            select(FloorDay).where(FloorDay.tournament_id == tid).order_by(FloorDay.date)
-        )
-    )
-    formats = {
-        row.discipline_id: row
-        for row in session.scalars(select(FloorFormat).where(FloorFormat.tournament_id == tid))
-    }
-    piste_rows = list(session.scalars(select(FloorPiste).where(FloorPiste.tournament_id == tid)))
-
-    missing: list[str] = []
-    if not day_rows:
-        missing.append("days")
-    if not piste_rows:
-        missing.append("pistes")
-    for discipline in tournament.disciplines:
-        row = formats.get(discipline.id)
-        if row is None:
-            missing.append(f"format:{discipline.id}")
-        elif row.staffing is None:
-            missing.append(f"staffing:{discipline.id}")
+    missing = setup.setup_missing(session, tournament)
     if missing:
         raise SetupIncomplete(missing)
+    seen = setup.effective(session, tournament)
+    plans_schedule = seen.scope.plan_schedule
+    formats = seen.formats
+    day_rows = list(seen.days)
 
     dates = tuple(day.date for day in day_rows)
     index = {day.id: i for i, day in enumerate(day_rows)}
@@ -223,30 +198,20 @@ def build(
         )
         for i, day in enumerate(day_rows)
     )
-    available: dict[int, set[int]] = {}
-    for piste_id, day_id in session.execute(
-        select(FloorPisteDay.piste_id, FloorPisteDay.day_id).where(
-            FloorPisteDay.piste_id.in_([p.id for p in piste_rows])
-        )
-    ).tuples():
-        available.setdefault(piste_id, set()).add(index[day_id])
     pistes = tuple(
-        Piste(
-            id=p.id,
-            ordinal=p.ordinal,
-            days=frozenset(available.get(p.id, set())),
-            reserve=p.reserve,
-        )
-        for p in piste_rows
+        Piste(id=p.id, ordinal=p.ordinal, regular=regular, reserve=reserve)
+        for p, regular, reserve in seen.pistes
     )
 
     n_pool, n_bracket, who = _counts(session, tid, tournament, roster)
     facts: list[DisciplineFacts] = []
     empty: list[int] = []
     for discipline in tournament.disciplines:
-        if n_pool.get(discipline.slug, 0) == 0:
+        row = formats[discipline.id]
+        if n_bracket.get(discipline.slug, 0) == 0:
             empty.append(discipline.id)
             continue
+        day_id = seen.day_of.get(discipline.id)
         facts.append(
             DisciplineFacts(
                 id=discipline.id,
@@ -254,7 +219,9 @@ def build(
                 kind=discipline.kind,
                 n_pool=n_pool[discipline.slug],
                 n_bracket=n_bracket[discipline.slug],
-                format=_format(formats[discipline.id]),
+                format=_format(row, seen.scope.plan_officials),
+                day=index[day_id] if day_id is not None and day_id in index else 0,
+                takes_from=row.takes_pools_from,
             )
         )
     slug_of = {d.id: d.slug for d in tournament.disciplines}
@@ -265,35 +232,30 @@ def build(
             if both:
                 shared.append((min(a.id, b.id), max(a.id, b.id), both))
 
-    officials: dict[tuple[int, Role], int] = {}
-    official_rows = list(
-        session.scalars(select(FloorOfficial).where(FloorOfficial.tournament_id == tid))
-    )
-    if official_rows:
-        days_of: dict[int, set[int]] = {}
-        for official_id, day_id in session.execute(
-            select(FloorOfficialDay.official_id, FloorOfficialDay.day_id).where(
-                FloorOfficialDay.official_id.in_([o.id for o in official_rows])
+    referees: list[Referees] = []
+    if seen.scope.plan_officials:
+        for day in day_rows:
+            on_day = {d for d, on in seen.day_of.items() if on == day.id}
+            regular = reserve = main = 0
+            for official, serves, backs, available in seen.officials:
+                if day.id not in available:
+                    continue
+                if serves & on_day:
+                    regular += 1
+                elif backs & on_day:
+                    reserve += 1
+                else:
+                    continue
+                main += 1 if official.main else 0
+            referees.append(
+                Referees(day=index[day.id], regular=regular, reserve=reserve, main=main)
             )
-        ).tuples():
-            days_of.setdefault(official_id, set()).add(index[day_id])
-        for official in official_rows:
-            for day in days_of.get(official.id, set()):
-                # an official counts toward each role they can fill: an upper
-                # bound the officials assignment settles (design D3)
-                for role in official.roles:
-                    if role in ROLES:
-                        key = (day, role)
-                        officials[key] = officials.get(key, 0) + 1
-        # a role nobody fills is a zero, not an absence
-        for day in range(len(days)):
-            for role in ROLES:
-                officials.setdefault((day, role), 0)
 
     stored = read_params(session, tid)
+    preferences = read_preferences(session, tid)
     params = Params(
-        finals_last=stored.finals_last,
-        prefer_larger_pools=stored.prefer_larger_pools,
+        finals=stored.finals,
+        prefer_larger_pools=preferences.pool_size == "larger",
         min_rest=stored.min_rest_minutes,
     )
 
@@ -318,11 +280,11 @@ def build(
         pistes=pistes,
         disciplines=tuple(facts),
         shared=tuple(shared),
-        officials=tuple((day, role, count) for (day, role), count in sorted(officials.items())),
+        officials=tuple(referees),
         pins=_pins(session, tid, dates) + tuple(held),
         params=params,
         frozen=frozen,
-        use_reserve=replan_at is not None,
+        schedule=plans_schedule,
     )
     return Context(problem=problem, dates=dates, zone=zone, empty=tuple(empty))
 
@@ -362,6 +324,9 @@ def _activities(session: Session, plan: FloorPlan | None, context: Context) -> l
         select(FloorPlanActivity).where(FloorPlanActivity.plan_id == plan.id)
     ).all()
     for row in rows:
+        # a pool of a plan made without a schedule has no placement
+        if row.piste_id is None or row.starts_at is None or row.ends_at is None:
+            continue
         when, start = context.local(row.starts_at)
         _, end = context.local(row.ends_at)
         day = context.index_of(when)
@@ -403,25 +368,11 @@ def store(
         session.scalar(select(func.max(FloorPlan.version)).where(FloorPlan.tournament_id == tid))
         or 0
     ) + 1
-    sizes = {
-        c.discipline: pool_sizes(
-            next(d.n_pool for d in context.problem.disciplines if d.id == c.discipline), c.k
-        )
-        for c in chosen.choices
-    }
     row = FloorPlan(
         tournament_id=tid,
         version=version,
         status="working",
-        variant=[
-            {
-                "discipline_id": c.discipline,
-                "k": c.k,
-                "day": context.dates[c.day].isoformat(),
-                "sizes": list(sizes[c.discipline]),
-            }
-            for c in chosen.choices
-        ],
+        variant=choices_json(context, chosen),
         metrics=metrics_json(context, chosen),
         exclusions=[
             {
@@ -442,6 +393,8 @@ def store(
     )
     session.add(row)
     session.flush()
+    if not context.problem.schedule:
+        _store_unplaced(session, row, context, chosen)
     for activity in chosen.activities:
         session.add(
             FloorPlanActivity(
@@ -462,6 +415,36 @@ def store(
     return row
 
 
+def _store_unplaced(session: Session, row: FloorPlan, context: Context, chosen: Plan) -> None:
+    """A plan without a schedule stores its pools with no piste and no time
+    (design rework-floor-setup D9)."""
+    facts = {d.id: d for d in context.problem.disciplines}
+    for choice in chosen.choices:
+        discipline = facts[choice.discipline]
+        if choice.k <= 0:
+            continue
+        for number, size in enumerate(pool_sizes(discipline.n_pool, choice.k), start=1):
+            session.add(
+                FloorPlanActivity(
+                    plan_id=row.id,
+                    activity_id=f"{discipline.key}:pool:{number}",
+                    discipline_id=discipline.id,
+                    kind="pool",
+                    ordinal=number,
+                    round=0,
+                    piste_id=None,
+                    starts_at=None,
+                    ends_at=None,
+                    final=False,
+                    size=size,
+                )
+            )
+
+
+def _day_label(context: Context, day: int) -> str | None:
+    return context.dates[day].isoformat() if context.problem.schedule and context.dates else None
+
+
 def clock(minutes: int) -> str:
     return f"{minutes // 60:02d}:{minutes % 60:02d}"
 
@@ -474,6 +457,11 @@ def metrics_json(context: Context, chosen: Plan) -> dict[str, object]:
         "collisions": m.collisions,
         "shortage": m.shortage,
         "average_pool": m.average_pool,
+        "reserve_used": list(m.reserve_used),
+        "main_warnings": [
+            {"day": context.dates[day].isoformat(), "at": clock(at), "short": short}
+            for day, at, short in m.main_warnings
+        ],
     }
 
 
@@ -490,18 +478,14 @@ def obstacles(session: Session, tournament: Tournament, plan: FloorPlan) -> list
     for discipline in tournament.disciplines:
         if discipline.id not in formats:
             found.append(f"format:{discipline.id}")
-    used_days = {str(choice["day"]) for choice in plan.variant}
-    day_rows = session.scalars(select(FloorDay).where(FloorDay.tournament_id == tournament.id))
-    for day in day_rows:
-        if day.date.isoformat() not in used_days:
-            continue
-        has_piste = session.scalar(
-            select(FloorPisteDay.piste_id)
-            .join(FloorPiste, FloorPiste.id == FloorPisteDay.piste_id)
-            .where(FloorPisteDay.day_id == day.id, FloorPiste.reserve.is_(False))
-        )
-        if has_piste is None:
-            found.append(f"no_piste:{day.date.isoformat()}")
+    seen = setup.effective(session, tournament)
+    if seen.scope.plan_schedule:
+        served = {d for _, regular, _ in seen.pistes for d in regular}
+        for discipline in tournament.disciplines:
+            if discipline.id not in seen.day_of:
+                found.append(f"no_day:{discipline.id}")
+            if discipline.id not in served:
+                found.append(f"no_piste:{discipline.id}")
     for entry in plan.exclusions:
         if int(str(entry["shared"])) > int(str(entry["free_places"])):
             # one side short is enough only if the other is short too
@@ -526,8 +510,25 @@ def publish(session: Session, tid: int) -> FloorPlan:
         previous.status = "history"
         session.flush()
     plan.status = "published"
+    _discard_unannounced_draws(session, tid)
     session.flush()
     return plan
+
+
+def _discard_unannounced_draws(session: Session, tid: int) -> None:
+    """A draw not yet announced was made against the plan just replaced, its
+    pool count and waves included; it goes, and the next draw reads the new
+    plan (spec floor-draw). An announced draw is pinned and stays."""
+    draws = session.scalars(
+        select(FloorDraw.id).where(FloorDraw.tournament_id == tid, FloorDraw.announced_at.is_(None))
+    ).all()
+    if not draws:
+        return
+    pools = select(FloorPool.id).where(FloorPool.draw_id.in_(draws))
+    # an unannounced draw has no bouts: they are made when it is announced
+    session.execute(delete(FloorPoolMember).where(FloorPoolMember.pool_id.in_(pools)))
+    session.execute(delete(FloorPool).where(FloorPool.draw_id.in_(draws)))
+    session.execute(delete(FloorDraw).where(FloorDraw.id.in_(draws)))
 
 
 @dataclass(frozen=True)
@@ -568,7 +569,7 @@ def run(context: Context) -> Result:
 def sensitivity_of(session: Session, context: Context, tid: int) -> Sensitivity | None:
     """Sensitivity of the working version, scheduled again from its choices."""
     plan = working(session, tid) or published(session, tid)
-    if plan is None:
+    if plan is None or not context.problem.schedule:
         return None
     choices: list[Choice] = []
     for entry in plan.variant:
@@ -590,8 +591,8 @@ def choices_json(context: Context, chosen: Plan) -> list[dict[str, object]]:
         {
             "discipline_id": c.discipline,
             "k": c.k,
-            "day": context.dates[c.day].isoformat(),
-            "sizes": list(pool_sizes(sizes[c.discipline], c.k)),
+            "day": _day_label(context, c.day),
+            "sizes": list(pool_sizes(sizes[c.discipline], c.k)) if c.k > 0 else [],
         }
         for c in chosen.choices
     ]
@@ -674,12 +675,6 @@ def infeasible_json(context: Context, result: Result) -> dict[str, object] | Non
 
 
 def _pin_label(context: Context, pin: Pin | None) -> dict[str, object]:
-    if isinstance(pin, DayPin):
-        return {
-            "kind": "day",
-            "target": str(pin.discipline),
-            "day": context.dates[pin.day].isoformat(),
-        }
     if isinstance(pin, KPin):
         return {"kind": "k", "target": str(pin.discipline), "k": pin.k}
     if isinstance(pin, PlacePin):
@@ -722,9 +717,9 @@ def pin_errors(
             select(FloorDay.date).where(FloorDay.tournament_id == tournament.id)
         )
     }
-    if kind in ("day", "k") and target not in disciplines:
+    if kind == "k" and target not in disciplines:
         errors.append({"field": "target", "code": "unknown_discipline"})
-    if kind in ("day", "place", "sequence") and str(value.get("day")) not in dates:
+    if kind in ("place", "sequence") and str(value.get("day")) not in dates:
         errors.append({"field": "value.day", "code": "unknown_day"})
     if kind == "k" and not (isinstance(value.get("k"), int) and int(str(value["k"])) >= 1):
         errors.append({"field": "value.k", "code": "invalid"})
@@ -751,7 +746,7 @@ def pin_errors(
     existing = [
         p
         for p in pins(session, tournament.id)
-        if p.kind == kind and p.target == target and kind in ("day", "k", "place")
+        if p.kind == kind and p.target == target and kind in ("k", "place")
     ]
     if existing:
         errors.append({"field": "target", "code": "duplicate"})

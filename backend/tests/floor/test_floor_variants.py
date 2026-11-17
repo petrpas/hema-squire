@@ -3,14 +3,16 @@ floor-planner). No database."""
 
 from dataclasses import replace
 
-from app.floor.engine.model import DayPin, KPin, Params
+from app.floor.engine.model import KPin, Params, Referees
 from app.floor.engine.sensitivity import sensitivity
 from app.floor.engine.variants import plan
 from tests.floor.engine_fixtures import day, discipline, fmt, problem
 
 
 def test_determinism():
-    prob = problem(discipline(1, 29), discipline(2, 41), days=(day(0), day(1)), piste_count=4)
+    prob = problem(
+        discipline(1, 29), discipline(2, 41, day=1), days=(day(0), day(1)), piste_count=4
+    )
 
     first, second = plan(prob), plan(prob)
 
@@ -25,34 +27,31 @@ def test_a_plan_made_ahead_counts_registrations():
     assert sum(a.size for a in pools) == 31
 
 
-def test_a_pinned_day_holds():
-    prob = problem(
-        discipline(1, 29), discipline(2, 20), days=(day(0), day(1)), pins=(DayPin(1, 1),)
-    )
+def test_the_day_is_a_fact_of_setup():
+    prob = problem(discipline(1, 29), discipline(2, 20, day=1), days=(day(0), day(1)))
 
     result = plan(prob)
 
     assert result.variants
     for variant in result.variants:
-        assert next(c.day for c in variant.choices if c.discipline == 1) == 1
+        assert {c.discipline: c.day for c in variant.choices} == {1: 0, 2: 1}
+        assert all(a.day == (0 if a.discipline == 1 else 1) for a in variant.activities)
 
 
 def test_a_pin_is_named_as_the_obstacle():
-    # Saturday is too short for Sabre with Longsword pinned there too
+    # three pools of eight do not fit two hours; six of four would
     prob = problem(
-        discipline(1, 24, key="LS"),
-        discipline(2, 24, key="SB"),
-        days=(day(0, "09:00", "11:00"), day(1, "09:00", "11:00")),
+        discipline(2, 24, key="SB", format=fmt(3, 8)),
+        days=(day(0, "09:00", "11:00"),),
         piste_count=4,
-        pins=(DayPin(1, 0), DayPin(2, 0)),
+        pins=(KPin(2, 3),),
     )
 
     result = plan(prob)
 
     assert result.variants == ()
     assert result.infeasible is not None
-    assert result.infeasible.reason == "pin"
-    assert result.infeasible.subject in {"0", "1"}
+    assert (result.infeasible.reason, result.infeasible.subject) == ("pin", "0")
 
 
 def test_preferences_order_and_do_not_remove():
@@ -110,9 +109,7 @@ def test_a_shortage_is_reported():
 def test_the_officials_limit_is_named():
     # one referee a piste; four referees: the fifth piste and beyond change nothing
     d = discipline(1, 60, format=fmt(5, 6))
-    prob = problem(
-        d, days=(day(0, "08:00", "23:59"),), piste_count=3, officials=((0, "referee", 4),)
-    )
+    prob = problem(d, days=(day(0, "08:00", "23:59"),), piste_count=3, officials=(Referees(0, 4),))
     variant = plan(prob).variants[0]
 
     effect = sensitivity(prob, variant).days[0]

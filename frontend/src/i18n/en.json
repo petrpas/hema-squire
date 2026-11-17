@@ -2052,11 +2052,6 @@
         "removed": "removed"
       }
     },
-    "roles": {
-      "referee": "Referee",
-      "judge": "Judge",
-      "table": "Table official"
-    },
     "errors": {
       "invalid": "This value was not accepted.",
       "duplicate": "Already listed above.",
@@ -2068,10 +2063,21 @@
       "unknown_discipline": "This discipline is not in the tournament.",
       "unknown_person": "This person is not on the roster.",
       "above_max": "The minimum is above the maximum.",
-      "referee_required": "A piste needs at least one referee.",
       "required": "Please fill this in.",
       "too_small": "The value is too small.",
-      "too_large": "The value is too large."
+      "too_large": "The value is too large.",
+      "needs_schedule": "Not without planning a schedule.",
+      "several_days": "Remove the other days first; one day stays.",
+      "single_day": "The tournament has one day; the several-days tick adds another.",
+      "two_days": "The discipline already belongs to another day.",
+      "before_source": "The discipline would come before the one it takes pools over from.",
+      "other_weapon": "Pools can be taken over only from the same weapon.",
+      "source_takes_over": "A discipline that takes over cannot be taken over from.",
+      "self": "A discipline cannot take over from itself.",
+      "team_discipline": "A team discipline states points per bout.",
+      "individual_discipline": "Points per bout are for teams only.",
+      "taken_over": "The discipline takes over pools and has no draw of its own.",
+      "source_pools_open": "The source's pools are not closed yet."
     },
     "setup": {
       "save": "Save",
@@ -2081,52 +2087,71 @@
       "remove": "Remove",
       "moveDown": "Move down",
       "days": {
-        "title": "Days",
+        "title": "Tournament days",
         "offered": "No day is saved yet. The tournament's date from 9:00 to 19:00 is offered; save it or change it.",
         "date": "Date",
-        "start": "Start",
-        "end": "End",
+        "start": "From",
+        "end": "To",
         "break": "Break",
         "breakStart": "Break start",
         "breakEnd": "Break end",
         "addBreak": "Add a break",
         "addDay": "Add a day",
-        "removeDay": "Remove the day"
+        "removeDay": "Remove the day",
+        "removeBreak": "Remove the break",
+        "breaks": "Breaks",
+        "disciplines": "Disciplines",
+        "all": "all",
+        "noBreak": "no break",
+        "dayless": "Without a day: {{names}}.",
+        "onDay": " (now {{day}})"
       },
       "pistes": {
         "title": "Pistes",
-        "planned_one": "The planner uses {{count}} piste.",
-        "planned_other": "The planner uses {{count}} pistes.",
-        "held_one": "{{count}} is held for re-planning.",
-        "held_other": "{{count}} are held for re-planning.",
         "name": "Name",
-        "tag": "Tag",
-        "tagHint": "e.g. finals",
-        "reserve": "Reserve",
-        "days": "Days it is available",
-        "add": "Add a piste"
+        "add": "Add a piste",
+        "disciplines": "Disciplines",
+        "free": "free",
+        "freeNote": "Serving no discipline, kept free for use on the spot: {{names}}.",
+        "unserved": "No piste serves as regular: {{names}}.",
+        "servesTitle": "Piste {{name}}: disciplines",
+        "reserveNote": "Reserve pistes are used only once the regular ones are exhausted.",
+        "moveUp": "Move up",
+        "remove": "Remove the piste"
       },
       "formats": {
-        "title": "Discipline formats",
+        "title": "Disciplines",
         "missing": {
-          "format": "No format is saved yet.",
-          "staffing": "The piste staffing is not stated yet."
+          "format": "The format is not saved yet.",
+          "take_over": "The take-over no longer holds: the source has another weapon or takes over itself."
         },
-        "pools": "Pools",
-        "pool_min": "Smallest pool",
-        "pool_max": "Largest pool",
+        "pools": "Allowed pool size",
+        "pool_min": "smallest",
+        "pool_max": "largest",
         "elimination": "Elimination",
         "teamStages": "Team members fence individual pools, followed by a team elimination.",
-        "advanceAll": "Everyone advances",
-        "advance": "Advancing",
+        "advanceAll": "all",
+        "advance": "Number advancing",
         "thirdPlace": "Third-place bout",
-        "staffing": "Piste staffing",
-        "stateStaffing": "State the staffing",
-        "slots": "Lengths (minutes)",
+        "slots": "Expected bout length (minutes)",
         "slot_pool_bout": "Pool bout",
         "slot_elim_bout": "Elimination bout",
-        "slot_pool_overhead": "Changeover between pools",
-        "slot_team_match": "Team match"
+        "slot_team_match": "Team match",
+        "takes_pools_from": "Take pool results over from",
+        "ownPools": "none, its own pools",
+        "takenFrom": "Pools taken over from {{name}}.",
+        "advanceFixed": "the first",
+        "points": "Point limits",
+        "points_pool": "Pool bout",
+        "points_elim": "Elimination bout",
+        "points_team_bout": "Points per bout",
+        "teamTotal": "to {{total}} points in all",
+        "referees": "Referees per bout",
+        "referees_pool": "In the pools",
+        "referees_elim": "In the elimination",
+        "pause_between_pools": "Pause between pools",
+        "teamElimination": "Team elimination",
+        "advanceLead": "Advancing"
       },
       "officials": {
         "title": "Officials",
@@ -2136,25 +2161,55 @@
         "noPerson": "does not fence",
         "lostOption": "person no longer on the roster",
         "linkLost": "The linked person is no longer on the roster.",
-        "roles": "Roles",
         "disciplines": "Disciplines",
         "days": "Days they are available",
-        "add": "Add an official"
+        "add": "Add an official",
+        "main": "Main referee",
+        "noDiscipline": "none",
+        "servesTitle": "{{name}}: disciplines",
+        "unnamed": "Referee",
+        "reserveNote": "Reserve officials step in only where the regular ones do not suffice."
       },
       "params": {
         "title": "Parameters",
-        "pool_sizes_even": "Pools of one discipline differ by at most 1",
-        "always": "always",
-        "finals_last": "Finals after everything else of their day",
-        "prefer_larger_pools": "Prefer larger pools",
-        "club_weight": "Draw weight of club separation",
-        "nationality_weight": "Draw weight of nationality spread",
         "min_rest_minutes": "Minimum rest between bouts (minutes)",
         "kind": {
           "rule": "rule",
           "preference": "preference",
           "estimate": "estimate"
+        },
+        "finals": "Finals",
+        "finalsAt": {
+          "elimination": "within the elimination",
+          "day": "at the end of the day",
+          "tournament": "at the end of the tournament"
         }
+      },
+      "tabs": {
+        "label": "Setup parts",
+        "scope": "Scope",
+        "schedule": "Schedule",
+        "formats": "Disciplines",
+        "officials": "Referees",
+        "pistes": "Pistes",
+        "params": "Parameters"
+      },
+      "scope": {
+        "title": "Planning scope",
+        "plan_schedule": "Plan a schedule",
+        "plan_scheduleHint": "Without a schedule only the pools are planned: how many and how large, with no pistes and no times.",
+        "multi_day": "Several days",
+        "plan_officials": "Plan the referees",
+        "officialsNeedSchedule": "Referees are assigned to the schedule's blocks, so they can be planned only with a schedule."
+      },
+      "actions": "Actions",
+      "edit": "Edit",
+      "done": "Done",
+      "serves": {
+        "discipline": "Discipline",
+        "no": "no",
+        "regular": "regular",
+        "reserve": "reserve"
       }
     },
     "data": {
@@ -2196,14 +2251,18 @@
         "shortage_one": "{{count}} fencer does not fit outside the parallel wave",
         "shortage_other": "{{count}} fencers do not fit outside the parallel wave",
         "empty": "Nobody entered, so left out of the plan: {{names}}.",
-        "capped": "There were too many variants; the pool count was fixed for: {{names}}."
+        "capped": "There were too many variants; the pool count was fixed for: {{names}}.",
+        "takenOver": "pools taken over",
+        "reserveUsed_one": "uses {{count}} reserve piste",
+        "reserveUsed_other": "uses {{count}} reserve pistes",
+        "mainShort_one": "{{day}} at {{at}}: {{count}} piste lacks a main referee",
+        "mainShort_other": "{{day}} at {{at}}: {{count}} pistes lack a main referee"
       },
       "infeasible": {
         "structure": "{{name}} does not fit its format ({{detail}}). Change the pool size range.",
         "overrun": "No variant fits the day; the best one runs {{minutes}} min over.",
         "rule": "No variant exists because of the rule: {{rule}}.",
         "pin": {
-          "day": "No variant exists because {{name}} is pinned to {{day}}.",
           "k": "No variant exists because {{name}} is pinned to {{k}} pools.",
           "place": "No variant exists because of the placement pin on {{name}}.",
           "sequence": "No variant exists because of the discipline order pin.",
@@ -2211,9 +2270,9 @@
         }
       },
       "rules": {
-        "finals_last": "finals at the end of the day",
+        "finals": "the finals placement",
         "rest": "rest between bouts",
-        "officials": "the number of officials"
+        "officials": "the number of referees"
       },
       "working": {
         "title": "Working version",
@@ -2223,7 +2282,7 @@
         "publish": "Publish the plan",
         "replan": "Re-plan",
         "confirmTitle": "Publish the plan",
-        "confirmBody": "The working version becomes the published one. The tournament's public programme follows it."
+        "confirmBody": "The working version becomes the published one. The tournament's public programme follows it. Draws not yet announced are discarded and drawn again from the new plan."
       },
       "obstacles": {
         "format": "{{name}} has no format.",
@@ -2233,16 +2292,12 @@
       "pins": {
         "title": "Pins",
         "none": "Nothing is pinned.",
-        "day": "{{name}}: day {{day}}",
         "k": "{{name}}: {{k}} pools",
         "place": "{{activity}} starts at {{start}}",
         "sequence": "Discipline order",
         "gate": "added by the {{gate}} step; reopening it removes it",
-        "kind": "What to pin",
-        "kindDay": "a discipline's day",
-        "kindK": "the pool count",
         "discipline": "Discipline",
-        "pools": "{{name}}: {{n}} pools",
+        "pools": "Number of pools",
         "add": "Pin",
         "n": "{{name}}: N = {{n}}"
       },
@@ -2262,6 +2317,14 @@
           "pistes": "The pistes limit the day.",
           "officials": "The officials limit the day."
         }
+      },
+      "preferences": {
+        "title": "Plan preferences",
+        "pool_size": "Pool size",
+        "larger": "larger pools",
+        "smaller": "smaller pools",
+        "club_weight": "Draw weight of club separation",
+        "nationality_weight": "Draw weight of nationality spread"
       }
     },
     "today": {
@@ -2285,11 +2348,14 @@
       },
       "codes": {
         "days": "Setup: the tournament's days are missing",
-        "pistes": "Setup: the pistes are missing",
+        "day": "Setup: {{discipline}} has no day",
+        "piste": "Setup: {{discipline}} has no piste",
         "format": "Setup: {{discipline}} has no format",
-        "staffing": "Setup: {{discipline}} has no piste staffing",
-        "publish": "Plan: a working version waits to be published",
-        "checkin_open": "Check-in: {{discipline}} is still open and its first pool is near"
+        "take_over": "Setup: {{discipline}} takes over pools it cannot",
+        "publish": "Plan: the working version waits to be published",
+        "unfilled": "Plan: some referee places are unfilled",
+        "without_main": "Plan: some blocks have no main referee",
+        "checkin_open": "Check-in: {{discipline}} is open and its first pool is near"
       },
       "steps": {
         "pools": {
@@ -2308,7 +2374,8 @@
           "waiting": "waiting",
           "published": "published"
         }
-      }
+      },
+      "takenOver": "taken over from {{name}}"
     },
     "checkin": {
       "failed": "Check-in could not be loaded.",
@@ -2403,7 +2470,8 @@
         "bouts_missing": "Pool {{pool}}: {{name}} has {{found}} of {{expected}} bouts.",
         "touches_asymmetric": "Pool {{pool}}: touches do not balance (scored {{expected}}, received {{found}}).",
         "unknown_fencer": "An unknown fencer in the results: {{name}}."
-      }
+      },
+      "takenOver": "This discipline fences no pools of its own; it takes over the results of {{name}}:"
     },
     "ring": {
       "title": "Piste links",
@@ -2452,7 +2520,9 @@
         "stale_version": "Someone changed this result meanwhile; read it again.",
         "not_this_piste": "This bout is not on this piste.",
         "failed": "That did not work."
-      }
+      },
+      "sourceOpen": "This discipline takes over the pools of {{name}}; the bracket waits for them to close.",
+      "unplaced": "Not placed in the source, seeded below the rest: {{names}}."
     },
     "officials": {
       "title": "Officials",
@@ -2467,11 +2537,14 @@
       "rules": {
         "unavailable": "The official is not available that day.",
         "not_qualified": "The official does not take this discipline.",
-        "wrong_role": "The official does not fill this role.",
         "double_booked": "The official already has a block then.",
         "fencing": "The official fences then.",
         "failed": "That did not work."
-      }
+      },
+      "withoutMain": "no main referee",
+      "mainPlace": "Main",
+      "place": "Referee",
+      "reserve": "reserve"
     },
     "results": {
       "published": "published",

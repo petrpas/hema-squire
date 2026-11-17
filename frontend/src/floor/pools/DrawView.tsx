@@ -10,13 +10,16 @@ export interface ViewProps {
   view: PoolsView;
   name: (key: string) => string;
   pistes: Map<number, string>;
+  /** Whether a schedule is planned; without one there are no waves (spec
+   *  floor-draw). */
+  schedule: boolean;
   onChanged: () => void;
 }
 
 /** Before the draw is announced: pool by pool with each fencer's seed, the
  *  score broken down, swaps (pick two), a redraw, and "Vyhlásit los" (spec
  *  floor-draw). */
-export function DrawView({ slug, discipline, view, name, pistes, onChanged }: ViewProps) {
+export function DrawView({ slug, discipline, view, name, pistes, schedule, onChanged }: ViewProps) {
   const { t } = useTranslation();
   const [picked, setPicked] = useState<string | null>(null);
   const [refusal, setRefusal] = useState<string | null>(null);
@@ -57,9 +60,13 @@ export function DrawView({ slug, discipline, view, name, pistes, onChanged }: Vi
         </button>
       ) : (
         <>
-          <ScoreLine label={t("floor.pools.score")} score={draw.score} />
+          <ScoreLine label={t("floor.pools.score")} score={draw.score} waves={schedule} />
           {draw.previous_score && (
-            <ScoreLine label={t("floor.pools.previousScore")} score={draw.previous_score} />
+            <ScoreLine
+              label={t("floor.pools.previousScore")}
+              score={draw.previous_score}
+              waves={schedule}
+            />
           )}
           <p className="muted">{t("floor.pools.swapHint")}</p>
           <div className="floor-pool-grid">
@@ -67,10 +74,12 @@ export function DrawView({ slug, discipline, view, name, pistes, onChanged }: Vi
               <article key={pool.number} className="floor-pool">
                 <h3>
                   {t("floor.pools.pool", { number: pool.number })}{" "}
-                  <span className="muted">
-                    {t("floor.pools.wave", { wave: pool.wave })}
-                    {pool.piste_id !== null && `, ${pistes.get(pool.piste_id) ?? pool.piste_id}`}
-                  </span>
+                  {schedule && (
+                    <span className="muted">
+                      {t("floor.pools.wave", { wave: pool.wave })}
+                      {pool.piste_id !== null && `, ${pistes.get(pool.piste_id) ?? pool.piste_id}`}
+                    </span>
+                  )}
                 </h3>
                 <ol>
                   {pool.members.map((member) => (
@@ -116,13 +125,14 @@ export function DrawView({ slug, discipline, view, name, pistes, onChanged }: Vi
   );
 }
 
-function ScoreLine({ label, score }: { label: string; score: DrawScore }) {
+function ScoreLine({ label, score, waves }: { label: string; score: DrawScore; waves: boolean }) {
   const { t } = useTranslation();
   return (
     <p>
       {label}: {score.total.toFixed(1)} ({t("floor.pools.snake")} {score.snake.toFixed(1)},{" "}
       {t("floor.pools.club")} {score.club.toFixed(1)}, {t("floor.pools.nationality")}{" "}
-      {score.nationality.toFixed(1)}, {t("floor.pools.waveScore")} {score.wave.toFixed(1)})
+      {score.nationality.toFixed(1)}
+      {waves && `, ${t("floor.pools.waveScore")} ${score.wave.toFixed(1)}`})
     </p>
   );
 }

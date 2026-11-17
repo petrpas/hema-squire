@@ -5,7 +5,8 @@ import { ApiError } from "../../api";
 import { type Assignments, type FloorSetup, officialsApi } from "../floorApi";
 import { openPdf } from "../pdf";
 
-/** Obsazení: blocks × roles with names, empty seats, club conflicts and pins
+/** Obsazení: blocks with their referees, the main place, reserve places,
+ *  blocks without a main referee, empty seats, club conflicts and pins
  *  whose block is gone; a seat is set (and pinned) here, refused with the
  *  broken rule named; each official's rozpis and each piste's sheet print
  *  (spec floor-officials). */
@@ -76,11 +77,18 @@ export function AssignmentSection({ slug, setup }: { slug: string; setup: FloorS
               <th scope="row">
                 {block.start}–{block.end} · {pistes.get(block.piste_id) ?? block.piste_id} ·{" "}
                 {names.get(block.discipline_id)}
+                {block.without_main && (
+                  <span className="floor-missing"> {t("floor.officials.withoutMain")}</span>
+                )}
               </th>
               {block.seats.map((seat) => (
                 <td key={seat.id}>
                   <label>
-                    <span className="muted">{t(`floor.roles.${seat.role}`)}</span>
+                    <span className="muted">
+                      {seat.slot === 0
+                        ? t("floor.officials.mainPlace")
+                        : t("floor.officials.place")}
+                    </span>
                     <select
                       value={seat.official_id ?? ""}
                       onChange={(event) =>
@@ -100,6 +108,9 @@ export function AssignmentSection({ slug, setup }: { slug: string; setup: FloorS
                     </select>
                   </label>
                   {seat.pinned && <span className="muted"> {t("floor.officials.pinned")}</span>}
+                  {seat.reserve === true && (
+                    <span className="muted"> {t("floor.officials.reserve")}</span>
+                  )}
                   {seat.official_id === null && (
                     <span className="floor-missing"> {t("floor.officials.unfilled")}</span>
                   )}

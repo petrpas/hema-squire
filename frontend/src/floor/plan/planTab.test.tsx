@@ -28,20 +28,21 @@ const setup: FloorSetup = {
     { id: 2, slug: "SB", name: "Sabre", kind: "individual" },
   ],
   persons: [],
-  days: { stored: true, days: [{ date: "2099-12-05", start: "09:00", end: "19:00", breaks: [] }] },
+  scope: { plan_schedule: true, multi_day: false, plan_officials: false },
+  days: {
+    stored: true,
+    days: [
+      { date: "2099-12-05", start: "09:00", end: "19:00", breaks: [], discipline_ids: [1, 2] },
+    ],
+  },
   pistes: [
-    { id: 11, name: "1", reserve: false, tag: null, days: ["2099-12-05"] },
-    { id: 12, name: "2", reserve: false, tag: null, days: ["2099-12-05"] },
+    { id: 11, name: "1", serves: [{ discipline_id: 1, reserve: false }] },
+    { id: 12, name: "2", serves: [{ discipline_id: 1, reserve: false }] },
   ],
   formats: [],
   officials: [],
-  params: {
-    finals_last: true,
-    prefer_larger_pools: true,
-    club_weight: 10,
-    nationality_weight: 3,
-    min_rest_minutes: 10,
-  },
+  params: { finals: "elimination", min_rest_minutes: 10 },
+  preferences: { pool_size: "larger", club_weight: 10, nationality_weight: 3 },
 };
 
 function activity(id: string, piste: number, start: string, end: string): PlanActivity {
@@ -175,7 +176,7 @@ describe("the Plan tab", () => {
       variants: [],
       infeasible: {
         reason: "pin",
-        subject: { kind: "day", target: "2", day: "2099-12-05" },
+        subject: { kind: "k", target: "2", k: 3 },
         minutes: 0,
         detail: "",
       },
@@ -186,9 +187,7 @@ describe("the Plan tab", () => {
     act(() => button(t("floor.plan.variants.ask"))?.click());
     await settle();
 
-    expect(host?.textContent).toContain(
-      t("floor.plan.infeasible.pin.day", { name: "Sabre", day: "2099-12-05" }),
-    );
+    expect(host?.textContent).toContain(t("floor.plan.infeasible.pin.k", { name: "Sabre", k: 3 }));
   });
 });
 

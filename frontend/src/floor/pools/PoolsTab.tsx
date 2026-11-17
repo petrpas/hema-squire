@@ -35,8 +35,20 @@ export default function PoolsTab({ slug, discipline }: { slug: string; disciplin
   if (setup === null || selected === null) return <p>{t("common.loading")}</p>;
 
   const pistes = new Map(setup.pistes.map((p) => [p.id ?? 0, p.name]));
+  // a discipline that takes over fences no pools of its own (spec floor-pools)
+  const sourceId = setup.formats.find((f) => f.discipline_id === selected.id)?.takes_pools_from;
+  const source = setup.disciplines.find((d) => d.id === sourceId);
   const name = (key: string) => data?.names[key] ?? key;
-  const common = { slug, discipline: selected.id, view: data, name, pistes, onChanged: reload };
+  const schedule = setup.scope.plan_schedule;
+  const common = {
+    slug,
+    discipline: selected.id,
+    view: data,
+    name,
+    pistes,
+    schedule,
+    onChanged: reload,
+  };
 
   return (
     <div className="floor-data floor-pools">
@@ -54,7 +66,12 @@ export default function PoolsTab({ slug, discipline }: { slug: string; disciplin
         </select>
       </label>
 
-      {data === null ? (
+      {source !== undefined ? (
+        <p>
+          {t("floor.pools.takenOver", { name: source.name })}{" "}
+          <Link to={routes.floorPath(slug, "pools", source.slug)}>{source.name}</Link>
+        </p>
+      ) : data === null ? (
         <p className="muted">{failed ? t("floor.pools.failed") : t("common.loading")}</p>
       ) : !data.checkin_closed ? (
         <p>

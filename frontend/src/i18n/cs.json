@@ -2104,11 +2104,6 @@
         "removed": "zrušeno"
       }
     },
-    "roles": {
-      "referee": "Rozhodčí",
-      "judge": "Postranní rozhodčí",
-      "table": "Zapisovatel"
-    },
     "errors": {
       "invalid": "Tato hodnota neprošla.",
       "duplicate": "Už je uvedeno výše.",
@@ -2120,10 +2115,21 @@
       "unknown_discipline": "Tato disciplína v turnaji není.",
       "unknown_person": "Tato osoba na soupisce není.",
       "above_max": "Minimum je větší než maximum.",
-      "referee_required": "Planš potřebuje aspoň jednoho rozhodčího.",
       "required": "Vyplň prosím.",
       "too_small": "Hodnota je příliš malá.",
-      "too_large": "Hodnota je příliš velká."
+      "too_large": "Hodnota je příliš velká.",
+      "needs_schedule": "Bez plánování rozvrhu to nejde.",
+      "several_days": "Nejdřív odeber ostatní dny; jeden den zůstane.",
+      "single_day": "Turnaj je jednodenní; další den přidá až zatržítko vícedenní turnaj.",
+      "two_days": "Disciplína už patří k jinému dni.",
+      "before_source": "Disciplína by byla dřív než ta, ze které přebírá skupiny.",
+      "other_weapon": "Převzít jde jen ze stejné zbraně.",
+      "source_takes_over": "Z disciplíny, která sama přebírá, převzít nejde.",
+      "self": "Disciplína nemůže převzít sama sebe.",
+      "team_discipline": "Týmová disciplína zadává body na střet.",
+      "individual_discipline": "Body na střet jsou jen pro tým.",
+      "taken_over": "Disciplína přebírá skupiny a vlastní los nemá.",
+      "source_pools_open": "Skupiny zdroje ještě nejsou uzavřené."
     },
     "setup": {
       "save": "Uložit",
@@ -2133,56 +2139,71 @@
       "remove": "Odebrat",
       "moveDown": "Posunout níž",
       "days": {
-        "title": "Dny",
+        "title": "Turnajové dny",
         "offered": "Zatím není uložen žádný den. Nabízíme den turnaje od 9 do 19 hodin; ulož ho, nebo uprav.",
         "date": "Datum",
-        "start": "Začátek",
-        "end": "Konec",
+        "start": "Od",
+        "end": "Do",
         "break": "Přestávka",
         "breakStart": "Začátek přestávky",
         "breakEnd": "Konec přestávky",
         "addBreak": "Přidat přestávku",
         "addDay": "Přidat den",
-        "removeDay": "Odebrat den"
+        "removeDay": "Odebrat den",
+        "removeBreak": "Odebrat přestávku",
+        "breaks": "Přestávky",
+        "disciplines": "Disciplíny",
+        "all": "všechny",
+        "noBreak": "bez přestávky",
+        "dayless": "Bez dne: {{names}}.",
+        "onDay": " (teď {{day}})"
       },
       "pistes": {
         "title": "Planše",
-        "planned_one": "Plánovač použije {{count}} planš.",
-        "planned_few": "Plánovač použije {{count}} planše.",
-        "planned_other": "Plánovač použije {{count}} planší.",
-        "held_one": "{{count}} je v záloze pro přeplánování.",
-        "held_few": "{{count}} jsou v záloze pro přeplánování.",
-        "held_other": "{{count}} je v záloze pro přeplánování.",
         "name": "Název",
-        "tag": "Štítek",
-        "tagHint": "např. finálová",
-        "reserve": "Záložní",
-        "days": "Dny, kdy je k dispozici",
         "add": "Přidat planš",
-        "planned_many": "Plánovač použije {{count}} planše.",
-        "held_many": "{{count}} planše je v záloze pro přeplánování."
+        "disciplines": "Disciplíny",
+        "free": "volná",
+        "freeNote": "Bez disciplíny, zůstávají volné pro použití na místě: {{names}}.",
+        "unserved": "Žádná planš běžně neslouží: {{names}}.",
+        "servesTitle": "Planš {{name}}: disciplíny",
+        "reserveNote": "Rezervní planše se použijí až po vyčerpání řádných.",
+        "moveUp": "Posunout výš",
+        "remove": "Odebrat planš"
       },
       "formats": {
-        "title": "Formáty disciplín",
+        "title": "Disciplíny",
         "missing": {
           "format": "Formát zatím není uložen.",
-          "staffing": "Obsazení planše zatím není stanoveno."
+          "take_over": "Převzetí skupin už neplatí: zdroj má jinou zbraň nebo sám přebírá."
         },
-        "pools": "Skupiny",
-        "pool_min": "Nejmenší skupina",
-        "pool_max": "Největší skupina",
-        "elimination": "Vyřazovací část",
+        "pools": "Přípustná velikost skupin",
+        "pool_min": "nejmenší",
+        "pool_max": "největší",
+        "elimination": "Eliminace",
         "teamStages": "Členové týmů šermují v individuálních skupinách, pak následuje týmová eliminace.",
-        "advanceAll": "Postupují všichni",
+        "advanceAll": "všichni",
         "advance": "Počet postupujících",
         "thirdPlace": "Zápas o třetí místo",
-        "staffing": "Obsazení planše",
-        "stateStaffing": "Stanovit obsazení",
-        "slots": "Délky (minuty)",
+        "slots": "Očekávané trvání zápasů (minuty)",
         "slot_pool_bout": "Zápas ve skupině",
         "slot_elim_bout": "Zápas v eliminaci",
-        "slot_pool_overhead": "Přechod mezi skupinami",
-        "slot_team_match": "Týmový zápas"
+        "slot_team_match": "Týmový zápas",
+        "takes_pools_from": "Převzít skupinové výsledky z",
+        "ownPools": "nepřebírat, vlastní skupiny",
+        "takenFrom": "Skupiny převzaty z {{name}}.",
+        "advanceFixed": "prvních",
+        "points": "Bodové hranice",
+        "points_pool": "Zápas ve skupině",
+        "points_elim": "Zápas v eliminaci",
+        "points_team_bout": "Počet bodů na střet",
+        "teamTotal": "celkem do {{total}} bodů",
+        "referees": "Rozhodčí na zápas",
+        "referees_pool": "Ve skupině",
+        "referees_elim": "V eliminaci",
+        "pause_between_pools": "Pauza mezi skupinami",
+        "teamElimination": "Týmová eliminace",
+        "advanceLead": "Postupují"
       },
       "officials": {
         "title": "Rozhodčí",
@@ -2192,25 +2213,55 @@
         "noPerson": "nešermuje",
         "lostOption": "osoba už na soupisce není",
         "linkLost": "Propojená osoba už na soupisce není.",
-        "roles": "Role",
         "disciplines": "Disciplíny",
         "days": "Dny, kdy je k dispozici",
-        "add": "Přidat rozhodčího"
+        "add": "Přidat rozhodčího",
+        "main": "Hlavní rozhodčí",
+        "noDiscipline": "žádná",
+        "servesTitle": "{{name}}: disciplíny",
+        "unnamed": "Rozhodčí",
+        "reserveNote": "Rezervní rozhodčí nastoupí, až když řádní nestačí."
       },
       "params": {
         "title": "Parametry",
-        "pool_sizes_even": "Skupiny jedné disciplíny se liší nejvýš o 1",
-        "always": "vždy",
-        "finals_last": "Finále až po všem ostatním daného dne",
-        "prefer_larger_pools": "Dávat přednost větším skupinám",
-        "club_weight": "Váha oddělení klubů při losu",
-        "nationality_weight": "Váha rozložení národností při losu",
         "min_rest_minutes": "Nejkratší odpočinek mezi zápasy (minuty)",
         "kind": {
           "rule": "pravidlo",
           "preference": "preference",
           "estimate": "odhad"
+        },
+        "finals": "Finále",
+        "finalsAt": {
+          "elimination": "v rámci eliminace",
+          "day": "na konci dne",
+          "tournament": "na konci turnaje"
         }
+      },
+      "tabs": {
+        "label": "Části nastavení",
+        "scope": "Rozsah",
+        "schedule": "Rozvrh",
+        "formats": "Disciplíny",
+        "officials": "Rozhodčí",
+        "pistes": "Planše",
+        "params": "Parametry"
+      },
+      "scope": {
+        "title": "Rozsah plánování",
+        "plan_schedule": "Plánovat rozvrh",
+        "plan_scheduleHint": "Bez rozvrhu se plánují jen skupiny: jejich počet a velikost, bez planší a časů.",
+        "multi_day": "Vícedenní turnaj",
+        "plan_officials": "Plánovat rozhodčí",
+        "officialsNeedSchedule": "Rozhodčí se přiřazují k blokům rozvrhu, proto je jde plánovat jen s rozvrhem."
+      },
+      "actions": "Akce",
+      "edit": "Upravit",
+      "done": "Hotovo",
+      "serves": {
+        "discipline": "Disciplína",
+        "no": "ne",
+        "regular": "běžně",
+        "reserve": "rezerva"
       }
     },
     "data": {
@@ -2262,14 +2313,22 @@
         "shortage_many": "{{count}} šermíře se nevejde mimo souběžnou vlnu",
         "shortage_other": "{{count}} šermířů se nevejde mimo souběžnou vlnu",
         "empty": "Bez přihlášených, a proto mimo plán: {{names}}.",
-        "capped": "Variant bylo příliš mnoho; počet skupin byl pevně zvolen u: {{names}}."
+        "capped": "Variant bylo příliš mnoho; počet skupin byl pevně zvolen u: {{names}}.",
+        "takenOver": "skupiny převzaty",
+        "reserveUsed_one": "použije {{count}} záložní planš",
+        "reserveUsed_few": "použije {{count}} záložní planše",
+        "reserveUsed_many": "použije {{count}} záložní planše",
+        "reserveUsed_other": "použije {{count}} záložních planší",
+        "mainShort_one": "{{day}} v {{at}}: {{count}} planši chybí hlavní rozhodčí",
+        "mainShort_few": "{{day}} v {{at}}: {{count}} planším chybí hlavní rozhodčí",
+        "mainShort_many": "{{day}} v {{at}}: {{count}} planším chybí hlavní rozhodčí",
+        "mainShort_other": "{{day}} v {{at}}: {{count}} planším chybí hlavní rozhodčí"
       },
       "infeasible": {
         "structure": "{{name}} se nevejde do formátu ({{detail}}). Uprav rozsah skupin.",
         "overrun": "Žádná varianta se nevejde do dne; nejlepší přetahuje o {{minutes}} min.",
         "rule": "Varianta neexistuje kvůli pravidlu: {{rule}}.",
         "pin": {
-          "day": "Varianta neexistuje kvůli pinu {{name}} na den {{day}}.",
           "k": "Varianta neexistuje kvůli pinu {{name}} na {{k}} skupin.",
           "place": "Varianta neexistuje kvůli pinu umístění {{name}}.",
           "sequence": "Varianta neexistuje kvůli pinu pořadí disciplín.",
@@ -2277,7 +2336,7 @@
         }
       },
       "rules": {
-        "finals_last": "finále až na konci dne",
+        "finals": "umístění finále",
         "rest": "odpočinek mezi zápasy",
         "officials": "počet rozhodčích"
       },
@@ -2289,7 +2348,7 @@
         "publish": "Publikovat plán",
         "replan": "Přeplánovat",
         "confirmTitle": "Publikovat plán",
-        "confirmBody": "Pracovní verze se stane zveřejněnou. Program turnaje se podle ní zobrazí i veřejně."
+        "confirmBody": "Pracovní verze se stane zveřejněnou. Program turnaje se podle ní zobrazí i veřejně. Losy, které ještě nejsou vyhlášené, se zahodí a losuje se znovu podle nového plánu."
       },
       "obstacles": {
         "format": "{{name}} nemá formát.",
@@ -2299,16 +2358,12 @@
       "pins": {
         "title": "Piny",
         "none": "Nic není připnuto.",
-        "day": "{{name}}: den {{day}}",
         "k": "{{name}}: {{k}} skupin",
         "place": "{{activity}} začíná v {{start}}",
         "sequence": "Pořadí disciplín",
         "gate": "přidal krok {{gate}}; odebere ho až jeho znovuotevření",
-        "kind": "Co připnout",
-        "kindDay": "den disciplíny",
-        "kindK": "počet skupin",
         "discipline": "Disciplína",
-        "pools": "{{name}}: {{n}} skupin",
+        "pools": "Počet skupin",
         "add": "Připnout",
         "n": "{{name}}: N = {{n}}"
       },
@@ -2332,6 +2387,14 @@
           "pistes": "Den omezují planše.",
           "officials": "Den omezují rozhodčí."
         }
+      },
+      "preferences": {
+        "title": "Preference plánu",
+        "pool_size": "Velikost skupin",
+        "larger": "větší skupiny",
+        "smaller": "menší skupiny",
+        "club_weight": "Váha oddělení klubů při losu",
+        "nationality_weight": "Váha rozložení národností při losu"
       }
     },
     "today": {
@@ -2359,10 +2422,13 @@
       },
       "codes": {
         "days": "Nastavení: chybí dny turnaje",
-        "pistes": "Nastavení: chybí planše",
+        "day": "Nastavení: {{discipline}} nemá den",
+        "piste": "Nastavení: {{discipline}} nemá planš",
         "format": "Nastavení: {{discipline}} nemá formát",
-        "staffing": "Nastavení: {{discipline}} nemá obsazení planše",
+        "take_over": "Nastavení: {{discipline}} přebírá skupiny, které převzít nejde",
         "publish": "Plán: pracovní verze čeká na publikování",
+        "unfilled": "Plán: některá místa rozhodčích nejsou obsazena",
+        "without_main": "Plán: některé bloky nemají hlavního rozhodčího",
         "checkin_open": "Prezence: {{discipline}} je otevřená a první skupina se blíží"
       },
       "steps": {
@@ -2382,7 +2448,8 @@
           "waiting": "čeká",
           "published": "zveřejněny"
         }
-      }
+      },
+      "takenOver": "převzaty z {{name}}"
     },
     "checkin": {
       "failed": "Prezenci se nepodařilo načíst.",
@@ -2485,7 +2552,8 @@
         "bouts_missing": "Skupina {{pool}}: {{name}} má {{found}} zápasů z {{expected}}.",
         "touches_asymmetric": "Skupina {{pool}}: zásahy nesedí (dané {{expected}}, obdržené {{found}}).",
         "unknown_fencer": "Neznámý šermíř ve výsledcích: {{name}}."
-      }
+      },
+      "takenOver": "Disciplína nešermuje vlastní skupiny, přebírá výsledky z {{name}}:"
     },
     "ring": {
       "title": "Odkazy pro planše",
@@ -2534,7 +2602,9 @@
         "stale_version": "Výsledek mezitím někdo změnil; načti ho znovu.",
         "not_this_piste": "Tento zápas neprobíhá na této planši.",
         "failed": "Akce se nezdařila."
-      }
+      },
+      "sourceOpen": "Disciplína přebírá skupiny z {{name}}; pavouk čeká, až se uzavřou.",
+      "unplaced": "Bez umístění ve zdroji, nasazeni pod ostatní: {{names}}."
     },
     "officials": {
       "title": "Obsazení",
@@ -2551,11 +2621,14 @@
       "rules": {
         "unavailable": "Rozhodčí ten den není k dispozici.",
         "not_qualified": "Rozhodčí nemá tuto disciplínu.",
-        "wrong_role": "Rozhodčí tuto roli nedělá.",
         "double_booked": "Rozhodčí už má v tu dobu jiný blok.",
         "fencing": "Rozhodčí v tu dobu šermuje.",
         "failed": "Akce se nezdařila."
-      }
+      },
+      "withoutMain": "bez hlavního rozhodčího",
+      "mainPlace": "Hlavní",
+      "place": "Rozhodčí",
+      "reserve": "záložní"
     },
     "results": {
       "published": "zveřejněny",

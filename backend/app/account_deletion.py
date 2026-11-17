@@ -736,12 +736,8 @@ COLUMN_HANDLING: dict[str, tuple[str, str]] = {
     # the tournament day (app.floor); classified by name, not by import
     "floor_days.breaks": ("none", "times of the day"),
     "floor_pistes.name": ("none", "a piste's name"),
-    "floor_pistes.tag": ("none", "a piste's label"),
-    "floor_formats.staffing": ("none", "officials a piste needs, by role"),
     "floor_officials.name": ("kept", "another person, entered by the organizer"),
     "floor_officials.person_key": ("none", "a roster key"),
-    "floor_officials.roles": ("none", "role names"),
-    "floor_officials.discipline_ids": ("none", "discipline ids"),
     "floor_settings.params": ("none", "the organizer's parameters"),
     "floor_plans.status": ("none", "operational"),
     "floor_plans.variant": ("none", "pool counts and days"),

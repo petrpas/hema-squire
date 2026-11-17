@@ -4,8 +4,9 @@ import { useTranslation } from "react-i18next";
 import { type FloorSetup, type Pin, planApi } from "../floorApi";
 
 /** Pinned decisions: what each fixes, removable unless a gate added it, and
- *  a form for a discipline's day or k (spec floor-plan, Decisions are pinned
- *  and unpinned). A gate's pin goes by reopening its gate. */
+ *  a form for a discipline's k (spec floor-plan, Decisions are pinned and
+ *  unpinned). A discipline's day is Setup's, not a pin. A gate's pin goes by
+ *  reopening its gate. */
 export function PinsSection({
   slug,
   pins,
@@ -18,16 +19,13 @@ export function PinsSection({
   onChanged: () => void;
 }) {
   const { t } = useTranslation();
-  const [kind, setKind] = useState<"day" | "k">("day");
   const [discipline, setDiscipline] = useState(String(setup.disciplines[0]?.id ?? ""));
-  const [day, setDay] = useState(setup.days.days[0]?.date ?? "");
   const [k, setK] = useState("2");
   const [failed, setFailed] = useState(false);
   const names = new Map(setup.disciplines.map((d) => [String(d.id), d.name]));
 
   function describe(pin: Pin): string {
     const name = names.get(pin.target) ?? pin.target;
-    if (pin.kind === "day") return t("floor.plan.pins.day", { name, day: String(pin.value.day) });
     if (pin.kind === "k") return t("floor.plan.pins.k", { name, k: String(pin.value.k) });
     if (pin.kind === "n") return t("floor.plan.pins.n", { name, n: String(pin.value.n) });
     if (pin.kind === "place") {
@@ -78,16 +76,6 @@ export function PinsSection({
       )}
       <div className="floor-row">
         <label>
-          {t("floor.plan.pins.kind")}
-          <select
-            value={kind}
-            onChange={(event) => setKind(event.target.value === "k" ? "k" : "day")}
-          >
-            <option value="day">{t("floor.plan.pins.kindDay")}</option>
-            <option value="k">{t("floor.plan.pins.kindK")}</option>
-          </select>
-        </label>
-        <label>
           {t("floor.plan.pins.discipline")}
           <select value={discipline} onChange={(event) => setDiscipline(event.target.value)}>
             {setup.disciplines.map((d) => (
@@ -97,38 +85,25 @@ export function PinsSection({
             ))}
           </select>
         </label>
-        {kind === "day" ? (
-          <label>
-            {t("floor.setup.days.date")}
-            <select value={day} onChange={(event) => setDay(event.target.value)}>
-              {setup.days.days.map((d) => (
-                <option key={d.date} value={d.date}>
-                  {d.date}
-                </option>
-              ))}
-            </select>
-          </label>
-        ) : (
-          <label>
-            {t("floor.plan.pins.pools")}
-            <input
-              type="number"
-              inputMode="numeric"
-              min={1}
-              value={k}
-              onChange={(event) => setK(event.target.value)}
-            />
-          </label>
-        )}
+        <label>
+          {t("floor.plan.pins.pools")}
+          <input
+            type="number"
+            inputMode="numeric"
+            min={1}
+            value={k}
+            onChange={(event) => setK(event.target.value)}
+          />
+        </label>
         <button
           type="button"
           className="secondary"
           onClick={() =>
             void run(() =>
               planApi.pin(slug, {
-                kind,
+                kind: "k",
                 target: discipline,
-                value: kind === "day" ? { day } : { k: Number.parseInt(k, 10) },
+                value: { k: Number.parseInt(k, 10) },
               }),
             )
           }

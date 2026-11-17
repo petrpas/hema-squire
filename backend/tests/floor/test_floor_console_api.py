@@ -1,7 +1,7 @@
 """The floor console's server side (spec floor-console): who may open it, what
 has no floor, and the summary its tab band reads."""
 
-from tests.floor.test_floor_setup import BASE, discipline_ids, fmt, ok, put
+from tests.floor.test_floor_setup import BASE, discipline_ids, fmt, ok, put, serving
 from tests.test_entrants import setup_tournament
 
 
@@ -64,12 +64,14 @@ def test_the_setup_badge_names_what_waits_until_nothing_does(client, auth_header
     }
     assert summary["setup_missing"] == [
         "days",
-        "pistes",
+        f"piste:{ids['LS']}",
+        f"piste:{ids['SB']}",
         f"format:{ids['LS']}",
         f"format:{ids['SB']}",
     ]
 
-    ok(put(client, organizer, "pistes", [{"name": "1", "days": ["2099-12-05"]}]))
+    ok(put(client, organizer, "days", [{"date": "2099-12-05", "start": "09:00", "end": "19:00"}]))
+    ok(put(client, organizer, "pistes", [{"name": "1", "serves": serving(ids["LS"], ids["SB"])}]))
     ok(put(client, organizer, "formats", [fmt(ids["LS"]), fmt(ids["SB"])]))
 
     summary = client.get(f"{BASE}/summary", headers=organizer).json()

@@ -20,15 +20,17 @@ from app.floor.models import (
     FloorBracket,
     FloorBracketSlot,
     FloorDay,
+    FloorDisciplineDay,
     FloorDraw,
     FloorFormat,
     FloorLineup,
     FloorLocalPerson,
     FloorOfficial,
     FloorOfficialDay,
+    FloorOfficialDiscipline,
     FloorPin,
     FloorPiste,
-    FloorPisteDay,
+    FloorPisteDiscipline,
     FloorPlan,
     FloorPlanActivity,
     FloorPool,
@@ -244,11 +246,13 @@ def populate(session, tournament: Tournament, registration: Registration, actor:
         tournament_id=tid, date=today, start=datetime.time(9), end=datetime.time(19), breaks=[]
     )
     piste = FloorPiste(tournament_id=tid, name="1", ordinal=1)
-    official = FloorOfficial(tournament_id=tid, name="Ref", roles=["referee"], ordinal=1)
+    official = FloorOfficial(tournament_id=tid, name="Ref", ordinal=1)
     session.add_all([day, piste, official])
     session.flush()
-    session.add(FloorPisteDay(piste_id=piste.id, day_id=day.id))
+    session.add(FloorPisteDiscipline(piste_id=piste.id, discipline_id=discipline.id))
+    session.add(FloorDisciplineDay(discipline_id=discipline.id, day_id=day.id))
     session.add(FloorOfficialDay(official_id=official.id, day_id=day.id))
+    session.add(FloorOfficialDiscipline(official_id=official.id, discipline_id=discipline.id))
     session.add(
         FloorFormat(
             tournament_id=tid,
@@ -257,7 +261,7 @@ def populate(session, tournament: Tournament, registration: Registration, actor:
             pool_max=7,
             slot_pool_bout=4,
             slot_elim_bout=6,
-            slot_pool_overhead=5,
+            pause_between_pools=5,
         )
     )
     session.add(FloorSettings(tournament_id=tid, params={}))

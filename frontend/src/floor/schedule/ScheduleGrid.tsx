@@ -45,10 +45,23 @@ export function ScheduleGrid({
   const from = Math.floor(Math.min(...all.map((a) => minutes(a.start))) / 60) * 60;
   const to = Math.ceil(Math.max(...all.map((a) => minutes(a.end))) / 60) * 60;
   const columns = Math.max((to - from) / STEP, 1);
-  const pistes = [...setup.pistes].sort(
-    (a, b) =>
-      Number(a.reserve) - Number(b.reserve) || setup.pistes.indexOf(a) - setup.pistes.indexOf(b),
-  );
+  // the pistes serving one of the day's disciplines, and any an activity
+  // stands on; reserve where they serve the day only as reserve
+  const held = new Set(setup.days.days.find((d) => d.date === day)?.discipline_ids ?? []);
+  const used = new Set(all.map((a) => a.piste_id));
+  const reserve = (piste: FloorSetup["pistes"][number]) =>
+    !piste.serves.some((s) => held.has(s.discipline_id) && !s.reserve);
+  const pistes = setup.pistes
+    .filter(
+      (piste) =>
+        (piste.id !== null && used.has(piste.id)) ||
+        piste.serves.some((s) => held.has(s.discipline_id)),
+    )
+    .sort(
+      (a, b) =>
+        Number(reserve(a)) - Number(reserve(b)) ||
+        setup.pistes.indexOf(a) - setup.pistes.indexOf(b),
+    );
   const slugs = new Map(setup.disciplines.map((d) => [d.id, d.slug]));
   const mark = new Map(changes.map((c) => [c.activity, c.kind]));
   const hours: number[] = [];
@@ -76,7 +89,7 @@ export function ScheduleGrid({
           return [
             <span key={`p-${piste.id}`} className="floor-grid-piste" style={{ gridRow: line }}>
               {piste.name}
-              {piste.reserve && <span className="muted"> {t("floor.schedule.reserve")}</span>}
+              {reserve(piste) && <span className="muted"> {t("floor.schedule.reserve")}</span>}
             </span>,
             ...here.map((activity) => {
               const kind = gone.includes(activity) ? "removed" : mark.get(activity.id);

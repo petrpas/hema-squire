@@ -20,6 +20,8 @@ class FloorDiscipline:
     slug: str
     name: str
     kind: DisciplineKind
+    # as the office stores it; the floor compares weapons case-folded
+    weapon: str = ""
     # a team discipline's lineup bounds; None for an individual one
     team_min: int | None = None
     team_max: int | None = None

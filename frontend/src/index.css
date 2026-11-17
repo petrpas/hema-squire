@@ -1410,7 +1410,13 @@ fieldset.form-field > legend {
 .form-field textarea,
 .form-field select,
 .param-field input,
-.param-field select {
+.param-field select,
+/* floor Setup's dates and times wear the office timeline's field */
+.floor-days input[type="date"],
+.floor-days input[type="time"],
+.floor-break input[type="time"],
+.floor-format-fields input[type="number"],
+.floor-pistes input {
   font: var(--field-size) var(--font-ui);
   padding: 0.4rem 0;
   border: none;
@@ -1490,7 +1496,12 @@ select option {
 .form-field input:focus,
 .form-field textarea:focus,
 .param-field input:focus,
-.param-field select:focus {
+.param-field select:focus,
+.floor-days input[type="date"]:focus,
+.floor-days input[type="time"]:focus,
+.floor-break input[type="time"]:focus,
+.floor-format-fields input[type="number"]:focus,
+.floor-pistes input:focus {
   outline: none;
   border-bottom: 2px solid var(--stamp);
 }
@@ -1501,7 +1512,9 @@ select option {
 .form-field input[aria-invalid="true"],
 .form-field textarea[aria-invalid="true"],
 .param-field input[aria-invalid="true"],
-.param-field select[aria-invalid="true"] {
+.param-field select[aria-invalid="true"],
+.floor-days input[aria-invalid="true"],
+.floor-break input[aria-invalid="true"] {
   border-bottom: var(--border-w) solid var(--stamp);
 }
 
@@ -5609,24 +5622,97 @@ tr.export-line td {
 }
 
 /* ===== floor console (tournament day) =====
-   The office console's frame and band, the work beside the schedule panel
-   (spec floor-console). Tokens only; the badge is the shared .tab-mark. */
+   The office console's top bar across the full width, the tabs as a rail of
+   outline icons down the left edge, the work beside the schedule panel (spec
+   floor-console). Tokens only; no shadow, no transition. */
 
-.floor-tabs {
+.floor-body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+.floor-rail {
   flex: none;
-  padding: 0.5rem 1.4rem;
-  border-bottom: var(--border-w) solid var(--hairline);
+  width: 48px;
+  border-right: var(--border-w) solid var(--hairline);
   background: var(--paper);
-}
-
-/* the tablist is its own element only for its role; the band lays out its
-   buttons as if they were its own */
-.floor-tablist {
-  display: contents;
-}
-
-.floor-tabs button {
+  /* the hints reach out over the work; the rail itself never scrolls them */
+  overflow: visible;
   position: relative;
+  z-index: 2;
+}
+
+.floor-rail-list {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  padding: 0.4rem 0;
+  gap: 2px;
+}
+
+.floor-rail button {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* a finger's 44px on both axes (responsive-layout) */
+  min-height: 44px;
+  width: 100%;
+  border: none;
+  border-left: 2px solid transparent;
+  background: transparent;
+  color: var(--ink-faded);
+  padding: 0;
+}
+
+.floor-rail button:hover {
+  color: var(--ink);
+  background: var(--paper-shade);
+}
+
+/* the current tab: a rule and the ink, not a colour of its own */
+.floor-rail button.active {
+  color: var(--ink);
+  border-left-color: var(--ink);
+  background: var(--paper-shade);
+}
+
+.floor-rail button:focus-visible {
+  outline: var(--focus);
+  outline-offset: -2px;
+}
+
+.floor-rail-badge {
+  position: absolute;
+  top: 8px;
+  right: 9px;
+  width: 6px;
+  height: 6px;
+  border-radius: var(--radius);
+  background: var(--stamp);
+}
+
+/* the tab's name: shown on hover and keyboard focus only, static */
+.floor-rail-hint {
+  display: none;
+  position: absolute;
+  left: calc(100% + 6px);
+  top: 50%;
+  translate: 0 -50%;
+  padding: 0.25rem 0.55rem;
+  white-space: nowrap;
+  font-size: var(--label-size);
+  letter-spacing: 0.06em;
+  color: var(--paper);
+  background: var(--ink);
+  border-radius: var(--radius);
+  pointer-events: none;
+}
+
+.floor-rail button:hover .floor-rail-hint,
+.floor-rail button:focus-visible .floor-rail-hint {
+  display: block;
 }
 
 .floor-workspace {
@@ -5695,6 +5781,7 @@ tr.export-line td {
 .floor-row label.floor-check,
 .floor-format-fields label.floor-check,
 .floor-ticks label {
+  display: flex;
   flex-direction: row;
   align-items: center;
   gap: 0.4rem;
@@ -5734,10 +5821,30 @@ tr.export-line td {
   border-bottom: var(--border-w) solid var(--hairline);
 }
 
+/* two equal columns; the pool size and the lengths span both */
 .floor-format-fields {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 1rem 1.6rem;
+}
+
+.floor-format-fields > .floor-wide {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 768px) {
+  .floor-format-fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* the team note beside the two fields, small, in at most two lines */
+.floor-format-fields fieldset > p.floor-pools-hint {
+  flex: 1 1 14rem;
+  max-width: 30rem;
+  margin-left: 1.2rem;
+  align-self: center;
+  font-size: var(--label-size);
 }
 
 .floor-format-fields fieldset {
@@ -5775,11 +5882,268 @@ tr.export-line td {
   text-align: left;
 }
 
-@media (max-width: 768px) {
-  .floor-tabs {
-    padding: 0.4rem 16px;
-  }
+/* ----- floor Setup's tabs (rework-floor-setup) ----- */
 
+.floor-setup-header {
+  padding: 0.6rem 1.4rem;
+}
+
+.floor-setup [role="tabpanel"][hidden] {
+  display: none;
+}
+
+/* one item per tick, its hint and its error tight beneath it; the items are
+   spaced evenly whether or not they carry a hint */
+.floor-scope {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.floor-scope-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.floor-scope .floor-check {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.floor-scope p {
+  margin: 0;
+}
+
+.floor-nested {
+  margin-left: 1.6rem;
+}
+
+/* Planše: the name and the actions fixed; the disciplines take the rest */
+.floor-pistes {
+  table-layout: fixed;
+  min-width: 26rem;
+}
+
+.floor-pistes td {
+  vertical-align: middle;
+}
+
+.floor-pistes input {
+  width: 100%;
+  min-width: 0;
+}
+
+.floor-pistes-name {
+  width: 8rem;
+}
+
+.floor-pistes-actions {
+  width: 7.5rem;
+}
+
+/* declared after the hover rule, so a disabled arrow never lights up */
+.row-action:disabled {
+  color: var(--hairline);
+  background: transparent;
+}
+
+/* Turnajové dny: date, od, do, přestávka and the actions are fixed; what is
+   left goes to the disciplines. Below its minimum the table scrolls in its
+   own band rather than squeezing the disciplines to nothing. */
+.floor-days-scroll {
+  overflow-x: auto;
+}
+
+.floor-days {
+  table-layout: fixed;
+  min-width: 38rem;
+}
+
+.floor-days td {
+  vertical-align: middle;
+}
+
+.floor-days-date {
+  width: 11.5rem;
+}
+
+.floor-days-time {
+  width: 6.5rem;
+}
+
+.floor-days-break {
+  width: 9rem;
+}
+
+.floor-days-actions {
+  width: 5rem;
+}
+
+/* the text cells read in the inputs' type, not the sheet's */
+.floor-days-text,
+.floor-weekday {
+  font: var(--field-size) var(--font-ui);
+  color: var(--ink);
+}
+
+.floor-days-break-line {
+  display: block;
+}
+
+.floor-day-date {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.floor-weekday {
+  min-width: 1.4rem;
+}
+
+.floor-days input[type="date"],
+.floor-days input[type="time"] {
+  width: 100%;
+  min-width: 0;
+}
+
+/* the day's dialog: two sections under ruled labels, as a table's head */
+.floor-day-dialog {
+  width: 24rem;
+}
+
+.floor-day-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  border: none;
+  border-top: var(--border-w) solid var(--rule-strong);
+  margin: 0;
+  padding: 0.6rem 0 0;
+}
+
+.floor-day-section legend {
+  float: left;
+  width: 100%;
+  padding: 0;
+  margin-bottom: 0.2rem;
+  font-size: var(--label-size);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--ink-faded);
+}
+
+.floor-day-section p {
+  margin: 0;
+}
+
+.floor-day-tick {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font: var(--field-size) var(--font-ui);
+}
+
+.floor-day-section .floor-break {
+  flex-wrap: nowrap;
+}
+
+.floor-day-section .floor-break input[type="time"] {
+  width: 6.5rem;
+}
+
+.floor-day-add {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  align-self: flex-start;
+  padding-left: 0;
+}
+
+.floor-day-actions {
+  justify-content: flex-end;
+}
+
+.floor-serves {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem 0.6rem;
+}
+
+.floor-serves-label {
+  font-size: var(--label-size);
+}
+
+.floor-serves-dialog td {
+  text-align: center;
+}
+
+.floor-serves-note {
+  margin: 0;
+  font-size: var(--label-size);
+}
+
+/* the elimination: "Postupují (•) všichni (•) prvních [ ]" on one line, the
+   third place beneath it */
+.floor-format-fields fieldset.floor-elimination,
+.floor-format-fields fieldset.floor-points {
+  flex-direction: column;
+  align-items: flex-start;
+  flex-wrap: nowrap;
+}
+
+.floor-advance {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem 0.8rem;
+  font-size: var(--label-size);
+}
+
+.floor-format-fields .floor-advance label {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+/* "prvních [ ]" while všichni is chosen: the field stays in place, empty and
+   quiet, not a grey block */
+.floor-advance input[type="number"]:disabled {
+  border-bottom-color: var(--hairline);
+}
+
+/* the card heading's own rules set it relative; hidden, it takes no room */
+.floor-section > h2.visually-hidden {
+  position: absolute;
+}
+
+/* a tab whose label names it hides its card heading; the first discipline
+   then starts at the card's top */
+.floor-section > h2.visually-hidden + .floor-format {
+  padding-top: 0;
+}
+
+.floor-section > h2.visually-hidden + .floor-format > h3 {
+  margin-top: 0;
+}
+
+/* the point limits stacked: label, field, and the team total after it */
+.floor-format-fields label.floor-points-row {
+  display: grid;
+  /* wide enough for the longest label, "Počet bodů na střet", and no wider */
+  grid-template-columns: 7.5rem 5rem auto;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.floor-row input:disabled {
+  color: var(--ink-faded);
+  background: var(--paper-shade);
+}
+
+@media (max-width: 768px) {
   .floor-data {
     padding: 1rem 16px;
   }
