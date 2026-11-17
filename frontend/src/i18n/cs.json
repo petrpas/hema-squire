@@ -1294,7 +1294,9 @@
       "registered": "Registrace",
       "teams": "Týmy",
       "entrants": "Přihlášení",
-      "tournament_event": "Akce"
+      "tournament_event": "Akce",
+      "program": "Program",
+      "results": "Výsledky"
     },
     "close": "Zavřít",
     "otherActions": "Další aktivity",
@@ -2383,6 +2385,10 @@
           "seeded": "nasazen",
           "running": "běží",
           "closed": "uzavřen"
+        },
+        "results": {
+          "waiting": "čeká",
+          "published": "zveřejněny"
         }
       }
     },
@@ -2558,6 +2564,27 @@
         "fencing": "Rozhodčí v tu dobu šermuje.",
         "failed": "Akce se nezdařila."
       }
+    },
+    "results": {
+      "published": "zveřejněny",
+      "waiting": "čeká",
+      "bracketOpen": "Pořadí bude, až se uzavře pavouk.",
+      "place": "Pořadí",
+      "csv": "Export CSV",
+      "print": "Tisk",
+      "publish": "Zveřejnit výsledky",
+      "withdraw": "Stáhnout zveřejnění",
+      "withdrawHint": "Stažení se na veřejné stránce projeví hned."
+    },
+    "public": {
+      "pool": "skupina {{number}}",
+      "final": "finále",
+      "round": "kolo {{round}}",
+      "slip_one": "skluz {{count}} minuta",
+      "slip_few": "skluz {{count}} minuty",
+      "slip_many": "skluz {{count}} minuty",
+      "slip_other": "skluz {{count}} minut",
+      "itinerary": "Tvůj den"
     }
   }
 }

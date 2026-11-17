@@ -22,6 +22,10 @@ import ExternalRegistrationNotice from "./ExternalRegistrationNotice";
 import EntrantsTab from "./entrants/EntrantsTab";
 import type { FencerOutletContext } from "./FencerHome";
 import type { HomeTab } from "./FencerShell";
+import { publicFloorApi } from "./floor/floorApi";
+import { Itinerary } from "./floor/public/Itinerary";
+import { PublicProgram } from "./floor/public/PublicProgram";
+import { PublicResults } from "./floor/public/PublicResults";
 import i18n from "./i18n";
 import EventWording, { wordingI18n } from "./i18n/EventWording";
 import ManageLinkDead from "./ManageLinkDead";
@@ -385,6 +389,9 @@ function RegistrationPanel({
  *  Mirrors `PUBLIC_EVENT_CATEGORIES` in `backend/app/entrants.py`. */
 const ROSTERED: ReadonlySet<ExtraCategory> = new Set(["seminar", "other_action"]);
 
+/** The detail page's own tabs; Entrants has an address of its own. */
+type DetailTab = "tournament" | "registration" | "teams" | "program" | "results";
+
 export default function TournamentDetail() {
   const [detail, setDetail] = useState<TournamentDetailData | null>(null);
   const isEvent = detail?.is_event ?? false;
@@ -419,9 +426,7 @@ export default function TournamentDetail() {
   // editor (design team-disciplines D1)
   const { signedIn, onSignIn, resume, clearResume, guest, changeGuest, clearGuest } =
     useOutletContext<FencerOutletContext>();
-  const [tab, setTab] = useState<"tournament" | "registration" | "teams">(
-    managing ? "registration" : "tournament",
-  );
+  const [tab, setTab] = useState<DetailTab>(managing ? "registration" : "tournament");
   // A return from the sign-in screen the Register action led to names the tab
   // it was reaching for (spec `public-browsing`, An action needing an account
   // leads to sign-in). Read in an effect rather than as this state's initial
@@ -429,6 +434,14 @@ export default function TournamentDetail() {
   // the commit after it, so an initializer would read the location it left.
 
   const shown = onEntrants ? "entrants" : tab;
+  // the tournament day's tabs, offered once there is something to show
+  // (spec floor-public): the floor answers which
+  const [floorTabs, setFloorTabs] = useState({ program: false, results: false });
+  useEffect(() => {
+    publicFloorApi
+      .summary(slug)
+      .then(setFloorTabs, () => setFloorTabs({ program: false, results: false }));
+  }, [slug]);
   // keeps the selected tab visible when the tabs scroll below 768px
   const band = useTabBand(shown);
   const [amending, setAmending] = useState(false);
@@ -559,7 +572,7 @@ export default function TournamentDetail() {
   /** Leaving the registration tab abandons any amendment in progress — the
    *  page introduces no separate cancel control for it (design D3); this
    *  covers the teams tab for free since the guard is `next !== "registration"`. */
-  function selectTab(next: "tournament" | "registration" | "teams") {
+  function selectTab(next: DetailTab) {
     if (next !== "registration") setAmending(false);
     setTab(next);
     // no other tab is carried in the URL: leaving Entrants returns it to the
@@ -623,6 +636,24 @@ export default function TournamentDetail() {
                   {t("detail.tabs.teams")}
                 </button>
               )}
+              {floorTabs.program && (
+                <button
+                  type="button"
+                  className={shown === "program" ? "active" : ""}
+                  onClick={() => selectTab("program")}
+                >
+                  {t("detail.tabs.program")}
+                </button>
+              )}
+              {floorTabs.results && (
+                <button
+                  type="button"
+                  className={shown === "results" ? "active" : ""}
+                  onClick={() => selectTab("results")}
+                >
+                  {t("detail.tabs.results")}
+                </button>
+              )}
             </nav>
             <button
               type="button"
@@ -645,8 +676,13 @@ export default function TournamentDetail() {
                   event={event}
                   timezone={detail.timezone}
                 />
+              ) : shown === "program" ? (
+                <PublicProgram slug={slug} />
+              ) : shown === "results" ? (
+                <PublicResults slug={slug} />
               ) : shown === "tournament" ? (
                 <>
+                  {signedIn && <Itinerary slug={slug} />}
                   <InfoHeader
                     detail={detail}
                     now={opening.now}

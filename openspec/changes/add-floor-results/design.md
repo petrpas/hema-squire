@@ -62,6 +62,24 @@ the gates, so it cannot change after publication.
 - The office frontend's detail page calls floor endpoints. This is frontend only, and
   the backend boundary is unchanged.
 
+### D6. Decisions made during implementation (made by me; for the owner's review)
+Decided on 2026-11-17 while the owner was away, as asked:
+- **Losers of a round are ordered by their bracket seed**, which is their place in the
+  closed pool ranking among those who advanced. A team's seed is the team seeding of
+  `floor-bracket`.
+- **The detail page's tabs are state, not addresses.** "Program" and "Výsledky" sit
+  beside the page's other stateful tabs, so `routes.ts` gains nothing (task 4.2 asked
+  for addresses). Only Entrants has an address, as before.
+- **The itinerary is drawn on the Turnaj tab** above the tournament's face, for a
+  signed-in fencer with something to show. It lists their pools and the bracket bouts
+  not yet fenced. A bracket bout's time is not shown, because the plan's slot for it
+  depends on who advances.
+- **A fencer is found by their own registration only.** A fencer who appears only as a
+  member of someone else's team has no itinerary yet.
+- **The PDF print is the plain table template** of `add-floor-officials`.
+- **Retention (task 5.1) is not done.** It waits on the owner's decision, as asked on
+  2026-11-16.
+
 ## Risks / Trade-offs
 
 - **[The public program could reveal a schedule the organizer is not ready to show.]** →

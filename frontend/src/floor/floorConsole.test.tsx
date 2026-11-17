@@ -139,12 +139,6 @@ describe("the floor console's tabs", () => {
     expect(selected()).toBe("floor-tab-today");
   });
 
-  it("states that a step has not landed rather than hiding it", async () => {
-    await open("/organizer/cup/floor/results");
-
-    expect(host?.querySelector(".floor-not-yet")?.textContent).toBe(t("floor.notYet"));
-  });
-
   it("badges only the tab that waits", async () => {
     await open("/organizer/cup/floor/data", summary({ badges: { setup: true, data: false } }));
 
