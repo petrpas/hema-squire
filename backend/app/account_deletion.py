@@ -782,4 +782,6 @@ COLUMN_HANDLING: dict[str, tuple[str, str]] = {
     "floor_pool_rankings.stats": ("none", "bout figures"),
     "floor_ring_keys.key_hash": ("none", "a hash of a random key"),
     "floor_bracket_slots.entrant_key": ("none", "a roster key"),
+    "floor_assignments.block_key": ("none", "a piste and an activity id"),
+    "floor_assignments.role": ("none", "a role's name"),
 }

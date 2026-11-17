@@ -435,3 +435,26 @@ class FloorBracketSlot(Base):
     entrant_key: Mapped[str | None] = mapped_column(String(80))
     seed: Mapped[int | None] = mapped_column(Integer)
     bye: Mapped[bool] = mapped_column(Boolean, default=False)
+
+
+# ------------------------------------------------------------ officials on blocks
+# (spec floor-officials; design add-floor-officials D3)
+
+
+class FloorAssignment(Base):
+    """One seat of a block's staffing: a role's slot, its official or none."""
+
+    __tablename__ = "floor_assignments"
+    __table_args__ = (UniqueConstraint("tournament_id", "block_key", "role", "slot"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    tournament_id: Mapped[int] = mapped_column(ForeignKey("tournaments.id"), index=True)
+    plan_id: Mapped[int] = mapped_column(ForeignKey("floor_plans.id"), index=True)
+    # "<piste id>:<first activity id>"
+    block_key: Mapped[str] = mapped_column(String(120))
+    role: Mapped[str] = mapped_column(String(16))
+    slot: Mapped[int] = mapped_column(Integer)
+    # NULL where the role cannot be filled
+    official_id: Mapped[int | None] = mapped_column(ForeignKey("floor_officials.id"))
+    pinned: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
