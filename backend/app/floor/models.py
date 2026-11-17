@@ -458,3 +458,21 @@ class FloorAssignment(Base):
     official_id: Mapped[int | None] = mapped_column(ForeignKey("floor_officials.id"))
     pinned: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
+# ------------------------------------------------------------ results
+# (spec floor-results; design add-floor-results D4)
+
+
+class FloorPublishedResult(Base):
+    """A discipline's results made public. The standing itself is computed:
+    its inputs are frozen by the gates."""
+
+    __tablename__ = "floor_published_results"
+    __table_args__ = (UniqueConstraint("tournament_id", "discipline_id"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    tournament_id: Mapped[int] = mapped_column(ForeignKey("tournaments.id"), index=True)
+    discipline_id: Mapped[int] = mapped_column(ForeignKey("disciplines.id", ondelete="CASCADE"))
+    published_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    published_by: Mapped[int | None] = mapped_column(Integer)

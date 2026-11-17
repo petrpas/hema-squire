@@ -34,6 +34,7 @@ from app.floor.models import (
     FloorPool,
     FloorPoolMember,
     FloorPoolRanking,
+    FloorPublishedResult,
     FloorRingKey,
     FloorSettings,
     FloorSnapshot,
@@ -326,6 +327,9 @@ def populate(session, tournament: Tournament, registration: Registration, actor:
             official_id=official.id,
             created_at=now,
         )
+    )
+    session.add(
+        FloorPublishedResult(tournament_id=tid, discipline_id=discipline.id, published_at=now)
     )
     session.commit()
 

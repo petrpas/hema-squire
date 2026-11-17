@@ -12,7 +12,7 @@ from fastapi import APIRouter, Header, HTTPException, Request, Response
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints
 
 from app.auth import require_console_access, require_published
-from app.floor import bracket, officiating, people, poolbouts, pools, ring, sheets
+from app.floor import bracket, officiating, people, poolbouts, pools, results, ring, sheets
 from app.floor.adapters.office import (
     FencerDep,
     SessionDep,
@@ -787,4 +787,90 @@ def floor_officials_print(
     if not rows:
         raise HTTPException(status_code=404, detail="nothing_to_print")
     pdf = sheets.table_pdf(title, tournament.display_name, headers, rows)
+    return Response(content=pdf, media_type="application/pdf")
+
+
+# ------------------------------------------------------------ results
+# (spec floor-results)
+
+
+@router.get("/{slug}/floor/results")
+def floor_results(
+    tournament: TournamentDep, session: SessionDep, fencer: FencerDep
+) -> list[dict[str, object]]:
+    """Each discipline's final standing, where its bracket is closed, and
+    whether it is public."""
+    require_console_access(session, tournament, fencer)
+    if not has_floor(tournament):
+        raise HTTPException(status_code=404, detail="floor_not_found")
+    found = roster(session, tournament)
+    out: list[dict[str, object]] = []
+    for discipline in setup_facts(tournament).disciplines:
+        row = results.published(session, tournament.id, discipline.id)
+        out.append(
+            {
+                "discipline_id": discipline.id,
+                "slug": discipline.slug,
+                "name": discipline.name,
+                "standing": results.placed(session, tournament.id, found, discipline),
+                "published_at": row.published_at if row is not None else None,
+            }
+        )
+    return out
+
+
+@router.post("/{slug}/floor/results/{discipline_id}/publish", status_code=204)
+def floor_results_publish(
+    discipline_id: RowId, tournament: TournamentDep, session: SessionDep, fencer: FencerDep
+) -> None:
+    """ "Zveřejnit výsledky": the discipline's standing becomes public."""
+    require_console_access(session, tournament, fencer)
+    discipline = _write(tournament, discipline_id)
+    try:
+        results.publish(session, tournament.id, discipline.id, fencer.id, datetime.now(UTC))
+    except pools.Refused as error:
+        raise _refused(error) from None
+    session.commit()
+
+
+@router.delete("/{slug}/floor/results/{discipline_id}/publish", status_code=204)
+def floor_results_withdraw(
+    discipline_id: RowId, tournament: TournamentDep, session: SessionDep, fencer: FencerDep
+) -> None:
+    """Withdraws publication; the public page changes at once."""
+    require_console_access(session, tournament, fencer)
+    discipline = _write(tournament, discipline_id)
+    results.withdraw(session, tournament.id, discipline.id)
+    session.commit()
+
+
+@router.get("/{slug}/floor/results/{discipline_id}/{fmt}")
+def floor_results_export(
+    discipline_id: RowId,
+    fmt: Annotated[str, StringConstraints(pattern="^(csv|pdf)$")],
+    tournament: TournamentDep,
+    session: SessionDep,
+    fencer: FencerDep,
+) -> Response:
+    """The standing and every bout as CSV, or the standing as PDF."""
+    require_console_access(session, tournament, fencer)
+    discipline = _discipline(tournament, discipline_id)
+    found = roster(session, tournament)
+    if fmt == "csv":
+        return Response(
+            content=results.csv_export(session, tournament.id, found, discipline),
+            media_type="text/csv; charset=utf-8",
+        )
+    standing = results.placed(session, tournament.id, found, discipline)
+    if standing is None:
+        raise HTTPException(status_code=409, detail="bracket_open")
+    pdf = sheets.table_pdf(
+        discipline.name,
+        tournament.display_name,
+        ["Pořadí", "Jméno", "Klub", "Národnost"],
+        [
+            [str(r["place"]), str(r["name"]), str(r["club"] or ""), str(r["nationality"] or "")]
+            for r in standing
+        ],
+    )
     return Response(content=pdf, media_type="application/pdf")
