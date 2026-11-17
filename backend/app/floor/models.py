@@ -350,8 +350,15 @@ class FloorBout(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     tournament_id: Mapped[int] = mapped_column(ForeignKey("tournaments.id"), index=True)
     discipline_id: Mapped[int] = mapped_column(ForeignKey("disciplines.id", ondelete="CASCADE"))
-    # NULL for an elimination bout (add-floor-bracket)
+    # a pool's bout, or an elimination bout: exactly one of the two is set
     pool_id: Mapped[int | None] = mapped_column(ForeignKey("floor_pools.id"), index=True)
+    bracket_id: Mapped[int | None] = mapped_column(ForeignKey("floor_brackets.id"), index=True)
+    # an elimination bout's round (0 the first) and its position in the round;
+    # the third-place bout is the last round's position 1
+    round: Mapped[int | None] = mapped_column(Integer)
+    position: Mapped[int | None] = mapped_column(Integer)
+    # the piste an elimination bout is planned on
+    piste_id: Mapped[int | None] = mapped_column(Integer)
     ordinal: Mapped[int] = mapped_column(Integer)
     a_key: Mapped[str] = mapped_column(String(80))
     b_key: Mapped[str] = mapped_column(String(80))
@@ -392,3 +399,39 @@ class FloorRingKey(Base):
     key_hash: Mapped[str] = mapped_column(String(64), unique=True)
     issued_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+# ------------------------------------------------------------ the bracket
+# (spec floor-bracket; design add-floor-bracket D2)
+
+
+class FloorBracket(Base):
+    __tablename__ = "floor_brackets"
+    __table_args__ = (UniqueConstraint("tournament_id", "discipline_id"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    tournament_id: Mapped[int] = mapped_column(ForeignKey("tournaments.id"), index=True)
+    discipline_id: Mapped[int] = mapped_column(ForeignKey("disciplines.id", ondelete="CASCADE"))
+    size: Mapped[int] = mapped_column(Integer)
+    advancing: Mapped[int] = mapped_column(Integer)
+    third_place: Mapped[bool] = mapped_column(Boolean, default=False)
+    confirmed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    confirmed_by: Mapped[int | None] = mapped_column(Integer)
+    closed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class FloorBracketSlot(Base):
+    """A place in the bracket: the first round's from the seeding, later ones
+    filled as winners advance."""
+
+    __tablename__ = "floor_bracket_slots"
+    __table_args__ = (UniqueConstraint("bracket_id", "round", "position"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    bracket_id: Mapped[int] = mapped_column(ForeignKey("floor_brackets.id"), index=True)
+    round: Mapped[int] = mapped_column(Integer)
+    position: Mapped[int] = mapped_column(Integer)
+    # NULL until filled, and for a bye
+    entrant_key: Mapped[str | None] = mapped_column(String(80))
+    seed: Mapped[int | None] = mapped_column(Integer)
+    bye: Mapped[bool] = mapped_column(Boolean, default=False)

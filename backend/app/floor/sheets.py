@@ -57,3 +57,45 @@ def pool_sheet(tournament: str, discipline: str, number: int, names: list[str]) 
 def _first_page(result: bytes | list[bytes]) -> bytes:
     # the binding's stub promises `bytes`, but several pages come back as a list
     return result[0] if isinstance(result, list) else result
+
+
+def _string(text: str) -> str:
+    """A Typst string literal: plain text, never markup."""
+    return '"' + text.replace("\\", "\\\\").replace('"', '\\"') + '"'
+
+
+def bracket_sheet(
+    tournament: str,
+    discipline: str,
+    size: int,
+    by_seed: list[str | None],
+    advanced: list[list[str | None]],
+) -> bytes:
+    """The bracket as recorded so far, from the adopted elimination template:
+    the seeds in their slots (`None` a bye), and per later round the names that
+    have advanced into its slots."""
+    template = _TEMPLATES / f"elimination_{size}.typ"
+    if not template.exists():
+        raise NoTemplate(size)
+    fencers = ",\n".join(f"  {_string(n)}" if n is not None else "  []" for n in by_seed)
+    byes = ",\n".join("  true" if n is None else "  false" for n in by_seed)
+    rounds = ",\n".join(
+        "  (" + ", ".join(_string(n) if n is not None else "none" for n in names) + ",)"
+        for names in advanced
+    )
+    block = (
+        f"#let fencers = (\n{fencers},\n)\n"
+        f"#let is_bye = (\n{byes},\n)\n"
+        f"#let advanced = (\n{rounds}{',' if advanced else ''}\n)"
+    )
+    source = template.read_text(encoding="utf-8")
+    source = source.replace("{{fencers}}", block)
+    source = source.replace("{{tournament}}", _escape(tournament))
+    source = source.replace("{{discipline}}", _escape(discipline))
+    with tempfile.TemporaryDirectory() as directory:
+        filled = Path(directory) / "bracket.typ"
+        filled.write_text(source, encoding="utf-8")
+        result = typst.compile(
+            str(filled), format="pdf", font_paths=[str(_FONTS)], ignore_system_fonts=True
+        )
+    return _first_page(result)

@@ -12,7 +12,7 @@ from fastapi import APIRouter, Header, HTTPException, Request, Response
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints
 
 from app.auth import require_console_access, require_published
-from app.floor import people, poolbouts, pools, ring, sheets
+from app.floor import bracket, people, poolbouts, pools, ring, sheets
 from app.floor.adapters.office import (
     FencerDep,
     SessionDep,
@@ -23,7 +23,7 @@ from app.floor.adapters.office import (
     roster_of,
     setup_facts,
 )
-from app.floor.models import FloorPiste, FloorRingKey
+from app.floor.models import FloorBout, FloorPiste, FloorRingKey
 from app.floor.roster import FloorDiscipline
 from app.floor.schemas import RowId
 from app.floor.setup import read_pistes
@@ -463,17 +463,215 @@ def ring_record(
 ) -> None:
     """Record a bout of the piste's own pool; attributed to `ring:<piste>`."""
     key = _resolve(session, x_floor_ring_key)
+    bout = session.get(FloorBout, bout_id)
     try:
-        poolbouts.record(
+        if bout is not None and bout.bracket_id is not None:
+            found = roster_of(session, key.tournament_id)
+            discipline = (
+                next((d for d in found.disciplines if d.id == bout.discipline_id), None)
+                if found is not None
+                else None
+            )
+            if discipline is None:
+                raise pools.Refused("bout_not_found")
+            bracket.record(
+                session,
+                key.tournament_id,
+                bout_id,
+                _result(data),
+                data.version,
+                f"ring:{key.piste_id}",
+                datetime.now(UTC),
+                discipline,
+                piste=key.piste_id,
+            )
+        else:
+            poolbouts.record(
+                session,
+                key.tournament_id,
+                bout_id,
+                _result(data),
+                data.version,
+                f"ring:{key.piste_id}",
+                datetime.now(UTC),
+                piste=key.piste_id,
+            )
+    except pools.Refused as error:
+        raise _refused(error) from None
+    session.commit()
+
+
+# ------------------------------------------------------------ the bracket
+# (spec floor-bracket)
+
+
+@router.get("/{slug}/floor/bracket/{discipline_id}")
+def floor_bracket(
+    discipline_id: RowId, tournament: TournamentDep, session: SessionDep, fencer: FencerDep
+) -> dict[str, object]:
+    """The bracket in its state: the proposal before confirming, then its
+    slots and bouts."""
+    require_console_access(session, tournament, fencer)
+    discipline = _discipline(tournament, discipline_id)
+    tid = tournament.id
+    found = roster(session, tournament)
+    names = {k: p.name for k, p in people.persons(session, tid, found).items()}
+    names.update({t.key: t.name for t in found.teams})
+    out: dict[str, object] = {
+        "state": bracket.state(session, tid, discipline.id),
+        "pools_closed": poolbouts.state(session, tid, discipline.id) == "closed",
+        "names": names,
+        "proposal": None,
+        "bracket": None,
+    }
+    row = bracket.bracket_of(session, tid, discipline.id)
+    if row is None:
+        if out["pools_closed"]:
+            try:
+                out["proposal"] = bracket.propose(session, tid, found, discipline)
+            except pools.Refused:
+                out["proposal"] = None
+        return out
+    out["bracket"] = {
+        "size": row.size,
+        "advancing": row.advancing,
+        "third_place": row.third_place,
+        "closed_at": row.closed_at,
+        "slots": [
+            {
+                "round": s.round,
+                "position": s.position,
+                "key": s.entrant_key,
+                "seed": s.seed,
+                "bye": s.bye,
+            }
+            for s in sorted(
+                bracket.slots_of(session, row).values(), key=lambda s: (s.round, s.position)
+            )
+        ],
+        "bouts": [
+            {
+                "id": b.id,
+                "round": b.round,
+                "position": b.position,
+                "a": b.a_key,
+                "b": b.b_key,
+                "score_a": b.score_a,
+                "score_b": b.score_b,
+                "outcome_a": b.outcome_a,
+                "outcome_b": b.outcome_b,
+                "note": b.note,
+                "piste_id": b.piste_id,
+                "version": b.version,
+            }
+            for b in bracket.bouts_of(session, row)
+        ],
+    }
+    return out
+
+
+@router.post("/{slug}/floor/bracket/{discipline_id}/confirm", status_code=204)
+def floor_bracket_confirm(
+    discipline_id: RowId, tournament: TournamentDep, session: SessionDep, fencer: FencerDep
+) -> None:
+    """ "Potvrdit postup": freezes the seeded bracket."""
+    require_console_access(session, tournament, fencer)
+    discipline = _write(tournament, discipline_id)
+    try:
+        bracket.confirm(
             session,
-            key.tournament_id,
-            bout_id,
-            _result(data),
-            data.version,
-            f"ring:{key.piste_id}",
+            tournament.id,
+            roster(session, tournament),
+            discipline,
+            fencer.id,
             datetime.now(UTC),
-            piste=key.piste_id,
         )
     except pools.Refused as error:
         raise _refused(error) from None
     session.commit()
+
+
+@router.post("/{slug}/floor/bracket/{discipline_id}/reopen", status_code=204)
+def floor_bracket_reopen(
+    discipline_id: RowId, tournament: TournamentDep, session: SessionDep, fencer: FencerDep
+) -> None:
+    require_console_access(session, tournament, fencer)
+    discipline = _write(tournament, discipline_id)
+    try:
+        bracket.reopen(session, tournament.id, discipline.id)
+    except pools.Refused as error:
+        raise _refused(error) from None
+    session.commit()
+
+
+@router.put("/{slug}/floor/bracket/{discipline_id}/bouts/{bout_id}", status_code=204)
+def floor_bracket_record(
+    discipline_id: RowId,
+    bout_id: RowId,
+    data: ResultIn,
+    tournament: TournamentDep,
+    session: SessionDep,
+    fencer: FencerDep,
+) -> None:
+    """Record or correct an elimination bout; its winner advances."""
+    require_console_access(session, tournament, fencer)
+    discipline = _write(tournament, discipline_id)
+    try:
+        bracket.record(
+            session,
+            tournament.id,
+            bout_id,
+            _result(data),
+            data.version,
+            f"user:{fencer.id}",
+            datetime.now(UTC),
+            discipline,
+        )
+    except pools.Refused as error:
+        raise _refused(error) from None
+    session.commit()
+
+
+@router.get("/{slug}/floor/bracket/{discipline_id}/sheet")
+def floor_bracket_sheet(
+    discipline_id: RowId, tournament: TournamentDep, session: SessionDep, fencer: FencerDep
+) -> Response:
+    """The bracket as PDF, as recorded so far."""
+    require_console_access(session, tournament, fencer)
+    discipline = _discipline(tournament, discipline_id)
+    row = bracket.bracket_of(session, tournament.id, discipline.id)
+    if row is None:
+        raise HTTPException(status_code=404, detail="bracket_not_found")
+    found = roster(session, tournament)
+    names = {k: p.name for k, p in people.persons(session, tournament.id, found).items()}
+    names.update({t.key: t.name for t in found.teams})
+    slots = bracket.slots_of(session, row)
+    by_seed: list[str | None] = [None] * row.size
+    for (round_, _), slot in slots.items():
+        if round_ == 0 and slot.seed is not None and slot.entrant_key is not None:
+            by_seed[slot.seed - 1] = names.get(slot.entrant_key, slot.entrant_key)
+    advanced: list[list[str | None]] = []
+    total = row.size.bit_length() - 1
+    for round_ in range(1, total + 1):
+        line: list[str | None] = []
+        for position in range(row.size // 2**round_):
+            slot = slots.get((round_, position))
+            fed_by_bye = round_ == 1 and any(
+                (s := slots.get((0, 2 * position + i))) is not None and s.bye for i in (0, 1)
+            )
+            key = slot.entrant_key if slot is not None and not fed_by_bye else None
+            line.append(names.get(key, key) if key is not None else None)
+        advanced.append(line)
+    final = next(
+        (b for b in bracket.bouts_of(session, row) if b.round == total - 1 and b.position == 0),
+        None,
+    )
+    champion = bracket._winner(final)  # pyright: ignore[reportPrivateUsage]  # the module's own rule for who won
+    advanced[-1] = [names.get(champion, champion) if champion is not None else None]
+    try:
+        pdf = sheets.bracket_sheet(
+            tournament.display_name, discipline.name, row.size, by_seed, advanced
+        )
+    except sheets.NoTemplate:
+        raise HTTPException(status_code=409, detail="no_template") from None
+    return Response(content=pdf, media_type="application/pdf")
