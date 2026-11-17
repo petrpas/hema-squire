@@ -1,7 +1,14 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { type FloorSetup, floorApi, type PlanState, planApi } from "../floorApi";
+import {
+  type Assignments,
+  type FloorSetup,
+  floorApi,
+  officialsApi,
+  type PlanState,
+  planApi,
+} from "../floorApi";
 import { ScheduleGrid } from "./ScheduleGrid";
 
 /** The schedule beside the work, or the narrow screen's last tab (spec
@@ -23,11 +30,13 @@ export default function SchedulePanel({
   const [setup, setSetup] = useState<FloorSetup | null>(null);
   const [showWorking, setShowWorking] = useState(false);
   const [day, setDay] = useState<string | null>(null);
+  const [assigned, setAssigned] = useState<Assignments | null>(null);
 
   useEffect(() => {
     void revision;
     planApi.state(slug).then(setPlan, () => setPlan(null));
     floorApi.setup(slug).then(setSetup, () => setSetup(null));
+    officialsApi.view(slug).then(setAssigned, () => setAssigned(null));
   }, [slug, revision]);
 
   const both = plan?.working != null && plan.published != null;
@@ -106,10 +115,23 @@ export default function SchedulePanel({
               }
               changes={showWorking && both ? (plan?.diff ?? []) : []}
               setup={setup}
+              officials={officialNames(assigned, showWorking && both)}
             />
           )}
         </>
       )}
     </aside>
   );
+}
+
+/** Each published activity's officials, by the block that holds it. A
+ *  working version's blocks have none yet. */
+function officialNames(assigned: Assignments | null, working: boolean): Map<string, string> {
+  const out = new Map<string, string>();
+  if (assigned === null || working) return out;
+  for (const block of assigned.blocks) {
+    const names = block.seats.flatMap((s) => (s.name ? [s.name] : [])).join(", ");
+    for (const activity of block.activities) out.set(activity, names);
+  }
+  return out;
 }

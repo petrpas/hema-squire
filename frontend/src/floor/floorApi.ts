@@ -587,3 +587,44 @@ export const bracketApi = {
     }),
   sheetUrl: (slug: string, discipline: number) => `${brackets(slug, discipline)}/sheet`,
 };
+
+// ------------------------------------------------------------ officials on blocks
+
+export interface Seat {
+  id: number;
+  role: Role;
+  slot: number;
+  official_id: number | null;
+  name: string | null;
+  pinned: boolean;
+}
+
+export interface AssignmentBlock {
+  key: string;
+  discipline_id: number;
+  piste_id: number;
+  day: string;
+  start: string;
+  end: string;
+  activities: string[];
+  seats: Seat[];
+}
+
+export interface Assignments {
+  published: boolean;
+  blocks: AssignmentBlock[];
+  unmatched: { id: number; block: string; role: string; name: string | null }[];
+  conflicts: { block: string; official_id: number; club: string }[];
+}
+
+export const officialsApi = {
+  view: (slug: string) => request<Assignments>(`${base(slug)}/officials`),
+  run: (slug: string) => request<void>(`${base(slug)}/officials/run`, { method: "POST" }),
+  seat: (slug: string, seat: number, official: number | null, pinned: boolean) =>
+    request<void>(`${base(slug)}/officials/seats/${seat}`, {
+      method: "PUT",
+      body: JSON.stringify({ official_id: official, pinned }),
+    }),
+  printUrl: (slug: string, kind: "official" | "piste", id: number) =>
+    `${base(slug)}/officials/print/${kind}/${id}`,
+};

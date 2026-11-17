@@ -2537,6 +2537,27 @@
         "not_this_piste": "Tento zápas neprobíhá na této planši.",
         "failed": "Akce se nezdařila."
       }
+    },
+    "officials": {
+      "title": "Obsazení",
+      "rerun": "Přepočítat",
+      "empty": "— nikdo —",
+      "unfilled": "neobsazeno",
+      "pinned": "(připnuto)",
+      "print": "Tisk:",
+      "conflict": "{{name}} je z klubu {{club}} jako někdo ve skupině bloku.",
+      "unmatched_one": "{{count}} připnuté místo patří bloku, který po přeplánování už neexistuje.",
+      "unmatched_few": "{{count}} připnutá místa patří blokům, které po přeplánování už neexistují.",
+      "unmatched_many": "{{count}} připnutého místa patří blokům, které už neexistují.",
+      "unmatched_other": "{{count}} připnutých míst patří blokům, které po přeplánování už neexistují.",
+      "rules": {
+        "unavailable": "Rozhodčí ten den není k dispozici.",
+        "not_qualified": "Rozhodčí nemá tuto disciplínu.",
+        "wrong_role": "Rozhodčí tuto roli nedělá.",
+        "double_booked": "Rozhodčí už má v tu dobu jiný blok.",
+        "fencing": "Rozhodčí v tu dobu šermuje.",
+        "failed": "Akce se nezdařila."
+      }
     }
   }
 }

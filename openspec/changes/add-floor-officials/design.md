@@ -75,6 +75,23 @@ to resolve.
 ### D4. Imports that cross the floor boundary
 None new. `typst` is used as in `add-floor-pools`.
 
+### D5. Decisions made during implementation (made by me; for the owner's review)
+Decided on 2026-11-17 while the owner was away, as asked:
+- **The penalties' weights.** A club conflict costs 100, a piste change within a day
+  10, and the load is the minutes already assigned, so the even load decides among
+  otherwise equal officials. The swap step measures the load as a sum of squares.
+- **An official's club is their roster person's.** Officials have no club field of
+  their own. An official without a person link conflicts with no club.
+- **After the draw, an official who fences** is kept off their own pool and off every
+  elimination activity of their discipline, since they may advance into any of them.
+- **Choosing an official on the Obsazení section pins them.** A seat set by hand is a
+  decision the next re-run keeps. "— nikdo —" clears and unpins it.
+- **Re-runs replace every unpinned seat of the published plan.** Pins whose block
+  re-planning removed are kept and counted as unmatched.
+- **The plan badge** also lights for an empty seat of the published plan.
+- **Prints use one plain table template** (`app/floor/typst/table.typ`), since the
+  adopted templates have no rozpis.
+
 ## Risks / Trade-offs
 
 - **[A greedy construction can strand a scarce role.]** → Blocks are filled

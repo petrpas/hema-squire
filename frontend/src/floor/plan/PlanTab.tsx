@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { type FloorSetup, floorApi, type PlanState, planApi } from "../floorApi";
+import { AssignmentSection } from "./AssignmentSection";
 import { PinsSection } from "./PinsSection";
 import { SensitivitySection } from "./SensitivitySection";
 import { VariantsSection } from "./VariantsSection";
@@ -52,6 +53,7 @@ export default function PlanTab({ slug, onChanged }: { slug: string; onChanged: 
         onChanged={changed}
       />
       <VariantsSection slug={slug} names={names} onChosen={changed} />
+      <AssignmentSection slug={slug} setup={setup} />
       <PinsSection slug={slug} pins={plan.pins} setup={setup} onChanged={changed} />
       {plan.sensitivity && <SensitivitySection sensitivity={plan.sensitivity} names={names} />}
     </div>
