@@ -1,0 +1,6777 @@
+{
+ "draw": [
+  {
+   "name": "naduel26-SB-saved",
+   "fencers": [
+    {
+     "name": "S1",
+     "seed": 1,
+     "nationality": "CZ",
+     "club": "Rožnovsky šermirsky klub",
+     "hr_id": null,
+     "other_disciplines": [
+      "SA"
+     ],
+     "h_rating": 1912.5,
+     "h_rank": 4
+    },
+    {
+     "name": "S2",
+     "seed": 2,
+     "nationality": "CZ",
+     "club": "Rožnovsky šermirsky klub",
+     "hr_id": null,
+     "other_disciplines": [
+      "SA"
+     ],
+     "h_rating": 1648.5,
+     "h_rank": 75
+    },
+    {
+     "name": "S3",
+     "seed": 3,
+     "nationality": "CZ",
+     "club": "Škola šermu Paridon",
+     "hr_id": null,
+     "other_disciplines": [
+      "SA"
+     ],
+     "h_rating": 1514.1,
+     "h_rank": 172
+    },
+    {
+     "name": "S4",
+     "seed": 4,
+     "nationality": "PL",
+     "club": "Silkfencing Team",
+     "hr_id": null,
+     "other_disciplines": [
+      "SA"
+     ],
+     "h_rating": 1509.6,
+     "h_rank": 179
+    },
+    {
+     "name": "S5",
+     "seed": 5,
+     "nationality": "CZ",
+     "club": "SHŠ Krkavci",
+     "hr_id": null,
+     "other_disciplines": [
+      "SA"
+     ],
+     "h_rating": 1477.2,
+     "h_rank": 213
+    },
+    {
+     "name": "S6",
+     "seed": 6,
+     "nationality": "PL",
+     "club": "Akademia Szermierzy",
+     "hr_id": null,
+     "other_disciplines": [
+      "SA"
+     ],
+     "h_rating": 1429.5,
+     "h_rank": 250
+    },
+    {
+     "name": "S7",
+     "seed": 7,
+     "nationality": "PL",
+     "club": "Mordschlag",
+     "hr_id": null,
+     "other_disciplines": [
+      "SA"
+     ],
+     "h_rating": 1408.3,
+     "h_rank": 289
+    },
+    {
+     "name": "S8",
+     "seed": 8,
+     "nationality": "PL",
+     "club": "Mordschlag Łódź",
+     "hr_id": null,
+     "other_disciplines": [
+      "SA"
+     ],
+     "h_rating": 1307.2,
+     "h_rank": 448
+    },
+    {
+     "name": "S9",
+     "seed": 9,
+     "nationality": "CZ",
+     "club": "KEBU Plzeň",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": 1302.5,
+     "h_rank": 450
+    },
+    {
+     "name": "S10",
+     "seed": 10,
+     "nationality": "CZ",
+     "club": "Rotyka",
+     "hr_id": null,
+     "other_disciplines": [
+      "SA"
+     ],
+     "h_rating": 1281.3,
+     "h_rank": 470
+    },
+    {
+     "name": "S11",
+     "seed": 11,
+     "nationality": "SK",
+     "club": "Košický šermiarský cech",
+     "hr_id": null,
+     "other_disciplines": [
+      "SA"
+     ],
+     "h_rating": 1256.8,
+     "h_rank": 480
+    },
+    {
+     "name": "S12",
+     "seed": 12,
+     "nationality": "HU",
+     "club": "Kard Rendje ViSE",
+     "hr_id": null,
+     "other_disciplines": [
+      "SA"
+     ],
+     "h_rating": 1222.8,
+     "h_rank": 619
+    },
+    {
+     "name": "S13",
+     "seed": 13,
+     "nationality": "CZ",
+     "club": "Šermírna Luka",
+     "hr_id": null,
+     "other_disciplines": [
+      "SA"
+     ],
+     "h_rating": 1209.0,
+     "h_rank": 650
+    },
+    {
+     "name": "S14",
+     "seed": 14,
+     "nationality": "CZ",
+     "club": "HELOPS",
+     "hr_id": null,
+     "other_disciplines": [
+      "SA"
+     ],
+     "h_rating": 1182.9,
+     "h_rank": 750
+    },
+    {
+     "name": "S15",
+     "seed": 15,
+     "nationality": "CZ",
+     "club": "Škola šermu Paridon",
+     "hr_id": null,
+     "other_disciplines": [
+      "SA"
+     ],
+     "h_rating": 1120.6,
+     "h_rank": 839
+    },
+    {
+     "name": "S16",
+     "seed": 16,
+     "nationality": "CZ",
+     "club": "KEBU Plzeň",
+     "hr_id": null,
+     "other_disciplines": [
+      "SA"
+     ],
+     "h_rating": 1068.8,
+     "h_rank": 840
+    },
+    {
+     "name": "S17",
+     "seed": 17,
+     "nationality": "SK",
+     "club": "Goliath - šermiarsky cech mesta Poprad",
+     "hr_id": null,
+     "other_disciplines": [
+      "SA"
+     ],
+     "h_rating": 829.8,
+     "h_rank": 850
+    },
+    {
+     "name": "S18",
+     "seed": 18,
+     "nationality": "FR",
+     "club": "La Salle d'Armes",
+     "hr_id": null,
+     "other_disciplines": [
+      "SA"
+     ],
+     "h_rating": 787.4,
+     "h_rank": 860
+    },
+    {
+     "name": "S19",
+     "seed": 19,
+     "nationality": "CZ",
+     "club": "Šerm Tábor",
+     "hr_id": null,
+     "other_disciplines": [
+      "SA"
+     ],
+     "h_rating": null,
+     "h_rank": 870
+    },
+    {
+     "name": "S20",
+     "seed": 20,
+     "nationality": "CZ",
+     "club": "No club",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": 880
+    },
+    {
+     "name": "S21",
+     "seed": 21,
+     "nationality": "CZ",
+     "club": "Manus Regis",
+     "hr_id": null,
+     "other_disciplines": [
+      "SA"
+     ],
+     "h_rating": null,
+     "h_rank": 890
+    },
+    {
+     "name": "S22",
+     "seed": 22,
+     "nationality": "CZ",
+     "club": "Duelanti od Svatého Rocha",
+     "hr_id": null,
+     "other_disciplines": [
+      "SA"
+     ],
+     "h_rating": null,
+     "h_rank": 900
+    },
+    {
+     "name": "S23",
+     "seed": 23,
+     "nationality": "CZ",
+     "club": "Rožnovsky šermirsky klub",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": 910
+    },
+    {
+     "name": "S24",
+     "seed": 24,
+     "nationality": "PL",
+     "club": "Akademia Szermierzy",
+     "hr_id": null,
+     "other_disciplines": [
+      "SA"
+     ],
+     "h_rating": null,
+     "h_rank": 920
+    },
+    {
+     "name": "S25",
+     "seed": 25,
+     "nationality": "PL",
+     "club": "Mordschlag Łódź",
+     "hr_id": null,
+     "other_disciplines": [
+      "SA"
+     ],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S26",
+     "seed": 26,
+     "nationality": "CZ",
+     "club": "Sportovní šerm Tábor",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S27",
+     "seed": 27,
+     "nationality": "CZ",
+     "club": "Kundó",
+     "hr_id": null,
+     "other_disciplines": [
+      "SA"
+     ],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S28",
+     "seed": 28,
+     "nationality": "CZ",
+     "club": "Duelanti od Svatého Rocha",
+     "hr_id": null,
+     "other_disciplines": [
+      "SA"
+     ],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S29",
+     "seed": 29,
+     "nationality": "CZ",
+     "club": "Kundó",
+     "hr_id": null,
+     "other_disciplines": [
+      "SA"
+     ],
+     "h_rating": null,
+     "h_rank": null
+    }
+   ],
+   "config": {
+    "num_pools": 5,
+    "wave_sizes": [
+     3,
+     2
+    ],
+    "parallel_waves": []
+   },
+   "weights": {
+    "snake_deviation": 1.0,
+    "club": 10.0,
+    "nationality": 3.0,
+    "wave": 5.0
+   },
+   "assignment": [
+    [
+     "S1",
+     "S10",
+     "S11",
+     "S20",
+     "S25",
+     "S26"
+    ],
+    [
+     "S2",
+     "S9",
+     "S12",
+     "S19",
+     "S24",
+     "S27"
+    ],
+    [
+     "S3",
+     "S8",
+     "S13",
+     "S18",
+     "S23",
+     "S28"
+    ],
+    [
+     "S4",
+     "S7",
+     "S14",
+     "S17",
+     "S22",
+     "S29"
+    ],
+    [
+     "S5",
+     "S6",
+     "S15",
+     "S16",
+     "S21"
+    ]
+   ],
+   "score": {
+    "snake_deviation": 0.0,
+    "club": 0.0,
+    "nationality": 1.393412088354187,
+    "wave": 0.0
+   }
+  },
+  {
+   "name": "naduel26-SB-k4",
+   "fencers": [
+    {
+     "name": "S1",
+     "seed": 1,
+     "nationality": "CZ",
+     "club": "Rožnovsky šermirsky klub",
+     "hr_id": null,
+     "other_disciplines": [
+      "SA"
+     ],
+     "h_rating": 1912.5,
+     "h_rank": 4
+    },
+    {
+     "name": "S2",
+     "seed": 2,
+     "nationality": "CZ",
+     "club": "Rožnovsky šermirsky klub",
+     "hr_id": null,
+     "other_disciplines": [
+      "SA"
+     ],
+     "h_rating": 1648.5,
+     "h_rank": 75
+    },
+    {
+     "name": "S3",
+     "seed": 3,
+     "nationality": "CZ",
+     "club": "Škola šermu Paridon",
+     "hr_id": null,
+     "other_disciplines": [
+      "SA"
+     ],
+     "h_rating": 1514.1,
+     "h_rank": 172
+    },
+    {
+     "name": "S4",
+     "seed": 4,
+     "nationality": "PL",
+     "club": "Silkfencing Team",
+     "hr_id": null,
+     "other_disciplines": [
+      "SA"
+     ],
+     "h_rating": 1509.6,
+     "h_rank": 179
+    },
+    {
+     "name": "S5",
+     "seed": 5,
+     "nationality": "CZ",
+     "club": "SHŠ Krkavci",
+     "hr_id": null,
+     "other_disciplines": [
+      "SA"
+     ],
+     "h_rating": 1477.2,
+     "h_rank": 213
+    },
+    {
+     "name": "S6",
+     "seed": 6,
+     "nationality": "PL",
+     "club": "Akademia Szermierzy",
+     "hr_id": null,
+     "other_disciplines": [
+      "SA"
+     ],
+     "h_rating": 1429.5,
+     "h_rank": 250
+    },
+    {
+     "name": "S7",
+     "seed": 7,
+     "nationality": "PL",
+     "club": "Mordschlag",
+     "hr_id": null,
+     "other_disciplines": [
+      "SA"
+     ],
+     "h_rating": 1408.3,
+     "h_rank": 289
+    },
+    {
+     "name": "S8",
+     "seed": 8,
+     "nationality": "PL",
+     "club": "Mordschlag Łódź",
+     "hr_id": null,
+     "other_disciplines": [
+      "SA"
+     ],
+     "h_rating": 1307.2,
+     "h_rank": 448
+    },
+    {
+     "name": "S9",
+     "seed": 9,
+     "nationality": "CZ",
+     "club": "KEBU Plzeň",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": 1302.5,
+     "h_rank": 450
+    },
+    {
+     "name": "S10",
+     "seed": 10,
+     "nationality": "CZ",
+     "club": "Rotyka",
+     "hr_id": null,
+     "other_disciplines": [
+      "SA"
+     ],
+     "h_rating": 1281.3,
+     "h_rank": 470
+    },
+    {
+     "name": "S11",
+     "seed": 11,
+     "nationality": "SK",
+     "club": "Košický šermiarský cech",
+     "hr_id": null,
+     "other_disciplines": [
+      "SA"
+     ],
+     "h_rating": 1256.8,
+     "h_rank": 480
+    },
+    {
+     "name": "S12",
+     "seed": 12,
+     "nationality": "HU",
+     "club": "Kard Rendje ViSE",
+     "hr_id": null,
+     "other_disciplines": [
+      "SA"
+     ],
+     "h_rating": 1222.8,
+     "h_rank": 619
+    },
+    {
+     "name": "S13",
+     "seed": 13,
+     "nationality": "CZ",
+     "club": "Šermírna Luka",
+     "hr_id": null,
+     "other_disciplines": [
+      "SA"
+     ],
+     "h_rating": 1209.0,
+     "h_rank": 650
+    },
+    {
+     "name": "S14",
+     "seed": 14,
+     "nationality": "CZ",
+     "club": "HELOPS",
+     "hr_id": null,
+     "other_disciplines": [
+      "SA"
+     ],
+     "h_rating": 1182.9,
+     "h_rank": 750
+    },
+    {
+     "name": "S15",
+     "seed": 15,
+     "nationality": "CZ",
+     "club": "Škola šermu Paridon",
+     "hr_id": null,
+     "other_disciplines": [
+      "SA"
+     ],
+     "h_rating": 1120.6,
+     "h_rank": 839
+    },
+    {
+     "name": "S16",
+     "seed": 16,
+     "nationality": "CZ",
+     "club": "KEBU Plzeň",
+     "hr_id": null,
+     "other_disciplines": [
+      "SA"
+     ],
+     "h_rating": 1068.8,
+     "h_rank": 840
+    },
+    {
+     "name": "S17",
+     "seed": 17,
+     "nationality": "SK",
+     "club": "Goliath - šermiarsky cech mesta Poprad",
+     "hr_id": null,
+     "other_disciplines": [
+      "SA"
+     ],
+     "h_rating": 829.8,
+     "h_rank": 850
+    },
+    {
+     "name": "S18",
+     "seed": 18,
+     "nationality": "FR",
+     "club": "La Salle d'Armes",
+     "hr_id": null,
+     "other_disciplines": [
+      "SA"
+     ],
+     "h_rating": 787.4,
+     "h_rank": 860
+    },
+    {
+     "name": "S19",
+     "seed": 19,
+     "nationality": "CZ",
+     "club": "Šerm Tábor",
+     "hr_id": null,
+     "other_disciplines": [
+      "SA"
+     ],
+     "h_rating": null,
+     "h_rank": 870
+    },
+    {
+     "name": "S20",
+     "seed": 20,
+     "nationality": "CZ",
+     "club": "No club",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": 880
+    },
+    {
+     "name": "S21",
+     "seed": 21,
+     "nationality": "CZ",
+     "club": "Manus Regis",
+     "hr_id": null,
+     "other_disciplines": [
+      "SA"
+     ],
+     "h_rating": null,
+     "h_rank": 890
+    },
+    {
+     "name": "S22",
+     "seed": 22,
+     "nationality": "CZ",
+     "club": "Duelanti od Svatého Rocha",
+     "hr_id": null,
+     "other_disciplines": [
+      "SA"
+     ],
+     "h_rating": null,
+     "h_rank": 900
+    },
+    {
+     "name": "S23",
+     "seed": 23,
+     "nationality": "CZ",
+     "club": "Rožnovsky šermirsky klub",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": 910
+    },
+    {
+     "name": "S24",
+     "seed": 24,
+     "nationality": "PL",
+     "club": "Akademia Szermierzy",
+     "hr_id": null,
+     "other_disciplines": [
+      "SA"
+     ],
+     "h_rating": null,
+     "h_rank": 920
+    },
+    {
+     "name": "S25",
+     "seed": 25,
+     "nationality": "PL",
+     "club": "Mordschlag Łódź",
+     "hr_id": null,
+     "other_disciplines": [
+      "SA"
+     ],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S26",
+     "seed": 26,
+     "nationality": "CZ",
+     "club": "Sportovní šerm Tábor",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S27",
+     "seed": 27,
+     "nationality": "CZ",
+     "club": "Kundó",
+     "hr_id": null,
+     "other_disciplines": [
+      "SA"
+     ],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S28",
+     "seed": 28,
+     "nationality": "CZ",
+     "club": "Duelanti od Svatého Rocha",
+     "hr_id": null,
+     "other_disciplines": [
+      "SA"
+     ],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S29",
+     "seed": 29,
+     "nationality": "CZ",
+     "club": "Kundó",
+     "hr_id": null,
+     "other_disciplines": [
+      "SA"
+     ],
+     "h_rating": null,
+     "h_rank": null
+    }
+   ],
+   "config": {
+    "num_pools": 4,
+    "wave_sizes": [
+     4
+    ],
+    "parallel_waves": []
+   },
+   "weights": {
+    "snake_deviation": 1.0,
+    "club": 10.0,
+    "nationality": 3.0,
+    "wave": 5.0
+   },
+   "assignment": [
+    [
+     "S1",
+     "S8",
+     "S9",
+     "S15",
+     "S17",
+     "S21",
+     "S26",
+     "S29"
+    ],
+    [
+     "S2",
+     "S7",
+     "S10",
+     "S16",
+     "S18",
+     "S22",
+     "S25"
+    ],
+    [
+     "S3",
+     "S6",
+     "S11",
+     "S14",
+     "S19",
+     "S23",
+     "S27"
+    ],
+    [
+     "S4",
+     "S5",
+     "S12",
+     "S13",
+     "S20",
+     "S24",
+     "S28"
+    ]
+   ],
+   "score": {
+    "snake_deviation": 2.0,
+    "club": 0.0,
+    "nationality": 1.4196152422706632,
+    "wave": 0.0
+   }
+  },
+  {
+   "name": "naduel26-SB-k4-parallel",
+   "fencers": [
+    {
+     "name": "S1",
+     "seed": 1,
+     "nationality": "CZ",
+     "club": "Rožnovsky šermirsky klub",
+     "hr_id": null,
+     "other_disciplines": [
+      "SA"
+     ],
+     "h_rating": 1912.5,
+     "h_rank": 4
+    },
+    {
+     "name": "S2",
+     "seed": 2,
+     "nationality": "CZ",
+     "club": "Rožnovsky šermirsky klub",
+     "hr_id": null,
+     "other_disciplines": [
+      "SA"
+     ],
+     "h_rating": 1648.5,
+     "h_rank": 75
+    },
+    {
+     "name": "S3",
+     "seed": 3,
+     "nationality": "CZ",
+     "club": "Škola šermu Paridon",
+     "hr_id": null,
+     "other_disciplines": [
+      "SA"
+     ],
+     "h_rating": 1514.1,
+     "h_rank": 172
+    },
+    {
+     "name": "S4",
+     "seed": 4,
+     "nationality": "PL",
+     "club": "Silkfencing Team",
+     "hr_id": null,
+     "other_disciplines": [
+      "SA"
+     ],
+     "h_rating": 1509.6,
+     "h_rank": 179
+    },
+    {
+     "name": "S5",
+     "seed": 5,
+     "nationality": "CZ",
+     "club": "SHŠ Krkavci",
+     "hr_id": null,
+     "other_disciplines": [
+      "SA"
+     ],
+     "h_rating": 1477.2,
+     "h_rank": 213
+    },
+    {
+     "name": "S6",
+     "seed": 6,
+     "nationality": "PL",
+     "club": "Akademia Szermierzy",
+     "hr_id": null,
+     "other_disciplines": [
+      "SA"
+     ],
+     "h_rating": 1429.5,
+     "h_rank": 250
+    },
+    {
+     "name": "S7",
+     "seed": 7,
+     "nationality": "PL",
+     "club": "Mordschlag",
+     "hr_id": null,
+     "other_disciplines": [
+      "SA"
+     ],
+     "h_rating": 1408.3,
+     "h_rank": 289
+    },
+    {
+     "name": "S8",
+     "seed": 8,
+     "nationality": "PL",
+     "club": "Mordschlag Łódź",
+     "hr_id": null,
+     "other_disciplines": [
+      "SA"
+     ],
+     "h_rating": 1307.2,
+     "h_rank": 448
+    },
+    {
+     "name": "S9",
+     "seed": 9,
+     "nationality": "CZ",
+     "club": "KEBU Plzeň",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": 1302.5,
+     "h_rank": 450
+    },
+    {
+     "name": "S10",
+     "seed": 10,
+     "nationality": "CZ",
+     "club": "Rotyka",
+     "hr_id": null,
+     "other_disciplines": [
+      "SA"
+     ],
+     "h_rating": 1281.3,
+     "h_rank": 470
+    },
+    {
+     "name": "S11",
+     "seed": 11,
+     "nationality": "SK",
+     "club": "Košický šermiarský cech",
+     "hr_id": null,
+     "other_disciplines": [
+      "SA"
+     ],
+     "h_rating": 1256.8,
+     "h_rank": 480
+    },
+    {
+     "name": "S12",
+     "seed": 12,
+     "nationality": "HU",
+     "club": "Kard Rendje ViSE",
+     "hr_id": null,
+     "other_disciplines": [
+      "SA"
+     ],
+     "h_rating": 1222.8,
+     "h_rank": 619
+    },
+    {
+     "name": "S13",
+     "seed": 13,
+     "nationality": "CZ",
+     "club": "Šermírna Luka",
+     "hr_id": null,
+     "other_disciplines": [
+      "SA"
+     ],
+     "h_rating": 1209.0,
+     "h_rank": 650
+    },
+    {
+     "name": "S14",
+     "seed": 14,
+     "nationality": "CZ",
+     "club": "HELOPS",
+     "hr_id": null,
+     "other_disciplines": [
+      "SA"
+     ],
+     "h_rating": 1182.9,
+     "h_rank": 750
+    },
+    {
+     "name": "S15",
+     "seed": 15,
+     "nationality": "CZ",
+     "club": "Škola šermu Paridon",
+     "hr_id": null,
+     "other_disciplines": [
+      "SA"
+     ],
+     "h_rating": 1120.6,
+     "h_rank": 839
+    },
+    {
+     "name": "S16",
+     "seed": 16,
+     "nationality": "CZ",
+     "club": "KEBU Plzeň",
+     "hr_id": null,
+     "other_disciplines": [
+      "SA"
+     ],
+     "h_rating": 1068.8,
+     "h_rank": 840
+    },
+    {
+     "name": "S17",
+     "seed": 17,
+     "nationality": "SK",
+     "club": "Goliath - šermiarsky cech mesta Poprad",
+     "hr_id": null,
+     "other_disciplines": [
+      "SA"
+     ],
+     "h_rating": 829.8,
+     "h_rank": 850
+    },
+    {
+     "name": "S18",
+     "seed": 18,
+     "nationality": "FR",
+     "club": "La Salle d'Armes",
+     "hr_id": null,
+     "other_disciplines": [
+      "SA"
+     ],
+     "h_rating": 787.4,
+     "h_rank": 860
+    },
+    {
+     "name": "S19",
+     "seed": 19,
+     "nationality": "CZ",
+     "club": "Šerm Tábor",
+     "hr_id": null,
+     "other_disciplines": [
+      "SA"
+     ],
+     "h_rating": null,
+     "h_rank": 870
+    },
+    {
+     "name": "S20",
+     "seed": 20,
+     "nationality": "CZ",
+     "club": "No club",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": 880
+    },
+    {
+     "name": "S21",
+     "seed": 21,
+     "nationality": "CZ",
+     "club": "Manus Regis",
+     "hr_id": null,
+     "other_disciplines": [
+      "SA"
+     ],
+     "h_rating": null,
+     "h_rank": 890
+    },
+    {
+     "name": "S22",
+     "seed": 22,
+     "nationality": "CZ",
+     "club": "Duelanti od Svatého Rocha",
+     "hr_id": null,
+     "other_disciplines": [
+      "SA"
+     ],
+     "h_rating": null,
+     "h_rank": 900
+    },
+    {
+     "name": "S23",
+     "seed": 23,
+     "nationality": "CZ",
+     "club": "Rožnovsky šermirsky klub",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": 910
+    },
+    {
+     "name": "S24",
+     "seed": 24,
+     "nationality": "PL",
+     "club": "Akademia Szermierzy",
+     "hr_id": null,
+     "other_disciplines": [
+      "SA"
+     ],
+     "h_rating": null,
+     "h_rank": 920
+    },
+    {
+     "name": "S25",
+     "seed": 25,
+     "nationality": "PL",
+     "club": "Mordschlag Łódź",
+     "hr_id": null,
+     "other_disciplines": [
+      "SA"
+     ],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S26",
+     "seed": 26,
+     "nationality": "CZ",
+     "club": "Sportovní šerm Tábor",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S27",
+     "seed": 27,
+     "nationality": "CZ",
+     "club": "Kundó",
+     "hr_id": null,
+     "other_disciplines": [
+      "SA"
+     ],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S28",
+     "seed": 28,
+     "nationality": "CZ",
+     "club": "Duelanti od Svatého Rocha",
+     "hr_id": null,
+     "other_disciplines": [
+      "SA"
+     ],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S29",
+     "seed": 29,
+     "nationality": "CZ",
+     "club": "Kundó",
+     "hr_id": null,
+     "other_disciplines": [
+      "SA"
+     ],
+     "h_rating": null,
+     "h_rank": null
+    }
+   ],
+   "config": {
+    "num_pools": 4,
+    "wave_sizes": [
+     2,
+     2
+    ],
+    "parallel_waves": [
+     0
+    ]
+   },
+   "weights": {
+    "snake_deviation": 1.0,
+    "club": 10.0,
+    "nationality": 3.0,
+    "wave": 5.0
+   },
+   "assignment": [
+    [
+     "S1",
+     "S8",
+     "S9",
+     "S15",
+     "S20",
+     "S24",
+     "S26"
+    ],
+    [
+     "S2",
+     "S7",
+     "S10",
+     "S16",
+     "S17",
+     "S23",
+     "S28"
+    ],
+    [
+     "S3",
+     "S6",
+     "S11",
+     "S14",
+     "S18",
+     "S21",
+     "S27"
+    ],
+    [
+     "S4",
+     "S5",
+     "S12",
+     "S13",
+     "S19",
+     "S22",
+     "S25",
+     "S29"
+    ]
+   ],
+   "score": {
+    "snake_deviation": 2.0,
+    "club": 10.0,
+    "nationality": 1.4196152422706632,
+    "wave": 50.0
+   }
+  },
+  {
+   "name": "naduel26-SB-k5",
+   "fencers": [
+    {
+     "name": "S1",
+     "seed": 1,
+     "nationality": "CZ",
+     "club": "Rožnovsky šermirsky klub",
+     "hr_id": null,
+     "other_disciplines": [
+      "SA"
+     ],
+     "h_rating": 1912.5,
+     "h_rank": 4
+    },
+    {
+     "name": "S2",
+     "seed": 2,
+     "nationality": "CZ",
+     "club": "Rožnovsky šermirsky klub",
+     "hr_id": null,
+     "other_disciplines": [
+      "SA"
+     ],
+     "h_rating": 1648.5,
+     "h_rank": 75
+    },
+    {
+     "name": "S3",
+     "seed": 3,
+     "nationality": "CZ",
+     "club": "Škola šermu Paridon",
+     "hr_id": null,
+     "other_disciplines": [
+      "SA"
+     ],
+     "h_rating": 1514.1,
+     "h_rank": 172
+    },
+    {
+     "name": "S4",
+     "seed": 4,
+     "nationality": "PL",
+     "club": "Silkfencing Team",
+     "hr_id": null,
+     "other_disciplines": [
+      "SA"
+     ],
+     "h_rating": 1509.6,
+     "h_rank": 179
+    },
+    {
+     "name": "S5",
+     "seed": 5,
+     "nationality": "CZ",
+     "club": "SHŠ Krkavci",
+     "hr_id": null,
+     "other_disciplines": [
+      "SA"
+     ],
+     "h_rating": 1477.2,
+     "h_rank": 213
+    },
+    {
+     "name": "S6",
+     "seed": 6,
+     "nationality": "PL",
+     "club": "Akademia Szermierzy",
+     "hr_id": null,
+     "other_disciplines": [
+      "SA"
+     ],
+     "h_rating": 1429.5,
+     "h_rank": 250
+    },
+    {
+     "name": "S7",
+     "seed": 7,
+     "nationality": "PL",
+     "club": "Mordschlag",
+     "hr_id": null,
+     "other_disciplines": [
+      "SA"
+     ],
+     "h_rating": 1408.3,
+     "h_rank": 289
+    },
+    {
+     "name": "S8",
+     "seed": 8,
+     "nationality": "PL",
+     "club": "Mordschlag Łódź",
+     "hr_id": null,
+     "other_disciplines": [
+      "SA"
+     ],
+     "h_rating": 1307.2,
+     "h_rank": 448
+    },
+    {
+     "name": "S9",
+     "seed": 9,
+     "nationality": "CZ",
+     "club": "KEBU Plzeň",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": 1302.5,
+     "h_rank": 450
+    },
+    {
+     "name": "S10",
+     "seed": 10,
+     "nationality": "CZ",
+     "club": "Rotyka",
+     "hr_id": null,
+     "other_disciplines": [
+      "SA"
+     ],
+     "h_rating": 1281.3,
+     "h_rank": 470
+    },
+    {
+     "name": "S11",
+     "seed": 11,
+     "nationality": "SK",
+     "club": "Košický šermiarský cech",
+     "hr_id": null,
+     "other_disciplines": [
+      "SA"
+     ],
+     "h_rating": 1256.8,
+     "h_rank": 480
+    },
+    {
+     "name": "S12",
+     "seed": 12,
+     "nationality": "HU",
+     "club": "Kard Rendje ViSE",
+     "hr_id": null,
+     "other_disciplines": [
+      "SA"
+     ],
+     "h_rating": 1222.8,
+     "h_rank": 619
+    },
+    {
+     "name": "S13",
+     "seed": 13,
+     "nationality": "CZ",
+     "club": "Šermírna Luka",
+     "hr_id": null,
+     "other_disciplines": [
+      "SA"
+     ],
+     "h_rating": 1209.0,
+     "h_rank": 650
+    },
+    {
+     "name": "S14",
+     "seed": 14,
+     "nationality": "CZ",
+     "club": "HELOPS",
+     "hr_id": null,
+     "other_disciplines": [
+      "SA"
+     ],
+     "h_rating": 1182.9,
+     "h_rank": 750
+    },
+    {
+     "name": "S15",
+     "seed": 15,
+     "nationality": "CZ",
+     "club": "Škola šermu Paridon",
+     "hr_id": null,
+     "other_disciplines": [
+      "SA"
+     ],
+     "h_rating": 1120.6,
+     "h_rank": 839
+    },
+    {
+     "name": "S16",
+     "seed": 16,
+     "nationality": "CZ",
+     "club": "KEBU Plzeň",
+     "hr_id": null,
+     "other_disciplines": [
+      "SA"
+     ],
+     "h_rating": 1068.8,
+     "h_rank": 840
+    },
+    {
+     "name": "S17",
+     "seed": 17,
+     "nationality": "SK",
+     "club": "Goliath - šermiarsky cech mesta Poprad",
+     "hr_id": null,
+     "other_disciplines": [
+      "SA"
+     ],
+     "h_rating": 829.8,
+     "h_rank": 850
+    },
+    {
+     "name": "S18",
+     "seed": 18,
+     "nationality": "FR",
+     "club": "La Salle d'Armes",
+     "hr_id": null,
+     "other_disciplines": [
+      "SA"
+     ],
+     "h_rating": 787.4,
+     "h_rank": 860
+    },
+    {
+     "name": "S19",
+     "seed": 19,
+     "nationality": "CZ",
+     "club": "Šerm Tábor",
+     "hr_id": null,
+     "other_disciplines": [
+      "SA"
+     ],
+     "h_rating": null,
+     "h_rank": 870
+    },
+    {
+     "name": "S20",
+     "seed": 20,
+     "nationality": "CZ",
+     "club": "No club",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": 880
+    },
+    {
+     "name": "S21",
+     "seed": 21,
+     "nationality": "CZ",
+     "club": "Manus Regis",
+     "hr_id": null,
+     "other_disciplines": [
+      "SA"
+     ],
+     "h_rating": null,
+     "h_rank": 890
+    },
+    {
+     "name": "S22",
+     "seed": 22,
+     "nationality": "CZ",
+     "club": "Duelanti od Svatého Rocha",
+     "hr_id": null,
+     "other_disciplines": [
+      "SA"
+     ],
+     "h_rating": null,
+     "h_rank": 900
+    },
+    {
+     "name": "S23",
+     "seed": 23,
+     "nationality": "CZ",
+     "club": "Rožnovsky šermirsky klub",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": 910
+    },
+    {
+     "name": "S24",
+     "seed": 24,
+     "nationality": "PL",
+     "club": "Akademia Szermierzy",
+     "hr_id": null,
+     "other_disciplines": [
+      "SA"
+     ],
+     "h_rating": null,
+     "h_rank": 920
+    },
+    {
+     "name": "S25",
+     "seed": 25,
+     "nationality": "PL",
+     "club": "Mordschlag Łódź",
+     "hr_id": null,
+     "other_disciplines": [
+      "SA"
+     ],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S26",
+     "seed": 26,
+     "nationality": "CZ",
+     "club": "Sportovní šerm Tábor",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S27",
+     "seed": 27,
+     "nationality": "CZ",
+     "club": "Kundó",
+     "hr_id": null,
+     "other_disciplines": [
+      "SA"
+     ],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S28",
+     "seed": 28,
+     "nationality": "CZ",
+     "club": "Duelanti od Svatého Rocha",
+     "hr_id": null,
+     "other_disciplines": [
+      "SA"
+     ],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S29",
+     "seed": 29,
+     "nationality": "CZ",
+     "club": "Kundó",
+     "hr_id": null,
+     "other_disciplines": [
+      "SA"
+     ],
+     "h_rating": null,
+     "h_rank": null
+    }
+   ],
+   "config": {
+    "num_pools": 5,
+    "wave_sizes": [
+     5
+    ],
+    "parallel_waves": []
+   },
+   "weights": {
+    "snake_deviation": 1.0,
+    "club": 10.0,
+    "nationality": 3.0,
+    "wave": 5.0
+   },
+   "assignment": [
+    [
+     "S1",
+     "S10",
+     "S11",
+     "S20",
+     "S25",
+     "S26"
+    ],
+    [
+     "S2",
+     "S9",
+     "S12",
+     "S19",
+     "S24",
+     "S27"
+    ],
+    [
+     "S3",
+     "S8",
+     "S13",
+     "S18",
+     "S23",
+     "S28"
+    ],
+    [
+     "S4",
+     "S7",
+     "S14",
+     "S17",
+     "S22",
+     "S29"
+    ],
+    [
+     "S5",
+     "S6",
+     "S15",
+     "S16",
+     "S21"
+    ]
+   ],
+   "score": {
+    "snake_deviation": 0.0,
+    "club": 0.0,
+    "nationality": 1.393412088354187,
+    "wave": 0.0
+   }
+  },
+  {
+   "name": "naduel26-SB-k5-parallel",
+   "fencers": [
+    {
+     "name": "S1",
+     "seed": 1,
+     "nationality": "CZ",
+     "club": "Rožnovsky šermirsky klub",
+     "hr_id": null,
+     "other_disciplines": [
+      "SA"
+     ],
+     "h_rating": 1912.5,
+     "h_rank": 4
+    },
+    {
+     "name": "S2",
+     "seed": 2,
+     "nationality": "CZ",
+     "club": "Rožnovsky šermirsky klub",
+     "hr_id": null,
+     "other_disciplines": [
+      "SA"
+     ],
+     "h_rating": 1648.5,
+     "h_rank": 75
+    },
+    {
+     "name": "S3",
+     "seed": 3,
+     "nationality": "CZ",
+     "club": "Škola šermu Paridon",
+     "hr_id": null,
+     "other_disciplines": [
+      "SA"
+     ],
+     "h_rating": 1514.1,
+     "h_rank": 172
+    },
+    {
+     "name": "S4",
+     "seed": 4,
+     "nationality": "PL",
+     "club": "Silkfencing Team",
+     "hr_id": null,
+     "other_disciplines": [
+      "SA"
+     ],
+     "h_rating": 1509.6,
+     "h_rank": 179
+    },
+    {
+     "name": "S5",
+     "seed": 5,
+     "nationality": "CZ",
+     "club": "SHŠ Krkavci",
+     "hr_id": null,
+     "other_disciplines": [
+      "SA"
+     ],
+     "h_rating": 1477.2,
+     "h_rank": 213
+    },
+    {
+     "name": "S6",
+     "seed": 6,
+     "nationality": "PL",
+     "club": "Akademia Szermierzy",
+     "hr_id": null,
+     "other_disciplines": [
+      "SA"
+     ],
+     "h_rating": 1429.5,
+     "h_rank": 250
+    },
+    {
+     "name": "S7",
+     "seed": 7,
+     "nationality": "PL",
+     "club": "Mordschlag",
+     "hr_id": null,
+     "other_disciplines": [
+      "SA"
+     ],
+     "h_rating": 1408.3,
+     "h_rank": 289
+    },
+    {
+     "name": "S8",
+     "seed": 8,
+     "nationality": "PL",
+     "club": "Mordschlag Łódź",
+     "hr_id": null,
+     "other_disciplines": [
+      "SA"
+     ],
+     "h_rating": 1307.2,
+     "h_rank": 448
+    },
+    {
+     "name": "S9",
+     "seed": 9,
+     "nationality": "CZ",
+     "club": "KEBU Plzeň",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": 1302.5,
+     "h_rank": 450
+    },
+    {
+     "name": "S10",
+     "seed": 10,
+     "nationality": "CZ",
+     "club": "Rotyka",
+     "hr_id": null,
+     "other_disciplines": [
+      "SA"
+     ],
+     "h_rating": 1281.3,
+     "h_rank": 470
+    },
+    {
+     "name": "S11",
+     "seed": 11,
+     "nationality": "SK",
+     "club": "Košický šermiarský cech",
+     "hr_id": null,
+     "other_disciplines": [
+      "SA"
+     ],
+     "h_rating": 1256.8,
+     "h_rank": 480
+    },
+    {
+     "name": "S12",
+     "seed": 12,
+     "nationality": "HU",
+     "club": "Kard Rendje ViSE",
+     "hr_id": null,
+     "other_disciplines": [
+      "SA"
+     ],
+     "h_rating": 1222.8,
+     "h_rank": 619
+    },
+    {
+     "name": "S13",
+     "seed": 13,
+     "nationality": "CZ",
+     "club": "Šermírna Luka",
+     "hr_id": null,
+     "other_disciplines": [
+      "SA"
+     ],
+     "h_rating": 1209.0,
+     "h_rank": 650
+    },
+    {
+     "name": "S14",
+     "seed": 14,
+     "nationality": "CZ",
+     "club": "HELOPS",
+     "hr_id": null,
+     "other_disciplines": [
+      "SA"
+     ],
+     "h_rating": 1182.9,
+     "h_rank": 750
+    },
+    {
+     "name": "S15",
+     "seed": 15,
+     "nationality": "CZ",
+     "club": "Škola šermu Paridon",
+     "hr_id": null,
+     "other_disciplines": [
+      "SA"
+     ],
+     "h_rating": 1120.6,
+     "h_rank": 839
+    },
+    {
+     "name": "S16",
+     "seed": 16,
+     "nationality": "CZ",
+     "club": "KEBU Plzeň",
+     "hr_id": null,
+     "other_disciplines": [
+      "SA"
+     ],
+     "h_rating": 1068.8,
+     "h_rank": 840
+    },
+    {
+     "name": "S17",
+     "seed": 17,
+     "nationality": "SK",
+     "club": "Goliath - šermiarsky cech mesta Poprad",
+     "hr_id": null,
+     "other_disciplines": [
+      "SA"
+     ],
+     "h_rating": 829.8,
+     "h_rank": 850
+    },
+    {
+     "name": "S18",
+     "seed": 18,
+     "nationality": "FR",
+     "club": "La Salle d'Armes",
+     "hr_id": null,
+     "other_disciplines": [
+      "SA"
+     ],
+     "h_rating": 787.4,
+     "h_rank": 860
+    },
+    {
+     "name": "S19",
+     "seed": 19,
+     "nationality": "CZ",
+     "club": "Šerm Tábor",
+     "hr_id": null,
+     "other_disciplines": [
+      "SA"
+     ],
+     "h_rating": null,
+     "h_rank": 870
+    },
+    {
+     "name": "S20",
+     "seed": 20,
+     "nationality": "CZ",
+     "club": "No club",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": 880
+    },
+    {
+     "name": "S21",
+     "seed": 21,
+     "nationality": "CZ",
+     "club": "Manus Regis",
+     "hr_id": null,
+     "other_disciplines": [
+      "SA"
+     ],
+     "h_rating": null,
+     "h_rank": 890
+    },
+    {
+     "name": "S22",
+     "seed": 22,
+     "nationality": "CZ",
+     "club": "Duelanti od Svatého Rocha",
+     "hr_id": null,
+     "other_disciplines": [
+      "SA"
+     ],
+     "h_rating": null,
+     "h_rank": 900
+    },
+    {
+     "name": "S23",
+     "seed": 23,
+     "nationality": "CZ",
+     "club": "Rožnovsky šermirsky klub",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": 910
+    },
+    {
+     "name": "S24",
+     "seed": 24,
+     "nationality": "PL",
+     "club": "Akademia Szermierzy",
+     "hr_id": null,
+     "other_disciplines": [
+      "SA"
+     ],
+     "h_rating": null,
+     "h_rank": 920
+    },
+    {
+     "name": "S25",
+     "seed": 25,
+     "nationality": "PL",
+     "club": "Mordschlag Łódź",
+     "hr_id": null,
+     "other_disciplines": [
+      "SA"
+     ],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S26",
+     "seed": 26,
+     "nationality": "CZ",
+     "club": "Sportovní šerm Tábor",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S27",
+     "seed": 27,
+     "nationality": "CZ",
+     "club": "Kundó",
+     "hr_id": null,
+     "other_disciplines": [
+      "SA"
+     ],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S28",
+     "seed": 28,
+     "nationality": "CZ",
+     "club": "Duelanti od Svatého Rocha",
+     "hr_id": null,
+     "other_disciplines": [
+      "SA"
+     ],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S29",
+     "seed": 29,
+     "nationality": "CZ",
+     "club": "Kundó",
+     "hr_id": null,
+     "other_disciplines": [
+      "SA"
+     ],
+     "h_rating": null,
+     "h_rank": null
+    }
+   ],
+   "config": {
+    "num_pools": 5,
+    "wave_sizes": [
+     2,
+     3
+    ],
+    "parallel_waves": [
+     0
+    ]
+   },
+   "weights": {
+    "snake_deviation": 1.0,
+    "club": 10.0,
+    "nationality": 3.0,
+    "wave": 5.0
+   },
+   "assignment": [
+    [
+     "S1",
+     "S10",
+     "S11",
+     "S20",
+     "S23",
+     "S26"
+    ],
+    [
+     "S2",
+     "S9",
+     "S12",
+     "S19",
+     "S24"
+    ],
+    [
+     "S3",
+     "S8",
+     "S13",
+     "S18",
+     "S21",
+     "S27"
+    ],
+    [
+     "S4",
+     "S7",
+     "S14",
+     "S17",
+     "S22",
+     "S29"
+    ],
+    [
+     "S5",
+     "S6",
+     "S15",
+     "S16",
+     "S25",
+     "S28"
+    ]
+   ],
+   "score": {
+    "snake_deviation": 0.0,
+    "club": 10.0,
+    "nationality": 1.6024109747670598,
+    "wave": 35.0
+   }
+  },
+  {
+   "name": "synthetic-0",
+   "fencers": [
+    {
+     "name": "S1",
+     "seed": 1,
+     "nationality": "CZ",
+     "club": "Brno",
+     "hr_id": null,
+     "other_disciplines": [
+      "X"
+     ],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S2",
+     "seed": 2,
+     "nationality": "CZ",
+     "club": "Praha",
+     "hr_id": null,
+     "other_disciplines": [
+      "X"
+     ],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S3",
+     "seed": 3,
+     "nationality": "SK",
+     "club": "Rotyka",
+     "hr_id": null,
+     "other_disciplines": [
+      "X"
+     ],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S4",
+     "seed": 4,
+     "nationality": "DE",
+     "club": "Praha",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S5",
+     "seed": 5,
+     "nationality": "SK",
+     "club": null,
+     "hr_id": null,
+     "other_disciplines": [
+      "X"
+     ],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S6",
+     "seed": 6,
+     "nationality": "PL",
+     "club": null,
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S7",
+     "seed": 7,
+     "nationality": "CZ",
+     "club": "Brno",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S8",
+     "seed": 8,
+     "nationality": "DE",
+     "club": "Plzeň",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S9",
+     "seed": 9,
+     "nationality": "PL",
+     "club": "Brno",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S10",
+     "seed": 10,
+     "nationality": null,
+     "club": "Plzeň",
+     "hr_id": null,
+     "other_disciplines": [
+      "X"
+     ],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S11",
+     "seed": 11,
+     "nationality": "PL",
+     "club": null,
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S12",
+     "seed": 12,
+     "nationality": "CZ",
+     "club": "Plzeň",
+     "hr_id": null,
+     "other_disciplines": [
+      "X"
+     ],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S13",
+     "seed": 13,
+     "nationality": "CZ",
+     "club": "Plzeň",
+     "hr_id": null,
+     "other_disciplines": [
+      "X"
+     ],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S14",
+     "seed": 14,
+     "nationality": "CZ",
+     "club": "Brno",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    }
+   ],
+   "config": {
+    "num_pools": 2,
+    "wave_sizes": [
+     2
+    ],
+    "parallel_waves": []
+   },
+   "weights": {
+    "snake_deviation": 1.0,
+    "club": 10.0,
+    "nationality": 3.0,
+    "wave": 5.0
+   },
+   "assignment": [
+    [
+     "S1",
+     "S4",
+     "S5",
+     "S8",
+     "S11",
+     "S12",
+     "S14"
+    ],
+    [
+     "S2",
+     "S3",
+     "S6",
+     "S7",
+     "S10",
+     "S9",
+     "S13"
+    ]
+   ],
+   "score": {
+    "snake_deviation": 0.0,
+    "club": 40.0,
+    "nationality": 1.5,
+    "wave": 0.0
+   }
+  },
+  {
+   "name": "synthetic-1",
+   "fencers": [
+    {
+     "name": "S1",
+     "seed": 1,
+     "nationality": "PL",
+     "club": "Praha",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S2",
+     "seed": 2,
+     "nationality": "PL",
+     "club": null,
+     "hr_id": null,
+     "other_disciplines": [
+      "X"
+     ],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S3",
+     "seed": 3,
+     "nationality": "CZ",
+     "club": "Rotyka",
+     "hr_id": null,
+     "other_disciplines": [
+      "X"
+     ],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S4",
+     "seed": 4,
+     "nationality": null,
+     "club": "Brno",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S5",
+     "seed": 5,
+     "nationality": "CZ",
+     "club": "Brno",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S6",
+     "seed": 6,
+     "nationality": "SK",
+     "club": "Rotyka",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S7",
+     "seed": 7,
+     "nationality": "SK",
+     "club": "Plzeň",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S8",
+     "seed": 8,
+     "nationality": "CZ",
+     "club": "Ostrava",
+     "hr_id": null,
+     "other_disciplines": [
+      "X"
+     ],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S9",
+     "seed": 9,
+     "nationality": "PL",
+     "club": "Plzeň",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S10",
+     "seed": 10,
+     "nationality": "CZ",
+     "club": "Ostrava",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S11",
+     "seed": 11,
+     "nationality": null,
+     "club": "Ostrava",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S12",
+     "seed": 12,
+     "nationality": "DE",
+     "club": "Ostrava",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S13",
+     "seed": 13,
+     "nationality": "CZ",
+     "club": "Brno",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    }
+   ],
+   "config": {
+    "num_pools": 2,
+    "wave_sizes": [
+     1,
+     1
+    ],
+    "parallel_waves": []
+   },
+   "weights": {
+    "snake_deviation": 1.0,
+    "club": 10.0,
+    "nationality": 3.0,
+    "wave": 5.0
+   },
+   "assignment": [
+    [
+     "S1",
+     "S4",
+     "S6",
+     "S8",
+     "S9",
+     "S11",
+     "S13"
+    ],
+    [
+     "S2",
+     "S3",
+     "S5",
+     "S7",
+     "S10",
+     "S12"
+    ]
+   ],
+   "score": {
+    "snake_deviation": 2.0,
+    "club": 30.0,
+    "nationality": 0.75,
+    "wave": 0.0
+   }
+  },
+  {
+   "name": "synthetic-2",
+   "fencers": [
+    {
+     "name": "S1",
+     "seed": 1,
+     "nationality": "DE",
+     "club": "Brno",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S2",
+     "seed": 2,
+     "nationality": null,
+     "club": null,
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S3",
+     "seed": 3,
+     "nationality": null,
+     "club": "Plzeň",
+     "hr_id": null,
+     "other_disciplines": [
+      "X"
+     ],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S4",
+     "seed": 4,
+     "nationality": "CZ",
+     "club": "Brno",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S5",
+     "seed": 5,
+     "nationality": "CZ",
+     "club": null,
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S6",
+     "seed": 6,
+     "nationality": "CZ",
+     "club": "Praha",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S7",
+     "seed": 7,
+     "nationality": "CZ",
+     "club": "Plzeň",
+     "hr_id": null,
+     "other_disciplines": [
+      "X"
+     ],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S8",
+     "seed": 8,
+     "nationality": "SK",
+     "club": "Praha",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S9",
+     "seed": 9,
+     "nationality": "DE",
+     "club": "Plzeň",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S10",
+     "seed": 10,
+     "nationality": "SK",
+     "club": "Plzeň",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S11",
+     "seed": 11,
+     "nationality": "SK",
+     "club": "Rotyka",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S12",
+     "seed": 12,
+     "nationality": "CZ",
+     "club": "Brno",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S13",
+     "seed": 13,
+     "nationality": null,
+     "club": "Rotyka",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S14",
+     "seed": 14,
+     "nationality": "CZ",
+     "club": "Ostrava",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S15",
+     "seed": 15,
+     "nationality": "PL",
+     "club": "Praha",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S16",
+     "seed": 16,
+     "nationality": "CZ",
+     "club": "Brno",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S17",
+     "seed": 17,
+     "nationality": "SK",
+     "club": null,
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S18",
+     "seed": 18,
+     "nationality": "DE",
+     "club": "Brno",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    }
+   ],
+   "config": {
+    "num_pools": 3,
+    "wave_sizes": [
+     3
+    ],
+    "parallel_waves": []
+   },
+   "weights": {
+    "snake_deviation": 1.0,
+    "club": 10.0,
+    "nationality": 3.0,
+    "wave": 5.0
+   },
+   "assignment": [
+    [
+     "S1",
+     "S6",
+     "S7",
+     "S11",
+     "S14",
+     "S16"
+    ],
+    [
+     "S2",
+     "S5",
+     "S9",
+     "S12",
+     "S15",
+     "S17"
+    ],
+    [
+     "S3",
+     "S4",
+     "S8",
+     "S10",
+     "S13",
+     "S18"
+    ]
+   ],
+   "score": {
+    "snake_deviation": 4.0,
+    "club": 30.0,
+    "nationality": 1.0606601717798212,
+    "wave": 0.0
+   }
+  },
+  {
+   "name": "synthetic-3",
+   "fencers": [
+    {
+     "name": "S1",
+     "seed": 1,
+     "nationality": "CZ",
+     "club": "Brno",
+     "hr_id": null,
+     "other_disciplines": [
+      "X"
+     ],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S2",
+     "seed": 2,
+     "nationality": null,
+     "club": "Brno",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S3",
+     "seed": 3,
+     "nationality": null,
+     "club": "Ostrava",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S4",
+     "seed": 4,
+     "nationality": null,
+     "club": "Rotyka",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S5",
+     "seed": 5,
+     "nationality": "CZ",
+     "club": null,
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S6",
+     "seed": 6,
+     "nationality": "SK",
+     "club": null,
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S7",
+     "seed": 7,
+     "nationality": "SK",
+     "club": "Plzeň",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S8",
+     "seed": 8,
+     "nationality": "CZ",
+     "club": null,
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S9",
+     "seed": 9,
+     "nationality": "DE",
+     "club": "Plzeň",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S10",
+     "seed": 10,
+     "nationality": "CZ",
+     "club": "Rotyka",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S11",
+     "seed": 11,
+     "nationality": "PL",
+     "club": "Brno",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S12",
+     "seed": 12,
+     "nationality": "DE",
+     "club": "Praha",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S13",
+     "seed": 13,
+     "nationality": "CZ",
+     "club": "Praha",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S14",
+     "seed": 14,
+     "nationality": "CZ",
+     "club": "Praha",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S15",
+     "seed": 15,
+     "nationality": "SK",
+     "club": "Ostrava",
+     "hr_id": null,
+     "other_disciplines": [
+      "X"
+     ],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S16",
+     "seed": 16,
+     "nationality": "DE",
+     "club": "Ostrava",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S17",
+     "seed": 17,
+     "nationality": "PL",
+     "club": "Brno",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S18",
+     "seed": 18,
+     "nationality": "CZ",
+     "club": "Plzeň",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S19",
+     "seed": 19,
+     "nationality": "CZ",
+     "club": "Praha",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S20",
+     "seed": 20,
+     "nationality": "CZ",
+     "club": "Plzeň",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S21",
+     "seed": 21,
+     "nationality": "CZ",
+     "club": "Rotyka",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S22",
+     "seed": 22,
+     "nationality": "CZ",
+     "club": "Praha",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S23",
+     "seed": 23,
+     "nationality": "CZ",
+     "club": "Brno",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S24",
+     "seed": 24,
+     "nationality": "PL",
+     "club": "Plzeň",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S25",
+     "seed": 25,
+     "nationality": "CZ",
+     "club": "Rotyka",
+     "hr_id": null,
+     "other_disciplines": [
+      "X"
+     ],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S26",
+     "seed": 26,
+     "nationality": null,
+     "club": "Plzeň",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S27",
+     "seed": 27,
+     "nationality": "CZ",
+     "club": "Brno",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S28",
+     "seed": 28,
+     "nationality": "PL",
+     "club": "Rotyka",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S29",
+     "seed": 29,
+     "nationality": "CZ",
+     "club": "Ostrava",
+     "hr_id": null,
+     "other_disciplines": [
+      "X"
+     ],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S30",
+     "seed": 30,
+     "nationality": "SK",
+     "club": "Praha",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S31",
+     "seed": 31,
+     "nationality": "CZ",
+     "club": "Praha",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S32",
+     "seed": 32,
+     "nationality": "CZ",
+     "club": "Praha",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S33",
+     "seed": 33,
+     "nationality": "PL",
+     "club": "Ostrava",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    }
+   ],
+   "config": {
+    "num_pools": 6,
+    "wave_sizes": [
+     3,
+     3
+    ],
+    "parallel_waves": [
+     1
+    ]
+   },
+   "weights": {
+    "snake_deviation": 1.0,
+    "club": 10.0,
+    "nationality": 3.0,
+    "wave": 5.0
+   },
+   "assignment": [
+    [
+     "S1",
+     "S12",
+     "S15",
+     "S24",
+     "S25",
+     "S31"
+    ],
+    [
+     "S2",
+     "S10",
+     "S13",
+     "S20",
+     "S29",
+     "S30"
+    ],
+    [
+     "S3",
+     "S11",
+     "S14",
+     "S21",
+     "S26"
+    ],
+    [
+     "S4",
+     "S9",
+     "S16",
+     "S22",
+     "S27"
+    ],
+    [
+     "S5",
+     "S8",
+     "S18",
+     "S23",
+     "S32",
+     "S33"
+    ],
+    [
+     "S6",
+     "S7",
+     "S17",
+     "S19",
+     "S28"
+    ]
+   ],
+   "score": {
+    "snake_deviation": 16.0,
+    "club": 20.0,
+    "nationality": 2.513252563231074,
+    "wave": 0.0
+   }
+  },
+  {
+   "name": "synthetic-4",
+   "fencers": [
+    {
+     "name": "S1",
+     "seed": 1,
+     "nationality": null,
+     "club": "Praha",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S2",
+     "seed": 2,
+     "nationality": "CZ",
+     "club": "Ostrava",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S3",
+     "seed": 3,
+     "nationality": "CZ",
+     "club": null,
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S4",
+     "seed": 4,
+     "nationality": "CZ",
+     "club": "Rotyka",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S5",
+     "seed": 5,
+     "nationality": null,
+     "club": "Praha",
+     "hr_id": null,
+     "other_disciplines": [
+      "X"
+     ],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S6",
+     "seed": 6,
+     "nationality": "PL",
+     "club": "Rotyka",
+     "hr_id": null,
+     "other_disciplines": [
+      "X"
+     ],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S7",
+     "seed": 7,
+     "nationality": "DE",
+     "club": "Plzeň",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S8",
+     "seed": 8,
+     "nationality": "DE",
+     "club": "Ostrava",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S9",
+     "seed": 9,
+     "nationality": "DE",
+     "club": "Brno",
+     "hr_id": null,
+     "other_disciplines": [
+      "X"
+     ],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S10",
+     "seed": 10,
+     "nationality": "CZ",
+     "club": "Brno",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S11",
+     "seed": 11,
+     "nationality": null,
+     "club": "Ostrava",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S12",
+     "seed": 12,
+     "nationality": "SK",
+     "club": "Brno",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S13",
+     "seed": 13,
+     "nationality": "CZ",
+     "club": "Rotyka",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S14",
+     "seed": 14,
+     "nationality": "PL",
+     "club": "Ostrava",
+     "hr_id": null,
+     "other_disciplines": [
+      "X"
+     ],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S15",
+     "seed": 15,
+     "nationality": null,
+     "club": "Praha",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S16",
+     "seed": 16,
+     "nationality": "PL",
+     "club": "Praha",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S17",
+     "seed": 17,
+     "nationality": "SK",
+     "club": null,
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S18",
+     "seed": 18,
+     "nationality": null,
+     "club": "Praha",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S19",
+     "seed": 19,
+     "nationality": "PL",
+     "club": "Rotyka",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S20",
+     "seed": 20,
+     "nationality": "CZ",
+     "club": "Praha",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S21",
+     "seed": 21,
+     "nationality": "PL",
+     "club": "Praha",
+     "hr_id": null,
+     "other_disciplines": [
+      "X"
+     ],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S22",
+     "seed": 22,
+     "nationality": "CZ",
+     "club": "Brno",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S23",
+     "seed": 23,
+     "nationality": "CZ",
+     "club": "Praha",
+     "hr_id": null,
+     "other_disciplines": [
+      "X"
+     ],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S24",
+     "seed": 24,
+     "nationality": null,
+     "club": "Brno",
+     "hr_id": null,
+     "other_disciplines": [
+      "X"
+     ],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S25",
+     "seed": 25,
+     "nationality": "SK",
+     "club": "Brno",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    }
+   ],
+   "config": {
+    "num_pools": 4,
+    "wave_sizes": [
+     4
+    ],
+    "parallel_waves": []
+   },
+   "weights": {
+    "snake_deviation": 1.0,
+    "club": 10.0,
+    "nationality": 3.0,
+    "wave": 5.0
+   },
+   "assignment": [
+    [
+     "S1",
+     "S8",
+     "S9",
+     "S13",
+     "S18",
+     "S17",
+     "S22"
+    ],
+    [
+     "S2",
+     "S7",
+     "S10",
+     "S16",
+     "S19",
+     "S23"
+    ],
+    [
+     "S3",
+     "S6",
+     "S11",
+     "S15",
+     "S21",
+     "S25"
+    ],
+    [
+     "S4",
+     "S5",
+     "S12",
+     "S14",
+     "S20",
+     "S24"
+    ]
+   ],
+   "score": {
+    "snake_deviation": 6.0,
+    "club": 60.0,
+    "nationality": 1.893253349221604,
+    "wave": 0.0
+   }
+  },
+  {
+   "name": "synthetic-5",
+   "fencers": [
+    {
+     "name": "S1",
+     "seed": 1,
+     "nationality": "SK",
+     "club": "Rotyka",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S2",
+     "seed": 2,
+     "nationality": "CZ",
+     "club": "Praha",
+     "hr_id": null,
+     "other_disciplines": [
+      "X"
+     ],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S3",
+     "seed": 3,
+     "nationality": "CZ",
+     "club": "Rotyka",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S4",
+     "seed": 4,
+     "nationality": null,
+     "club": "Rotyka",
+     "hr_id": null,
+     "other_disciplines": [
+      "X"
+     ],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S5",
+     "seed": 5,
+     "nationality": "SK",
+     "club": "Plzeň",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S6",
+     "seed": 6,
+     "nationality": "CZ",
+     "club": "Brno",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S7",
+     "seed": 7,
+     "nationality": "DE",
+     "club": "Ostrava",
+     "hr_id": null,
+     "other_disciplines": [
+      "X"
+     ],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S8",
+     "seed": 8,
+     "nationality": "CZ",
+     "club": "Plzeň",
+     "hr_id": null,
+     "other_disciplines": [
+      "X"
+     ],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S9",
+     "seed": 9,
+     "nationality": "PL",
+     "club": "Brno",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S10",
+     "seed": 10,
+     "nationality": "DE",
+     "club": null,
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S11",
+     "seed": 11,
+     "nationality": "CZ",
+     "club": "Ostrava",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S12",
+     "seed": 12,
+     "nationality": "PL",
+     "club": "Brno",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S13",
+     "seed": 13,
+     "nationality": "CZ",
+     "club": "Praha",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S14",
+     "seed": 14,
+     "nationality": "DE",
+     "club": "Rotyka",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S15",
+     "seed": 15,
+     "nationality": "SK",
+     "club": "Praha",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S16",
+     "seed": 16,
+     "nationality": "CZ",
+     "club": "Brno",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S17",
+     "seed": 17,
+     "nationality": "SK",
+     "club": "Ostrava",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S18",
+     "seed": 18,
+     "nationality": "DE",
+     "club": "Rotyka",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S19",
+     "seed": 19,
+     "nationality": "SK",
+     "club": "Rotyka",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S20",
+     "seed": 20,
+     "nationality": "CZ",
+     "club": "Brno",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S21",
+     "seed": 21,
+     "nationality": "SK",
+     "club": "Plzeň",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S22",
+     "seed": 22,
+     "nationality": "SK",
+     "club": "Ostrava",
+     "hr_id": null,
+     "other_disciplines": [
+      "X"
+     ],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S23",
+     "seed": 23,
+     "nationality": "PL",
+     "club": "Rotyka",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S24",
+     "seed": 24,
+     "nationality": null,
+     "club": "Rotyka",
+     "hr_id": null,
+     "other_disciplines": [
+      "X"
+     ],
+     "h_rating": null,
+     "h_rank": null
+    }
+   ],
+   "config": {
+    "num_pools": 4,
+    "wave_sizes": [
+     2,
+     2
+    ],
+    "parallel_waves": []
+   },
+   "weights": {
+    "snake_deviation": 1.0,
+    "club": 10.0,
+    "nationality": 3.0,
+    "wave": 5.0
+   },
+   "assignment": [
+    [
+     "S1",
+     "S8",
+     "S9",
+     "S15",
+     "S24",
+     "S22"
+    ],
+    [
+     "S2",
+     "S7",
+     "S10",
+     "S16",
+     "S19",
+     "S23"
+    ],
+    [
+     "S3",
+     "S6",
+     "S11",
+     "S14",
+     "S20",
+     "S21"
+    ],
+    [
+     "S4",
+     "S5",
+     "S12",
+     "S13",
+     "S17",
+     "S18"
+    ]
+   ],
+   "score": {
+    "snake_deviation": 2.0,
+    "club": 50.0,
+    "nationality": 2.1264758133390416,
+    "wave": 0.0
+   }
+  },
+  {
+   "name": "synthetic-6",
+   "fencers": [
+    {
+     "name": "S1",
+     "seed": 1,
+     "nationality": "CZ",
+     "club": "Ostrava",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S2",
+     "seed": 2,
+     "nationality": "CZ",
+     "club": "Praha",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S3",
+     "seed": 3,
+     "nationality": "CZ",
+     "club": "Rotyka",
+     "hr_id": null,
+     "other_disciplines": [
+      "X"
+     ],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S4",
+     "seed": 4,
+     "nationality": "PL",
+     "club": "Rotyka",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S5",
+     "seed": 5,
+     "nationality": "DE",
+     "club": "Brno",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S6",
+     "seed": 6,
+     "nationality": "CZ",
+     "club": null,
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S7",
+     "seed": 7,
+     "nationality": null,
+     "club": null,
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S8",
+     "seed": 8,
+     "nationality": "PL",
+     "club": null,
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S9",
+     "seed": 9,
+     "nationality": "SK",
+     "club": "Ostrava",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S10",
+     "seed": 10,
+     "nationality": "CZ",
+     "club": "Praha",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S11",
+     "seed": 11,
+     "nationality": null,
+     "club": "Plzeň",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S12",
+     "seed": 12,
+     "nationality": "DE",
+     "club": "Praha",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S13",
+     "seed": 13,
+     "nationality": "CZ",
+     "club": "Plzeň",
+     "hr_id": null,
+     "other_disciplines": [
+      "X"
+     ],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S14",
+     "seed": 14,
+     "nationality": "CZ",
+     "club": "Plzeň",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S15",
+     "seed": 15,
+     "nationality": "PL",
+     "club": "Rotyka",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S16",
+     "seed": 16,
+     "nationality": null,
+     "club": "Rotyka",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S17",
+     "seed": 17,
+     "nationality": "DE",
+     "club": "Brno",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S18",
+     "seed": 18,
+     "nationality": "DE",
+     "club": "Praha",
+     "hr_id": null,
+     "other_disciplines": [
+      "X"
+     ],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S19",
+     "seed": 19,
+     "nationality": "PL",
+     "club": "Praha",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S20",
+     "seed": 20,
+     "nationality": "PL",
+     "club": "Praha",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S21",
+     "seed": 21,
+     "nationality": "PL",
+     "club": "Rotyka",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S22",
+     "seed": 22,
+     "nationality": "PL",
+     "club": "Rotyka",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S23",
+     "seed": 23,
+     "nationality": "CZ",
+     "club": null,
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S24",
+     "seed": 24,
+     "nationality": "CZ",
+     "club": "Plzeň",
+     "hr_id": null,
+     "other_disciplines": [
+      "X"
+     ],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S25",
+     "seed": 25,
+     "nationality": "CZ",
+     "club": null,
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S26",
+     "seed": 26,
+     "nationality": "DE",
+     "club": "Brno",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S27",
+     "seed": 27,
+     "nationality": "SK",
+     "club": "Rotyka",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S28",
+     "seed": 28,
+     "nationality": "CZ",
+     "club": "Brno",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S29",
+     "seed": 29,
+     "nationality": null,
+     "club": "Plzeň",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S30",
+     "seed": 30,
+     "nationality": "SK",
+     "club": null,
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S31",
+     "seed": 31,
+     "nationality": "CZ",
+     "club": "Ostrava",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S32",
+     "seed": 32,
+     "nationality": "CZ",
+     "club": "Rotyka",
+     "hr_id": null,
+     "other_disciplines": [
+      "X"
+     ],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S33",
+     "seed": 33,
+     "nationality": null,
+     "club": "Ostrava",
+     "hr_id": null,
+     "other_disciplines": [
+      "X"
+     ],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S34",
+     "seed": 34,
+     "nationality": "CZ",
+     "club": "Ostrava",
+     "hr_id": null,
+     "other_disciplines": [
+      "X"
+     ],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S35",
+     "seed": 35,
+     "nationality": "CZ",
+     "club": "Ostrava",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S36",
+     "seed": 36,
+     "nationality": "DE",
+     "club": "Rotyka",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    }
+   ],
+   "config": {
+    "num_pools": 6,
+    "wave_sizes": [
+     6
+    ],
+    "parallel_waves": []
+   },
+   "weights": {
+    "snake_deviation": 1.0,
+    "club": 10.0,
+    "nationality": 3.0,
+    "wave": 5.0
+   },
+   "assignment": [
+    [
+     "S1",
+     "S12",
+     "S13",
+     "S22",
+     "S30",
+     "S32"
+    ],
+    [
+     "S2",
+     "S11",
+     "S15",
+     "S23",
+     "S26",
+     "S31"
+    ],
+    [
+     "S3",
+     "S10",
+     "S24",
+     "S17",
+     "S27",
+     "S33"
+    ],
+    [
+     "S4",
+     "S9",
+     "S20",
+     "S14",
+     "S25",
+     "S36"
+    ],
+    [
+     "S5",
+     "S8",
+     "S16",
+     "S19",
+     "S29",
+     "S34"
+    ],
+    [
+     "S6",
+     "S7",
+     "S18",
+     "S21",
+     "S28",
+     "S35"
+    ]
+   ],
+   "score": {
+    "snake_deviation": 14.0,
+    "club": 30.0,
+    "nationality": 1.449405197577155,
+    "wave": 0.0
+   }
+  },
+  {
+   "name": "synthetic-7",
+   "fencers": [
+    {
+     "name": "S1",
+     "seed": 1,
+     "nationality": null,
+     "club": "Praha",
+     "hr_id": null,
+     "other_disciplines": [
+      "X"
+     ],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S2",
+     "seed": 2,
+     "nationality": "PL",
+     "club": "Ostrava",
+     "hr_id": null,
+     "other_disciplines": [
+      "X"
+     ],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S3",
+     "seed": 3,
+     "nationality": "CZ",
+     "club": null,
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S4",
+     "seed": 4,
+     "nationality": "PL",
+     "club": "Praha",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S5",
+     "seed": 5,
+     "nationality": "DE",
+     "club": "Ostrava",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S6",
+     "seed": 6,
+     "nationality": "SK",
+     "club": null,
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S7",
+     "seed": 7,
+     "nationality": "CZ",
+     "club": "Ostrava",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S8",
+     "seed": 8,
+     "nationality": "PL",
+     "club": "Praha",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S9",
+     "seed": 9,
+     "nationality": "CZ",
+     "club": "Plzeň",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S10",
+     "seed": 10,
+     "nationality": "SK",
+     "club": "Rotyka",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S11",
+     "seed": 11,
+     "nationality": "CZ",
+     "club": "Plzeň",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S12",
+     "seed": 12,
+     "nationality": "DE",
+     "club": "Praha",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S13",
+     "seed": 13,
+     "nationality": "PL",
+     "club": "Ostrava",
+     "hr_id": null,
+     "other_disciplines": [
+      "X"
+     ],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S14",
+     "seed": 14,
+     "nationality": null,
+     "club": "Brno",
+     "hr_id": null,
+     "other_disciplines": [
+      "X"
+     ],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S15",
+     "seed": 15,
+     "nationality": "SK",
+     "club": "Rotyka",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S16",
+     "seed": 16,
+     "nationality": "CZ",
+     "club": "Rotyka",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S17",
+     "seed": 17,
+     "nationality": "DE",
+     "club": "Rotyka",
+     "hr_id": null,
+     "other_disciplines": [
+      "X"
+     ],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S18",
+     "seed": 18,
+     "nationality": "PL",
+     "club": "Plzeň",
+     "hr_id": null,
+     "other_disciplines": [
+      "X"
+     ],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S19",
+     "seed": 19,
+     "nationality": "CZ",
+     "club": "Praha",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S20",
+     "seed": 20,
+     "nationality": "CZ",
+     "club": "Rotyka",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S21",
+     "seed": 21,
+     "nationality": "SK",
+     "club": null,
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S22",
+     "seed": 22,
+     "nationality": "SK",
+     "club": "Praha",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S23",
+     "seed": 23,
+     "nationality": "SK",
+     "club": "Ostrava",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S24",
+     "seed": 24,
+     "nationality": "PL",
+     "club": "Brno",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S25",
+     "seed": 25,
+     "nationality": "PL",
+     "club": null,
+     "hr_id": null,
+     "other_disciplines": [
+      "X"
+     ],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S26",
+     "seed": 26,
+     "nationality": "CZ",
+     "club": null,
+     "hr_id": null,
+     "other_disciplines": [
+      "X"
+     ],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S27",
+     "seed": 27,
+     "nationality": "CZ",
+     "club": null,
+     "hr_id": null,
+     "other_disciplines": [
+      "X"
+     ],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S28",
+     "seed": 28,
+     "nationality": "SK",
+     "club": "Praha",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S29",
+     "seed": 29,
+     "nationality": "CZ",
+     "club": "Brno",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S30",
+     "seed": 30,
+     "nationality": "CZ",
+     "club": null,
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S31",
+     "seed": 31,
+     "nationality": "CZ",
+     "club": "Praha",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S32",
+     "seed": 32,
+     "nationality": "DE",
+     "club": "Brno",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S33",
+     "seed": 33,
+     "nationality": "SK",
+     "club": "Ostrava",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S34",
+     "seed": 34,
+     "nationality": "CZ",
+     "club": "Brno",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S35",
+     "seed": 35,
+     "nationality": "CZ",
+     "club": "Plzeň",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    }
+   ],
+   "config": {
+    "num_pools": 6,
+    "wave_sizes": [
+     3,
+     3
+    ],
+    "parallel_waves": []
+   },
+   "weights": {
+    "snake_deviation": 1.0,
+    "club": 10.0,
+    "nationality": 3.0,
+    "wave": 5.0
+   },
+   "assignment": [
+    [
+     "S1",
+     "S11",
+     "S13",
+     "S20",
+     "S28",
+     "S32"
+    ],
+    [
+     "S2",
+     "S12",
+     "S15",
+     "S24",
+     "S26",
+     "S31"
+    ],
+    [
+     "S3",
+     "S10",
+     "S14",
+     "S22",
+     "S25",
+     "S33"
+    ],
+    [
+     "S4",
+     "S9",
+     "S16",
+     "S23",
+     "S27",
+     "S34"
+    ],
+    [
+     "S5",
+     "S8",
+     "S17",
+     "S21",
+     "S29",
+     "S35"
+    ],
+    [
+     "S6",
+     "S7",
+     "S18",
+     "S19",
+     "S30"
+    ]
+   ],
+   "score": {
+    "snake_deviation": 12.0,
+    "club": 20.0,
+    "nationality": 2.0706880868291817,
+    "wave": 0.0
+   }
+  },
+  {
+   "name": "synthetic-8",
+   "fencers": [
+    {
+     "name": "S1",
+     "seed": 1,
+     "nationality": "CZ",
+     "club": "Praha",
+     "hr_id": null,
+     "other_disciplines": [
+      "X"
+     ],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S2",
+     "seed": 2,
+     "nationality": "CZ",
+     "club": "Plzeň",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S3",
+     "seed": 3,
+     "nationality": "CZ",
+     "club": "Praha",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S4",
+     "seed": 4,
+     "nationality": "PL",
+     "club": "Rotyka",
+     "hr_id": null,
+     "other_disciplines": [
+      "X"
+     ],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S5",
+     "seed": 5,
+     "nationality": "CZ",
+     "club": "Brno",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S6",
+     "seed": 6,
+     "nationality": "PL",
+     "club": "Rotyka",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S7",
+     "seed": 7,
+     "nationality": "DE",
+     "club": "Ostrava",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S8",
+     "seed": 8,
+     "nationality": "CZ",
+     "club": "Ostrava",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S9",
+     "seed": 9,
+     "nationality": "CZ",
+     "club": null,
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S10",
+     "seed": 10,
+     "nationality": "SK",
+     "club": null,
+     "hr_id": null,
+     "other_disciplines": [
+      "X"
+     ],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S11",
+     "seed": 11,
+     "nationality": "CZ",
+     "club": "Brno",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S12",
+     "seed": 12,
+     "nationality": "DE",
+     "club": "Ostrava",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S13",
+     "seed": 13,
+     "nationality": "CZ",
+     "club": "Rotyka",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S14",
+     "seed": 14,
+     "nationality": null,
+     "club": "Praha",
+     "hr_id": null,
+     "other_disciplines": [
+      "X"
+     ],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S15",
+     "seed": 15,
+     "nationality": "DE",
+     "club": "Brno",
+     "hr_id": null,
+     "other_disciplines": [
+      "X"
+     ],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S16",
+     "seed": 16,
+     "nationality": "CZ",
+     "club": "Brno",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S17",
+     "seed": 17,
+     "nationality": "DE",
+     "club": null,
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S18",
+     "seed": 18,
+     "nationality": "CZ",
+     "club": "Plzeň",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S19",
+     "seed": 19,
+     "nationality": "SK",
+     "club": null,
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S20",
+     "seed": 20,
+     "nationality": "CZ",
+     "club": "Ostrava",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S21",
+     "seed": 21,
+     "nationality": "DE",
+     "club": "Rotyka",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S22",
+     "seed": 22,
+     "nationality": "PL",
+     "club": "Brno",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S23",
+     "seed": 23,
+     "nationality": null,
+     "club": "Plzeň",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    }
+   ],
+   "config": {
+    "num_pools": 4,
+    "wave_sizes": [
+     4
+    ],
+    "parallel_waves": []
+   },
+   "weights": {
+    "snake_deviation": 1.0,
+    "club": 10.0,
+    "nationality": 3.0,
+    "wave": 5.0
+   },
+   "assignment": [
+    [
+     "S1",
+     "S8",
+     "S9",
+     "S16",
+     "S19",
+     "S21"
+    ],
+    [
+     "S2",
+     "S7",
+     "S10",
+     "S13",
+     "S17",
+     "S22"
+    ],
+    [
+     "S3",
+     "S6",
+     "S11",
+     "S15",
+     "S20",
+     "S23"
+    ],
+    [
+     "S4",
+     "S5",
+     "S12",
+     "S14",
+     "S18"
+    ]
+   ],
+   "score": {
+    "snake_deviation": 4.0,
+    "club": 10.0,
+    "nationality": 1.674038105676658,
+    "wave": 0.0
+   }
+  },
+  {
+   "name": "synthetic-9",
+   "fencers": [
+    {
+     "name": "S1",
+     "seed": 1,
+     "nationality": "DE",
+     "club": "Praha",
+     "hr_id": null,
+     "other_disciplines": [
+      "X"
+     ],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S2",
+     "seed": 2,
+     "nationality": "CZ",
+     "club": "Rotyka",
+     "hr_id": null,
+     "other_disciplines": [
+      "X"
+     ],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S3",
+     "seed": 3,
+     "nationality": "DE",
+     "club": "Praha",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S4",
+     "seed": 4,
+     "nationality": "CZ",
+     "club": "Ostrava",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S5",
+     "seed": 5,
+     "nationality": "PL",
+     "club": "Ostrava",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S6",
+     "seed": 6,
+     "nationality": "CZ",
+     "club": "Ostrava",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S7",
+     "seed": 7,
+     "nationality": "CZ",
+     "club": "Praha",
+     "hr_id": null,
+     "other_disciplines": [
+      "X"
+     ],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S8",
+     "seed": 8,
+     "nationality": "DE",
+     "club": null,
+     "hr_id": null,
+     "other_disciplines": [
+      "X"
+     ],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S9",
+     "seed": 9,
+     "nationality": "CZ",
+     "club": "Ostrava",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S10",
+     "seed": 10,
+     "nationality": "SK",
+     "club": "Praha",
+     "hr_id": null,
+     "other_disciplines": [
+      "X"
+     ],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S11",
+     "seed": 11,
+     "nationality": "CZ",
+     "club": "Praha",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S12",
+     "seed": 12,
+     "nationality": "CZ",
+     "club": "Praha",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S13",
+     "seed": 13,
+     "nationality": "DE",
+     "club": "Ostrava",
+     "hr_id": null,
+     "other_disciplines": [
+      "X"
+     ],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S14",
+     "seed": 14,
+     "nationality": "CZ",
+     "club": "Plzeň",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S15",
+     "seed": 15,
+     "nationality": "CZ",
+     "club": null,
+     "hr_id": null,
+     "other_disciplines": [
+      "X"
+     ],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S16",
+     "seed": 16,
+     "nationality": null,
+     "club": "Praha",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S17",
+     "seed": 17,
+     "nationality": "CZ",
+     "club": "Brno",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S18",
+     "seed": 18,
+     "nationality": "SK",
+     "club": "Ostrava",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S19",
+     "seed": 19,
+     "nationality": "PL",
+     "club": "Rotyka",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S20",
+     "seed": 20,
+     "nationality": "CZ",
+     "club": "Rotyka",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S21",
+     "seed": 21,
+     "nationality": "CZ",
+     "club": "Praha",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S22",
+     "seed": 22,
+     "nationality": "SK",
+     "club": "Praha",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S23",
+     "seed": 23,
+     "nationality": null,
+     "club": "Ostrava",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S24",
+     "seed": 24,
+     "nationality": "CZ",
+     "club": "Rotyka",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    }
+   ],
+   "config": {
+    "num_pools": 4,
+    "wave_sizes": [
+     2,
+     2
+    ],
+    "parallel_waves": [
+     1
+    ]
+   },
+   "weights": {
+    "snake_deviation": 1.0,
+    "club": 10.0,
+    "nationality": 3.0,
+    "wave": 5.0
+   },
+   "assignment": [
+    [
+     "S1",
+     "S8",
+     "S9",
+     "S15",
+     "S20",
+     "S22"
+    ],
+    [
+     "S2",
+     "S7",
+     "S10",
+     "S13",
+     "S17",
+     "S23"
+    ],
+    [
+     "S3",
+     "S6",
+     "S11",
+     "S14",
+     "S18",
+     "S24"
+    ],
+    [
+     "S4",
+     "S5",
+     "S12",
+     "S16",
+     "S19",
+     "S21"
+    ]
+   ],
+   "score": {
+    "snake_deviation": 6.0,
+    "club": 90.0,
+    "nationality": 1.8293681915665687,
+    "wave": 0.0
+   }
+  },
+  {
+   "name": "synthetic-10",
+   "fencers": [
+    {
+     "name": "S1",
+     "seed": 1,
+     "nationality": "SK",
+     "club": "Brno",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S2",
+     "seed": 2,
+     "nationality": null,
+     "club": "Brno",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S3",
+     "seed": 3,
+     "nationality": "CZ",
+     "club": "Rotyka",
+     "hr_id": null,
+     "other_disciplines": [
+      "X"
+     ],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S4",
+     "seed": 4,
+     "nationality": "CZ",
+     "club": "Ostrava",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S5",
+     "seed": 5,
+     "nationality": "DE",
+     "club": "Ostrava",
+     "hr_id": null,
+     "other_disciplines": [
+      "X"
+     ],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S6",
+     "seed": 6,
+     "nationality": "CZ",
+     "club": "Rotyka",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S7",
+     "seed": 7,
+     "nationality": "CZ",
+     "club": "Praha",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S8",
+     "seed": 8,
+     "nationality": null,
+     "club": "Rotyka",
+     "hr_id": null,
+     "other_disciplines": [
+      "X"
+     ],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S9",
+     "seed": 9,
+     "nationality": "DE",
+     "club": "Rotyka",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S10",
+     "seed": 10,
+     "nationality": "PL",
+     "club": "Brno",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S11",
+     "seed": 11,
+     "nationality": "CZ",
+     "club": null,
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S12",
+     "seed": 12,
+     "nationality": null,
+     "club": null,
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S13",
+     "seed": 13,
+     "nationality": "CZ",
+     "club": "Plzeň",
+     "hr_id": null,
+     "other_disciplines": [
+      "X"
+     ],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S14",
+     "seed": 14,
+     "nationality": "CZ",
+     "club": "Praha",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S15",
+     "seed": 15,
+     "nationality": "CZ",
+     "club": "Brno",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S16",
+     "seed": 16,
+     "nationality": "CZ",
+     "club": "Praha",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S17",
+     "seed": 17,
+     "nationality": "CZ",
+     "club": "Plzeň",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S18",
+     "seed": 18,
+     "nationality": "PL",
+     "club": "Brno",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S19",
+     "seed": 19,
+     "nationality": "CZ",
+     "club": "Plzeň",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S20",
+     "seed": 20,
+     "nationality": "DE",
+     "club": null,
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    }
+   ],
+   "config": {
+    "num_pools": 3,
+    "wave_sizes": [
+     3
+    ],
+    "parallel_waves": []
+   },
+   "weights": {
+    "snake_deviation": 1.0,
+    "club": 10.0,
+    "nationality": 3.0,
+    "wave": 5.0
+   },
+   "assignment": [
+    [
+     "S1",
+     "S6",
+     "S7",
+     "S12",
+     "S13",
+     "S18",
+     "S20"
+    ],
+    [
+     "S2",
+     "S5",
+     "S8",
+     "S11",
+     "S14",
+     "S17"
+    ],
+    [
+     "S3",
+     "S4",
+     "S9",
+     "S10",
+     "S15",
+     "S16",
+     "S19"
+    ]
+   ],
+   "score": {
+    "snake_deviation": 0.0,
+    "club": 30.0,
+    "nationality": 1.319479216882342,
+    "wave": 0.0
+   }
+  },
+  {
+   "name": "synthetic-11",
+   "fencers": [
+    {
+     "name": "S1",
+     "seed": 1,
+     "nationality": "SK",
+     "club": null,
+     "hr_id": null,
+     "other_disciplines": [
+      "X"
+     ],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S2",
+     "seed": 2,
+     "nationality": "CZ",
+     "club": "Brno",
+     "hr_id": null,
+     "other_disciplines": [
+      "X"
+     ],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S3",
+     "seed": 3,
+     "nationality": "CZ",
+     "club": "Rotyka",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S4",
+     "seed": 4,
+     "nationality": "CZ",
+     "club": "Plzeň",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S5",
+     "seed": 5,
+     "nationality": "CZ",
+     "club": "Rotyka",
+     "hr_id": null,
+     "other_disciplines": [
+      "X"
+     ],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S6",
+     "seed": 6,
+     "nationality": "SK",
+     "club": "Plzeň",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S7",
+     "seed": 7,
+     "nationality": "CZ",
+     "club": "Plzeň",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S8",
+     "seed": 8,
+     "nationality": "CZ",
+     "club": "Ostrava",
+     "hr_id": null,
+     "other_disciplines": [
+      "X"
+     ],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S9",
+     "seed": 9,
+     "nationality": null,
+     "club": null,
+     "hr_id": null,
+     "other_disciplines": [
+      "X"
+     ],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S10",
+     "seed": 10,
+     "nationality": "PL",
+     "club": null,
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S11",
+     "seed": 11,
+     "nationality": "CZ",
+     "club": "Rotyka",
+     "hr_id": null,
+     "other_disciplines": [
+      "X"
+     ],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S12",
+     "seed": 12,
+     "nationality": "SK",
+     "club": "Praha",
+     "hr_id": null,
+     "other_disciplines": [
+      "X"
+     ],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S13",
+     "seed": 13,
+     "nationality": "CZ",
+     "club": "Plzeň",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S14",
+     "seed": 14,
+     "nationality": "CZ",
+     "club": "Rotyka",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S15",
+     "seed": 15,
+     "nationality": null,
+     "club": "Brno",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S16",
+     "seed": 16,
+     "nationality": "CZ",
+     "club": "Ostrava",
+     "hr_id": null,
+     "other_disciplines": [
+      "X"
+     ],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S17",
+     "seed": 17,
+     "nationality": "CZ",
+     "club": "Brno",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    },
+    {
+     "name": "S18",
+     "seed": 18,
+     "nationality": "PL",
+     "club": "Rotyka",
+     "hr_id": null,
+     "other_disciplines": [],
+     "h_rating": null,
+     "h_rank": null
+    }
+   ],
+   "config": {
+    "num_pools": 3,
+    "wave_sizes": [
+     1,
+     2
+    ],
+    "parallel_waves": []
+   },
+   "weights": {
+    "snake_deviation": 1.0,
+    "club": 10.0,
+    "nationality": 3.0,
+    "wave": 5.0
+   },
+   "assignment": [
+    [
+     "S1",
+     "S6",
+     "S8",
+     "S11",
+     "S13",
+     "S17"
+    ],
+    [
+     "S2",
+     "S5",
+     "S7",
+     "S12",
+     "S18",
+     "S16"
+    ],
+    [
+     "S3",
+     "S4",
+     "S9",
+     "S10",
+     "S15",
+     "S14"
+    ]
+   ],
+   "score": {
+    "snake_deviation": 4.0,
+    "club": 30.0,
+    "nationality": 1.7593056225097894,
+    "wave": 0.0
+   }
+  }
+ ],
+ "stats": [
+  {
+   "names": [
+    "P0",
+    "P1",
+    "P2",
+    "P3",
+    "P4",
+    "P5"
+   ],
+   "bouts": [
+    {
+     "Fencer1": "P0",
+     "Fencer2": "P1",
+     "Score1": 3,
+     "Score2": 4
+    },
+    {
+     "Fencer1": "P0",
+     "Fencer2": "P2",
+     "Score1": 5,
+     "Score2": 3
+    },
+    {
+     "Fencer1": "P0",
+     "Fencer2": "P3",
+     "Score1": 0,
+     "Score2": 1
+    },
+    {
+     "Fencer1": "P0",
+     "Fencer2": "P4",
+     "Score1": 3,
+     "Score2": 0
+    },
+    {
+     "Fencer1": "P0",
+     "Fencer2": "P5",
+     "Score1": 3,
+     "Score2": 1
+    },
+    {
+     "Fencer1": "P1",
+     "Fencer2": "P2",
+     "Score1": 1,
+     "Score2": 5
+    },
+    {
+     "Fencer1": "P1",
+     "Fencer2": "P3",
+     "Score1": 1,
+     "Score2": 0
+    },
+    {
+     "Fencer1": "P1",
+     "Fencer2": "P4",
+     "Score1": 1,
+     "Score2": 2
+    },
+    {
+     "Fencer1": "P1",
+     "Fencer2": "P5",
+     "Score1": 2,
+     "Score2": 1
+    },
+    {
+     "Fencer1": "P2",
+     "Fencer2": "P3",
+     "Score1": 2,
+     "Score2": 2
+    },
+    {
+     "Fencer1": "P2",
+     "Fencer2": "P4",
+     "Score1": 1,
+     "Score2": 4
+    },
+    {
+     "Fencer1": "P2",
+     "Fencer2": "P5",
+     "Score1": 3,
+     "Score2": 4
+    },
+    {
+     "Fencer1": "P3",
+     "Fencer2": "P4",
+     "Score1": 3,
+     "Score2": 1
+    },
+    {
+     "Fencer1": "P3",
+     "Fencer2": "P5",
+     "Score1": 2,
+     "Score2": 3
+    },
+    {
+     "Fencer1": "P4",
+     "Fencer2": "P5",
+     "Score1": 4,
+     "Score2": 2
+    }
+   ],
+   "result": [
+    {
+     "name": "P0",
+     "v": 3,
+     "m": 5,
+     "ts": 14,
+     "tr": 9,
+     "ind": 5,
+     "vm": 0.6
+    },
+    {
+     "name": "P4",
+     "v": 3,
+     "m": 5,
+     "ts": 11,
+     "tr": 10,
+     "ind": 1,
+     "vm": 0.6
+    },
+    {
+     "name": "P1",
+     "v": 3,
+     "m": 5,
+     "ts": 9,
+     "tr": 11,
+     "ind": -2,
+     "vm": 0.6
+    },
+    {
+     "name": "P3",
+     "v": 2,
+     "m": 5,
+     "ts": 8,
+     "tr": 7,
+     "ind": 1,
+     "vm": 0.4
+    },
+    {
+     "name": "P5",
+     "v": 2,
+     "m": 5,
+     "ts": 11,
+     "tr": 14,
+     "ind": -3,
+     "vm": 0.4
+    },
+    {
+     "name": "P2",
+     "v": 1,
+     "m": 5,
+     "ts": 14,
+     "tr": 16,
+     "ind": -2,
+     "vm": 0.2
+    }
+   ]
+  },
+  {
+   "names": [
+    "P0",
+    "P1",
+    "P2",
+    "P3",
+    "P4",
+    "P5",
+    "P6",
+    "P7"
+   ],
+   "bouts": [
+    {
+     "Fencer1": "P0",
+     "Fencer2": "P2",
+     "Score1": 3,
+     "Score2": 4
+    },
+    {
+     "Fencer1": "P0",
+     "Fencer2": "P3",
+     "Score1": 3,
+     "Score2": 3
+    },
+    {
+     "Fencer1": "P0",
+     "Fencer2": "P4",
+     "Score1": 5,
+     "Score2": 2
+    },
+    {
+     "Fencer1": "P0",
+     "Fencer2": "P6",
+     "Score1": 2,
+     "Score2": 5
+    },
+    {
+     "Fencer1": "P0",
+     "Fencer2": "P7",
+     "Score1": 0,
+     "Score2": 2
+    },
+    {
+     "Fencer1": "P1",
+     "Fencer2": "P2",
+     "Score1": 2,
+     "Score2": 2
+    },
+    {
+     "Fencer1": "P1",
+     "Fencer2": "P3",
+     "Score1": 0,
+     "Score2": 4
+    },
+    {
+     "Fencer1": "P1",
+     "Fencer2": "P4",
+     "Score1": 0,
+     "Score2": 3
+    },
+    {
+     "Fencer1": "P1",
+     "Fencer2": "P5",
+     "Score1": 4,
+     "Score2": 0
+    },
+    {
+     "Fencer1": "P1",
+     "Fencer2": "P6",
+     "Score1": 0,
+     "Score2": 1
+    },
+    {
+     "Fencer1": "P1",
+     "Fencer2": "P7",
+     "Score1": 1,
+     "Score2": 0
+    },
+    {
+     "Fencer1": "P2",
+     "Fencer2": "P3",
+     "Score1": 4,
+     "Score2": 2
+    },
+    {
+     "Fencer1": "P2",
+     "Fencer2": "P4",
+     "Score1": 3,
+     "Score2": 5
+    },
+    {
+     "Fencer1": "P2",
+     "Fencer2": "P5",
+     "Score1": 0,
+     "Score2": 5
+    },
+    {
+     "Fencer1": "P2",
+     "Fencer2": "P6",
+     "Score1": 5,
+     "Score2": 3
+    },
+    {
+     "Fencer1": "P2",
+     "Fencer2": "P7",
+     "Score1": 2,
+     "Score2": 2
+    },
+    {
+     "Fencer1": "P3",
+     "Fencer2": "P4",
+     "Score1": 0,
+     "Score2": 2
+    },
+    {
+     "Fencer1": "P3",
+     "Fencer2": "P5",
+     "Score1": 2,
+     "Score2": 3
+    },
+    {
+     "Fencer1": "P3",
+     "Fencer2": "P6",
+     "Score1": 0,
+     "Score2": 1
+    },
+    {
+     "Fencer1": "P3",
+     "Fencer2": "P7",
+     "Score1": 2,
+     "Score2": 5
+    },
+    {
+     "Fencer1": "P4",
+     "Fencer2": "P5",
+     "Score1": 1,
+     "Score2": 2
+    },
+    {
+     "Fencer1": "P4",
+     "Fencer2": "P6",
+     "Score1": 5,
+     "Score2": 1
+    },
+    {
+     "Fencer1": "P4",
+     "Fencer2": "P7",
+     "Score1": 4,
+     "Score2": 1
+    },
+    {
+     "Fencer1": "P5",
+     "Fencer2": "P6",
+     "Score1": 0,
+     "Score2": 1
+    },
+    {
+     "Fencer1": "P5",
+     "Fencer2": "P7",
+     "Score1": 2,
+     "Score2": 5
+    }
+   ],
+   "result": [
+    {
+     "name": "P4",
+     "v": 5,
+     "m": 7,
+     "ts": 22,
+     "tr": 12,
+     "ind": 10,
+     "vm": 0.7142857142857143
+    },
+    {
+     "name": "P6",
+     "v": 4,
+     "m": 6,
+     "ts": 12,
+     "tr": 12,
+     "ind": 0,
+     "vm": 0.6666666666666666
+    },
+    {
+     "name": "P7",
+     "v": 3,
+     "m": 6,
+     "ts": 15,
+     "tr": 11,
+     "ind": 4,
+     "vm": 0.5
+    },
+    {
+     "name": "P5",
+     "v": 3,
+     "m": 6,
+     "ts": 12,
+     "tr": 13,
+     "ind": -1,
+     "vm": 0.5
+    },
+    {
+     "name": "P2",
+     "v": 3,
+     "m": 7,
+     "ts": 20,
+     "tr": 22,
+     "ind": -2,
+     "vm": 0.42857142857142855
+    },
+    {
+     "name": "P1",
+     "v": 2,
+     "m": 6,
+     "ts": 7,
+     "tr": 10,
+     "ind": -3,
+     "vm": 0.3333333333333333
+    },
+    {
+     "name": "P0",
+     "v": 1,
+     "m": 5,
+     "ts": 13,
+     "tr": 16,
+     "ind": -3,
+     "vm": 0.2
+    },
+    {
+     "name": "P3",
+     "v": 1,
+     "m": 7,
+     "ts": 13,
+     "tr": 18,
+     "ind": -5,
+     "vm": 0.14285714285714285
+    }
+   ]
+  },
+  {
+   "names": [
+    "P0",
+    "P1",
+    "P2"
+   ],
+   "bouts": [
+    {
+     "Fencer1": "P0",
+     "Fencer2": "P1",
+     "Score1": 1,
+     "Score2": 2
+    },
+    {
+     "Fencer1": "P0",
+     "Fencer2": "P2",
+     "Score1": 3,
+     "Score2": 3
+    },
+    {
+     "Fencer1": "P1",
+     "Fencer2": "P2",
+     "Score1": 4,
+     "Score2": 0
+    }
+   ],
+   "result": [
+    {
+     "name": "P1",
+     "v": 2,
+     "m": 2,
+     "ts": 6,
+     "tr": 1,
+     "ind": 5,
+     "vm": 1.0
+    },
+    {
+     "name": "P0",
+     "v": 0,
+     "m": 2,
+     "ts": 4,
+     "tr": 5,
+     "ind": -1,
+     "vm": 0.0
+    },
+    {
+     "name": "P2",
+     "v": 0,
+     "m": 2,
+     "ts": 3,
+     "tr": 7,
+     "ind": -4,
+     "vm": 0.0
+    }
+   ]
+  },
+  {
+   "names": [
+    "P0",
+    "P1",
+    "P2",
+    "P3"
+   ],
+   "bouts": [
+    {
+     "Fencer1": "P0",
+     "Fencer2": "P1",
+     "Score1": 2,
+     "Score2": 3
+    },
+    {
+     "Fencer1": "P0",
+     "Fencer2": "P2",
+     "Score1": 0,
+     "Score2": 1
+    },
+    {
+     "Fencer1": "P0",
+     "Fencer2": "P3",
+     "Score1": 0,
+     "Score2": 5
+    },
+    {
+     "Fencer1": "P1",
+     "Fencer2": "P2",
+     "Score1": 1,
+     "Score2": 2
+    },
+    {
+     "Fencer1": "P1",
+     "Fencer2": "P3",
+     "Score1": 0,
+     "Score2": 4
+    },
+    {
+     "Fencer1": "P2",
+     "Fencer2": "P3",
+     "Score1": 2,
+     "Score2": 2
+    }
+   ],
+   "result": [
+    {
+     "name": "P3",
+     "v": 2,
+     "m": 3,
+     "ts": 11,
+     "tr": 2,
+     "ind": 9,
+     "vm": 0.6666666666666666
+    },
+    {
+     "name": "P2",
+     "v": 2,
+     "m": 3,
+     "ts": 5,
+     "tr": 3,
+     "ind": 2,
+     "vm": 0.6666666666666666
+    },
+    {
+     "name": "P1",
+     "v": 1,
+     "m": 3,
+     "ts": 4,
+     "tr": 8,
+     "ind": -4,
+     "vm": 0.3333333333333333
+    },
+    {
+     "name": "P0",
+     "v": 0,
+     "m": 3,
+     "ts": 2,
+     "tr": 9,
+     "ind": -7,
+     "vm": 0.0
+    }
+   ]
+  },
+  {
+   "names": [
+    "P0",
+    "P1",
+    "P2",
+    "P3",
+    "P4",
+    "P5"
+   ],
+   "bouts": [
+    {
+     "Fencer1": "P0",
+     "Fencer2": "P1",
+     "Score1": 0,
+     "Score2": 4
+    },
+    {
+     "Fencer1": "P0",
+     "Fencer2": "P2",
+     "Score1": 4,
+     "Score2": 1
+    },
+    {
+     "Fencer1": "P0",
+     "Fencer2": "P3",
+     "Score1": 2,
+     "Score2": 0
+    },
+    {
+     "Fencer1": "P0",
+     "Fencer2": "P4",
+     "Score1": 3,
+     "Score2": 3
+    },
+    {
+     "Fencer1": "P0",
+     "Fencer2": "P5",
+     "Score1": 4,
+     "Score2": 2
+    },
+    {
+     "Fencer1": "P1",
+     "Fencer2": "P2",
+     "Score1": 3,
+     "Score2": 1
+    },
+    {
+     "Fencer1": "P1",
+     "Fencer2": "P3",
+     "Score1": 1,
+     "Score2": 1
+    },
+    {
+     "Fencer1": "P1",
+     "Fencer2": "P5",
+     "Score1": 1,
+     "Score2": 5
+    },
+    {
+     "Fencer1": "P2",
+     "Fencer2": "P3",
+     "Score1": 3,
+     "Score2": 4
+    },
+    {
+     "Fencer1": "P2",
+     "Fencer2": "P4",
+     "Score1": 2,
+     "Score2": 4
+    },
+    {
+     "Fencer1": "P2",
+     "Fencer2": "P5",
+     "Score1": 3,
+     "Score2": 5
+    },
+    {
+     "Fencer1": "P3",
+     "Fencer2": "P4",
+     "Score1": 5,
+     "Score2": 0
+    },
+    {
+     "Fencer1": "P3",
+     "Fencer2": "P5",
+     "Score1": 5,
+     "Score2": 4
+    }
+   ],
+   "result": [
+    {
+     "name": "P3",
+     "v": 3,
+     "m": 5,
+     "ts": 15,
+     "tr": 10,
+     "ind": 5,
+     "vm": 0.6
+    },
+    {
+     "name": "P0",
+     "v": 3,
+     "m": 5,
+     "ts": 13,
+     "tr": 10,
+     "ind": 3,
+     "vm": 0.6
+    },
+    {
+     "name": "P5",
+     "v": 2,
+     "m": 4,
+     "ts": 16,
+     "tr": 13,
+     "ind": 3,
+     "vm": 0.5
+    },
+    {
+     "name": "P1",
+     "v": 2,
+     "m": 4,
+     "ts": 9,
+     "tr": 7,
+     "ind": 2,
+     "vm": 0.5
+    },
+    {
+     "name": "P4",
+     "v": 1,
+     "m": 3,
+     "ts": 7,
+     "tr": 10,
+     "ind": -3,
+     "vm": 0.3333333333333333
+    },
+    {
+     "name": "P2",
+     "v": 0,
+     "m": 5,
+     "ts": 10,
+     "tr": 20,
+     "ind": -10,
+     "vm": 0.0
+    }
+   ]
+  },
+  {
+   "names": [
+    "P0",
+    "P1",
+    "P2"
+   ],
+   "bouts": [
+    {
+     "Fencer1": "P0",
+     "Fencer2": "P1",
+     "Score1": 0,
+     "Score2": 2
+    },
+    {
+     "Fencer1": "P0",
+     "Fencer2": "P2",
+     "Score1": 3,
+     "Score2": 0
+    },
+    {
+     "Fencer1": "P1",
+     "Fencer2": "P2",
+     "Score1": 2,
+     "Score2": 4
+    }
+   ],
+   "result": [
+    {
+     "name": "P0",
+     "v": 1,
+     "m": 2,
+     "ts": 3,
+     "tr": 2,
+     "ind": 1,
+     "vm": 0.5
+    },
+    {
+     "name": "P1",
+     "v": 1,
+     "m": 2,
+     "ts": 4,
+     "tr": 4,
+     "ind": 0,
+     "vm": 0.5
+    },
+    {
+     "name": "P2",
+     "v": 1,
+     "m": 2,
+     "ts": 4,
+     "tr": 5,
+     "ind": -1,
+     "vm": 0.5
+    }
+   ]
+  },
+  {
+   "names": [
+    "P0",
+    "P1",
+    "P2",
+    "P3",
+    "P4",
+    "P5",
+    "P6",
+    "P7"
+   ],
+   "bouts": [
+    {
+     "Fencer1": "P0",
+     "Fencer2": "P1",
+     "Score1": 5,
+     "Score2": 1
+    },
+    {
+     "Fencer1": "P0",
+     "Fencer2": "P2",
+     "Score1": 3,
+     "Score2": 2
+    },
+    {
+     "Fencer1": "P0",
+     "Fencer2": "P3",
+     "Score1": 1,
+     "Score2": 1
+    },
+    {
+     "Fencer1": "P0",
+     "Fencer2": "P4",
+     "Score1": 4,
+     "Score2": 2
+    },
+    {
+     "Fencer1": "P0",
+     "Fencer2": "P5",
+     "Score1": 0,
+     "Score2": 2
+    },
+    {
+     "Fencer1": "P0",
+     "Fencer2": "P6",
+     "Score1": 1,
+     "Score2": 1
+    },
+    {
+     "Fencer1": "P0",
+     "Fencer2": "P7",
+     "Score1": 1,
+     "Score2": 3
+    },
+    {
+     "Fencer1": "P1",
+     "Fencer2": "P2",
+     "Score1": 0,
+     "Score2": 4
+    },
+    {
+     "Fencer1": "P1",
+     "Fencer2": "P3",
+     "Score1": 4,
+     "Score2": 2
+    },
+    {
+     "Fencer1": "P1",
+     "Fencer2": "P4",
+     "Score1": 1,
+     "Score2": 0
+    },
+    {
+     "Fencer1": "P1",
+     "Fencer2": "P5",
+     "Score1": 3,
+     "Score2": 2
+    },
+    {
+     "Fencer1": "P1",
+     "Fencer2": "P7",
+     "Score1": 3,
+     "Score2": 5
+    },
+    {
+     "Fencer1": "P2",
+     "Fencer2": "P3",
+     "Score1": 1,
+     "Score2": 0
+    },
+    {
+     "Fencer1": "P2",
+     "Fencer2": "P4",
+     "Score1": 3,
+     "Score2": 1
+    },
+    {
+     "Fencer1": "P2",
+     "Fencer2": "P5",
+     "Score1": 5,
+     "Score2": 1
+    },
+    {
+     "Fencer1": "P2",
+     "Fencer2": "P6",
+     "Score1": 2,
+     "Score2": 3
+    },
+    {
+     "Fencer1": "P2",
+     "Fencer2": "P7",
+     "Score1": 3,
+     "Score2": 5
+    },
+    {
+     "Fencer1": "P3",
+     "Fencer2": "P4",
+     "Score1": 2,
+     "Score2": 3
+    },
+    {
+     "Fencer1": "P3",
+     "Fencer2": "P5",
+     "Score1": 5,
+     "Score2": 4
+    },
+    {
+     "Fencer1": "P3",
+     "Fencer2": "P6",
+     "Score1": 0,
+     "Score2": 4
+    },
+    {
+     "Fencer1": "P3",
+     "Fencer2": "P7",
+     "Score1": 5,
+     "Score2": 4
+    },
+    {
+     "Fencer1": "P4",
+     "Fencer2": "P6",
+     "Score1": 3,
+     "Score2": 1
+    },
+    {
+     "Fencer1": "P4",
+     "Fencer2": "P7",
+     "Score1": 0,
+     "Score2": 0
+    },
+    {
+     "Fencer1": "P5",
+     "Fencer2": "P6",
+     "Score1": 5,
+     "Score2": 1
+    },
+    {
+     "Fencer1": "P5",
+     "Fencer2": "P7",
+     "Score1": 5,
+     "Score2": 3
+    },
+    {
+     "Fencer1": "P6",
+     "Fencer2": "P7",
+     "Score1": 5,
+     "Score2": 0
+    }
+   ],
+   "result": [
+    {
+     "name": "P2",
+     "v": 4,
+     "m": 7,
+     "ts": 20,
+     "tr": 13,
+     "ind": 7,
+     "vm": 0.5714285714285714
+    },
+    {
+     "name": "P6",
+     "v": 3,
+     "m": 6,
+     "ts": 15,
+     "tr": 11,
+     "ind": 4,
+     "vm": 0.5
+    },
+    {
+     "name": "P5",
+     "v": 3,
+     "m": 6,
+     "ts": 19,
+     "tr": 17,
+     "ind": 2,
+     "vm": 0.5
+    },
+    {
+     "name": "P1",
+     "v": 3,
+     "m": 6,
+     "ts": 12,
+     "tr": 18,
+     "ind": -6,
+     "vm": 0.5
+    },
+    {
+     "name": "P0",
+     "v": 3,
+     "m": 7,
+     "ts": 15,
+     "tr": 12,
+     "ind": 3,
+     "vm": 0.42857142857142855
+    },
+    {
+     "name": "P7",
+     "v": 3,
+     "m": 7,
+     "ts": 20,
+     "tr": 22,
+     "ind": -2,
+     "vm": 0.42857142857142855
+    },
+    {
+     "name": "P4",
+     "v": 2,
+     "m": 6,
+     "ts": 9,
+     "tr": 11,
+     "ind": -2,
+     "vm": 0.3333333333333333
+    },
+    {
+     "name": "P3",
+     "v": 2,
+     "m": 7,
+     "ts": 15,
+     "tr": 21,
+     "ind": -6,
+     "vm": 0.2857142857142857
+    }
+   ]
+  },
+  {
+   "names": [
+    "P0",
+    "P1",
+    "P2",
+    "P3",
+    "P4"
+   ],
+   "bouts": [
+    {
+     "Fencer1": "P0",
+     "Fencer2": "P1",
+     "Score1": 2,
+     "Score2": 2
+    },
+    {
+     "Fencer1": "P0",
+     "Fencer2": "P4",
+     "Score1": 3,
+     "Score2": 3
+    },
+    {
+     "Fencer1": "P1",
+     "Fencer2": "P2",
+     "Score1": 3,
+     "Score2": 0
+    },
+    {
+     "Fencer1": "P1",
+     "Fencer2": "P3",
+     "Score1": 4,
+     "Score2": 0
+    },
+    {
+     "Fencer1": "P2",
+     "Fencer2": "P3",
+     "Score1": 0,
+     "Score2": 4
+    },
+    {
+     "Fencer1": "P3",
+     "Fencer2": "P4",
+     "Score1": 4,
+     "Score2": 4
+    }
+   ],
+   "result": [
+    {
+     "name": "P1",
+     "v": 2,
+     "m": 3,
+     "ts": 9,
+     "tr": 2,
+     "ind": 7,
+     "vm": 0.6666666666666666
+    },
+    {
+     "name": "P3",
+     "v": 1,
+     "m": 3,
+     "ts": 8,
+     "tr": 8,
+     "ind": 0,
+     "vm": 0.3333333333333333
+    },
+    {
+     "name": "P4",
+     "v": 0,
+     "m": 2,
+     "ts": 7,
+     "tr": 7,
+     "ind": 0,
+     "vm": 0.0
+    },
+    {
+     "name": "P0",
+     "v": 0,
+     "m": 2,
+     "ts": 5,
+     "tr": 5,
+     "ind": 0,
+     "vm": 0.0
+    },
+    {
+     "name": "P2",
+     "v": 0,
+     "m": 2,
+     "ts": 0,
+     "tr": 7,
+     "ind": -7,
+     "vm": 0.0
+    }
+   ]
+  }
+ ]
+}
