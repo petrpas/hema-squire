@@ -2306,7 +2306,7 @@
         "kindDay": "den disciplíny",
         "kindK": "počet skupin",
         "discipline": "Disciplína",
-        "pools": "Skupin",
+        "pools": "{{name}}: {{n}} skupin",
         "add": "Připnout",
         "n": "{{name}}: N = {{n}}"
       },
@@ -2351,7 +2351,9 @@
       "state": {
         "open": "otevřená",
         "closed": "uzavřená",
-        "waiting": "čeká"
+        "waiting": "čeká",
+        "running": "běží",
+        "complete": "dokončeny"
       },
       "codes": {
         "days": "Nastavení: chybí dny turnaje",
@@ -2360,6 +2362,14 @@
         "staffing": "Nastavení: {{discipline}} nemá obsazení planše",
         "publish": "Plán: pracovní verze čeká na publikování",
         "checkin_open": "Prezence: {{discipline}} je otevřená a první skupina se blíží"
+      },
+      "steps": {
+        "pools": {
+          "waiting": "čeká",
+          "running": "běží",
+          "complete": "dokončeny",
+          "closed": "uzavřeny"
+        }
       }
     },
     "checkin": {
@@ -2384,7 +2394,10 @@
       "invalidated": {
         "n_pin": "pin N pro plánovač",
         "snapshot": "zmrazený seznam šermířů",
-        "draw": "los skupin"
+        "draw": "los skupin",
+        "sheets": "vytištěné archy",
+        "call_list": "svolávání",
+        "pools_pin": "pin skupin pro plánovač"
       },
       "reopenRefused": "Nelze znovu otevřít: už jsou zapsané zápasy ({{items}}).",
       "impact": {
@@ -2410,6 +2423,73 @@
       "substitute": "Náhradník (jméno)",
       "addSubstitute": "Přidat do sestavy",
       "lineupRefused": "Sestavu se nepodařilo uložit; zkontroluj její velikost a zda člen není v jiné sestavě."
+    },
+    "pools": {
+      "discipline": "Disciplína",
+      "failed": "Skupiny se nepodařilo načíst.",
+      "checkinOpen": "Los čeká na uzavřenou prezenci.",
+      "drawTitle": "Los",
+      "draw": "Rozlosovat",
+      "redraw": "Rozlosovat znovu",
+      "announce": "Vyhlásit los",
+      "score": "Skóre losu",
+      "previousScore": "Před výměnou",
+      "snake": "had",
+      "club": "kluby",
+      "nationality": "národnosti",
+      "waveScore": "vlny",
+      "swapHint": "Výměna: klikni na dva šermíře. Nasazení z první řady se nemění.",
+      "pool": "Skupina {{number}}",
+      "wave": "vlna {{wave}}",
+      "refusals": {
+        "locked_seed": "Nasazení z první řady se nemění.",
+        "wave": "Šermíř z jiné souběžné disciplíny nesmí do souběžné vlny.",
+        "checkin_open": "Los čeká na uzavřenou prezenci.",
+        "plan_not_published": "Los čte skupiny ze zveřejněného plánu; nejdřív plán publikuj.",
+        "stale_version": "Výsledek mezitím někdo změnil; načti ho znovu.",
+        "pools_closed": "Skupiny jsou uzavřené.",
+        "draw_announced": "Los už je vyhlášený.",
+        "too_few": "Na los jsou potřeba aspoň dva šermíři.",
+        "failed": "Akce se nezdařila."
+      },
+      "scoreOf": "Body: {{name}}",
+      "noBout": "nezápaseno",
+      "saveSheet_one": "Uložit arch ({{count}} zápas)",
+      "saveSheet_few": "Uložit arch ({{count}} zápasy)",
+      "saveSheet_many": "Uložit arch ({{count}} zápasu)",
+      "saveSheet_other": "Uložit arch ({{count}} zápasů)",
+      "callList": "Svolávání",
+      "print": "Tisk archu",
+      "close": "Uzavřít skupiny",
+      "advanceCount": "Postupuje {{count}} z {{total}}.",
+      "index": "Index",
+      "advances": "Postup",
+      "yes": "ano",
+      "no": "ne",
+      "closedTitle": "Pořadí po skupinách",
+      "reopenPools": "Znovu otevřít skupiny",
+      "reopenRefused": "Skupiny nelze znovu otevřít: v pavouku už jsou výsledky.",
+      "warnings": {
+        "bouts_missing": "Skupina {{pool}}: {{name}} má {{found}} zápasů z {{expected}}.",
+        "touches_asymmetric": "Skupina {{pool}}: zásahy nesedí (dané {{expected}}, obdržené {{found}}).",
+        "unknown_fencer": "Neznámý šermíř ve výsledcích: {{name}}."
+      }
+    },
+    "ring": {
+      "title": "Odkazy pro planše",
+      "none": "bez odkazu",
+      "live": "odkaz platí",
+      "issue": "Vydat odkaz",
+      "reissue": "Vydat nový (starý přestane platit)",
+      "revoke": "Zrušit odkaz",
+      "qr": "QR kód odkazu pro planš {{name}}",
+      "invalid": "Tento odkaz už neplatí. Požádej organizátora o nový.",
+      "piste": "Planš {{name}}",
+      "nothing": "Na této planši teď nic neprobíhá.",
+      "minus": "Ubrat bod: {{name}}",
+      "plus": "Přidat bod: {{name}}",
+      "record": "Zapsat",
+      "correct": "Opravit"
     }
   }
 }

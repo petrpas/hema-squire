@@ -7,9 +7,12 @@ Issuing a new key revokes the piste's previous one.
 """
 
 import hashlib
+import io
 import secrets
 from datetime import UTC, datetime
 
+import qrcode
+from qrcode.image.pil import PilImage
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -125,3 +128,11 @@ def work(session: Session, key: FloorRingKey, names: dict[str, str]) -> dict[str
             ],
         },
     }
+
+
+def qr_png(text: str) -> bytes:
+    """A QR code of the piste screen's link, as PNG."""
+    image = qrcode.make(text, image_factory=PilImage)
+    out = io.BytesIO()
+    image.save(out, format="PNG")
+    return out.getvalue()

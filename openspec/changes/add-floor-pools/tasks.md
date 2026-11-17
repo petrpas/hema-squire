@@ -27,13 +27,13 @@
 
 ## 4. Frontend
 
-- [ ] 4.1 `frontend/src/floor/pools/`: one file per state view (draw with swaps and the score breakdown, running, complete, closed), the transcription form, the call list and the print link.
-- [ ] 4.2 `frontend/src/floor/ring/RingScreen.tsx`: the keyed route, touch-sized controls and the invalid-link state. Add `ringPath` to `routes.ts`.
-- [ ] 4.3 The issue, copy, QR and revoke controls per piste. These are on the `pools` tab or in Setup's piste rows; choose one and record the choice here.
-- [ ] 4.4 Add tests and the i18n strings.
+- [x] 4.1 `frontend/src/floor/pools/`: one file per state view (draw with swaps and the score breakdown, running, complete, closed), the transcription form, the call list and the print link.
+- [x] 4.2 `frontend/src/floor/ring/RingScreen.tsx`: the keyed route, touch-sized controls and the invalid-link state. Add `ringPath` to `routes.ts`.
+- [x] 4.3 The issue, copy, QR and revoke controls per piste. They are on the `pools` tab (design D8).
+- [x] 4.4 Add tests and the i18n strings.
 
 ## 5. Acceptance
 
-- [ ] 5.1 `pytest tests/floor -q` passes. `ruff`, `basedpyright` and the boundary test pass. `engine/` is standard-library only.
-- [ ] 5.2 `npm run typecheck`, `npm run check` and `npm test` pass.
-- [ ] 5.3 `openspec validate add-floor-pools --strict` passes.
+- [x] 5.1 `pytest tests/floor -q` passes. `ruff`, `basedpyright` and the boundary test pass. `engine/` is standard-library only.
+- [x] 5.2 `npm run typecheck`, `npm run check` and `npm test` pass.
+- [x] 5.3 `openspec validate add-floor-pools --strict` passes.

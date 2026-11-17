@@ -6,6 +6,7 @@ import ConsoleRoute from "./ConsoleRoute";
 import FencerHome from "./FencerHome";
 import FencerLayout from "./FencerLayout";
 import FloorRoute from "./floor/FloorRoute";
+import RingScreen from "./floor/ring/RingScreen";
 import NotFound from "./NotFound";
 import PrivacyPage from "./PrivacyPage";
 import ProfilePage from "./ProfilePage";
@@ -60,6 +61,8 @@ export default function App() {
       {/* Not-found is public: an address that names no screen is not a
           credential problem, and showing Login for one would tell a
           signed-out visitor to sign in for a page that does not exist. */}
+      {/* the piste screen: no account, no organizer layout, a key alone */}
+      <Route path="floor/ring/:piste" element={<RingScreen />} />
       <Route path="*" element={<NotFound />} />
     </Routes>
   );

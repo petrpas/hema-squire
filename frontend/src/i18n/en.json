@@ -2240,7 +2240,7 @@
         "kindDay": "a discipline's day",
         "kindK": "the pool count",
         "discipline": "Discipline",
-        "pools": "Pools",
+        "pools": "{{name}}: {{n}} pools",
         "add": "Pin",
         "n": "{{name}}: N = {{n}}"
       },
@@ -2277,7 +2277,9 @@
       "state": {
         "open": "open",
         "closed": "closed",
-        "waiting": "waiting"
+        "waiting": "waiting",
+        "running": "running",
+        "complete": "complete"
       },
       "codes": {
         "days": "Setup: the tournament's days are missing",
@@ -2286,6 +2288,14 @@
         "staffing": "Setup: {{discipline}} has no piste staffing",
         "publish": "Plan: a working version waits to be published",
         "checkin_open": "Check-in: {{discipline}} is still open and its first pool is near"
+      },
+      "steps": {
+        "pools": {
+          "waiting": "waiting",
+          "running": "running",
+          "complete": "complete",
+          "closed": "closed"
+        }
       }
     },
     "checkin": {
@@ -2310,7 +2320,10 @@
       "invalidated": {
         "n_pin": "the planner's N pin",
         "snapshot": "the frozen list of entrants",
-        "draw": "the pools' draw"
+        "draw": "the pools' draw",
+        "sheets": "printed sheets",
+        "call_list": "the call list",
+        "pools_pin": "the planner's pools pin"
       },
       "reopenRefused": "Cannot reopen: bouts are already recorded ({{items}}).",
       "impact": {
@@ -2330,6 +2343,71 @@
       "substitute": "Substitute (name)",
       "addSubstitute": "Add to the lineup",
       "lineupRefused": "The lineup could not be saved; check its size and that no member is in another lineup."
+    },
+    "pools": {
+      "discipline": "Discipline",
+      "failed": "The pools could not be loaded.",
+      "checkinOpen": "The draw waits for check-in to close.",
+      "drawTitle": "Draw",
+      "draw": "Draw",
+      "redraw": "Draw again",
+      "announce": "Announce the draw",
+      "score": "Draw score",
+      "previousScore": "Before the swap",
+      "snake": "snake",
+      "club": "clubs",
+      "nationality": "nationalities",
+      "waveScore": "waves",
+      "swapHint": "To swap, click two fencers. First-row seeds do not move.",
+      "pool": "Pool {{number}}",
+      "wave": "wave {{wave}}",
+      "refusals": {
+        "locked_seed": "First-row seeds do not move.",
+        "wave": "A fencer of a parallel discipline may not go into a parallel wave.",
+        "checkin_open": "The draw waits for check-in to close.",
+        "plan_not_published": "The draw reads its pools from the published plan; publish the plan first.",
+        "stale_version": "Someone changed this result meanwhile; read it again.",
+        "pools_closed": "The pools are closed.",
+        "draw_announced": "The draw is already announced.",
+        "too_few": "A draw needs at least two fencers.",
+        "failed": "That did not work."
+      },
+      "scoreOf": "Score: {{name}}",
+      "noBout": "not fenced",
+      "saveSheet_one": "Save the sheet ({{count}} bout)",
+      "saveSheet_other": "Save the sheet ({{count}} bouts)",
+      "callList": "Call list",
+      "print": "Print the sheet",
+      "close": "Close the pools",
+      "advanceCount": "{{count}} of {{total}} advance.",
+      "index": "Index",
+      "advances": "Advances",
+      "yes": "yes",
+      "no": "no",
+      "closedTitle": "Pool ranking",
+      "reopenPools": "Reopen the pools",
+      "reopenRefused": "The pools cannot be reopened: the bracket already has results.",
+      "warnings": {
+        "bouts_missing": "Pool {{pool}}: {{name}} has {{found}} of {{expected}} bouts.",
+        "touches_asymmetric": "Pool {{pool}}: touches do not balance (scored {{expected}}, received {{found}}).",
+        "unknown_fencer": "An unknown fencer in the results: {{name}}."
+      }
+    },
+    "ring": {
+      "title": "Piste links",
+      "none": "no link",
+      "live": "link valid",
+      "issue": "Issue a link",
+      "reissue": "Issue a new one (the old stops working)",
+      "revoke": "Revoke the link",
+      "qr": "QR code of the link for piste {{name}}",
+      "invalid": "This link is no longer valid. Ask the organizer for a new one.",
+      "piste": "Piste {{name}}",
+      "nothing": "Nothing runs on this piste now.",
+      "minus": "Take a point: {{name}}",
+      "plus": "Add a point: {{name}}",
+      "record": "Record",
+      "correct": "Correct"
     }
   }
 }

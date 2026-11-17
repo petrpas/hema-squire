@@ -4,6 +4,7 @@ Console endpoints stand behind the console gate, writes refused on a draft;
 the piste screen's two endpoints stand behind its key alone, rate-limited.
 """
 
+import base64
 from datetime import UTC, datetime
 from typing import Annotated
 
@@ -63,8 +64,17 @@ class SwapIn(BaseModel):
     b: Annotated[str, StringConstraints(min_length=1, max_length=80)]
 
 
+class KeyIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    # the console's own origin, which the link and its QR code are built on
+    origin: Annotated[str, StringConstraints(pattern=r"^https?://[^/#?\s]{1,200}$")]
+
+
 class KeyOut(BaseModel):
     key: str
+    # the piste screen's address, the key in its fragment, as a PNG QR code
+    qr_png_base64: str
 
 
 def _discipline(tournament: TournamentDep, discipline_id: int) -> FloorDiscipline:
@@ -382,7 +392,11 @@ def _piste(session: SessionDep, tournament: TournamentDep, piste_id: int) -> Non
 
 @router.post("/{slug}/floor/ring/{piste_id}", response_model=KeyOut, status_code=201)
 def floor_ring_issue(
-    piste_id: RowId, tournament: TournamentDep, session: SessionDep, fencer: FencerDep
+    piste_id: RowId,
+    data: KeyIn,
+    tournament: TournamentDep,
+    session: SessionDep,
+    fencer: FencerDep,
 ) -> KeyOut:
     """A fresh key for the piste's screen; the previous one stops working.
     The key is shown once, here."""
@@ -393,7 +407,8 @@ def floor_ring_issue(
     _piste(session, tournament, piste_id)
     key = ring.issue(session, tournament.id, piste_id, datetime.now(UTC))
     session.commit()
-    return KeyOut(key=key)
+    link = f"{data.origin}/floor/ring/{piste_id}#{key}"
+    return KeyOut(key=key, qr_png_base64=base64.b64encode(ring.qr_png(link)).decode("ascii"))
 
 
 @router.delete("/{slug}/floor/ring/{piste_id}", status_code=204)

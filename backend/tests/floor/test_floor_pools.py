@@ -224,8 +224,11 @@ def test_reopening_checkin_discards_the_draw_but_not_over_results(client, auth_h
 
 
 def piste_key(client, organizer, piste_id: int) -> str:
-    issued = client.post(f"{BASE}/ring/{piste_id}", headers=organizer)
+    issued = client.post(
+        f"{BASE}/ring/{piste_id}", json={"origin": "https://squire.example"}, headers=organizer
+    )
     assert issued.status_code == 201, issued.text
+    assert issued.json()["qr_png_base64"]
     return issued.json()["key"]
 
 
