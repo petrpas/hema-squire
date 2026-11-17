@@ -82,6 +82,7 @@ export function FieldNote({ text }: { text: string | null }) {
 /** A Setup section: its title, its body, and its one save control. */
 export function SectionCard({
   title,
+  hideTitle = false,
   dirty,
   saving,
   failed,
@@ -89,6 +90,9 @@ export function SectionCard({
   children,
 }: {
   title: string;
+  /** the tab's own label already names it: the heading stays for a screen
+   *  reader only */
+  hideTitle?: boolean;
   dirty: boolean;
   saving: boolean;
   failed: boolean;
@@ -98,7 +102,7 @@ export function SectionCard({
   const { t } = useTranslation();
   return (
     <section className="rail-card floor-section">
-      <h2>{title}</h2>
+      <h2 className={hideTitle ? "visually-hidden" : undefined}>{title}</h2>
       {children}
       <div className="floor-section-actions">
         {failed && (
@@ -121,6 +125,14 @@ export function dayLabel(date: string, language: string): string {
     day: "numeric",
     month: "numeric",
   });
+}
+
+/** The weekday's short name, "so" for a Saturday; empty for a date being
+ *  typed that does not parse yet. */
+export function weekday(date: string, language: string): string {
+  const parsed = new Date(`${date}T12:00:00`);
+  if (Number.isNaN(parsed.getTime())) return "";
+  return parsed.toLocaleDateString(language, { weekday: "short" });
 }
 
 /** Ticks for the days of the tournament: one per day, the chosen ones ticked. */

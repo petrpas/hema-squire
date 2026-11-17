@@ -1,4 +1,5 @@
-"""The planner's model (spec floor-planner; design add-floor-planner D1).
+"""The planner's model (spec floor-planner; design add-floor-planner D1,
+design rework-floor-setup D8).
 
 Frozen dataclasses only. Times are whole minutes since midnight of a day, and
 days are referred to by index: the service converts to and from wall-clock
@@ -10,7 +11,9 @@ from typing import Literal
 
 Kind = Literal["individual", "team"]
 ActivityKind = Literal["pool", "bout"]
-Role = Literal["referee", "judge", "table"]
+# an activity's stage, which sets its referees per bout
+Stage = Literal["pool", "elim"]
+Finals = Literal["elimination", "day", "tournament"]
 
 
 @dataclass(frozen=True)
@@ -29,11 +32,14 @@ class Day:
 
 @dataclass(frozen=True)
 class Piste:
+    """A piste and the disciplines it serves. It is usable on any day one of
+    them is held; a reserve discipline uses it only where its day cannot be
+    planned on the regular pistes."""
+
     id: int
     ordinal: int
-    # day indexes it is available on
-    days: frozenset[int]
-    reserve: bool = False
+    regular: frozenset[int] = frozenset()
+    reserve: frozenset[int] = frozenset()
 
 
 @dataclass(frozen=True)
@@ -43,12 +49,16 @@ class Format:
     # None is "all"
     advance: int | None
     third_place: bool
-    # officials one piste needs while this discipline runs, by role
-    staffing: tuple[tuple[Role, int], ...]
     slot_pool_bout: int
     slot_elim_bout: int
-    slot_pool_overhead: int
+    # the pause a piste keeps after each pool
+    pause: int = 10
     slot_team_match: int | None = None
+    # referees per bout: (pools, elimination)
+    referees: tuple[int, int] = (1, 1)
+
+    def referees_for(self, stage: Stage) -> int:
+        return self.referees[0] if stage == "pool" else self.referees[1]
 
 
 @dataclass(frozen=True)
@@ -62,19 +72,28 @@ class DisciplineFacts:
     # who enters the bracket's count: entrants, or a team discipline's teams
     n_bracket: int
     format: Format
+    # the day it is held on, a fact of Setup (owner decision 2026-11-17)
+    day: int = 0
+    # the discipline whose pools it takes over; it then has no pools
+    takes_from: int | None = None
 
 
 @dataclass(frozen=True)
 class Params:
-    finals_last: bool = True
+    finals: Finals = "elimination"
     prefer_larger_pools: bool = True
     min_rest: int = 10
 
 
 @dataclass(frozen=True)
-class DayPin:
-    discipline: int
+class Referees:
+    """Referees available on a day: those serving one of its disciplines as
+    regular, those serving only as reserve, and the main referees among all."""
+
     day: int
+    regular: int
+    reserve: int = 0
+    main: int = 0
 
 
 @dataclass(frozen=True)
@@ -99,7 +118,7 @@ class SequencePin:
     disciplines: tuple[int, ...]
 
 
-Pin = DayPin | KPin | PlacePin | SequencePin
+Pin = KPin | PlacePin | SequencePin
 
 
 @dataclass(frozen=True)
@@ -128,19 +147,21 @@ class Problem:
     disciplines: tuple[DisciplineFacts, ...]
     # (discipline a, discipline b, persons in both), a < b
     shared: tuple[tuple[int, int, int], ...] = ()
-    # (day, role, officials available); empty means officials are not counted
-    officials: tuple[tuple[int, Role, int], ...] = ()
+    # referees per day; empty means officials are not counted
+    officials: tuple[Referees, ...] = ()
     pins: tuple[Pin, ...] = ()
     params: Params = field(default_factory=Params)
     # activities that have started, kept where they stand
     frozen: tuple[Activity, ...] = ()
-    # re-planning may use reserve pistes; a first plan may not
-    use_reserve: bool = False
+    # False plans the pool structure only (spec floor-planner, Without a
+    # schedule the planner plans pool structure only)
+    schedule: bool = True
 
 
 @dataclass(frozen=True)
 class Choice:
-    """One discipline's free decisions in a variant."""
+    """One discipline's free decision in a variant, its k, with its day as
+    Setup states it. A discipline that takes over has k = 0."""
 
     discipline: int
     k: int
@@ -178,6 +199,10 @@ class Metrics:
     collisions: int
     shortage: int
     average_pool: float
+    # reserve pistes the variant uses, by id
+    reserve_used: tuple[int, ...] = ()
+    # (day, minute, pistes beyond the day's main referees): a warning only
+    main_warnings: tuple[tuple[int, int, int], ...] = ()
 
 
 @dataclass(frozen=True)

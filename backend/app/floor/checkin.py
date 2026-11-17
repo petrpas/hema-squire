@@ -329,6 +329,8 @@ def first_starts(session: Session, tid: int) -> dict[int, datetime]:
             FloorPlanActivity.plan_id == current.id
         )
     ).tuples():
+        if starts_at is None:
+            continue
         if discipline_id not in out or starts_at < out[discipline_id]:
             out[discipline_id] = starts_at
     return out

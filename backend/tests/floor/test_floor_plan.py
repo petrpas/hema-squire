@@ -8,7 +8,7 @@ from sqlalchemy import select
 from app.floor import progress
 from app.floor.models import FloorPin, FloorPlan
 from tests.floor.test_floor_roster import db_session, tournament
-from tests.floor.test_floor_setup import BASE, discipline_ids, fmt, ok, put
+from tests.floor.test_floor_setup import BASE, discipline_ids, fmt, ok, put, scope, serving
 from tests.test_entrants import register, setup_tournament
 
 
@@ -21,12 +21,13 @@ def ready(client, auth_headers, *, fencers: int = 10, both: bool = False) -> tup
         disciplines = ("LS", "SB") if both else ("LS",)
         register(client, auth_headers(email=f"f{n}@example.com", name=f"Fencer {n}"), disciplines)
     ids = discipline_ids(client, organizer)
+    ok(put(client, organizer, "days", [{"date": "2099-12-05", "start": "09:00", "end": "19:00"}]))
     ok(
         put(
             client,
             organizer,
             "pistes",
-            [{"name": str(n), "days": ["2099-12-05"]} for n in range(1, 5)],
+            [{"name": str(n), "serves": serving(ids["LS"], ids["SB"])} for n in range(1, 5)],
         )
     )
     ok(
@@ -92,33 +93,36 @@ def test_publishing_replaces_the_published_version(client, auth_headers):
     assert summary["plan_published"] is True
 
 
-def test_a_pinned_day_holds(client, auth_headers):
+def test_the_day_set_in_setup_holds(client, auth_headers):
     organizer, ids = ready(client, auth_headers)
+    scope(client, organizer, multi_day=True)
     ok(
         put(
             client,
             organizer,
             "days",
             [
-                {"date": "2099-12-05", "start": "09:00", "end": "19:00"},
-                {"date": "2099-12-06", "start": "09:00", "end": "19:00"},
+                {
+                    "date": "2099-12-05",
+                    "start": "09:00",
+                    "end": "19:00",
+                    "discipline_ids": [ids["SB"]],
+                },
+                {
+                    "date": "2099-12-06",
+                    "start": "09:00",
+                    "end": "19:00",
+                    "discipline_ids": [ids["LS"]],
+                },
             ],
         )
     )
-    ok(
-        put(
-            client,
-            organizer,
-            "pistes",
-            [{"name": str(n), "days": ["2099-12-05", "2099-12-06"]} for n in range(1, 5)],
-        )
-    )
-    pinned = client.post(
+    refused = client.post(
         f"{BASE}/plan/pins",
         json={"kind": "day", "target": str(ids["LS"]), "value": {"day": "2099-12-06"}},
         headers=organizer,
     )
-    assert pinned.status_code == 201, pinned.text
+    assert refused.status_code == 422
 
     found = variants(client, organizer)["variants"]
 
@@ -126,6 +130,22 @@ def test_a_pinned_day_holds(client, auth_headers):
     for variant in found:
         (choice,) = [c for c in variant["choices"] if c["discipline_id"] == ids["LS"]]
         assert choice["day"] == "2099-12-06"
+
+
+def test_a_plan_without_a_schedule_has_pool_counts_only(client, auth_headers):
+    organizer, ids = ready(client, auth_headers)
+    ok(put(client, organizer, "scope", {"plan_schedule": False}))
+
+    found = variants(client, organizer)["variants"]
+
+    assert found
+    (choice,) = [c for c in found[0]["choices"] if c["discipline_id"] == ids["LS"]]
+    assert (choice["k"], choice["sizes"], choice["day"]) == (2, [5, 5], None)
+    assert found[0]["activities"] == []
+    choose(client, organizer, found[0]["key"])
+    working = state(client, organizer)["working"]
+    assert working["activities"] == []
+    assert publish(client, organizer).status_code == 204
 
 
 def test_a_gates_pin_is_not_removed_from_the_plan_tab(client, auth_headers):

@@ -1,20 +1,33 @@
-"""Officials on blocks (spec floor-officials; design add-floor-officials D1).
+"""Referees on blocks (spec floor-officials; design add-floor-officials D1,
+design rework-floor-setup D8).
 
-A block is one piste's run of one discipline's consecutive activities. Each
-block's staffing template is filled role by role: pins first, then the
-lowest-penalty feasible official in block start order, then pairwise swaps
-while they lower the total. Hard constraints are never broken; a role that
-cannot be filled stays empty and is stated.
+A block is one piste's run of one discipline's consecutive activities of one
+stage. Each block wants its stage's referees per bout; its first place is the
+main place. Places are filled pins first, then the lowest-penalty feasible
+official in block start order, then pairwise swaps while they lower the
+total. Hard constraints are never broken; a place that cannot be filled stays
+empty and is stated.
+
+The penalties rank, for the main place: a regular main referee, a regular
+other, a reserve main, a reserve other; for any other place a regular before
+a reserve. Below those, club conflicts, load and piste changes.
 """
 
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 
-from app.floor.engine.model import Activity, Role
+from app.floor.engine.model import Activity, Stage
 
 CLUB = 100
 PISTE_CHANGE = 10
+# a block's main place held by someone who is not a main referee
+NOT_MAIN = 100_000
+# a reserve official, used only where no regular one can be
+RESERVE = 1_000_000
 MAX_SWAPS = 200
+# every place is a referee's; the role is kept for the stored seat's shape
+Role = str
+REFEREE = "referee"
 
 
 @dataclass(frozen=True)
@@ -25,9 +38,10 @@ class Block:
     day: int
     start: int
     end: int
-    # (role, how many)
-    needs: tuple[tuple[Role, int], ...]
+    # referees the block wants
+    needs: int
     activities: tuple[str, ...]
+    stage: Stage = "pool"
     # clubs of the fencers in the block's pools, once the draw is announced
     clubs: frozenset[str] = frozenset()
 
@@ -35,9 +49,12 @@ class Block:
 @dataclass(frozen=True)
 class Official:
     id: int
-    roles: frozenset[str]
+    # every discipline served, regular or reserve
     disciplines: frozenset[int]
     days: frozenset[int]
+    # the disciplines among them served only as reserve
+    reserve: frozenset[int] = frozenset()
+    main: bool = True
     club: str | None = None
     # (day, start, end) the official fences
     blocked: tuple[tuple[int, int, int], ...] = ()
@@ -66,6 +83,9 @@ class Result:
     # (official, block) where the official shares a club with a fencer of the block
     conflicts: tuple[tuple[int, str], ...] = field(default_factory=tuple)
 
+    # blocks staffed with no main referee among them: tolerated, stated
+    without_main: tuple[str, ...] = field(default_factory=tuple)
+
     @property
     def unfilled(self) -> tuple[Seat, ...]:
         return tuple(s for s in self.seats if s.official is None)
@@ -73,14 +93,17 @@ class Result:
 
 def blocks(
     activities: Sequence[Activity],
-    overhead: dict[int, int],
-    needs: dict[int, tuple[tuple[Role, int], ...]],
+    pause: dict[int, int],
+    needs: dict[tuple[int, Stage], int],
 ) -> list[Block]:
-    """One piste's consecutive activities of one discipline, a gap of at most
-    the discipline's per-pool overhead between them."""
+    """One piste's consecutive activities of one discipline and one stage, a
+    gap of at most the discipline's pause between pools between them."""
     out: list[Block] = []
     ordered = sorted(activities, key=lambda a: (a.day, a.piste, a.start, a.id))
     current: list[Activity] = []
+
+    def stage(activity: Activity) -> Stage:
+        return "pool" if activity.kind == "pool" else "elim"
 
     def flush() -> None:
         if not current:
@@ -94,8 +117,9 @@ def blocks(
                 day=first.day,
                 start=first.start,
                 end=max(a.end for a in current),
-                needs=needs.get(first.discipline, ()),
+                needs=needs.get((first.discipline, stage(first)), 0),
                 activities=tuple(a.id for a in current),
+                stage=stage(first),
             )
         )
         current.clear()
@@ -107,8 +131,9 @@ def blocks(
                 last.day == activity.day
                 and last.piste == activity.piste
                 and last.discipline == activity.discipline
+                and stage(last) == stage(activity)
                 and activity.start - max(a.end for a in current)
-                <= overhead.get(activity.discipline, 0)
+                <= pause.get(activity.discipline, 0)
             )
             if not same:
                 flush()
@@ -132,8 +157,6 @@ def hard_ok(
         return "unavailable"
     if block.discipline not in official.disciplines:
         return "not_qualified"
-    if role not in official.roles:
-        return "wrong_role"
     if any(
         _overlap(other, block.day, block.start, block.end)
         for other in taken
@@ -145,13 +168,21 @@ def hard_ok(
     return None
 
 
-def _penalty(official: Official, block: Block, taken: Sequence[Block]) -> int:
+def _rank(official: Official, block: Block, slot: int) -> int:
+    """The tiers above every soft penalty: reserve last, the main place to a
+    main referee first."""
+    reserve = RESERVE if block.discipline in official.reserve else 0
+    not_main = NOT_MAIN if slot == 0 and not official.main else 0
+    return reserve + not_main
+
+
+def _penalty(official: Official, block: Block, taken: Sequence[Block], slot: int = 1) -> int:
     club = CLUB if official.club and official.club in block.clubs else 0
     load = sum(b.end - b.start for b in taken)
     same_day = [b for b in taken if b.day == block.day and b.end <= block.start]
     previous = max(same_day, key=lambda b: b.end, default=None)
     change = PISTE_CHANGE if previous is not None and previous.piste != block.piste else 0
-    return club + change + load
+    return _rank(official, block, slot) + club + change + load
 
 
 def assign(
@@ -174,22 +205,22 @@ def assign(
         )
         taken[official.id].append(block)
 
+    role = REFEREE
     for block in block_list:
-        for role, count in block.needs:
-            for slot in range(count):
-                if (block.key, role, slot) in seats:
-                    continue
-                candidates = [
-                    (_penalty(o, block, taken[o.id]), o.id)
-                    for o in officials
-                    if hard_ok(o, block, role, taken[o.id]) is None and block not in taken[o.id]
-                ]
-                if not candidates:
-                    seats[(block.key, role, slot)] = Seat(block.key, role, slot, None)
-                    continue
-                _, chosen = min(candidates)
-                seats[(block.key, role, slot)] = Seat(block.key, role, slot, chosen)
-                taken[chosen].append(block)
+        for slot in range(block.needs):
+            if (block.key, role, slot) in seats:
+                continue
+            candidates = [
+                (_penalty(o, block, taken[o.id], slot), o.id)
+                for o in officials
+                if hard_ok(o, block, role, taken[o.id]) is None and block not in taken[o.id]
+            ]
+            if not candidates:
+                seats[(block.key, role, slot)] = Seat(block.key, role, slot, None)
+                continue
+            _, chosen = min(candidates)
+            seats[(block.key, role, slot)] = Seat(block.key, role, slot, chosen)
+            taken[chosen].append(block)
 
     _improve(seats, by_key, people, taken)
     ordered = sorted(
@@ -209,7 +240,13 @@ def assign(
         and people[s.official].club
         and people[s.official].club in by_key[s.block].clubs
     )
-    return Result(seats=tuple(ordered), conflicts=conflicts)
+    seated: dict[str, list[int]] = {}
+    for s in ordered:
+        if s.official is not None:
+            seated.setdefault(s.block, []).append(s.official)
+    # a block someone sits on with no main referee among them
+    without_main = tuple(key for key, ids in seated.items() if not any(people[i].main for i in ids))
+    return Result(seats=tuple(ordered), conflicts=conflicts, without_main=without_main)
 
 
 def _total(
@@ -222,6 +259,7 @@ def _total(
             continue
         block = by_key[seat.block]
         official = people[seat.official]
+        total += _rank(official, block, seat.slot)
         if official.club and official.club in block.clubs:
             total += CLUB
         loads[seat.official] = loads.get(seat.official, 0) + block.end - block.start

@@ -7,9 +7,11 @@ the piste screen's two endpoints stand behind its key alone, rate-limited.
 import base64
 from datetime import UTC, datetime
 from typing import Annotated
+from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Header, HTTPException, Request, Response
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints
+from sqlalchemy import select
 
 from app.auth import require_console_access, require_published
 from app.floor import bracket, officiating, people, poolbouts, pools, results, ring, sheets
@@ -23,10 +25,10 @@ from app.floor.adapters.office import (
     roster_of,
     setup_facts,
 )
-from app.floor.models import FloorBout, FloorPiste, FloorRingKey
+from app.floor.models import FloorBout, FloorFormat, FloorPiste, FloorPool, FloorRingKey
 from app.floor.roster import FloorDiscipline
 from app.floor.schemas import RowId
-from app.floor.setup import read_pistes
+from app.floor.setup import read_pistes, team_total
 
 router = APIRouter(prefix="/api/tournaments", tags=["floor"])
 ring_router = APIRouter(prefix="/api/floor/ring", tags=["floor"])
@@ -335,6 +337,53 @@ def floor_pools_reopen(
     session.commit()
 
 
+def _format_of(session: SessionDep, discipline: FloorDiscipline) -> FloorFormat | None:
+    return session.scalar(select(FloorFormat).where(FloorFormat.discipline_id == discipline.id))
+
+
+def _pool_heading(
+    session: SessionDep, tournament: TournamentDep, discipline: FloorDiscipline, pool: FloorPool
+) -> str:
+    """The discipline line of a pool sheet: with its piste and planned start
+    where a schedule is planned, and the point target where stated (spec
+    floor-pools, Pool sheets list the bouts in order)."""
+    parts = [discipline.name]
+    if pool.piste_id is not None:
+        names = {p.id: p.name for p in read_pistes(session, tournament.id)}
+        parts.append(f"planš {names.get(pool.piste_id, '')}".strip())
+    if pool.planned_start is not None:
+        moment = pool.planned_start
+        aware = moment if moment.tzinfo is not None else moment.replace(tzinfo=UTC)
+        zone = ZoneInfo(setup_facts(tournament).timezone)
+        parts.append(aware.astimezone(zone).strftime("%H:%M"))
+    fmt = _format_of(session, discipline)
+    if fmt is not None and fmt.points_pool is not None:
+        parts.append(f"do {fmt.points_pool} bodů")
+    return " · ".join(parts)
+
+
+def _bracket_heading(session: SessionDep, discipline: FloorDiscipline) -> str:
+    """The discipline line of a bracket sheet, with its point targets: the
+    elimination's and the final's, a team's per bout with the match total."""
+    fmt = _format_of(session, discipline)
+    if fmt is None:
+        return discipline.name
+    parts = [discipline.name]
+    if discipline.kind == "team":
+        for label, points in (
+            ("eliminace", fmt.points_team_bout),
+            ("finále", fmt.points_team_final),
+        ):
+            if points is not None:
+                total = team_total(points, discipline.team_min)
+                parts.append(f"{label} {points} bodů na střet, celkem do {total}")
+    else:
+        for label, points in (("eliminace", fmt.points_elim), ("finále", fmt.points_final)):
+            if points is not None:
+                parts.append(f"{label} do {points} bodů")
+    return " · ".join(parts)
+
+
 @router.get("/{slug}/floor/pools/{discipline_id}/sheets/{number}")
 def floor_pool_sheet(
     discipline_id: RowId,
@@ -360,7 +409,12 @@ def floor_pool_sheet(
         for m in pools.members_of(session, pool)
     ]
     try:
-        pdf = sheets.pool_sheet(tournament.display_name, discipline.name, number, names)
+        pdf = sheets.pool_sheet(
+            tournament.display_name,
+            _pool_heading(session, tournament, discipline, pool),
+            number,
+            names,
+        )
     except sheets.NoTemplate:
         raise HTTPException(status_code=409, detail="no_template") from None
     return Response(content=pdf, media_type="application/pdf")
@@ -521,9 +575,12 @@ def floor_bracket(
     found = roster(session, tournament)
     names = {k: p.name for k, p in people.persons(session, tid, found).items()}
     names.update({t.key: t.name for t in found.teams})
+    # a discipline that takes over waits on its source's pools
+    source = bracket.source_of(session, discipline.id)
     out: dict[str, object] = {
         "state": bracket.state(session, tid, discipline.id),
-        "pools_closed": poolbouts.state(session, tid, discipline.id) == "closed",
+        "pools_closed": poolbouts.state(session, tid, source or discipline.id) == "closed",
+        "source": source,
         "names": names,
         "proposal": None,
         "bracket": None,
@@ -674,7 +731,11 @@ def floor_bracket_sheet(
     advanced[-1] = [names.get(champion, champion) if champion is not None else None]
     try:
         pdf = sheets.bracket_sheet(
-            tournament.display_name, discipline.name, row.size, by_seed, advanced
+            tournament.display_name,
+            _bracket_heading(session, discipline),
+            row.size,
+            by_seed,
+            advanced,
         )
     except sheets.NoTemplate:
         raise HTTPException(status_code=409, detail="no_template") from None

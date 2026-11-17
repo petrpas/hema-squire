@@ -9,9 +9,11 @@ import i18n from "../i18n";
 import FloorRoute from "./FloorRoute";
 import { type FloorSetup, type FloorSummary, floorApi, planApi } from "./floorApi";
 
-// The floor console's band (spec floor-console): eight tabs in a fixed order,
-// the default tab following publication, a badge meaning "waiting", and the
-// schedule panel becoming the last tab below the canonical breakpoint.
+// The floor console's rail (spec floor-console): eight tabs in a fixed order,
+// each an icon named only in its hint, the default tab following publication,
+// a badge meaning "waiting" said in words, and the schedule panel becoming
+// the rail's last tab below the canonical breakpoint, where a schedule is
+// planned at all.
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -28,17 +30,16 @@ const tournament = {
 const setup: FloorSetup = {
   disciplines: [{ id: 1, slug: "LS", name: "Longsword", kind: "individual" }],
   persons: [],
-  days: { stored: false, days: [{ date: "2099-12-05", start: "09:00", end: "19:00", breaks: [] }] },
+  scope: { plan_schedule: true, multi_day: false, plan_officials: false },
+  days: {
+    stored: false,
+    days: [{ date: "2099-12-05", start: "09:00", end: "19:00", breaks: [], discipline_ids: [1] }],
+  },
   pistes: [],
   formats: [],
   officials: [],
-  params: {
-    finals_last: true,
-    prefer_larger_pools: true,
-    club_weight: 10,
-    nationality_weight: 3,
-    min_rest_minutes: 10,
-  },
+  params: { finals: "elimination", min_rest_minutes: 10 },
+  preferences: { pool_size: "larger", club_weight: 10, nationality_weight: 3 },
 };
 
 function summary(fields: Partial<FloorSummary> = {}): FloorSummary {
@@ -91,7 +92,7 @@ async function open(path: string, answer: FloorSummary = summary()) {
 }
 
 function tabs(): HTMLButtonElement[] {
-  return [...(host?.querySelectorAll<HTMLButtonElement>(".floor-tabs [role=tab]") ?? [])];
+  return [...(host?.querySelectorAll<HTMLButtonElement>(".floor-rail [role=tab]") ?? [])];
 }
 
 function selected(): string | undefined {
@@ -115,7 +116,7 @@ describe("the floor console's tabs", () => {
   it("offers all eight in their fixed order", async () => {
     await open("/organizer/cup/floor/data");
 
-    expect(tabs().map((tab) => tab.textContent)).toEqual([
+    expect(tabs().map((tab) => tab.getAttribute("aria-label"))).toEqual([
       t("floor.tabs.setup"),
       t("floor.tabs.data"),
       t("floor.tabs.plan"),
@@ -125,6 +126,14 @@ describe("the floor console's tabs", () => {
       t("floor.tabs.bracket"),
       t("floor.tabs.results"),
     ]);
+  });
+
+  it("draws an icon and names the tab only in its hint", async () => {
+    await open("/organizer/cup/floor/data");
+
+    const today = tabs()[3];
+    expect(today?.querySelector("svg")).not.toBeNull();
+    expect(today?.querySelector(".floor-rail-hint")?.textContent).toBe(t("floor.tabs.today"));
   });
 
   it("lands on Setup before a plan is published", async () => {
@@ -142,8 +151,11 @@ describe("the floor console's tabs", () => {
   it("badges only the tab that waits", async () => {
     await open("/organizer/cup/floor/data", summary({ badges: { setup: true, data: false } }));
 
-    const marked = tabs().filter((tab) => tab.querySelector(".tab-mark") !== null);
+    const marked = tabs().filter((tab) => tab.querySelector(".floor-rail-badge") !== null);
     expect(marked.map((tab) => tab.id)).toEqual(["floor-tab-setup"]);
+    expect(marked[0]?.getAttribute("aria-label")).toBe(
+      `${t("floor.tabs.setup")}, ${t("floor.tabs.waiting")}`,
+    );
   });
 
   it("draws the schedule beside the work on a wide screen", async () => {
@@ -159,7 +171,7 @@ describe("the floor console's tabs", () => {
 
     const last = tabs()[tabs().length - 1];
     expect(tabs()).toHaveLength(9);
-    expect(last?.textContent).toBe(t("floor.tabs.schedule"));
+    expect(last?.getAttribute("aria-label")).toBe(t("floor.tabs.schedule"));
     expect(host?.querySelector(".floor-schedule")).toBeNull();
 
     act(() => void last?.dispatchEvent(new MouseEvent("click", { bubbles: true })));
@@ -169,8 +181,20 @@ describe("the floor console's tabs", () => {
     expect(host?.querySelector<HTMLElement>(".floor-work")?.hidden).toBe(true);
   });
 
+  it("draws no schedule without one being planned", async () => {
+    stubViewport(true);
+    await open("/organizer/cup/floor/data", summary({ plan_schedule: false }));
+
+    expect(tabs()).toHaveLength(8);
+    expect(host?.querySelector(".floor-schedule")).toBeNull();
+  });
+
   it("asks before leaving Setup with an unsaved piste", async () => {
     await open("/organizer/cup/floor/setup");
+    const pistesTab = [
+      ...(host?.querySelectorAll<HTMLButtonElement>(".setup-tabs [role=tab]") ?? []),
+    ].find((tab) => tab.textContent === t("floor.setup.tabs.pistes"));
+    act(() => void pistesTab?.dispatchEvent(new MouseEvent("click", { bubbles: true })));
     const add = [...(host?.querySelectorAll("button") ?? [])].find(
       (button) => button.textContent === t("floor.setup.pistes.add"),
     );

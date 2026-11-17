@@ -10,7 +10,7 @@ import * as routes from "../routes";
 import BracketTab from "./bracket/BracketTab";
 import CheckinTab from "./checkin/CheckinTab";
 import DataTab from "./data/DataTab";
-import { FloorTabBar } from "./FloorTabBar";
+import { FloorRail } from "./FloorRail";
 import type { FloorSummary } from "./floorApi";
 import NotYet from "./NotYet";
 import PlanTab from "./plan/PlanTab";
@@ -22,9 +22,10 @@ import { barTabs, type FloorBarTab, type FloorTab, IMPLEMENTED, SCHEDULE_TAB } f
 import TodayTab from "./today/TodayTab";
 import { useNarrow } from "./useNarrow";
 
-/** The tournament-day console: the office console's bar, eight tabs in a
- *  fixed order, and the schedule beside the work (spec floor-console). A thin
- *  orchestrator; each tab is its own directory. */
+/** The tournament-day console: the office console's bar across the top, the
+ *  eight tabs as a rail of icons on the left, and the schedule beside the work
+ *  where a schedule is planned (spec floor-console). A thin orchestrator;
+ *  each tab is its own directory. */
 export default function FloorConsole({
   tournament,
   summary,
@@ -83,8 +84,10 @@ export default function FloorConsole({
   }
 
   const shown: FloorBarTab = scheduleOpen ? SCHEDULE_TAB : tab;
-  // beside every tab but Setup, where the screen is wide enough
-  const besideWork = !narrow && tab !== "setup";
+  const planned = summary.plan_schedule !== false;
+  // beside every tab but Setup, where the screen is wide enough and a
+  // schedule is planned at all
+  const besideWork = planned && !narrow && tab !== "setup";
 
   return (
     <div className="app">
@@ -110,48 +113,55 @@ export default function FloorConsole({
         <AccountMenu account={account} onLogout={onLogout} />
       </header>
 
-      <FloorTabBar
-        tabs={barTabs(narrow)}
-        tab={shown}
-        badges={summary.badges}
-        dirty={dirty ? "setup" : null}
-        onSelect={select}
-      />
+      <div className="floor-body">
+        <FloorRail
+          tabs={barTabs(narrow, planned)}
+          tab={shown}
+          badges={summary.badges}
+          dirty={dirty ? "setup" : null}
+          onSelect={select}
+        />
 
-      <div className="workspace floor-workspace">
-        <div
-          className="floor-work"
-          role="tabpanel"
-          id={`floor-tabpanel-${tab}`}
-          aria-labelledby={`floor-tab-${tab}`}
-          hidden={scheduleOpen}
-        >
-          {tab === "setup" ? (
-            <FloorSetupTab slug={slug} onSaved={changed} onDirtyChange={setDirty} />
-          ) : tab === "today" ? (
-            <TodayTab slug={slug} />
-          ) : tab === "results" ? (
-            <ResultsTab slug={slug} />
-          ) : tab === "bracket" ? (
-            <BracketTab slug={slug} discipline={discipline} />
-          ) : tab === "pools" ? (
-            <PoolsTab slug={slug} discipline={discipline} />
-          ) : tab === "checkin" ? (
-            <CheckinTab slug={slug} discipline={discipline} />
-          ) : tab === "plan" ? (
-            <PlanTab slug={slug} onChanged={changed} />
-          ) : tab === "data" ? (
-            <DataTab
-              slug={slug}
-              keptByOrganizer={tournament.registrations_kept_by === "organizer"}
-            />
-          ) : (
-            !IMPLEMENTED.has(tab) && <NotYet />
+        <div className="workspace floor-workspace">
+          <div
+            className="floor-work"
+            role="tabpanel"
+            id={`floor-tabpanel-${tab}`}
+            aria-labelledby={`floor-tab-${tab}`}
+            hidden={scheduleOpen}
+          >
+            {tab === "setup" ? (
+              <FloorSetupTab
+                slug={slug}
+                missing={summary.setup_missing}
+                onSaved={changed}
+                onDirtyChange={setDirty}
+              />
+            ) : tab === "today" ? (
+              <TodayTab slug={slug} />
+            ) : tab === "results" ? (
+              <ResultsTab slug={slug} />
+            ) : tab === "bracket" ? (
+              <BracketTab slug={slug} discipline={discipline} />
+            ) : tab === "pools" ? (
+              <PoolsTab slug={slug} discipline={discipline} />
+            ) : tab === "checkin" ? (
+              <CheckinTab slug={slug} discipline={discipline} />
+            ) : tab === "plan" ? (
+              <PlanTab slug={slug} onChanged={changed} />
+            ) : tab === "data" ? (
+              <DataTab
+                slug={slug}
+                keptByOrganizer={tournament.registrations_kept_by === "organizer"}
+              />
+            ) : (
+              !IMPLEMENTED.has(tab) && <NotYet />
+            )}
+          </div>
+          {(besideWork || (planned && scheduleOpen)) && (
+            <SchedulePanel slug={slug} revision={revision} asTabPanel={scheduleOpen} />
           )}
         </div>
-        {(besideWork || scheduleOpen) && (
-          <SchedulePanel slug={slug} revision={revision} asTabPanel={scheduleOpen} />
-        )}
       </div>
 
       {pending !== null && (

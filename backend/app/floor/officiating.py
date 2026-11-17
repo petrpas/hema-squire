@@ -13,24 +13,20 @@ from datetime import datetime
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
-from app.floor import people, planning
+from app.floor import people, planning, setup
 from app.floor.engine import officials as engine
-from app.floor.engine.model import Activity, Role
+from app.floor.engine.model import Activity, Stage
 from app.floor.models import (
     FloorAssignment,
-    FloorDay,
-    FloorFormat,
     FloorOfficial,
-    FloorOfficialDay,
     FloorPlan,
     FloorPool,
     FloorPoolMember,
+    FloorSettings,
 )
 from app.floor.pools import draw_of
 from app.floor.roster import Roster
 from app.floor.setup import Tournament
-
-ROLES: tuple[Role, ...] = ("referee", "judge", "table")
 
 
 @dataclass(frozen=True)
@@ -43,8 +39,12 @@ class Inputs:
 
 
 def inputs(session: Session, tournament: Tournament, roster: Roster) -> Inputs | None:
-    """Everything the assignment reads, or None without a published plan."""
+    """Everything the assignment reads, or None without a published plan or
+    with officials not planned (spec floor-officials, Officials are planned
+    only when asked for)."""
     tid = tournament.id
+    if not planned(session, tid):
+        return None
     plan = planning.published(session, tid)
     if plan is None:
         return None
@@ -53,20 +53,13 @@ def inputs(session: Session, tournament: Tournament, roster: Roster) -> Inputs |
     except planning.SetupIncomplete:
         return None
     activities = planning.activities_of(session, plan, context)
-    formats = {
-        f.discipline_id: f
-        for f in session.scalars(select(FloorFormat).where(FloorFormat.tournament_id == tid))
-    }
-    needs: dict[int, tuple[tuple[Role, int], ...]] = {
-        d: tuple(
-            (role, int((f.staffing or {}).get(role, 0)))
-            for role in ROLES
-            if (f.staffing or {}).get(role)
-        )
-        for d, f in formats.items()
-    }
-    overhead = {d: f.slot_pool_overhead for d, f in formats.items()}
-    raw_blocks = engine.blocks(activities, overhead, needs)
+    seen = setup.effective(session, tournament)
+    needs: dict[tuple[int, Stage], int] = {}
+    for d, f in seen.formats.items():
+        needs[(d, "pool")] = f.referees_pool
+        needs[(d, "elim")] = f.referees_elim
+    pause = {d: f.pause_between_pools for d, f in seen.formats.items()}
+    raw_blocks = engine.blocks(activities, pause, needs)
 
     # who fences where: the clubs of each pool, and each person's pools
     known = people.persons(session, tid, roster)
@@ -92,6 +85,7 @@ def inputs(session: Session, tournament: Tournament, roster: Roster) -> Inputs |
             end=b.end,
             needs=b.needs,
             activities=b.activities,
+            stage=b.stage,
             clubs=frozenset(
                 club
                 for activity in b.activities
@@ -102,32 +96,20 @@ def inputs(session: Session, tournament: Tournament, roster: Roster) -> Inputs |
         for b in raw_blocks
     ]
 
-    rows = list(session.scalars(select(FloorOfficial).where(FloorOfficial.tournament_id == tid)))
-    days_of: dict[int, set[int]] = {}
-    for official_id, day_id in session.execute(
-        select(FloorOfficialDay.official_id, FloorOfficialDay.day_id).where(
-            FloorOfficialDay.official_id.in_([o.id for o in rows])
-        )
-    ).tuples():
-        days_of.setdefault(official_id, set()).add(day_id)
-    day_index = {
-        day.id: context.index_of(day.date)
-        for day in session.scalars(select(FloorDay).where(FloorDay.tournament_id == tid))
-    }
+    day_index = {day.id: context.index_of(day.date) for day in seen.days}
     officials = [
         engine.Official(
             id=row.id,
-            roles=frozenset(row.roles),
-            disciplines=frozenset(row.discipline_ids),
-            days=frozenset(
-                i for d in days_of.get(row.id, set()) if (i := day_index.get(d)) is not None
-            ),
+            disciplines=regular | reserve,
+            reserve=reserve - regular,
+            main=row.main,
+            days=frozenset(i for d in available if (i := day_index.get(d)) is not None),
             club=known[row.person_key].club if row.person_key in known else None,
             blocked=_blocked(
                 session, tid, roster, tournament, row.person_key, activities, pool_members
             ),
         )
-        for row in rows
+        for row, regular, reserve, available in seen.officials
     ]
     return Inputs(plan, context, activities, blocks, officials)
 
@@ -161,12 +143,10 @@ def _blocked(
     return tuple(spans)
 
 
-def _role(value: str) -> Role | None:
-    """A stored role back as the engine's type."""
-    for role in ROLES:
-        if role == value:
-            return role
-    return None
+def planned(session: Session, tid: int) -> bool:
+    """Whether "Plánovat rozhodčí" is on (spec floor-setup, Scope)."""
+    row = session.get(FloorSettings, tid)
+    return row is not None and row.plan_schedule and row.plan_officials
 
 
 def run(session: Session, tournament: Tournament, roster: Roster, now: datetime) -> None:
@@ -180,12 +160,9 @@ def run(session: Session, tournament: Tournament, roster: Roster, now: datetime)
     )
     keys = {b.key for b in found.blocks}
     pins = [
-        engine.Pin(block=s.block_key, role=role, slot=s.slot, official=s.official_id)
+        engine.Pin(block=s.block_key, role=engine.REFEREE, slot=s.slot, official=s.official_id)
         for s in stored
-        if s.pinned
-        and s.official_id is not None
-        and s.block_key in keys
-        and (role := _role(s.role)) is not None
+        if s.pinned and s.official_id is not None and s.block_key in keys
     ]
     result = engine.assign(found.blocks, found.officials, pins)
     # unmatched pins stay as they were, for the organizer to resolve
@@ -290,8 +267,9 @@ def swap(session: Session, tournament: Tournament, roster: Roster, a_id: int, b_
 
 
 def view(session: Session, tournament: Tournament, roster: Roster) -> dict[str, object]:
-    """Blocks × roles with names, the unfilled, the club conflicts, and pins
-    whose block is gone."""
+    """Blocks with their referees, the main place, reserve places, blocks
+    without a main referee, the unfilled, the club conflicts, and pins whose
+    block is gone."""
     found = inputs(session, tournament, roster)
     if found is None:
         return {"published": False, "blocks": [], "unmatched": [], "conflicts": []}
@@ -307,6 +285,7 @@ def view(session: Session, tournament: Tournament, roster: Roster) -> dict[str, 
         )
     }
     clubs = {o.id: o.club for o in found.officials}
+    people = {o.id: o for o in found.officials}
     keys = {b.key for b in found.blocks}
     out_blocks = []
     conflicts = []
@@ -327,14 +306,23 @@ def view(session: Session, tournament: Tournament, roster: Roster) -> dict[str, 
                 "start": planning.clock(block.start),
                 "end": planning.clock(block.end),
                 "activities": list(block.activities),
+                "stage": block.stage,
+                "without_main": _without_main(seats, people),
                 "seats": [
                     {
                         "id": s.id,
                         "role": s.role,
                         "slot": s.slot,
+                        "main_place": s.slot == 0,
                         "official_id": s.official_id,
                         "name": names.get(s.official_id) if s.official_id is not None else None,
                         "pinned": s.pinned,
+                        "reserve": s.official_id is not None
+                        and s.official_id in people
+                        and block.discipline in people[s.official_id].reserve,
+                        "main": s.official_id is not None
+                        and s.official_id in people
+                        and people[s.official_id].main,
                     }
                     for s in seats
                 ],
@@ -357,8 +345,35 @@ def view(session: Session, tournament: Tournament, roster: Roster) -> dict[str, 
     }
 
 
+def _without_main(seats: list[FloorAssignment], people: dict[int, engine.Official]) -> bool:
+    seated = [s.official_id for s in seats if s.official_id is not None]
+    return bool(seated) and not any(people[i].main for i in seated if i in people)
+
+
+def without_main(session: Session, tid: int) -> int:
+    """Blocks staffed with no main referee among them, for the `plan` badge:
+    tolerated, but stated (owner decision 2026-11-17)."""
+    if not planned(session, tid):
+        return 0
+    main = {
+        o.id: o.main
+        for o in session.scalars(select(FloorOfficial).where(FloorOfficial.tournament_id == tid))
+    }
+    seated: dict[str, list[int]] = {}
+    for block, official in session.execute(
+        select(FloorAssignment.block_key, FloorAssignment.official_id).where(
+            FloorAssignment.tournament_id == tid, FloorAssignment.official_id.is_not(None)
+        )
+    ).tuples():
+        if official is not None:
+            seated.setdefault(block, []).append(official)
+    return sum(1 for ids in seated.values() if not any(main.get(i, False) for i in ids))
+
+
 def unfilled(session: Session, tid: int) -> int:
     """Seats with nobody on them, for the `plan` badge."""
+    if not planned(session, tid):
+        return 0
     return len(
         list(
             session.scalars(
@@ -368,9 +383,6 @@ def unfilled(session: Session, tid: int) -> int:
             )
         )
     )
-
-
-ROLE_NAMES = {"referee": "Rozhodčí", "judge": "Postranní", "table": "Zapisovatel"}
 
 
 def print_rows(
@@ -405,14 +417,14 @@ def print_rows(
         for seat in sorted(
             (s for s in seats if s.block_key == block.key), key=lambda s: (s.role, s.slot)
         ):
-            role = ROLE_NAMES.get(seat.role, seat.role)
+            place = "hlavní" if seat.slot == 0 else ""
             if kind == "official" and seat.official_id == subject:
                 rows.append(
-                    [day, span, pistes.get(block.piste, ""), names.get(block.discipline, ""), role]
+                    [day, span, pistes.get(block.piste, ""), names.get(block.discipline, ""), place]
                 )
             elif kind == "piste" and block.piste == subject:
                 who = officials.get(seat.official_id, "—") if seat.official_id is not None else "—"
-                rows.append([day, span, names.get(block.discipline, ""), role, who])
+                rows.append([day, span, names.get(block.discipline, ""), place, who])
     if kind == "official":
-        return officials.get(subject, ""), ["Den", "Čas", "Planš", "Disciplína", "Role"], rows
-    return pistes.get(subject, ""), ["Den", "Čas", "Disciplína", "Role", "Rozhodčí"], rows
+        return officials.get(subject, ""), ["Den", "Čas", "Planš", "Disciplína", "Místo"], rows
+    return pistes.get(subject, ""), ["Den", "Čas", "Disciplína", "Místo", "Rozhodčí"], rows

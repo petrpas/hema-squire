@@ -11,6 +11,7 @@ class FloorDisciplineOut(BaseModel):
     slug: str
     name: str
     kind: Literal["individual", "team"]
+    weapon: str = ""
     team_min: int | None = None
     team_max: int | None = None
 
@@ -69,7 +70,18 @@ def _clock(value: str) -> str:
 # fuzzer filters a pattern-bound field too often to fill a list of days
 Clock = Annotated[str, StringConstraints(min_length=5, max_length=5), AfterValidator(_clock)]
 Minutes = Annotated[int, Field(ge=1, le=600)]
-Role = Literal["referee", "judge", "table"]
+Points = Annotated[int, Field(ge=1, le=99)]
+Referees = Annotated[int, Field(ge=1, le=9)]
+
+
+class ScopeIO(BaseModel):
+    """What the floor plans (spec floor-setup, Scope decides what is planned)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    plan_schedule: bool = True
+    multi_day: bool = False
+    plan_officials: bool = False
 
 
 class BreakIO(BaseModel):
@@ -86,6 +98,8 @@ class DayIO(BaseModel):
     start: Clock
     end: Clock
     breaks: list[BreakIO] = []
+    # the disciplines held that day; each belongs to exactly one day
+    discipline_ids: list[int] = []
 
 
 class DaysOut(BaseModel):
@@ -94,27 +108,26 @@ class DaysOut(BaseModel):
     days: list[DayIO]
 
 
+class ServesIO(BaseModel):
+    """A piste or an official serves a discipline, as regular or as reserve."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    discipline_id: int
+    reserve: bool = False
+
+
 class PisteIn(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     # absent for a piste added in this save
     id: int | None = None
     name: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=80)]
-    reserve: bool = False
-    tag: Annotated[str, StringConstraints(strip_whitespace=True, max_length=80)] | None = None
-    days: list[date]
+    serves: list[ServesIO] = []
 
 
 class PisteOut(PisteIn):
     pass
-
-
-class Staffing(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    referee: Annotated[int, Field(ge=0, le=9)] = 1
-    judge: Annotated[int, Field(ge=0, le=9)] = 0
-    table: Annotated[int, Field(ge=0, le=9)] = 0
 
 
 class FormatIn(BaseModel):
@@ -125,18 +138,25 @@ class FormatIn(BaseModel):
     pool_max: Annotated[int, Field(ge=3, le=10)]
     # None is "all"
     advance: Annotated[int, Field(ge=2)] | None
-    third_place: bool
-    # None until the organizer states it; the discipline is incomplete till then
-    staffing: Staffing | None
+    third_place: bool = True
+    referees_pool: Referees = 1
+    referees_elim: Referees = 1
     slot_pool_bout: Minutes
     slot_elim_bout: Minutes
-    slot_pool_overhead: Minutes
+    pause_between_pools: Minutes = 10
     slot_team_match: Minutes | None = None
+    points_pool: Points | None = None
+    points_elim: Points | None = None
+    points_final: Points | None = None
+    points_team_bout: Points | None = None
+    points_team_final: Points | None = None
+    # the discipline whose pool results this one takes over
+    takes_pools_from: int | None = None
 
 
 class FormatOut(FormatIn):
     stored: bool
-    # what Setup names missing for this discipline: "format", "staffing"
+    # what Setup names missing for this discipline: "format", "take_over"
     missing: list[str]
 
 
@@ -144,11 +164,12 @@ class OfficialIn(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     id: int | None = None
-    name: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=200)]
+    # with a person link the person's name is used, whatever is sent
+    name: Annotated[str, StringConstraints(strip_whitespace=True, max_length=200)] = ""
     person_key: Annotated[str, StringConstraints(max_length=80)] | None = None
-    roles: list[Role]
-    discipline_ids: list[int]
-    days: list[date]
+    main: bool = True
+    serves: list[ServesIO] = []
+    days: list[date] = []
 
 
 class OfficialOut(OfficialIn):
@@ -156,18 +177,28 @@ class OfficialOut(OfficialIn):
     link_lost: bool
 
 
+Finals = Literal["elimination", "day", "tournament"]
+
+
 class ParamsIO(BaseModel):
-    """The organizer's parameters (spec floor-setup, Parameters have a default
-    and one editor). Unknown keys are refused; an absent key reads as its
-    default."""
+    """Setup's parameters (spec floor-setup, Parameters have a default and one
+    editor). Unknown keys are refused; an absent key reads as its default."""
 
     model_config = ConfigDict(extra="forbid")
 
-    finals_last: bool = True
-    prefer_larger_pools: bool = True
+    finals: Finals = "elimination"
+    min_rest_minutes: Annotated[int, Field(ge=0, le=240)] = 10
+
+
+class PreferencesIO(BaseModel):
+    """The plan's preferences, edited on the `plan` tab (spec floor-plan, The
+    plan's preferences are edited on the Plan tab)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    pool_size: Literal["larger", "smaller"] = "larger"
     club_weight: Annotated[int, Field(ge=0, le=100)] = 10
     nationality_weight: Annotated[int, Field(ge=0, le=100)] = 3
-    min_rest_minutes: Annotated[int, Field(ge=0, le=240)] = 10
 
 
 class FloorSetupDisciplineOut(BaseModel):
@@ -175,6 +206,8 @@ class FloorSetupDisciplineOut(BaseModel):
     slug: str
     name: str
     kind: Literal["individual", "team"]
+    weapon: str = ""
+    team_min: int | None = None
 
 
 class FloorPersonRefOut(BaseModel):
@@ -186,22 +219,26 @@ class FloorSetupOut(BaseModel):
     disciplines: list[FloorSetupDisciplineOut]
     # who an official may be linked to
     persons: list[FloorPersonRefOut]
+    scope: ScopeIO
     days: DaysOut
     pistes: list[PisteOut]
     formats: list[FormatOut]
     officials: list[OfficialOut]
     params: ParamsIO
+    preferences: PreferencesIO
 
 
 class FloorSummaryOut(BaseModel):
-    """What the console's band needs: which tabs wait, and whether a plan is
-    published (design add-floor-console D6)."""
+    """What the console's rail needs: which tabs wait, whether a plan is
+    published, and whether a schedule is planned at all (design
+    add-floor-console D6, rework-floor-setup D1)."""
 
     plan_published: bool
     badges: dict[str, bool]
-    # Setup's waiting conditions, named: "days", "pistes", "format:<discipline id>",
-    # "staffing:<discipline id>"
+    # Setup's waiting conditions, named: "days", "day:<discipline id>",
+    # "piste:<discipline id>", "format:<discipline id>", "take_over:<discipline id>"
     setup_missing: list[str]
+    plan_schedule: bool = True
 
 
 # ------------------------------------------------------------ the plan
@@ -210,8 +247,10 @@ class FloorSummaryOut(BaseModel):
 
 class PlanChoiceOut(BaseModel):
     discipline_id: int
+    # 0 for a discipline that takes over: it has no pools
     k: int
-    day: date
+    # None in a plan made without a schedule
+    day: date | None
     sizes: list[int]
 
 
@@ -229,12 +268,21 @@ class PlanActivityOut(BaseModel):
     size: int
 
 
+class MainWarningOut(BaseModel):
+    day: date
+    at: str
+    # pistes running beyond the day's main referees
+    short: int
+
+
 class PlanMetricsOut(BaseModel):
     last_end: dict[str, str]
     exclusion_load: int
     collisions: int
     shortage: int
     average_pool: float
+    reserve_used: list[int] = []
+    main_warnings: list[MainWarningOut] = []
 
 
 class ExclusionOut(BaseModel):
@@ -296,12 +344,13 @@ class StoredPlanOut(BaseModel):
 
 
 class PinIn(BaseModel):
-    """A decision to fix. `value` by kind: day {"day"}, k {"k"}, place
-    {"piste", "day", "start"}, sequence {"day", "disciplines"}."""
+    """A decision to fix. `value` by kind: k {"k"}, place {"piste", "day",
+    "start"}, sequence {"day", "disciplines"}. A discipline's day is Setup's,
+    not a pin (spec floor-plan, Decisions are pinned and unpinned)."""
 
     model_config = ConfigDict(extra="forbid")
 
-    kind: Literal["day", "k", "place", "sequence"]
+    kind: Literal["k", "place", "sequence"]
     target: Annotated[str, StringConstraints(min_length=1, max_length=80)]
     value: dict[str, object]
 
@@ -469,6 +518,8 @@ class TodayRowOut(BaseModel):
     steps: dict[str, str]
     # minutes behind (positive) or ahead of the published plan; None until progress exists
     slip: int | None
+    # the discipline whose pools this one takes over; its Skupiny cell names it
+    takes_pools_from: int | None = None
 
 
 class WaitingOut(BaseModel):

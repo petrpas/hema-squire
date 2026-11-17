@@ -44,9 +44,15 @@ export default function TodayTab({ slug }: { slug: string }) {
               {COLUMNS.map((step) => (
                 <td key={step}>
                   <Link to={routes.floorPath(slug, step, row.slug)}>
-                    {t(`floor.today.steps.${step}.${row.steps[step] ?? "waiting"}`, {
-                      defaultValue: t(`floor.today.state.${row.steps[step] ?? "waiting"}`),
-                    })}
+                    {row.steps[step] === "taken_over"
+                      ? t("floor.today.takenOver", {
+                          name:
+                            data.rows.find((other) => other.discipline_id === row.takes_pools_from)
+                              ?.name ?? "",
+                        })
+                      : t(`floor.today.steps.${step}.${row.steps[step] ?? "waiting"}`, {
+                          defaultValue: t(`floor.today.state.${row.steps[step] ?? "waiting"}`),
+                        })}
                   </Link>
                 </td>
               ))}

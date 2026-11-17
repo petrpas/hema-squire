@@ -18,16 +18,17 @@ const t = i18n.getFixedT("cs");
 const setup = {
   disciplines: [{ id: 1, slug: "LS", name: "Longsword", kind: "individual" }],
   persons: [],
+  scope: { plan_schedule: true, multi_day: false, plan_officials: true },
   days: { stored: true, days: [] },
-  pistes: [{ id: 5, name: "1", reserve: false, tag: null, days: [] }],
+  pistes: [{ id: 5, name: "1", serves: [{ discipline_id: 1, reserve: false }] }],
   formats: [],
   officials: [
     {
       id: 8,
       name: "Eva",
       person_key: null,
-      roles: ["referee"],
-      discipline_ids: [1],
+      main: true,
+      serves: [{ discipline_id: 1, reserve: false }],
       days: [],
       link_lost: false,
     },
@@ -35,20 +36,15 @@ const setup = {
       id: 9,
       name: "Jan",
       person_key: null,
-      roles: ["referee"],
-      discipline_ids: [1],
+      main: true,
+      serves: [{ discipline_id: 1, reserve: false }],
       days: [],
       link_lost: false,
     },
   ],
-  params: {
-    finals_last: true,
-    prefer_larger_pools: true,
-    club_weight: 10,
-    nationality_weight: 3,
-    min_rest_minutes: 10,
-  },
-} as FloorSetup;
+  params: { finals: "elimination", min_rest_minutes: 10 },
+  preferences: { pool_size: "larger", club_weight: 10, nationality_weight: 3 },
+} satisfies FloorSetup;
 
 const data: Assignments = {
   published: true,

@@ -5,6 +5,7 @@ six byes."""
 from sqlalchemy import select
 
 from app.floor.models import FloorFormat
+from app.models import Discipline
 from tests.floor.test_floor_pools import drawn, finish, pools_of
 from tests.floor.test_floor_roster import db_session
 from tests.floor.test_floor_setup import BASE, ok
@@ -180,3 +181,56 @@ def test_a_printed_bracket_shows_results_so_far(client, auth_headers):
 
     assert response.status_code == 200, response.text
     assert response.content.startswith(b"%PDF")
+
+
+def test_a_discipline_that_takes_over_seeds_from_its_source(client, auth_headers):
+    """A second longsword discipline takes over Longsword's pools: the ten
+    placed fencers seed it, and an eleventh who fenced no Longsword pool goes
+    below them, named."""
+    from tests.floor.test_floor_checkin import desk
+    from tests.floor.test_floor_plan import choose, publish, ready, variants
+    from tests.floor.test_floor_pools import finish
+    from tests.test_entrants import register
+
+    organizer, ids = ready(client, auth_headers, both=True)
+    session = db_session()
+    second = session.get(Discipline, ids["SB"])
+    assert second is not None
+    # the second discipline fences the same weapon, and has room for one more
+    second.weapon = "LS"
+    second.capacity = 12
+    session.commit()
+    register(client, auth_headers(email="late@example.com", name="Late Comer"), ("SB",))
+    sabre = session.scalars(select(FloorFormat).where(FloorFormat.discipline_id == ids["SB"])).one()
+    sabre.takes_pools_from = ids["LS"]
+    session.commit()
+    choose(client, organizer, variants(client, organizer)["variants"][0]["key"])
+    ok(publish(client, organizer))
+    for row in desk(client, organizer)["persons"]:
+        ok(
+            client.post(
+                f"{BASE}/checkin/arrivals", json={"person_key": row["key"]}, headers=organizer
+            )
+        )
+    for discipline in (ids["LS"], ids["SB"]):
+        ok(client.post(f"{BASE}/checkin/{discipline}/close", headers=organizer))
+    refused = client.post(f"{BASE}/pools/{ids['SB']}/draw", headers=organizer)
+    assert refused.status_code == 409 and refused.json()["detail"] == "taken_over"
+    waiting = client.post(f"{BASE}/bracket/{ids['SB']}/confirm", headers=organizer)
+    assert waiting.json()["detail"] == "source_pools_open"
+    ok(client.post(f"{BASE}/pools/{ids['LS']}/draw", headers=organizer))
+    ok(client.post(f"{BASE}/pools/{ids['LS']}/announce", headers=organizer))
+    finish(client, organizer, ids["LS"])
+    ok(client.post(f"{BASE}/pools/{ids['LS']}/close", headers=organizer))
+
+    body = view(client, organizer, ids["SB"])
+    today = client.get(f"{BASE}/today", headers=organizer).json()
+
+    proposal = body["proposal"]
+    assert (proposal["advancing"], proposal["source"]) == (11, ids["LS"])
+    (late,) = proposal["unplaced"]
+    assert body["names"][late] == "Late Comer"
+    seeds = {s["key"]: s["seed"] for s in proposal["slots"] if s["key"] is not None}
+    assert seeds[late] == 11
+    (row,) = [r for r in today["rows"] if r["discipline_id"] == ids["SB"]]
+    assert (row["steps"]["pools"], row["takes_pools_from"]) == ("taken_over", ids["LS"])

@@ -54,18 +54,32 @@ class FloorPiste(Base):
     name: Mapped[str] = mapped_column(String(80))
     # the display order
     ordinal: Mapped[int] = mapped_column(Integer)
-    # held back from the first plan, available to re-planning
-    reserve: Mapped[bool] = mapped_column(default=False)
-    tag: Mapped[str | None] = mapped_column(String(80))
 
 
-class FloorPisteDay(Base):
-    """A piste is available on this day."""
+class FloorPisteDiscipline(Base):
+    """A piste serves this discipline, as regular or as reserve (spec
+    floor-setup, Pistes and their availability). A piste with no row serves
+    nothing and stays free for the floor."""
 
-    __tablename__ = "floor_piste_days"
+    __tablename__ = "floor_piste_disciplines"
 
     piste_id: Mapped[int] = mapped_column(ForeignKey("floor_pistes.id"), primary_key=True)
-    day_id: Mapped[int] = mapped_column(ForeignKey("floor_days.id"), primary_key=True)
+    discipline_id: Mapped[int] = mapped_column(
+        ForeignKey("disciplines.id", ondelete="CASCADE"), primary_key=True
+    )
+    reserve: Mapped[bool] = mapped_column(Boolean, default=False)
+
+
+class FloorDisciplineDay(Base):
+    """The one day a discipline is held on (spec floor-setup, Days are the
+    tournament's working windows). The key makes "exactly one" structural."""
+
+    __tablename__ = "floor_discipline_days"
+
+    discipline_id: Mapped[int] = mapped_column(
+        ForeignKey("disciplines.id", ondelete="CASCADE"), primary_key=True
+    )
+    day_id: Mapped[int] = mapped_column(ForeignKey("floor_days.id", ondelete="CASCADE"))
 
 
 class FloorFormat(Base):
@@ -84,14 +98,29 @@ class FloorFormat(Base):
     pool_max: Mapped[int] = mapped_column(Integer)
     # how many advance; NULL is "all", the one meaning NULL has here
     advance: Mapped[int | None] = mapped_column(Integer)
-    third_place: Mapped[bool] = mapped_column(default=False)
-    # role → officials one piste needs; NULL until the organizer states it
-    staffing: Mapped[dict[str, int] | None] = mapped_column(JSON)
+    third_place: Mapped[bool] = mapped_column(default=True)
+    # referees per bout, for the pools and for the elimination
+    referees_pool: Mapped[int] = mapped_column(Integer, default=1)
+    referees_elim: Mapped[int] = mapped_column(Integer, default=1)
     slot_pool_bout: Mapped[int] = mapped_column(Integer)
     slot_elim_bout: Mapped[int] = mapped_column(Integer)
-    slot_pool_overhead: Mapped[int] = mapped_column(Integer)
+    # the pause a piste keeps after each pool
+    pause_between_pools: Mapped[int] = mapped_column(Integer, default=10)
     # team disciplines only
     slot_team_match: Mapped[int | None] = mapped_column(Integer)
+    # point targets, each optional: a pool bout; an individual discipline's
+    # elimination bout and final; a team discipline's points per bout in the
+    # elimination and in the final (the match total is computed)
+    points_pool: Mapped[int | None] = mapped_column(Integer)
+    points_elim: Mapped[int | None] = mapped_column(Integer)
+    points_final: Mapped[int | None] = mapped_column(Integer)
+    points_team_bout: Mapped[int | None] = mapped_column(Integer)
+    points_team_final: Mapped[int | None] = mapped_column(Integer)
+    # the discipline whose pool results this one takes over; it then has no
+    # pools of its own
+    takes_pools_from: Mapped[int | None] = mapped_column(
+        ForeignKey("disciplines.id", ondelete="SET NULL")
+    )
 
 
 class FloorOfficial(Base):
@@ -102,9 +131,21 @@ class FloorOfficial(Base):
     name: Mapped[str] = mapped_column(String(200))
     # the roster person this official is, when they also fence
     person_key: Mapped[str | None] = mapped_column(String(80))
-    roles: Mapped[list[str]] = mapped_column(JSON, default=list)
-    discipline_ids: Mapped[list[int]] = mapped_column(JSON, default=list)
+    # a main referee can lead a piste (spec floor-officials)
+    main: Mapped[bool] = mapped_column(Boolean, default=True)
     ordinal: Mapped[int] = mapped_column(Integer)
+
+
+class FloorOfficialDiscipline(Base):
+    """An official serves this discipline, as regular or as reserve."""
+
+    __tablename__ = "floor_official_disciplines"
+
+    official_id: Mapped[int] = mapped_column(ForeignKey("floor_officials.id"), primary_key=True)
+    discipline_id: Mapped[int] = mapped_column(
+        ForeignKey("disciplines.id", ondelete="CASCADE"), primary_key=True
+    )
+    reserve: Mapped[bool] = mapped_column(Boolean, default=False)
 
 
 class FloorOfficialDay(Base):
@@ -124,6 +165,10 @@ class FloorSettings(Base):
 
     tournament_id: Mapped[int] = mapped_column(ForeignKey("tournaments.id"), primary_key=True)
     params: Mapped[dict[str, object]] = mapped_column(JSON, default=dict)
+    # scope (spec floor-setup, Scope decides what is planned)
+    plan_schedule: Mapped[bool] = mapped_column(Boolean, default=True)
+    multi_day: Mapped[bool] = mapped_column(Boolean, default=False)
+    plan_officials: Mapped[bool] = mapped_column(Boolean, default=False)
 
 
 class FloorPlan(Base):
@@ -175,9 +220,11 @@ class FloorPlanActivity(Base):
     kind: Mapped[str] = mapped_column(String(8))
     ordinal: Mapped[int] = mapped_column(Integer)
     round: Mapped[int] = mapped_column(Integer)
-    piste_id: Mapped[int] = mapped_column(Integer)
-    starts_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
-    ends_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    # NULL in a plan made without a schedule: a pool with no piste and no time
+    # (design rework-floor-setup D9)
+    piste_id: Mapped[int | None] = mapped_column(Integer)
+    starts_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    ends_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     final: Mapped[bool] = mapped_column(Boolean, default=False)
     # a pool's participants
     size: Mapped[int] = mapped_column(Integer, default=0)
@@ -192,7 +239,7 @@ class FloorPin(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     tournament_id: Mapped[int] = mapped_column(ForeignKey("tournaments.id"), index=True)
-    # day | k | place | sequence
+    # k | n | place | sequence
     kind: Mapped[str] = mapped_column(String(16))
     # what it fixes: a discipline id, or an activity id
     target: Mapped[str] = mapped_column(String(80))

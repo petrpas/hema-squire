@@ -120,6 +120,7 @@ describe("the draw", () => {
         view={view}
         name={(k) => view.names[k] ?? k}
         pistes={new Map()}
+        schedule={true}
         onChanged={() => {}}
       />,
     );
@@ -131,6 +132,23 @@ describe("the draw", () => {
 
     expect(swap).toHaveBeenCalledWith("cup", 2, "b", "c");
     expect(host?.textContent).toContain(t("floor.pools.club"));
+  });
+
+  it("names no wave when no schedule is planned", () => {
+    mount(
+      <DrawView
+        slug="cup"
+        discipline={2}
+        view={view}
+        name={(k) => view.names[k] ?? k}
+        pistes={new Map()}
+        schedule={false}
+        onChanged={() => {}}
+      />,
+    );
+
+    expect(host?.textContent).not.toContain(t("floor.pools.wave", { wave: 1 }));
+    expect(host?.textContent).not.toContain(t("floor.pools.waveScore"));
   });
 });
 

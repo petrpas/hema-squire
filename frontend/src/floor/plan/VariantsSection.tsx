@@ -92,11 +92,13 @@ export function VariantsSection({
                 {variant.choices.map((choice) => (
                   <li key={choice.discipline_id}>
                     {names.get(choice.discipline_id)}:{" "}
-                    {t("floor.plan.variants.pools", {
-                      count: choice.k,
-                      sizes: [...new Set(choice.sizes)].join("/"),
-                    })}
-                    , {dayLabel(choice.day)}
+                    {choice.k === 0
+                      ? t("floor.plan.variants.takenOver")
+                      : t("floor.plan.variants.pools", {
+                          count: choice.k,
+                          sizes: [...new Set(choice.sizes)].join("/"),
+                        })}
+                    {choice.day !== null && `, ${dayLabel(choice.day)}`}
                   </li>
                 ))}
               </ul>
@@ -104,13 +106,36 @@ export function VariantsSection({
                 {Object.entries(variant.metrics.last_end).map(([day, end]) => (
                   <li key={day}>{t("floor.plan.variants.ends", { day: dayLabel(day), end })}</li>
                 ))}
-                <li>{t("floor.plan.variants.load", { count: variant.metrics.exclusion_load })}</li>
-                <li>
-                  {t("floor.plan.variants.collisions", { count: variant.metrics.collisions })}
-                </li>
+                {/* a plan without a schedule has no times, waves or collisions */}
+                {variant.activities.length > 0 && (
+                  <>
+                    <li>
+                      {t("floor.plan.variants.load", { count: variant.metrics.exclusion_load })}
+                    </li>
+                    <li>
+                      {t("floor.plan.variants.collisions", { count: variant.metrics.collisions })}
+                    </li>
+                  </>
+                )}
                 {variant.metrics.shortage > 0 && (
                   <li>{t("floor.plan.variants.shortage", { count: variant.metrics.shortage })}</li>
                 )}
+                {(variant.metrics.reserve_used ?? []).length > 0 && (
+                  <li>
+                    {t("floor.plan.variants.reserveUsed", {
+                      count: (variant.metrics.reserve_used ?? []).length,
+                    })}
+                  </li>
+                )}
+                {(variant.metrics.main_warnings ?? []).map((warning) => (
+                  <li key={`${warning.day}-${warning.at}`}>
+                    {t("floor.plan.variants.mainShort", {
+                      day: dayLabel(warning.day),
+                      at: warning.at,
+                      count: warning.short,
+                    })}
+                  </li>
+                ))}
               </ul>
               <button
                 type="button"

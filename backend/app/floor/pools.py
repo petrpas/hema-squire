@@ -22,6 +22,7 @@ from app.floor.engine.variants import waves
 from app.floor.models import (
     FloorBout,
     FloorDraw,
+    FloorFormat,
     FloorPin,
     FloorPlanActivity,
     FloorPool,
@@ -92,8 +93,9 @@ def bouts_of(session: Session, tid: int, discipline: int) -> list[FloorBout]:
 class PlannedPool:
     activity_id: str
     wave: int
-    piste: int
-    start: datetime
+    # None for a pool of a plan made without a schedule
+    piste: int | None
+    start: datetime | None
 
 
 def planned_pools(session: Session, tid: int, discipline: int) -> list[PlannedPool]:
@@ -108,6 +110,11 @@ def planned_pools(session: Session, tid: int, discipline: int) -> list[PlannedPo
             FloorPlanActivity.kind == "pool",
         )
     ).all()
+    placed = [r for r in rows if r.piste_id is not None and r.starts_at and r.ends_at]
+    if len(placed) < len(rows):
+        # without a schedule there are no waves: every pool is wave 1
+        unplaced = sorted(rows, key=lambda r: r.ordinal)
+        return [PlannedPool(r.activity_id, 1, r.piste_id, r.starts_at) for r in unplaced]
     activities = [
         Activity(
             id=r.activity_id,
@@ -115,17 +122,19 @@ def planned_pools(session: Session, tid: int, discipline: int) -> list[PlannedPo
             kind="pool",
             ordinal=r.ordinal,
             round=0,
-            piste=r.piste_id,
+            piste=r.piste_id or 0,
             day=0,
-            start=int(r.starts_at.timestamp() // 60),
-            end=int(r.ends_at.timestamp() // 60),
+            start=int(r.starts_at.timestamp() // 60) if r.starts_at else 0,
+            end=int(r.ends_at.timestamp() // 60) if r.ends_at else 0,
         )
-        for r in rows
+        for r in placed
     ]
     wave_of = waves(activities, discipline)
-    by_id = {r.activity_id: r for r in rows}
+    by_id = {r.activity_id: r for r in placed}
     found = [PlannedPool(a.id, wave_of[a.id], a.piste, by_id[a.id].starts_at) for a in activities]
-    return sorted(found, key=lambda p: (p.wave, p.start, p.activity_id))
+    return sorted(
+        found, key=lambda p: (p.wave, p.start.timestamp() if p.start else 0, p.activity_id)
+    )
 
 
 def _parallel(session: Session, tid: int, discipline: int) -> tuple[set[int], set[int]]:
@@ -188,6 +197,7 @@ def seeded(entrants: list[people.Entrant], seed: int) -> list[people.Entrant]:
 
 
 def _weights(session: Session, tid: int) -> engine.Weights:
+    """The draw weights, from the plan's preferences (spec floor-draw)."""
     row = session.get(FloorSettings, tid)
     params = row.params if row is not None else {}
     club = params.get("club_weight", 10)
@@ -251,6 +261,12 @@ def make(
     session: Session, tid: int, roster: Roster, discipline: FloorDiscipline, seed: int | None = None
 ) -> FloorDraw:
     """Draw the discipline's pools, replacing an unannounced draw."""
+    taken = session.scalar(
+        select(FloorFormat.takes_pools_from).where(FloorFormat.discipline_id == discipline.id)
+    )
+    if taken is not None:
+        # it fences no pools of its own (spec floor-draw)
+        raise Refused("taken_over")
     if people.snapshot(session, tid, discipline.id) is None:
         raise Refused("checkin_open")
     existing = draw_of(session, tid, discipline.id)

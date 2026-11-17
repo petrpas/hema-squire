@@ -6,6 +6,7 @@ a correction that would change a winner is refused once the bout it fed is
 recorded. The bracket closes when its final, and third-place bout, are in.
 """
 
+import hashlib
 from datetime import datetime
 
 from sqlalchemy import delete, select
@@ -59,30 +60,76 @@ def bouts_of(session: Session, bracket: FloorBracket) -> list[FloorBout]:
 # ------------------------------------------------------------ who, in what order
 
 
+def source_of(session: Session, discipline: int) -> int | None:
+    """The discipline whose pool results this one takes over, if any (spec
+    floor-setup, A discipline may take over another discipline's pool
+    results)."""
+    return session.scalar(
+        select(FloorFormat.takes_pools_from).where(FloorFormat.discipline_id == discipline)
+    )
+
+
+def _lot(tid: int, discipline: int, key: str) -> str:
+    """A fixed lot: the same order every time it is asked, so what the
+    confirmation shows is what it stores."""
+    return hashlib.sha256(f"{tid}:{discipline}:{key}".encode()).hexdigest()
+
+
+def seeded(
+    session: Session, tid: int, roster: Roster, discipline: FloorDiscipline
+) -> tuple[list[str], list[str]]:
+    """Entrant keys in seed order from the frozen pool ranking, and those
+    among them seeded without a place.
+
+    Persons are ranked by place, teams by the average place of their best k
+    members. A discipline that takes over reads its source's ranking, and
+    whoever it does not place goes below every placed entrant (spec
+    floor-bracket, A discipline that takes over seeds from its source)."""
+    source = source_of(session, discipline.id)
+    ranking = poolbouts.ranking(session, tid, source or discipline.id)
+    place = {row.entrant_key: row.place for row in ranking}
+    if source is None and discipline.kind != "team":
+        return [row.entrant_key for row in ranking], []
+    found = people.entrants(session, tid, roster, discipline)
+    if discipline.kind != "team":
+        placed = sorted((e for e in found if e.key in place), key=lambda e: place[e.key])
+        unplaced = sorted(
+            (e for e in found if e.key not in place),
+            key=lambda e: (
+                e.rating is None,
+                -(e.rating or 0.0),
+                _lot(tid, discipline.id, e.key),
+            ),
+        )
+        return [e.key for e in placed] + [e.key for e in unplaced], [e.key for e in unplaced]
+    k = discipline.team_min or 1
+    figures: list[engine.TeamFigure] = []
+    short: list[tuple[float, str, str]] = []
+    for team in found:
+        places = [place[m] for m in team.members if m in place]
+        figure = engine.team_figure(team.key, places, k)
+        if figure is not None:
+            figures.append(figure)
+        elif source is not None:
+            average = sum(places) / len(places) if places else float("inf")
+            short.append((average, _lot(tid, discipline.id, team.key), team.key))
+    below = [key for _, _, key in sorted(short)]
+    return engine.seed_teams(figures) + below, below
+
+
 def seeded_entrants(
     session: Session, tid: int, roster: Roster, discipline: FloorDiscipline
 ) -> list[str]:
-    """Entrant keys in seed order from the frozen pool ranking: persons as
-    ranked, or teams by the average place of their best k members."""
-    ranking = poolbouts.ranking(session, tid, discipline.id)
-    if discipline.kind != "team":
-        return [row.entrant_key for row in ranking]
-    place = {row.entrant_key: row.place for row in ranking}
-    k = discipline.team_min or 1
-    figures: list[engine.TeamFigure] = []
-    for team in people.entrants(session, tid, roster, discipline):
-        figure = engine.team_figure(team.key, [place[m] for m in team.members if m in place], k)
-        if figure is not None:
-            figures.append(figure)
-    return engine.seed_teams(figures)
+    return seeded(session, tid, roster, discipline)[0]
 
 
 def _shape(
     session: Session, tid: int, roster: Roster, discipline: FloorDiscipline
 ) -> tuple[list[str], int, int, bool]:
-    draw = draw_of(session, tid, discipline.id)
+    source = source_of(session, discipline.id)
+    draw = draw_of(session, tid, source or discipline.id)
     if draw is None or draw.closed_at is None:
-        raise Refused("pools_open")
+        raise Refused("source_pools_open" if source is not None else "pools_open")
     keys = seeded_entrants(session, tid, roster, discipline)
     fmt = session.scalar(select(FloorFormat).where(FloorFormat.discipline_id == discipline.id))
     count = (
@@ -104,9 +151,13 @@ def propose(
     """The seeded bracket before it is confirmed: its size, who advances and
     their first-round slots."""
     keys, size, count, _ = _shape(session, tid, roster, discipline)
+    _, unplaced = seeded(session, tid, roster, discipline)
     return {
         "size": size,
         "advancing": count,
+        "source": source_of(session, discipline.id),
+        # seeded without a place in the source's ranking, named before confirming
+        "unplaced": unplaced,
         "slots": [
             {
                 "position": slot.position,
@@ -126,17 +177,17 @@ def _planned(session: Session, tid: int, discipline: int) -> dict[str, int]:
     current = planning.published(session, tid)
     if current is None:
         return {}
-    return dict(
-        session.execute(
+    return {
+        activity: piste
+        for activity, piste in session.execute(
             select(FloorPlanActivity.activity_id, FloorPlanActivity.piste_id).where(
                 FloorPlanActivity.plan_id == current.id,
                 FloorPlanActivity.discipline_id == discipline,
                 FloorPlanActivity.kind == "bout",
             )
-        )
-        .tuples()
-        .all()
-    )
+        ).tuples()
+        if piste is not None
+    }
 
 
 def activity_id(slug: str, bracket: FloorBracket, bout: FloorBout, session: Session) -> str:
@@ -464,6 +515,37 @@ gates.register(
         describe=lambda session, tid, d: ["bracket"] if bracket_of(session, tid, d) else [],
         discard=discard,
         refuse=recorded,
+    ),
+)
+
+
+def _targets(session: Session, tid: int, source: int) -> list[int]:
+    """Disciplines that take over this one's pool results."""
+    return list(
+        session.scalars(
+            select(FloorFormat.discipline_id).where(
+                FloorFormat.tournament_id == tid, FloorFormat.takes_pools_from == source
+            )
+        )
+    )
+
+
+def _discard_targets(session: Session, tid: int, source: int) -> None:
+    for target in _targets(session, tid, source):
+        discard(session, tid, target)
+
+
+# reopening a source's pools reaches the brackets seeded from them
+gates.register(
+    "pools",
+    gates.Hook(
+        describe=lambda session, tid, d: [
+            "bracket" for t in _targets(session, tid, d) if bracket_of(session, tid, t)
+        ],
+        discard=_discard_targets,
+        refuse=lambda session, tid, d: [
+            code for t in _targets(session, tid, d) for code in recorded(session, tid, t)
+        ],
     ),
 )
 progress.register(_started)

@@ -59,10 +59,20 @@ export default function BracketTab({ slug, discipline }: { slug: string; discipl
         <p className="muted">{failed ? t("floor.pools.failed") : t("common.loading")}</p>
       ) : data.bracket === null ? (
         !data.pools_closed ? (
-          <p>
-            {t("floor.bracket.poolsOpen")}{" "}
-            <Link to={routes.floorPath(slug, "pools", selected.slug)}>{t("floor.tabs.pools")}</Link>
-          </p>
+          (() => {
+            // a discipline that takes over waits on its source's pools
+            const source = setup.disciplines.find((d) => d.id === data.source) ?? selected;
+            return (
+              <p>
+                {source === selected
+                  ? t("floor.bracket.poolsOpen")
+                  : t("floor.bracket.sourceOpen", { name: source.name })}{" "}
+                <Link to={routes.floorPath(slug, "pools", source.slug)}>
+                  {t("floor.tabs.pools")}
+                </Link>
+              </p>
+            );
+          })()
         ) : data.proposal === null ? (
           <p className="muted">{t("floor.bracket.none")}</p>
         ) : (
@@ -84,6 +94,13 @@ export default function BracketTab({ slug, discipline }: { slug: string; discipl
                 </li>
               ))}
             </ol>
+            {(data.proposal.unplaced ?? []).length > 0 && (
+              <p className="floor-missing">
+                {t("floor.bracket.unplaced", {
+                  names: (data.proposal.unplaced ?? []).map(name).join(", "),
+                })}
+              </p>
+            )}
             <button
               type="button"
               className="btn-primary"

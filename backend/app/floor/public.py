@@ -77,10 +77,11 @@ def floor_public_program(tournament: TournamentDep, session: SessionDep) -> list
             )
             .order_by(FloorPlanActivity.starts_at)
         ).all()
-        if not rows:
-            continue
         items = []
         for row in rows:
+            # a plan made without a schedule has no programme to show
+            if row.starts_at is None or row.ends_at is None or row.piste_id is None:
+                continue
             day, start = _local(row.starts_at, zone)
             _, end = _local(row.ends_at, zone)
             items.append(
@@ -95,6 +96,8 @@ def floor_public_program(tournament: TournamentDep, session: SessionDep) -> list
                     "piste": pistes.get(row.piste_id, ""),
                 }
             )
+        if not items:
+            continue
         out.append(
             {
                 "discipline": discipline.name,

@@ -3,6 +3,8 @@ floor-ring), through the API."""
 
 from datetime import timedelta
 
+from sqlalchemy import select
+
 from app.floor.engine.pool_order import order
 from app.floor.models import FloorBout, FloorPool
 from app.ratelimit import limiter
@@ -55,6 +57,27 @@ def record(client, headers, bout: dict, a: int = 5, b: int = 3):
         },
         headers=headers,
     )
+
+
+def test_publishing_a_new_plan_discards_an_unannounced_draw(client, auth_headers):
+    organizer, ls = drawn(client, auth_headers, announce=False)
+    assert pools_of(client, organizer, ls)["draw"] is not None
+
+    choose(client, organizer, variants(client, organizer)["variants"][0]["key"])
+    ok(publish(client, organizer))
+
+    assert pools_of(client, organizer, ls)["draw"] is None
+    assert db_session().scalars(select(FloorPool)).all() == []
+
+
+def test_publishing_a_new_plan_keeps_an_announced_draw(client, auth_headers):
+    organizer, ls = drawn(client, auth_headers)
+    before = pools_of(client, organizer, ls)["draw"]
+
+    choose(client, organizer, variants(client, organizer)["variants"][0]["key"])
+    ok(publish(client, organizer))
+
+    assert pools_of(client, organizer, ls)["draw"] == before
 
 
 def test_the_draw_needs_a_closed_checkin(client, auth_headers):

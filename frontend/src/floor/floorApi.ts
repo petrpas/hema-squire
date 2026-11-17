@@ -14,20 +14,27 @@ export interface FloorDay {
   start: string;
   end: string;
   breaks: FloorBreak[];
+  /** the disciplines held that day; each belongs to exactly one day */
+  discipline_ids: number[];
+}
+
+/** What the floor plans (spec floor-setup, Scope decides what is planned). */
+export interface FloorScope {
+  plan_schedule: boolean;
+  multi_day: boolean;
+  plan_officials: boolean;
+}
+
+/** A piste or an official serves a discipline, as regular or as reserve. */
+export interface Serves {
+  discipline_id: number;
+  reserve: boolean;
 }
 
 export interface FloorPiste {
   id: number | null;
   name: string;
-  reserve: boolean;
-  tag: string | null;
-  days: string[];
-}
-
-export interface Staffing {
-  referee: number;
-  judge: number;
-  table: number;
+  serves: Serves[];
 }
 
 export interface FloorFormat {
@@ -37,35 +44,45 @@ export interface FloorFormat {
   /** null is "all" */
   advance: number | null;
   third_place: boolean;
-  /** null until the organizer states it */
-  staffing: Staffing | null;
+  referees_pool: number;
+  referees_elim: number;
   slot_pool_bout: number;
   slot_elim_bout: number;
-  slot_pool_overhead: number;
+  pause_between_pools: number;
   slot_team_match: number | null;
+  points_pool: number | null;
+  points_elim: number | null;
+  points_team_bout: number | null;
+  /** the discipline whose pool results this one takes over */
+  takes_pools_from: number | null;
 }
 
 export type FloorFormatOut = FloorFormat & { stored: boolean; missing: string[] };
 
-export type Role = "referee" | "judge" | "table";
-
 export interface FloorOfficial {
   id: number | null;
   name: string;
+  /** "Šermuje jako": with a link, the person's name is the official's */
   person_key: string | null;
-  roles: Role[];
-  discipline_ids: number[];
+  main: boolean;
+  serves: Serves[];
   days: string[];
 }
 
 export type FloorOfficialOut = FloorOfficial & { link_lost: boolean };
 
+export type Finals = "elimination" | "day" | "tournament";
+
 export interface FloorParams {
-  finals_last: boolean;
-  prefer_larger_pools: boolean;
+  finals: Finals;
+  min_rest_minutes: number;
+}
+
+/** The plan's preferences, edited on the `plan` tab (spec floor-plan). */
+export interface FloorPreferences {
+  pool_size: "larger" | "smaller";
   club_weight: number;
   nationality_weight: number;
-  min_rest_minutes: number;
 }
 
 export interface FloorDiscipline {
@@ -73,22 +90,28 @@ export interface FloorDiscipline {
   slug: string;
   name: string;
   kind: "individual" | "team";
+  weapon?: string;
+  team_min?: number | null;
 }
 
 export interface FloorSetup {
   disciplines: FloorDiscipline[];
   persons: { key: string; name: string }[];
+  scope: FloorScope;
   days: { stored: boolean; days: FloorDay[] };
   pistes: FloorPiste[];
   formats: FloorFormatOut[];
   officials: FloorOfficialOut[];
   params: FloorParams;
+  preferences: FloorPreferences;
 }
 
 export interface FloorSummary {
   plan_published: boolean;
   badges: Record<string, boolean>;
   setup_missing: string[];
+  /** false where floor Setup plans no schedule: no schedule panel then */
+  plan_schedule?: boolean;
 }
 
 export interface FloorPerson {
@@ -114,7 +137,14 @@ export interface FloorRoster {
   teams: { key: string; discipline: string; name: string; members: string[]; paid: boolean }[];
 }
 
-export type SetupSection = "days" | "pistes" | "formats" | "officials" | "params";
+export type SetupSection =
+  | "scope"
+  | "days"
+  | "pistes"
+  | "formats"
+  | "officials"
+  | "params"
+  | "preferences";
 
 function base(slug: string): string {
   return `/api/tournaments/${slug}/floor`;
@@ -135,8 +165,10 @@ export const floorApi = {
 
 export interface PlanChoice {
   discipline_id: number;
+  /** 0 for a discipline that takes over: it has no pools */
   k: number;
-  day: string;
+  /** null in a plan made without a schedule */
+  day: string | null;
   sizes: number[];
 }
 
@@ -160,6 +192,9 @@ export interface PlanMetrics {
   collisions: number;
   shortage: number;
   average_pool: number;
+  reserve_used?: number[];
+  /** moments where more pistes run than the day has main referees: a warning */
+  main_warnings?: { day: string; at: string; short: number }[];
 }
 
 export interface Variant {
@@ -195,7 +230,7 @@ export interface StoredPlan {
 export interface Pin {
   id: number;
   /** "n" is check-in's own: a closed discipline's N, added by its gate */
-  kind: "day" | "k" | "place" | "sequence" | "n";
+  kind: "k" | "place" | "sequence" | "n";
   target: string;
   value: Record<string, unknown>;
   gate: string | null;
@@ -237,7 +272,7 @@ export const planApi = {
     request<void>(`${base(slug)}/plan/choose`, { method: "POST", body: JSON.stringify({ key }) }),
   publish: (slug: string) => request<void>(`${base(slug)}/plan/publish`, { method: "POST" }),
   replan: (slug: string) => request<Variants>(`${base(slug)}/plan/replan`, { method: "POST" }),
-  pin: (slug: string, pin: Omit<Pin, "id" | "gate" | "kind"> & { kind: "day" | "k" }) =>
+  pin: (slug: string, pin: Omit<Pin, "id" | "gate" | "kind"> & { kind: "k" }) =>
     request<Pin>(`${base(slug)}/plan/pins`, { method: "POST", body: JSON.stringify(pin) }),
   unpin: (slug: string, id: number) =>
     request<void>(`${base(slug)}/plan/pins/${id}`, { method: "DELETE" }),
@@ -313,6 +348,8 @@ export interface Today {
     name: string;
     steps: Record<string, string>;
     slip: number | null;
+    /** the discipline whose pools this one takes over */
+    takes_pools_from?: number | null;
   }[];
   waiting: { tab: string; discipline: string | null; code: string }[];
 }
@@ -550,10 +587,14 @@ export interface BracketBout {
 export interface BracketView {
   state: "waiting" | "seeded" | "running" | "closed";
   pools_closed: boolean;
+  /** the discipline whose pools this one takes over: it waits on them */
+  source?: number | null;
   names: Record<string, string>;
   proposal: {
     size: number;
     advancing: number;
+    /** entrants the source's ranking does not place, seeded below the rest */
+    unplaced?: string[];
     slots: { position: number; seed: number | null; key: string | null }[];
   } | null;
   bracket: {
@@ -592,11 +633,17 @@ export const bracketApi = {
 
 export interface Seat {
   id: number;
-  role: Role;
+  role: string;
+  /** slot 0 is the block's main place */
   slot: number;
   official_id: number | null;
   name: string | null;
   pinned: boolean;
+  main_place?: boolean;
+  /** the official serves the block's discipline as reserve */
+  reserve?: boolean;
+  /** the official is a main referee */
+  main?: boolean;
 }
 
 export interface AssignmentBlock {
@@ -607,6 +654,9 @@ export interface AssignmentBlock {
   start: string;
   end: string;
   activities: string[];
+  stage?: "pool" | "elim";
+  /** staffed with no main referee among them: tolerated, stated */
+  without_main?: boolean;
   seats: Seat[];
 }
 

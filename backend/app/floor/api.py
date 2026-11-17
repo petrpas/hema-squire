@@ -48,8 +48,10 @@ from app.floor.schemas import (
     PinIn,
     PinOut,
     PisteIn,
+    PreferencesIO,
     ReopenPreviewOut,
     RowId,
+    ScopeIO,
     TodayOut,
     VariantsOut,
 )
@@ -85,21 +87,30 @@ def floor_setup(tournament: TournamentDep, session: SessionDep, fencer: FencerDe
     _floor(tournament)
     facts = setup_facts(tournament)
     persons = roster(session, tournament).persons
-    keys = {person.key for person in persons}
+    names = {person.key: person.name for person in persons}
     return FloorSetupOut(
         disciplines=[
-            FloorSetupDisciplineOut(id=d.id, slug=d.slug, name=d.name, kind=d.kind)
+            FloorSetupDisciplineOut(
+                id=d.id,
+                slug=d.slug,
+                name=d.name,
+                kind=d.kind,
+                weapon=d.weapon,
+                team_min=d.team_min,
+            )
             for d in facts.disciplines
         ],
         persons=[
             FloorPersonRefOut(key=p.key, name=p.name)
             for p in sorted(persons, key=lambda p: p.name.casefold())
         ],
+        scope=setup.read_scope(session, facts.id),
         days=setup.read_days(session, facts),
         pistes=setup.read_pistes(session, facts.id),
         formats=setup.read_formats(session, facts),
-        officials=setup.read_officials(session, facts.id, keys),
+        officials=setup.read_officials(session, facts.id, names),
         params=setup.read_params(session, facts.id),
+        preferences=setup.read_preferences(session, facts.id),
     )
 
 
@@ -107,6 +118,15 @@ def _writable(tournament: TournamentDep) -> setup.Tournament:
     _floor(tournament)
     require_published(tournament)
     return setup_facts(tournament)
+
+
+@router.put("/{slug}/floor/setup/scope", status_code=204)
+def save_scope(
+    scope: ScopeIO, tournament: TournamentDep, session: SessionDep, fencer: FencerDep
+) -> None:
+    require_console_access(session, tournament, fencer)
+    setup.save_scope(session, _writable(tournament).id, scope)
+    session.commit()
 
 
 @router.put("/{slug}/floor/setup/days", status_code=204)
@@ -142,8 +162,8 @@ def save_officials(
 ) -> None:
     require_console_access(session, tournament, fencer)
     facts = _writable(tournament)
-    keys = {person.key for person in roster(session, tournament).persons}
-    setup.save_officials(session, facts, officials, keys)
+    names = {person.key: person.name for person in roster(session, tournament).persons}
+    setup.save_officials(session, facts, officials, names)
     session.commit()
 
 
@@ -153,6 +173,16 @@ def save_params(
 ) -> None:
     require_console_access(session, tournament, fencer)
     setup.save_params(session, _writable(tournament).id, params)
+    session.commit()
+
+
+@router.put("/{slug}/floor/setup/preferences", status_code=204)
+def save_preferences(
+    preferences: PreferencesIO, tournament: TournamentDep, session: SessionDep, fencer: FencerDep
+) -> None:
+    """The plan's preferences, edited on the `plan` tab (spec floor-plan)."""
+    require_console_access(session, tournament, fencer)
+    setup.save_preferences(session, _writable(tournament).id, preferences)
     session.commit()
 
 
@@ -172,9 +202,15 @@ def floor_summary(
     badges["plan"] = (
         planning.working(session, tournament.id) is not None
         or officiating.unfilled(session, tournament.id) > 0
+        or officiating.without_main(session, tournament.id) > 0
     )
     badges["checkin"] = bool(checkin.waiting(session, setup_facts(tournament), datetime.now(UTC)))
-    return FloorSummaryOut(plan_published=published, badges=badges, setup_missing=missing)
+    return FloorSummaryOut(
+        plan_published=published,
+        badges=badges,
+        setup_missing=missing,
+        plan_schedule=setup.read_scope(session, tournament.id).plan_schedule,
+    )
 
 
 # ------------------------------------------------------------ the plan
@@ -558,6 +594,10 @@ def _waiting(session: SessionDep, tournament: TournamentDep) -> list[dict[str, o
         )
     if planning.working(session, facts.id) is not None:
         out.append({"tab": "plan", "discipline": None, "code": "publish"})
+    if officiating.unfilled(session, facts.id) > 0:
+        out.append({"tab": "plan", "discipline": None, "code": "unfilled"})
+    if officiating.without_main(session, facts.id) > 0:
+        out.append({"tab": "plan", "discipline": None, "code": "without_main"})
     for discipline_id in checkin.waiting(session, facts, datetime.now(UTC)):
         out.append(
             {"tab": "checkin", "discipline": slugs.get(discipline_id), "code": "checkin_open"}
@@ -573,16 +613,24 @@ def floor_today(
     require_console_access(session, tournament, fencer)
     _floor(tournament)
     facts = setup_facts(tournament)
-    rows = [
-        {
-            "discipline_id": d.id,
-            "slug": d.slug,
-            "name": d.name,
-            "steps": steps.states(session, facts.id, d.id),
-            "slip": progress.slip(session, facts.id, d.id),
-        }
-        for d in facts.disciplines
-    ]
+    formats = {f.discipline_id: f for f in setup.read_formats(session, facts)}
+    rows = []
+    for d in facts.disciplines:
+        source = formats[d.id].takes_pools_from if d.id in formats else None
+        states = steps.states(session, facts.id, d.id)
+        if source is not None:
+            # no pools of its own (spec floor-pools, A discipline that takes over)
+            states["pools"] = "taken_over"
+        rows.append(
+            {
+                "discipline_id": d.id,
+                "slug": d.slug,
+                "name": d.name,
+                "steps": states,
+                "slip": progress.slip(session, facts.id, d.id),
+                "takes_pools_from": source,
+            }
+        )
     return _cached(
         request, TodayOut.model_validate({"rows": rows, "waiting": _waiting(session, tournament)})
     )

@@ -1,3 +1,16 @@
+import {
+  type Icon,
+  IconCalendarCog,
+  IconCalendarTime,
+  IconDatabase,
+  IconGridDots,
+  IconLayoutDashboard,
+  IconSettings,
+  IconTournament,
+  IconTrophy,
+  IconUserCheck,
+} from "@tabler/icons-react";
+
 /** The tournament-day console's tabs, in their fixed order (spec
  *  floor-console, Eight tabs in a fixed order). No setting adds, removes or
  *  reorders one; what a setting changes is a tab's content. */
@@ -39,8 +52,22 @@ export function defaultTab(planPublished: boolean): FloorTab {
   return planPublished ? "today" : "setup";
 }
 
-/** The tabs the bar offers: the eight, and on a narrow screen the schedule
- *  last. */
-export function barTabs(narrow: boolean): FloorBarTab[] {
-  return narrow ? [...FLOOR_TABS, SCHEDULE_TAB] : [...FLOOR_TABS];
+/** The tabs the rail offers: the eight, and on a narrow screen the schedule
+ *  last, where a schedule is planned at all. */
+export function barTabs(narrow: boolean, schedule = true): FloorBarTab[] {
+  return narrow && schedule ? [...FLOOR_TABS, SCHEDULE_TAB] : [...FLOOR_TABS];
 }
+
+/** Each rail tab's outline icon, beside the order so the two cannot drift
+ *  apart (design rework-floor-setup D1). */
+export const TAB_ICONS: Record<FloorBarTab, Icon> = {
+  setup: IconSettings,
+  data: IconDatabase,
+  plan: IconCalendarCog,
+  today: IconLayoutDashboard,
+  checkin: IconUserCheck,
+  pools: IconGridDots,
+  bracket: IconTournament,
+  results: IconTrophy,
+  schedule: IconCalendarTime,
+};
