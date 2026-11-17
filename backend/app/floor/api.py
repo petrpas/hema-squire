@@ -14,7 +14,7 @@ from pydantic import BaseModel
 
 from app.auth import require_console_access, require_published
 from app.errors import FieldValidationError
-from app.floor import checkin, people, planning, setup, steps
+from app.floor import checkin, people, planning, progress, setup, steps
 from app.floor.adapters.office import (
     FencerDep,
     SessionDep,
@@ -574,7 +574,7 @@ def floor_today(
             "slug": d.slug,
             "name": d.name,
             "steps": steps.states(session, facts.id, d.id),
-            "slip": None,
+            "slip": progress.slip(session, facts.id, d.id),
         }
         for d in facts.disciplines
     ]

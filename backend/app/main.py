@@ -18,6 +18,7 @@ from app.errors import (
     validation_exception_handler,
 )
 from app.floor import api as floor_api
+from app.floor import pools_api as floor_pools_api
 from app.ratelimit import limiter
 from app.routers import (
     accounts,
@@ -225,6 +226,8 @@ def create_app() -> FastAPI:
     app.include_router(hr_api.ratings_router)
     app.include_router(taxonomy_api.router)
     app.include_router(floor_api.router)
+    app.include_router(floor_pools_api.router)
+    app.include_router(floor_pools_api.ring_router)
     _describe_real_validation_errors(app)
     return app
 

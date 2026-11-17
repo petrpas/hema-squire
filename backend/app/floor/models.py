@@ -13,6 +13,7 @@ from datetime import date, datetime, time
 
 from sqlalchemy import (
     JSON,
+    BigInteger,
     Boolean,
     Date,
     DateTime,
@@ -285,3 +286,109 @@ class FloorSnapshotEntrant(Base):
     rank: Mapped[int | None] = mapped_column(Integer)
     # a team's arrived lineup, person keys in order
     members: Mapped[list[str]] = mapped_column(JSON, default=list)
+
+
+# ------------------------------------------------------------ pools
+# (specs floor-draw, floor-pools, floor-ring; design add-floor-pools D3)
+
+
+class FloorDraw(Base):
+    """A discipline's draw; announced, it is frozen and its bouts exist."""
+
+    __tablename__ = "floor_draws"
+    __table_args__ = (UniqueConstraint("tournament_id", "discipline_id"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    tournament_id: Mapped[int] = mapped_column(ForeignKey("tournaments.id"), index=True)
+    discipline_id: Mapped[int] = mapped_column(ForeignKey("disciplines.id", ondelete="CASCADE"))
+    # orders the unrated: the same seed reproduces the same pools
+    seed: Mapped[int] = mapped_column(BigInteger)
+    weights: Mapped[dict[str, float]] = mapped_column(JSON, default=dict)
+    score: Mapped[dict[str, float]] = mapped_column(JSON, default=dict)
+    # the score before the last swap, shown beside the current one
+    previous_score: Mapped[dict[str, float] | None] = mapped_column(JSON)
+    announced_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    announced_by: Mapped[int | None] = mapped_column(Integer)
+    # the pools closed: the ranking is frozen
+    closed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    closed_by: Mapped[int | None] = mapped_column(Integer)
+
+
+class FloorPool(Base):
+    __tablename__ = "floor_pools"
+    __table_args__ = (UniqueConstraint("draw_id", "number"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    draw_id: Mapped[int] = mapped_column(ForeignKey("floor_draws.id"), index=True)
+    number: Mapped[int] = mapped_column(Integer)
+    wave: Mapped[int] = mapped_column(Integer)
+    # the published plan's activity this pool is, "SB:pool:3"
+    activity_id: Mapped[str | None] = mapped_column(String(80))
+    piste_id: Mapped[int | None] = mapped_column(Integer)
+    planned_start: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class FloorPoolMember(Base):
+    __tablename__ = "floor_pool_members"
+    __table_args__ = (UniqueConstraint("pool_id", "entrant_key"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    pool_id: Mapped[int] = mapped_column(ForeignKey("floor_pools.id"), index=True)
+    entrant_key: Mapped[str] = mapped_column(String(80))
+    # position on the sheet, from 1
+    ordinal: Mapped[int] = mapped_column(Integer)
+    # the draw's seed, from 1
+    seed: Mapped[int] = mapped_column(Integer)
+
+
+class FloorBout(Base):
+    """One bout, recorded by the adopted model: each side's score and
+    outcome, and a note. `version` guards against two writers."""
+
+    __tablename__ = "floor_bouts"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    tournament_id: Mapped[int] = mapped_column(ForeignKey("tournaments.id"), index=True)
+    discipline_id: Mapped[int] = mapped_column(ForeignKey("disciplines.id", ondelete="CASCADE"))
+    # NULL for an elimination bout (add-floor-bracket)
+    pool_id: Mapped[int | None] = mapped_column(ForeignKey("floor_pools.id"), index=True)
+    ordinal: Mapped[int] = mapped_column(Integer)
+    a_key: Mapped[str] = mapped_column(String(80))
+    b_key: Mapped[str] = mapped_column(String(80))
+    score_a: Mapped[int | None] = mapped_column(Integer)
+    score_b: Mapped[int | None] = mapped_column(Integer)
+    # win | loss | draw | no
+    outcome_a: Mapped[str | None] = mapped_column(String(8))
+    outcome_b: Mapped[str | None] = mapped_column(String(8))
+    note: Mapped[str | None] = mapped_column(String(200))
+    recorded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # "user:<id>" or "ring:<piste id>"
+    recorded_by: Mapped[str | None] = mapped_column(String(40))
+    version: Mapped[int] = mapped_column(Integer, default=0)
+
+
+class FloorPoolRanking(Base):
+    """The overall pool ranking as closing the pools froze it."""
+
+    __tablename__ = "floor_pool_rankings"
+    __table_args__ = (UniqueConstraint("tournament_id", "discipline_id", "entrant_key"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    tournament_id: Mapped[int] = mapped_column(ForeignKey("tournaments.id"), index=True)
+    discipline_id: Mapped[int] = mapped_column(ForeignKey("disciplines.id", ondelete="CASCADE"))
+    entrant_key: Mapped[str] = mapped_column(String(80))
+    place: Mapped[int] = mapped_column(Integer)
+    stats: Mapped[dict[str, float]] = mapped_column(JSON, default=dict)
+
+
+class FloorRingKey(Base):
+    """A piste screen's key, stored as its SHA-256 hash."""
+
+    __tablename__ = "floor_ring_keys"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    tournament_id: Mapped[int] = mapped_column(ForeignKey("tournaments.id"), index=True)
+    piste_id: Mapped[int] = mapped_column(ForeignKey("floor_pistes.id"), index=True)
+    key_hash: Mapped[str] = mapped_column(String(64), unique=True)
+    issued_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

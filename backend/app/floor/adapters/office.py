@@ -17,10 +17,20 @@ from app.floor.roster import FloorDiscipline, IndividualEntry, Person, Roster, T
 from app.floor.setup import Tournament as SetupTournament
 from app.list_counts import same_person
 from app.models import DisciplineKind, Tournament
+from app.ratelimit import limiter
 from app.routers.tournaments import FencerDep, SessionDep, TournamentDep
 from app.rules import Row
 
-__all__ = ["FencerDep", "SessionDep", "TournamentDep", "has_floor", "roster", "setup_facts"]
+__all__ = [
+    "FencerDep",
+    "SessionDep",
+    "TournamentDep",
+    "has_floor",
+    "limiter",
+    "roster",
+    "roster_of",
+    "setup_facts",
+]
 
 
 def _individual(person: str, slug: str, row: Row) -> IndividualEntry:
@@ -104,6 +114,12 @@ def setup_facts(tournament: Tournament) -> SetupTournament:
         disciplines=_disciplines(tournament),
         timezone=setup.zone_for(tournament).key,
     )
+
+
+def roster_of(session: Session, tournament_id: int) -> Roster | None:
+    """The roster of a tournament known only by id, as a piste screen knows it."""
+    tournament = session.get(Tournament, tournament_id)
+    return roster(session, tournament) if tournament is not None else None
 
 
 def roster(session: Session, tournament: Tournament) -> Roster:

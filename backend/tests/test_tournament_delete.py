@@ -15,7 +15,9 @@ from sqlalchemy import Table, func, select
 from app.db import get_session
 from app.floor.models import (
     FloorArrival,
+    FloorBout,
     FloorDay,
+    FloorDraw,
     FloorFormat,
     FloorLineup,
     FloorLocalPerson,
@@ -26,6 +28,10 @@ from app.floor.models import (
     FloorPisteDay,
     FloorPlan,
     FloorPlanActivity,
+    FloorPool,
+    FloorPoolMember,
+    FloorPoolRanking,
+    FloorRingKey,
     FloorSettings,
     FloorSnapshot,
     FloorSnapshotEntrant,
@@ -278,7 +284,37 @@ def populate(session, tournament: Tournament, registration: Registration, actor:
     session.add(
         FloorSnapshotEntrant(snapshot_id=snapshot.id, entrant_key="reg:1", kind="person", name="A")
     )
+    drawn = FloorDraw(tournament_id=tid, discipline_id=discipline.id, seed=1)
+    session.add(drawn)
+    session.flush()
+    pool = FloorPool(draw_id=drawn.id, number=1, wave=1)
+    session.add(pool)
+    session.flush()
+    session.add(FloorPoolMember(pool_id=pool.id, entrant_key="reg:1", ordinal=1, seed=1))
+    session.add(
+        FloorBout(
+            tournament_id=tid,
+            discipline_id=discipline.id,
+            pool_id=pool.id,
+            ordinal=1,
+            a_key="reg:1",
+            b_key="reg:2",
+        )
+    )
+    session.add(
+        FloorPoolRanking(
+            tournament_id=tid, discipline_id=discipline.id, entrant_key="reg:1", place=1
+        )
+    )
+    session.add(FloorRingKey(tournament_id=tid, piste_id=piste.id, key_hash="h", issued_at=now))
     session.commit()
+
+
+def floor_scope(table: Table, tid: int):
+    if "tournament_id" in table.c:
+        return table.c.tournament_id == tid
+    fk = next(fk for fk in table.foreign_keys if fk.column.table.name.startswith("floor_"))
+    return fk.parent.in_(select(fk.column).where(floor_scope(fk.column.table, tid)))
 
 
 def rows_of(session, table: Table, tid: int, registration_ids: list[int]) -> int:
@@ -296,10 +332,8 @@ def rows_of(session, table: Table, tid: int, registration_ids: list[int]) -> int
         teams = select(Team.id).where(Team.tournament_id == tid)
         return session.scalar(select(func.count()).where(table.c.team_id.in_(teams)))
     if table.name.startswith("floor_") and "tournament_id" not in table.c:
-        # a floor child: through its floor parent that carries the tournament
-        fk = next(fk for fk in table.foreign_keys if "tournament_id" in fk.column.table.c)
-        owned = select(fk.column).where(fk.column.table.c.tournament_id == tid)
-        return session.scalar(select(func.count()).where(fk.parent.in_(owned)))
+        # a floor child, however deep: through the floor parents it hangs from
+        return session.scalar(select(func.count()).where(floor_scope(table, tid)))
     if table.name == "hr_snapshot_ratings":
         snapshots = select(HRRatingSnapshot.id).where(HRRatingSnapshot.tournament_id == tid)
         return session.scalar(select(func.count()).where(table.c.snapshot_id.in_(snapshots)))
