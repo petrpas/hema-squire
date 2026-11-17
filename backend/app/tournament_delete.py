@@ -82,13 +82,14 @@ def _delete_registrations(session: Session, tid: int) -> None:
 
 def _floor_scope(table: Table, tid: int):
     """The condition selecting a floor table's rows of this tournament: by its
-    own `tournament_id`, else through the floor parent that carries one."""
+    own `tournament_id`, else through the floor parent it hangs from, however
+    deep (a pool's members hang from a pool, which hangs from a draw)."""
     if "tournament_id" in table.c:
         return table.c.tournament_id == tid
     for fk in table.foreign_keys:
         parent = fk.column.table
-        if parent.name.startswith("floor_") and "tournament_id" in parent.c:
-            owned = select(fk.column).where(parent.c.tournament_id == tid)
+        if parent.name.startswith("floor_") and parent is not table:
+            owned = select(fk.column).where(_floor_scope(parent, tid))
             return fk.parent.in_(owned)
     raise LookupError(f"{table.name} cannot be scoped to a tournament")
 

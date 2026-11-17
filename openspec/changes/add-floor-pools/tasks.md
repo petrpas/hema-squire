@@ -8,22 +8,22 @@
 
 ## 2. Storage and service
 
-- [ ] 2.1 `app/floor/models.py`: `floor_draws`, `floor_pools`, `floor_pool_members`, `floor_bouts`, `floor_pool_rankings`, `floor_ring_keys`. Add migration `floor_0004` and the classifications.
-- [ ] 2.2 `app/floor/pools.py`:
+- [x] 2.1 `app/floor/models.py`: `floor_draws`, `floor_pools`, `floor_pool_members`, `floor_bouts`, `floor_pool_rankings`, `floor_ring_keys`. Add migration `floor_0004` and the classifications.
+- [x] 2.2 `app/floor/pools.py`:
   - the draw from the snapshot, the plan's waves and the exclusion sets;
   - swaps, redraw and the announce gate with its pin;
   - recording and correction with the version check;
   - standings and warnings;
   - the close gate;
   - the call list.
-- [ ] 2.3 Register the progress (pool start and end), the Skupiny step states and the gate hooks (D6).
-- [ ] 2.4 Sheet PDFs through Typst from the adopted templates under `app/floor/typst/`.
-- [ ] 2.5 `tests/floor/test_floor_pools.py`: one test per `floor-pools` scenario.
+- [x] 2.3 Register the progress (pool start and end), the Skupiny step states and the gate hooks (D6).
+- [x] 2.4 Sheet PDFs through Typst from the adopted templates under `app/floor/typst/`.
+- [x] 2.5 `tests/floor/test_floor_pools.py`: one test per `floor-pools` scenario.
 
 ## 3. Piste screen
 
-- [ ] 3.1 `app/floor/ring.py` and its router: issue, revoke, current work, record. Keys are hashed and rate-limited through the adapter's re-export.
-- [ ] 3.2 `tests/floor/test_floor_ring.py`: revocation, the scope to one piste, the refusal after the gate, and the rate limit.
+- [x] 3.1 `app/floor/ring.py` and its router: issue, revoke, current work, record. Keys are hashed and rate-limited through the adapter's re-export.
+- [x] 3.2 `tests/floor/test_floor_ring.py`: revocation, the scope to one piste, the refusal after the gate, and the rate limit.
 
 ## 4. Frontend
 

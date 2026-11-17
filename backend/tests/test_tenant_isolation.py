@@ -39,6 +39,18 @@ BODIES: dict[tuple[str, str], object] = {
     ("POST", "/api/tournaments/{slug}/floor/checkin/arrivals"): {"person_key": "reg:1"},
     ("POST", "/api/tournaments/{slug}/floor/checkin/withdrawals"): {"entry_key": "reg:1@1"},
     ("POST", "/api/tournaments/{slug}/floor/checkin/locals"): {"name": "Petr"},
+    ("POST", "/api/tournaments/{slug}/floor/pools/{discipline_id}/swap"): {
+        "a": "reg:1",
+        "b": "reg:2",
+    },
+    ("PUT", "/api/tournaments/{slug}/floor/pools/bouts/{bout_id}"): {
+        "score_a": 5,
+        "score_b": 3,
+        "outcome_a": "win",
+        "outcome_b": "loss",
+        "version": 0,
+    },
+    ("PUT", "/api/tournaments/{slug}/floor/pools/{discipline_id}/sheet"): {"bouts": []},
     ("PUT", "/api/tournaments/{slug}/floor/checkin/lineups/{team_key}"): {"person_keys": []},
     ("POST", "/api/tournaments/{slug}/floor/plan/pins"): {
         "kind": "k",
@@ -142,6 +154,9 @@ PATH_PARAMS = {
     "team_key": "team:1",
     "person_key": "reg:1",
     "entry_key": "reg:1@1",
+    "piste_id": "1",
+    "number": "1",
+    "bout_id": "1",
 }
 
 
