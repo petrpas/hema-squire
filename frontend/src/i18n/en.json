@@ -2447,6 +2447,25 @@
         "not_this_piste": "This bout is not on this piste.",
         "failed": "That did not work."
       }
+    },
+    "officials": {
+      "title": "Officials",
+      "rerun": "Assign again",
+      "empty": "— nobody —",
+      "unfilled": "unfilled",
+      "pinned": "(pinned)",
+      "print": "Print:",
+      "conflict": "{{name}} is of club {{club}}, as someone in the block's pool is.",
+      "unmatched_one": "{{count}} pinned seat belongs to a block that re-planning removed.",
+      "unmatched_other": "{{count}} pinned seats belong to blocks that re-planning removed.",
+      "rules": {
+        "unavailable": "The official is not available that day.",
+        "not_qualified": "The official does not take this discipline.",
+        "wrong_role": "The official does not fill this role.",
+        "double_booked": "The official already has a block then.",
+        "fencing": "The official fences then.",
+        "failed": "That did not work."
+      }
     }
   }
 }

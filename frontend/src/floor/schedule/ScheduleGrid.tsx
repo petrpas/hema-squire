@@ -25,6 +25,7 @@ export function ScheduleGrid({
   removed,
   changes,
   setup,
+  officials,
 }: {
   day: string;
   activities: PlanActivity[];
@@ -32,6 +33,8 @@ export function ScheduleGrid({
   removed: PlanActivity[];
   changes: Change[];
   setup: FloorSetup;
+  /** The officials of each activity's block, by activity id. */
+  officials?: Map<string, string>;
 }) {
   const { t } = useTranslation();
   const today = activities.filter((a) => a.day === day);
@@ -87,6 +90,9 @@ export function ScheduleGrid({
                   title={`${activityLabel(activity, slugs.get(activity.discipline_id) ?? "")} ${activity.start}–${activity.end}`}
                 >
                   {activityLabel(activity, slugs.get(activity.discipline_id) ?? "")}
+                  {officials?.get(activity.id) && (
+                    <span className="floor-grid-officials"> · {officials.get(activity.id)}</span>
+                  )}
                   {kind && (
                     <span className="floor-grid-mark"> {t(`floor.schedule.change.${kind}`)}</span>
                   )}

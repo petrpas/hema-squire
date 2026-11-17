@@ -6055,3 +6055,16 @@ tr.export-line td {
 .floor-bracket-bout input[type="number"] {
   width: 3.5rem;
 }
+
+/* ----- floor officials (add-floor-officials) ----- */
+
+.floor-assignments td label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  font-size: var(--label-size);
+}
+
+.floor-grid-officials {
+  color: var(--ink-soft);
+}
