@@ -187,7 +187,7 @@ def seeded(entrants: list[people.Entrant], seed: int) -> list[people.Entrant]:
     order the stored seed fixes (spec floor-draw, Seeds come from the snapshot)."""
     rated = sorted(
         (e for e in entrants if e.rating is not None),
-        key=lambda e: (-(e.rating or 0.0), e.rank if e.rank is not None else 10**9, e.key),
+        key=lambda e: people.seeding_key(e.rating, e.rank, e.key),
     )
     unrated = sorted((e for e in entrants if e.rating is None), key=lambda e: e.key)
     # deterministic on purpose: the stored seed must reproduce the draw, and

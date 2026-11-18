@@ -2142,6 +2142,34 @@ tr.row-deleted td.col-actions {
   color: var(--ink);
 }
 
+/* A cell edited in place without moving its table: the shown value keeps the
+   column's width, unseen, and the field and its message lie over it */
+.cell-steady {
+  position: relative;
+  display: block;
+}
+
+.cell-sizer {
+  visibility: hidden;
+  white-space: nowrap;
+}
+
+.cell-steady .cell-input {
+  position: absolute;
+  inset: -2px -4px;
+  width: auto;
+  min-width: 3rem;
+}
+
+.cell-steady .field-error {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  z-index: 1;
+  white-space: nowrap;
+  background: var(--paper-raised);
+}
+
 /* an input sharing its cell with a trailing unit label (e.g. capacity's
    "/ fencers") — without this the full-width input pushes the label onto
    its own line, growing that cell and throwing off the row's vertical
@@ -5979,6 +6007,50 @@ tr.export-line td {
 
 .floor-team-row th {
   text-align: left;
+}
+
+/* the Data sheet (floor-data-sheet): a withdrawn row's "Vrátit" left legible
+   in a struck row */
+/* an editable HR ID with the arrow to the fighter's profile beside it */
+.sheet-hr {
+  display: inline-flex;
+  align-items: baseline;
+  white-space: nowrap;
+}
+
+.sheet-hr-link {
+  text-decoration: none;
+}
+
+.floor-data tr.row-deleted td:last-child {
+  opacity: 1;
+  text-decoration: none;
+}
+
+.floor-add,
+.floor-add fieldset {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.floor-add label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.floor-add-new {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.6rem;
+  margin: 0;
+}
+
+.floor-add-people label {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.4rem;
 }
 
 /* ----- floor Setup's tabs (rework-floor-setup) ----- */

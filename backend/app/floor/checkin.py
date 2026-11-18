@@ -50,7 +50,8 @@ def closed(session: Session, tid: int, discipline: int) -> bool:
 
 
 def _discipline_of_entry(entry_key: str, roster: Roster) -> int | None:
-    if entry_key.startswith("team:"):
+    # a team's key, office or floor-formed, carries no "@"
+    if "@" not in entry_key:
         team = next((t for t in roster.teams if t.key == entry_key), None)
         if team is None:
             return None

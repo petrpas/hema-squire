@@ -11,7 +11,7 @@ import type { SheetRow } from "../api";
  *  correct. A column added to a table without a value function would be a
  *  header with no cells under it, which the type forbids.
  */
-export interface ExportColumn {
+export interface ExportColumn<Row = SheetRow> {
   /** Stable identity, matching the backend's column ids so the two lists can
    *  be compared by eye. Never the heading, which is a translation. */
   id: string;
@@ -21,9 +21,12 @@ export interface ExportColumn {
   /** States a number — the position, an identifier, a rating, a rank — and so
    *  stands right-aligned, its digits in a column under one another. */
   numeric?: boolean;
+  /** A short mark — a nationality code, yes or no — stood in the middle of
+   *  its column. */
+  centered?: boolean;
   /** `index` is the row's place in the table as displayed, from 0 — read only
    *  by the position column, which states it. */
-  value: (row: SheetRow, index: number) => string;
+  value: (row: Row, index: number) => string;
 }
 
 const text = (value: unknown): string =>
@@ -34,7 +37,7 @@ const text = (value: unknown): string =>
  *  travels in the copy, as the order it states is a value the reader may want
  *  to keep, but has no counterpart among the backend's spreadsheet columns
  *  (owner decision, change export-layouts). */
-export const POSITION: ExportColumn = {
+export const POSITION: ExportColumn<unknown> = {
   id: "position",
   numeric: true,
   value: (_row, index) => String(index + 1),

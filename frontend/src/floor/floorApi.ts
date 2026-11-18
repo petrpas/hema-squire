@@ -92,6 +92,7 @@ export interface FloorDiscipline {
   kind: "individual" | "team";
   weapon?: string;
   team_min?: number | null;
+  team_max?: number | null;
 }
 
 export interface FloorSetup {
@@ -134,7 +135,15 @@ export interface FloorRoster {
     rank: number | null;
     paid: boolean;
   }[];
-  teams: { key: string; discipline: string; name: string; members: string[]; paid: boolean }[];
+  teams: {
+    key: string;
+    discipline: string;
+    name: string;
+    members: string[];
+    paid: boolean;
+    /** each member's [rating, rank], parallel to `members` */
+    ratings: [number | null, number | null][];
+  }[];
 }
 
 export type SetupSection =
@@ -740,4 +749,86 @@ export const publicFloorApi = {
         start: string;
       }[]
     >(`${base(slug)}/public/itinerary`),
+};
+
+/** One person's cells on the Data sheet (spec floor-data). */
+export interface SheetPerson {
+  person: string;
+  entry_key: string;
+  name: string;
+  club: string | null;
+  nationality: string | null;
+  hr_id: number | null;
+  rating: number | null;
+  rank: number | null;
+  /** a floor-only person */
+  local: boolean;
+  /** the cells corrected by hand */
+  edited: string[];
+}
+
+export interface SheetRow extends SheetPerson {
+  paid: boolean | null;
+  withdrawn: boolean;
+  added: boolean;
+}
+
+export interface SheetTeam {
+  key: string;
+  name: string;
+  paid: boolean | null;
+  withdrawn: boolean;
+  added: boolean;
+  members: SheetPerson[];
+}
+
+export interface DataSheet {
+  discipline: FloorDiscipline & { id: number };
+  /** set once the discipline's check-in closed: the rows are the snapshot */
+  closed_at: string | null;
+  fetched_at: string | null;
+  missing: number;
+  count: number;
+  rows: SheetRow[];
+  teams: SheetTeam[];
+  persons: { key: string; name: string; club: string | null }[];
+}
+
+export interface NewSheetPerson {
+  name: string;
+  club?: string | null;
+  nationality?: string | null;
+  hr_id?: number | null;
+}
+
+export type SheetMember = { person_key: string } | { person: NewSheetPerson };
+
+export const sheetApi = {
+  view: (slug: string, discipline: number) =>
+    request<DataSheet>(`${base(slug)}/sheet/${discipline}`),
+  cell: (slug: string, subject: string, field: string, value: string | number | null) =>
+    request<void>(`${base(slug)}/sheet/cells`, {
+      method: "PUT",
+      body: JSON.stringify({ subject, field, value }),
+    }),
+  addEntry: (slug: string, discipline: number, member: SheetMember) =>
+    request<{ key: string }>(`${base(slug)}/sheet/${discipline}/entries`, {
+      method: "POST",
+      body: JSON.stringify(member),
+    }),
+  removeEntry: (slug: string, discipline: number, person: string) =>
+    request<void>(`${base(slug)}/sheet/${discipline}/entries/${enc(person)}`, {
+      method: "DELETE",
+    }),
+  addTeam: (slug: string, discipline: number, name: string, members: SheetMember[]) =>
+    request<{ key: string }>(`${base(slug)}/sheet/${discipline}/teams`, {
+      method: "POST",
+      body: JSON.stringify({ name, members }),
+    }),
+  removeTeam: (slug: string, discipline: number, team: string) =>
+    request<void>(`${base(slug)}/sheet/${discipline}/teams/${enc(team)}`, { method: "DELETE" }),
+  refresh: (slug: string, discipline: number) =>
+    request<{ ratings: number; fencers: number }>(`${base(slug)}/sheet/${discipline}/ratings`, {
+      method: "POST",
+    }),
 };

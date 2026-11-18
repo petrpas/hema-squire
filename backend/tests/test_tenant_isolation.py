@@ -39,6 +39,11 @@ BODIES: dict[tuple[str, str], object] = {
     ("POST", "/api/tournaments/{slug}/floor/checkin/arrivals"): {"person_key": "reg:1"},
     ("POST", "/api/tournaments/{slug}/floor/checkin/withdrawals"): {"entry_key": "reg:1@1"},
     ("POST", "/api/tournaments/{slug}/floor/checkin/locals"): {"name": "Petr"},
+    ("PUT", "/api/tournaments/{slug}/floor/sheet/cells"): {"subject": "reg:1", "field": "club"},
+    ("POST", "/api/tournaments/{slug}/floor/sheet/{discipline_id}/teams"): {
+        "name": "Brno B",
+        "members": [],
+    },
     ("POST", "/api/tournaments/{slug}/floor/pools/{discipline_id}/swap"): {
         "a": "reg:1",
         "b": "reg:2",

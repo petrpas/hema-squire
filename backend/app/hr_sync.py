@@ -266,28 +266,34 @@ def category_keyword(tournament: Tournament, taxonomy_code: str) -> str | None:
     return override.get(taxonomy_code, DEFAULT_CATEGORY_KEYWORDS.get(taxonomy_code))
 
 
-def take_snapshot(
-    session: Session, tournament: Tournament, fetcher: HRFetcher, hr_ids: list[int]
-) -> dict:
-    """Fetch current ratings for the given fencers and store a dated snapshot.
-    If every page parses to zero categories, the fetch is rejected as drift."""
-    # Every discipline the tournament offers, team disciplines among them: a
-    # team discipline derives a taxonomy code the way an individual one does,
-    # and what its category rates is its fighters (spec team-disciplines, A team
-    # discipline carries a rating category for its fighters). A tournament
-    # offering only team disciplines mapped no code at all while this filtered,
-    # and so fetched a rating for nobody. Distinct taxonomy codes, not one per
-    # discipline: tiers of one weapon share a fetch and a rating (design
-    # discipline-identity D5)
-    codes = list(dict.fromkeys(d.taxonomy_code for d in tournament.disciplines))
+@dataclass(frozen=True)
+class FetchedRating:
+    hr_id: int
+    discipline_code: str
+    rating: float | None
+    rank: int | None
+
+
+@dataclass(frozen=True)
+class FetchOutcome:
+    """What one round of fighter pages gave, before anything is stored.
+    `rejected` is set where every page parsed to zero categories — drift."""
+
+    ratings: tuple[FetchedRating, ...]
+    missing: tuple[int, ...]
+    rejected: dict | None = None
+
+
+def fetch_ratings(
+    tournament: Tournament, fetcher: HRFetcher, hr_ids: list[int], codes: list[str]
+) -> FetchOutcome:
+    """Fetch the given fighters' current ratings in the given taxonomy codes'
+    categories. Writes nothing: the office stores a snapshot of it, the floor
+    its own figures (design floor-data-sheet D4)."""
     parsed_pages = 0
     pages_with_ratings = 0
     missing: list[int] = []
-    collected: list[HRSnapshotRating] = []
-
-    snapshot = HRRatingSnapshot(
-        tournament_id=tournament.id, fencer_count=len(hr_ids), hr_ids=list(hr_ids)
-    )
+    collected: list[FetchedRating] = []
     for hr_id in hr_ids:
         page = fetcher.fighter_page(hr_id)
         if page is None:
@@ -305,35 +311,61 @@ def take_snapshot(
             match = next((c for c in categories if _normalize_category(c[0]) == wanted), None)
             if match is not None:
                 collected.append(
-                    HRSnapshotRating(
-                        snapshot=snapshot,
-                        hr_id=hr_id,
-                        discipline_code=code,
-                        rating=match[1],
-                        rank=match[2],
-                    )
+                    FetchedRating(hr_id=hr_id, discipline_code=code, rating=match[1], rank=match[2])
                 )
-
     if parsed_pages > 0 and pages_with_ratings == 0:
-        return {
-            "status": "rejected",
-            "detail": {
+        return FetchOutcome(
+            ratings=(),
+            missing=tuple(missing),
+            rejected={
                 "reason": "every fighter page parsed to zero rating categories — "
                 "source format drift suspected; no snapshot stored",
                 "pages": parsed_pages,
             },
-        }
+        )
+    return FetchOutcome(ratings=tuple(collected), missing=tuple(missing))
 
+
+def take_snapshot(
+    session: Session, tournament: Tournament, fetcher: HRFetcher, hr_ids: list[int]
+) -> dict:
+    """Fetch current ratings for the given fencers and store a dated snapshot.
+    If every page parses to zero categories, the fetch is rejected as drift."""
+    # Every discipline the tournament offers, team disciplines among them: a
+    # team discipline derives a taxonomy code the way an individual one does,
+    # and what its category rates is its fighters (spec team-disciplines, A team
+    # discipline carries a rating category for its fighters). A tournament
+    # offering only team disciplines mapped no code at all while this filtered,
+    # and so fetched a rating for nobody. Distinct taxonomy codes, not one per
+    # discipline: tiers of one weapon share a fetch and a rating (design
+    # discipline-identity D5)
+    codes = list(dict.fromkeys(d.taxonomy_code for d in tournament.disciplines))
+    outcome = fetch_ratings(tournament, fetcher, hr_ids, codes)
+    if outcome.rejected is not None:
+        return {"status": "rejected", "detail": outcome.rejected}
+
+    snapshot = HRRatingSnapshot(
+        tournament_id=tournament.id, fencer_count=len(hr_ids), hr_ids=list(hr_ids)
+    )
     session.add(snapshot)
-    session.add_all(collected)
+    session.add_all(
+        HRSnapshotRating(
+            snapshot=snapshot,
+            hr_id=r.hr_id,
+            discipline_code=r.discipline_code,
+            rating=r.rating,
+            rank=r.rank,
+        )
+        for r in outcome.ratings
+    )
     session.commit()
     return {
         "status": "ok",
         "snapshot_id": snapshot.id,
         "taken_at": snapshot.taken_at,
         "fencers": len(hr_ids),
-        "ratings": len(collected),
-        "missing": missing,
+        "ratings": len(outcome.ratings),
+        "missing": list(outcome.missing),
     }
 
 

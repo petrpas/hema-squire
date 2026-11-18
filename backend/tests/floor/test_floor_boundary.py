@@ -164,3 +164,42 @@ def test_the_two_exceptions_and_what_is_allowed(tmp_path):
         )
         == set()
     )
+
+
+# ------------------------------------------------------------ the Data sheet
+
+DATASHEET = ("app", "floor", "datasheet.py")
+
+
+def roster_bypasses(paths: Iterable[Path], root: Path) -> list[str]:
+    """Each floor file other than `datasheet.py` that reaches the office's raw
+    roster: importing `roster`/`roster_of` from the adapter, or the adapter
+    module itself (design floor-data-sheet D1). A reader that did would skip
+    the floor's own corrections."""
+    found: list[str] = []
+    for path in paths:
+        parts = path.resolve().relative_to(root.resolve()).parts
+        if parts[:2] != ("app", "floor") or parts in (DATASHEET, OFFICE_ADAPTER):
+            continue
+        tree = ast.parse(path.read_text(), filename=str(path))
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.ImportFrom):
+                continue
+            names = {alias.name for alias in node.names}
+            if (node.module == "app.floor.adapters.office" and names & {"roster", "roster_of"}) or (
+                node.module == "app.floor.adapters" and "office" in names
+            ):
+                found.append(f"{'/'.join(parts)}:{node.lineno}")
+    return found
+
+
+def test_only_the_sheet_reads_the_raw_roster():
+    assert roster_bypasses(sorted((BACKEND / "app").rglob("*.py")), BACKEND) == []
+
+
+def test_a_raw_roster_reader_is_caught(tmp_path):
+    paths = _tree(
+        tmp_path,
+        {"app/floor/api.py": "from app.floor.adapters.office import roster\n"},
+    )
+    assert roster_bypasses(paths, tmp_path) == ["app/floor/api.py:1"]

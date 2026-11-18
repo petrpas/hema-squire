@@ -39,6 +39,11 @@ from app.floor.models import (
     FloorPublishedResult,
     FloorRingKey,
     FloorSettings,
+    FloorSheetEdit,
+    FloorSheetEntry,
+    FloorSheetFetch,
+    FloorSheetRating,
+    FloorSheetTeam,
     FloorSnapshot,
     FloorSnapshotEntrant,
     FloorWithdrawal,
@@ -286,6 +291,17 @@ def populate(session, tournament: Tournament, registration: Registration, actor:
     session.add(FloorWithdrawal(tournament_id=tid, entry_key="reg:1@1", at=now))
     session.add(FloorLineup(tournament_id=tid, team_key="team:1", person_key="reg:1", ordinal=1))
     session.add(FloorLocalPerson(tournament_id=tid, name="Local"))
+    session.add(FloorSheetEdit(tournament_id=tid, subject="reg:1", field="club", value="Y", at=now))
+    session.add(
+        FloorSheetEntry(tournament_id=tid, person_key="reg:1", discipline_id=discipline.id, at=now)
+    )
+    session.add(FloorSheetTeam(tournament_id=tid, discipline_id=discipline.id, name="B", at=now))
+    fetch = FloorSheetFetch(
+        tournament_id=tid, discipline_id=discipline.id, fetched_at=now, asked=[1]
+    )
+    session.add(fetch)
+    session.flush()
+    session.add(FloorSheetRating(fetch_id=fetch.id, hr_id=1, rating=1500.0, rank=3))
     snapshot = FloorSnapshot(tournament_id=tid, discipline_id=discipline.id, closed_at=now, n=1)
     session.add(snapshot)
     session.flush()

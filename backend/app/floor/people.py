@@ -47,16 +47,31 @@ def entry_key(person: str, discipline: int) -> str:
     return f"{person}@{discipline}"
 
 
+def local_person(row: FloorLocalPerson) -> Person:
+    return Person(
+        key=f"{LOCAL}{row.id}",
+        name=row.name,
+        club=row.club,
+        nationality=row.nationality,
+        hr_id=row.hr_id,
+    )
+
+
 def persons(session: Session, tid: int, roster: Roster) -> dict[str, Person]:
     found = {person.key: person for person in roster.persons}
     for local in session.scalars(
         select(FloorLocalPerson).where(FloorLocalPerson.tournament_id == tid)
     ):
-        key = f"{LOCAL}{local.id}"
-        found[key] = Person(
-            key=key, name=local.name, club=local.club, nationality=local.nationality, hr_id=None
-        )
+        person = local_person(local)
+        found.setdefault(person.key, person)
     return found
+
+
+def seeding_key(rating: float | None, rank: int | None, key: str) -> tuple[float, int, str]:
+    """The order rated entrants seed in: rating descending, rank breaking a
+    tie (spec floor-draw). The draw and the Data sheet both read it (design
+    floor-data-sheet D8)."""
+    return (-(rating or 0.0), rank if rank is not None else 10**9, key)
 
 
 def lineups(session: Session, tid: int) -> dict[str, tuple[str, ...]]:

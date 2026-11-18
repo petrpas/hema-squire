@@ -148,7 +148,7 @@ whole, or on the selected discipline, and the parameters of the operation the ta
 
 | Tab | Its operations panel |
 |---|---|
-| `data` | the link to the office console's Import phase, where the tournament is kept by the organizer |
+| `data` | adding an entrant, or a team on a team discipline; the selected discipline's ratings refresh with its state line; the line saying the discipline's check-in is closed; the link to the office console's Import phase, where the tournament is kept by the organizer |
 | `plan` | the plan's preferences; asking for variants; re-planning; the publish gate with its obstacles; adding a pin; with officials planned, re-running the assignment and printing the rozpisy and piste sheets |
 | `checkin` | the selected discipline's counts and its close or reopen gate, or every discipline's under "Všichni" |
 | `pools` | drawing, redrawing and announcing the draw; the call list; closing or reopening the pools; the piste screens' links |
@@ -160,6 +160,7 @@ office's fencer table:
 - choosing a variant;
 - setting an official's seat;
 - removing a pin;
+- correcting a cell of the Data sheet, removing an entrant or undoing the removal;
 - ticking a person, withdrawing an entry, editing a lineup, adding a substitute;
 - swapping two fencers in a draw;
 - printing one pool's sheet, beside that pool.
@@ -183,6 +184,10 @@ not shift as states change.
 #### Scenario: A row keeps its action
 - **WHEN** the organizer opens `plan` with three variants
 - **THEN** each variant offers its own "Vybrat" in the work, and the panel offers no choice of variant
+
+#### Scenario: The ratings refresh stands in Data's panel
+- **WHEN** the organizer opens `data` at Sabre with Sabre's check-in open
+- **THEN** the panel titled "Operace · Data" offers "Přidat účastníka" and "Obnovit ratingy" with Sabre's state line, and each row of the sheet offers its own "Odebrat"
 
 #### Scenario: Přehled has no panel
 - **WHEN** the organizer opens `today`
@@ -225,8 +230,8 @@ control names the panel ("Operace"). A tab with no operations panel has no contr
 - **THEN** the head of the work offers no "Operace" control
 
 ### Requirement: Step tabs choose their discipline by tabs, kept across the console
-On `checkin`, `pools`, `bracket` and `results`, the discipline SHALL be chosen from a
-strip of discipline tabs at the head of the work. A drop-down SHALL NOT be used.
+On `data`, `checkin`, `pools`, `bracket` and `results`, the discipline SHALL be chosen
+from a strip of discipline tabs at the head of the work. A drop-down SHALL NOT be used.
 
 **The strip.**
 - **Order and names.** It lists the tournament's disciplines in the order floor Setup
@@ -238,13 +243,13 @@ strip of discipline tabs at the head of the work. A drop-down SHALL NOT be used.
 
 **Prezence alone starts with "Všichni".** It lists every person on the floor roster
 (`floor-checkin`, The desk ticks persons, once). It is that tab's address without a
-discipline.
+discipline. `data` has no "Všichni".
 
 **Kept across the console.** The discipline last chosen on any step tab SHALL be
 carried to the next step tab the organizer opens from the rail. It is carried in that
 tab's address, `floorPath(slug, tab, discipline)`.
 - **Survives a detour.** Moving through a tab without disciplines (`plan`, `schedule`,
-  `today`, `data`, `setup`) keeps the choice for the next step tab.
+  `today`, `setup`) keeps the choice for the next step tab.
 - **"Všichni".** Choosing "Všichni" on `checkin` keeps the choice made before it for
   the other step tabs.
 - **Session only.** The choice lives as long as the console is open. It is not stored.
@@ -254,6 +259,10 @@ tab's address, `floorPath(slug, tab, discipline)`.
 #### Scenario: Sabre stays chosen
 - **WHEN** the organizer chooses Sabre on `pools`, opens `today`, and then follows the rail to `bracket`
 - **THEN** `bracket` opens at Sabre, at `/organizer/cup/floor/bracket/SB`
+
+#### Scenario: Data carries the choice
+- **WHEN** the organizer chooses Sabre on `data` and then follows the rail to `checkin`
+- **THEN** `checkin` opens at Sabre, at `/organizer/cup/floor/checkin/SB`
 
 #### Scenario: Everybody at the desk
 - **WHEN** the organizer opens `checkin` with no discipline chosen yet

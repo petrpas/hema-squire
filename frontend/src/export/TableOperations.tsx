@@ -1,8 +1,9 @@
-import { IconCopy, IconFileTypePdf, IconFileTypePng, IconRefresh } from "@tabler/icons-react";
+import { IconCopy, IconFileTypePdf, IconFileTypePng } from "@tabler/icons-react";
 import { useTranslation } from "react-i18next";
 
 import type { RosterFormat } from "../api";
 import HintedAction from "./HintedAction";
+import RatingsRefresh from "./RatingsRefresh";
 
 const PRINT_ICONS = { pdf: IconFileTypePdf, png: IconFileTypePng } as const;
 
@@ -91,20 +92,7 @@ export default function TableOperations({
           )}
         </HintedAction>
         {onRefreshRatings && (
-          <HintedAction hint={t("export.hints.fetchRatings")}>
-            {(hintId) => (
-              <button
-                type="button"
-                className="icon-action"
-                disabled={refreshing}
-                aria-describedby={hintId}
-                onClick={onRefreshRatings}
-              >
-                <IconRefresh size={18} stroke={1.5} />
-                <span className="visually-hidden">{t("export.fetchRatings")}</span>
-              </button>
-            )}
-          </HintedAction>
+          <RatingsRefresh onRefresh={onRefreshRatings} refreshing={refreshing} />
         )}
         {print &&
           (["pdf", "png"] as const).map((format) => {

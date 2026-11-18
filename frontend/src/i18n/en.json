@@ -2230,12 +2230,20 @@
       "count_one": "{{count}} entrant",
       "count_other": "{{count}} entrants",
       "empty": "Nobody yet.",
+      "remove": "Remove",
+      "restore": "Restore",
+      "closed": "Check-in closed {{moment}}. The sheet is the snapshot; reopen check-in to change it.",
+      "add": "Add entrant",
+      "addTeam": "Add team",
+      "teamName": "Team name",
+      "onTheFloor": "Already on the floor",
+      "newPerson": "New entrant",
+      "addRefused": "The entrant could not be added.",
+      "teamRefused": "The team could not be added. Check the number of members and that nobody already stands on another team.",
       "name": "Name",
       "club": "Club",
       "nationality": "Nationality",
-      "rating": "Rating",
-      "paid": "Paid",
-      "yes": "yes"
+      "hrProfile": "Profile {{id}} on HEMA Ratings"
     },
     "loadFailed": "The tournament-day console could not be loaded. Try reloading the page.",
     "plan": {

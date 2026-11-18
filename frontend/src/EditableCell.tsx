@@ -10,6 +10,7 @@ export default function EditableCell({
   value,
   onSave,
   validate,
+  steady = false,
 }: {
   display: React.ReactNode;
   /** The column's own heading. The cell is a button, and a button whose only
@@ -22,6 +23,11 @@ export default function EditableCell({
    * and shows the message below it rather than committing (design
    * `add-field-validation`). */
   validate?: (raw: string) => FieldErrorValue | null;
+  /** Edit over the cell without changing its size: the shown value stays
+   *  beneath, unseen, holding the column's width, and the field lies over it.
+   *  A table that sizes its columns by their content then does not jump when
+   *  a cell opens (the floor's Data sheet). */
+  steady?: boolean;
 }) {
   const { t } = useTranslation();
   const [editing, setEditing] = useState(false);
@@ -79,7 +85,7 @@ export default function EditableCell({
     if (draft !== original) onSave(draft);
   }
 
-  return (
+  const field = (
     <>
       <input
         ref={inputRef}
@@ -98,5 +104,14 @@ export default function EditableCell({
       />
       <FieldError field="cell" error={error ?? undefined} />
     </>
+  );
+  if (!steady) return field;
+  return (
+    <span className="cell-steady">
+      <span className="cell-sizer" aria-hidden="true">
+        {display}
+      </span>
+      {field}
+    </span>
   );
 }

@@ -20,6 +20,8 @@ from app.importer import store_decision
 from app.main import app
 from app.models import (
     Fencer,
+    HRRatingSnapshot,
+    HRSnapshotRating,
     Registration,
     RegistrationsKeptBy,
     Rule,
@@ -215,9 +217,11 @@ def test_a_waitlisted_team_and_a_removed_registrations_team_are_not_listed(clien
 # ------------------------------------------------------------ who is one person
 
 
-def individual_and_team(client, auth_headers, member: dict, other: dict | None = None):
+def individual_and_team(
+    client, auth_headers, member: dict, other: dict | None = None, organizer=None
+):
     """Adéla fences Longsword Open and is a member of her own team."""
-    organizer = auth_headers()
+    organizer = organizer or auth_headers()
     setup_tournament(client, organizer, payments=False)
     client.post(
         "/api/tournaments/cup/disciplines",
@@ -366,3 +370,24 @@ def test_building_the_roster_writes_nothing(client, auth_headers):
     office.roster(session, tournament(session))
     assert not session.new and not session.dirty and not session.deleted
     assert counts() == before
+
+
+def test_a_members_rating_travels_with_the_team(client, auth_headers):
+    """Spec floor-roster, A team entry names its team and its members."""
+    floor = individual_and_team(
+        client, auth_headers, {"name": "Eva"}, {"name": "Filip", "hr_id": 777}
+    )
+    (team,) = floor.teams
+    assert team.ratings == ((None, None), (None, None))
+    session = db_session()
+    found = tournament(session)
+    code = next(d.taxonomy_code for d in found.disciplines if d.slug == "TM")
+    snapshot = HRRatingSnapshot(tournament_id=found.id, fencer_count=1, hr_ids=[777])
+    session.add(snapshot)
+    session.add(
+        HRSnapshotRating(snapshot=snapshot, hr_id=777, discipline_code=code, rating=1480, rank=210)
+    )
+    session.commit()
+
+    (team,) = assert_floor_matches_public().teams
+    assert team.ratings == ((None, None), (1480, 210))

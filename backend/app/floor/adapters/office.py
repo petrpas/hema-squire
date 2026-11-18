@@ -10,13 +10,15 @@ It also hands `api.py` the request dependencies that resolve a tournament from
 its slug, so that the router names no office module.
 """
 
+import httpx
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app import entrants, exporttables, rules, setup, sheet
+from app import entrants, exporttables, hr_sync, rules, setup, sheet
 from app.availability import live_registration
 from app.floor.roster import FloorDiscipline, IndividualEntry, Person, Roster, TeamEntry
 from app.floor.setup import Tournament as SetupTournament
+from app.hr_index import country_code
 from app.list_counts import same_person
 from app.models import DisciplineKind, Fencer, Registration, Tournament
 from app.ratelimit import limiter
@@ -29,11 +31,20 @@ from app.routers.tournaments import (
 )
 from app.rules import Row
 
+# the fetch the floor's ratings refresh reads through (design floor-data-sheet D4)
+HRFetcher = hr_sync.HRFetcher
+get_hr_fetcher = hr_sync.get_hr_fetcher
+
 __all__ = [
     "FencerDep",
+    "HRFetcher",
+    "fetch_discipline_ratings",
+    "get_hr_fetcher",
     "SessionDep",
+    "Tournament",
     "TournamentDep",
     "has_floor",
+    "nationality_code",
     "OptionalFencerDep",
     "limiter",
     "person_key_for",
@@ -144,6 +155,37 @@ def person_key_for(session: Session, tournament: Tournament, fencer: Fencer) -> 
     return registration.source_row_id or f"reg:{registration.id}"
 
 
+def nationality_code(text: str | None) -> str | None:
+    """A nationality in the one vocabulary the office's Export draws: the
+    alpha-2 code where the text names a country, the text itself where it does
+    not. The office keeps whatever was written — a HEMA Ratings profile says
+    "Czech Republic" — and codes it only where it is drawn, so the floor's
+    sheet codes it on the way in."""
+    return country_code(text) or text
+
+
+def fetch_discipline_ratings(
+    tournament: Tournament, discipline_id: int, hr_ids: list[int], fetcher: HRFetcher
+) -> dict[int, tuple[float | None, int | None]] | None:
+    """The current HEMA Ratings figures of the given fighters in one
+    discipline's category, fetched by the office's own code and stored nowhere
+    in the office (spec floor-data, The ratings are refreshed for one
+    discipline). None where the source is refused as drifted."""
+    discipline = next((d for d in tournament.disciplines if d.id == discipline_id), None)
+    if discipline is None:
+        raise LookupError(f"discipline {discipline_id} is not the tournament's")
+    code = discipline.taxonomy_code
+    try:
+        outcome = hr_sync.fetch_ratings(tournament, fetcher, hr_ids, [code])
+    except httpx.HTTPError, RuntimeError:
+        # the source unreachable or answering an error: the sheet keeps its
+        # figures and the panel says the fetch failed
+        return None
+    if outcome.rejected is not None:
+        return None
+    return {r.hr_id: (r.rating, r.rank) for r in outcome.ratings if r.discipline_code == code}
+
+
 def roster_of(session: Session, tournament_id: int) -> Roster | None:
     """The roster of a tournament known only by id, as a piste screen knows it."""
     tournament = session.get(Tournament, tournament_id)
@@ -210,7 +252,7 @@ def roster(session: Session, tournament: Tournament) -> Roster:
             key=key,
             name=row["name"],
             club=row.get("club"),
-            nationality=row.get("nationality"),
+            nationality=nationality_code(row.get("nationality")),
             hr_id=row.get("hr_id"),
         )
 
@@ -227,6 +269,15 @@ def roster(session: Session, tournament: Tournament) -> Roster:
                 name=entry.name,
                 members=tuple(anchor[key] for key in entry.member_row_ids),
                 paid=entry.paid,
+                # the member rows' own figures for the team discipline, as the
+                # office's team tab states them (spec floor-roster)
+                ratings=tuple(
+                    (
+                        (members[key].get("ratings") or {}).get(entry.discipline),
+                        (members[key].get("ranks") or {}).get(entry.discipline),
+                    )
+                    for key in entry.member_row_ids
+                ),
             )
             for entry in teams
         ),

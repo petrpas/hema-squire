@@ -15,6 +15,7 @@ import {
   floorApi,
   planApi,
   poolsApi,
+  sheetApi,
 } from "./floorApi";
 
 // The floor console's rail and frame (spec floor-console): the tabs in a fixed
@@ -89,6 +90,8 @@ async function open(
   vi.spyOn(floorApi, "summary").mockResolvedValue(answer);
   vi.spyOn(floorApi, "setup").mockResolvedValue(setup);
   vi.spyOn(floorApi, "roster").mockRejectedValue(new Error("not under test"));
+  vi.spyOn(sheetApi, "view").mockRejectedValue(new Error("not under test"));
+  vi.spyOn(checkinApi, "desk").mockRejectedValue(new Error("not under test"));
   vi.spyOn(planApi, "state").mockRejectedValue(new Error("not under test"));
   vi.spyOn(checkinApi, "today").mockRejectedValue(new Error("not under test"));
   vi.spyOn(poolsApi, "view").mockRejectedValue(new Error("not under test"));
@@ -272,6 +275,28 @@ describe("the floor console's tabs", () => {
     await settle();
 
     expect(selected()).toBe("floor-tab-bracket");
+    expect(strip()).toBe("Sabre");
+  });
+
+  it("carries the discipline chosen on Data to the desk", async () => {
+    await open("/organizer/cup/floor/data/SB", summary({ plan_published: true }));
+    expect(strip()).toBe("Sabre");
+    const open_ = { closed: false, closed_at: null, entered: 0, present: 0, n: null };
+    vi.spyOn(checkinApi, "desk").mockResolvedValue({
+      persons: [],
+      teams: [],
+      disciplines: setup.disciplines.map((d) => ({
+        ...d,
+        team_min: null,
+        team_max: null,
+        ...open_,
+      })),
+    } as unknown as Awaited<ReturnType<typeof checkinApi.desk>>);
+
+    click(railTab("checkin"));
+    await settle();
+
+    expect(selected()).toBe("floor-tab-checkin");
     expect(strip()).toBe("Sabre");
   });
 

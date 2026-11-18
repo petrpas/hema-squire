@@ -301,6 +301,85 @@ class FloorLocalPerson(Base):
     name: Mapped[str] = mapped_column(String(200))
     club: Mapped[str | None] = mapped_column(String(200))
     nationality: Mapped[str | None] = mapped_column(String(80))
+    # named at the Data sheet, so a walk-in's figures can be fetched
+    hr_id: Mapped[int | None] = mapped_column(Integer)
+
+
+# ------------------------------------------------------------ the Data sheet
+# (spec floor-data; design floor-data-sheet D3). A layer over the floor roster:
+# nothing here is ever written to the office.
+
+
+class FloorSheetEdit(Base):
+    """A hand correction of one cell. `subject` is a person key for name,
+    club, nationality and hr_id, an entry key `<person>@<discipline id>` for
+    rating and rank."""
+
+    __tablename__ = "floor_sheet_edits"
+    __table_args__ = (UniqueConstraint("tournament_id", "subject", "field"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    tournament_id: Mapped[int] = mapped_column(ForeignKey("tournaments.id"), index=True)
+    subject: Mapped[str] = mapped_column(String(120))
+    field: Mapped[str] = mapped_column(String(16))
+    value: Mapped[object] = mapped_column(JSON)
+    at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    by: Mapped[int | None] = mapped_column(Integer)
+
+
+class FloorSheetEntry(Base):
+    """An individual entry added on the floor: a walk-in, or a person already
+    on the floor entering one more discipline."""
+
+    __tablename__ = "floor_sheet_entries"
+    __table_args__ = (UniqueConstraint("tournament_id", "person_key", "discipline_id"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    tournament_id: Mapped[int] = mapped_column(ForeignKey("tournaments.id"), index=True)
+    person_key: Mapped[str] = mapped_column(String(80))
+    discipline_id: Mapped[int] = mapped_column(ForeignKey("disciplines.id", ondelete="CASCADE"))
+    at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    by: Mapped[int | None] = mapped_column(Integer)
+
+
+class FloorSheetTeam(Base):
+    """A team formed on the floor, keyed `floorteam:<id>`. Its members are
+    its `FloorLineup` rows."""
+
+    __tablename__ = "floor_sheet_teams"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    tournament_id: Mapped[int] = mapped_column(ForeignKey("tournaments.id"), index=True)
+    discipline_id: Mapped[int] = mapped_column(ForeignKey("disciplines.id", ondelete="CASCADE"))
+    name: Mapped[str] = mapped_column(String(200))
+    at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    by: Mapped[int | None] = mapped_column(Integer)
+
+
+class FloorSheetFetch(Base):
+    """The floor's last ratings fetch of one discipline; replaced by the next."""
+
+    __tablename__ = "floor_sheet_fetches"
+    __table_args__ = (UniqueConstraint("tournament_id", "discipline_id"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    tournament_id: Mapped[int] = mapped_column(ForeignKey("tournaments.id"), index=True)
+    discipline_id: Mapped[int] = mapped_column(ForeignKey("disciplines.id", ondelete="CASCADE"))
+    fetched_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    # the HR ids asked, so the panel can say whose figures were never fetched
+    asked: Mapped[list[int]] = mapped_column(JSON, default=list)
+
+
+class FloorSheetRating(Base):
+    __tablename__ = "floor_sheet_ratings"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    fetch_id: Mapped[int] = mapped_column(
+        ForeignKey("floor_sheet_fetches.id", ondelete="CASCADE"), index=True
+    )
+    hr_id: Mapped[int] = mapped_column(Integer)
+    rating: Mapped[float | None] = mapped_column()
+    rank: Mapped[int | None] = mapped_column(Integer)
 
 
 class FloorSnapshot(Base):

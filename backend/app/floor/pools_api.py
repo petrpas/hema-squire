@@ -21,10 +21,9 @@ from app.floor.adapters.office import (
     TournamentDep,
     has_floor,
     limiter,
-    roster,
-    roster_of,
     setup_facts,
 )
+from app.floor.datasheet import roster, roster_of
 from app.floor.models import FloorBout, FloorFormat, FloorPiste, FloorPool, FloorRingKey
 from app.floor.roster import FloorDiscipline
 from app.floor.schemas import RowId

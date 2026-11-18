@@ -20,9 +20,9 @@ from app.floor.adapters.office import (
     has_floor,
     person_key_for,
     require_public,
-    roster,
     setup_facts,
 )
+from app.floor.datasheet import roster
 from app.floor.models import FloorBout, FloorDraw, FloorPlanActivity, FloorPool, FloorPoolMember
 from app.floor.setup import read_pistes
 

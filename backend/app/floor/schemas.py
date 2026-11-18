@@ -38,6 +38,8 @@ class FloorTeamEntryOut(BaseModel):
     name: str
     members: list[str]
     paid: bool
+    # each member's (rating, rank), parallel to `members`
+    ratings: list[tuple[float | None, int | None]] = []
 
 
 class FloorRosterOut(BaseModel):

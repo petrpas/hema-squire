@@ -146,6 +146,8 @@ export default function FloorConsole({
           ) : tab === "data" ? (
             <DataTab
               slug={slug}
+              discipline={discipline}
+              fallback={fallback}
               keptByOrganizer={tournament.registrations_kept_by === "organizer"}
             />
           ) : (

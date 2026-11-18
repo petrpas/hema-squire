@@ -1,9 +1,8 @@
-import { IconArrowUp, IconSearch, IconX } from "@tabler/icons-react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { api, type RosterMemberFields, type TeamEntry } from "./api";
 import { useManageKey } from "./manageKey";
-import RosterMemberDialog from "./RosterMemberDialog";
+import RosterMembers from "./RosterMembers";
 import { type DraftRow, draftRow, rosterChanged, summarizeSaves, toRosterInput } from "./roster";
 
 function initialRoster(team: TeamEntry): DraftRow[] {
@@ -12,9 +11,8 @@ function initialRoster(team: TeamEntry): DraftRow[] {
   return members.map(draftRow);
 }
 
-/** Adds, removes, renames, rebinds, and reorders a team's roster in the
- *  draft `TeamsTab` holds for it — the save lives on the tab, not here
- *  (design D2). */
+/** One team's roster in the draft `TeamsTab` holds for it — the save lives on
+ *  the tab, not here (design D2). */
 function RosterEditor({
   team,
   members,
@@ -25,42 +23,6 @@ function RosterEditor({
   onChange: (members: DraftRow[]) => void;
 }) {
   const { t } = useTranslation();
-  // one slot: naming a member happens in the dialog, whether the member is
-  // being added or rebound, so the roster itself carries no name field and no
-  // search block (spec: "Member added through the dialog")
-  const [dialog, setDialog] = useState<{ index: number | null } | null>(null);
-
-  function renameMember(index: number, name: string) {
-    onChange(members.map((m, i) => (i === index ? { ...m, name } : m)));
-  }
-
-  function removeMember(index: number) {
-    onChange(members.filter((_, i) => i !== index));
-  }
-
-  function moveMemberUp(index: number) {
-    if (index <= 0) return;
-    const next = [...members];
-    const above = next[index - 1];
-    const member = next[index];
-    if (above === undefined || member === undefined) return;
-    next[index - 1] = member;
-    next[index] = above;
-    onChange(next);
-  }
-
-  function confirmDialog(member: RosterMemberFields) {
-    const index = dialog?.index ?? null;
-    onChange(
-      index === null
-        ? [...members, draftRow(member)]
-        : // rebinding is a correction to the member in that row, not a
-          // different person: its identity and its React key both stay
-          members.map((m, i) => (i === index ? { ...member, id: m.id, rowId: m.rowId } : m)),
-    );
-    setDialog(null);
-  }
-
   const shortfall = Math.max(team.team_min - members.length, 0);
 
   return (
@@ -68,64 +30,7 @@ function RosterEditor({
       <h3 className="register-section">{t("roster.title", { team: team.name })}</h3>
       <p className="rail-hint">{t("roster.bounds", { min: team.team_min, max: team.team_max })}</p>
       {shortfall > 0 && <p className="rail-hint">{t("roster.shortfall", { count: shortfall })}</p>}
-
-      {/* one line per member: their name, their HRID, their club, their row actions */}
-      <ul className="detail-list">
-        {members.map((member, index) => (
-          <li key={member.rowId}>
-            <div className="checklist-row team-row">
-              <input
-                className="cell-input"
-                value={member.name}
-                onChange={(event) => renameMember(index, event.target.value)}
-              />
-              <span className="muted roster-hrid">
-                {member.hr_id !== null ? `HR ${member.hr_id}` : ""}
-              </span>
-              <span className="muted roster-club">{member.club ?? ""}</span>
-              <button
-                type="button"
-                className="row-action"
-                title={t("actions.moveUp")}
-                disabled={index === 0}
-                onClick={() => moveMemberUp(index)}
-              >
-                <IconArrowUp size={16} stroke={1.5} />
-              </button>
-              <button
-                type="button"
-                className="row-action"
-                title={t("roster.rebind")}
-                onClick={() => setDialog({ index })}
-              >
-                <IconSearch size={16} stroke={1.5} />
-              </button>
-              <button
-                type="button"
-                className="row-action"
-                title={t("actions.delete")}
-                onClick={() => removeMember(index)}
-              >
-                <IconX size={16} stroke={1.5} />
-              </button>
-            </div>
-          </li>
-        ))}
-      </ul>
-
-      {members.length < team.team_max && (
-        <button type="button" className="link-button" onClick={() => setDialog({ index: null })}>
-          {t("roster.add")}
-        </button>
-      )}
-
-      {dialog && (
-        <RosterMemberDialog
-          initial={dialog.index === null ? null : (members[dialog.index] ?? null)}
-          onConfirm={confirmDialog}
-          onClose={() => setDialog(null)}
-        />
-      )}
+      <RosterMembers members={members} max={team.team_max} onChange={onChange} />
     </div>
   );
 }

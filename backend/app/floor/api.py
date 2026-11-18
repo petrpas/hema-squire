@@ -20,9 +20,9 @@ from app.floor.adapters.office import (
     SessionDep,
     TournamentDep,
     has_floor,
-    roster,
     setup_facts,
 )
+from app.floor.datasheet import roster
 from app.floor.engine.model import Result
 from app.floor.models import FloorPin
 from app.floor.roster import FloorDiscipline

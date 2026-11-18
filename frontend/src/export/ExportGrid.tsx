@@ -17,25 +17,34 @@ import type { CapacityLine } from "./ordering";
  *  left inferring from a setting whether the fencers below it are queued or
  *  merely past the cut.
  */
-function columnClass(column: ExportColumn): string | undefined {
+function columnClass<Row>(column: ExportColumn<Row>): string | undefined {
   const classes = [
-    column.id === POSITION.id ? "col-gutter" : column.numeric ? "col-number" : null,
+    column.id === POSITION.id
+      ? "col-gutter"
+      : column.numeric
+        ? "col-number"
+        : column.centered
+          ? "col-center"
+          : null,
   ].filter(Boolean);
   return classes.length > 0 ? classes.join(" ") : undefined;
 }
 
-export default function ExportGrid({
+export default function ExportGrid<Row extends { id: string } = SheetRow>({
   columns,
   rows,
   line,
   cell,
+  rowClass,
 }: {
-  columns: ExportColumn[];
-  rows: SheetRow[];
+  columns: ExportColumn<Row>[];
+  rows: Row[];
   line?: CapacityLine;
   /** A cell rendered as something other than its text — the rating, which the
    *  organizer corrects in place. Falls back to the column's own value. */
-  cell?: (row: SheetRow, column: ExportColumn, index: number) => React.ReactNode | null;
+  cell?: (row: Row, column: ExportColumn<Row>, index: number) => React.ReactNode | null;
+  /** A row's own class — the floor sheet strikes a withdrawn entrant through. */
+  rowClass?: (row: Row) => string | undefined;
 }) {
   const { t } = useTranslation();
   if (rows.length === 0) return <p className="sheet-empty">{t("sheet.empty")}</p>;
@@ -66,7 +75,7 @@ export default function ExportGrid({
                   <td colSpan={columns.length}>{t(`export.line.${line.kind}`)}</td>
                 </tr>
               )}
-              <tr>
+              <tr className={rowClass?.(row)}>
                 {columns.map((column) => (
                   <td key={column.id} className={columnClass(column)}>
                     {cell?.(row, column, index) ?? column.value(row, index)}

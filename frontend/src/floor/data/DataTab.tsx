@@ -1,151 +1,212 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Link } from "react-router-dom";
 
 import { ApiError } from "../../api";
-import * as routes from "../../routes";
+import { DisciplineStrip } from "../DisciplineStrip";
 import { FloorLayout } from "../FloorLayout";
-import { type FloorPerson, type FloorRoster, floorApi } from "../floorApi";
+import {
+  checkinApi,
+  type DataSheet,
+  type FloorSetup,
+  floorApi,
+  type SheetMember,
+  type SheetPerson,
+  sheetApi,
+} from "../floorApi";
+import AddEntrant from "./AddEntrant";
+import AddTeam from "./AddTeam";
+import { parsed, type SheetField } from "./columns";
+import DataPanel from "./DataPanel";
+import SheetTable from "./SheetTable";
+import TeamSheetTable from "./TeamSheetTable";
 
-/** Who the floor will work with: the floor roster, read live on every open,
- *  per discipline (spec floor-data). Entrants come from the office only; an
- *  organizer-kept tournament is pointed to its Import phase. */
+/** Data: the floor's working sheet, one discipline at a time chosen from the
+ *  strip (spec floor-data). The office's columns, the day's corrections made
+ *  in place while check-in is open, and the snapshot after. */
 export default function DataTab({
   slug,
+  discipline,
+  fallback,
   keptByOrganizer,
 }: {
   slug: string;
+  discipline?: string;
+  /** The discipline kept across the console, for an address naming none. */
+  fallback?: string;
   keptByOrganizer: boolean;
 }) {
   const { t } = useTranslation();
-  const [roster, setRoster] = useState<FloorRoster | null | "draft" | "error">(null);
+  const [setup, setSetup] = useState<FloorSetup | null | "draft" | "error">(null);
+  const [sheet, setSheet] = useState<DataSheet | null>(null);
+  const [failed, setFailed] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
 
   useEffect(() => {
     floorApi
-      .roster(slug)
-      .then(setRoster, (error) =>
-        setRoster(error instanceof ApiError && error.status === 409 ? "draft" : "error"),
+      .setup(slug)
+      .then(setSetup, (error) =>
+        setSetup(error instanceof ApiError && error.status === 409 ? "draft" : "error"),
       );
   }, [slug]);
 
-  // the entrants of an organizer-kept tournament are changed in the office's
-  // Import phase: the tab's one operation, in its panel (spec floor-console)
-  const rail = keptByOrganizer ? (
-    <section className="rail-card">
-      <p>{t("floor.data.fromImport")}</p>
-      <Link to={routes.consolePath(slug, "import")}>{t("floor.data.toImport")}</Link>
-    </section>
-  ) : undefined;
-  const source = keptByOrganizer ? null : (
-    <p className="muted">{t("floor.data.fromRegistrations")}</p>
-  );
+  const disciplines = typeof setup === "object" && setup !== null ? setup.disciplines : [];
+  const selected =
+    disciplines.find((d) => d.slug === discipline) ??
+    disciplines.find((d) => d.slug === fallback) ??
+    disciplines[0] ??
+    null;
+  const selectedId = selected?.id;
 
-  if (roster === null || roster === "draft" || roster === "error") {
+  const load = useCallback(() => {
+    if (selectedId === undefined) return;
+    sheetApi.view(slug, selectedId).then(
+      (read) => {
+        setSheet(read);
+        setFailed(false);
+      },
+      () => setFailed(true),
+    );
+  }, [slug, selectedId]);
+
+  useEffect(() => {
+    setMessage(null);
+    load();
+  }, [load]);
+
+  if (setup === "draft" || setup === "error" || selected === null) {
     return (
-      <FloorLayout tab="data" className="floor-data" rail={rail}>
-        {roster === null ? (
-          <p>{t("common.loading")}</p>
-        ) : (
-          <p className="muted">
-            {roster === "draft" ? t("floor.data.draft") : t("floor.data.loadFailed")}
-          </p>
-        )}
+      <FloorLayout tab="data" className="floor-data">
+        <p className={setup === null ? undefined : "muted"}>
+          {setup === null
+            ? t("common.loading")
+            : setup === "draft"
+              ? t("floor.data.draft")
+              : setup === "error"
+                ? t("floor.data.loadFailed")
+                : t("floor.data.empty")}
+        </p>
       </FloorLayout>
     );
   }
 
-  const persons = new Map(roster.persons.map((person) => [person.key, person]));
+  const shown = sheet !== null && sheet.discipline.id === selected.id ? sheet : null;
+  const locked = shown?.closed_at !== null;
+
+  // every write re-reads the sheet: the server orders and marks it
+  async function act(write: () => Promise<unknown>): Promise<boolean> {
+    try {
+      await write();
+      load();
+      return true;
+    } catch {
+      load();
+      return false;
+    }
+  }
+
+  function onCell(person: SheetPerson, field: SheetField, raw: string) {
+    const subject = field === "rating" || field === "rank" ? person.entry_key : person.person;
+    void act(() => sheetApi.cell(slug, subject, field, parsed(field, raw)));
+  }
+
+  async function refresh() {
+    if (selected === null) return;
+    setRefreshing(true);
+    setMessage(null);
+    try {
+      const outcome = await sheetApi.refresh(slug, selected.id);
+      setMessage(t("export.ratingsDone", outcome));
+      load();
+    } catch {
+      setMessage(t("export.ratingsFailed"));
+    } finally {
+      setRefreshing(false);
+    }
+  }
+
+  function add(name: string, members: SheetMember[]): Promise<boolean> {
+    if (shown === null) return Promise.resolve(false);
+    // the sheet's own discipline: what the dialog was drawn for
+    const id = shown.discipline.id;
+    const first = members[0];
+    if (shown.discipline.kind === "team") {
+      return act(() => sheetApi.addTeam(slug, id, name, members));
+    }
+    return first === undefined
+      ? Promise.resolve(false)
+      : act(() => sheetApi.addEntry(slug, id, first));
+  }
+
+  const head = (
+    <DisciplineStrip slug={slug} tab="data" disciplines={disciplines} current={selected.slug} />
+  );
 
   return (
-    <FloorLayout tab="data" className="floor-data" rail={rail}>
-      {source}
-      {roster.disciplines.map((discipline) => {
-        const individuals = roster.individuals.filter((e) => e.discipline === discipline.slug);
-        const teams = roster.teams.filter((e) => e.discipline === discipline.slug);
-        const count = discipline.kind === "team" ? teams.length : individuals.length;
-        return (
-          <section key={discipline.id} className="rail-card">
-            <h2>
-              {discipline.name} <span className="muted">{t("floor.data.count", { count })}</span>
-            </h2>
-            {count === 0 ? (
-              <p className="muted">{t("floor.data.empty")}</p>
+    <FloorLayout
+      tab="data"
+      className="floor-data"
+      head={head}
+      rail={
+        <DataPanel
+          slug={slug}
+          sheet={shown}
+          keptByOrganizer={keptByOrganizer}
+          refreshing={refreshing}
+          message={message}
+          onRefresh={() => void refresh()}
+          add={
+            shown === null || locked ? undefined : shown.discipline.kind === "team" ? (
+              <AddTeam sheet={shown} onAdd={add} />
             ) : (
-              <table className="sheet-table">
-                <thead>
-                  <tr>
-                    <th scope="col">{t("floor.data.name")}</th>
-                    <th scope="col">{t("floor.data.club")}</th>
-                    <th scope="col">{t("floor.data.nationality")}</th>
-                    {discipline.kind === "individual" && (
-                      <th scope="col">{t("floor.data.rating")}</th>
-                    )}
-                    <th scope="col">{t("floor.data.paid")}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {discipline.kind === "individual"
-                    ? individuals.map((entry) => (
-                        <PersonRow
-                          key={entry.person}
-                          person={persons.get(entry.person)}
-                          rating={entry.rating}
-                          paid={entry.paid}
-                        />
-                      ))
-                    : teams.map((team) => (
-                        <TeamRows key={team.key} team={team} persons={persons} />
-                      ))}
-                </tbody>
-              </table>
-            )}
-          </section>
-        );
-      })}
+              <AddEntrant sheet={shown} onAdd={add} />
+            )
+          }
+        />
+      }
+    >
+      {!keptByOrganizer && <p className="muted">{t("floor.data.fromRegistrations")}</p>}
+      {failed && shown === null ? (
+        <p className="muted">{t("floor.data.loadFailed")}</p>
+      ) : shown === null ? (
+        <p>{t("common.loading")}</p>
+      ) : (
+        <>
+          <h2>
+            {shown.discipline.name}{" "}
+            <span className="muted">{t("floor.data.count", { count: shown.count })}</span>
+          </h2>
+          {shown.discipline.kind === "team" ? (
+            <TeamSheetTable
+              teams={shown.teams}
+              locked={locked}
+              onCell={onCell}
+              onRemove={(team) =>
+                void act(() =>
+                  team.added
+                    ? sheetApi.removeTeam(slug, shown.discipline.id, team.key)
+                    : checkinApi.withdraw(slug, team.key),
+                )
+              }
+              onRestore={(team) => void act(() => checkinApi.undoWithdrawal(slug, team.key))}
+            />
+          ) : (
+            <SheetTable
+              rows={shown.rows}
+              locked={locked}
+              onCell={onCell}
+              onRemove={(row) =>
+                void act(() =>
+                  row.added
+                    ? sheetApi.removeEntry(slug, shown.discipline.id, row.person)
+                    : checkinApi.withdraw(slug, row.entry_key),
+                )
+              }
+              onRestore={(row) => void act(() => checkinApi.undoWithdrawal(slug, row.entry_key))}
+            />
+          )}
+        </>
+      )}
     </FloorLayout>
-  );
-}
-
-function PersonRow({
-  person,
-  rating,
-  paid,
-}: {
-  person: FloorPerson | undefined;
-  rating?: number | null;
-  paid?: boolean;
-}) {
-  const { t } = useTranslation();
-  return (
-    <tr>
-      <td>{person?.name}</td>
-      <td>{person?.club}</td>
-      <td>{person?.nationality}</td>
-      {rating !== undefined && <td>{rating === null ? "" : rating.toFixed(1)}</td>}
-      <td>{paid === undefined ? "" : paid ? t("floor.data.yes") : ""}</td>
-    </tr>
-  );
-}
-
-function TeamRows({
-  team,
-  persons,
-}: {
-  team: FloorRoster["teams"][number];
-  persons: Map<string, FloorPerson>;
-}) {
-  const { t } = useTranslation();
-  return (
-    <>
-      <tr className="floor-team-row">
-        <th scope="rowgroup" colSpan={3}>
-          {team.name}
-        </th>
-        <td>{team.paid ? t("floor.data.yes") : ""}</td>
-      </tr>
-      {team.members.map((key) => (
-        <PersonRow key={key} person={persons.get(key)} />
-      ))}
-    </>
   );
 }

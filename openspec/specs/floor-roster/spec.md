@@ -101,11 +101,20 @@ of its current members in roster order, and whether it is paid. The team key is 
 team's own identity, `team:<team id>`, and never its name. One registration may enter
 two teams with the same name.
 
+**Members' ratings.** For each member, in the same order, a team entry SHALL also state
+the rating and rank that the member's replayed row states for the team discipline. The
+office's team tab states the same figures. Where the row states none, the member's
+figure is none.
+
 Every member of a listed team SHALL appear among the roster's persons.
 
 #### Scenario: Two teams of one name stay two teams
 - **WHEN** one registration entered two teams both named "Ostrava" into one team discipline
 - **THEN** the floor roster lists two team entries with distinct keys
+
+#### Scenario: A member's rating travels with the team
+- **WHEN** a team's second member is rated 1480 at rank 210 in the team discipline's category
+- **THEN** the team entry states 1480 and 210 for its second member
 
 ### Requirement: A person key is the replay's row id
 A person's key SHALL be the replay row id of its anchor: `reg:<registration id>`,
@@ -212,3 +221,4 @@ every row it is the same person as. So no person joins two different identifiers
 #### Scenario: Namesakes on one team stay two
 - **WHEN** one team lists two members both named "Petr Svoboda" without identifiers
 - **THEN** the floor roster lists them as two persons
+

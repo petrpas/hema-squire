@@ -32,7 +32,13 @@ export type FloorTab = (typeof FLOOR_TABS)[number];
 /** The tabs that work on one discipline at a time and choose it from a
  *  strip of discipline tabs, the choice kept across them (spec
  *  floor-console, Step tabs choose their discipline by tabs). */
-export const STEP_TABS: ReadonlySet<FloorTab> = new Set(["checkin", "pools", "bracket", "results"]);
+export const STEP_TABS: ReadonlySet<FloorTab> = new Set([
+  "data",
+  "checkin",
+  "pools",
+  "bracket",
+  "results",
+]);
 
 /** The tabs whose change has landed. The rest say so in one line. */
 export const IMPLEMENTED: ReadonlySet<FloorTab> = new Set([

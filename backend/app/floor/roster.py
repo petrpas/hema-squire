@@ -61,6 +61,9 @@ class TeamEntry:
     # `Person.key`s of the current members, in roster order
     members: tuple[str, ...]
     paid: bool
+    # each member's (rating, rank) in the team discipline, parallel to
+    # `members`; None where the row states none
+    ratings: tuple[tuple[float | None, int | None], ...] = ()
 
 
 @dataclass(frozen=True)
