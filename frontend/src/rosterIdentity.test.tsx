@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { act } from "react";
+import { act, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { api, type RosterMember, type TeamEntry } from "./api";
@@ -123,6 +123,56 @@ describe("the entrant's roster editor", () => {
     expect(update.mock.calls[0]?.[2]).toEqual([
       { id: 11, name: "A", hr_id: null, club: null, nationality: null },
       { id: null, name: "Newcomer", hr_id: null, club: null, nationality: null },
+    ]);
+  });
+
+  it("greys the save out once saved, even where the server stored the roster its own way", async () => {
+    // the server answers with a trimmed name and an id for the newcomer
+    const stored = team([member(11, "Alice"), member(44, "Newcomer")]);
+    const update = vi.spyOn(api, "updateRoster").mockResolvedValue(stored as never);
+
+    function Holder() {
+      const [entry, setEntry] = useState(team([member(11, "A")]));
+      return <TeamsTab slug="cup" teams={[entry]} onTeamUpdated={setEntry} />;
+    }
+    host = document.createElement("div");
+    document.body.append(host);
+    const root = createRoot(host);
+    act(() => root.render(<Holder />));
+    const page = host;
+
+    const field = nameFields(page)[0];
+    if (field === undefined) throw new Error("no name field");
+    type(field, "Alice ");
+    const add = [...page.querySelectorAll<HTMLButtonElement>("button")].find(
+      (button) => button.textContent === i18n.t("roster.add"),
+    );
+    await act(async () => add?.click());
+    const typed = document.querySelector<HTMLInputElement>(".modal input");
+    if (typed === null) throw new Error("no dialog field");
+    type(typed, "Newcomer");
+    const confirm = [...document.querySelectorAll<HTMLButtonElement>(".modal button")].find(
+      (button) => button.textContent === i18n.t("roster.confirmPlain"),
+    );
+    await act(async () => confirm?.click());
+
+    const save = () =>
+      [...page.querySelectorAll<HTMLButtonElement>("button")].find(
+        (button) => button.textContent === i18n.t("roster.saveAll"),
+      );
+    expect(save()?.disabled).toBe(false);
+    await act(async () => save()?.click());
+    expect(save()?.disabled).toBe(true);
+
+    // the next edit wakes it, and the newcomer now travels under its id
+    const second = nameFields(page)[1];
+    if (second === undefined) throw new Error("no second name field");
+    type(second, "Newcomer B");
+    expect(save()?.disabled).toBe(false);
+    await act(async () => save()?.click());
+    expect(update.mock.calls[1]?.[2]).toEqual([
+      { id: 11, name: "Alice", hr_id: null, club: null, nationality: null },
+      { id: 44, name: "Newcomer B", hr_id: null, club: null, nationality: null },
     ]);
   });
 });

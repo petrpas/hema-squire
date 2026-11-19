@@ -190,6 +190,17 @@ export default function TeamsTab({
         return result === undefined ? [] : [{ team, result }];
       }),
     );
+    // reseed each saved draft from the server's answer: the stored roster may
+    // differ from what was sent (normalized fields, a prefill now stored), and
+    // a member saved just now gets its id here — so the tab reads clean and
+    // the save greys out until the next edit
+    if (saved.length > 0) {
+      setDrafts((prev) => {
+        const next = new Map(prev);
+        for (const team of saved) next.set(team.id, initialRoster(team));
+        return next;
+      });
+    }
     for (const team of saved) onTeamUpdated(team);
     setFailedTeams(failed.length > 0 ? failed : null);
     setBusy(false);
