@@ -569,7 +569,15 @@ def base_rows(
         # registration of their own, which is why they are rows: without them
         # the list would state eighteen contracts for sixty-seven fighters
         # (spec etl-console, The fencer list is the tournament's start field).
-        # Teams in entry order, as the team column reads them.
+        # Teams in entry order, as the team column reads them. Only a team
+        # that will fight puts its fighters here: an expired registration's
+        # row stays, stating its state, but its teams fight nobody, and their
+        # rosters are read in the Teams and Queue phases instead (spec
+        # etl-console, The fencer list is the tournament's start field). A
+        # registration reinstated by a late payment brings them back under the
+        # numbers they already hold.
+        if registration.state is not RegistrationState.RESERVED:
+            continue
         for team in sorted(registration.teams, key=lambda team: team.id):
             rostered += [(row_id, team, member) for member in team.members]
     for entry_row_id, team, member in rostered:

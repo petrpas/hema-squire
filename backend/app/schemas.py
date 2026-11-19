@@ -2298,12 +2298,33 @@ class ConsoleTeamOut(BaseModel):
     below_minimum: bool
 
 
+class LapsedTeamOut(BaseModel):
+    """A team whose entering registration expired or was cancelled, as the
+    Teams and Queue phases list it below their live teams: read-only, holding
+    no place, stating why it is gone, when, and what money the registration
+    still holds (spec team-disciplines, Organizer's teams view)."""
+
+    id: int
+    name: str
+    entering_fencer: str
+    entering_email: str | None = None
+    members: list[RosterMemberOut] = []
+    reason: Literal["expired", "cancelled"]
+    lapsed_at: UtcInstant | None
+    # money credited to the registration and not returned by Squire: the
+    # local lane first, the EUR one where only it was paid into
+    held_amount: str | None = None
+    held_currency: Currency | None = None
+
+
 class ConsoleTeamDisciplineOut(BaseModel):
     slug: str
     name: str
     team_min: int
     team_max: int
     teams: list[ConsoleTeamOut] = []
+    # below the live teams, beneath a line of their own; counted in nothing
+    lapsed: list[LapsedTeamOut] = []
 
 
 class QueueDisciplineOut(BaseModel):

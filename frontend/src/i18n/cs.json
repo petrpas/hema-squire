@@ -1433,6 +1433,14 @@
     "empty": "Turnaj nenabízí žádnou týmovou disciplínu.",
     "bounds": "Soupiska {{min}}–{{max}} členů",
     "noneEntered": "Zatím nepřihlášen žádný tým.",
+    "lapsed": {
+      "line": "propadlé a zrušené registrace",
+      "expired": "propadla {{day}}",
+      "expiredUndated": "propadla",
+      "cancelled": "zrušena {{day}}",
+      "cancelledUndated": "zrušena",
+      "held": "drží {{amount}}"
+    },
     "memberCount": "{{count}}/{{min}}–{{max}} členů",
     "itemsShared_one": "Položky jsou společné s týmem {{teams}} na téže registraci.",
     "itemsShared_few": "Položky jsou společné s týmy {{teams}} na téže registraci.",

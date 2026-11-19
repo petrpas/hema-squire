@@ -22,8 +22,11 @@ import TeamsTable, { type TeamEntry } from "./teams/TeamsTable";
 export default function TeamsPanel({
   slug,
   automatic,
+  timezone,
 }: {
   slug: string;
+  /** The tournament's zone, in which the day a team lapsed is read. */
+  timezone: string | null;
   /** Whether the tournament is automatic, which decides whether cancelling a
    *  team writes to its entrant. */
   automatic: boolean;
@@ -102,12 +105,14 @@ export default function TeamsPanel({
       <div className="sheet-scroll">
         {disciplines.length === 0 ? (
           <p className="sheet-empty">{t("teams.empty")}</p>
-        ) : entries.length === 0 ? (
+        ) : entries.length === 0 && (shown?.lapsed.length ?? 0) === 0 ? (
           <p className="sheet-empty">{t("teams.noneEntered")}</p>
         ) : (
           <TeamsTable
             slug={slug}
             entries={entries}
+            lapsed={shown?.lapsed ?? []}
+            timezone={timezone}
             onSaved={replaceTeam}
             onCancel={setCancelling}
           />

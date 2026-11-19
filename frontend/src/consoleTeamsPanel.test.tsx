@@ -2,7 +2,7 @@
 import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { api, type ConsoleTeam, type ConsoleTeamDiscipline } from "./api";
+import { api, type ConsoleTeam, type ConsoleTeamDiscipline, type LapsedTeam } from "./api";
 import i18n from "./i18n";
 import TeamsPanel from "./TeamsPanel";
 
@@ -36,8 +36,28 @@ function team(overrides: Partial<ConsoleTeam> = {}): ConsoleTeam {
   };
 }
 
-function discipline(teams: ConsoleTeam[], slug = "LS", name = "Longsword"): ConsoleTeamDiscipline {
-  return { slug, name, team_min: 3, team_max: 4, teams };
+function discipline(
+  teams: ConsoleTeam[],
+  slug = "LS",
+  name = "Longsword",
+  lapsed: LapsedTeam[] = [],
+): ConsoleTeamDiscipline {
+  return { slug, name, team_min: 3, team_max: 4, teams, lapsed };
+}
+
+function lapsedTeam(overrides: Partial<LapsedTeam> = {}): LapsedTeam {
+  return {
+    id: 9,
+    name: "Gone Foxes",
+    entering_fencer: "F9",
+    entering_email: "f9@example.org",
+    members: [{ id: 91, name: "Fox One", hr_id: null, club: null, nationality: null }],
+    reason: "expired",
+    lapsed_at: "2026-11-12T09:00:00Z",
+    held_amount: null,
+    held_currency: null,
+    ...overrides,
+  };
 }
 
 let host: HTMLElement | null = null;
@@ -50,7 +70,7 @@ async function openPanel(
   host = document.createElement("div");
   document.body.append(host);
   const root = createRoot(host);
-  act(() => root.render(<TeamsPanel slug="cup" automatic={automatic} />));
+  act(() => root.render(<TeamsPanel slug="cup" automatic={automatic} timezone="Europe/Prague" />));
   await act(async () => {
     await Promise.resolve();
     await Promise.resolve();
@@ -364,5 +384,52 @@ describe("the organizer's teams view", () => {
       { id: 11, name: "Bound Person", hr_id: 4321, club: "Brno HEMA", nationality: "CZ" },
       { id: 22, name: "Unknown Person", hr_id: null, club: null, nationality: null },
     ]);
+  });
+
+  it("lists the teams gone with their registrations below a line, read-only and unnumbered", async () => {
+    const page = await openPanel([
+      discipline([team()], "LS", "Longsword", [
+        lapsedTeam(),
+        lapsedTeam({
+          id: 10,
+          name: "Quit Hares",
+          reason: "cancelled",
+          lapsed_at: "2026-11-03T09:00:00Z",
+          held_amount: "500.00",
+          held_currency: "CZK",
+        }),
+      ]),
+    ]);
+    const text = page.textContent ?? "";
+    const line = i18n.t("teams.lapsed.line");
+    expect(text.indexOf("Wolves")).toBeLessThan(text.indexOf(line));
+    expect(text.indexOf(line)).toBeLessThan(text.indexOf("Gone Foxes"));
+    expect(text.indexOf("Gone Foxes")).toBeLessThan(text.indexOf("Quit Hares"));
+    expect(text).toContain(i18n.t("teams.lapsed.cancelled", { day: "3. 11. 2026" }));
+    expect(text).toContain(i18n.t("teams.lapsed.held", { amount: "500" }).split(" ")[0]);
+
+    const lapsedRow = [...page.querySelectorAll("tr")].find((row) =>
+      row.textContent?.includes("Gone Foxes"),
+    );
+    expect(lapsedRow?.querySelector(".col-gutter")?.textContent).toBe("");
+    // the roster unfolds, and nothing on the row edits or cancels
+    expect(lapsedRow?.querySelector(`[title="${i18n.t("teams.cancel.action")}"]`)).toBeNull();
+    const toggle = lapsedRow?.querySelector<HTMLButtonElement>(".roster-toggle");
+    await act(async () => toggle?.click());
+    expect(page.textContent).toContain("Fox One");
+    expect(
+      [...page.querySelectorAll("button")].filter(
+        (b) => b.textContent === i18n.t("teams.editRoster"),
+      ),
+    ).toHaveLength(0);
+  });
+
+  it("draws no line where nothing lapsed, and the lapsed alone still make a table", async () => {
+    const none = await openPanel([discipline([team()])]);
+    expect(none.textContent).not.toContain(i18n.t("teams.lapsed.line"));
+    none.remove();
+    const only = await openPanel([discipline([], "LS", "Longsword", [lapsedTeam()])]);
+    expect(only.textContent).toContain("Gone Foxes");
+    expect(only.textContent).not.toContain(i18n.t("teams.noneEntered"));
   });
 });

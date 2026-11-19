@@ -1178,6 +1178,7 @@ export default function Console({
             <TeamsPanel
               slug={tournament.slug}
               automatic={(detail ?? tournament).registrations_kept_by === "squire"}
+              timezone={detail?.timezone ?? null}
             />
           ) : phase === "queue" ? (
             /* a band of discipline rosters with the two arrows that change who

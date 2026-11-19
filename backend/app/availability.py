@@ -9,7 +9,9 @@ exclusive by `discipline.kind` (design team-disciplines D1/2.6) — calling the
 wrong pair for a discipline's kind is a programming error, asserted below."""
 
 from collections.abc import Mapping, Sequence
+from dataclasses import dataclass
 from datetime import UTC, datetime
+from typing import Literal
 
 from fastapi import HTTPException
 from sqlalchemy import ColumnElement, and_, func, or_, select, update
@@ -19,6 +21,7 @@ from app.models import (
     Discipline,
     DisciplineKind,
     ExtraItem,
+    PaymentEvent,
     Registration,
     RegistrationDiscipline,
     RegistrationExtra,
@@ -55,6 +58,90 @@ def live_teams(session: Session, discipline: Discipline) -> list[Team]:
             .order_by(Team.waitlisted_since, Team.created_at, Team.id)
         ).all()
     )
+
+
+EXPIRY_EVENT_KINDS = ("reservation_expired", "expired_holding_payment")
+"""The payment events the scheduler records when a reservation expires, with
+and without money credited (spec payments, Expiry holding money is recorded
+distinctly)."""
+
+
+LapseReason = Literal["expired", "cancelled"]
+
+
+@dataclass(frozen=True)
+class LapsedTeam:
+    """A team whose entering registration expired or was cancelled, with why
+    and when: what the organizer's Teams and Queue phases list below their
+    live teams (spec team-disciplines, Organizer's teams view)."""
+
+    team: Team
+    reason: LapseReason
+    # None only for an expiry that left no event and had no window recorded,
+    # which nothing written since the scheduler began recording events does
+    lapsed_at: datetime | None
+
+
+def lapsed_teams(session: Session, discipline: Discipline) -> list[LapsedTeam]:
+    """A team discipline's teams on expired or cancelled registrations, the
+    most recent lapse first.
+
+    Its own reader rather than a switch on `live_teams`, whose callers count
+    capacity and the waitlist and must never meet one of these (design
+    show-lapsed-teams D1). A team cancelled alone is deleted with its roster,
+    so it is not here: there is nothing of it left to show.
+
+    The moment is the cancellation's own for a cancelled registration, and for
+    an expired one the latest expiry event — a registration reinstated by a
+    late payment and expired again lapsed the second time — falling back to
+    the window's end where no event was recorded (design D2)."""
+    from sqlalchemy.orm import selectinload
+
+    teams = session.scalars(
+        select(Team)
+        .join(Registration)
+        .where(
+            Team.discipline_id == discipline.id,
+            Registration.state.in_((RegistrationState.EXPIRED, RegistrationState.CANCELLED)),
+        )
+        .options(selectinload(Team.members), selectinload(Team.registration))
+        .order_by(Team.created_at, Team.id)
+    ).all()
+    expired_ids = {
+        team.registration_id
+        for team in teams
+        if team.registration.state is RegistrationState.EXPIRED
+    }
+    expired_at: dict[int, datetime] = {}
+    if expired_ids:
+        rows = session.execute(
+            select(PaymentEvent.registration_id, func.max(PaymentEvent.created_at))
+            .where(
+                PaymentEvent.registration_id.in_(expired_ids),
+                PaymentEvent.kind.in_(EXPIRY_EVENT_KINDS),
+            )
+            .group_by(PaymentEvent.registration_id)
+        ).all()
+        expired_at = {rid: at for rid, at in rows if rid is not None}
+    lapsed: list[LapsedTeam] = []
+    for team in teams:
+        registration = team.registration
+        if registration.state is RegistrationState.CANCELLED:
+            lapsed.append(LapsedTeam(team, "cancelled", registration.cancelled_at))
+        else:
+            at = expired_at.get(registration.id, registration.expires_at)
+            lapsed.append(LapsedTeam(team, "expired", at))
+    # most recent first; an undated lapse last, in entry order as read
+    lapsed.sort(key=lambda row: _utc(row.lapsed_at), reverse=True)
+    return lapsed
+
+
+def _utc(moment: datetime | None) -> datetime:
+    """A moment comparable with every other: SQLite hands timestamps back
+    naive, and they are stored as UTC."""
+    if moment is None:
+        return datetime.min.replace(tzinfo=UTC)
+    return moment if moment.tzinfo is not None else moment.replace(tzinfo=UTC)
 
 
 def live_registration():

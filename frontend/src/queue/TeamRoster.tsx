@@ -2,8 +2,9 @@ import { IconArrowDown, IconArrowUp } from "@tabler/icons-react";
 import { Fragment } from "react";
 import { useTranslation } from "react-i18next";
 
-import type { QueueTeam } from "../api";
+import type { LapsedTeam, QueueTeam } from "../api";
 import { registeredMoment } from "../momentText";
+import LapsedTeamRows from "../teams/LapsedTeamRows";
 import { moneyText } from "./queueColumns";
 
 /** A team discipline's roster in the Queue phase: seated teams above a line at
@@ -13,9 +14,13 @@ import { moneyText } from "./queueColumns";
  *  ↑ admits a waitlisted team while a slot is free; ↓ returns a seated team
  *  while its entering fencer's registration is unpaid. A team is not a row of
  *  the fencer list, so its rows come from their own projection and are drawn
- *  here rather than through the Export grid. */
+ *  here rather than through the Export grid.
+ *
+ *  Below the waitlist, beneath a line of their own, the teams gone with their
+ *  registrations: faded, with neither arrow, and holding no place. */
 export default function TeamRoster({
   rows,
+  lapsed,
   free,
   timezone,
   busy,
@@ -23,6 +28,8 @@ export default function TeamRoster({
   onReturn,
 }: {
   rows: QueueTeam[];
+  /** Teams gone with their registrations, which the roster lists apart. */
+  lapsed: LapsedTeam[];
   free: number;
   timezone: string | null;
   busy: boolean;
@@ -30,7 +37,8 @@ export default function TeamRoster({
   onReturn: (team: QueueTeam) => void;
 }) {
   const { t } = useTranslation();
-  if (rows.length === 0) return <p className="sheet-empty">{t("queue.noTeams")}</p>;
+  if (rows.length === 0 && lapsed.length === 0)
+    return <p className="sheet-empty">{t("queue.noTeams")}</p>;
   const seated = rows.filter((row) => !row.waitlisted).length;
 
   function standing(row: QueueTeam): string {
@@ -110,6 +118,7 @@ export default function TeamRoster({
             </Fragment>
           ))}
         </tbody>
+        <LapsedTeamRows teams={lapsed} timezone={timezone} layout="queue" />
       </table>
     </div>
   );

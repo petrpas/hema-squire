@@ -1404,6 +1404,14 @@
     "empty": "This tournament offers no team discipline.",
     "bounds": "Roster {{min}}–{{max}} members",
     "noneEntered": "No team entered yet.",
+    "lapsed": {
+      "line": "expired and cancelled registrations",
+      "expired": "expired {{day}}",
+      "expiredUndated": "expired",
+      "cancelled": "cancelled {{day}}",
+      "cancelledUndated": "cancelled",
+      "held": "holds {{amount}}"
+    },
     "memberCount": "{{count}}/{{min}}–{{max}} members",
     "itemsShared_one": "The items are shared with team {{teams}} on the same registration.",
     "itemsShared_other": "The items are shared with teams {{teams}} on the same registration.",

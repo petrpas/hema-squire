@@ -1339,12 +1339,31 @@ export interface TeamCancelled {
   notified: boolean;
 }
 
+/** A team gone with its registration, which expired or was cancelled: listed
+ *  below the live teams in the Teams and Queue phases, read-only and holding
+ *  no place (spec team-disciplines, Organizer's teams view). */
+export interface LapsedTeam {
+  id: number;
+  name: string;
+  entering_fencer: string;
+  entering_email: string | null;
+  members: RosterMember[];
+  reason: "expired" | "cancelled";
+  /** When it lapsed; null only for an old expiry that left no trace of when. */
+  lapsed_at: string | null;
+  /** Money the registration still holds, which Squire does not return. */
+  held_amount: string | null;
+  held_currency: Currency | null;
+}
+
 export interface ConsoleTeamDiscipline {
   slug: string;
   name: string;
   team_min: number;
   team_max: number;
   teams: ConsoleTeam[];
+  /** Below the live teams, beneath a line of their own; counted in nothing. */
+  lapsed: LapsedTeam[];
 }
 
 /** One individual discipline's places, as the Queue phase states them beside
@@ -2249,6 +2268,8 @@ export const api = {
   queue: (slug: string) => request<Queue>(`/api/tournaments/${slug}/queue`),
   queueTeams: (slug: string, disciplineSlug: string) =>
     request<QueueTeam[]>(`/api/tournaments/${slug}/queue/teams/${disciplineSlug}`),
+  queueLapsedTeams: (slug: string, disciplineSlug: string) =>
+    request<LapsedTeam[]>(`/api/tournaments/${slug}/queue/teams/${disciplineSlug}/lapsed`),
   admitTeam: (slug: string, registrationId: number, teamId: number) =>
     request<RegistrationDetail>(
       `/api/tournaments/${slug}/registrations/${registrationId}/teams/${teamId}/admit`,

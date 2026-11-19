@@ -1,6 +1,7 @@
 import { useTranslation } from "react-i18next";
 
-import type { ConsoleTeam, ConsoleTeamDiscipline } from "../api";
+import type { ConsoleTeam, ConsoleTeamDiscipline, LapsedTeam } from "../api";
+import LapsedTeamRows from "./LapsedTeamRows";
 import TeamTableRow, { COLUMNS } from "./TeamTableRow";
 
 /** One team per discipline, flattened: the row and the discipline it belongs
@@ -24,15 +25,24 @@ export interface TeamEntry {
  *
  *  The roster unfolds beside its count rather than printed under every row: a
  *  tournament of eighteen teams is a list to be read, and a roster under each
- *  would make it four pages. */
+ *  would make it four pages.
+ *
+ *  Below them all, beneath a line of their own, the teams gone with their
+ *  registrations: an expiry happens on its own, and this is where the
+ *  organizer learns that a team they expect is gone. */
 export default function TeamsTable({
   slug,
   entries,
+  lapsed,
+  timezone,
   onSaved,
   onCancel,
 }: {
   slug: string;
   entries: TeamEntry[];
+  lapsed: LapsedTeam[];
+  /** The tournament's zone, in which the day a team lapsed is read. */
+  timezone: string | null;
   onSaved: (disciplineSlug: string, team: ConsoleTeam) => void;
   /** Asks for a team's cancellation dialog, which the panel owns: a `dialog`
    *  element cannot stand inside a table body. */
@@ -82,6 +92,7 @@ export default function TeamsTable({
         </tbody>
       )}
       {waiting.map(row)}
+      <LapsedTeamRows teams={lapsed} timezone={timezone} layout="teams" />
     </table>
   );
 }

@@ -38,6 +38,8 @@ from app.auth import (
     require_tournament_owner,
 )
 from app.availability import (
+    LapsedTeam,
+    lapsed_teams,
     live_teams,
     queue_length,
     taken_seats,
@@ -80,6 +82,7 @@ from app.schemas import (
     FencerTournamentOut,
     FioTokenIn,
     FioTokenOut,
+    LapsedTeamOut,
     MyRegistrationState,
     OpenDisciplineOut,
     OpenTournamentOut,
@@ -1486,6 +1489,41 @@ def _console_team_out(
     )
 
 
+def _lapsed_team_out(tournament: Tournament, lapsed: LapsedTeam) -> LapsedTeamOut:
+    """A team gone with its registration, as the Teams and Queue phases list it
+    below the live teams. The money it states is what the registration still
+    holds, read as the fencer table reads an expiry holding money: the local
+    lane first, the EUR one where only it was paid into."""
+    team = lapsed.team
+    registration = team.registration
+    held: tuple[int, Currency] | None = None
+    for lane, currency in (("local", tournament.local_currency), ("eur", Currency.EUR)):
+        cents = registration.credited_in(lane)
+        if cents:
+            held = (cents, currency)
+            break
+    return LapsedTeamOut(
+        id=team.id,
+        name=team.name,
+        entering_fencer=registration.fencer.display_name,
+        entering_email=emails.recipient(registration, registration.fencer),
+        members=[
+            RosterMemberOut(
+                id=m.id, name=m.name, hr_id=m.hr_id, club=m.club, nationality=m.nationality
+            )
+            for m in team.members
+        ],
+        reason=lapsed.reason,
+        lapsed_at=lapsed.lapsed_at,
+        held_amount=(
+            str((Decimal(held[0]) / 100).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP))
+            if held
+            else None
+        ),
+        held_currency=held[1] if held else None,
+    )
+
+
 @router.get("/{slug}/teams", response_model=list[ConsoleTeamDisciplineOut])
 def console_teams(tournament: TournamentDep, session: SessionDep, fencer: FencerDep):
     """Per team discipline: every team with its entering fencer, the payment
@@ -1537,6 +1575,10 @@ def console_teams(tournament: TournamentDep, session: SessionDep, fencer: Fencer
                 team_min=team_min,
                 team_max=team_max,
                 teams=team_rows,
+                lapsed=[
+                    _lapsed_team_out(tournament, lapsed)
+                    for lapsed in lapsed_teams(session, discipline)
+                ],
             )
         )
     return result
@@ -1784,6 +1826,28 @@ def console_queue_teams(
             )
         )
     return rows
+
+
+@router.get("/{slug}/queue/teams/{discipline_slug}/lapsed", response_model=list[LapsedTeamOut])
+def console_queue_lapsed_teams(
+    discipline_slug: str, tournament: TournamentDep, session: SessionDep, fencer: FencerDep
+):
+    """The teams of a team discipline gone with their registrations, for the
+    Queue phase to list below the waitlist. Its own read beside the roster's,
+    which stays a list of live rows whose order is the waitlist's (design
+    show-lapsed-teams D3)."""
+    require_console_access(session, tournament, fencer)
+    discipline = next(
+        (
+            d
+            for d in tournament.disciplines
+            if d.slug == discipline_slug and d.kind == DisciplineKind.TEAM
+        ),
+        None,
+    )
+    if discipline is None:
+        raise HTTPException(status_code=404, detail="team_discipline_not_found")
+    return [_lapsed_team_out(tournament, lapsed) for lapsed in lapsed_teams(session, discipline)]
 
 
 @router.post("/{slug}/settle-seating", response_model=SettleSeatingOut)

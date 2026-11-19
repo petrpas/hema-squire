@@ -5,6 +5,7 @@ import {
   ApiError,
   api,
   type ExportBandTab,
+  type LapsedTeam,
   type Queue,
   type QueueDiscipline,
   type QueueTeam,
@@ -55,6 +56,9 @@ export default function QueuePhase({
   const [selected, setSelected] = useState<string | null>(null);
   const [rows, setRows] = useState<SheetRow[]>([]);
   const [teamRows, setTeamRows] = useState<QueueTeam[]>([]);
+  // the open team discipline's teams gone with their registrations, listed
+  // below the waitlist and counted in nothing
+  const [lapsedTeams, setLapsedTeams] = useState<LapsedTeam[]>([]);
   const [summary, setSummary] = useState<Queue | null>(null);
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
@@ -91,6 +95,7 @@ export default function QueuePhase({
     if (openSlug === undefined) return;
     if (openKind === "team") {
       void api.queueTeams(slug, openSlug).then(setTeamRows);
+      void api.queueLapsedTeams(slug, openSlug).then(setLapsedTeams);
       return;
     }
     void api.exportTable(slug, "discipline", openSlug).then((table) => setRows(table.rows));
@@ -191,6 +196,7 @@ export default function QueuePhase({
         ) : open?.kind === "team" ? (
           <TeamRoster
             rows={teamRows}
+            lapsed={lapsedTeams}
             free={open.places.free}
             timezone={timezone}
             busy={busy}

@@ -8,6 +8,7 @@ import {
   ApiError,
   api,
   type ExportBandTab,
+  type LapsedTeam,
   type Queue,
   type QueueTeam,
   type SheetRow,
@@ -384,10 +385,11 @@ describe("the team roster", () => {
     };
   }
 
-  function teams(rows: QueueTeam[], free: number): string {
+  function teams(rows: QueueTeam[], free: number, lapsed: LapsedTeam[] = []): string {
     return renderToStaticMarkup(
       <TeamRoster
         rows={rows}
+        lapsed={lapsed}
         free={free}
         timezone="Europe/Prague"
         busy={false}
@@ -419,5 +421,26 @@ describe("the team roster", () => {
     expect(full).not.toContain("přijmout tým");
     expect(full.match(/vrátit na čekací listinu/g)).toHaveLength(1);
     expect(teams([paidTeam, owingTeam, waitingTeam], 1)).toContain("přijmout tým");
+  });
+
+  it("lists a lapsed team below the waitlist with neither arrow nor position", () => {
+    const gone: LapsedTeam = {
+      id: 9,
+      name: "Gone Foxes",
+      entering_fencer: "F9",
+      entering_email: null,
+      members: [],
+      reason: "expired",
+      lapsed_at: "2026-11-12T09:00:00Z",
+      held_amount: null,
+      held_currency: null,
+    };
+    const html = teams([paidTeam, waitingTeam], 1, [gone]);
+    expect(html.indexOf("Waiting Owls")).toBeLessThan(html.indexOf("propadlé a zrušené"));
+    expect(html.indexOf("propadlé a zrušené")).toBeLessThan(html.indexOf("Gone Foxes"));
+    expect(html).toContain("propadla 12. 11. 2026");
+    // one admit arrow, the waiting team's: none on the lapsed row
+    expect(html.match(/přijmout tým/g)).toHaveLength(1);
+    expect(teams([], 1, [gone])).toContain("Gone Foxes");
   });
 });
