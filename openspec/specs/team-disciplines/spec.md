@@ -520,6 +520,14 @@ The view SHALL be offered only while the tournament's team disciplines feature i
 
 Admission from the waitlist and return to it remain the Queue phase's (`seating-queue`), and the view SHALL say so on the capacity line above the waitlisted teams: admission moves money and opens a payment window, and the phase that does that is the phase that shows the queue.
 
+**The view SHALL list the teams the organizer has lost.** A team whose entering registration has expired or been cancelled SHALL NOT disappear from the view. It SHALL stand below the discipline's live teams, the waitlisted ones included, beneath a line of its own that names what stands below it. Its row SHALL be drawn faded, the way a queued row is. An expiry happens on its own, by the payment clock, and a team that vanished without a word is one the organizer still expects at the venue.
+
+Such a row SHALL state the team's name, the entering fencer, the address mail about that registration goes to, and the member count, as a live row does. In place of the payment standing it SHALL state **why** the team is gone, expired or cancelled, together with the day it happened, read in the tournament's own zone. Where the registration still holds credited money it SHALL also state that amount, as the fencer table states an expiry holding money, so that the organizer sees the money is the organizer's to settle with the fencer. Its roster SHALL unfold from the row as a live team's does, and SHALL NOT be editable. No action SHALL be offered on the row: no roster edit, no cancellation, and no statement about admission.
+
+Below the line the rows SHALL be ordered by that day, the most recent first. The gutter SHALL NOT count them, because a count there would read as a place, and these teams hold none. They SHALL NOT enter the count on the discipline's tab, take a place against capacity, or take a place on the waitlist (**Team capacity and the team waitlist**). A registration reinstated by a late payment brings its team back among the live teams on its own, with no action of the view's.
+
+A team cancelled on its own (**Cancelling one team**) takes its roster with it and SHALL NOT be listed here: nothing of it remains to show. Where no team of the discipline has lapsed, no line SHALL be drawn and nothing SHALL be said.
+
 #### Scenario: Teams listed per discipline
 - **WHEN** an organizer opens the teams view for a team discipline holding six teams
 - **THEN** each team is listed with its name, entering fencer, ordered roster, and member count
@@ -581,6 +589,38 @@ team SHALL carry no such marker.
 #### Scenario: Entrants keep their roster editor
 - **WHEN** a fencer who entered a team opens the tournament detail page while the team feature is off
 - **THEN** the team is listed and its roster editor is offered as usual
+
+#### Scenario: An expired team stays in sight
+- **WHEN** the reservation of a fencer who entered the team "Wolves" expires unpaid on 12 November
+- **THEN** the Teams view lists "Wolves" below the discipline's live teams, beneath its own line, faded, stating that it expired on 12 November, with its entering fencer and member count
+
+#### Scenario: A cancelled registration's team stays in sight
+- **WHEN** the organizer cancels a registration that entered one team
+- **THEN** that team is listed below the line stating that it was cancelled and on which day
+
+#### Scenario: Money still held is stated
+- **WHEN** a registration that entered a team expires holding 500 credited
+- **THEN** the team's row below the line states the 500 the registration still holds
+
+#### Scenario: A lapsed team offers nothing
+- **WHEN** the organizer unfolds the roster of a team below the line
+- **THEN** the roster is shown read-only, and the row offers no edit, no cancellation and no admission
+
+#### Scenario: A lapsed team holds no place
+- **WHEN** a discipline of capacity 8 holds 8 seated teams and one lapsed team
+- **THEN** the tab counts 8 teams, the gutter numbers the seated teams 1 to 8, and the lapsed team's row carries no number
+
+#### Scenario: Reinstated, the team returns
+- **WHEN** a payment arriving within the grace period reinstates an expired registration that entered a team
+- **THEN** the team stands among the live teams again and no longer below the line
+
+#### Scenario: A team cancelled alone is not listed
+- **WHEN** the organizer cancels one team of a registration that stands
+- **THEN** that team is listed nowhere in the view
+
+#### Scenario: Nothing lapsed, no line
+- **WHEN** no team of the discipline stands on an expired or cancelled registration
+- **THEN** the view draws no line below the live teams and says nothing about lapsed teams
 
 ### Requirement: Cancelling one team
 

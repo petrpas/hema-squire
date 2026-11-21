@@ -1307,6 +1307,17 @@ and **every member of every team's roster**. A roster member SHALL therefore be 
 row of the console's projection, alongside the three populations the list already
 carries.
 
+Only a team that will fight puts its fighters on the list. **The members of a team
+whose entering registration has expired or been cancelled SHALL NOT be listed**,
+whether or not the team was seated, because neither kind of team fights. A team
+cancelled alone already takes its members off the list (`team-disciplines`,
+Cancelling one team), and a team whose registration lapsed SHALL do the same. The
+registration's own row, where the registration holds an individual entry, SHALL
+stay listed and state its state as it does today. Where the organizer still reads
+such a team is the Teams and Queue phases (`team-disciplines`, `seating-queue`). A
+registration reinstated by a late payment SHALL bring its members back, each under
+the fixed number it already holds.
+
 A registration that holds no individual entry — one whose whole content is team
 entries — SHALL NOT be listed, and its holder SHALL NOT appear as a fencer on the
 strength of having entered a team. Entering a team is not fighting: the roster's
@@ -1392,6 +1403,14 @@ nothing from what that phase shows.
 #### Scenario: A member beside their own entrant's registration
 - **WHEN** a fencer enters a team and is also the first member of its roster
 - **THEN** the registration row and the member row both stand, and deduplication offers neither against the other
+
+#### Scenario: A lapsed team's fighters leave the start field
+- **WHEN** a registration holding one individual entry and one team of four expires unpaid
+- **THEN** the four member rows are no longer listed, and the registration's row stands stating that its reservation expired
+
+#### Scenario: Reinstated, the fighters return
+- **WHEN** that registration is reinstated by a payment within the grace period
+- **THEN** the four member rows are listed again, each under the number it held before
 
 ### Requirement: Position in the list
 

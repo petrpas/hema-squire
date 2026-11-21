@@ -353,6 +353,8 @@ Each action SHALL be offered on a row only where it would be carried out, and a 
 
 Admitting a team SHALL be an organizer's action only: no rule and no payment SHALL admit a team.
 
+**A team whose entering registration has expired or been cancelled SHALL be listed below the waitlist**, beneath a line of its own that names what stands below it, faded, and read-only, as the Teams view lists it (`team-disciplines`, Organizer's teams view). Its row SHALL state the team's name, its entering fencer and its member count. In place of the money it SHALL state why the team is gone, expired or cancelled, the day that happened, and any credited money the registration still holds. It SHALL carry neither arrow, state no position and take no place: the tab's counts and the discipline's free slots SHALL be what they would be without it. Below the line the rows SHALL be ordered by that day, the most recent first. Where no team of the discipline has lapsed, no line SHALL be drawn.
+
 #### Scenario: A waitlisted team admitted
 - **WHEN** a team discipline of capacity 8 holds 7 seated teams and the organizer admits the first waitlisted team
 - **THEN** it is seated, its fee is billed to the entering fencer's registration, a payment window opens, and the entering fencer is told the team has a place and what is due
@@ -369,6 +371,10 @@ Admitting a team SHALL be an organizer's action only: no rule and no payment SHA
 - **WHEN** the organizer returns a seated team whose entering fencer has not paid
 - **THEN** the team is waitlisted at its previous place, its slot is freed, and the registration no longer owes its fee
 
-#### Scenario: A dead registration's team is not listed
+#### Scenario: A dead registration's team is listed apart
 - **WHEN** a team's entering registration has expired
-- **THEN** the team is not listed and takes no waitlist position
+- **THEN** the team is listed below the waitlist beneath its own line, faded, stating that it expired and on which day, with no arrow and no position
+
+#### Scenario: A lapsed team frees what it held
+- **WHEN** a discipline of capacity 8 held 8 seated teams and one of their registrations expires
+- **THEN** the tab states one free slot and counts 7 seated teams, and the lapsed team stands below the waitlist without being counted
