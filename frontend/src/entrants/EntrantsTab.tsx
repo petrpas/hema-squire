@@ -2,10 +2,11 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 
-import { api, type Entrants, type Roster } from "../api";
+import { api, type Entrants, isRejectedCredential, type Roster } from "../api";
 import { registeredMoment } from "../momentText";
 import NotFound from "../NotFound";
 import { entrantsEvent, entrants as entrantsPath } from "../routes";
+import { useCredential } from "../session";
 import { useTabBand } from "../useTabBand";
 import IndividualRoster from "./IndividualRoster";
 import TeamRoster from "./TeamRoster";
@@ -43,9 +44,13 @@ export default function EntrantsTab({
   const [entrants, setEntrants] = useState<Entrants | null>(null);
   const [failed, setFailed] = useState(false);
 
+  // a refused credential is dropped and the change runs this again anonymously
+  const credential = useCredential();
   useEffect(() => {
-    api.entrants(slug).then(setEntrants, () => setFailed(true));
-  }, [slug]);
+    api.entrants(slug).then(setEntrants, (err) => {
+      if (!isRejectedCredential(err)) setFailed(true);
+    });
+  }, [slug, credential]);
 
   const named = discipline !== undefined || event !== undefined;
   const roster = entrants?.rosters.find((candidate) =>

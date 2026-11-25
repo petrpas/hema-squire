@@ -97,6 +97,8 @@ export default function FencerLayout() {
         // than waiting for a navigation (spec `localization`)
         void i18n.changeLanguage(it.language);
       },
+      // a refused credential is dropped by the API layer itself, which
+      // flips `signedIn` and lands back in the branch above
       () => setAccount(null),
     );
     // Fetched here rather than lazily by the list, because whether it is empty

@@ -15,6 +15,7 @@ import {
   api,
   type ExtraCategory,
   type ItemAvailability,
+  isRejectedCredential,
   type RegistrationDetail,
   type FencerTournament as TournamentDetailData,
 } from "./api";
@@ -434,9 +435,17 @@ export default function TournamentDetail() {
   const [amending, setAmending] = useState(false);
 
   function refresh() {
-    api.tournament(slug).then(setDetail, () => setNotFound(true));
-    api.availability(slug).then(setAvailability, () => setAvailability([]));
-    api.itemAvailability(slug).then(setItemPlaces, () => setItemPlaces([]));
+    // A refused credential is no answer about the tournament: it is dropped,
+    // `signedIn` flips, and this runs again anonymously.
+    api.tournament(slug).then(setDetail, (err) => {
+      if (!isRejectedCredential(err)) setNotFound(true);
+    });
+    api.availability(slug).then(setAvailability, (err) => {
+      if (!isRejectedCredential(err)) setAvailability([]);
+    });
+    api.itemAvailability(slug).then(setItemPlaces, (err) => {
+      if (!isRejectedCredential(err)) setItemPlaces([]);
+    });
     setDeadLink(false);
     if (managing) {
       api.myRegistration(slug, manageKey).then(

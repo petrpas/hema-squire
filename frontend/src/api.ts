@@ -18,6 +18,53 @@ export class ApiError extends Error {
   }
 }
 
+/** The details the server gives a credential it will not accept, as opposed
+ *  to a 401 about something else — a wrong password at sign-in. */
+const REJECTED_CREDENTIAL = new Set(["invalid_token", "unknown_account"]);
+
+/** Whether a failure is the server refusing the held credential. A caller
+ *  that treats a failure as "nothing to show" skips this one: the credential
+ *  is discarded as the error is raised, and the reads re-run anonymously
+ *  once the session notices. */
+export function isRejectedCredential(err: unknown): boolean {
+  return (
+    err instanceof ApiError &&
+    err.status === 401 &&
+    typeof err.detail === "string" &&
+    REJECTED_CREDENTIAL.has(err.detail)
+  );
+}
+
+let credentialRejected: () => void = () => {};
+
+/** What to do once a held credential has been refused and discarded — the
+ *  session module's notification, registered from there because it imports
+ *  this one and not the other way round. */
+export function onCredentialRejected(handler: () => void): void {
+  credentialRejected = handler;
+}
+
+/** The error a failed response is raised as. A refused credential is dropped
+ *  here, once for every call: a stored token outlives its two weeks, and the
+ *  public reads refuse it rather than answer as anonymous (spec
+ *  `public-browsing`), so a screen that kept it would show every list empty
+ *  until the visitor signed out by hand. Only the token the request carried
+ *  is dropped — one written by a sign-in meanwhile is not the one refused. */
+async function refusal(response: Response, sent: string | null): Promise<ApiError> {
+  let detail: unknown = null;
+  try {
+    detail = (await response.json()).detail;
+  } catch {
+    /* non-JSON error body */
+  }
+  const error = new ApiError(response.status, detail);
+  if (sent !== null && isRejectedCredential(error) && getToken() === sent) {
+    setToken(null);
+    credentialRejected();
+  }
+  return error;
+}
+
 /** A multipart upload. Its own function rather than an option on `request`,
  *  which sets a JSON content type the browser must choose itself for a
  *  FormData body — the boundary is the browser's to write. */
@@ -30,15 +77,7 @@ async function upload<T>(path: string, file: File): Promise<T> {
     headers: token ? { Authorization: `Bearer ${token}` } : {},
     body,
   });
-  if (!response.ok) {
-    let detail: unknown = null;
-    try {
-      detail = (await response.json()).detail;
-    } catch {
-      /* non-JSON error body */
-    }
-    throw new ApiError(response.status, detail);
-  }
+  if (!response.ok) throw await refusal(response, token);
   return response.json();
 }
 
@@ -54,15 +93,7 @@ async function requestBlob(path: string, body: unknown): Promise<Blob> {
     },
     body: JSON.stringify(body),
   });
-  if (!response.ok) {
-    let detail: unknown = null;
-    try {
-      detail = (await response.json()).detail;
-    } catch {
-      /* non-JSON error body */
-    }
-    throw new ApiError(response.status, detail);
-  }
+  if (!response.ok) throw await refusal(response, token);
   return response.blob();
 }
 
@@ -77,15 +108,7 @@ async function uploadImage(path: string, file: File): Promise<TournamentDetail> 
     headers: token ? { Authorization: `Bearer ${token}` } : {},
     body,
   });
-  if (!response.ok) {
-    let detail: unknown = null;
-    try {
-      detail = (await response.json()).detail;
-    } catch {
-      /* non-JSON error body */
-    }
-    throw new ApiError(response.status, detail);
-  }
+  if (!response.ok) throw await refusal(response, token);
   return response.json();
 }
 
@@ -99,15 +122,7 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
       ...options.headers,
     },
   });
-  if (!response.ok) {
-    let detail: unknown = null;
-    try {
-      detail = (await response.json()).detail;
-    } catch {
-      /* non-JSON error body */
-    }
-    throw new ApiError(response.status, detail);
-  }
+  if (!response.ok) throw await refusal(response, token);
   if (response.status === 204) return undefined as T;
   return response.json();
 }

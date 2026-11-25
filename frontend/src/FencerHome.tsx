@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useOutletContext } from "react-router-dom";
-import { api, type GuestIdentity, type OpenTournament } from "./api";
+import { api, type GuestIdentity, isRejectedCredential, type OpenTournament } from "./api";
 import { HOME_TABS, type HomeTab, PUBLIC_HOME_TABS } from "./FencerShell";
 import type { LoginMode } from "./Login";
 import NextOpening from "./NextOpening";
 import { home } from "./routes";
+import { useCredential } from "./session";
 import TournamentCard from "./TournamentCard";
 import { useTabBand } from "./useTabBand";
 
@@ -60,11 +61,17 @@ export function useUpcoming(): {
   refresh: () => void;
 } {
   const [upcoming, setUpcoming] = useState<OpenTournament[] | null>(null);
+  // A refused credential is not an empty list: it is dropped, and the change
+  // re-runs this fetch anonymously, so the list stays loading until then
+  // rather than latching the default tab on nothing.
+  const credential = useCredential();
   const refresh = useCallback(() => {
-    api.openTournaments().then(setUpcoming, () => setUpcoming([]));
+    api.openTournaments().then(setUpcoming, (err) => {
+      if (!isRejectedCredential(err)) setUpcoming([]);
+    });
   }, []);
 
-  useEffect(refresh, [refresh]);
+  useEffect(refresh, [refresh, credential]);
 
   return {
     announced: upcoming?.filter((tt) => tt.registration_status !== "open") ?? null,
@@ -113,9 +120,12 @@ export default function FencerHome() {
     // The Past list takes no part in the default tab, so it stays lazy — it is
     // an archive, fetched when asked for.
     if (tab === "past" && held === null) {
-      api.heldTournaments().then(setHeld, () => setHeld([]));
+      api.heldTournaments().then(setHeld, (err) => {
+        // left unfetched; the credential's change runs this again
+        if (!isRejectedCredential(err)) setHeld([]);
+      });
     }
-  }, [tab, held]);
+  }, [tab, held, signedIn]);
 
   const list =
     tab === null

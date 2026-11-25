@@ -1,6 +1,6 @@
 import { useSyncExternalStore } from "react";
 import { useNavigate } from "react-router-dom";
-import { getToken, setToken } from "./api";
+import { getToken, onCredentialRejected, setToken } from "./api";
 import { home } from "./routes";
 
 /** The credential the application is holding, as one fact rather than two.
@@ -31,6 +31,10 @@ function subscribe(listener: () => void): () => void {
     listeners.delete(listener);
   };
 }
+
+// a token the server refused is already gone from storage; the screens
+// reading it re-render as signed out and re-run their reads without it
+onCredentialRejected(emit);
 
 /** The held credential, or null when there is none. Re-renders the caller
  *  when it changes. */
