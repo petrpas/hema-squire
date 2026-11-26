@@ -6,9 +6,22 @@ export function stampRotation(id: string | number): number {
   return normalized - 2; // -2..+2
 }
 
-export default function PaidStamp({ id, label }: { id: string | number; label: string }) {
+/** `muted` draws the same mark in a faded ink: the shape of a stamp without
+ *  the one saturated colour, for a mark that states money but not payment. */
+export default function PaidStamp({
+  id,
+  label,
+  muted = false,
+}: {
+  id: string | number;
+  label: string;
+  muted?: boolean;
+}) {
   return (
-    <span className="stamp-paid" style={{ transform: `rotate(${stampRotation(id)}deg)` }}>
+    <span
+      className={muted ? "stamp-paid stamp-muted" : "stamp-paid"}
+      style={{ transform: `rotate(${stampRotation(id)}deg)` }}
+    >
       {label}
     </span>
   );

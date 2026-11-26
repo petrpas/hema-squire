@@ -676,6 +676,19 @@ export interface EnteredTeam {
   discipline: string;
 }
 
+/** The payment an expired registration's late stamp leads to. `key` is the
+ *  transaction id on the uncredited table and `<source_kind>-<source_id>` on
+ *  the credited one — each table's own row key. `day` is the day a flagged
+ *  payment arrived; null for held credit, whose day is the row's expiry. */
+export interface LatePayment {
+  table: "uncredited" | "credited";
+  key: string;
+  amount: string;
+  currency: Currency;
+  day: string | null;
+  count: number;
+}
+
 export interface SheetRow {
   id: string;
   /** The fixed number this row carries in the tournament, allocated once and
@@ -774,6 +787,11 @@ export interface SheetRow {
    *  distinctly); absent on a row with no registration behind it. */
   held_amount?: string | null;
   held_currency?: Currency | null;
+  /** Where the money standing against an expired registration lies, so the
+   *  row can be marked late and lead to it (spec `payments-console`, An
+   *  expired registration holding money is marked late). Null on every row
+   *  that is not expired with money against it. */
+  late_payment?: LatePayment | null;
   paid_at: string | null;
   weapon_rentals: string[];
   /** Of those, the ones this tournament lends nothing by that name and so

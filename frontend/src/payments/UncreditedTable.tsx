@@ -10,6 +10,7 @@ import { useTranslation } from "react-i18next";
 
 import { api, type UncreditedPayment } from "../api";
 import { formatTransactionAmount } from "../money";
+import ArrivedRow from "./ArrivedRow";
 import DispositionCell from "./DispositionCell";
 import LinkDialog from "./LinkDialog";
 
@@ -42,10 +43,15 @@ export default function UncreditedTable({
   slug,
   payments,
   onChanged,
+  arrivedAt = null,
 }: {
   slug: string;
   payments: UncreditedPayment[];
   onChanged: () => void;
+  /** The key of the row a late stamp led to, marked and brought into view
+   *  (spec payments-console, An expired registration holding money is marked
+   *  late). */
+  arrivedAt?: string | null;
 }) {
   const { t } = useTranslation();
   const [linking, setLinking] = useState<UncreditedPayment | null>(null);
@@ -87,7 +93,7 @@ export default function UncreditedTable({
         </thead>
         <tbody>
           {sorted.map((payment) => (
-            <tr key={payment.id}>
+            <ArrivedRow key={payment.id} arrived={arrivedAt === String(payment.id)}>
               <td>{new Date(payment.date).toLocaleDateString("cs")}</td>
               <td>{payment.payer_name ?? "—"}</td>
               <td className="col-number">
@@ -174,7 +180,7 @@ export default function UncreditedTable({
                   </button>
                 </div>
               </td>
-            </tr>
+            </ArrivedRow>
           ))}
         </tbody>
       </table>

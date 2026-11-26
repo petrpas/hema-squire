@@ -256,3 +256,36 @@ it("offers reinstate only where the server says the seat is there", () => {
   expect(titles).toContain(t("payments.flagged.reinstate"));
   expect(titles).toContain(t("payments.flagged.markForRefund"));
 });
+
+it("marks the payment a late stamp led to, and only that one", () => {
+  // spec payments-console, An expired registration holding money is marked
+  // late: pressing the stamp arrives at the payment, not merely the table
+  const scrolled = vi.fn();
+  HTMLElement.prototype.scrollIntoView = scrolled;
+  mount(
+    <UncreditedTable
+      slug="cup"
+      payments={[uncreditedPayment({ id: 1 }), uncreditedPayment({ id: 2, external_id: "2" })]}
+      onChanged={() => {}}
+      arrivedAt="2"
+    />,
+  );
+  const marked = [...(host?.querySelectorAll("tbody tr.row-arrived") ?? [])];
+  expect(marked).toHaveLength(1);
+  expect(marked[0]?.getAttribute("aria-current")).toBe("true");
+  expect(scrolled).toHaveBeenCalledTimes(1);
+});
+
+it("marks a credited payment by its journal address", () => {
+  HTMLElement.prototype.scrollIntoView = vi.fn();
+  mount(
+    <CreditedTable
+      slug="cup"
+      payments={[creditedPayment({ source_id: 1 }), creditedPayment({ source_id: 9 })]}
+      onChanged={() => {}}
+      arrivedAt="bank_transaction-9"
+    />,
+  );
+  const rows = [...(host?.querySelectorAll("tbody tr") ?? [])];
+  expect(rows.map((tr) => tr.classList.contains("row-arrived"))).toEqual([false, true]);
+});

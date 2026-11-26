@@ -357,9 +357,16 @@
     "waived_amount": "odpuštěno {{amount}}",
     "overpaid": "přeplatek {{amount}}",
     "expiredHolding": {
-      "label": "Vypršela s platbou",
       "title": "Rezervace vypršela {{day}} a drží připsaných {{amount}}. Squire peníze sám nevrací, domluv se se šermířem, co s nimi.",
       "titleUndated": "Rezervace vypršela a drží připsaných {{amount}}. Squire peníze sám nevrací, domluv se se šermířem, co s nimi."
+    },
+    "late": {
+      "label": "Pozdě",
+      "uncredited": "Rezervace vypršela a {{day}} na ni přišlo {{amount}}. Platba čeká v Nepřipsaných na tvé rozhodnutí: obnovit rezervaci, nebo peníze vrátit.",
+      "uncreditedSeveral_one": "Rezervace vypršela a přišla na ni {{count}} platba, poslední {{day}} na {{amount}}. Čeká v Nepřipsaných na tvé rozhodnutí.",
+      "uncreditedSeveral_few": "Rezervace vypršela a přišly na ni {{count}} platby, poslední {{day}} na {{amount}}. Čekají v Nepřipsaných na tvé rozhodnutí.",
+      "uncreditedSeveral_many": "Rezervace vypršela a přišlo na ni {{count}} platby, poslední {{day}} na {{amount}}. Čekají v Nepřipsaných na tvé rozhodnutí.",
+      "uncreditedSeveral_other": "Rezervace vypršela a přišlo na ni {{count}} plateb, poslední {{day}} na {{amount}}. Čekají v Nepřipsaných na tvé rozhodnutí."
     },
     "waiver": {
       "title": "Označit zaplaceno bez platby",

@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import { api, type CreditedPayment, type CreditReversal } from "../api";
 import Modal from "../Modal";
 import { formatMoney } from "../money";
+import ArrivedRow from "./ArrivedRow";
 
 /** Every payment holding a live credit: the bank's and the hand-recorded
  *  together, each naming who it credited and why.
@@ -29,10 +30,15 @@ export default function CreditedTable({
   slug,
   payments,
   onChanged,
+  arrivedAt = null,
 }: {
   slug: string;
   payments: CreditedPayment[];
   onChanged: () => void;
+  /** The key of the row a late stamp led to, marked and brought into view
+   *  (spec payments-console, An expired registration holding money is marked
+   *  late). */
+  arrivedAt?: string | null;
 }) {
   const { t } = useTranslation();
   const [reversing, setReversing] = useState<CreditedPayment | null>(null);
@@ -97,7 +103,10 @@ export default function CreditedTable({
         </thead>
         <tbody>
           {payments.map((payment) => (
-            <tr key={`${payment.source_kind}-${payment.source_id}`}>
+            <ArrivedRow
+              key={`${payment.source_kind}-${payment.source_id}`}
+              arrived={arrivedAt === `${payment.source_kind}-${payment.source_id}`}
+            >
               <td>{new Date(payment.value_date).toLocaleDateString("cs")}</td>
               {/* the bank's counterparty, or the organizer who said so */}
               <td>{payment.payer_name ?? payment.recorded_by ?? "—"}</td>
@@ -129,7 +138,7 @@ export default function CreditedTable({
                   <span className="visually-hidden">{t("payments.credited.reverse")}</span>
                 </button>
               </td>
-            </tr>
+            </ArrivedRow>
           ))}
         </tbody>
       </table>

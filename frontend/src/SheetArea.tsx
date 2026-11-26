@@ -1,6 +1,6 @@
 import { Fragment, useState } from "react";
 import { useTranslation } from "react-i18next";
-import type { OrderLines, SheetRow, TournamentDetail } from "./api";
+import type { LatePayment, OrderLines, SheetRow, TournamentDetail } from "./api";
 import {
   absorbedInto,
   CellDisplay,
@@ -74,6 +74,7 @@ export default function SheetArea({
   collects,
   onRecordPayment,
   settling,
+  onLate,
   orders,
 }: {
   phase: Phase;
@@ -129,6 +130,9 @@ export default function SheetArea({
    *  it could keep. */
   onRecordPayment?: (row: SheetRow) => void;
   settling?: boolean;
+  /** Opens the money table an expired row's late payment sits in; given on
+   *  the Payments phase of a tournament Squire collects for. */
+  onLate?: (late: LatePayment) => void;
   onRestore: (row: SheetRow) => void;
   /** Opens the organizer's cancellation for a row holding a live
    *  registration, offered where a deletion would otherwise stand. */
@@ -312,6 +316,7 @@ export default function SheetArea({
                                 row={row}
                                 onToggle={onToggleSettled}
                                 busy={settling ?? false}
+                                onLate={onLate}
                               />
                             ) : isMatch ? (
                               <MatchCell

@@ -44,10 +44,13 @@ from app import (
 )
 from app.hr_index import DbHRIndex, HRIndex, HRRating, RatingLookup, evidence_fields
 from app.models import (
+    BankTransaction,
+    CreditSource,
     Currency,
     ExtraCategory,
     ImportedRow,
     ManualRow,
+    PaymentCredit,
     Registration,
     RegistrationExtra,
     RegistrationState,
@@ -365,6 +368,90 @@ def _member_row(
     }
 
 
+# The reasons `matching` flags a payment with because the reservation it names
+# had already expired: outside the grace period, or into a discipline that has
+# filled since. The money awaiting the organizer's reinstate-or-refund decision
+# (spec payments, Payments arriving after expiry).
+LATE_REASONS = ("expired_outside_grace", "expired_seat_taken")
+
+
+def _late_flagged_by_vs(
+    session: Session, tournament: Tournament
+) -> dict[int, list[BankTransaction]]:
+    """The tournament's payments flagged as arriving after expiry and still
+    holding no live credit, by the VS they name, most recent first.
+
+    Resolved by `matching.effective_vs`, the resolution the reinstate action
+    uses, so a row's late stamp leads to exactly the payments on which that
+    action is offered (design mark-late-payments D2). One read per projection,
+    normally returning nothing."""
+    live_credit = (
+        select(PaymentCredit.id)
+        .where(
+            PaymentCredit.tournament_id == tournament.id,
+            PaymentCredit.source_kind == CreditSource.BANK_TRANSACTION,
+            PaymentCredit.source_id == BankTransaction.id,
+            PaymentCredit.reversed_at.is_(None),
+        )
+        .exists()
+    )
+    flagged = session.scalars(
+        select(BankTransaction)
+        .where(
+            BankTransaction.tournament_id == tournament.id,
+            BankTransaction.status == "flagged",
+            BankTransaction.status_reason.in_(LATE_REASONS),
+            ~live_credit,
+        )
+        .order_by(BankTransaction.date.desc(), BankTransaction.id.desc())
+    ).all()
+    by_vs: dict[int, list[BankTransaction]] = defaultdict(list)
+    for transaction in flagged:
+        vs = matching.effective_vs(transaction)
+        if vs is not None:
+            by_vs[vs].append(transaction)
+    return by_vs
+
+
+def _late_payment(
+    registration: Registration,
+    expiry_held: tuple[int, Currency] | None,
+    late_flagged: dict[int, list[BankTransaction]],
+) -> dict[str, object] | None:
+    """Where the money standing against an expired registration lies, so the
+    registration table can mark the row late and lead to it (spec
+    payments-console, An expired registration holding money is marked late).
+
+    A flagged payment wins over held credit: it is the one awaiting a decision.
+    Held credit points at its latest live entry, the one most likely to be the
+    question (design mark-late-payments D3)."""
+    flagged = late_flagged.get(registration.vs, []) if registration.vs is not None else []
+    newest = flagged[0] if flagged else None
+    if newest is not None:
+        return {
+            "table": "uncredited",
+            "key": str(newest.id),
+            "amount": _money(newest.amount_cents),
+            "currency": newest.currency.upper(),
+            "day": newest.date.isoformat(),
+            "count": len(flagged),
+        }
+    credits = registration.live_credits
+    latest = credits[-1] if credits else None
+    if latest is None or expiry_held is None:
+        return None
+    return {
+        "table": "credited",
+        "key": f"{latest.source_kind.value}-{latest.source_id}",
+        "amount": _money(expiry_held[0]),
+        "currency": str(expiry_held[1]),
+        # the expiry day is the row's own `expires_at`, read in the
+        # tournament's zone by the console as everywhere else
+        "day": None,
+        "count": 1,
+    }
+
+
 def base_rows(
     session: Session, tournament: Tournament, index: HRIndex | None = None
 ) -> dict[str, Row]:
@@ -395,6 +482,7 @@ def base_rows(
     ).all()
 
     held = matching.held_symbols(session, tournament)
+    late_flagged = _late_flagged_by_vs(session, tournament)
 
     rows: dict[str, Row] = {}
     # (the row id of the registration that entered the team, the team, the
@@ -551,6 +639,11 @@ def base_rows(
             "expires_at": _instant(registration.expires_at) if registration.expires_at else None,
             "held_amount": _money(expiry_held[0]) if expiry_held else None,
             "held_currency": expiry_held[1] if expiry_held else None,
+            "late_payment": (
+                _late_payment(registration, expiry_held, late_flagged)
+                if registration.state is RegistrationState.EXPIRED
+                else None
+            ),
             "paid_at": settled_on.isoformat() if settled_on else None,
             "weapon_rentals": registration.weapon_rentals or extra_rentals,
             # of those, the ones this tournament lends nothing by that name and

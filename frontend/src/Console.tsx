@@ -10,6 +10,7 @@ import {
   ApiError,
   api,
   type DisciplineKind,
+  type LatePayment,
   type NetChange,
   type Sheet,
   type SheetRow,
@@ -25,6 +26,7 @@ import { fencerNumberText } from "./FencerNumber";
 import ImportPanel from "./ImportPanel";
 import EventWording, { wordingI18n } from "./i18n/EventWording";
 import { IDENTITY_COLUMNS, identityValue, usesHRIdentity } from "./identity";
+import LateStamp from "./LateStamp";
 import ManualEditsRail from "./ManualEditsRail";
 import MatchDialog from "./MatchDialog";
 import MatchPanel from "./MatchPanel";
@@ -526,26 +528,31 @@ export function absorbedInto(row: SheetRow, rows: SheetRow[]): number | null {
   return rows.find((candidate) => candidate.id === row._merged_into)?.number ?? null;
 }
 
-export function StateBadge({ id, state, row }: { id: string; state: string; row?: SheetRow }) {
+export function StateBadge({
+  id,
+  state,
+  row,
+  onLate,
+}: {
+  id: string;
+  state: string;
+  row?: SheetRow;
+  /** Opens the money table a late stamp's payment sits in; given on the
+   *  Payments phase only, where those tables are. */
+  onLate?: (late: LatePayment) => void;
+}) {
   const { t } = useTranslation();
   // A member row has no registration state to print: it is a fighter, and the
   // column states what a contract is doing (design D6). "member" names the
   // population in the projection and is not a word in anybody's language.
   if (state === "member") return <>—</>;
   if (state === "paid") return <PaidStamp id={id} label={t("registration.state.paid")} />;
-  // an expiry with money still credited against it is not an ordinary one:
-  // the organizer owes the fencer an answer about that money (spec payments,
-  // Expiry holding money is recorded distinctly)
-  if (state === "expired" && row?.held_amount && row.held_currency) {
-    const amount = formatMoney(row.held_amount, row.held_currency);
-    const title = row.expires_at
-      ? t("console.expiredHolding.title", { day: dayIn(row.expires_at, null), amount })
-      : t("console.expiredHolding.titleUndated", { amount });
-    return (
-      <span className="state-text" title={title}>
-        {t("console.expiredHolding.label")}
-      </span>
-    );
+  // an expiry with money against it — credit it still holds, or a payment
+  // that arrived after it — is not an ordinary one: the organizer owes the
+  // fencer an answer about that money, and the stamp leads to it (spec
+  // payments-console, An expired registration holding money is marked late)
+  if (state === "expired" && row?.late_payment) {
+    return <LateStamp row={row} late={row.late_payment} onOpen={onLate} />;
   }
   // the stored value is an enum, not a word anybody reads: every other state
   // was printing its English identifier into a Czech table
@@ -934,9 +941,19 @@ export default function Console({
   // moment the reader went back to the fencers, which is exactly when it is
   // needed
   const [lastMoneyTab, setLastMoneyTab] = useState<"credited" | "uncredited">("credited");
+  // the payment a late stamp led to, marked on its table until the reader
+  // opens another one. A selection and not a URL: nobody shares a link to the
+  // row they arrived at (design mark-late-payments D6)
+  const [arrivedAt, setArrivedAt] = useState<string | null>(null);
   const setOpenTab = useCallback((tab: PaymentTab) => {
     setOpenTabState(tab);
+    setArrivedAt(null);
     if (tab === "credited" || tab === "uncredited") setLastMoneyTab(tab);
+  }, []);
+  const openLatePayment = useCallback((late: LatePayment) => {
+    setOpenTabState(late.table);
+    setLastMoneyTab(late.table);
+    setArrivedAt(late.key);
   }, []);
   // both loads live here rather than in the tables, which is what lets the line
   // beside the bands be computed in one place (design D3, D4)
@@ -1008,12 +1025,14 @@ export default function Console({
         slug={tournament.slug}
         payments={tables.credited.rows ?? []}
         onChanged={refresh}
+        arrivedAt={arrivedAt}
       />
     ) : (
       <UncreditedTable
         slug={tournament.slug}
         payments={tables.uncredited.rows ?? []}
         onChanged={refresh}
+        arrivedAt={arrivedAt}
       />
     );
   })();
@@ -1337,6 +1356,7 @@ export default function Console({
                     collects={collects}
                     onRecordPayment={phase === "payments" && collects ? setRecording : undefined}
                     settling={settling}
+                    onLate={phase === "payments" && collects ? openLatePayment : undefined}
                     onRatify={ratifyMatch}
                     onSearch={setMatchRow}
                     orders={phase === "payments" ? orders : undefined}

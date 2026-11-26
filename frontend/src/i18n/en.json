@@ -349,9 +349,14 @@
     "waived_amount": "{{amount}} waived",
     "overpaid": "{{amount}} over",
     "expiredHolding": {
-      "label": "Expired holding money",
       "title": "The reservation expired on {{day}} holding {{amount}} credited. Squire returns nothing by itself; agree with the fencer what happens to it.",
       "titleUndated": "The reservation expired holding {{amount}} credited. Squire returns nothing by itself; agree with the fencer what happens to it."
+    },
+    "late": {
+      "label": "Too late",
+      "uncredited": "The reservation expired, and {{amount}} arrived for it on {{day}}. The payment waits in Uncredited for your decision: reinstate the reservation or return the money.",
+      "uncreditedSeveral_one": "The reservation expired, and {{count}} payment arrived for it, the latest on {{day}} for {{amount}}. It waits in Uncredited for your decision.",
+      "uncreditedSeveral_other": "The reservation expired, and {{count}} payments arrived for it, the latest on {{day}} for {{amount}}. They wait in Uncredited for your decision."
     },
     "waiver": {
       "title": "Settle without a payment",

@@ -18,7 +18,7 @@ from app.mail import get_mailer
 from app.main import app
 from app.models import Registration
 from tests.conftest import post_restore
-from tests.test_matching import age_reserved, enroll, import_rows, setup
+from tests.test_matching import age_reserved, enroll, force_expired, import_rows, setup
 
 
 class CollectingMailer:
@@ -500,3 +500,101 @@ def test_reinstated_registration_holds_nothing_on_the_fencer_table(client, auth_
     row = sheet_row(client, organizer, vs)
     assert row["state"] != "expired"
     assert row["held_amount"] is None
+
+
+# --- An expired registration holding money is marked late (mark-late-payments)
+
+
+def test_a_payment_after_expiry_leads_from_its_row_to_the_uncredited_table(
+    client, auth_headers, mailbox
+):
+    organizer = auth_headers()
+    setup(client, organizer)
+    _, vs = enroll(client, auth_headers)
+    force_expired(vs, hours_ago=72)  # past the 48 h grace
+    import_rows(client, organizer, [f"1;01.08.2026;1000,00;CZK;{vs};;;;;"])
+
+    (payment,) = uncredited(client, organizer).json()
+    late = sheet_row(client, organizer, vs)["late_payment"]
+    # the row names the very payment the uncredited table lists, so pressing
+    # the stamp arrives where the reinstate action is
+    assert late == {
+        "table": "uncredited",
+        "key": str(payment["id"]),
+        "amount": "1000.00",
+        "currency": "CZK",
+        "day": "2026-08-01",
+        "count": 1,
+    }
+
+
+def test_held_credit_leads_to_the_payment_that_credited_it(client, auth_headers, mailbox):
+    organizer = auth_headers()
+    setup(client, organizer)
+    _, vs = enroll(client, auth_headers)
+    expire_holding_payment(client, organizer, vs)
+
+    (payment,) = credited(client, organizer).json()
+    late = sheet_row(client, organizer, vs)["late_payment"]
+    assert late["table"] == "credited"
+    assert late["key"] == f"{payment['source_kind']}-{payment['source_id']}"
+    assert late["amount"] == "600.00"
+
+
+def test_a_flagged_payment_wins_over_held_credit(client, auth_headers, mailbox):
+    organizer = auth_headers()
+    setup(client, organizer)
+    _, vs = enroll(client, auth_headers)
+    expire_holding_payment(client, organizer, vs)
+    force_expired(vs, hours_ago=72)
+    import_rows(client, organizer, [f"2;05.08.2026;400,00;CZK;{vs};;;;;"])
+
+    (payment,) = uncredited(client, organizer).json()
+    late = sheet_row(client, organizer, vs)["late_payment"]
+    assert late["table"] == "uncredited"
+    assert late["key"] == str(payment["id"])
+
+
+def test_several_late_payments_lead_to_the_most_recent(client, auth_headers, mailbox):
+    organizer = auth_headers()
+    setup(client, organizer)
+    _, vs = enroll(client, auth_headers)
+    force_expired(vs, hours_ago=72)
+    import_rows(
+        client,
+        organizer,
+        [f"1;01.08.2026;500,00;CZK;{vs};;;;;", f"2;03.08.2026;500,00;CZK;{vs};;;;;"],
+    )
+
+    late = sheet_row(client, organizer, vs)["late_payment"]
+    assert late["day"] == "2026-08-03"
+    assert late["count"] == 2
+
+
+def test_an_ordinary_expiry_and_a_live_row_carry_no_late_payment(client, auth_headers, mailbox):
+    organizer = auth_headers()
+    setup(client, organizer)
+    _, expired_vs = enroll(client, auth_headers)
+    _, live_vs = enroll(client, auth_headers, "b@example.com", "Boris")
+    force_expired(expired_vs)
+
+    assert sheet_row(client, organizer, expired_vs)["late_payment"] is None
+    assert sheet_row(client, organizer, live_vs)["late_payment"] is None
+
+
+def test_reinstating_takes_the_mark_away(client, auth_headers, mailbox):
+    organizer = auth_headers()
+    setup(client, organizer)
+    _, vs = enroll(client, auth_headers)
+    force_expired(vs, hours_ago=72)
+    import_rows(client, organizer, [f"1;01.08.2026;1000,00;CZK;{vs};;;;;"])
+    (payment,) = uncredited(client, organizer).json()
+
+    response = client.post(
+        f"/api/tournaments/cup/payments/transactions/{payment['id']}/reinstate",
+        headers=organizer,
+    )
+    assert response.status_code == 200
+    row = sheet_row(client, organizer, vs)
+    assert row["state"] != "expired"
+    assert row["late_payment"] is None

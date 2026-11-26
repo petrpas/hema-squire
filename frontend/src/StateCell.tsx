@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import type { SheetRow } from "./api";
+import type { LatePayment, SheetRow } from "./api";
 import { StateBadge } from "./Console";
 import WaiverReasonDialog from "./WaiverReasonDialog";
 
@@ -23,12 +23,15 @@ export default function StateCell({
   row,
   onToggle,
   busy,
+  onLate,
 }: {
   row: SheetRow;
   /** Rejects when the mark is refused, so the dialog can stay open and say so
    *  rather than closing on a row that did not change. */
   onToggle: (row: SheetRow, reason?: string | null) => Promise<void>;
   busy: boolean;
+  /** Opens the money table an expired row's late payment sits in. */
+  onLate?: (late: LatePayment) => void;
 }) {
   const { t } = useTranslation();
   const [asking, setAsking] = useState(false);
@@ -36,7 +39,7 @@ export default function StateCell({
   const waived = row.settled_by_hand === true;
   const offered = typeof row.registration_id === "number" && (waived || row.state === "reserved");
 
-  if (!offered) return <StateBadge id={row.id} state={row.state} row={row} />;
+  if (!offered) return <StateBadge id={row.id} state={row.state} row={row} onLate={onLate} />;
 
   return (
     <>

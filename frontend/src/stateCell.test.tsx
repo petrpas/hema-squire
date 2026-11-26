@@ -183,9 +183,9 @@ it("keeps the dialog open and states a refusal", async () => {
   expect((host!.querySelector(".modal input") as HTMLInputElement).value).toBe("volná účast");
 });
 
-it("tells an expiry holding money from an ordinary one", () => {
-  // spec payments, Expiry holding money is recorded distinctly: the organizer
-  // owes this fencer an answer about the money, and the row says so
+it("marks an expiry holding money late, never paid", () => {
+  // spec payments-console, An expired registration holding money is marked
+  // late: the organizer owes this fencer an answer about the money
   mount(
     <StateCell
       row={row({
@@ -193,14 +193,50 @@ it("tells an expiry holding money from an ordinary one", () => {
         held_amount: "600.00",
         held_currency: "CZK",
         expires_at: "2026-08-05T10:00:00+00:00",
+        late_payment: {
+          table: "credited",
+          key: "bank_transaction-7",
+          amount: "600.00",
+          currency: "CZK",
+          day: null,
+          count: 1,
+        },
       })}
       onToggle={vi.fn().mockResolvedValue(undefined)}
       busy={false}
     />,
   );
-  const badge = host?.querySelector(".state-text");
-  expect(badge?.textContent).toBe(t("console.expiredHolding.label"));
-  expect(badge?.getAttribute("title")).toContain("600");
+  const stamp = host?.querySelector(".stamp-paid");
+  expect(stamp?.textContent).toBe(t("console.late.label"));
+  expect(stamp?.classList.contains("stamp-muted")).toBe(true);
+  expect(host?.textContent).not.toContain(t("registration.state.paid"));
+  expect(host?.querySelector(".late-stamp")?.getAttribute("title")).toContain("600");
+  // no handler, no control: outside the Payments phase it leads nowhere
+  expect(host?.querySelector("button")).toBeNull();
+});
+
+it("leads from a late stamp to the payment it names", () => {
+  const late = {
+    table: "uncredited" as const,
+    key: "42",
+    amount: "1800.00",
+    currency: "CZK" as const,
+    day: "2026-08-01",
+    count: 2,
+  };
+  const onLate = vi.fn();
+  mount(
+    <StateCell
+      row={row({ state: "expired", late_payment: late })}
+      onToggle={vi.fn().mockResolvedValue(undefined)}
+      busy={false}
+      onLate={onLate}
+    />,
+  );
+  const button = host!.querySelector("button.late-stamp") as HTMLButtonElement;
+  expect(button.getAttribute("title")).toContain("2");
+  act(() => button.click());
+  expect(onLate).toHaveBeenCalledWith(late);
 });
 
 it("states an ordinary expiry as expired", () => {

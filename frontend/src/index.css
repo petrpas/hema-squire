@@ -204,6 +204,20 @@ button.secondary:disabled {
   font-weight: 500;
 }
 
+/* the paid stamp's shape in a faded ink: money stands against the row, but it
+   is not paid — `--stamp` stays the only saturated colour (mark-late-payments) */
+.stamp-paid.stamp-muted {
+  border-color: var(--ink-faded);
+  color: var(--ink-faded);
+}
+
+.late-stamp {
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+}
+
 .state-text {
   color: var(--ink-faded);
   font-size: 12px;
@@ -1168,6 +1182,16 @@ button.secondary:disabled {
   .sheet-table tbody tr:hover {
     background: var(--paper-shade);
   }
+}
+
+/* the row a late stamp led to: shaded, and ruled on its leading edge so it
+   still reads as the one arrived at while the pointer rests elsewhere */
+.sheet-table tbody tr.row-arrived {
+  background: var(--paper-shade);
+}
+
+.sheet-table tbody tr.row-arrived > td:first-child {
+  border-left: 2px solid var(--ink);
 }
 
 .col-index {
